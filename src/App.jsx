@@ -1405,6 +1405,21 @@ export default function TicTacBlock() {
                       </button>
                     </div>
                   )}
+
+                  {/* Why Arbitrum Info - Always Visible */}
+                  <div className="bg-blue-500/10 border border-blue-400/30 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <Info size={18} className="text-blue-400 mt-0.5 flex-shrink-0" />
+                      <div className="text-sm">
+                        <p className="text-blue-200 font-medium mb-1">Why Arbitrum?</p>
+                        <p className="text-blue-300/80 leading-relaxed">
+                          This game runs on <a href="https://arbitrum.io" target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-200 hover:text-blue-100 underline decoration-blue-400/50 hover:decoration-blue-300 transition-colors">Arbitrum One</a>, an Ethereum Layer 2 network.
+                          If prompted, simply click to switch networks in MetaMask — it's instant, free, and uses the same ETH you already have.
+                          No bridging required. <span className="text-blue-200">Lower fees, same security.</span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
