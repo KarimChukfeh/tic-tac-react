@@ -1461,6 +1461,19 @@ export default function TicTacBlock() {
                   {loading ? 'Joining...' : `Join as Player 1 (${entryFee} ETH)`}
                 </button>
                 <p className="text-blue-200 mt-4">Be the first player to join the arena!</p>
+                <div className="mt-4 bg-blue-500/10 border border-blue-400/30 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <Info size={18} className="text-blue-400 mt-0.5 flex-shrink-0" />
+                    <div className="text-sm">
+                      <p className="text-blue-200 font-medium mb-1">Why Arbitrum?</p>
+                      <p className="text-blue-300/80 leading-relaxed">
+                        This game runs on <span className="font-semibold text-blue-200">Arbitrum One</span>, an Ethereum Layer 2 network.
+                        If prompted, simply click to switch networks in MetaMask — it's instant, free, and uses the same ETH you already have.
+                        No bridging required. <span className="text-blue-200">Lower fees, same security.</span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -1474,6 +1487,19 @@ export default function TicTacBlock() {
                   {loading ? 'Joining...' : `Join as Player 2 (${entryFee} ETH)`}
                 </button>
                 <p className="text-blue-200 mt-4">Challenge the waiting player!</p>
+                <div className="mt-4 bg-blue-500/10 border border-blue-400/30 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <Info size={18} className="text-blue-400 mt-0.5 flex-shrink-0" />
+                    <div className="text-sm">
+                      <p className="text-blue-200 font-medium mb-1">Why Arbitrum?</p>
+                      <p className="text-blue-300/80 leading-relaxed">
+                        This game runs on <span className="font-semibold text-blue-200">Arbitrum One</span>, an Ethereum Layer 2 network.
+                        If prompted, simply click to switch networks in MetaMask — it's instant, free, and uses the same ETH you already have.
+                        No bridging required. <span className="text-blue-200">Lower fees, same security.</span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 
