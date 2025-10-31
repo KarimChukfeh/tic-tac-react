@@ -183,17 +183,17 @@ const PrizeDistribution = ({ pot, winner, winnerAddress }) => {
           <>
             <div className="bg-green-500/20 rounded-lg p-3 border-2 border-green-400/50">
               <div className="flex justify-between items-center mb-2">
-                <span className="text-green-200">Winner Payout (95%)</span>
-                <span className="text-green-300 font-bold text-xl">{prizes.winnerPayout} ETH</span>
+          <span className="text-green-200">Winner Payout (95%)</span>
+          <span className="text-green-300 font-bold text-xl">{prizes.winnerPayout} ETH</span>
               </div>
               {winnerAddress && winnerAddress !== ethers.ZeroAddress && (
-                <div className="flex items-center gap-2 mt-2 pt-2 border-t border-green-400/30">
-                  <Award size={14} className="text-green-400" />
-                  <span className="text-xs text-green-300">Winner:</span>
-                  <span className="text-xs text-green-200 font-mono bg-green-900/30 px-2 py-1 rounded">
-                    {shortenAddress(winnerAddress)}
-                  </span>
-                </div>
+          <div className="flex items-center gap-2 mt-2 pt-2 border-t border-green-400/30">
+            <Award size={14} className="text-green-400" />
+            <span className="text-xs text-green-300">Winner:</span>
+            <span className="text-xs text-green-200 font-mono bg-green-900/30 px-2 py-1 rounded">
+              {shortenAddress(winnerAddress)}
+            </span>
+          </div>
               )}
             </div>
             <div className="flex justify-between items-center bg-slate-700/30 rounded-lg p-3">
@@ -240,16 +240,16 @@ const GameProgress = ({ status, player1, player2, moveCount }) => {
             </div>
             <div className="flex-1">
               <div className={`font-medium ${
-                step.done ? 'text-green-300' :
-                step.active ? 'text-yellow-300' :
-                'text-slate-400'
+          step.done ? 'text-green-300' :
+          step.active ? 'text-yellow-300' :
+          'text-slate-400'
               }`}>
-                {step.label}
+          {step.label}
               </div>
               {step.active && (
-                <div className="text-xs text-yellow-400 mt-1">
-                  {moveCount}/9 moves played
-                </div>
+          <div className="text-xs text-yellow-400 mt-1">
+            {moveCount}/9 moves played
+          </div>
               )}
             </div>
           </div>
@@ -323,21 +323,21 @@ const LastGameResult = ({ lastGame, account }) => {
             </div>
             {isWin && (
               <div className="bg-slate-900/50 rounded-lg p-3">
-                <div className="text-sm text-slate-300 mb-1">Winner Address</div>
-                <div className="font-mono text-lg text-white">
-                  {shortenAddress(lastGame.winner)}
-                </div>
-                {userWon && (
-                  <div className="mt-2 text-xs bg-green-500/20 text-green-300 px-2 py-1 rounded inline-flex items-center gap-1 font-bold border border-green-400/30">
-                    <CheckCircle size={12} />
-                    This is you!
-                  </div>
-                )}
+          <div className="text-sm text-slate-300 mb-1">Winner Address</div>
+          <div className="font-mono text-lg text-white">
+            {shortenAddress(lastGame.winner)}
+          </div>
+          {userWon && (
+            <div className="mt-2 text-xs bg-green-500/20 text-green-300 px-2 py-1 rounded inline-flex items-center gap-1 font-bold border border-green-400/30">
+              <CheckCircle size={12} />
+              This is you!
+            </div>
+          )}
               </div>
             )}
             {userWon && (
               <div className="bg-green-900/30 rounded-lg p-3 border border-green-400/30">
-                <div className="text-green-300 font-bold text-lg">Prize Won: 95% of pot</div>
+          <div className="text-green-300 font-bold text-lg">Prize Won: 95% of pot</div>
               </div>
             )}
             <div className="text-sm text-slate-300">
@@ -360,13 +360,13 @@ const LastGameResult = ({ lastGame, account }) => {
           }`}>
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-cyan-500/30 flex items-center justify-center text-cyan-400 font-bold border-2 border-cyan-400">
-                  X
-                </div>
-                <span className="text-sm font-bold text-cyan-400">Player 1</span>
+          <div className="w-8 h-8 rounded-full bg-cyan-500/30 flex items-center justify-center text-cyan-400 font-bold border-2 border-cyan-400">
+            X
+          </div>
+          <span className="text-sm font-bold text-cyan-400">Player 1</span>
               </div>
               {isWin && lastGame.winner.toLowerCase() === lastGame.player1.toLowerCase() && (
-                <Trophy className="text-green-400" size={20} />
+          <Trophy className="text-green-400" size={20} />
               )}
             </div>
             <div className="font-mono text-xs text-white bg-slate-900/50 p-2 rounded">
@@ -374,8 +374,8 @@ const LastGameResult = ({ lastGame, account }) => {
             </div>
             {account && lastGame.player1.toLowerCase() === account.toLowerCase() && (
               <div className="mt-2 text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded inline-flex items-center gap-1 font-bold border border-blue-400/30">
-                <CheckCircle size={12} />
-                This is you!
+          <CheckCircle size={12} />
+          This is you!
               </div>
             )}
           </div>
@@ -390,13 +390,13 @@ const LastGameResult = ({ lastGame, account }) => {
           }`}>
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-orange-500/30 flex items-center justify-center text-orange-400 font-bold border-2 border-orange-400">
-                  O
-                </div>
-                <span className="text-sm font-bold text-orange-400">Player 2</span>
+          <div className="w-8 h-8 rounded-full bg-orange-500/30 flex items-center justify-center text-orange-400 font-bold border-2 border-orange-400">
+            O
+          </div>
+          <span className="text-sm font-bold text-orange-400">Player 2</span>
               </div>
               {isWin && lastGame.winner.toLowerCase() === lastGame.player2.toLowerCase() && (
-                <Trophy className="text-green-400" size={20} />
+          <Trophy className="text-green-400" size={20} />
               )}
             </div>
             <div className="font-mono text-xs text-white bg-slate-900/50 p-2 rounded">
@@ -404,8 +404,8 @@ const LastGameResult = ({ lastGame, account }) => {
             </div>
             {account && lastGame.player2.toLowerCase() === account.toLowerCase() && (
               <div className="mt-2 text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded inline-flex items-center gap-1 font-bold border border-blue-400/30">
-                <CheckCircle size={12} />
-                This is you!
+          <CheckCircle size={12} />
+          This is you!
               </div>
             )}
           </div>
@@ -414,11 +414,11 @@ const LastGameResult = ({ lastGame, account }) => {
           <div className="bg-indigo-500/10 rounded-lg p-4 border border-indigo-400/30 mt-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <TrendingUp className="text-indigo-400" size={16} />
-                <span className="text-sm text-indigo-300">Outcome</span>
+          <TrendingUp className="text-indigo-400" size={16} />
+          <span className="text-sm text-indigo-300">Outcome</span>
               </div>
               <span className="text-white font-bold">
-                {isDraw ? 'Draw - Both Refunded 45%' : 'Winner Takes 95%'}
+          {isDraw ? 'Draw - Both Refunded 45%' : 'Winner Takes 95%'}
               </span>
             </div>
           </div>
@@ -498,127 +498,127 @@ const ActiveGameDisplay = ({ game, account, onMove, onStartGame, loading, refres
             </div>
             <div className="aspect-square max-w-md mx-auto">
               <div className="grid grid-cols-3 gap-3 h-full">
-                {game.board.map((cell, idx) => {
-                  const isWinningCell = winningLine.includes(idx);
-                  return (
-                    <button
-                      key={idx}
-                      onClick={() => isMyTurn && game.status === 2 && cell === 0 ? onMove(idx) : null}
-                      disabled={loading || !isMyTurn || game.status !== 2 || cell !== 0}
-                      className={`aspect-square flex items-center justify-center text-6xl font-bold rounded-xl border-2 transition-all duration-300
-                        ${isWinningCell
-                          ? 'bg-gradient-to-br from-yellow-500/40 to-amber-500/40 border-yellow-400 animate-pulse shadow-xl shadow-yellow-500/50'
-                          : isMyTurn && game.status === 2 && cell === 0
-                          ? 'bg-purple-500/20 border-purple-400 hover:bg-purple-500/40 cursor-pointer hover:scale-105 shadow-lg hover:shadow-purple-500/50'
-                          : cell === 1
-                          ? 'bg-cyan-500/20 border-cyan-400 text-cyan-400 shadow-cyan-500/30'
-                          : cell === 2
-                          ? 'bg-orange-500/20 border-orange-400 text-orange-400 shadow-orange-500/30'
-                          : 'bg-slate-800/50 border-slate-600 opacity-50'
-                        }
-                        disabled:cursor-not-allowed disabled:opacity-30`}
-                    >
-                      {getCellSymbol(cell)}
-                    </button>
-                  );
-                })}
+          {game.board.map((cell, idx) => {
+            const isWinningCell = winningLine.includes(idx);
+            return (
+              <button
+                key={idx}
+                onClick={() => isMyTurn && game.status === 2 && cell === 0 ? onMove(idx) : null}
+                disabled={loading || !isMyTurn || game.status !== 2 || cell !== 0}
+                className={`aspect-square flex items-center justify-center text-6xl font-bold rounded-xl border-2 transition-all duration-300
+                  ${isWinningCell
+                    ? 'bg-gradient-to-br from-yellow-500/40 to-amber-500/40 border-yellow-400 animate-pulse shadow-xl shadow-yellow-500/50'
+                    : isMyTurn && game.status === 2 && cell === 0
+                    ? 'bg-purple-500/20 border-purple-400 hover:bg-purple-500/40 cursor-pointer hover:scale-105 shadow-lg hover:shadow-purple-500/50'
+                    : cell === 1
+                    ? 'bg-cyan-500/20 border-cyan-400 text-cyan-400 shadow-cyan-500/30'
+                    : cell === 2
+                    ? 'bg-orange-500/20 border-orange-400 text-orange-400 shadow-orange-500/30'
+                    : 'bg-slate-800/50 border-slate-600 opacity-50'
+                  }
+                  disabled:cursor-not-allowed disabled:opacity-30`}
+              >
+                {getCellSymbol(cell)}
+              </button>
+            );
+          })}
               </div>
             </div>
 
             {/* Start Game Button */}
             {game.status === 1 && isParticipant && (
               <div className="mt-6">
-                <button
-                  onClick={onStartGame}
-                  disabled={loading}
-                  className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 px-6 py-4 rounded-xl font-bold text-lg shadow-lg transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  <Zap size={20} />
-                  {loading ? 'Initiating Coin Flip...' : 'Start Game (Coin Flip)'}
-                </button>
-                <div className="mt-3 bg-blue-500/10 rounded-lg p-3 border border-blue-400/30">
-                  <div className="flex items-start gap-2">
-                    <Info size={16} className="text-blue-400 mt-0.5 flex-shrink-0" />
-                    <p className="text-xs text-blue-300">
-                      A provably random coin flip on-chain will determine who makes the first move!
-                    </p>
-                  </div>
-                </div>
+          <button
+            onClick={onStartGame}
+            disabled={loading}
+            className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 px-6 py-4 rounded-xl font-bold text-lg shadow-lg transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            <Zap size={20} />
+            {loading ? 'Initiating Coin Flip...' : 'Start Game (Coin Flip)'}
+          </button>
+          <div className="mt-3 bg-blue-500/10 rounded-lg p-3 border border-blue-400/30">
+            <div className="flex items-start gap-2">
+              <Info size={16} className="text-blue-400 mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-blue-300">
+                A provably random coin flip on-chain will determine who makes the first move!
+              </p>
+            </div>
+          </div>
               </div>
             )}
 
             {/* Turn Indicator */}
             {!gameOver && game.status === 2 && (
               <div className={`mt-6 text-center py-4 px-4 rounded-xl font-bold text-lg border-2 ${
-                isMyTurn
-                  ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-green-400 text-green-300 animate-pulse shadow-lg'
-                  : isParticipant
-                  ? 'bg-blue-500/10 border-blue-400/50 text-blue-300'
-                  : 'bg-slate-700/30 border-slate-600 text-slate-300'
+          isMyTurn
+            ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-green-400 text-green-300 animate-pulse shadow-lg'
+            : isParticipant
+            ? 'bg-blue-500/10 border-blue-400/50 text-blue-300'
+            : 'bg-slate-700/30 border-slate-600 text-slate-300'
               }`}>
-                {isMyTurn ? (
-                  <div className="space-y-1">
-                    <div className="text-2xl">🎯 YOUR TURN</div>
-                    <div className="text-sm opacity-80">You are playing as {mySymbol}</div>
-                  </div>
-                ) : isParticipant ? (
-                  <div className="space-y-1">
-                    <div>⏳ Opponent's Turn</div>
-                    <div className="text-sm opacity-80">Waiting for their move...</div>
-                  </div>
-                ) : (
-                  <div>👁️ Spectating</div>
-                )}
+          {isMyTurn ? (
+            <div className="space-y-1">
+              <div className="text-2xl">🎯 YOUR TURN</div>
+              <div className="text-sm opacity-80">You are playing as {mySymbol}</div>
+            </div>
+          ) : isParticipant ? (
+            <div className="space-y-1">
+              <div>⏳ Opponent's Turn</div>
+              <div className="text-sm opacity-80">Waiting for their move...</div>
+            </div>
+          ) : (
+            <div>👁️ Spectating</div>
+          )}
               </div>
             )}
 
             {/* Winner Display */}
             {gameOver && (
               <div className={`mt-6 text-center py-6 px-4 rounded-xl font-bold text-2xl border-2 ${
-                isDraw
-                  ? 'bg-gray-500/20 border-gray-400 text-gray-300'
-                  : isWinner
-                  ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-green-400 text-green-300 animate-pulse'
-                  : isLoser
-                  ? 'bg-red-500/20 border-red-400 text-red-300'
-                  : 'bg-yellow-500/20 border-yellow-400 text-yellow-300'
+          isDraw
+            ? 'bg-gray-500/20 border-gray-400 text-gray-300'
+            : isWinner
+            ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-green-400 text-green-300 animate-pulse'
+            : isLoser
+            ? 'bg-red-500/20 border-red-400 text-red-300'
+            : 'bg-yellow-500/20 border-yellow-400 text-yellow-300'
               }`}>
-                <div className="space-y-2">
-                  {isDraw ? (
-                    <>
-                      <div className="text-4xl">🤝</div>
-                      <div>DRAW GAME!</div>
-                      <div className="text-sm opacity-80">Both players receive 45% refund</div>
-                    </>
-                  ) : isWinner ? (
-                    <>
-                      <div className="text-4xl">🎉</div>
-                      <div>VICTORY!</div>
-                      <div className="text-sm opacity-80">You won 95% of the pot!</div>
-                      <div className="text-xs mt-2 font-mono bg-green-900/30 px-3 py-1 rounded inline-block">
-                        {shortenAddress(contractWinner)}
-                      </div>
-                    </>
-                  ) : isLoser ? (
-                    <>
-                      <div className="text-4xl">💔</div>
-                      <div>DEFEAT</div>
-                      <div className="text-sm opacity-80">Better luck next time</div>
-                      <div className="text-xs mt-2 opacity-70">Winner: {shortenAddress(contractWinner)}</div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="text-4xl">🏆</div>
-                      <div>GAME OVER!</div>
-                      <div className="text-sm opacity-80">
-                        Winner: {contractWinner.toLowerCase() === game.player1.toLowerCase() ? `${player1Symbol}` : `${player2Symbol}`}
-                      </div>
-                      <div className="text-xs mt-2 font-mono bg-yellow-900/30 px-3 py-1 rounded inline-block">
-                        {shortenAddress(contractWinner)}
-                      </div>
-                    </>
-                  )}
+          <div className="space-y-2">
+            {isDraw ? (
+              <>
+                <div className="text-4xl">🤝</div>
+                <div>DRAW GAME!</div>
+                <div className="text-sm opacity-80">Both players receive 45% refund</div>
+              </>
+            ) : isWinner ? (
+              <>
+                <div className="text-4xl">🎉</div>
+                <div>VICTORY!</div>
+                <div className="text-sm opacity-80">You won 95% of the pot!</div>
+                <div className="text-xs mt-2 font-mono bg-green-900/30 px-3 py-1 rounded inline-block">
+                  {shortenAddress(contractWinner)}
                 </div>
+              </>
+            ) : isLoser ? (
+              <>
+                <div className="text-4xl">💔</div>
+                <div>DEFEAT</div>
+                <div className="text-sm opacity-80">Better luck next time</div>
+                <div className="text-xs mt-2 opacity-70">Winner: {shortenAddress(contractWinner)}</div>
+              </>
+            ) : (
+              <>
+                <div className="text-4xl">🏆</div>
+                <div>GAME OVER!</div>
+                <div className="text-sm opacity-80">
+                  Winner: {contractWinner.toLowerCase() === game.player1.toLowerCase() ? `${player1Symbol}` : `${player2Symbol}`}
+                </div>
+                <div className="text-xs mt-2 font-mono bg-yellow-900/30 px-3 py-1 rounded inline-block">
+                  {shortenAddress(contractWinner)}
+                </div>
+              </>
+            )}
+          </div>
               </div>
             )}
           </div>
@@ -635,86 +635,86 @@ const ActiveGameDisplay = ({ game, account, onMove, onStartGame, loading, refres
             <div className="space-y-3">
               {/* Player 1 (X) */}
               <div className={`p-4 rounded-lg border-2 transition-all ${
-                game.status === 2 && game.currentTurn?.toLowerCase() === game.player1.toLowerCase()
-                  ? 'bg-cyan-500/20 border-cyan-400 shadow-lg shadow-cyan-500/30 animate-pulse'
-                  : isPlayer1
-                  ? 'bg-cyan-500/10 border-cyan-400/50'
-                  : 'bg-slate-800/30 border-slate-600'
+          game.status === 2 && game.currentTurn?.toLowerCase() === game.player1.toLowerCase()
+            ? 'bg-cyan-500/20 border-cyan-400 shadow-lg shadow-cyan-500/30 animate-pulse'
+            : isPlayer1
+            ? 'bg-cyan-500/10 border-cyan-400/50'
+            : 'bg-slate-800/30 border-slate-600'
               }`}>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-cyan-500/30 flex items-center justify-center text-cyan-400 font-bold border-2 border-cyan-400">
-                      X
-                    </div>
-                    <span className="text-sm font-bold text-cyan-400">Player 1</span>
-                  </div>
-                  {game.status === 2 && game.currentTurn?.toLowerCase() === game.player1.toLowerCase() && (
-                    <span className="text-xs bg-cyan-400/30 px-2 py-1 rounded text-cyan-300 font-bold flex items-center gap-1">
-                      <Zap size={12} />
-                      Active
-                    </span>
-                  )}
-                </div>
-                <div className="font-mono text-xs text-white break-all bg-slate-900/50 p-2 rounded">
-                  {shortenAddress(game.player1)}
-                </div>
-                {isPlayer1 && (
-                  <div className="mt-2 text-xs bg-green-500/20 text-green-300 px-2 py-1 rounded inline-flex items-center gap-1 font-bold border border-green-400/30">
-                    <CheckCircle size={12} />
-                    This is you!
-                  </div>
-                )}
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-cyan-500/30 flex items-center justify-center text-cyan-400 font-bold border-2 border-cyan-400">
+                X
+              </div>
+              <span className="text-sm font-bold text-cyan-400">Player 1</span>
+            </div>
+            {game.status === 2 && game.currentTurn?.toLowerCase() === game.player1.toLowerCase() && (
+              <span className="text-xs bg-cyan-400/30 px-2 py-1 rounded text-cyan-300 font-bold flex items-center gap-1">
+                <Zap size={12} />
+                Active
+              </span>
+            )}
+          </div>
+          <div className="font-mono text-xs text-white break-all bg-slate-900/50 p-2 rounded">
+            {shortenAddress(game.player1)}
+          </div>
+          {isPlayer1 && (
+            <div className="mt-2 text-xs bg-green-500/20 text-green-300 px-2 py-1 rounded inline-flex items-center gap-1 font-bold border border-green-400/30">
+              <CheckCircle size={12} />
+              This is you!
+            </div>
+          )}
               </div>
 
               {/* Player 2 (O) */}
               {game.player2 === '0x0000000000000000000000000000000000000000' ? (
-                <div className="p-4 rounded-lg border-2 border-dashed border-orange-400/30 bg-orange-500/5 animate-pulse">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-8 h-8 rounded-full bg-orange-500/30 flex items-center justify-center text-orange-400 font-bold border-2 border-dashed border-orange-400">
-                      O
-                    </div>
-                    <div className="text-sm font-bold text-orange-400">Player 2</div>
-                  </div>
-                  <div className="text-sm text-orange-300 italic flex items-center gap-2">
-                    <Clock size={14} />
-                    Waiting for opponent...
-                  </div>
-                  <div className="text-xs text-orange-400 mt-2 bg-orange-500/10 px-2 py-1 rounded inline-block">
-                    1/2 Players Joined
-                  </div>
-                </div>
+          <div className="p-4 rounded-lg border-2 border-dashed border-orange-400/30 bg-orange-500/5 animate-pulse">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-8 h-8 rounded-full bg-orange-500/30 flex items-center justify-center text-orange-400 font-bold border-2 border-dashed border-orange-400">
+                O
+              </div>
+              <div className="text-sm font-bold text-orange-400">Player 2</div>
+            </div>
+            <div className="text-sm text-orange-300 italic flex items-center gap-2">
+              <Clock size={14} />
+              Waiting for opponent...
+            </div>
+            <div className="text-xs text-orange-400 mt-2 bg-orange-500/10 px-2 py-1 rounded inline-block">
+              1/2 Players Joined
+            </div>
+          </div>
               ) : (
-                <div className={`p-4 rounded-lg border-2 transition-all ${
-                  game.status === 2 && game.currentTurn?.toLowerCase() === game.player2.toLowerCase()
-                    ? 'bg-orange-500/20 border-orange-400 shadow-lg shadow-orange-500/30 animate-pulse'
-                    : isPlayer2
-                    ? 'bg-orange-500/10 border-orange-400/50'
-                    : 'bg-slate-800/30 border-slate-600'
-                }`}>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-orange-500/30 flex items-center justify-center text-orange-400 font-bold border-2 border-orange-400">
-                        O
-                      </div>
-                      <span className="text-sm font-bold text-orange-400">Player 2</span>
-                    </div>
-                    {game.status === 2 && game.currentTurn?.toLowerCase() === game.player2.toLowerCase() && (
-                      <span className="text-xs bg-orange-400/30 px-2 py-1 rounded text-orange-300 font-bold flex items-center gap-1">
-                        <Zap size={12} />
-                        Active
-                      </span>
-                    )}
-                  </div>
-                  <div className="font-mono text-xs text-white break-all bg-slate-900/50 p-2 rounded">
-                    {shortenAddress(game.player2)}
-                  </div>
-                  {isPlayer2 && (
-                    <div className="mt-2 text-xs bg-green-500/20 text-green-300 px-2 py-1 rounded inline-flex items-center gap-1 font-bold border border-green-400/30">
-                      <CheckCircle size={12} />
-                      This is you!
-                    </div>
-                  )}
+          <div className={`p-4 rounded-lg border-2 transition-all ${
+            game.status === 2 && game.currentTurn?.toLowerCase() === game.player2.toLowerCase()
+              ? 'bg-orange-500/20 border-orange-400 shadow-lg shadow-orange-500/30 animate-pulse'
+              : isPlayer2
+              ? 'bg-orange-500/10 border-orange-400/50'
+              : 'bg-slate-800/30 border-slate-600'
+          }`}>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-orange-500/30 flex items-center justify-center text-orange-400 font-bold border-2 border-orange-400">
+                  O
                 </div>
+                <span className="text-sm font-bold text-orange-400">Player 2</span>
+              </div>
+              {game.status === 2 && game.currentTurn?.toLowerCase() === game.player2.toLowerCase() && (
+                <span className="text-xs bg-orange-400/30 px-2 py-1 rounded text-orange-300 font-bold flex items-center gap-1">
+                  <Zap size={12} />
+                  Active
+                </span>
+              )}
+            </div>
+            <div className="font-mono text-xs text-white break-all bg-slate-900/50 p-2 rounded">
+              {shortenAddress(game.player2)}
+            </div>
+            {isPlayer2 && (
+              <div className="mt-2 text-xs bg-green-500/20 text-green-300 px-2 py-1 rounded inline-flex items-center gap-1 font-bold border border-green-400/30">
+                <CheckCircle size={12} />
+                This is you!
+              </div>
+            )}
+          </div>
               )}
             </div>
           </div>
@@ -727,36 +727,36 @@ const ActiveGameDisplay = ({ game, account, onMove, onStartGame, loading, refres
             </div>
             <div className="space-y-3 text-sm">
               <div className="flex justify-between items-center bg-yellow-500/10 rounded-lg p-3">
-                <div className="flex items-center gap-2">
-                  <Coins size={16} className="text-yellow-400" />
-                  <span className="text-slate-200 font-medium">Prize Pot</span>
-                </div>
-                <span className="text-yellow-400 font-bold text-lg">{game.pot} ETH</span>
+          <div className="flex items-center gap-2">
+            <Coins size={16} className="text-yellow-400" />
+            <span className="text-slate-200 font-medium">Prize Pot</span>
+          </div>
+          <span className="text-yellow-400 font-bold text-lg">{game.pot} ETH</span>
               </div>
               <div className="flex justify-between items-center bg-blue-500/10 rounded-lg p-3">
-                <div className="flex items-center gap-2">
-                  <Target size={16} className="text-blue-400" />
-                  <span className="text-slate-200 font-medium">Moves</span>
-                </div>
-                <span className="text-white font-bold">{moveCount}/9</span>
+          <div className="flex items-center gap-2">
+            <Target size={16} className="text-blue-400" />
+            <span className="text-slate-200 font-medium">Moves</span>
+          </div>
+          <span className="text-white font-bold">{moveCount}/9</span>
               </div>
               <div className="flex justify-between items-center bg-purple-500/10 rounded-lg p-3">
-                <div className="flex items-center gap-2">
-                  <Grid size={16} className="text-purple-400" />
-                  <span className="text-slate-200 font-medium">Game ID</span>
-                </div>
-                <span className="text-white font-mono">#{game.id}</span>
+          <div className="flex items-center gap-2">
+            <Grid size={16} className="text-purple-400" />
+            <span className="text-slate-200 font-medium">Game ID</span>
+          </div>
+          <span className="text-white font-mono">#{game.id}</span>
               </div>
               {game.winner !== '0x0000000000000000000000000000000000000000' && (
-                <div className="flex justify-between items-center bg-green-500/10 rounded-lg p-3 border border-green-400/30">
-                  <div className="flex items-center gap-2">
-                    <Award size={16} className="text-green-400" />
-                    <span className="text-slate-200 font-medium">Winner</span>
-                  </div>
-                  <span className="text-green-400 font-mono font-bold">
-                    {shortenAddress(game.winner)}
-                  </span>
-                </div>
+          <div className="flex justify-between items-center bg-green-500/10 rounded-lg p-3 border border-green-400/30">
+            <div className="flex items-center gap-2">
+              <Award size={16} className="text-green-400" />
+              <span className="text-slate-200 font-medium">Winner</span>
+            </div>
+            <span className="text-green-400 font-mono font-bold">
+              {shortenAddress(game.winner)}
+            </span>
+          </div>
               )}
             </div>
           </div>
@@ -765,23 +765,23 @@ const ActiveGameDisplay = ({ game, account, onMove, onStartGame, loading, refres
           {gameLog && gameLog.length > 0 && (
             <div className="bg-slate-900/50 rounded-xl p-6 border border-purple-500/30 max-h-64 overflow-hidden">
               <div className="flex items-center gap-2 mb-4">
-                <History className="text-purple-300" size={20} />
-                <h3 className="text-xl font-bold text-purple-300">Activity Log</h3>
+          <History className="text-purple-300" size={20} />
+          <h3 className="text-xl font-bold text-purple-300">Activity Log</h3>
               </div>
               <div className="space-y-2 text-xs overflow-y-auto max-h-48 pr-2 custom-scrollbar">
-                {gameLog.slice().reverse().map((log, idx) => (
-                  <div key={idx} className={`p-2 rounded border-l-2 ${
-                    log.type === 'win' ? 'bg-green-500/10 border-green-400' :
-                    log.type === 'move' ? 'bg-blue-500/10 border-blue-400' :
-                    log.type === 'join' ? 'bg-purple-500/10 border-purple-400' :
-                    'bg-slate-800/50 border-slate-600'
-                  }`}>
-                    <div className="flex items-start gap-2">
-                      <span className="text-slate-400 min-w-fit">{log.timestamp}</span>
-                      <span className="text-slate-200">{log.message}</span>
-                    </div>
-                  </div>
-                ))}
+          {gameLog.slice().reverse().map((log, idx) => (
+            <div key={idx} className={`p-2 rounded border-l-2 ${
+              log.type === 'win' ? 'bg-green-500/10 border-green-400' :
+              log.type === 'move' ? 'bg-blue-500/10 border-blue-400' :
+              log.type === 'join' ? 'bg-purple-500/10 border-purple-400' :
+              'bg-slate-800/50 border-slate-600'
+            }`}>
+              <div className="flex items-start gap-2">
+                <span className="text-slate-400 min-w-fit">{log.timestamp}</span>
+                <span className="text-slate-200">{log.message}</span>
+              </div>
+            </div>
+          ))}
               </div>
             </div>
           )}
@@ -790,28 +790,28 @@ const ActiveGameDisplay = ({ game, account, onMove, onStartGame, loading, refres
           <div className="bg-blue-500/10 border border-blue-400/30 rounded-xl p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Clock size={16} className="text-blue-400" />
-                <div>
-                  <div className="text-sm text-blue-300 font-medium">Auto-Sync</div>
-                  <div className="text-xs text-blue-400/70">Polling blockchain</div>
-                </div>
+          <Clock size={16} className="text-blue-400" />
+          <div>
+            <div className="text-sm text-blue-300 font-medium">Auto-Sync</div>
+            <div className="text-xs text-blue-400/70">Polling blockchain</div>
+          </div>
               </div>
               <div className="relative w-12 h-12">
-                <svg className="transform -rotate-90 w-12 h-12">
-                  <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="3" fill="none" className="text-blue-500/30" />
-                  <circle
-                    cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="3" fill="none"
-                    strokeDasharray={`${2 * Math.PI * 20}`}
-                    strokeDashoffset={`${2 * Math.PI * 20 * (1 - refreshProgress / 100)}`}
-                    className="text-blue-400 transition-all duration-75 ease-linear"
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-sm font-bold text-blue-400">
-                    {Math.ceil(5 - (refreshProgress / 100) * 5)}
-                  </span>
-                </div>
+          <svg className="transform -rotate-90 w-12 h-12">
+            <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="3" fill="none" className="text-blue-500/30" />
+            <circle
+              cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="3" fill="none"
+              strokeDasharray={`${2 * Math.PI * 20}`}
+              strokeDashoffset={`${2 * Math.PI * 20 * (1 - refreshProgress / 100)}`}
+              className="text-blue-400 transition-all duration-75 ease-linear"
+              strokeLinecap="round"
+            />
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-sm font-bold text-blue-400">
+              {Math.ceil(5 - (refreshProgress / 100) * 5)}
+            </span>
+          </div>
               </div>
             </div>
           </div>
@@ -887,15 +887,15 @@ export default function TicTacBlock() {
             method: 'wallet_addEthereumChain',
             params: [
               {
-                chainId: '0xa4b1', // 42161 in hex
-                chainName: 'Arbitrum One',
-                nativeCurrency: {
-                  name: 'Ethereum',
-                  symbol: 'ETH',
-                  decimals: 18,
-                },
-                rpcUrls: ['https://arb1.arbitrum.io/rpc'],
-                blockExplorerUrls: ['https://arbiscan.io'],
+          chainId: '0xa4b1', // 42161 in hex
+          chainName: 'Arbitrum One',
+          nativeCurrency: {
+            name: 'Ethereum',
+            symbol: 'ETH',
+            decimals: 18,
+          },
+          rpcUrls: ['https://arb1.arbitrum.io/rpc'],
+          blockExplorerUrls: ['https://arbiscan.io'],
               },
             ],
           });
@@ -1407,16 +1407,16 @@ export default function TicTacBlock() {
           <div className="flex flex-wrap items-center justify-between gap-4 text-sm">
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-2">
-                <Shield className="text-blue-400" size={16} />
-                <span className="text-blue-100 font-medium">100% On-Chain Games</span>
+          <Shield className="text-blue-400" size={16} />
+          <span className="text-blue-100 font-medium">100% On-Chain Games</span>
               </div>
               <div className="flex items-center gap-2">
-                <Lock className="text-blue-400" size={16} />
-                <span className="text-blue-100 font-medium">Immutable Rules</span>
+          <Lock className="text-blue-400" size={16} />
+          <span className="text-blue-100 font-medium">Immutable Rules</span>
               </div>
               <div className="flex items-center gap-2">
-                <Eye className="text-blue-400" size={16} />
-                <span className="text-blue-100 font-medium">Every Move Verifiable</span>
+          <Eye className="text-blue-400" size={16} />
+          <span className="text-blue-100 font-medium">Every Move Verifiable</span>
               </div>
             </div>
             <a
@@ -1461,22 +1461,22 @@ export default function TicTacBlock() {
           <div className="grid md:grid-cols-3 gap-4 max-w-4xl mx-auto mb-8">
             <div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
-                <Trophy className="text-green-400" size={20} />
-                <span className="font-bold text-green-300">Winner Takes 95%</span>
+          <Trophy className="text-green-400" size={20} />
+          <span className="font-bold text-green-300">Winner Takes 95%</span>
               </div>
               <p className="text-sm text-green-200">Champion walks away with almost the entire pot</p>
             </div>
             <div className="bg-gradient-to-br from-yellow-500/20 to-amber-500/20 border border-yellow-400/30 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
-                <DollarSign className="text-yellow-400" size={20} />
-                <span className="font-bold text-yellow-300">0.002 ETH Entry</span>
+          <DollarSign className="text-yellow-400" size={20} />
+          <span className="font-bold text-yellow-300">0.002 ETH Entry</span>
               </div>
               <p className="text-sm text-yellow-200">Low stakes, high strategy gameplay</p>
             </div>
             <div className="bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-blue-400/30 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
-                <Zap className="text-blue-400" size={20} />
-                <span className="font-bold text-blue-300">Random First Move</span>
+          <Zap className="text-blue-400" size={20} />
+          <span className="font-bold text-blue-300">Random First Move</span>
               </div>
               <p className="text-sm text-blue-200">On-chain coin flip decides who starts</p>
             </div>
@@ -1504,15 +1504,15 @@ export default function TicTacBlock() {
           <div className="mt-6 max-w-2xl mx-auto">
             <div className="bg-blue-500/10 border border-blue-400/30 rounded-lg p-4">
               <div className="flex items-start gap-3">
-                <Info size={18} className="text-blue-400 mt-0.5 flex-shrink-0" />
-                <div className="text-sm">
-                  <p className="text-blue-200 font-medium mb-1">Why Arbitrum?</p>
-                  <p className="text-blue-300/80 leading-relaxed">
-                    This game runs on <a href="https://arbitrum.io" target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-200 hover:text-blue-100 underline decoration-blue-400/50 hover:decoration-blue-300 transition-colors">Arbitrum One</a>, an Ethereum Layer 2 network.
-                    If prompted, simply click to switch networks in MetaMask — it's instant, free, and uses the same ETH you already have.
-                    No bridging required. <span className="text-blue-200">Lower fees, same security.</span>
-                  </p>
-                </div>
+          <Info size={18} className="text-blue-400 mt-0.5 flex-shrink-0" />
+          <div className="text-sm">
+            <p className="text-blue-200 font-medium mb-1">Why Arbitrum?</p>
+            <p className="text-blue-300/80 leading-relaxed">
+              This game runs on <a href="https://arbitrum.io" target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-200 hover:text-blue-100 underline decoration-blue-400/50 hover:decoration-blue-300 transition-colors">Arbitrum One</a>, an Ethereum Layer 2 network.
+              If prompted, simply click to switch networks in MetaMask — it's instant, free, and uses the same ETH you already have.
+              No bridging required. <span className="text-blue-200">Lower fees, same security.</span>
+            </p>
+          </div>
               </div>
             </div>
           </div>
@@ -1521,125 +1521,125 @@ export default function TicTacBlock() {
           {account && (networkInfo || contractStatus !== 'not_checked') && (
             <div className="mt-8 max-w-2xl mx-auto">
               <div className="bg-slate-900/70 border border-slate-600 rounded-xl p-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <Info size={20} className="text-blue-400" />
-                  <h3 className="text-lg font-bold text-white">Connection Status</h3>
+          <div className="flex items-center gap-2 mb-4">
+            <Info size={20} className="text-blue-400" />
+            <h3 className="text-lg font-bold text-white">Connection Status</h3>
+          </div>
+
+          <div className="space-y-3 text-sm">
+            {/* Network Status */}
+            {networkInfo && (
+              <div className="flex items-center justify-between bg-slate-800/50 rounded-lg p-3">
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${networkInfo.isArbitrum ? 'bg-green-400' : 'bg-yellow-400'}`} />
+                  <span className="text-slate-300">Network:</span>
+                </div>
+                <div className="text-right">
+                  <div className={`font-bold ${networkInfo.isArbitrum ? 'text-green-400' : 'text-yellow-400'}`}>
+                    {networkInfo.name}
+                  </div>
+                  <div className="text-xs text-slate-400">Chain ID: {networkInfo.chainId}</div>
+                </div>
+              </div>
+            )}
+
+            {/* Contract Status */}
+            <div className="flex items-center justify-between bg-slate-800/50 rounded-lg p-3">
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${
+                  contractStatus === 'deployed' ? 'bg-green-400' :
+                  contractStatus === 'checking' ? 'bg-yellow-400 animate-pulse' :
+                  contractStatus === 'not_deployed' ? 'bg-red-400' :
+                  'bg-slate-400'
+                }`} />
+                <span className="text-slate-300">Contract:</span>
+              </div>
+              <div className="text-right">
+                <div className={`font-bold ${
+                  contractStatus === 'deployed' ? 'text-green-400' :
+                  contractStatus === 'checking' ? 'text-yellow-400' :
+                  contractStatus === 'not_deployed' ? 'text-red-400' :
+                  'text-slate-400'
+                }`}>
+                  {contractStatus === 'deployed' ? 'Deployed ✓' :
+                   contractStatus === 'checking' ? 'Checking...' :
+                   contractStatus === 'not_deployed' ? 'Not Deployed ✗' :
+                   'Not Checked'}
+                </div>
+                <div className="text-xs text-slate-400 font-mono">{shortenAddress(CONTRACT_ADDRESS)}</div>
+              </div>
+            </div>
+
+            {/* Deployment Instructions */}
+            {contractStatus === 'not_deployed' && (
+              <div className="bg-red-500/10 border border-red-400/30 rounded-lg p-4">
+                <div className="text-red-300 font-bold mb-3 flex items-center gap-2">
+                  <AlertCircle size={16} />
+                  Contract Not Found at This Address
                 </div>
 
-                <div className="space-y-3 text-sm">
-                  {/* Network Status */}
-                  {networkInfo && (
-                    <div className="flex items-center justify-between bg-slate-800/50 rounded-lg p-3">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${networkInfo.isArbitrum ? 'bg-green-400' : 'bg-yellow-400'}`} />
-                        <span className="text-slate-300">Network:</span>
-                      </div>
-                      <div className="text-right">
-                        <div className={`font-bold ${networkInfo.isArbitrum ? 'text-green-400' : 'text-yellow-400'}`}>
-                          {networkInfo.name}
-                        </div>
-                        <div className="text-xs text-slate-400">Chain ID: {networkInfo.chainId}</div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Contract Status */}
-                  <div className="flex items-center justify-between bg-slate-800/50 rounded-lg p-3">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${
-                        contractStatus === 'deployed' ? 'bg-green-400' :
-                        contractStatus === 'checking' ? 'bg-yellow-400 animate-pulse' :
-                        contractStatus === 'not_deployed' ? 'bg-red-400' :
-                        'bg-slate-400'
-                      }`} />
-                      <span className="text-slate-300">Contract:</span>
-                    </div>
-                    <div className="text-right">
-                      <div className={`font-bold ${
-                        contractStatus === 'deployed' ? 'text-green-400' :
-                        contractStatus === 'checking' ? 'text-yellow-400' :
-                        contractStatus === 'not_deployed' ? 'text-red-400' :
-                        'text-slate-400'
-                      }`}>
-                        {contractStatus === 'deployed' ? 'Deployed ✓' :
-                         contractStatus === 'checking' ? 'Checking...' :
-                         contractStatus === 'not_deployed' ? 'Not Deployed ✗' :
-                         'Not Checked'}
-                      </div>
-                      <div className="text-xs text-slate-400 font-mono">{shortenAddress(CONTRACT_ADDRESS)}</div>
-                    </div>
+                <div className="text-xs text-red-200 space-y-3 mb-3">
+                  <div className="bg-red-900/30 p-2 rounded font-mono text-[11px]">
+                    Checking: {CONTRACT_ADDRESS}
                   </div>
 
-                  {/* Deployment Instructions */}
-                  {contractStatus === 'not_deployed' && (
-                    <div className="bg-red-500/10 border border-red-400/30 rounded-lg p-4">
-                      <div className="text-red-300 font-bold mb-3 flex items-center gap-2">
-                        <AlertCircle size={16} />
-                        Contract Not Found at This Address
-                      </div>
+                  <div className="space-y-2">
+                    <div className="font-bold text-red-100">🔍 Troubleshooting Steps:</div>
 
-                      <div className="text-xs text-red-200 space-y-3 mb-3">
-                        <div className="bg-red-900/30 p-2 rounded font-mono text-[11px]">
-                          Checking: {CONTRACT_ADDRESS}
-                        </div>
-
-                        <div className="space-y-2">
-                          <div className="font-bold text-red-100">🔍 Troubleshooting Steps:</div>
-
-                          <div>
-                            <div className="font-bold mb-1">1️⃣ Check Your Deployment Output</div>
-                            <div className="ml-4 text-[11px] opacity-90">
-                              When you ran the deploy command, it should have printed:<br/>
-                              <code className="bg-slate-900 px-1 py-0.5 rounded">
-                                "Contract deployed to: 0x..."
-                              </code>
-                            </div>
-                          </div>
-
-                          <div>
-                            <div className="font-bold mb-1">2️⃣ Update the Address</div>
-                            <div className="ml-4 text-[11px] opacity-90">
-                              Copy that address and paste it in:<br/>
-                              <code className="bg-slate-900 px-1 py-0.5 rounded text-yellow-300">
-                                src/App.jsx line 767
-                              </code>
-                            </div>
-                          </div>
-
-                          <div>
-                            <div className="font-bold mb-1">3️⃣ Verify on Arbiscan</div>
-                            <div className="ml-4 text-[11px] opacity-90">
-                              <code className="bg-slate-900 px-1 py-0.5 rounded block mb-1">
-                                https://arbiscan.io/address/{CONTRACT_ADDRESS}
-                              </code>
-                              Check if the contract exists on Arbitrum One.
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="text-[10px] text-red-300/70 bg-red-900/20 p-2 rounded">
-                        💡 Tip: Check the browser console (F12) for more details about what address was checked.
+                    <div>
+                      <div className="font-bold mb-1">1️⃣ Check Your Deployment Output</div>
+                      <div className="ml-4 text-[11px] opacity-90">
+                        When you ran the deploy command, it should have printed:<br/>
+                        <code className="bg-slate-900 px-1 py-0.5 rounded">
+                          "Contract deployed to: 0x..."
+                        </code>
                       </div>
                     </div>
-                  )}
 
-                  {!networkInfo?.isArbitrum && (
-                    <div className="bg-yellow-500/10 border border-yellow-400/30 rounded-lg p-4">
-                      <div className="text-yellow-300 font-bold mb-2">⚠️ Wrong Network</div>
-                      <div className="text-xs text-yellow-200 mb-3">
-                        You're on <span className="font-bold">{networkInfo.name}</span>. Switch to Arbitrum One network (Chain ID: 42161).
+                    <div>
+                      <div className="font-bold mb-1">2️⃣ Update the Address</div>
+                      <div className="ml-4 text-[11px] opacity-90">
+                        Copy that address and paste it in:<br/>
+                        <code className="bg-slate-900 px-1 py-0.5 rounded text-yellow-300">
+                          src/App.jsx line 767
+                        </code>
                       </div>
-                      <button
-                        onClick={switchToArbitrum}
-                        className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-2 px-4 rounded-lg text-sm transition-all flex items-center justify-center gap-2"
-                      >
-                        <Zap size={16} />
-                        Switch to Arbitrum One
-                      </button>
                     </div>
-                  )}
+
+                    <div>
+                      <div className="font-bold mb-1">3️⃣ Verify on Arbiscan</div>
+                      <div className="ml-4 text-[11px] opacity-90">
+                        <code className="bg-slate-900 px-1 py-0.5 rounded block mb-1">
+                          https://arbiscan.io/address/{CONTRACT_ADDRESS}
+                        </code>
+                        Check if the contract exists on Arbitrum One.
+                      </div>
+                    </div>
+                  </div>
                 </div>
+
+                <div className="text-[10px] text-red-300/70 bg-red-900/20 p-2 rounded">
+                  💡 Tip: Check the browser console (F12) for more details about what address was checked.
+                </div>
+              </div>
+            )}
+
+            {!networkInfo?.isArbitrum && (
+              <div className="bg-yellow-500/10 border border-yellow-400/30 rounded-lg p-4">
+                <div className="text-yellow-300 font-bold mb-2">⚠️ Wrong Network</div>
+                <div className="text-xs text-yellow-200 mb-3">
+                  You're on <span className="font-bold">{networkInfo.name}</span>. Switch to Arbitrum One network (Chain ID: 42161).
+                </div>
+                <button
+                  onClick={switchToArbitrum}
+                  className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-2 px-4 rounded-lg text-sm transition-all flex items-center justify-center gap-2"
+                >
+                  <Zap size={16} />
+                  Switch to Arbitrum One
+                </button>
+              </div>
+            )}
+          </div>
               </div>
             </div>
           )}
@@ -1656,7 +1656,7 @@ export default function TicTacBlock() {
             <div className="flex items-center justify-center gap-3">
               <Trophy className="text-purple-400" size={24} />
               <span className="text-xl font-bold text-white">
-                Total Games Played: {totalGamesPlayed}
+          Total Games Played: {totalGamesPlayed}
               </span>
             </div>
           </div>
@@ -1687,45 +1687,45 @@ export default function TicTacBlock() {
 
             {(game.status === 0 || game.status === 1) && game.player1 === '0x0000000000000000000000000000000000000000' && (
               <div className="mb-6">
-                <button
-                  onClick={joinGame}
-                  disabled={loading}
-                  className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 px-8 py-4 rounded-xl font-bold text-xl shadow-lg transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? 'Joining...' : `Join as Player 1 (${entryFee} ETH)`}
-                </button>
-                <p className="text-blue-200 mt-4">Be the first player to join the arena!</p>
+          <button
+            onClick={joinGame}
+            disabled={loading}
+            className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 px-8 py-4 rounded-xl font-bold text-xl shadow-lg transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading ? 'Joining...' : `Join as Player 1 (${entryFee} ETH)`}
+          </button>
+          <p className="text-blue-200 mt-4">Be the first player to join the arena!</p>
               </div>
             )}
 
             {(game.status === 0 || game.status === 1) && game.player1 !== '0x0000000000000000000000000000000000000000' && game.player2 === '0x0000000000000000000000000000000000000000' && game.player1.toLowerCase() !== account.toLowerCase() && (
               <div className="mb-6">
-                <button
-                  onClick={joinGame}
-                  disabled={loading}
-                  className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 px-8 py-4 rounded-xl font-bold text-xl shadow-lg transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? 'Joining...' : `Join as Player 2 (${entryFee} ETH)`}
-                </button>
-                <p className="text-blue-200 mt-4">Challenge the waiting player!</p>
+          <button
+            onClick={joinGame}
+            disabled={loading}
+            className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 px-8 py-4 rounded-xl font-bold text-xl shadow-lg transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading ? 'Joining...' : `Join as Player 2 (${entryFee} ETH)`}
+          </button>
+          <p className="text-blue-200 mt-4">Challenge the waiting player!</p>
               </div>
             )}
 
             {(game.status === 0 || game.status === 1) && game.player1.toLowerCase() === account.toLowerCase() && game.player2 === '0x0000000000000000000000000000000000000000' && (
               <div className="text-center py-6 bg-blue-500/10 rounded-xl border border-blue-400/30">
-                <p className="text-blue-200">You're in the arena! Waiting for opponent to join...</p>
+          <p className="text-blue-200">You're in the arena! Waiting for opponent to join...</p>
               </div>
             )}
 
             {game.status === 1 && (
               <div className="text-center py-6 bg-cyan-500/10 rounded-xl border border-cyan-400/30">
-                <p className="text-cyan-200">Both players are ready! Either player can start the game.</p>
+          <p className="text-cyan-200">Both players are ready! Either player can start the game.</p>
               </div>
             )}
 
             {(game.status === 2 || game.status === 3) && (
               <div className="text-center py-6 bg-yellow-500/10 rounded-xl border border-yellow-400/30">
-                <p className="text-yellow-200">Game is currently {game.status === 2 ? 'in progress' : 'completed'}. Wait for it to finish!</p>
+          <p className="text-yellow-200">Game is currently {game.status === 2 ? 'in progress' : 'completed'}. Wait for it to finish!</p>
               </div>
             )}
           </div>
@@ -1742,12 +1742,12 @@ export default function TicTacBlock() {
               <p className="text-2xl text-purple-200 mb-4 font-bold">Connect Your Wallet to Join the Game</p>
               <p className="text-lg text-purple-300 mb-6">You're currently spectating. Connect to compete for real stakes!</p>
               <button
-                onClick={connectWallet}
-                disabled={loading}
-                className="inline-flex items-center gap-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 px-10 py-5 rounded-2xl font-bold text-2xl shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={connectWallet}
+          disabled={loading}
+          className="inline-flex items-center gap-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 px-10 py-5 rounded-2xl font-bold text-2xl shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Wallet size={28} />
-                {loading ? 'Connecting...' : 'Connect Wallet to Play'}
+          <Wallet size={28} />
+          {loading ? 'Connecting...' : 'Connect Wallet to Play'}
               </button>
             </div>
           </div>
@@ -1762,105 +1762,115 @@ export default function TicTacBlock() {
 
             <div className="bg-green-500/10 border-l-4 border-green-400 p-6 rounded-r-xl mb-8">
               <p className="text-lg leading-relaxed text-green-100">
-                Eternal TicTacToe is a <strong className="text-green-300">fully autonomous protocol</strong> deployed on Ethereum. Every game move is recorded on-chain. Every rule is enforced by immutable code. No servers can go down. No admins can interfere. No company can shut it down.
+          Eternal TicTacToe is a <strong className="text-green-300">fully autonomous protocol</strong> deployed on Ethereum. Every game move is recorded on-chain. Every rule is enforced by immutable code. No servers can go down. No admins can interfere. No company can shut it down.
               </p>
             </div>
 
             <div className="grid md:grid-cols-2 gap-6 mb-8">
               <div className="bg-white/5 backdrop-blur-sm border border-green-500/20 rounded-xl p-6">
-                <h3 className="text-xl font-bold mb-3 text-green-300 flex items-center gap-2">
-                  <span className="text-2xl">🎮</span> The Game Protocol
-                </h3>
-                <ul className="space-y-2 text-green-100">
-                  <li className="flex items-start gap-2">
-                    <span className="text-green-400 mt-1">✓</span>
-                    <span>Every move recorded on-chain permanently</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-green-400 mt-1">✓</span>
-                    <span>Smart contract validates all moves</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-green-400 mt-1">✓</span>
-                    <span>Automatic timeout enforcement</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-green-400 mt-1">✓</span>
-                    <span>Provably fair matchmaking</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-green-400 mt-1">✓</span>
-                    <span>Instant winner determination</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-green-400 mt-1">→</span>
-                    <a
-                      href="https://arbiscan.io/address/0x7fc74A84a41Ac0E4872fB94EB3d6A8998884Ec9d#code"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-green-300 hover:text-green-200 underline decoration-green-400/50 hover:decoration-green-300 transition-colors"
-                    >
-                     You can read its immutable source code here. 
-                    </a>
-                  </li>
-                </ul>
+          <h3 className="text-xl font-bold mb-3 text-green-300 flex items-center gap-2">
+            <span className="text-2xl">🎮</span> The Game Protocol
+          </h3>
+          <ul className="space-y-2 text-green-100">
+            <li className="flex items-start gap-2">
+              <span className="text-green-400 mt-1">✓</span>
+              <span>Every move recorded on-chain permanently</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-green-400 mt-1">✓</span>
+              <span>Smart contract validates all moves</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-green-400 mt-1">✓</span>
+              <span>Automatic timeout enforcement</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-green-400 mt-1">✓</span>
+              <span>Provably fair matchmaking</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-green-400 mt-1">✓</span>
+              <span>Instant winner determination</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-green-400 mt-1">→</span>
+              <a
+                href="https://arbiscan.io/address/0x7fc74A84a41Ac0E4872fB94EB3d6A8998884Ec9d#code"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-green-300 hover:text-green-200 underline decoration-green-400/50 hover:decoration-green-300 transition-colors"
+              >
+               You can read its immutable source code here. 
+              </a>
+            </li>
+          </ul>
               </div>
 
               <div className="bg-white/5 backdrop-blur-sm border border-blue-500/20 rounded-xl p-6">
-                <h3 className="text-xl font-bold mb-3 text-blue-300 flex items-center gap-2">
-                  <span className="text-2xl">🌐</span> This Interface
-                </h3>
-                <ul className="space-y-2 text-blue-100">
-                  <li className="flex items-start gap-2">
-                    <span className="text-blue-400 mt-1">•</span>
-                    <span>Demo interface by creator</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-blue-400 mt-1">•</span>
-                    <span>Reads 100% public blockchain data</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-blue-400 mt-1">•</span>
-                    <span>Simply calls smart contract functions</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-blue-400 mt-1">•</span>
-                    <span>Can be rebuilt by anyone</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-blue-400 mt-1">•</span>
-                    <span>No special privileges</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-blue-400 mt-1">→</span>
-                    <a
-                      href="https://github.com/KarimChukfeh/tic-tac-react"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-300 hover:text-blue-200 underline decoration-blue-400/50 hover:decoration-blue-300 transition-colors"
-                    >
-                      Feel free to fork it and build your own!
-                    </a>
-                  </li>
-                </ul>
+          <h3 className="text-xl font-bold mb-3 text-blue-300 flex items-center gap-2">
+            <span className="text-2xl">🌐</span> This Interface
+          </h3>
+          <ul className="space-y-2 text-blue-100">
+            <li className="flex items-start gap-2">
+              <span className="text-blue-400 mt-1">•</span>
+              <span>Demo interface by creator</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-blue-400 mt-1">•</span>
+              <span>Reads 100% public blockchain data</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-blue-400 mt-1">•</span>
+              <span>Simply calls smart contract functions</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-blue-400 mt-1">•</span>
+              <span>Can be rebuilt by anyone</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-blue-400 mt-1">•</span>
+              <span>No special privileges</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-blue-400 mt-1">→</span>
+              <a
+                href="https://github.com/KarimChukfeh/tic-tac-react"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-300 hover:text-blue-200 underline decoration-blue-400/50 hover:decoration-blue-300 transition-colors"
+              >
+                Feel free to fork it and build your own!
+              </a>
+            </li>
+          </ul>
               </div>
             </div>
 
             <div className="bg-yellow-500/10 border border-yellow-400/30 rounded-xl p-6">
               <h3 className="text-xl font-bold mb-3 text-yellow-300 flex items-center gap-2">
-                <span className="text-2xl">💡</span> What This Means
+          <span className="text-2xl">💡</span> What This Means
               </h3>
               <div className="space-y-3 text-yellow-100">
-                <p>
-                  <strong className="text-yellow-200">Anyone can build their own game interface</strong> to this protocol. All interfaces connect to the same games, display the same boards, and follow the same rules.
-                </p>
-                <p>
-                  <strong className="text-yellow-200">This website is optional.</strong> You could play via Etherscan, build your own UI, or use any third-party interface. The trust-free guarantee comes from Ethereum, not from this website.
-                </p>
-                <p>
-                  <strong className="text-yellow-200">True digital permanence.</strong> Even if every website disappears, the game continues forever. Your games, your wins, and your prizes are secured by Ethereum's immutable ledger.
-                </p>
+          <p>
+            <strong className="text-yellow-200">Anyone can build their own game interface</strong> to this protocol. All interfaces connect to the same games, display the same boards, and follow the same rules.
+          </p>
+          <p>
+            <strong className="text-yellow-200">This website is optional.</strong> You could play via Etherscan, build your own UI, or use any third-party interface. The trust-free guarantee comes from Ethereum, not from this website.
+          </p>
+          <p>
+            <strong className="text-yellow-200">True digital permanence.</strong> Even if every website disappears, the game continues forever. Your games, your wins, and your prizes are secured by Ethereum's immutable ledger.
+          </p>
               </div>
+            </div>
+
+            {/* Link to Whitepaper */}
+            <div className="mt-8 text-center">
+              <a
+          href="#whitepaper"
+          className="inline-flex items-center gap-2 text-purple-300 hover:text-purple-200 font-semibold text-lg underline decoration-purple-400/50 hover:decoration-purple-300 transition-colors"
+              >
+            Read Full Whitepaper
+              </a>
             </div>
           </div>
         </div>
@@ -1871,21 +1881,171 @@ export default function TicTacBlock() {
           <div className="space-y-4 max-w-4xl mx-auto">
             {faqs.map((faq, idx) => (
               <div key={idx} className="border border-blue-500/20 rounded-lg overflow-hidden">
-                <button
-                  onClick={() => setExpandedFaq(expandedFaq === idx ? null : idx)}
-                  className="w-full px-6 py-4 flex items-center justify-between bg-white/5 hover:bg-white/10 transition-colors"
-                >
-                  <span className="font-semibold text-left">{faq.q}</span>
-                  {expandedFaq === idx ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                </button>
-                {expandedFaq === idx && (
-                  <div className="px-6 py-4 bg-white/5 border-t border-blue-500/20">
-                    <p className="text-blue-200 leading-relaxed">{faq.a}</p>
-                  </div>
-                )}
+          <button
+            onClick={() => setExpandedFaq(expandedFaq === idx ? null : idx)}
+            className="w-full px-6 py-4 flex items-center justify-between bg-white/5 hover:bg-white/10 transition-colors"
+          >
+            <span className="font-semibold text-left">{faq.q}</span>
+            {expandedFaq === idx ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+          </button>
+          {expandedFaq === idx && (
+            <div className="px-6 py-4 bg-white/5 border-t border-blue-500/20">
+              <p className="text-blue-200 leading-relaxed">{faq.a}</p>
+            </div>
+          )}
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Whitepaper Section */}
+        <div id="whitepaper" className="bg-gradient-to-br from-purple-900/30 to-indigo-900/30 backdrop-blur-lg rounded-2xl p-8 md:p-12 border border-purple-500/30 mb-16">
+          <h2 className="text-4xl font-bold text-purple-300 mb-6">What's the point?</h2>
+          <p className="text-purple-100 mb-4">Most people have heard of crypto, but not <em>why it matters.</em></p>
+
+          <h2 className="text-2xl font-bold mb-3 text-purple-300">Beyond Buzzwords</h2>
+
+          <p className="text-purple-100 mb-2">You may know:</p>
+          <ul className="list-disc pl-6 mb-6 text-purple-100 space-y-1">
+            <li>Bitcoin goes up and down.</li>
+            <li>Ethereum is cool too.</li>
+            <li>Some people get rich. Some people get wrecked.</li>
+            <li>There are coins with dogs on them.</li>
+          </ul>
+
+          <p className="text-purple-100 mb-8">This article explains <strong className="text-purple-200">what crypto was really meant to be.</strong></p>
+
+          <hr className="border-purple-500/30 my-8" />
+
+          <h2 className="text-2xl font-bold mb-3 text-purple-300">What Even <em>is</em> a Blockchain?</h2>
+
+          <p className="text-purple-100 mb-4">Forget influencers and dollar signs for a moment.</p>
+
+          <div className="bg-purple-500/10 border-l-4 border-purple-400 p-4 rounded-r-xl mb-6">
+            <p className="text-lg text-purple-100 mb-2"><strong>Blockchain is about bookkeeping.</strong></p>
+            <p className="text-purple-200 italic">If everyone has the same book, you don't need to trust a bookkeeper.</p>
+          </div>
+
+          <p className="text-purple-100 mb-2">There is <strong className="text-purple-200">no server</strong>.</p>
+          <p className="text-purple-100 mb-2">There is <strong className="text-purple-200">no admin account</strong>.</p>
+          <p className="text-purple-100 mb-2">There is <strong className="text-purple-200">no need to trust a person or a company.</strong></p>
+          <p className="text-purple-100 mb-8 text-xl font-bold">Everyone sees the same truth.</p>
+
+          <hr className="border-purple-500/30 my-8" />
+
+          <h3 className="text-xl font-bold mb-3 text-purple-300">The Fruit Ledger Analogy</h3>
+
+          <p className="text-purple-100 mb-3">Imagine a bowl of apples.</p>
+          <ul className="list-disc pl-6 mb-4 text-purple-100 space-y-1">
+            <li>If one person keeps track of the bowl, you must trust them.</li>
+            <li>They could lie, steal, or miscount.</li>
+          </ul>
+
+          <p className="text-purple-100 mb-4">But if <strong className="text-purple-200">100 people</strong> all keep <strong className="text-purple-200">identical notebooks</strong>, and every apple in or out is recorded by <strong className="text-purple-200">everyone</strong>, no single person can cheat.</p>
+
+          <p className="text-purple-100 mb-4">If someone tries to falsify their notebook, everyone else rejects it.</p>
+
+          <p className="text-purple-100 mb-6 text-xl font-bold">That's blockchain.</p>
+
+          <div className="bg-purple-500/10 border-l-4 border-purple-400 p-4 rounded-r-xl mb-8">
+            <p className="text-purple-200 italic">The truth comes from <strong>consensus</strong>, not <strong>authority</strong>.</p>
+          </div>
+
+          <hr className="border-purple-500/30 my-8" />
+
+          <h2 className="text-2xl font-bold mb-3 text-purple-300">Why Do Scams Still Happen in Crypto?</h2>
+
+          <p className="text-purple-100 mb-4">Because <strong className="text-purple-200">most "crypto" projects are not actually decentralized.</strong></p>
+
+          <p className="text-purple-100 mb-3">They <em>claim</em> to be blockchain-based, but:</p>
+
+          <div className="overflow-x-auto mb-6">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="border-b border-purple-500/30">
+                  <th className="text-left p-3 text-purple-300">Feature</th>
+                  <th className="text-left p-3 text-purple-300">Many Crypto Projects</th>
+                  <th className="text-left p-3 text-purple-300">Actual Blockchain</th>
+                </tr>
+              </thead>
+              <tbody className="text-purple-100">
+                <tr className="border-b border-purple-500/20">
+                  <td className="p-3">NFT images</td>
+                  <td className="p-3">Stored on a private server</td>
+                  <td className="p-3">Stored on decentralized data networks</td>
+                </tr>
+                <tr className="border-b border-purple-500/20">
+                  <td className="p-3">Altcoins</td>
+                  <td className="p-3">Controlled by creators</td>
+                  <td className="p-3">Controlled only by immutable code</td>
+                </tr>
+                <tr className="border-b border-purple-500/20">
+                  <td className="p-3">Games</td>
+                  <td className="p-3">Run on private servers</td>
+                  <td className="p-3">Run fully on-chain, publicly</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p className="text-purple-100 mb-4">These projects <strong className="text-purple-200">use the blockchain as marketing</strong>, while <strong className="text-purple-200">real control remains centralized.</strong></p>
+
+          <p className="text-purple-100 mb-6 text-xl font-bold">That is NOT really blockchain!</p>
+
+          <hr className="border-purple-500/30 my-8" />
+
+          <h2 className="text-2xl font-bold mb-3 text-purple-300">How Is This Any Different?</h2>
+
+          <h3 className="text-xl font-bold mb-3 text-purple-300">Because the Eternal Tic Tac Toe Protocol (ETTTP)</h3>
+
+          <p className="text-purple-100 mb-3"><strong className="text-purple-200">Is Not:</strong></p>
+          <ul className="list-disc pl-6 mb-6 text-purple-100 space-y-1">
+            <li>A new token to trade</li>
+            <li>A marketing stunt with no utility</li>
+          </ul>
+
+          <p className="text-purple-100 mb-3"><strong className="text-purple-200">In strictly:</strong></p>
+          <p className="text-purple-100 mb-6">A <strong className="text-purple-200">self-running</strong>, <strong className="text-purple-200">immutable</strong>, <strong className="text-purple-200">on-chain game and reward system</strong> that cannot be altered, paused, or manipulated — not even by its creator.</p>
+
+
+          <p className="text-purple-100 mb-6 text-xl font-bold">It runs itself. Forever. On-chain.</p>
+
+          <ul className="list-disc pl-6 mb-6 text-purple-100 space-y-1">
+            <li>No servers</li>
+            <li>No databases</li>
+            <li>No moderators</li>
+            <li>No owner keys</li>
+            <li>No cookies</li>
+            <li>No "trust me bro"</li>
+          </ul>
+
+          <p className="text-purple-100 mb-8 text-xl font-bold">Just math, consensus, and Ethereum.</p>
+
+          <hr className="border-purple-500/30 my-8" />
+
+          <h2 className="text-2xl font-bold mb-3 text-purple-300">Verify It Yourself</h2>
+
+          <p className="text-purple-100 mb-3">No trust needed.</p>
+
+          <ul className="list-disc pl-6 mb-6 text-purple-100 space-y-1">
+            <li>View the contract</li>
+            <li>Read the code</li>
+            <li>Confirm the game logic</li>
+            <li>Watch every move</li>
+            <li>Verify every payout</li>
+          </ul>
+
+          <p className="text-purple-100 mb-6 text-xl font-bold">The truth is on-chain.</p>
+
+          <h3 className="text-xl font-bold mb-3 text-purple-300">Contract Address:</h3>
+          <a
+            href={ETHERSCAN_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-purple-300 hover:text-purple-200 underline decoration-purple-400/50 hover:decoration-purple-300 transition-colors inline-flex items-center gap-2"
+          >
+            View on Arbiscan <ExternalLink size={16} />
+          </a>
         </div>
       </div>
 
@@ -1906,7 +2066,8 @@ export default function TicTacBlock() {
         }
 
         /* Add padding to account for fixed header when jumping to anchors */
-        #zero-trust {
+        #zero-trust,
+        #whitepaper {
           scroll-margin-top: 80px;
         }
 
