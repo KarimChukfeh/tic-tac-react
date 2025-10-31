@@ -1335,39 +1335,6 @@ export default function TicTacBlock() {
       {/* Particle Background (Dream Theme Only) */}
       {dreamTheme && <ParticleBackground />}
 
-      {/* Theme Toggle Switch - Top Right (below banner) */}
-      <div style={{ position: 'fixed', top: '80px', right: '20px', zIndex: 1000 }}>
-        <button
-          onClick={() => setDreamTheme(!dreamTheme)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            background: dreamTheme ? 'rgba(255, 255, 255, 0.1)' : 'rgba(59, 130, 246, 0.2)',
-            backdropFilter: 'blur(10px)',
-            border: dreamTheme ? '2px solid rgba(0, 255, 255, 0.5)' : '2px solid rgba(59, 130, 246, 0.5)',
-            borderRadius: '30px',
-            padding: '10px 20px',
-            color: '#fff',
-            fontWeight: 'bold',
-            fontSize: '14px',
-            cursor: 'pointer',
-            transition: 'all 0.3s ease',
-            boxShadow: dreamTheme ? '0 0 20px rgba(0, 255, 255, 0.3)' : '0 0 20px rgba(59, 130, 246, 0.3)'
-          }}
-          onMouseEnter={(e) => {
-            e.target.style.transform = 'scale(1.05)';
-            e.target.style.boxShadow = dreamTheme ? '0 0 30px rgba(0, 255, 255, 0.5)' : '0 0 30px rgba(59, 130, 246, 0.5)';
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.transform = 'scale(1)';
-            e.target.style.boxShadow = dreamTheme ? '0 0 20px rgba(0, 255, 255, 0.3)' : '0 0 20px rgba(59, 130, 246, 0.3)';
-          }}
-        >
-          {dreamTheme ? '✨ Dream Mode' : '🎮 Classic Mode'}
-        </button>
-      </div>
-
       {/* Trust Banner */}
       <div className={dreamTheme ? "" : "bg-blue-600/20 border-b border-blue-500/30 backdrop-blur-sm"} style={dreamTheme ? {
         background: 'rgba(0, 100, 200, 0.2)',
@@ -1376,6 +1343,41 @@ export default function TicTacBlock() {
         position: 'relative',
         zIndex: 10
       } : {}}>
+        {/* Theme Toggle Switch - Desktop: fixed top-right, Mobile: in banner */}
+        <div className="theme-toggle-wrapper">
+          <button
+            onClick={() => setDreamTheme(!dreamTheme)}
+            className="theme-toggle-btn"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: dreamTheme ? 'rgba(255, 255, 255, 0.1)' : 'rgba(59, 130, 246, 0.2)',
+              backdropFilter: 'blur(10px)',
+              border: dreamTheme ? '2px solid rgba(0, 255, 255, 0.5)' : '2px solid rgba(59, 130, 246, 0.5)',
+              borderRadius: '20px',
+              padding: '6px 12px',
+              color: '#fff',
+              fontWeight: 'bold',
+              fontSize: '12px',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              boxShadow: dreamTheme ? '0 0 15px rgba(0, 255, 255, 0.3)' : '0 0 15px rgba(59, 130, 246, 0.3)'
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.transform = 'scale(1.05)';
+              e.target.style.boxShadow = dreamTheme ? '0 0 25px rgba(0, 255, 255, 0.5)' : '0 0 25px rgba(59, 130, 246, 0.5)';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.transform = 'scale(1)';
+              e.target.style.boxShadow = dreamTheme ? '0 0 15px rgba(0, 255, 255, 0.3)' : '0 0 15px rgba(59, 130, 246, 0.3)';
+            }}
+          >
+            <span className="theme-toggle-icon">{dreamTheme ? '✨' : '🎮'}</span>
+            <span className="theme-toggle-text">{dreamTheme ? 'Dream' : 'Classic'}</span>
+          </button>
+        </div>
+
         <div className="max-w-7xl mx-auto px-6 py-3">
           <div className="flex flex-wrap items-center justify-between gap-4 text-sm">
             <div className="flex items-center gap-6">
@@ -1797,6 +1799,62 @@ export default function TicTacBlock() {
           100% {
             transform: translateY(-100vh) translateX(100px);
             opacity: 0;
+          }
+        }
+
+        /* Theme Toggle - Desktop: fixed, Mobile: in-flow */
+        .theme-toggle-wrapper {
+          position: fixed;
+          top: 80px;
+          right: 20px;
+          z-index: 1000;
+        }
+
+        /* Tablet styles */
+        @media (max-width: 1024px) {
+          .theme-toggle-wrapper {
+            top: 70px;
+            right: 15px;
+          }
+        }
+
+        /* Mobile styles - smaller, absolute positioned within banner (not sticky) */
+        @media (max-width: 768px) {
+          .theme-toggle-wrapper {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            z-index: 20;
+          }
+
+          .theme-toggle-btn {
+            padding: 4px 8px !important;
+            font-size: 10px !important;
+            gap: 3px !important;
+            border-radius: 15px !important;
+          }
+
+          .theme-toggle-text {
+            display: none;
+          }
+
+          .theme-toggle-icon {
+            font-size: 14px;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .theme-toggle-wrapper {
+            top: 6px;
+            right: 6px;
+          }
+
+          .theme-toggle-btn {
+            padding: 3px 6px !important;
+          }
+
+          .theme-toggle-icon {
+            font-size: 12px;
           }
         }
       `}</style>
