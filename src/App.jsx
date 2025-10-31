@@ -1272,7 +1272,7 @@ export default function TicTacBlock() {
           </div>
 
           <h1 className="text-6xl md:text-7xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-cyan-400 to-blue-400">
-            Dummy TicTacToe Protocol
+            On-Chain TicTacToe Protocol
           </h1>
           <p className="text-2xl text-blue-200 mb-6">
             Provably Fair • Zero Trust • 100% On-Chain
