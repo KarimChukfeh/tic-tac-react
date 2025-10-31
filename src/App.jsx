@@ -908,7 +908,7 @@ export default function TicTacBlock() {
   };
 
   // Load contract data
-  const loadContractData = async (contractInstance, isReadOnlyInit = false) => {
+  const loadContractData = async (contractInstance) => {
     try {
       setContractStatus('checking');
       setLoadError(null); // Clear any previous errors
@@ -1036,8 +1036,9 @@ export default function TicTacBlock() {
       // Set error state for UI display
       setLoadError(error.message);
 
-      // Only show alerts if user has connected wallet (not in read-only mode initialization)
-      if (!isReadOnlyInit) {
+      // Only show alerts if user has connected wallet
+      // When wallet is not connected, we're in read-only/spectator mode and shouldn't show alerts
+      if (account) {
         // Show user-friendly error message
         if (error.message.includes('No contract deployed')) {
           alert('⚠️ Contract Not Deployed\n\n' + error.message);
@@ -1122,7 +1123,7 @@ export default function TicTacBlock() {
         );
 
         setContract(readOnlyContract);
-        await loadContractData(readOnlyContract, true); // Pass true to indicate read-only initialization
+        await loadContractData(readOnlyContract);
       } catch (error) {
         console.error('Error initializing read-only contract:', error);
         // Set error state but don't show alert on initial load
@@ -1147,7 +1148,7 @@ export default function TicTacBlock() {
             const provider = new ethers.JsonRpcProvider('https://arb1.arbitrum.io/rpc');
             const readOnlyContract = new ethers.Contract(CONTRACT_ADDRESS, DUMMY_ABI, provider);
             setContract(readOnlyContract);
-            await loadContractData(readOnlyContract, true);
+            await loadContractData(readOnlyContract);
           };
           initReadOnlyContract();
         } else {
