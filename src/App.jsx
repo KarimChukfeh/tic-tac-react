@@ -1467,7 +1467,7 @@ export default function TicTacBlock() {
                     <div className="text-sm">
                       <p className="text-blue-200 font-medium mb-1">Why Arbitrum?</p>
                       <p className="text-blue-300/80 leading-relaxed">
-                        This game runs on <span className="font-semibold text-blue-200">Arbitrum One</span>, an Ethereum Layer 2 network.
+                        This game runs on <a href="https://arbitrum.io" target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-200 hover:text-blue-100 underline decoration-blue-400/50 hover:decoration-blue-300 transition-colors">Arbitrum One</a>, an Ethereum Layer 2 network.
                         If prompted, simply click to switch networks in MetaMask — it's instant, free, and uses the same ETH you already have.
                         No bridging required. <span className="text-blue-200">Lower fees, same security.</span>
                       </p>
@@ -1493,7 +1493,7 @@ export default function TicTacBlock() {
                     <div className="text-sm">
                       <p className="text-blue-200 font-medium mb-1">Why Arbitrum?</p>
                       <p className="text-blue-300/80 leading-relaxed">
-                        This game runs on <span className="font-semibold text-blue-200">Arbitrum One</span>, an Ethereum Layer 2 network.
+                        This game runs on <a href="https://arbitrum.io" target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-200 hover:text-blue-100 underline decoration-blue-400/50 hover:decoration-blue-300 transition-colors">Arbitrum One</a>, an Ethereum Layer 2 network.
                         If prompted, simply click to switch networks in MetaMask — it's instant, free, and uses the same ETH you already have.
                         No bridging required. <span className="text-blue-200">Lower fees, same security.</span>
                       </p>
