@@ -779,6 +779,7 @@ export default function TicTacBlock() {
   const [contractStatus, setContractStatus] = useState('not_checked'); // not_checked, checking, deployed, not_deployed
   const [lastGame, setLastGame] = useState(null);
   const [totalGamesPlayed, setTotalGamesPlayed] = useState(0);
+  const [loadError, setLoadError] = useState(null); // Track loading errors
 
   // Previous game state for change detection
   const prevGameState = useRef(null);
@@ -907,9 +908,10 @@ export default function TicTacBlock() {
   };
 
   // Load contract data
-  const loadContractData = async (contractInstance) => {
+  const loadContractData = async (contractInstance, isReadOnlyInit = false) => {
     try {
       setContractStatus('checking');
+      setLoadError(null); // Clear any previous errors
 
       // Verify contract is deployed by checking bytecode
       const provider = contractInstance.runner.provider;
@@ -1031,13 +1033,19 @@ export default function TicTacBlock() {
     } catch (error) {
       console.error('Error loading contract data:', error);
 
-      // Show user-friendly error message
-      if (error.message.includes('No contract deployed')) {
-        alert('⚠️ Contract Not Deployed\n\n' + error.message);
-      } else if (error.code === 'BAD_DATA') {
-        alert('⚠️ Contract Connection Error\n\nThe contract at this address is not responding correctly. Please check:\n\n1. Are you connected to Arbitrum One?\n2. Is the contract address correct?\n3. Does the contract exist on Arbiscan?\n\nCurrent address: ' + CONTRACT_ADDRESS + '\nView on Arbiscan: https://arbiscan.io/address/' + CONTRACT_ADDRESS);
-      } else {
-        alert('Error loading game data: ' + error.message);
+      // Set error state for UI display
+      setLoadError(error.message);
+
+      // Only show alerts if user has connected wallet (not in read-only mode initialization)
+      if (!isReadOnlyInit) {
+        // Show user-friendly error message
+        if (error.message.includes('No contract deployed')) {
+          alert('⚠️ Contract Not Deployed\n\n' + error.message);
+        } else if (error.code === 'BAD_DATA') {
+          alert('⚠️ Contract Connection Error\n\nThe contract at this address is not responding correctly. Please check:\n\n1. Are you connected to Arbitrum One?\n2. Is the contract address correct?\n3. Does the contract exist on Arbiscan?\n\nCurrent address: ' + CONTRACT_ADDRESS + '\nView on Arbiscan: https://arbiscan.io/address/' + CONTRACT_ADDRESS);
+        } else {
+          alert('Error loading game data: ' + error.message);
+        }
       }
     }
   };
@@ -1114,9 +1122,11 @@ export default function TicTacBlock() {
         );
 
         setContract(readOnlyContract);
-        await loadContractData(readOnlyContract);
+        await loadContractData(readOnlyContract, true); // Pass true to indicate read-only initialization
       } catch (error) {
         console.error('Error initializing read-only contract:', error);
+        // Set error state but don't show alert on initial load
+        setLoadError(error.message);
       }
     };
 
@@ -1137,7 +1147,7 @@ export default function TicTacBlock() {
             const provider = new ethers.JsonRpcProvider('https://arb1.arbitrum.io/rpc');
             const readOnlyContract = new ethers.Contract(CONTRACT_ADDRESS, DUMMY_ABI, provider);
             setContract(readOnlyContract);
-            await loadContractData(readOnlyContract);
+            await loadContractData(readOnlyContract, true);
           };
           initReadOnlyContract();
         } else {
@@ -1298,6 +1308,26 @@ export default function TicTacBlock() {
             </div>
           </div>
 
+
+          {/* Network Error Banner - Show when not connected and there's an error */}
+          {!account && loadError && (
+            <div className="mb-6 max-w-2xl mx-auto">
+              <div className="bg-yellow-500/10 border border-yellow-400/30 rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle size={20} className="text-yellow-400 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm">
+                    <p className="text-yellow-300 font-medium mb-1">Unable to load game data</p>
+                    <p className="text-yellow-200/80 leading-relaxed mb-3">
+                      The app is having trouble connecting to the Arbitrum network. This might be due to network issues or RPC provider limitations.
+                    </p>
+                    <p className="text-yellow-200/80 leading-relaxed">
+                      You can still connect your wallet to interact with the contract directly.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Connect Wallet CTA */}
           {!account ? (
