@@ -1564,24 +1564,91 @@ export default function DreamApp() {
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
-        flexDirection: 'column'
+        flexDirection: 'column',
+        position: 'relative',
+        overflow: 'hidden'
       }}>
         <ParticleBackground />
+
+        {/* Glowing orb effect */}
+        <div style={{
+          position: 'absolute',
+          width: '300px',
+          height: '300px',
+          background: 'radial-gradient(circle, rgba(0, 255, 255, 0.2) 0%, rgba(255, 0, 255, 0.1) 50%, transparent 70%)',
+          borderRadius: '50%',
+          filter: 'blur(60px)',
+          animation: 'pulse 3s ease-in-out infinite',
+          zIndex: 5
+        }} />
+
         <div style={{
           textAlign: 'center',
           zIndex: 10,
           position: 'relative'
         }}>
-          <Grid className="animate-pulse" size={64} style={{ color: '#00ffff', marginBottom: '20px' }} />
-          <h2 style={{
-            fontSize: '32px',
-            fontWeight: 'bold',
-            background: 'linear-gradient(90deg, #00ffff, #ff00ff)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            marginBottom: '10px'
-          }}>Loading Game Data</h2>
-          <p style={{ color: 'rgba(0, 255, 255, 0.7)' }}>Connecting to Arbitrum blockchain...</p>
+          <div style={{
+            display: 'inline-block',
+            padding: '40px',
+            background: 'rgba(255, 255, 255, 0.05)',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(0, 255, 255, 0.3)',
+            borderRadius: '20px',
+            boxShadow: '0 8px 32px 0 rgba(0, 255, 255, 0.2)'
+          }}>
+            <Grid className="animate-pulse" size={64} style={{
+              color: '#00ffff',
+              marginBottom: '20px',
+              filter: 'drop-shadow(0 0 10px rgba(0, 255, 255, 0.5))'
+            }} />
+            <h2 style={{
+              fontSize: '32px',
+              fontWeight: 'bold',
+              background: 'linear-gradient(90deg, #00ffff, #ff00ff)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              marginBottom: '16px',
+              textShadow: '0 0 20px rgba(0, 255, 255, 0.5)'
+            }}>Loading Game Data</h2>
+            <p style={{
+              color: 'rgba(0, 255, 255, 0.8)',
+              fontSize: '16px',
+              marginBottom: '20px'
+            }}>Connecting to the blockchain</p>
+
+            {/* Loading dots animation */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'center',
+              gap: '8px',
+              marginTop: '10px'
+            }}>
+              <div style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: '#00ffff',
+                animation: 'pulse 1.5s ease-in-out infinite',
+                boxShadow: '0 0 10px #00ffff'
+              }} />
+              <div style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: '#00ffff',
+                animation: 'pulse 1.5s ease-in-out infinite 0.3s',
+                boxShadow: '0 0 10px #00ffff'
+              }} />
+              <div style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: '#00ffff',
+                animation: 'pulse 1.5s ease-in-out infinite 0.6s',
+                boxShadow: '0 0 10px #00ffff'
+              }} />
+            </div>
+          </div>
         </div>
       </div>
     );
