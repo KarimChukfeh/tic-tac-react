@@ -1374,7 +1374,7 @@ export default function TicTacBlock() {
             }}
           >
             <span className="theme-toggle-icon">{dreamTheme ? '✨' : '🎮'}</span>
-            <span className="theme-toggle-text">Theme {dreamTheme ? 'On' : 'Off'}</span>
+            <span className="theme-toggle-text">{dreamTheme ? 'Dream' : 'Classic'}</span>
           </button>
         </div>
 
@@ -1425,7 +1425,9 @@ export default function TicTacBlock() {
             Provably Fair • Zero Trust • 100% On-Chain
           </p>
           <p className="text-lg text-blue-300 max-w-3xl mx-auto mb-8">
-            Play Tic-Tac-Toe on Ethereum with real stakes. No servers. No operators. No trust required.
+            Play Tic-Tac-Toe on Ethereum. Real opponents. Real ETH on the line.
+            <br/>
+            No servers. No trust.
             <br/>
             Every move is a transaction. Every game is provably fair. Forever.
           </p>
