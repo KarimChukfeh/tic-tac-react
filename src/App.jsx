@@ -41,7 +41,7 @@ const ParticleBackground = () => {
   );
 
   return (
-    <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
+    <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 1 }}>
       {particles.map(p => (
         <div
           key={p.id}
@@ -1342,7 +1342,7 @@ export default function TicTacBlock() {
         backdropFilter: 'blur(10px)',
         position: 'relative',
         zIndex: 10
-      } : {}}>
+      } : { position: 'relative', zIndex: 10 }}>
         {/* Theme Toggle Switch - Desktop: fixed top-right, Mobile: in banner */}
         <div className="theme-toggle-wrapper">
           <button
@@ -1374,7 +1374,7 @@ export default function TicTacBlock() {
             }}
           >
             <span className="theme-toggle-icon">{dreamTheme ? '✨' : '🎮'}</span>
-            <span className="theme-toggle-text">{dreamTheme ? 'Dream' : 'Classic'}</span>
+            <span className="theme-toggle-text">Theme {dreamTheme ? 'On' : 'Off'}</span>
           </button>
         </div>
 
@@ -1408,7 +1408,7 @@ export default function TicTacBlock() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-12">
+      <div className="max-w-7xl mx-auto px-6 py-12" style={{ position: 'relative', zIndex: 10 }}>
         {/* Hero Section */}
         <div className="text-center mb-16">
           <div className="inline-block mb-6">
@@ -1728,7 +1728,7 @@ export default function TicTacBlock() {
       </div>
 
       {/* Footer */}
-      <div className="border-t border-white/10">
+      <div className="border-t border-white/10" style={{ position: 'relative', zIndex: 10 }}>
         <div className="max-w-7xl mx-auto px-6 py-8 text-center text-sm text-blue-300">
           <p className="font-semibold text-lg mb-2">Dummy TicTacToe Protocol</p>
           <p>Built on Ethereum. Runs forever. No servers required.</p>
