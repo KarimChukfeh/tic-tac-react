@@ -1310,26 +1310,6 @@ export default function TicTacBlock() {
           </div>
 
 
-          {/* Network Error Banner - Show when not connected and there's an error */}
-          {!account && loadError && (
-            <div className="mb-6 max-w-2xl mx-auto">
-              <div className="bg-yellow-500/10 border border-yellow-400/30 rounded-xl p-4">
-                <div className="flex items-start gap-3">
-                  <AlertCircle size={20} className="text-yellow-400 mt-0.5 flex-shrink-0" />
-                  <div className="text-sm">
-                    <p className="text-yellow-300 font-medium mb-1">Unable to load game data</p>
-                    <p className="text-yellow-200/80 leading-relaxed mb-3">
-                      The app is having trouble connecting to the Arbitrum network. This might be due to network issues or RPC provider limitations.
-                    </p>
-                    <p className="text-yellow-200/80 leading-relaxed">
-                      You can still connect your wallet to interact with the contract directly.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Connect Wallet CTA */}
           {!account ? (
             <button
