@@ -3,18 +3,16 @@
  *
  * SETUP INSTRUCTIONS:
  *
- * 1. Start Hardhat local node:
- *    npx hardhat node
+ * 1. Deploy the contract to Arbitrum One:
+ *    npx hardhat run scripts/deploy.js --network arbitrumOne
  *
- * 2. Deploy the contract (in a new terminal):
- *    npx hardhat run scripts/deploy.js --network localhost
+ * 2. Update CONTRACT_ADDRESS below with the deployed address (line 767)
  *
- * 3. Update CONTRACT_ADDRESS below with the deployed address
- *
- * 4. Make sure MetaMask is connected to Hardhat network:
- *    Network: Localhost 8545
- *    Chain ID: 31337
- *    RPC: http://localhost:8545
+ * 3. Make sure MetaMask is connected to Arbitrum One:
+ *    Network: Arbitrum One
+ *    Chain ID: 42161
+ *    RPC: https://arb1.arbitrum.io/rpc
+ *    Block Explorer: https://arbiscan.io
  */
 
 import { useState, useEffect, useRef } from 'react';
@@ -765,7 +763,7 @@ const ActiveGameDisplay = ({ game, account, onMove, onStartGame, loading, refres
 
 export default function TicTacBlock() {
   const CONTRACT_ADDRESS = "0x7fc74A84a41Ac0E4872fB94EB3d6A8998884Ec9d";
-  const ETHERSCAN_URL = `https://etherscan.io/address/${CONTRACT_ADDRESS}`;
+  const ETHERSCAN_URL = `https://arbiscan.io/address/${CONTRACT_ADDRESS}`;
 
   // Wallet & Contract State
   const [account, setAccount] = useState(null);
@@ -785,12 +783,12 @@ export default function TicTacBlock() {
   // Previous game state for change detection
   const prevGameState = useRef(null);
 
-  // Switch to Hardhat Network
-  const switchToHardhat = async () => {
+  // Switch to Arbitrum One Network
+  const switchToArbitrum = async () => {
     try {
       await window.ethereum.request({
         method: 'wallet_switchEthereumChain',
-        params: [{ chainId: '0x7a69' }], // 31337 in hex
+        params: [{ chainId: '0xa4b1' }], // 42161 in hex
       });
     } catch (switchError) {
       // This error code indicates that the chain has not been added to MetaMask
@@ -800,22 +798,22 @@ export default function TicTacBlock() {
             method: 'wallet_addEthereumChain',
             params: [
               {
-                chainId: '0x7a69', // 31337 in hex
-                chainName: 'Hardhat Local',
+                chainId: '0xa4b1', // 42161 in hex
+                chainName: 'Arbitrum One',
                 nativeCurrency: {
                   name: 'Ethereum',
                   symbol: 'ETH',
                   decimals: 18,
                 },
-                rpcUrls: ['http://127.0.0.1:8545'],
-                blockExplorerUrls: null,
+                rpcUrls: ['https://arb1.arbitrum.io/rpc'],
+                blockExplorerUrls: ['https://arbiscan.io'],
               },
             ],
           });
-          alert('✅ Hardhat network added! Please connect your wallet again.');
+          alert('✅ Arbitrum One network added! Please connect your wallet again.');
         } catch (addError) {
-          console.error('Error adding Hardhat network:', addError);
-          alert('Failed to add Hardhat network. Please add it manually in MetaMask.');
+          console.error('Error adding Arbitrum One network:', addError);
+          alert('Failed to add Arbitrum One network. Please add it manually in MetaMask.');
         }
       } else {
         console.error('Error switching network:', switchError);
@@ -845,24 +843,24 @@ export default function TicTacBlock() {
       const networkData = {
         name: network.name || 'Unknown',
         chainId: network.chainId.toString(),
-        isHardhat: network.chainId === 31337n
+        isArbitrum: network.chainId === 42161n
       };
 
       setNetworkInfo(networkData);
 
       console.log('Connected to network:', networkData);
 
-      // Check if connected to Hardhat (chain ID 31337)
-      if (network.chainId !== 31337n) {
+      // Check if connected to Arbitrum One (chain ID 42161)
+      if (network.chainId !== 42161n) {
         const shouldSwitch = window.confirm(
           `⚠️ Wrong Network Detected\n\n` +
           `You're connected to: ${network.name || 'Unknown'} (Chain ID: ${network.chainId})\n` +
-          `Expected: Hardhat Local (Chain ID: 31337)\n\n` +
+          `Expected: Arbitrum One (Chain ID: 42161)\n\n` +
           `Click OK to automatically switch networks, or Cancel to stay on current network.`
         );
 
         if (shouldSwitch) {
-          await switchToHardhat();
+          await switchToArbitrum();
           // Reload after switch attempt
           window.location.reload();
           return;
@@ -892,7 +890,7 @@ export default function TicTacBlock() {
       if (error.message.includes('user rejected')) {
         errorMessage += 'You rejected the connection request.';
       } else if (error.code === 'NETWORK_ERROR') {
-        errorMessage += 'Network error. Is your Hardhat node running?\n\nStart with: npx hardhat node';
+        errorMessage += 'Network error. Are you connected to Arbitrum One?\n\nSwitch to Arbitrum One in MetaMask.';
       } else {
         errorMessage += error.message;
       }
@@ -928,13 +926,13 @@ export default function TicTacBlock() {
         throw new Error(
           `No contract found at ${contractAddress}\n\n` +
           `This means either:\n` +
-          `1. The contract hasn't been deployed yet\n` +
+          `1. The contract hasn't been deployed to Arbitrum One yet\n` +
           `2. The CONTRACT_ADDRESS in the code is wrong\n` +
-          `3. The Hardhat node was restarted (you need to redeploy)\n\n` +
+          `3. You're connected to the wrong network\n\n` +
           `Steps to fix:\n` +
-          `1. Check your deployment output for the actual contract address\n` +
-          `2. Update CONTRACT_ADDRESS in TicTacBlock.js line 569\n` +
-          `3. Or redeploy: npx hardhat run scripts/deploy.js --network localhost`
+          `1. Verify you're connected to Arbitrum One in MetaMask\n` +
+          `2. Check the contract exists on Arbiscan: https://arbiscan.io/address/${contractAddress}\n` +
+          `3. If wrong address, update CONTRACT_ADDRESS in App.jsx line 767`
         );
       }
 
@@ -1037,7 +1035,7 @@ export default function TicTacBlock() {
       if (error.message.includes('No contract deployed')) {
         alert('⚠️ Contract Not Deployed\n\n' + error.message);
       } else if (error.code === 'BAD_DATA') {
-        alert('⚠️ Contract Connection Error\n\nThe contract at this address is not responding correctly. Please check:\n\n1. Is the contract deployed?\n2. Is the contract address correct?\n3. Is your Hardhat node running?\n\nCurrent address: ' + CONTRACT_ADDRESS);
+        alert('⚠️ Contract Connection Error\n\nThe contract at this address is not responding correctly. Please check:\n\n1. Are you connected to Arbitrum One?\n2. Is the contract address correct?\n3. Does the contract exist on Arbiscan?\n\nCurrent address: ' + CONTRACT_ADDRESS + '\nView on Arbiscan: https://arbiscan.io/address/' + CONTRACT_ADDRESS);
       } else {
         alert('Error loading game data: ' + error.message);
       }
@@ -1299,11 +1297,11 @@ export default function TicTacBlock() {
                   {networkInfo && (
                     <div className="flex items-center justify-between bg-slate-800/50 rounded-lg p-3">
                       <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${networkInfo.isHardhat ? 'bg-green-400' : 'bg-yellow-400'}`} />
+                        <div className={`w-2 h-2 rounded-full ${networkInfo.isArbitrum ? 'bg-green-400' : 'bg-yellow-400'}`} />
                         <span className="text-slate-300">Network:</span>
                       </div>
                       <div className="text-right">
-                        <div className={`font-bold ${networkInfo.isHardhat ? 'text-green-400' : 'text-yellow-400'}`}>
+                        <div className={`font-bold ${networkInfo.isArbitrum ? 'text-green-400' : 'text-yellow-400'}`}>
                           {networkInfo.name}
                         </div>
                         <div className="text-xs text-slate-400">Chain ID: {networkInfo.chainId}</div>
@@ -1369,18 +1367,18 @@ export default function TicTacBlock() {
                             <div className="ml-4 text-[11px] opacity-90">
                               Copy that address and paste it in:<br/>
                               <code className="bg-slate-900 px-1 py-0.5 rounded text-yellow-300">
-                                src/TicTacBlock.js line 569
+                                src/App.jsx line 767
                               </code>
                             </div>
                           </div>
 
                           <div>
-                            <div className="font-bold mb-1">3️⃣ Or Deploy Now</div>
+                            <div className="font-bold mb-1">3️⃣ Verify on Arbiscan</div>
                             <div className="ml-4 text-[11px] opacity-90">
                               <code className="bg-slate-900 px-1 py-0.5 rounded block mb-1">
-                                npx hardhat run scripts/deploy.js --network localhost
+                                https://arbiscan.io/address/{CONTRACT_ADDRESS}
                               </code>
-                              Then update the address in the code.
+                              Check if the contract exists on Arbitrum One.
                             </div>
                           </div>
                         </div>
@@ -1392,18 +1390,18 @@ export default function TicTacBlock() {
                     </div>
                   )}
 
-                  {!networkInfo?.isHardhat && (
+                  {!networkInfo?.isArbitrum && (
                     <div className="bg-yellow-500/10 border border-yellow-400/30 rounded-lg p-4">
                       <div className="text-yellow-300 font-bold mb-2">⚠️ Wrong Network</div>
                       <div className="text-xs text-yellow-200 mb-3">
-                        You're on <span className="font-bold">{networkInfo.name}</span>. Switch to Hardhat Local network (Chain ID: 31337).
+                        You're on <span className="font-bold">{networkInfo.name}</span>. Switch to Arbitrum One network (Chain ID: 42161).
                       </div>
                       <button
-                        onClick={switchToHardhat}
+                        onClick={switchToArbitrum}
                         className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-2 px-4 rounded-lg text-sm transition-all flex items-center justify-center gap-2"
                       >
                         <Zap size={16} />
-                        Switch to Hardhat Network
+                        Switch to Arbitrum One
                       </button>
                     </div>
                   )}
