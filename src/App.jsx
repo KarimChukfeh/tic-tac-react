@@ -15,7 +15,7 @@
  *    Block Explorer: https://arbiscan.io
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Wallet, Grid, Swords, Clock, Shield, Lock, Eye, Code, ExternalLink,
   Trophy, Play, Users, DollarSign, Zap, TrendingUp, History,
@@ -23,6 +23,66 @@ import {
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import DUMMY_ABI from './dummyABI.json';
+
+// Particle Background Component (Dream Theme)
+const ParticleBackground = () => {
+  const particles = useMemo(() =>
+    Array.from({ length: 50 }, (_, i) => {
+      const isCyan = Math.random() > 0.5;
+      return {
+        id: i,
+        left: Math.random() * 100,
+        delay: Math.random() * 15,
+        duration: 20 + Math.random() * 20,
+        color: isCyan ? '#00ffff' : '#ff00ff',
+        symbol: isCyan ? 'X' : 'O'
+      };
+    }), []
+  );
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
+      {particles.map(p => (
+        <div
+          key={p.id}
+          style={{
+            position: 'absolute',
+            left: `${p.left}%`,
+            animation: `particle-float ${p.duration}s linear infinite`,
+            animationDelay: `${p.delay}s`,
+            willChange: 'transform, opacity',
+            color: p.color,
+            fontSize: '12px',
+            fontWeight: 'bold',
+            opacity: 0.4,
+            textShadow: `0 0 8px ${p.color}`
+          }}
+        >
+          {p.symbol}
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// Glass Panel Component (Dream Theme)
+const GlassPanel = ({ children, style, className = '' }) => (
+  <div
+    className={className}
+    style={{
+      background: 'rgba(255, 255, 255, 0.05)',
+      backdropFilter: 'blur(10px)',
+      border: '1px solid rgba(0, 255, 255, 0.3)',
+      borderRadius: '15px',
+      padding: '20px',
+      boxShadow: '0 8px 32px 0 rgba(0, 255, 255, 0.2)',
+      animation: 'float 3s ease-in-out infinite',
+      ...style
+    }}
+  >
+    {children}
+  </div>
+);
 
 // Helper function
 const shortenAddress = (addr) => {
@@ -781,6 +841,9 @@ export default function TicTacBlock() {
   const [lastGame, setLastGame] = useState(null);
   const [totalGamesPlayed, setTotalGamesPlayed] = useState(0);
 
+  // Theme State
+  const [dreamTheme, setDreamTheme] = useState(true);
+
   // Previous game state for change detection
   const prevGameState = useRef(null);
 
@@ -1262,9 +1325,57 @@ export default function TicTacBlock() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 text-white">
+    <div className={dreamTheme ? "" : "min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 text-white"} style={dreamTheme ? {
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #0a0015 0%, #1a0030 50%, #0f001a 100%)',
+      color: '#fff',
+      position: 'relative',
+      overflow: 'hidden'
+    } : {}}>
+      {/* Particle Background (Dream Theme Only) */}
+      {dreamTheme && <ParticleBackground />}
+
+      {/* Theme Toggle Switch - Top Right (below banner) */}
+      <div style={{ position: 'fixed', top: '80px', right: '20px', zIndex: 1000 }}>
+        <button
+          onClick={() => setDreamTheme(!dreamTheme)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            background: dreamTheme ? 'rgba(255, 255, 255, 0.1)' : 'rgba(59, 130, 246, 0.2)',
+            backdropFilter: 'blur(10px)',
+            border: dreamTheme ? '2px solid rgba(0, 255, 255, 0.5)' : '2px solid rgba(59, 130, 246, 0.5)',
+            borderRadius: '30px',
+            padding: '10px 20px',
+            color: '#fff',
+            fontWeight: 'bold',
+            fontSize: '14px',
+            cursor: 'pointer',
+            transition: 'all 0.3s ease',
+            boxShadow: dreamTheme ? '0 0 20px rgba(0, 255, 255, 0.3)' : '0 0 20px rgba(59, 130, 246, 0.3)'
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.transform = 'scale(1.05)';
+            e.target.style.boxShadow = dreamTheme ? '0 0 30px rgba(0, 255, 255, 0.5)' : '0 0 30px rgba(59, 130, 246, 0.5)';
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.transform = 'scale(1)';
+            e.target.style.boxShadow = dreamTheme ? '0 0 20px rgba(0, 255, 255, 0.3)' : '0 0 20px rgba(59, 130, 246, 0.3)';
+          }}
+        >
+          {dreamTheme ? '✨ Dream Mode' : '🎮 Classic Mode'}
+        </button>
+      </div>
+
       {/* Trust Banner */}
-      <div className="bg-blue-600/20 border-b border-blue-500/30 backdrop-blur-sm">
+      <div className={dreamTheme ? "" : "bg-blue-600/20 border-b border-blue-500/30 backdrop-blur-sm"} style={dreamTheme ? {
+        background: 'rgba(0, 100, 200, 0.2)',
+        borderBottom: '1px solid rgba(0, 255, 255, 0.3)',
+        backdropFilter: 'blur(10px)',
+        position: 'relative',
+        zIndex: 10
+      } : {}}>
         <div className="max-w-7xl mx-auto px-6 py-3">
           <div className="flex flex-wrap items-center justify-between gap-4 text-sm">
             <div className="flex items-center gap-6">
@@ -1306,7 +1417,7 @@ export default function TicTacBlock() {
           </div>
 
           <h1 className="text-6xl md:text-7xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-cyan-400 to-blue-400">
-            On-Chain TicTacToe Protocol
+            Eternal TicTacToe
           </h1>
           <p className="text-2xl text-blue-200 mb-6">
             Provably Fair • Zero Trust • 100% On-Chain
@@ -1669,6 +1780,24 @@ export default function TicTacBlock() {
         /* Grid cell hover glow */
         button:hover:not(:disabled) {
           box-shadow: 0 0 20px currentColor;
+        }
+
+        /* Particle animation for Dream theme */
+        @keyframes particle-float {
+          0% {
+            transform: translateY(100vh) translateX(0);
+            opacity: 0;
+          }
+          10% {
+            opacity: 1;
+          }
+          90% {
+            opacity: 1;
+          }
+          100% {
+            transform: translateY(-100vh) translateX(100px);
+            opacity: 0;
+          }
         }
       `}</style>
     </div>
