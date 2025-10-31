@@ -2141,7 +2141,7 @@ export default function DreamApp() {
           color: 'rgba(0, 255, 255, 0.7)'
         }}>
           <p style={{ fontWeight: 'bold', fontSize: '18px', marginBottom: '10px', color: '#00ffff' }}>
-            Tic-Tac-Dream Protocol
+            Eternal Tic-Tac-Toe
           </p>
           <p>Built on Ethereum. Runs forever. No servers required.</p>
           <p style={{ marginTop: '10px' }}>Smart contracts are immutable and transparent. Always verify before interacting.</p>
