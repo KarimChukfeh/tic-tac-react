@@ -764,7 +764,7 @@ const ActiveGameDisplay = ({ game, account, onMove, onStartGame, loading, refres
 };
 
 export default function TicTacBlock() {
-  const CONTRACT_ADDRESS = "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9";
+  const CONTRACT_ADDRESS = "0x7fc74A84a41Ac0E4872fB94EB3d6A8998884Ec9d";
   const ETHERSCAN_URL = `https://etherscan.io/address/${CONTRACT_ADDRESS}`;
 
   // Wallet & Contract State
