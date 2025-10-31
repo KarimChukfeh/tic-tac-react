@@ -772,6 +772,7 @@ export default function TicTacBlock() {
   // Game State
   const [game, setGame] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true); // Track initial data load
   const [entryFee, setEntryFee] = useState('0');
   const [refreshProgress, setRefreshProgress] = useState(0);
   const [gameLog, setGameLog] = useState([]);
@@ -779,7 +780,6 @@ export default function TicTacBlock() {
   const [contractStatus, setContractStatus] = useState('not_checked'); // not_checked, checking, deployed, not_deployed
   const [lastGame, setLastGame] = useState(null);
   const [totalGamesPlayed, setTotalGamesPlayed] = useState(0);
-  const [loadError, setLoadError] = useState(null); // Track loading errors
 
   // Previous game state for change detection
   const prevGameState = useRef(null);
@@ -881,7 +881,7 @@ export default function TicTacBlock() {
       setAccount(accounts[0]);
       setContract(contractInstance);
 
-      await loadContractData(contractInstance);
+      await loadContractData(contractInstance, false);
       setLoading(false);
     } catch (error) {
       console.error('Error connecting wallet:', error);
@@ -908,10 +908,9 @@ export default function TicTacBlock() {
   };
 
   // Load contract data
-  const loadContractData = async (contractInstance) => {
+  const loadContractData = async (contractInstance, isInitialLoad = false) => {
     try {
       setContractStatus('checking');
-      setLoadError(null); // Clear any previous errors
 
       // Verify contract is deployed by checking bytecode
       const provider = contractInstance.runner.provider;
@@ -1030,11 +1029,18 @@ export default function TicTacBlock() {
         console.error('Error loading game history:', historyError);
         // Don't fail the entire load if history fails
       }
+
+      // Mark initial loading as complete
+      if (isInitialLoad) {
+        setInitialLoading(false);
+      }
     } catch (error) {
       console.error('Error loading contract data:', error);
 
-      // Set error state for UI display
-      setLoadError(error.message);
+      // Mark initial loading as complete even on error
+      if (isInitialLoad) {
+        setInitialLoading(false);
+      }
 
       // Only show alerts if user has connected wallet
       // When wallet is not connected, we're in read-only/spectator mode and shouldn't show alerts
@@ -1123,11 +1129,10 @@ export default function TicTacBlock() {
         );
 
         setContract(readOnlyContract);
-        await loadContractData(readOnlyContract);
+        await loadContractData(readOnlyContract, true); // Pass true for initial load
       } catch (error) {
         console.error('Error initializing read-only contract:', error);
-        // Set error state but don't show alert on initial load
-        setLoadError(error.message);
+        setInitialLoading(false); // Stop loading even on error
       }
     };
 
@@ -1227,6 +1232,34 @@ export default function TicTacBlock() {
       clearInterval(progressInterval);
     };
   }, [contract]);
+
+  // Loading animation component
+  if (initialLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="relative mb-8">
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-32 h-32 border-4 border-blue-500/30 rounded-full"></div>
+            </div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-32 h-32 border-4 border-transparent border-t-blue-500 rounded-full animate-spin"></div>
+            </div>
+            <div className="relative flex items-center justify-center w-32 h-32 mx-auto">
+              <Grid className="text-blue-400 animate-pulse" size={48} />
+            </div>
+          </div>
+          <h2 className="text-2xl font-bold text-blue-300 mb-2">Loading Game Data</h2>
+          <p className="text-blue-400/70">Connecting to Arbitrum blockchain...</p>
+          <div className="mt-6 flex items-center justify-center gap-2">
+            <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+            <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+            <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 text-white">
