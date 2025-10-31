@@ -1100,13 +1100,46 @@ export default function TicTacBlock() {
     }
   };
 
+  // Initialize contract in read-only mode on mount (without wallet)
+  useEffect(() => {
+    const initReadOnlyContract = async () => {
+      try {
+        // Use a public RPC provider for Arbitrum One
+        const provider = new ethers.JsonRpcProvider('https://arb1.arbitrum.io/rpc');
+
+        const readOnlyContract = new ethers.Contract(
+          CONTRACT_ADDRESS,
+          DUMMY_ABI,
+          provider
+        );
+
+        setContract(readOnlyContract);
+        await loadContractData(readOnlyContract);
+      } catch (error) {
+        console.error('Error initializing read-only contract:', error);
+      }
+    };
+
+    // Only initialize if contract is not already set
+    if (!contract) {
+      initReadOnlyContract();
+    }
+  }, []);
+
   // Listen for account changes
   useEffect(() => {
     if (window.ethereum) {
       window.ethereum.on('accountsChanged', (accounts) => {
         if (accounts.length === 0) {
           setAccount(null);
-          setContract(null);
+          // Reinitialize read-only contract when disconnected
+          const initReadOnlyContract = async () => {
+            const provider = new ethers.JsonRpcProvider('https://arb1.arbitrum.io/rpc');
+            const readOnlyContract = new ethers.Contract(CONTRACT_ADDRESS, DUMMY_ABI, provider);
+            setContract(readOnlyContract);
+            await loadContractData(readOnlyContract);
+          };
+          initReadOnlyContract();
         } else {
           connectWallet();
         }
@@ -1427,12 +1460,12 @@ export default function TicTacBlock() {
         </div>
 
         {/* Last Game Result Section */}
-        {account && lastGame && (
+        {lastGame && (
           <LastGameResult lastGame={lastGame} account={account} />
         )}
 
         {/* Total Games Counter */}
-        {account && totalGamesPlayed > 0 && (
+        {totalGamesPlayed > 0 && (
           <div className="bg-gradient-to-r from-purple-500/20 to-indigo-500/20 border border-purple-400/30 rounded-xl p-4 mb-8">
             <div className="flex items-center justify-center gap-3">
               <Trophy className="text-purple-400" size={24} />
@@ -1444,7 +1477,7 @@ export default function TicTacBlock() {
         )}
 
         {/* Active Game Section */}
-        {account && game && (
+        {game && (
           <div className="mb-16">
             <ActiveGameDisplay
               game={game}
@@ -1538,15 +1571,24 @@ export default function TicTacBlock() {
           </div>
         )}
 
-        {/* Not Connected State */}
-        {!account && (
-          <div className="bg-gradient-to-r from-red-600/30 to-pink-600/30 backdrop-blur-lg rounded-2xl p-8 border border-red-400/30">
-            <h2 className="text-4xl font-bold mb-6 flex items-center gap-3">
-              <Swords className="text-red-400" />
-              The Arena
+        {/* Not Connected State - Call to Action */}
+        {!account && game && (
+          <div className="bg-gradient-to-r from-purple-600/30 to-pink-600/30 backdrop-blur-lg rounded-2xl p-8 border border-purple-400/30 mb-16">
+            <h2 className="text-4xl font-bold mb-6 flex items-center gap-3 justify-center">
+              <Wallet className="text-purple-400" />
+              Ready to Play?
             </h2>
-            <div className="text-center py-12 bg-red-500/10 rounded-xl border border-red-400/30">
-              <p className="text-xl text-red-200 mb-4">Connect your wallet to enter the arena</p>
+            <div className="text-center py-8 bg-purple-500/10 rounded-xl border border-purple-400/30">
+              <p className="text-2xl text-purple-200 mb-4 font-bold">Connect Your Wallet to Join the Game</p>
+              <p className="text-lg text-purple-300 mb-6">You're currently spectating. Connect to compete for real stakes!</p>
+              <button
+                onClick={connectWallet}
+                disabled={loading}
+                className="inline-flex items-center gap-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 px-10 py-5 rounded-2xl font-bold text-2xl shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Wallet size={28} />
+                {loading ? 'Connecting...' : 'Connect Wallet to Play'}
+              </button>
             </div>
           </div>
         )}
