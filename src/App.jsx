@@ -2004,7 +2004,7 @@ export default function TicTacBlock() {
             <li>A marketing stunt with no utility</li>
           </ul>
 
-          <p className="text-purple-100 mb-3"><strong className="text-purple-200">In strictly:</strong></p>
+          <p className="text-purple-100 mb-3"><strong className="text-purple-200">Is strictly:</strong></p>
           <p className="text-purple-100 mb-6">A <strong className="text-purple-200">self-running</strong>, <strong className="text-purple-200">immutable</strong>, <strong className="text-purple-200">on-chain game and reward system</strong> that cannot be altered, paused, or manipulated — not even by its creator.</p>
 
 
