@@ -24,43 +24,46 @@ import {
 import { ethers } from 'ethers';
 import DUMMY_ABI from './dummyABI.json';
 
-// Particle Background Component (Dream Theme)
-const ParticleBackground = () => {
+// Particle Background Component (Dream/Daring Themes)
+const ParticleBackground = ({ colors }) => {
   const particles = useMemo(() =>
     Array.from({ length: 50 }, (_, i) => {
-      const isCyan = Math.random() > 0.5;
+      const useFirstColor = Math.random() > 0.5;
       return {
         id: i,
         left: Math.random() * 100,
         delay: Math.random() * 15,
         duration: 20 + Math.random() * 20,
-        color: isCyan ? '#00ffff' : '#ff00ff',
-        symbol: isCyan ? 'X' : 'O'
+        colorIndex: useFirstColor ? 0 : 1,
+        symbol: useFirstColor ? 'X' : 'O'
       };
     }), []
   );
 
   return (
     <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 1 }}>
-      {particles.map(p => (
-        <div
-          key={p.id}
-          style={{
-            position: 'absolute',
-            left: `${p.left}%`,
-            animation: `particle-float ${p.duration}s linear infinite`,
-            animationDelay: `${p.delay}s`,
-            willChange: 'transform, opacity',
-            color: p.color,
-            fontSize: '12px',
-            fontWeight: 'bold',
-            opacity: 0.4,
-            textShadow: `0 0 8px ${p.color}`
-          }}
-        >
-          {p.symbol}
-        </div>
-      ))}
+      {particles.map(p => {
+        const color = colors[p.colorIndex];
+        return (
+          <div
+            key={p.id}
+            style={{
+              position: 'absolute',
+              left: `${p.left}%`,
+              animation: `particle-float ${p.duration}s linear infinite`,
+              animationDelay: `${p.delay}s`,
+              willChange: 'transform, opacity',
+              color: color,
+              fontSize: '12px',
+              fontWeight: 'bold',
+              opacity: 0.4,
+              textShadow: `0 0 8px ${color}`
+            }}
+          >
+            {p.symbol}
+          </div>
+        );
+      })}
     </div>
   );
 };
@@ -841,9 +844,88 @@ export default function TicTacBlock() {
   const [lastGame, setLastGame] = useState(null);
   const [totalGamesPlayed, setTotalGamesPlayed] = useState(0);
 
-  // Theme State
-  const [dreamTheme, setDreamTheme] = useState(true);
+  // Theme State - 'dream' (blue/cyan), 'daring' (red/orange), 'classic' (traditional)
+  const [theme, setTheme] = useState('dream');
   const [expandedFaq, setExpandedFaq] = useState(null);
+
+  // Helper to cycle through themes
+  const cycleTheme = () => {
+    setTheme(current => {
+      if (current === 'dream') return 'daring';
+      if (current === 'daring') return 'classic';
+      return 'dream';
+    });
+  };
+
+  // Theme-specific colors
+  const themeColors = {
+    dream: {
+      primary: 'rgba(0, 255, 255, 0.5)',
+      secondary: 'rgba(255, 0, 255, 0.5)',
+      gradient: 'linear-gradient(135deg, #0a0015 0%, #1a0030 50%, #0f001a 100%)',
+      border: 'rgba(0, 255, 255, 0.3)',
+      glow: 'rgba(0, 255, 255, 0.3)',
+      particleColors: ['#00ffff', '#ff00ff'],
+      icon: '✨',
+      label: 'Dream',
+      // Hero section colors
+      heroGlow: 'from-blue-500 via-cyan-500 to-blue-500',
+      heroIcon: 'text-blue-400',
+      heroTitle: 'from-blue-400 via-cyan-400 to-blue-400',
+      heroText: 'text-blue-200',
+      heroSubtext: 'text-blue-300',
+      buttonGradient: 'from-blue-500 to-cyan-500',
+      buttonHover: 'hover:from-blue-600 hover:to-cyan-600',
+      infoCard: 'from-blue-500/20 to-cyan-500/20',
+      infoBorder: 'border-blue-400/30',
+      infoIcon: 'text-blue-400',
+      infoTitle: 'text-blue-300',
+      infoText: 'text-blue-200'
+    },
+    daring: {
+      primary: 'rgba(255, 69, 0, 0.5)',
+      secondary: 'rgba(255, 165, 0, 0.5)',
+      gradient: 'linear-gradient(135deg, #1a0000 0%, #330a00 50%, #1a0500 100%)',
+      border: 'rgba(255, 69, 0, 0.3)',
+      glow: 'rgba(255, 69, 0, 0.3)',
+      particleColors: ['#ff4500', '#ffa500'],
+      icon: '🔥',
+      label: 'Dare',
+      // Hero section colors
+      heroGlow: 'from-red-500 via-orange-500 to-red-500',
+      heroIcon: 'text-red-400',
+      heroTitle: 'from-red-400 via-orange-400 to-red-400',
+      heroText: 'text-red-200',
+      heroSubtext: 'text-orange-300',
+      buttonGradient: 'from-red-500 to-orange-500',
+      buttonHover: 'hover:from-red-600 hover:to-orange-600',
+      infoCard: 'from-red-500/20 to-orange-500/20',
+      infoBorder: 'border-red-400/30',
+      infoIcon: 'text-red-400',
+      infoTitle: 'text-orange-300',
+      infoText: 'text-red-200'
+    },
+    classic: {
+      gradient: 'linear-gradient(to bottom right, rgb(15, 23, 42), rgb(30, 58, 138), rgb(15, 23, 42))',
+      icon: '🎮',
+      label: 'Classic',
+      // Hero section colors
+      heroGlow: 'from-blue-500 via-cyan-500 to-blue-500',
+      heroIcon: 'text-blue-400',
+      heroTitle: 'from-blue-400 via-cyan-400 to-blue-400',
+      heroText: 'text-blue-200',
+      heroSubtext: 'text-blue-300',
+      buttonGradient: 'from-blue-500 to-cyan-500',
+      buttonHover: 'hover:from-blue-600 hover:to-cyan-600',
+      infoCard: 'from-blue-500/20 to-cyan-500/20',
+      infoBorder: 'border-blue-400/30',
+      infoIcon: 'text-blue-400',
+      infoTitle: 'text-blue-300',
+      infoText: 'text-blue-200'
+    }
+  };
+
+  const currentTheme = themeColors[theme];
 
   // Previous game state for change detection
   const prevGameState = useRef(null);
@@ -1350,20 +1432,20 @@ export default function TicTacBlock() {
   }
 
   return (
-    <div className={dreamTheme ? "" : "min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 text-white"} style={dreamTheme ? {
+    <div className={theme === 'classic' ? "min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 text-white" : ""} style={theme !== 'classic' ? {
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #0a0015 0%, #1a0030 50%, #0f001a 100%)',
+      background: currentTheme.gradient,
       color: '#fff',
       position: 'relative',
       overflow: 'hidden'
     } : {}}>
-      {/* Particle Background (Dream Theme Only) */}
-      {dreamTheme && <ParticleBackground />}
+      {/* Particle Background (Dream/Daring Themes Only) */}
+      {theme !== 'classic' && <ParticleBackground colors={currentTheme.particleColors} />}
 
       {/* Trust Banner */}
-      <div className={dreamTheme ? "" : "bg-blue-600/20 border-b border-blue-500/30 backdrop-blur-sm"} style={dreamTheme ? {
-        background: 'rgba(0, 100, 200, 0.2)',
-        borderBottom: '1px solid rgba(0, 255, 255, 0.3)',
+      <div className={theme === 'classic' ? "bg-blue-600/20 border-b border-blue-500/30 backdrop-blur-sm" : ""} style={theme !== 'classic' ? {
+        background: theme === 'dream' ? 'rgba(0, 100, 200, 0.2)' : 'rgba(139, 0, 0, 0.2)',
+        borderBottom: `1px solid ${currentTheme.border}`,
         backdropFilter: 'blur(10px)',
         position: 'relative',
         zIndex: 10
@@ -1371,15 +1453,15 @@ export default function TicTacBlock() {
         {/* Theme Toggle Switch - Desktop: fixed top-right, Mobile: in banner */}
         <div className="theme-toggle-wrapper">
           <button
-            onClick={() => setDreamTheme(!dreamTheme)}
+            onClick={cycleTheme}
             className="theme-toggle-btn"
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              background: dreamTheme ? 'rgba(255, 255, 255, 0.1)' : 'rgba(59, 130, 246, 0.2)',
+              background: theme === 'classic' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255, 255, 255, 0.1)',
               backdropFilter: 'blur(10px)',
-              border: dreamTheme ? '2px solid rgba(0, 255, 255, 0.5)' : '2px solid rgba(59, 130, 246, 0.5)',
+              border: theme === 'classic' ? '2px solid rgba(59, 130, 246, 0.5)' : `2px solid ${currentTheme.border}`,
               borderRadius: '20px',
               padding: '6px 12px',
               color: '#fff',
@@ -1387,19 +1469,19 @@ export default function TicTacBlock() {
               fontSize: '12px',
               cursor: 'pointer',
               transition: 'all 0.3s ease',
-              boxShadow: dreamTheme ? '0 0 15px rgba(0, 255, 255, 0.3)' : '0 0 15px rgba(59, 130, 246, 0.3)'
+              boxShadow: theme === 'classic' ? '0 0 15px rgba(59, 130, 246, 0.3)' : `0 0 15px ${currentTheme.glow}`
             }}
             onMouseEnter={(e) => {
               e.target.style.transform = 'scale(1.05)';
-              e.target.style.boxShadow = dreamTheme ? '0 0 25px rgba(0, 255, 255, 0.5)' : '0 0 25px rgba(59, 130, 246, 0.5)';
+              e.target.style.boxShadow = theme === 'classic' ? '0 0 25px rgba(59, 130, 246, 0.5)' : `0 0 25px ${currentTheme.glow}`;
             }}
             onMouseLeave={(e) => {
               e.target.style.transform = 'scale(1)';
-              e.target.style.boxShadow = dreamTheme ? '0 0 15px rgba(0, 255, 255, 0.3)' : '0 0 15px rgba(59, 130, 246, 0.3)';
+              e.target.style.boxShadow = theme === 'classic' ? '0 0 15px rgba(59, 130, 246, 0.3)' : `0 0 15px ${currentTheme.glow}`;
             }}
           >
-            <span className="theme-toggle-icon">{dreamTheme ? '✨' : '🎮'}</span>
-            <span className="theme-toggle-text">{dreamTheme ? 'Dream' : 'Classic'}</span>
+            <span className="theme-toggle-icon">{currentTheme.icon}</span>
+            <span className="theme-toggle-text">{currentTheme.label}</span>
           </button>
         </div>
 
@@ -1438,18 +1520,18 @@ export default function TicTacBlock() {
         <div className="text-center mb-16">
           <div className="inline-block mb-6">
             <div className="relative">
-              <div className="absolute -inset-4 bg-gradient-to-r from-blue-500 via-cyan-500 to-blue-500 rounded-full blur-xl opacity-50 animate-pulse"></div>
-              <Grid className="relative text-blue-400 animate-float" size={80} />
+              <div className={`absolute -inset-4 bg-gradient-to-r ${currentTheme.heroGlow} rounded-full blur-xl opacity-50 animate-pulse`}></div>
+              <Grid className={`relative ${currentTheme.heroIcon} animate-float`} size={80} />
             </div>
           </div>
 
-          <h1 className="text-6xl md:text-7xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-cyan-400 to-blue-400">
+          <h1 className={`text-6xl md:text-7xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r ${currentTheme.heroTitle}`}>
             Eternal TicTacToe
           </h1>
-          <p className="text-2xl text-blue-200 mb-6">
-            Provably Fair • <a href="#zero-trust" className="text-blue-200 hover:text-green-300 transition-colors underline decoration-blue-400/50 hover:decoration-green-400 underline-offset-4">Zero Trust</a> • 100% On-Chain
+          <p className={`text-2xl ${currentTheme.heroText} mb-6`}>
+            Provably Fair • <a href="#zero-trust" className={`${currentTheme.heroText} hover:text-green-300 transition-colors underline decoration-${theme === 'daring' ? 'red' : 'blue'}-400/50 hover:decoration-green-400 underline-offset-4`}>Zero Trust</a> • 100% On-Chain
           </p>
-          <p className="text-lg text-blue-300 max-w-3xl mx-auto mb-8">
+          <p className={`text-lg ${currentTheme.heroSubtext} max-w-3xl mx-auto mb-8`}>
             Play Tic-Tac-Toe on Ethereum. Real opponents. Real ETH on the line.
             <br/>
             No servers. No trust.
@@ -1473,12 +1555,12 @@ export default function TicTacBlock() {
               </div>
               <p className="text-sm text-yellow-200">Low stakes, high strategy gameplay</p>
             </div>
-            <div className="bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-blue-400/30 rounded-xl p-4">
+            <div className={`bg-gradient-to-br ${currentTheme.infoCard} border ${currentTheme.infoBorder} rounded-xl p-4`}>
               <div className="flex items-center gap-2 mb-2">
-          <Zap className="text-blue-400" size={20} />
-          <span className="font-bold text-blue-300">Random First Move</span>
+          <Zap className={currentTheme.infoIcon} size={20} />
+          <span className={`font-bold ${currentTheme.infoTitle}`}>Random First Move</span>
               </div>
-              <p className="text-sm text-blue-200">On-chain coin flip decides who starts</p>
+              <p className={`text-sm ${currentTheme.infoText}`}>On-chain coin flip decides who starts</p>
             </div>
           </div>
 
@@ -1488,7 +1570,7 @@ export default function TicTacBlock() {
             <button
               onClick={connectWallet}
               disabled={loading}
-              className="inline-flex items-center gap-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 px-10 py-5 rounded-2xl font-bold text-2xl shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`inline-flex items-center gap-3 bg-gradient-to-r ${currentTheme.buttonGradient} ${currentTheme.buttonHover} px-10 py-5 rounded-2xl font-bold text-2xl shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               <Wallet size={28} />
               {loading ? 'Connecting...' : 'Connect Wallet to Enter'}
@@ -1502,16 +1584,43 @@ export default function TicTacBlock() {
 
           {/* Why Arbitrum Info - Always Visible */}
           <div className="mt-6 max-w-2xl mx-auto">
-            <div className="bg-blue-500/10 border border-blue-400/30 rounded-lg p-4">
+            <div className={`bg-${theme === 'daring' ? 'red' : 'blue'}-500/10 border ${currentTheme.infoBorder} rounded-lg p-4`}>
               <div className="flex items-start gap-3">
-          <Info size={18} className="text-blue-400 mt-0.5 flex-shrink-0" />
-          <div className="text-sm">
-            <p className="text-blue-200 font-medium mb-1">Why Arbitrum?</p>
-            <p className="text-blue-300/80 leading-relaxed">
-              This game runs on <a href="https://arbitrum.io" target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-200 hover:text-blue-100 underline decoration-blue-400/50 hover:decoration-blue-300 transition-colors">Arbitrum One</a>, an Ethereum Layer 2 network.
+          <Info size={18} className={`${currentTheme.infoIcon} mt-0.5 flex-shrink-0`} />
+          <div className="text-sm w-full">
+            <p className={`${currentTheme.heroText} font-medium mb-1`}>Why Arbitrum?</p>
+            <p className={`${currentTheme.heroSubtext}/80 leading-relaxed`}>
+              This game runs on <a href="https://arbitrum.io" target="_blank" rel="noopener noreferrer" className={`font-semibold ${currentTheme.heroText} hover:${theme === 'daring' ? 'text-red-100' : 'text-blue-100'} underline decoration-${theme === 'daring' ? 'red' : 'blue'}-400/50 hover:decoration-${theme === 'daring' ? 'orange' : 'blue'}-300 transition-colors`}>Arbitrum One</a>, an Ethereum Layer 2 network.
               If prompted, simply click to switch networks in MetaMask — it's instant, free, and uses the same ETH you already have.
-              No bridging required. <span className="text-blue-200">Lower fees, same security.</span>
+              No bridging required. <span className={currentTheme.heroText}>Lower fees, same security.</span>
             </p>
+
+            {/* Bridge Widget - Show when wallet connected */}
+            {account && (
+              <div className="mt-4 pt-4 border-t border-blue-400/20">
+                <p className={`${currentTheme.heroText} font-medium mb-3`}>First Time? Bridge 0.005 ETH to L2</p>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    step="0.0001"
+                    min="0"
+                    value={bridgeAmount}
+                    onChange={(e) => setBridgeAmount(e.target.value)}
+                    className="bg-slate-800/50 border border-blue-400/30 rounded-lg px-3 py-2 text-white text-sm w-32 focus:outline-none focus:ring-2 focus:ring-blue-400/50"
+                    placeholder="0.0025"
+                  />
+                  <span className={`${currentTheme.heroSubtext}/80 text-sm`}>ETH</span>
+                  <button
+                    onClick={openBridge}
+                    className={`ml-auto inline-flex items-center gap-2 bg-gradient-to-r ${currentTheme.buttonGradient} ${currentTheme.buttonHover} px-4 py-2 rounded-lg font-medium text-sm shadow-lg transform hover:scale-105 transition-all`}
+                  >
+                    <ExternalLink size={16} />
+                    Bridge Now
+                  </button>
+                </div>
+                <p className={`${currentTheme.heroSubtext}/60 text-xs mt-2`}>Opens official Arbitrum bridge with your desired amount</p>
+              </div>
+            )}
           </div>
               </div>
             </div>
