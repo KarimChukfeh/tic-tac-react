@@ -1594,33 +1594,6 @@ export default function TicTacBlock() {
               If prompted, simply click to switch networks in MetaMask — it's instant, free, and uses the same ETH you already have.
               No bridging required. <span className={currentTheme.heroText}>Lower fees, same security.</span>
             </p>
-
-            {/* Bridge Widget - Show when wallet connected */}
-            {account && (
-              <div className="mt-4 pt-4 border-t border-blue-400/20">
-                <p className={`${currentTheme.heroText} font-medium mb-3`}>First Time? Bridge 0.005 ETH to L2</p>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    step="0.0001"
-                    min="0"
-                    value={bridgeAmount}
-                    onChange={(e) => setBridgeAmount(e.target.value)}
-                    className="bg-slate-800/50 border border-blue-400/30 rounded-lg px-3 py-2 text-white text-sm w-32 focus:outline-none focus:ring-2 focus:ring-blue-400/50"
-                    placeholder="0.0025"
-                  />
-                  <span className={`${currentTheme.heroSubtext}/80 text-sm`}>ETH</span>
-                  <button
-                    onClick={openBridge}
-                    className={`ml-auto inline-flex items-center gap-2 bg-gradient-to-r ${currentTheme.buttonGradient} ${currentTheme.buttonHover} px-4 py-2 rounded-lg font-medium text-sm shadow-lg transform hover:scale-105 transition-all`}
-                  >
-                    <ExternalLink size={16} />
-                    Bridge Now
-                  </button>
-                </div>
-                <p className={`${currentTheme.heroSubtext}/60 text-xs mt-2`}>Opens official Arbitrum bridge with your desired amount</p>
-              </div>
-            )}
           </div>
               </div>
             </div>
