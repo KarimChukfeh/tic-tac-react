@@ -491,10 +491,10 @@ export default function Web3Manifesto() {
 
               <p className="manifesto-p">We need to stop pretending that every project deserves participation trophies for "experimenting" or "innovating." We need to establish standards and ostracize projects that violate them.</p>
 
-              <p className="manifesto-p">Not through centralized authority. Not through gatekeeping in the traditional sense. But through collective refusal to legitimize what isn't legitimate. Through building communities that recognize and support true web 3 while calling out pretenders. Through creating social and reputational consequences for projects that call themselves web 3 while embodying everything web 3 was meant to oppose.</p>
+              <p className="manifesto-p">Not through centralized authority. Not through gatekeeping in the traditional sense. But through collective refusal to legitimize what isn't legitimate. Through building communities that recognize and support true web 3 while calling out pretenders.</p>
 
               <div className="warning">
-                <p>The blockchain allows anyone to build anything. That's a feature, not a bug. But that doesn't mean we have to call everything "web 3." That doesn't mean we have to pretend every token launch is progress. That doesn't mean we have to remain neutral in the face of obvious predation.</p>
+                <p>Blockchains can be used to build anything. That's a feature, not a bug. But that doesn't mean we have to call everything "web 3." That doesn't mean we have to pretend every token launch is progress. That doesn't mean we have to remain neutral in the face of obvious predation.</p>
               </div>
             </section>
 
