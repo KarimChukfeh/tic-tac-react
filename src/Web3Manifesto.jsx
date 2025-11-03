@@ -424,7 +424,7 @@ export default function Web3Manifesto() {
 
               <h4 className="manifesto-h4">We make the rules</h4>
 
-              <p className="manifesto-p">Us. The true-believers. We set the standard and they follow.</p>
+              <p className="manifesto-p">We, the builders, set the standard.</p>
             </section>
 
             <hr className="manifesto-hr" />
