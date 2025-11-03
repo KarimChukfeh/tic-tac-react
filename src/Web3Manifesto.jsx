@@ -402,7 +402,7 @@ export default function Web3Manifesto() {
         <header className="manifesto-header">
           <div className="manifesto-container">
             <div className="year-badge">2025</div>
-            <h1 className="hero-title">Web 3.0 <br/>Does Not<br/>Exist</h1>
+            <h1 className="hero-title">Web 3 <br/>Does Not<br/>Exist</h1>
           </div>
           <div className="scroll-hint">scroll ↓</div>
         </header>
@@ -410,46 +410,40 @@ export default function Web3Manifesto() {
         <main className="manifesto-main">
           <div className="manifesto-container">
             <section className="manifesto-section">
-              <h2 className="manifesto-h2">Not yet. Not in any meaningful sense..</h2>
+              <h2 className="manifesto-h2">Not yet. Not in any meaningful sense.</h2>
 
-              <p className="manifesto-p">The words "blockchain" and "web 3" have been perverted into a marketing buzzword where projects claim to be building the future while simply replicating the predatory extraction models of Web 2.0, <strong>but with worse user experience and more financial risk.</strong></p>
+              <p className="manifesto-p">The words "blockchain" and "web 3" have been perverted into marketing buzzwords. Projects that claim to be building the future are replicating the predatory extraction models of Web 2, but with worse user experience and more financial risk.</p>
 
               <p className="manifesto-p">The technology is real. We built a lie.</p>
 
-              <h3 className="manifesto-h3">Reclaim Web 3.0</h3>
+              <h3 className="manifesto-h3">Reclaim Web 3</h3>
 
-              <p className="manifesto-p">Let's reclaim the term Web 3.0 from the scammers and the speculators. Let's even reclaim it from the well-meaning, useful and innovative blockchain projects that - in one way or another - function as an extension to Web 2.0's business model.</p>
+              <p className="manifesto-p">Let's reclaim the term Web 3 from the scammers and the speculators. Let's even reclaim it from the well-meaning, useful and innovative blockchain projects that - in one way or another - function as an extension to Web 2's business model.</p>
 
-              <p className="manifesto-p">Let's establish a clear and uncompromising standard for what deserves to be called a Web 3.0 application.</p>
+              <p className="manifesto-p">Let's establish a clear and uncompromising standard for what deserves to be called a Web 3 application.</p>
 
-              <h4 className="manifesto-h4">We make the rules</h4>
-
-              <p className="manifesto-p">We, the builders, set the standard.</p>
+              <p className="manifesto-p"><strong>We, the builders. We set the standard.</strong></p>
             </section>
 
             <hr className="manifesto-hr" />
             <section className="manifesto-section">
               <h2 className="manifesto-h2">Untold History</h2>
 
-              <p className="manifesto-p">To understand why Web 3.0 has failed, we need to understand why Web 2.0 succeeded with all its uncomfortable truths.</p>
+              <p className="manifesto-p">To understand why Web 3 has failed, we need to understand why Web 2 succeeded with all its uncomfortable truths.</p>
 
-              <p className="manifesto-p">Web 1.0 was simple. Static pages. Information published by those with technical knowledge, consumed by everyone else. It was revolutionary for access to information, but limited in interaction. The technology existed, but the business model didn't. Companies hemorrhaged money trying to figure out how to monetize eyeballs. The dot-com bubble burst because nobody could answer the fundamental question: how does this make money?</p>
+              <p className="manifesto-p">Web 1.0 was simple: static pages, limited interaction. Revolutionary for information access, but companies hemorrhaged money trying to monetize it. The dot-com bubble burst because nobody could answer: how does this make money?</p>
 
-              <p className="manifesto-p">Web 2.0 solved that problem. Not through better technology alone, but through a business model innovation that changed everything: user-generated content monetized through data harvesting and targeted advertising.</p>
+              <p className="manifesto-p">Web 2 solved that problem through a business model innovation that changed everything: user-generated content monetized through data harvesting and targeted advertising.</p>
 
-              <p className="manifesto-p">Here's what most retellings miss: web 2.0 didn't succeed because of social networks, cloud computing, or dynamic web applications. Those were the vehicles. Web 2.0 succeeded because venture capital finally found a sustainable extraction model that scaled exponentially with user growth.</p>
+              <p className="manifesto-p">Here's what most retellings miss: Web 2 didn't succeed because of better technology alone. It succeeded because venture capital finally found a sustainable extraction model that scaled exponentially with user growth.</p>
 
-              <p className="manifesto-p">The formula was elegant in its predation: Build a free platform. Attract users by letting them create and share content. Harvest their data, attention, and behavior patterns. Sell access to those users through advertising and data brokerage. Scale globally. The more users you have, the more valuable each user becomes, because network effects multiply engagement, which multiplies data, which multiplies revenue.</p>
+              <p className="manifesto-p">The formula was elegant in its predation: Build a free platform. Attract users by letting them create content. Harvest their data, attention, and behavior patterns. Sell access through advertising and data brokerage. Scale globally. The more users you have, the more valuable each user becomes.</p>
 
-              <p className="manifesto-p">Facebook, Google, YouTube, Twitter—they all won by perfecting variations of this model. They became free because we became the product. Our data, our attention, our social graphs, our behavioral patterns—all of it mined, packaged, and sold to the highest bidder.</p>
+              <p className="manifesto-p">Facebook, Google, YouTube, Twitter—they all won by perfecting variations of this model. They became free because we became the product.</p>
 
-              <p className="manifesto-p">The talent emerged. Computer science graduates flooded into tech. Frameworks matured. Cloud infrastructure became commodity. Venture capital poured billions into companies that could demonstrate user growth, even without revenue, because they understood the endgame: monopolize attention, then monetize it.</p>
+              <p className="manifesto-p">This is where we are now. Love it or hate it, Web 2 succeeded because it found a business model that scaled. The technology served that model. The user experience served that model. Everything bent toward the same gravitational center: extract maximum value from users while providing minimum friction to growth.</p>
 
-              <p className="manifesto-p">And it worked. Spectacularly. These companies are now among the most valuable in human history.</p>
-
-              <p className="manifesto-p">This is where we are now. Love it or hate it, this is the reality of web 2.0. It succeeded because it found a business model that scaled. The technology served that model. The user experience served that model. Everything bent toward the same gravitational center: extract maximum value from users while providing minimum friction to growth.</p>
-              
-              <p className="manifesto-p">So if web 3 simply replicates web 2's extraction model with blockchain sprinkled on top, then it's not web 3. It's just web 2 with extra steps and worse performance.</p>
+              <p className="manifesto-p">So if Web 3 simply replicates Web 2's extraction model with blockchain sprinkled on top, then it's not Web 3. It's just Web 2 with extra steps and worse performance.</p>
             </section>
 
             <hr className="manifesto-hr" />
@@ -457,7 +451,7 @@ export default function Web3Manifesto() {
             <section className="manifesto-section">
               <h3 className="manifesto-h3">A Desert of Mirages</h3>
 
-              <p className="manifesto-p">Look at what calls itself web 3 today. Scroll through the endless parade of new projects, platforms, and protocols. What do you see?</p>
+              <p className="manifesto-p">Look at what calls itself Web 3 today. Scroll through the endless parade of new projects, platforms, and protocols. What do you see?</p>
 
               <p className="manifesto-p">Altcoins. Thousands of them. Each promising to revolutionize something, solve some problem, create some new paradigm. Each requiring you to first buy into their token economy before you can access their "utility." Each essentially asking you to speculate on their future success as a prerequisite to using their platform.</p>
 
@@ -467,19 +461,19 @@ export default function Web3Manifesto() {
 
               <p className="manifesto-p">Launch a token. Create artificial scarcity. Build hype. Get listings on exchanges. Hope the price pumps. Exit before it dumps. Maybe there's a whitepaper. Maybe there's a vague roadmap about future utility. Maybe there's even working code. But the actual utility? Either non-existent, or so buried beneath token mechanics that it's irrelevant.</p>
 
-              <p className="manifesto-p">Even the projects built with genuine good intentions fall into this trap. They start with a real problem, a real solution, and real technical competence. Then they add a token because "that's how you do web 3." They add token staking, governance tokens, utility tokens, reward tokens—an entire parallel financial system that has nothing to do with the core functionality of their application.</p>
+              <p className="manifesto-p">Even the projects built with genuine good intentions fall into this trap. They start with a real problem, a real solution, and real technical competence. Then they add a token because "that's how you do Web 3." They add token staking, governance tokens, utility tokens, reward tokens—an entire parallel financial system that has nothing to do with the core functionality of their application.</p>
 
-              <p className="manifesto-p"><strong>15 years of this bullshit</strong></p>
+              <h4 className="manifesto-h4">15 Years of This Bullshit</h4>
 
               <p className="manifesto-p">Crypto bros already know each other, and new comers have to drink their koolaid. An insular community convinced they're building the future while the rest of the world sees them as a cult or a scam.</p>
 
               <p className="manifesto-p">This cannot scale. This will not become the foundation of a new internet. Because nobody outside the crypto echo chamber wants to navigate token economics just to use an application. Nobody wants to speculate on governance tokens just to participate in a social network. Nobody wants to calculate gas fees and slippage just to play a video game.</p>
 
-              <p className="manifesto-p">The average person hears "crypto" or "web 3" and immediately associates it with scams, speculation, and complexity. And they're not wrong.</p>
+              <p className="manifesto-p">The average person hears "crypto" or "Web 3" and immediately associates it with scams, speculation, and complexity. And they're not wrong.</p>
 
-              <h4 className="manifesto-h4">We did this to ourselves</h4>
+              <h4 className="manifesto-h4">We Did This to Ourselves</h4>
 
-              <p className="manifesto-p">We let the speculators and grifters define web 3 in the public consciousness because we failed to hold the line on what deserves that name.</p>
+              <p className="manifesto-p">We let the speculators and grifters define Web 3 in the public consciousness because we failed to hold the line on what deserves that name.</p>
 
               <p className="manifesto-p">Even our most respected figures have been too permissive. Vitalik Buterin speaks eloquently about on-chain logic and self-sustaining protocols, but stops short of condemning the altcoin proliferation that undermines everything Ethereum stands for.</p>
 
@@ -487,38 +481,36 @@ export default function Web3Manifesto() {
             </section>
 
             <section className="manifesto-section">
-              <h2 className="manifesto-h2">Stop being polite</h2>
+              <h2 className="manifesto-h2">Stop Being Polite</h2>
 
               <p className="manifesto-p">We need to stop pretending that every project deserves participation trophies for "experimenting" or "innovating." We need to establish standards and ostracize projects that violate them.</p>
 
-              <p className="manifesto-p">Not through centralized authority. Not through gatekeeping in the traditional sense. But through collective refusal to legitimize what isn't legitimate. Through building communities that recognize and support true web 3 while calling out pretenders.</p>
-
-              <div className="warning">
-                <p>Blockchains can be used to build anything. That's a feature, not a bug. But that doesn't mean we have to call everything "web 3." That doesn't mean we have to pretend every token launch is progress. That doesn't mean we have to remain neutral in the face of obvious predation.</p>
-              </div>
+              <p className="manifesto-p">Not through centralized authority. Not through gatekeeping in the traditional sense. But through collective refusal to legitimize what isn't legitimate. Through building communities that recognize and support true Web 3 while calling out pretenders.</p>
             </section>
 
             <hr className="manifesto-hr" />
 
             <section className="manifesto-section">
               <h2 className="manifesto-h2">The Five Rules</h2>
-              <p className="manifesto-p">Here are the five non-negotiable rules that define a true Web 3.0 application. These aren't suggestions or ideals. They're the minimum requirements. Fail any one of them, and you're not building web 3—you're building something else.</p>
+              <p className="manifesto-p">Blockchains can be used to build anything. That's a feature, not a bug. But that doesn't mean we have to call everything "Web 3." That doesn't mean we have to pretend every token launch is progress. That doesn't mean we have to remain neutral in the face of obvious predation.</p>
+
+              <p className="manifesto-p">There are five non-negotiable rules to Reclaim Web 3. These aren't suggestions or ideals. They're the minimum requirements. Fail any one of them, and you're not building Web 3—you're building something else.</p>
 
               <div className="rule-container">
                 <div className="rule">
-                  <div className="rule-label">Rule 01</div>
+                  <div className="rule-label">RULE 01</div>
                   <h4>Real Utility</h4>
-                  <p className="manifesto-p">It must do something people actually want or need, right now. Not once adoption grows or when "it goes to the moon".</p>
+                  <p className="manifesto-p">It must do something people actually want or need, right now. Not once adoption grows or when "it goes to the moon."</p>
                   <p className="manifesto-p">Its usefulness must be <strong>immediate</strong> and <strong>intrinsic</strong>.</p>
                 
                 </div>
 
                 <div className="rule">
-                  <div className="rule-label">Rule 02</div>
+                  <div className="rule-label">RULE 02</div>
                   <h4>Fully On-Chain</h4>
                   <p className="manifesto-p">The application logic must live entirely on the blockchain. Not partially. Not mostly. Entirely.</p>
 
-                  <p className="manifesto-p">This is where most projects fail the web 3 test. They claim decentralization while running critical infrastructure on AWS. They talk about trustlessness while requiring users to trust their backend services. They promise permanence while depending on centralized databases that could disappear tomorrow.</p>
+                  <p className="manifesto-p">This is where most projects fail the Web 3 test. They claim decentralization while running critical infrastructure on AWS. They talk about trustlessness while requiring users to trust their backend services. They promise permanence while depending on centralized databases that could disappear tomorrow.</p>
 
                   <p className="manifesto-p">Being fully on-chain is hard. It's expensive. It requires careful architectural decisions and performance optimization. But it's also the only way to deliver on Web 3's core promise:</p>
 
@@ -528,11 +520,13 @@ export default function Web3Manifesto() {
 
                   <p className="manifesto-p">Your smart contracts should be the application. Not a component of it. Not a payment rail attached to it. The actual logic, the actual data, the actual functionality—all on-chain. Everything else is just interface.</p>
 
-                  <p className="manifesto-p">If off-chain logic is involved, it must be purely cosmetic. Animations, UI flourishes, client-side optimizations, fine. But if the app breaks when those servers go down, you haven't built a web 3 app. You've built a web 2.0 app with blockchain features.</p>
+                  <p className="manifesto-p">If off-chain logic is involved, it must be purely cosmetic. Animations, UI flourishes, client-side optimizations—fine. But if the app breaks when those servers go down, you haven't built a Web 3 app. You've built a Web 2.0 app with blockchain features.</p>
+
+                  <p className="manifesto-p">Any meaningful dependency on centralized infrastructure—especially for data flow—breaks the core promise. If your app relies on centralized data providers, oracles that can be manipulated, or backends that can be shut down, then users can't rely on it being permanent and censorship-resistant. That defeats the entire point.</p>
                 </div>
 
                 <div className="rule">
-                  <div className="rule-label">Rule 03</div>
+                  <div className="rule-label">RULE 03</div>
                   <h4>Self-Sustaining Forever</h4>
                   <p className="manifesto-p">After deployment, your application must run indefinitely without intervention from its creators. If you disappeared tomorrow, if every member of your team died, the application must continue functioning.</p>
 
@@ -540,13 +534,21 @@ export default function Web3Manifesto() {
 
                   <p className="manifesto-p">No bailouts. No angel investors pumping in money when usage spikes. No creators subsidizing transaction costs out of pocket. The application must be economically self-sufficient or it's not truly decentralized.</p>
 
-                  <p className="manifesto-p">This isn't about eliminating creator rewards. Developers deserve fair compensation for building valuable tools. But that compensation must come through transparent mechanisms built into the protocol, not through ongoing dependency on the creator's continued involvement.</p>
+                  <p className="manifesto-p">Building for self-sustainability means making architectural decisions from day one:</p>
+                  <p className="manifesto-p">- Anticipate realistic usage patterns and gas price scenarios<br />
+                  - Factor in maximum storage constraints<br />
+                  - Plan for growth within those constraints<br />
+                  - Accept that hitting limits means deploying a new, improved version. Not relying on external bailouts</p>
 
-                  <p className="manifesto-p">A true web 3 app is like a successful organism: once it exists, it sustains itself through its interactions with its environment. It doesn't need its creator to survive any more than you need your parents to breathe.</p>
+                  <p className="manifesto-p">You can't guarantee an app will run literally forever—that's impossible. But you must build with that goal in mind. Think through the economics. Model the edge cases. Design for sustainability at scale. If your app grows to its limits, that's a scaling challenge for the next iteration, not a reason to abandon the principle.</p>
+
+                  <p className="manifesto-p">The immutability of smart contracts is a feature, not a bug. It forces better upfront design and creates a kind of natural selection where improved versions can be deployed while the original continues running. No rug pulls, no forced migrations.</p>
+
+                  <p className="manifesto-p">A true Web 3 app is like a successful organism: once it exists, it sustains itself through its interactions with its environment. It doesn't need its creator to survive any more than you need your parents to breathe.</p>
                 </div>
 
                 <div className="rule">
-                  <div className="rule-label">Rule 04</div>
+                  <div className="rule-label">RULE 04</div>
                   <h4>Fair and Equitable</h4>
                   <p className="manifesto-p">Every economic decision your application makes must be transparent and verifiable on-chain. The code must clearly show where value flows, who gets paid what, and under what conditions.</p>
 
@@ -560,17 +562,28 @@ export default function Web3Manifesto() {
                 </div>
 
                 <div className="rule">
-                  <div className="rule-label">Rule 05</div>
+                  <div className="rule-label">RULE 05</div>
                   <h4>No Altcoins</h4>
-                  <p className="manifesto-p">If your application requires users to acquire some new token nobody has heard of, <strong>you've already failed web 3.</strong></p>
+                  <p className="manifesto-p">If your application requires users to acquire some new token nobody has heard of, then you've failed Web 3.</p>
 
                   <p className="manifesto-p">Use Ethereum. Use Bitcoin. Use established currencies that regular people actually recognize and understand.</p>
 
-                  <p className="manifesto-p">My sister knows nothing about crypto, but when she hears "you can win Ethereum playing chess" then she immediately grasps the value proposition. That's when you've achieved mainstream clarity.</p>
+                  <p className="manifesto-p">My sister knows nothing about crypto, but when she hears "you can win Ethereum playing chess" she immediately grasps the value proposition.</p>
 
                   <p className="manifesto-p">Altcoins are a friction point at best, and a scam at worst.</p>
 
                   <p className="manifesto-p">Every new token is an education burden. Every custom currency is a reason for normal people to dismiss your project as a scam. Because here's the uncomfortable truth: most altcoins <em className="manifesto-em">are</em> scams, or at minimum, unnecessary complications serving only to enrich founders.</p>
+
+                  <p className="manifesto-p">The principle is simple: User-facing value must flow in established currencies. What goes in and what comes out should be ETH, BTC, or other widely recognized currencies. This is what the masses interact with. This is what provides immediate, understandable utility.</p>
+
+                  <p className="manifesto-p">Now, governance tokens and protocol-level tokens can exist as infrastructure. They serve technical purposes—voting on protocol changes, coordinating decentralized decision-making, incentivizing specific behaviors within the protocol layer. But these are not the application itself. They're not Web 3 apps. They're infrastructure tools that sophisticated users might interact with, but they're not the highlight of your platform and they're not what gates access to utility.</p>
+
+                  <p className="manifesto-p">The distinction matters:<br />
+                  - ✅ A chess platform where users wager ETH and winners receive ETH = Web 3<br />
+                  - ✅ That same platform having a governance token for protocol decisions = fine, but the governance token isn't "Web 3"<br />
+                  - ❌ A platform requiring users to buy $CHESS tokens to play = Not Web 3</p>
+
+                  <p className="manifesto-p">Don't make regular people navigate token economics just to access utility. The average user interacts with the application layer using real currency. Only those who want to participate in governance need to deal with specialized tokens.</p>
 
                   <p className="manifesto-p">The Web 3 ecosystem doesn't need ten thousand currencies. It needs applications with real utility running on established networks. Ethereum is silver to Bitcoin's gold in the public consciousness. That's enough. Build on that foundation.</p>
 
@@ -585,12 +598,12 @@ export default function Web3Manifesto() {
               <h2 className="manifesto-h2">We Got This</h2>
 
               <blockquote className="manifesto-blockquote">
-                This sounds impossible. How can anyone build something useful, sustainable, fair, transparent, AND without a custom token?
+                This sounds impossible. How can anyone build something useful, sustainable, fair, transparent, AND without forcing users into token speculation?
               </blockquote>
 
               <p className="manifesto-p">These five rules are not aspirational. They're achievable right now with current technology. They're not theoretical ideals. They're practical standards we can implement today.</p>
 
-              <p className="manifesto-p">You just need to understand what Web3 is actually good at and build within those constraints instead of fighting them.</p>
+              <p className="manifesto-p">You just need to understand what Web 3 is actually good at and build within those constraints instead of fighting them.</p>
 
               <p className="manifesto-p">Here's some examples that follow all five rules. Anyone can build these. I'm not gatekeeping the ideas, I'm giving them away:</p>
 
@@ -598,16 +611,16 @@ export default function Web3Manifesto() {
                 <h3>Example 1 - Lottery</h3>
                 <p className="manifesto-p">A fully on-chain lottery that runs forever on an Ethereum Layer 2 network. Players buy tickets with ETH.</p>
 
-                <p className="manifesto-p">When a round ends, the contract automatically selects a winner based on fair odds by number of tickets bought per wallet, then selects a random winner and gives them 95% of the ETH. The remaining 5% is kept for sustainability to cover gas costs for the next round, and immediately starts a new round.</p>
+                <p className="manifesto-p">When the round ends, the contract automatically selects a winner based on fair odds by number of tickets bought per wallet, awards them 95% of the pot, keeps 5% to cover the next round's gas, and immediately starts fresh.</p>
 
-                <p className="manifesto-p">Each lottery round would have a fixed number of max participants, and the round automatically ends if that number is reached to ensure that the 5% of the pot covers the network fee to run the <code>pickRandomWinner</code>. I.e a billion wallets in a raffle would be impossible today, because the pot itself is probably not enough to cover the gas to run contract logic at that point. But 100,000 players per round? Absolutely doable.</p>
+                <p className="manifesto-p">Each round caps at a fixed number of participants—say 100,000 wallets—to ensure the 5% reserved from the pot will cover the gas to run <code>pickRandomWinner()</code>. Could a billion wallets participate? Not today. The pot wouldn't cover the gas. But 100,000 per round? Absolutely sustainable.</p>
 
-                <p className="manifesto-p">No operators. No off-chain randomness. No custom token. Pure utility, pure transparency.</p>
+                <p className="manifesto-p">No operators. No off-chain randomness. No altcoins. Just working code and ETH.</p>
               </div>
 
               <div className="example-card">
                 <h3>Example 2 - Chess</h3>
-                <p className="manifesto-p">The developer fronts the storage cost once, hardcoding the maximum number of possible concurrent games. Say up to 10 million concurrent matches, but not anymore.</p>
+                <p className="manifesto-p">The developer fronts the storage cost once, hardcoding the maximum number of possible concurrent games. Say up to 1 million concurrent matches, but not anymore.</p>
 
                 <p className="manifesto-p">After that, the contract runs itself: players pay a small entry fee, matches resolve on-chain, winners advance through brackets, and prizes distribute automatically.</p>
 
@@ -615,30 +628,42 @@ export default function Web3Manifesto() {
               </div>
 
               <div className="callout">
-                <p><strong>These aren't hypotheticals. They're blueprints.</strong></p>
+                <p><strong>These Aren't Hypotheticals. They're Blueprints.</strong></p>
               </div>
 
               <p className="manifesto-p">Each one delivers real utility, lives entirely on-chain, sustains its own economics, distributes rewards fairly, and uses only ETH.</p>
             </section>
 
             <section className="manifesto-section final-cta">
-              <div className="proof-badge">And Here's the Proof</div>
+              <div className="proof-badge">And Here's The Proof</div>
 
               <h2>The Eternal Tic Tac Toe Protocol</h2>
 
-              <p className="manifesto-p">I built one of these to test the theory: The Eternal Tic Tac Toe Protocol.</p>
+              <p className="manifesto-p">I built one of these to test the theory: <strong>The Eternal Tic Tac Toe Protocol.</strong></p>
 
-              <p className="manifesto-p">It's a tournament-based Tic Tac Toe system with full bracket management from start to finish. Every move, every match, every payout—fully on-chain. Fully traceable. No backend servers. No admin privileges. No token. Just ETH, smart contracts, and gameplay that proves these five rules aren't aspirational—they're functional.</p>
+              <p className="manifesto-p">Full tournament brackets. Every move on-chain. Every payout automatic. No backend. No admin privileges. No altcoins. Just ETH, smart contracts, and gameplay that proves these five rules aren't aspirational—they're functional.</p>
 
-              <p className="manifesto-p">This isn't a prototype waiting for funding. It's not a demo hoping for adoption. It's live, it works, and it checks all the boxes.</p>
+              <p className="manifesto-p">The tools exist. The infrastructure is ready. We just need to build.</p>
+            </section>
 
-              <p className="manifesto-p">The tools exist. The infrastructure is ready.</p>
-              <p className="manifesto-p">We just need to build.</p>
+            <hr className="manifesto-hr" />
+
+            <section className="manifesto-section">
+              <h3 className="manifesto-h3">Start Small, Hold Standards</h3>
+
+              <p className="manifesto-p">This isn't about building the next $10B protocol. Start small:</p>
+
+              <p className="manifesto-p"><strong>1. Prove the model works.</strong> Build something simple that checks all five boxes. A lottery. A chess tournament. A prediction market. Whatever you can deploy and sustain without external funding.</p>
+
+              <p className="manifesto-p"><strong>2. Build familiarity.</strong> The more applications that follow these rules exist, the more normal it becomes to expect them. Users will start asking "Is this actually on-chain?" and "Do I need to buy a token to use this?" If enough real Web 3 apps exist, the fakes become easier to spot.</p>
+
+              <p className="manifesto-p"><strong>3. Create competitive pressure.</strong> Once a truly decentralized chess platform exists, every centralized competitor has to justify why users should trust them instead. Why should I use your custodial poker site when I can play on-chain with guaranteed payouts?</p>
+
+              <p className="manifesto-p"><strong>4. Force innovation within constraints.</strong> The best solutions emerge from constraints, not infinite resources. Build what's possible today. When you hit limits, deploy an improved version. That's how the ecosystem matures—not through speculative promises, but through iterative, functional progress.</p>
             </section>
 
             <footer className="manifesto-footer">
-              <p>This manifesto is yours to share, fork, and improve.<br />
-              The only thing we ask is that you hold the line.</p>
+              <p>This manifesto is yours to share, fork, and improve.</p>
             </footer>
           </div>
         </main>
