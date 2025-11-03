@@ -412,9 +412,9 @@ export default function Web3Manifesto() {
             <section className="manifesto-section">
               <h2 className="manifesto-h2">Not yet. Not in any meaningful sense..</h2>
 
-              <p className="manifesto-p">What exists is genuine technological innovation suffocating beneath mountains of speculative garbage. The words "blockchain" and "web 3" have been perverted into a marketing buzzword where projects claim to be building the future while simply replicating the predatory extraction models of Web 2.0, <strong>but with worse user experience and more financial risk.</strong></p>
+              <p className="manifesto-p">The words "blockchain" and "web 3" have been perverted into a marketing buzzword where projects claim to be building the future while simply replicating the predatory extraction models of Web 2.0, <strong>but with worse user experience and more financial risk.</strong></p>
 
-              <p className="manifesto-p">The technology is real. We build a lie.</p>
+              <p className="manifesto-p">The technology is real. We built a lie.</p>
 
               <h3 className="manifesto-h3">Reclaim Web 3.0</h3>
 
