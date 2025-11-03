@@ -508,8 +508,8 @@ export default function Web3Manifesto() {
                 <div className="rule">
                   <div className="rule-label">Rule 01</div>
                   <h4>Real Utility</h4>
-                  <p className="manifesto-p">It must do something people actually want or need—right now. Not "once adoption grows." Not "after token value increases.".</p>
-                  <p className="manifesto-p">Its usefulness must be immediate and intrinsic.</p>
+                  <p className="manifesto-p">It must do something people actually want or need, right now. Not once adoption grows or when "it goes to the moon".</p>
+                  <p className="manifesto-p">Its usefulness must be <strong>immediate</strong> and <strong>intrinsic</strong>.</p>
                 
                 </div>
 
