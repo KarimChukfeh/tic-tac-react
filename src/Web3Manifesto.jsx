@@ -673,7 +673,7 @@ export default function Web3Manifesto() {
 
               <p className="manifesto-p">We know what blockchain and decentralization are good at doing today. Work within that. Build for real utility within real constraints. Hold the line on standards.</p>
 
-              <p className="manifesto-p">Then future becomes possible.</p>
+              <p className="manifesto-p">Then the future becomes possible.</p>
             </section>
 
             <footer className="manifesto-footer">
