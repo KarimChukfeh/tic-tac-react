@@ -595,7 +595,7 @@ export default function Web3Manifesto() {
             <hr className="manifesto-hr" />
 
             <section className="manifesto-section">
-              <h2 className="manifesto-h2">We Got This</h2>
+              <h2 className="manifesto-h2">The Time Has Come</h2>
 
               <blockquote className="manifesto-blockquote">
                 This sounds impossible. How can anyone build something useful, sustainable, fair, transparent, AND without forcing users into token speculation?
@@ -644,14 +644,13 @@ export default function Web3Manifesto() {
               <p className="manifesto-p">It's a tournament-based Tic Tac Toe system with full bracket management from start to finish. Every move, every match, every payout—fully on-chain. Fully traceable. No backend servers. No admin privileges. No token. Just ETH, smart contracts, and gameplay that proves these five rules aren't aspirational—they're functional.</p>
 
               <p className="manifesto-p">This isn't a prototype waiting for funding. It's not a demo hoping for adoption. It's live, it works, and it checks all the boxes.</p>
-
-              <p className="manifesto-p">The infrastructure is ready.</p>
             </section>
 
             <hr className="manifesto-hr" />
 
             <section className="manifesto-section">
-              <h3 className="manifesto-h3">Start Small, Hold Standards</h3>
+              <h3 className="manifesto-h2">The infrastructure is ready</h3>
+              <h2 className="manifesto-h3">Start small. Uphold the standard.</h2>
 
               <p className="manifesto-p">Nobody is claiming to have figured out how to build a fully decentralized social network or a 100% on-chain MMORPG. That's probably not feasible for a Web 3 app in 2025.</p>
 
