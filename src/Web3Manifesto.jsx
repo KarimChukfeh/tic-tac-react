@@ -639,11 +639,13 @@ export default function Web3Manifesto() {
 
               <h2>The Eternal Tic Tac Toe Protocol</h2>
 
-              <p className="manifesto-p">I built one of these to test the theory: <strong>The Eternal Tic Tac Toe Protocol.</strong></p>
+              <p className="manifesto-p">I built one of these to test the theory: The Eternal Tic Tac Toe Protocol.</p>
 
-              <p className="manifesto-p">Full tournament brackets. Every move on-chain. Every payout automatic. No backend. No admin privileges. No altcoins. Just ETH, smart contracts, and gameplay that proves these five rules aren't aspirational—they're functional.</p>
+              <p className="manifesto-p">It's a tournament-based Tic Tac Toe system with full bracket management from start to finish. Every move, every match, every payout—fully on-chain. Fully traceable. No backend servers. No admin privileges. No token. Just ETH, smart contracts, and gameplay that proves these five rules aren't aspirational—they're functional.</p>
 
-              <p className="manifesto-p">The tools exist. The infrastructure is ready. We just need to build.</p>
+              <p className="manifesto-p">This isn't a prototype waiting for funding. It's not a demo hoping for adoption. It's live, it works, and it checks all the boxes.</p>
+
+              <p className="manifesto-p">The infrastructure is ready.</p>
             </section>
 
             <hr className="manifesto-hr" />
@@ -651,15 +653,27 @@ export default function Web3Manifesto() {
             <section className="manifesto-section">
               <h3 className="manifesto-h3">Start Small, Hold Standards</h3>
 
-              <p className="manifesto-p">This isn't about building the next $10B protocol. Start small:</p>
+              <p className="manifesto-p">Nobody is claiming to have figured out how to build a fully decentralized social network or a 100% on-chain MMORPG. That's probably not feasible for a Web 3 app in 2025.</p>
 
-              <p className="manifesto-p"><strong>1. Prove the model works.</strong> Build something simple that checks all five boxes. A lottery. A chess tournament. A prediction market. Whatever you can deploy and sustain without external funding.</p>
+              <p className="manifesto-p">But here's the critical insight: unless we hold these principles now and start with what is actually doable, we'll never graduate to building the complex applications.</p>
 
-              <p className="manifesto-p"><strong>2. Build familiarity.</strong> The more applications that follow these rules exist, the more normal it becomes to expect them. Users will start asking "Is this actually on-chain?" and "Do I need to buy a token to use this?" If enough real Web 3 apps exist, the fakes become easier to spot.</p>
+              <p className="manifesto-p">By starting with simple, fully decentralized applications—games, lotteries, basic protocols—that work within current constraints, we:</p>
 
-              <p className="manifesto-p"><strong>3. Create competitive pressure.</strong> Once a truly decentralized chess platform exists, every centralized competitor has to justify why users should trust them instead. Why should I use your custodial poker site when I can play on-chain with guaranteed payouts?</p>
+              <p className="manifesto-p"><strong>1. Prove the model works</strong> - showing that real utility can be delivered without compromises</p>
 
-              <p className="manifesto-p"><strong>4. Force innovation within constraints.</strong> The best solutions emerge from constraints, not infinite resources. Build what's possible today. When you hit limits, deploy an improved version. That's how the ecosystem matures—not through speculative promises, but through iterative, functional progress.</p>
+              <p className="manifesto-p"><strong>2. Build user familiarity</strong> - getting people comfortable with truly decentralized apps</p>
+
+              <p className="manifesto-p"><strong>3. Create economic incentives</strong> - demonstrating that sustainable, fair models can work</p>
+
+              <p className="manifesto-p"><strong>4. Force innovation on real problems</strong> - if off-chain storage is "acceptable," nobody will solve on-chain storage at scale</p>
+
+              <p className="manifesto-p">This is the only path to Reclaim Web 3. Master the fundamentals. Establish the principles. Build toward complexity as the technology matures.</p>
+
+              <p className="manifesto-p">The storage problem will eventually be solved. Fully on-chain social networks will become possible. But they won't happen if we compromise on the principles now. Innovation happens when constraints force creativity, not when shortcuts are acceptable.</p>
+
+              <p className="manifesto-p">We know what blockchain and decentralization are good at doing today. Work within that. Build for real utility within real constraints. Hold the line on standards.</p>
+
+              <p className="manifesto-p">Then future applications may become possible.</p>
             </section>
 
             <footer className="manifesto-footer">
