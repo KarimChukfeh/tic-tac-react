@@ -569,17 +569,17 @@ export default function Web3Manifesto() {
         .toc-button {
           display: inline-flex;
           align-items: center;
-          gap: 0.5rem;
-          padding: 0.75rem 1.5rem;
+          gap: 0.4rem;
+          padding: 0.5rem 1rem;
           background: rgba(0, 255, 204, 0.1);
           border: 2px solid #00ffcc;
-          border-radius: 8px;
+          border-radius: 6px;
           color: #00ffcc;
           font-family: 'JetBrains Mono', monospace;
-          font-size: 0.9rem;
+          font-size: 0.75rem;
           font-weight: 600;
           text-transform: uppercase;
-          letter-spacing: 0.1em;
+          letter-spacing: 0.08em;
           cursor: pointer;
           transition: all 0.3s ease;
         }
@@ -691,7 +691,7 @@ export default function Web3Manifesto() {
 
             <div className="toc-container">
               <button className="toc-button" onClick={() => setShowTOC(!showTOC)}>
-                <span>The Mission</span>
+                <span>The Path Forward</span>
                 <span className={`toc-icon ${showTOC ? 'open' : ''}`}>▼</span>
               </button>
 
@@ -730,10 +730,10 @@ export default function Web3Manifesto() {
                       <a className="toc-link" onClick={() => scrollToSection('rule-05')}>Rule 05: No Altcoins</a>
                     </li>
                     <li className="toc-item">
-                      <a className="toc-link" onClick={() => scrollToSection('time-come')}>The Time Has Come</a>
+                      <a className="toc-link" onClick={() => scrollToSection('time-come')}>Our Time Has Come</a>
                     </li>
                     <li className="toc-item">
-                      <a className="toc-link" onClick={() => scrollToSection('infrastructure-ready')}>The Infrastructure is Ready</a>
+                      <a className="toc-link" onClick={() => scrollToSection('proof')}>The Proof In The Pudding</a>
                     </li>
                   </ul>
                 </div>
@@ -934,7 +934,7 @@ export default function Web3Manifesto() {
             <hr className="manifesto-hr" />
 
             <section id="time-come" className="manifesto-section">
-              <h2 className="manifesto-h2">The Time Has Come</h2>
+              <h2 className="manifesto-h2">Our Time Has Come</h2>
 
               <blockquote className="manifesto-blockquote">
                 This sounds impossible. How can anyone build something useful, sustainable, fair, transparent, AND without forcing users into token speculation?
@@ -971,11 +971,7 @@ export default function Web3Manifesto() {
               </div>
 
               <p className="manifesto-p">Each one delivers real utility, lives entirely on-chain, sustains its own economics, distributes rewards fairly, and uses only ETH.</p>
-            </section>
 
-
-            <section id="infrastructure-ready" className="manifesto-section">
-              <h3 className="manifesto-h2">The infrastructure is ready</h3>
               <h2 className="manifesto-h3">Start small. Uphold the standard.</h2>
 
               <p className="manifesto-p">Nobody is claiming to have figured out how to build a fully decentralized social network or a 100% on-chain MMORPG. That's probably not feasible for a Web 3 app in 2025.</p>
@@ -1003,7 +999,7 @@ export default function Web3Manifesto() {
               <p className="manifesto-p">Then the future becomes possible.</p>
             </section>
             
-            <section className="manifesto-section final-cta">
+            <section id="proof" className="manifesto-section final-cta">
               <div className="proof-badge">And Here's The Proof</div>
 
               <h2>This manifesto practices what it preaches.</h2>
