@@ -708,7 +708,6 @@ export default function Web3Manifesto() {
 
               {showTOC && (
                 <div className="toc-dropdown">
-                  <div className="toc-title">Jump to Section</div>
                   <ul className="toc-list">
                     <li className="toc-item">
                       <a className="toc-link" onClick={() => scrollToSection('reclaim-web3')}>Reclaim Web 3</a>
