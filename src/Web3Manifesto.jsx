@@ -675,6 +675,17 @@ export default function Web3Manifesto() {
         }
 
         @media (max-width: 768px) {
+          .toc-button {
+            padding: 0.35rem 0.7rem;
+            font-size: 0.65rem;
+            gap: 0.3rem;
+            border-radius: 4px;
+          }
+
+          .toc-icon {
+            font-size: 0.9rem;
+          }
+
           .toc-dropdown {
             left: 0;
             right: 0;
