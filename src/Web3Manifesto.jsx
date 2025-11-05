@@ -691,6 +691,14 @@ export default function Web3Manifesto() {
             right: 0;
             min-width: auto;
           }
+
+          .toc-link {
+            font-size: 0.825rem;
+          }
+
+          .toc-sub-item .toc-link {
+            font-size: 0.725rem;
+          }
         }
       `}</style>
 
