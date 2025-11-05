@@ -544,7 +544,7 @@ export default function Web3Manifesto() {
 
                   <p className="manifesto-p">The immutability of smart contracts is a feature, not a bug. It forces better upfront design and creates a kind of natural selection where improved versions can be deployed while the original continues running. No rug pulls, no forced migrations.</p>
 
-                  <p className="manifesto-p">A true Web 3 app is like a successful organism: once it exists, it sustains itself through its interactions with its environment. It doesn't need its creator to survive any more than you need your parents to breathe.</p>
+                  <p className="manifesto-p"><storng>A true Web 3 app is like a successful organism: once it exists, it sustains itself through its interactions with its environment. It doesn't need its creator to survive any more than you need your parents to breathe.</storng></p>
                 </div>
 
                 <div className="rule">
@@ -552,14 +552,14 @@ export default function Web3Manifesto() {
                   <h4>Fair and Equitable</h4>
                   <p className="manifesto-p">Every economic decision your application makes must be transparent and verifiable on-chain. The code must clearly show where value flows, who gets paid what, and under what conditions.</p>
 
-                  <p className="manifesto-p">If you're taking a cut, it must be visible in the contract. If there are privileged addresses or special permissions, they must be documented and justified. <strong>If your 'tokenomics' create advantages for insiders or early adopters beyond reasonable founder compensation, that's a problem.</strong></p>
+                  <p className="manifesto-p">If you're taking a cut, it must be visible in the contract. If there are privileged addresses or special permissions, they must be documented and justified. If your 'tokenomics' create advantages for insiders or early adopters beyond reasonable founder compensation, that's a problem.</p>
 
                   <p className="manifesto-p">Fairness doesn't mean equal outcomes. A chess platform where players wager ETH can fairly pay winners while taking a small fee for the protocol. That's transparent and voluntary. But a platform that gives founders secret admin keys to mint tokens or alter contracts? That's not fair. That's a rug pull waiting to happen.</p>
 
                   <p className="manifesto-p">The community gets to judge what's reasonable. If your contract shows the creator taking 3% of every transaction while 97% goes to users, most people will find that acceptable. If you're taking 30%? Better have a compelling justification. If you have backdoors that let you change the terms later? Nobody should touch your platform.</p>
 
                   <p className="manifesto-p">Fairness is enforced through transparency and social consensus, not centralized regulation.</p>
-                  <p className="manifesto-p">Build useful & fair systems and the community will support them. Build exploitative systems and you'll be correctly identified as a predator.</p>
+                  <p className="manifesto-p"><strong>Build useful & fair systems and the community will support them. Build exploitative systems and you'll be correctly identified as a predator.</strong></p>
                 </div>
 
                 <div className="rule">
@@ -629,7 +629,7 @@ export default function Web3Manifesto() {
               </div>
 
               <div className="callout">
-                <p><strong>These Aren't Hypotheticals. They're Blueprints.</strong></p>
+                <p><strong>These aren't hypotheticals. They're blueprints.</strong></p>
               </div>
 
               <p className="manifesto-p">Each one delivers real utility, lives entirely on-chain, sustains its own economics, distributes rewards fairly, and uses only ETH.</p>
