@@ -414,7 +414,7 @@ export default function Web3Manifesto() {
 
               <p className="manifesto-p">The words "blockchain" and "web 3" have been perverted into marketing buzzwords. Projects that claim to be building the future are replicating the predatory extraction models of Web 2, but with worse user experience and more financial risk.</p>
 
-              <p className="manifesto-p">The technology is real. We built a lie.</p>
+              <p className="manifesto-p">The technology is real. We built an abomination.</p>
 
               <h3 className="manifesto-h3">Reclaim Web 3</h3>
 
