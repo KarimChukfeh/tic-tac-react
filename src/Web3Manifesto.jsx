@@ -544,7 +544,9 @@ export default function Web3Manifesto() {
 
                   <p className="manifesto-p">The immutability of smart contracts is a feature, not a bug. It forces better upfront design and creates a kind of natural selection where improved versions can be deployed while the original continues running. No rug pulls, no forced migrations.</p>
 
-                  <p className="manifesto-p"><storng>A true Web 3 app is like a successful organism: once it exists, it sustains itself through its interactions with its environment. It doesn't need its creator to survive any more than you need your parents to breathe.</storng></p>
+                   <p className="manifesto-p">A true Web 3 app is like a successful organism: once it exists, it sustains itself through its interactions with its environment.</p>
+
+                  <p className="manifesto-p"><storng>It doesn't need its creator to survive any more than you need your parents to breathe.</storng></p>
                 </div>
 
                 <div className="rule">
