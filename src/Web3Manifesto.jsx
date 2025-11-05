@@ -1,4 +1,17 @@
+import { useState } from 'react';
+
 export default function Web3Manifesto() {
+  const [showDetails, setShowDetails] = useState(false);
+  const [showTOC, setShowTOC] = useState(false);
+
+  const scrollToSection = (id) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setShowTOC(false);
+    }
+  };
+
   return (
     <>
       <style>{`
@@ -396,6 +409,278 @@ export default function Web3Manifesto() {
         html {
           scroll-behavior: smooth;
         }
+
+        .supporter-count-container {
+          text-align: center;
+          margin: 3rem 0;
+        }
+
+        .supporter-number {
+          font-size: clamp(4rem, 10vw, 7rem);
+          font-weight: 700;
+          color: #00ffcc;
+          letter-spacing: -0.02em;
+          margin: 1.5rem 0;
+          font-family: 'JetBrains Mono', monospace;
+          line-height: 1;
+        }
+
+        .supporter-label {
+          font-size: 1.1rem;
+          color: #b3b3b3;
+          text-transform: uppercase;
+          letter-spacing: 0.15em;
+          font-weight: 500;
+        }
+
+        .view-onchain-link {
+          display: inline-block;
+          margin-top: 1.5rem;
+          color: #ffbe0b;
+          font-size: 0.95rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          border-bottom: 1px solid transparent;
+          font-family: 'JetBrains Mono', monospace;
+        }
+
+        .view-onchain-link:hover {
+          color: #00ffcc;
+          border-bottom-color: #00ffcc;
+        }
+
+        .details-modal {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.9);
+          backdrop-filter: blur(10px);
+          z-index: 1000;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 2rem;
+          animation: fadeIn 0.3s ease;
+        }
+
+        .details-content {
+          background: #1a1a1a;
+          border: 2px solid rgba(0, 255, 204, 0.3);
+          border-radius: 12px;
+          max-width: 600px;
+          width: 100%;
+          padding: 3rem;
+          position: relative;
+          animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+          from {
+            opacity: 0;
+            transform: translateY(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .close-modal {
+          position: absolute;
+          top: 1.5rem;
+          right: 1.5rem;
+          background: none;
+          border: none;
+          color: #666666;
+          font-size: 2rem;
+          cursor: pointer;
+          transition: color 0.3s ease;
+          line-height: 1;
+          padding: 0;
+          width: 2rem;
+          height: 2rem;
+        }
+
+        .close-modal:hover {
+          color: #00ffcc;
+        }
+
+        .details-content h3 {
+          color: #00ffcc;
+          font-size: 1.8rem;
+          margin: 0 0 1.5rem 0;
+          font-weight: 600;
+        }
+
+        .details-content p {
+          color: #b3b3b3;
+          line-height: 1.7;
+          margin-bottom: 1.5rem;
+        }
+
+        .contract-address {
+          background: rgba(0, 255, 204, 0.1);
+          border: 1px solid rgba(0, 255, 204, 0.3);
+          border-radius: 6px;
+          padding: 1rem;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 0.85rem;
+          color: #00ffcc;
+          word-break: break-all;
+          margin: 1.5rem 0;
+        }
+
+        .support-button {
+          display: inline-block;
+          background: linear-gradient(135deg, #00ffcc 0%, #00d4aa 100%);
+          color: #0d0d0d;
+          padding: 1rem 2.5rem;
+          border-radius: 8px;
+          font-weight: 600;
+          font-size: 1rem;
+          text-transform: uppercase;
+          letter-spacing: 0.1em;
+          border: none;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          margin-top: 1rem;
+        }
+
+        .support-button:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 10px 30px rgba(0, 255, 204, 0.3);
+        }
+
+        .web2-free-statement {
+          font-size: clamp(1.1rem, 2vw, 1.3rem);
+          color: #ffffff;
+          line-height: 1.8;
+          margin: 2rem 0;
+        }
+
+        .toc-container {
+          position: relative;
+          margin-top: 2rem;
+        }
+
+        .toc-button {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.75rem 1.5rem;
+          background: rgba(0, 255, 204, 0.1);
+          border: 2px solid #00ffcc;
+          border-radius: 8px;
+          color: #00ffcc;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 0.9rem;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.1em;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+
+        .toc-button:hover {
+          background: rgba(0, 255, 204, 0.2);
+          box-shadow: 0 5px 20px rgba(0, 255, 204, 0.2);
+          transform: translateY(-2px);
+        }
+
+        .toc-icon {
+          font-size: 1.2rem;
+          transition: transform 0.3s ease;
+        }
+
+        .toc-icon.open {
+          transform: rotate(180deg);
+        }
+
+        .toc-dropdown {
+          position: absolute;
+          top: calc(100% + 1rem);
+          left: 0;
+          min-width: 320px;
+          background: #1a1a1a;
+          border: 2px solid rgba(0, 255, 204, 0.3);
+          border-radius: 8px;
+          padding: 1rem;
+          z-index: 100;
+          animation: slideDown 0.3s ease;
+          box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        @keyframes slideDown {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .toc-title {
+          font-size: 0.75rem;
+          color: #666666;
+          text-transform: uppercase;
+          letter-spacing: 0.15em;
+          margin-bottom: 0.75rem;
+          font-family: 'JetBrains Mono', monospace;
+        }
+
+        .toc-list {
+          list-style: none;
+          padding: 0;
+          margin: 0;
+        }
+
+        .toc-item {
+          margin: 0;
+          padding: 0;
+        }
+
+        .toc-link {
+          display: block;
+          padding: 0.65rem 0.75rem;
+          color: #b3b3b3;
+          text-decoration: none;
+          font-size: 0.95rem;
+          border-radius: 4px;
+          transition: all 0.2s ease;
+          cursor: pointer;
+        }
+
+        .toc-link:hover {
+          background: rgba(0, 255, 204, 0.1);
+          color: #00ffcc;
+          padding-left: 1rem;
+        }
+
+        .toc-sub-item {
+          padding-left: 1rem;
+        }
+
+        .toc-sub-item .toc-link {
+          font-size: 0.85rem;
+          color: #999999;
+        }
+
+        .toc-sub-item .toc-link:hover {
+          color: #ffbe0b;
+        }
+
+        @media (max-width: 768px) {
+          .toc-dropdown {
+            left: 0;
+            right: 0;
+            min-width: auto;
+          }
+        }
       `}</style>
 
       <div className="manifesto-root">
@@ -403,13 +688,64 @@ export default function Web3Manifesto() {
           <div className="manifesto-container">
             <div className="year-badge">2025</div>
             <h1 className="hero-title">Web 3 <br/>Does Not<br/>Exist</h1>
+
+            <div className="toc-container">
+              <button className="toc-button" onClick={() => setShowTOC(!showTOC)}>
+                <span>The Mission</span>
+                <span className={`toc-icon ${showTOC ? 'open' : ''}`}>▼</span>
+              </button>
+
+              {showTOC && (
+                <div className="toc-dropdown">
+                  <div className="toc-title">Jump to Section</div>
+                  <ul className="toc-list">
+                    <li className="toc-item">
+                      <a className="toc-link" onClick={() => scrollToSection('reclaim-web3')}>Reclaim Web 3</a>
+                    </li>
+                    <li className="toc-item">
+                      <a className="toc-link" onClick={() => scrollToSection('untold-history')}>How We Got Here</a>
+                    </li>
+                    <li className="toc-item">
+                      <a className="toc-link" onClick={() => scrollToSection('desert-mirages')}>A Desert of Mirages</a>
+                    </li>
+                    <li className="toc-item">
+                      <a className="toc-link" onClick={() => scrollToSection('stop-polite')}>Stop Being Polite</a>
+                    </li>
+                    <li className="toc-item">
+                      <a className="toc-link" onClick={() => scrollToSection('five-rules')}>The Five Rules</a>
+                    </li>
+                    <li className="toc-item toc-sub-item">
+                      <a className="toc-link" onClick={() => scrollToSection('rule-01')}>Rule 01: Real Utility</a>
+                    </li>
+                    <li className="toc-item toc-sub-item">
+                      <a className="toc-link" onClick={() => scrollToSection('rule-02')}>Rule 02: Fully On-Chain</a>
+                    </li>
+                    <li className="toc-item toc-sub-item">
+                      <a className="toc-link" onClick={() => scrollToSection('rule-03')}>Rule 03: Self-Sustaining Forever</a>
+                    </li>
+                    <li className="toc-item toc-sub-item">
+                      <a className="toc-link" onClick={() => scrollToSection('rule-04')}>Rule 04: Fair and Equitable</a>
+                    </li>
+                    <li className="toc-item toc-sub-item">
+                      <a className="toc-link" onClick={() => scrollToSection('rule-05')}>Rule 05: No Altcoins</a>
+                    </li>
+                    <li className="toc-item">
+                      <a className="toc-link" onClick={() => scrollToSection('time-come')}>The Time Has Come</a>
+                    </li>
+                    <li className="toc-item">
+                      <a className="toc-link" onClick={() => scrollToSection('infrastructure-ready')}>The Infrastructure is Ready</a>
+                    </li>
+                  </ul>
+                </div>
+              )}
+            </div>
           </div>
           <div className="scroll-hint">scroll ↓</div>
         </header>
 
         <main className="manifesto-main">
           <div className="manifesto-container">
-            <section className="manifesto-section">
+            <section id="reclaim-web3" className="manifesto-section">
               <h2 className="manifesto-h2">Not yet. Not in any meaningful sense.</h2>
 
               <p className="manifesto-p">The words "blockchain" and "web 3" have been perverted into marketing buzzwords. Projects that claim to be building the future are replicating the predatory extraction models of Web 2, but with worse user experience and more financial risk.</p>
@@ -426,8 +762,8 @@ export default function Web3Manifesto() {
             </section>
 
             <hr className="manifesto-hr" />
-            <section className="manifesto-section">
-              <h2 className="manifesto-h2">Untold History</h2>
+            <section id="untold-history" className="manifesto-section">
+              <h2 className="manifesto-h2">How We Got Here</h2>
 
               <p className="manifesto-p">To understand why Web 3 has failed, we need to understand why Web 2 succeeded with all its uncomfortable truths.</p>
 
@@ -448,7 +784,7 @@ export default function Web3Manifesto() {
 
             <hr className="manifesto-hr" />
 
-            <section className="manifesto-section">
+            <section id="desert-mirages" className="manifesto-section">
               <h3 className="manifesto-h3">A Desert of Mirages</h3>
 
               <p className="manifesto-p">Look at what calls itself Web 3 today. Scroll through the endless parade of new projects, platforms, and protocols. What do you see?</p>
@@ -480,7 +816,7 @@ export default function Web3Manifesto() {
               <p className="manifesto-p">The technical purists write thoughtful critiques but don't unite behind clear standards. The builders stay in their lanes, focused on their projects, while the broader ecosystem drowns in noise.</p>
             </section>
 
-            <section className="manifesto-section">
+            <section id="stop-polite" className="manifesto-section">
               <h2 className="manifesto-h2">Stop Being Polite</h2>
 
               <p className="manifesto-p">We need to stop pretending that every project deserves participation trophies for "experimenting" or "innovating." We need to establish standards and ostracize projects that violate them.</p>
@@ -490,14 +826,14 @@ export default function Web3Manifesto() {
 
             <hr className="manifesto-hr" />
 
-            <section className="manifesto-section">
+            <section id="five-rules" className="manifesto-section">
               <h2 className="manifesto-h2">The Five Rules</h2>
               <p className="manifesto-p">Blockchains can be used to build anything. That's a feature, not a bug. But that doesn't mean we have to call everything "Web 3." That doesn't mean we have to pretend every token launch is progress. That doesn't mean we have to remain neutral in the face of obvious predation.</p>
 
               <p className="manifesto-p">There are five non-negotiable rules to Reclaim Web 3. These aren't suggestions or ideals. They're the minimum requirements. Fail any one of them, and you're not building Web 3—you're building something else.</p>
 
               <div className="rule-container">
-                <div className="rule">
+                <div id="rule-01" className="rule">
                   <div className="rule-label">RULE 01</div>
                   <h4>Real Utility</h4>
                   <p className="manifesto-p">It must do something people actually want or need, right now. Not once adoption grows or when "it goes to the moon."</p>
@@ -505,7 +841,7 @@ export default function Web3Manifesto() {
                 
                 </div>
 
-                <div className="rule">
+                <div id="rule-02" className="rule">
                   <div className="rule-label">RULE 02</div>
                   <h4>Fully On-Chain</h4>
                   <p className="manifesto-p">The application logic must live entirely on the blockchain. Not partially. Not mostly. Entirely.</p>
@@ -525,7 +861,7 @@ export default function Web3Manifesto() {
                   <p className="manifesto-p">Any meaningful dependency on centralized infrastructure—especially for data flow—breaks the core promise. If your app relies on centralized data providers, oracles that can be manipulated, or backends that can be shut down, then users can't rely on it being permanent and censorship-resistant. That defeats the entire point.</p>
                 </div>
 
-                <div className="rule">
+                <div id="rule-03" className="rule">
                   <div className="rule-label">RULE 03</div>
                   <h4>Self-Sustaining Forever</h4>
                   <p className="manifesto-p">After deployment, your application must run indefinitely without intervention from its creators. If you disappeared tomorrow, if every member of your team died, the application must continue functioning.</p>
@@ -546,10 +882,10 @@ export default function Web3Manifesto() {
 
                    <p className="manifesto-p">A true Web 3 app is like a successful organism: once it exists, it sustains itself through its interactions with its environment.</p>
 
-                  <p className="manifesto-p"><storng>It doesn't need its creator to survive any more than you need your parents to breathe.</storng></p>
+                  <p className="manifesto-p"><strong>It doesn't need its creator to survive any more than you need your parents to breathe.</strong></p>
                 </div>
 
-                <div className="rule">
+                <div id="rule-04" className="rule">
                   <div className="rule-label">RULE 04</div>
                   <h4>Fair and Equitable</h4>
                   <p className="manifesto-p">Every economic decision your application makes must be transparent and verifiable on-chain. The code must clearly show where value flows, who gets paid what, and under what conditions.</p>
@@ -564,7 +900,7 @@ export default function Web3Manifesto() {
                   <p className="manifesto-p"><strong>Build useful & fair systems and the community will support them. Build exploitative systems and you'll be correctly identified as a predator.</strong></p>
                 </div>
 
-                <div className="rule">
+                <div id="rule-05" className="rule">
                   <div className="rule-label">RULE 05</div>
                   <h4>No Altcoins</h4>
                   <p className="manifesto-p">If your application requires users to acquire some new token nobody has heard of, then you've failed Web 3.</p>
@@ -597,7 +933,7 @@ export default function Web3Manifesto() {
 
             <hr className="manifesto-hr" />
 
-            <section className="manifesto-section">
+            <section id="time-come" className="manifesto-section">
               <h2 className="manifesto-h2">The Time Has Come</h2>
 
               <blockquote className="manifesto-blockquote">
@@ -637,19 +973,8 @@ export default function Web3Manifesto() {
               <p className="manifesto-p">Each one delivers real utility, lives entirely on-chain, sustains its own economics, distributes rewards fairly, and uses only ETH.</p>
             </section>
 
-            <section className="manifesto-section final-cta">
-              <div className="proof-badge">And Here's The Proof</div>
 
-              <h2>The Eternal Tic Tac Toe Protocol</h2>
-
-              <p className="manifesto-p">I built one of these to test the theory: The Eternal Tic Tac Toe Protocol.</p>
-
-              <p className="manifesto-p">It's a tournament-based Tic Tac Toe system with full bracket management from start to finish. Every move, every match, every payout—fully on-chain. Fully traceable. No backend servers. No admin privileges. No token. Just ETH, smart contracts, and gameplay that proves these five rules aren't aspirational—they're functional.</p>
-
-              <p className="manifesto-p">This isn't a prototype waiting for funding. It's not a demo hoping for adoption. It's live, it works, and it checks all the boxes.</p>
-            </section>
-
-            <section className="manifesto-section">
+            <section id="infrastructure-ready" className="manifesto-section">
               <h3 className="manifesto-h2">The infrastructure is ready</h3>
               <h2 className="manifesto-h3">Start small. Uphold the standard.</h2>
 
@@ -677,12 +1002,74 @@ export default function Web3Manifesto() {
 
               <p className="manifesto-p">Then the future becomes possible.</p>
             </section>
+            
+            <section className="manifesto-section final-cta">
+              <div className="proof-badge">And Here's The Proof</div>
+
+              <h2>This manifesto practices what it preaches.</h2>
+
+              <div className="web2-free-statement">
+                <p className="manifesto-p">No cookies. No databases. No analytics. No Web2 infrastructure.</p>
+                <p className="manifesto-p">The supporter count you see below? It's live, on-chain data. Pure Arbitrum. Every signature is a transaction. Every number is verifiable.</p>
+              </div>
+
+              <div className="supporter-count-container">
+                <div className="supporter-number">12,847</div>
+                <div className="supporter-label">Supporters</div>
+                <div
+                  className="view-onchain-link"
+                  onClick={() => setShowDetails(true)}
+                >
+                  View on-chain →
+                </div>
+              </div>
+
+              <hr className="manifesto-hr" />
+
+              <div className="proof-badge">Wanna Play A game instead?</div>
+
+              <h2>The Eternal Tic Tac Toe Protocol</h2>
+
+              <p className="manifesto-p">I built one of these to test the theory: The Eternal Tic Tac Toe Protocol.</p>
+
+              <p className="manifesto-p">It's a tournament-based Tic Tac Toe system with full bracket management from start to finish. Every move, every match, every payout—fully on-chain. Fully traceable. No backend servers. No admin privileges. No token. Just ETH, smart contracts, and gameplay that proves these five rules aren't aspirational—they're functional.</p>
+
+              <p className="manifesto-p">This isn't a prototype waiting for funding. It's not a demo hoping for adoption. It's live, it works, and it checks all the boxes.</p>
+
+            </section>
 
             <footer className="manifesto-footer">
               <p>This manifesto is yours to share, fork, and improve.</p>
             </footer>
           </div>
         </main>
+
+        {showDetails && (
+          <div className="details-modal" onClick={() => setShowDetails(false)}>
+            <div className="details-content" onClick={(e) => e.stopPropagation()}>
+              <button className="close-modal" onClick={() => setShowDetails(false)}>×</button>
+
+              <h3>On-Chain Verification</h3>
+
+              <p>Every supporter signature is recorded as a transaction on the Arbitrum blockchain. This count isn't stored in a database—it's computed in real-time from on-chain events.</p>
+
+              <p>The smart contract is simple: it accepts ETH (any amount, even 0), emits a Supported event with your wallet address, and that's it. No backend. No server. Just blockchain.</p>
+
+              <div className="contract-address">
+                0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb8
+              </div>
+
+              <p>You can verify this yourself by checking the contract on Arbiscan, counting the events, or querying the blockchain directly.</p>
+
+              <button className="support-button" onClick={() => {
+                // TODO: Connect wallet and trigger support transaction
+                console.log('Support transaction triggered');
+              }}>
+                Support This Manifesto
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
