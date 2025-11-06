@@ -785,7 +785,7 @@ export default function Web3Manifesto() {
 
               <p className="manifesto-p">To understand why Web 3 has failed, we need to understand why Web 2 succeeded with all its uncomfortable truths.</p>
 
-              <p className="manifesto-p">Web 1.0 was simple: static pages, limited interaction. Revolutionary for information access, but companies hemorrhaged money trying to monetize it. The dot-com bubble burst because nobody could answer: how does this make money?</p>
+              <p className="manifesto-p">Web 1 was simple: static pages, limited interaction. Revolutionary for information access, but companies hemorrhaged money trying to monetize it. The dot-com bubble burst because nobody could answer: how does this make money?</p>
 
               <p className="manifesto-p">Web 2 solved that problem through a business model innovation that changed everything: user-generated content monetized through data harvesting and targeted advertising.</p>
 
@@ -852,7 +852,7 @@ export default function Web3Manifesto() {
                 <div id="rule-01" className="rule">
                   <div className="rule-label">RULE 01</div>
                   <h4>Real Utility</h4>
-                  <p className="manifesto-p">It must do something people actually want or need, right now. Not once adoption grows or when "it goes to the moon."</p>
+                  <p className="manifesto-p">Your Web 3 app must do something people actually want or need, right now. Not once adoption grows or when "it goes to the moon."</p>
                   <p className="manifesto-p">Its usefulness must be <strong>immediate</strong> and <strong>intrinsic</strong>.</p>
                 
                 </div>
@@ -860,7 +860,7 @@ export default function Web3Manifesto() {
                 <div id="rule-02" className="rule">
                   <div className="rule-label">RULE 02</div>
                   <h4>Fully On-Chain</h4>
-                  <p className="manifesto-p">The application logic must live entirely on the blockchain. Not partially. Not mostly. Entirely.</p>
+                  <p className="manifesto-p">You Web 3 app's logic must live entirely on the blockchain. Not partially. Not mostly. Entirely.</p>
 
                   <p className="manifesto-p">This is where most projects fail the Web 3 test. They claim decentralization while running critical infrastructure on AWS. They talk about trustlessness while requiring users to trust their backend services. They promise permanence while depending on centralized databases that could disappear tomorrow.</p>
 
