@@ -789,8 +789,6 @@ export default function Web3Manifesto() {
 
               <p className="manifesto-p">Web 2 solved that problem through a business model innovation that changed everything: user-generated content monetized through data harvesting and targeted advertising.</p>
 
-              <p className="manifesto-p">Here's what most retellings miss: Web 2 didn't succeed because of better technology alone. It succeeded because venture capital finally found a sustainable extraction model that scaled exponentially with user growth.</p>
-
               <p className="manifesto-p">The formula was elegant in its predation: Build a free platform. Attract users by letting them create content. Harvest their data, attention, and behavior patterns. Sell access through advertising and data brokerage. Scale globally. The more users you have, the more valuable each user becomes.</p>
 
               <p className="manifesto-p">Facebook, Google, YouTube, Twitter—they all won by perfecting variations of this model. They became free because we became the product.</p>
