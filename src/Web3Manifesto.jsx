@@ -710,7 +710,7 @@ export default function Web3Manifesto() {
 
             <div className="toc-container">
               <button className="toc-button" onClick={() => setShowTOC(!showTOC)}>
-                <span>We Can Change That</span>
+                <span>Let's Make It So</span>
                 <span className={`toc-icon ${showTOC ? 'open' : ''}`}>▼</span>
               </button>
 
