@@ -22,7 +22,7 @@ import {
   Award, Target, CheckCircle, Info, Coins, AlertCircle, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { ethers } from 'ethers';
-import DUMMY_ABI from './dummyABI.json';
+import DUMMY_ABI from './TourABI.json';
 
 // Particle Background Component (Dream/Daring Themes)
 const ParticleBackground = ({ colors }) => {
@@ -825,7 +825,8 @@ const ActiveGameDisplay = ({ game, account, onMove, onStartGame, loading, refres
 };
 
 export default function TicTacBlock() {
-  const CONTRACT_ADDRESS = "0x7fc74A84a41Ac0E4872fB94EB3d6A8998884Ec9d";
+  const CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+  const EXPECTED_CHAIN_ID = 412346;
   const ETHERSCAN_URL = `https://arbiscan.io/address/${CONTRACT_ADDRESS}`;
 
   // Wallet & Contract State
@@ -954,12 +955,12 @@ export default function TicTacBlock() {
     }
   ];
 
-  // Switch to Arbitrum One Network
+  // Switch to Local Network (Chain ID 412346)
   const switchToArbitrum = async () => {
     try {
       await window.ethereum.request({
         method: 'wallet_switchEthereumChain',
-        params: [{ chainId: '0xa4b1' }], // 42161 in hex
+        params: [{ chainId: '0x64aba' }], // 412346 in hex
       });
     } catch (switchError) {
       // This error code indicates that the chain has not been added to MetaMask
@@ -969,22 +970,22 @@ export default function TicTacBlock() {
             method: 'wallet_addEthereumChain',
             params: [
               {
-          chainId: '0xa4b1', // 42161 in hex
-          chainName: 'Arbitrum One',
+          chainId: '0x64aba', // 412346 in hex
+          chainName: 'Local Network',
           nativeCurrency: {
             name: 'Ethereum',
             symbol: 'ETH',
             decimals: 18,
           },
-          rpcUrls: ['https://arb1.arbitrum.io/rpc'],
-          blockExplorerUrls: ['https://arbiscan.io'],
+          rpcUrls: ['http://127.0.0.1:8545'],
+          blockExplorerUrls: ['http://localhost:8545'],
               },
             ],
           });
-          alert('✅ Arbitrum One network added! Please connect your wallet again.');
+          alert('✅ Local network added! Please connect your wallet again.');
         } catch (addError) {
-          console.error('Error adding Arbitrum One network:', addError);
-          alert('Failed to add Arbitrum One network. Please add it manually in MetaMask.');
+          console.error('Error adding local network:', addError);
+          alert('Failed to add local network. Please add it manually in MetaMask.');
         }
       } else {
         console.error('Error switching network:', switchError);
@@ -1014,19 +1015,19 @@ export default function TicTacBlock() {
       const networkData = {
         name: network.name || 'Unknown',
         chainId: network.chainId.toString(),
-        isArbitrum: network.chainId === 42161n
+        isArbitrum: network.chainId === BigInt(EXPECTED_CHAIN_ID)
       };
 
       setNetworkInfo(networkData);
 
       console.log('Connected to network:', networkData);
 
-      // Check if connected to Arbitrum One (chain ID 42161)
-      if (network.chainId !== 42161n) {
+      // Check if connected to expected network (chain ID 412346)
+      if (network.chainId !== BigInt(EXPECTED_CHAIN_ID)) {
         const shouldSwitch = window.confirm(
           `⚠️ Wrong Network Detected\n\n` +
           `You're connected to: ${network.name || 'Unknown'} (Chain ID: ${network.chainId})\n` +
-          `Expected: Arbitrum One (Chain ID: 42161)\n\n` +
+          `Expected: Local Network (Chain ID: ${EXPECTED_CHAIN_ID})\n\n` +
           `Click OK to automatically switch networks, or Cancel to stay on current network.`
         );
 
@@ -1710,7 +1711,7 @@ export default function TicTacBlock() {
               <div className="bg-yellow-500/10 border border-yellow-400/30 rounded-lg p-4">
                 <div className="text-yellow-300 font-bold mb-2">⚠️ Wrong Network</div>
                 <div className="text-xs text-yellow-200 mb-3">
-                  You're on <span className="font-bold">{networkInfo.name}</span>. Switch to Arbitrum One network (Chain ID: 42161).
+                  You're on <span className="font-bold">{networkInfo.name}</span>. Switch to Local Network (Chain ID: {EXPECTED_CHAIN_ID}).
                 </div>
                 <button
                   onClick={switchToArbitrum}
