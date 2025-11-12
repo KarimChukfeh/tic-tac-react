@@ -1078,7 +1078,7 @@ export default function TicTacBlock() {
     setGameLog(prev => [...prev, { type, message, timestamp }]);
   };
 
-  // Load contract data
+  // Verify contract is deployed (simplified for tournament contract)
   const loadContractData = async (contractInstance, isInitialLoad = false) => {
     try {
       setContractStatus('checking');
@@ -1090,7 +1090,6 @@ export default function TicTacBlock() {
 
       console.log('Checking contract at:', contractAddress);
       console.log('Bytecode length:', code.length);
-      console.log('Bytecode preview:', code.substring(0, 66));
 
       if (code === '0x' || code === '0x0') {
         setContractStatus('not_deployed');
@@ -1098,107 +1097,26 @@ export default function TicTacBlock() {
         throw new Error(
           `No contract found at ${contractAddress}\n\n` +
           `This means either:\n` +
-          `1. The contract hasn't been deployed to Arbitrum One yet\n` +
+          `1. The contract hasn't been deployed yet\n` +
           `2. The CONTRACT_ADDRESS in the code is wrong\n` +
           `3. You're connected to the wrong network\n\n` +
           `Steps to fix:\n` +
-          `1. Verify you're connected to Arbitrum One in MetaMask\n` +
-          `2. Check the contract exists on Arbiscan: https://arbiscan.io/address/${contractAddress}\n` +
-          `3. If wrong address, update CONTRACT_ADDRESS in App.jsx line 767`
+          `1. Verify you're connected to the correct network\n` +
+          `2. Check the contract address is correct\n` +
+          `3. Deploy the contract if it doesn't exist`
         );
       }
 
       console.log('✅ Contract found! Bytecode exists.');
       setContractStatus('deployed');
 
-      const fee = await contractInstance.ENTRY_FEE();
-      setEntryFee(ethers.formatEther(fee));
-
-      // Fetch individual state variables since there's no getGameState() or getBoard()
-      const player1 = await contractInstance.player1();
-      const player2 = await contractInstance.player2();
-      const currentTurn = await contractInstance.currentTurn();
-      const winner = await contractInstance.winner();
-      const pot = await contractInstance.pot();
-      const status = await contractInstance.status();
-
-      // Fetch board cells individually
-      const board = [];
-      for (let i = 0; i < 9; i++) {
-        const cell = await contractInstance.board(i);
-        board.push(Number(cell));
-      }
-
-      const gameData = {
-        id: '1', // Simplified contract only supports one game at a time
-        player1,
-        player2,
-        winner,
-        pot: ethers.formatEther(pot),
-        status: Number(status),
-        board,
-        currentTurn
-      };
-
-      // Detect changes and add logs
-      if (prevGameState.current) {
-        const prev = prevGameState.current;
-
-        // Player joined
-        if (prev.player1 === ethers.ZeroAddress && gameData.player1 !== ethers.ZeroAddress) {
-          addLogEntry('join', `Player 1 (${shortenAddress(gameData.player1)}) joined the game`);
-        }
-        if (prev.player2 === ethers.ZeroAddress && gameData.player2 !== ethers.ZeroAddress) {
-          addLogEntry('join', `Player 2 (${shortenAddress(gameData.player2)}) joined the game`);
-        }
-
-        // Game started
-        if (prev.status === 1 && gameData.status === 2) {
-          const firstPlayer = gameData.currentTurn === gameData.player1 ? 'Player 1 (X)' : 'Player 2 (O)';
-          addLogEntry('start', `Game started! ${firstPlayer} goes first`);
-        }
-
-        // Move made
-        const prevMoveCount = prev.board.filter(c => c !== 0).length;
-        const newMoveCount = gameData.board.filter(c => c !== 0).length;
-        if (newMoveCount > prevMoveCount) {
-          const cellIndex = gameData.board.findIndex((cell, idx) => cell !== prev.board[idx] && cell !== 0);
-          const symbol = gameData.board[cellIndex] === 1 ? 'X' : 'O';
-          addLogEntry('move', `${symbol} played at cell ${cellIndex}`);
-        }
-
-        // Game ended
-        if (prev.status === 2 && gameData.status === 3) {
-          if (gameData.winner === ethers.ZeroAddress) {
-            addLogEntry('draw', `Game ended in a draw!`);
-          } else {
-            addLogEntry('win', `${shortenAddress(gameData.winner)} won the game!`);
-          }
-        }
-      }
-
-      prevGameState.current = gameData;
-      setGame(gameData);
-
-      // Load game history data
+      // Try to fetch entry fee for tier 0 (optional, may not be set yet)
       try {
-        const totalGames = await contractInstance.getTotalGamesPlayed();
-        setTotalGamesPlayed(Number(totalGames));
-
-        if (Number(totalGames) > 0) {
-          const latestGame = await contractInstance.getLatestGame();
-          setLastGame({
-            gameId: Number(latestGame.gameId),
-            player1: latestGame.player1,
-            player2: latestGame.player2,
-            result: Number(latestGame.result), // 0 = Win, 1 = Draw
-            winner: latestGame.winner,
-            timestamp: Number(latestGame.timestamp)
-          });
-        }
-      } catch (historyError) {
-        console.error('Error loading game history:', historyError);
-        // Don't fail the entire load if history fails
+        const fee = await contractInstance.ENTRY_FEES(0);
+        setEntryFee(ethers.formatEther(fee));
+      } catch (err) {
+        console.log('Note: Could not fetch entry fee, using default');
+        setEntryFee('0.01');
       }
 
       // Mark initial loading as complete
@@ -1206,7 +1124,7 @@ export default function TicTacBlock() {
         setInitialLoading(false);
       }
     } catch (error) {
-      console.error('Error loading contract data:', error);
+      console.error('Error verifying contract:', error);
 
       // Mark initial loading as complete even on error
       if (isInitialLoad) {
@@ -1214,75 +1132,9 @@ export default function TicTacBlock() {
       }
 
       // Only show alerts if user has connected wallet
-      // When wallet is not connected, we're in read-only/spectator mode and shouldn't show alerts
       if (account) {
-        // Show user-friendly error message
-        if (error.message.includes('No contract deployed')) {
-          alert('⚠️ Contract Not Deployed\n\n' + error.message);
-        } else if (error.code === 'BAD_DATA') {
-          alert('⚠️ Contract Connection Error\n\nThe contract at this address is not responding correctly. Please check:\n\n1. Are you connected to Arbitrum One?\n2. Is the contract address correct?\n3. Does the contract exist on Arbiscan?\n\nCurrent address: ' + CONTRACT_ADDRESS + '\nView on Arbiscan: https://arbiscan.io/address/' + CONTRACT_ADDRESS);
-        } else {
-          alert('Error loading game data: ' + error.message);
-        }
+        alert('Error connecting to contract: ' + error.message);
       }
-    }
-  };
-
-  // Join the game
-  const joinGame = async () => {
-    if (!contract) return;
-
-    try {
-      setLoading(true);
-      const tx = await contract.joinGame({
-        value: ethers.parseEther(entryFee)
-      });
-      await tx.wait();
-
-      await loadContractData(contract);
-      alert('Joined game successfully!');
-      setLoading(false);
-    } catch (error) {
-      console.error('Error joining game:', error);
-      alert('Failed to join game. ' + error.message);
-      setLoading(false);
-    }
-  };
-
-  // Start the game (after both players joined)
-  const startGame = async () => {
-    if (!contract) return;
-
-    try {
-      setLoading(true);
-      const tx = await contract.startGame();
-      await tx.wait();
-
-      await loadContractData(contract);
-      alert('Game started! A coin flip determined who goes first.');
-      setLoading(false);
-    } catch (error) {
-      console.error('Error starting game:', error);
-      alert('Failed to start game. ' + error.message);
-      setLoading(false);
-    }
-  };
-
-  // Make a move in the game
-  const makeMove = async (cellIndex) => {
-    if (!contract) return;
-
-    try {
-      setLoading(true);
-      const tx = await contract.makeMove(cellIndex);
-      await tx.wait();
-
-      await loadContractData(contract);
-      setLoading(false);
-    } catch (error) {
-      console.error('Error making move:', error);
-      alert('Failed to make move. ' + error.message);
-      setLoading(false);
     }
   };
 
@@ -1290,8 +1142,8 @@ export default function TicTacBlock() {
   useEffect(() => {
     const initReadOnlyContract = async () => {
       try {
-        // Use a public RPC provider for Arbitrum One
-        const provider = new ethers.JsonRpcProvider('https://arb1.arbitrum.io/rpc');
+        // Use local network RPC
+        const provider = new ethers.JsonRpcProvider('http://127.0.0.1:8545');
 
         const readOnlyContract = new ethers.Contract(
           CONTRACT_ADDRESS,
@@ -1321,7 +1173,7 @@ export default function TicTacBlock() {
           setAccount(null);
           // Reinitialize read-only contract when disconnected
           const initReadOnlyContract = async () => {
-            const provider = new ethers.JsonRpcProvider('https://arb1.arbitrum.io/rpc');
+            const provider = new ethers.JsonRpcProvider('http://127.0.0.1:8545');
             const readOnlyContract = new ethers.Contract(CONTRACT_ADDRESS, DUMMY_ABI, provider);
             setContract(readOnlyContract);
             await loadContractData(readOnlyContract);
@@ -1338,71 +1190,8 @@ export default function TicTacBlock() {
     }
   }, []);
 
-  // Set up event listeners and auto-refresh
-  useEffect(() => {
-    if (!contract) return;
-
-    const onPlayerJoined = () => {
-      console.log('Player joined event');
-      loadContractData(contract);
-    };
-
-    const onGameStarted = () => {
-      console.log('Game started event');
-      loadContractData(contract);
-    };
-
-    const onMoveMade = () => {
-      console.log('Move made event');
-      loadContractData(contract);
-    };
-
-    const onGameEnded = () => {
-      console.log('Game ended event');
-      loadContractData(contract);
-    };
-
-    const onGameRecordSaved = () => {
-      console.log('Game record saved event');
-      loadContractData(contract);
-    };
-
-    const onResidueClaimed = () => {
-      console.log('Residue claimed event');
-      loadContractData(contract);
-    };
-
-    contract.on('PlayerJoined', onPlayerJoined);
-    contract.on('GameStarted', onGameStarted);
-    contract.on('MoveMade', onMoveMade);
-    contract.on('GameEnded', onGameEnded);
-    contract.on('GameRecordSaved', onGameRecordSaved);
-    contract.on('ResidueClaimed', onResidueClaimed);
-
-    // Auto-refresh every 5 seconds
-    const refreshInterval = setInterval(() => {
-      loadContractData(contract);
-      setRefreshProgress(0);
-    }, 5000);
-
-    const progressInterval = setInterval(() => {
-      setRefreshProgress(prev => {
-        if (prev >= 100) return 0;
-        return prev + (100 / (5000 / 30));
-      });
-    }, 30);
-
-    return () => {
-      contract.off('PlayerJoined', onPlayerJoined);
-      contract.off('GameStarted', onGameStarted);
-      contract.off('MoveMade', onMoveMade);
-      contract.off('GameEnded', onGameEnded);
-      contract.off('GameRecordSaved', onGameRecordSaved);
-      contract.off('ResidueClaimed', onResidueClaimed);
-      clearInterval(refreshInterval);
-      clearInterval(progressInterval);
-    };
-  }, [contract]);
+  // Tournament contract doesn't need continuous polling for old game events
+  // Match-specific polling happens in the match UI component
 
   // Loading animation component
   if (initialLoading) {
@@ -1728,109 +1517,54 @@ export default function TicTacBlock() {
           )}
         </div>
 
-        {/* Last Game Result Section */}
-        {lastGame && (
-          <LastGameResult lastGame={lastGame} account={account} />
-        )}
-
-        {/* Total Games Counter */}
-        {totalGamesPlayed > 0 && (
-          <div className="bg-gradient-to-r from-purple-500/20 to-indigo-500/20 border border-purple-400/30 rounded-xl p-4 mb-8">
-            <div className="flex items-center justify-center gap-3">
-              <Trophy className="text-purple-400" size={24} />
-              <span className="text-xl font-bold text-white">
-          Total Games Played: {totalGamesPlayed}
-              </span>
+        {/* Tournaments Coming Soon Section */}
+        {account && contract && (
+          <div className="bg-gradient-to-r from-purple-600/30 to-blue-600/30 backdrop-blur-lg rounded-2xl p-12 border border-purple-400/30 mb-16">
+            <div className="text-center">
+              <div className="mb-6">
+                <Trophy className="text-purple-400 mx-auto animate-pulse" size={80} />
+              </div>
+              <h2 className="text-5xl font-bold mb-4 bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
+                Tournaments Coming Soon
+              </h2>
+              <p className="text-2xl text-purple-200 mb-6">
+                Get ready for epic competitive play!
+              </p>
+              <p className="text-lg text-purple-300 max-w-2xl mx-auto">
+                We're building a revolutionary tournament system with real ETH prizes.
+                Stay connected to be the first to compete when we launch.
+              </p>
+              <div className="mt-8 flex justify-center gap-4">
+                <div className="bg-purple-500/20 border border-purple-400/50 rounded-xl p-4">
+                  <div className="text-purple-300 text-sm mb-1">Your Address</div>
+                  <div className="font-mono text-purple-100 font-bold">{account.slice(0, 6)}...{account.slice(-4)}</div>
+                </div>
+                <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-4">
+                  <div className="text-blue-300 text-sm mb-1">Network</div>
+                  <div className="font-bold text-blue-100">{networkInfo?.name || 'Connected'}</div>
+                </div>
+              </div>
             </div>
           </div>
         )}
 
-        {/* Active Game Section */}
-        {game && (
-          <div className="mb-16">
-            <ActiveGameDisplay
-              game={game}
-              account={account}
-              onMove={makeMove}
-              onStartGame={startGame}
-              loading={loading}
-              refreshProgress={refreshProgress}
-              gameLog={gameLog}
-            />
-          </div>
-        )}
-
-        {/* Join Game Section */}
-        {account && contract && game && (
-          <div className="bg-gradient-to-r from-red-600/30 to-pink-600/30 backdrop-blur-lg rounded-2xl p-8 border border-red-400/30 mb-16">
-            <h2 className="text-4xl font-bold mb-6 flex items-center gap-3">
-              <Play className="text-red-400" />
-              Game Actions
-            </h2>
-
-            {(game.status === 0 || game.status === 1) && game.player1 === '0x0000000000000000000000000000000000000000' && (
-              <div className="mb-6">
-          <button
-            onClick={joinGame}
-            disabled={loading}
-            className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 px-8 py-4 rounded-xl font-bold text-xl shadow-lg transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? 'Joining...' : `Join as Player 1 (${entryFee} ETH)`}
-          </button>
-          <p className="text-blue-200 mt-4">Be the first player to join the arena!</p>
-              </div>
-            )}
-
-            {(game.status === 0 || game.status === 1) && game.player1 !== '0x0000000000000000000000000000000000000000' && game.player2 === '0x0000000000000000000000000000000000000000' && game.player1.toLowerCase() !== account.toLowerCase() && (
-              <div className="mb-6">
-          <button
-            onClick={joinGame}
-            disabled={loading}
-            className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 px-8 py-4 rounded-xl font-bold text-xl shadow-lg transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? 'Joining...' : `Join as Player 2 (${entryFee} ETH)`}
-          </button>
-          <p className="text-blue-200 mt-4">Challenge the waiting player!</p>
-              </div>
-            )}
-
-            {(game.status === 0 || game.status === 1) && game.player1.toLowerCase() === account.toLowerCase() && game.player2 === '0x0000000000000000000000000000000000000000' && (
-              <div className="text-center py-6 bg-blue-500/10 rounded-xl border border-blue-400/30">
-          <p className="text-blue-200">You're in the arena! Waiting for opponent to join...</p>
-              </div>
-            )}
-
-            {game.status === 1 && (
-              <div className="text-center py-6 bg-cyan-500/10 rounded-xl border border-cyan-400/30">
-          <p className="text-cyan-200">Both players are ready! Either player can start the game.</p>
-              </div>
-            )}
-
-            {(game.status === 2 || game.status === 3) && (
-              <div className="text-center py-6 bg-yellow-500/10 rounded-xl border border-yellow-400/30">
-          <p className="text-yellow-200">Game is currently {game.status === 2 ? 'in progress' : 'completed'}. Wait for it to finish!</p>
-              </div>
-            )}
-          </div>
-        )}
-
         {/* Not Connected State - Call to Action */}
-        {!account && game && (
+        {!account && (
           <div className="bg-gradient-to-r from-purple-600/30 to-pink-600/30 backdrop-blur-lg rounded-2xl p-8 border border-purple-400/30 mb-16">
             <h2 className="text-4xl font-bold mb-6 flex items-center gap-3 justify-center">
               <Wallet className="text-purple-400" />
-              Ready to Play?
+              Ready to Compete?
             </h2>
             <div className="text-center py-8 bg-purple-500/10 rounded-xl border border-purple-400/30">
-              <p className="text-2xl text-purple-200 mb-4 font-bold">Connect Your Wallet to Join the Game</p>
-              <p className="text-lg text-purple-300 mb-6">You're currently spectating. Connect to compete for real stakes!</p>
+              <p className="text-2xl text-purple-200 mb-4 font-bold">Connect Your Wallet</p>
+              <p className="text-lg text-purple-300 mb-6">Get ready for tournaments with real ETH prizes!</p>
               <button
           onClick={connectWallet}
           disabled={loading}
           className="inline-flex items-center gap-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 px-10 py-5 rounded-2xl font-bold text-2xl shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
           <Wallet size={28} />
-          {loading ? 'Connecting...' : 'Connect Wallet to Play'}
+          {loading ? 'Connecting...' : 'Connect Wallet'}
               </button>
             </div>
           </div>
