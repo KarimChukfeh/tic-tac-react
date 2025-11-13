@@ -366,7 +366,7 @@ const TournamentCard = ({
 };
 
 // Tournament Bracket Component
-const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, account, loading }) => {
+const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, account, loading, syncDots }) => {
   const { tierId, instanceId, status, currentRound, enrolledCount, prizePool, rounds, playerCount, enrolledPlayers } = tournamentData;
 
   // Calculate total rounds based on player count
@@ -424,9 +424,15 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, account, load
           <div className="flex items-center gap-4">
             <Trophy className="text-purple-400" size={48} />
             <div>
-              <h2 className="text-4xl font-bold text-white">
-                Tournament T{tierId}-I{instanceId}
-              </h2>
+              <div className="flex items-center gap-3">
+                <h2 className="text-4xl font-bold text-white">
+                  Tournament T{tierId}-I{instanceId}
+                </h2>
+                <span className="text-cyan-400 text-sm font-semibold flex items-center gap-1">
+                  <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
+                  Syncing{'.'.repeat(syncDots)}
+                </span>
+              </div>
               <p className="text-purple-300">
                 Round {currentRound + 1} of {totalRounds}
               </p>
@@ -1188,6 +1194,7 @@ export default function TicTacBlock() {
   const [tournaments, setTournaments] = useState([]);
   const [tournamentsLoading, setTournamentsLoading] = useState(false);
   const [viewingTournament, setViewingTournament] = useState(null); // { tierId, instanceId, tournamentData, bracketData }
+  const [bracketSyncDots, setBracketSyncDots] = useState(1);
 
   // Match State
   const [currentMatch, setCurrentMatch] = useState(null);
@@ -1573,26 +1580,22 @@ export default function TicTacBlock() {
     }
   };
 
-  // Handle entering tournament (fetch and display bracket)
-  const handleEnterTournament = async (tierId, instanceId) => {
-    if (!contract) return;
-
+  // Refresh tournament bracket data
+  const refreshTournamentBracket = useCallback(async (contractInstance, tierId, instanceId) => {
     try {
-      setTournamentsLoading(true);
-
       // Get tournament info
-      const tournamentInfo = await contract.getTournamentInfo(tierId, instanceId);
+      const tournamentInfo = await contractInstance.getTournamentInfo(tierId, instanceId);
       const status = Number(tournamentInfo[0]);
       const currentRound = Number(tournamentInfo[2]);
       const enrolledCount = Number(tournamentInfo[3]);
       const prizePool = tournamentInfo[4];
 
       // Get tier config for player count
-      const tierConfig = await contract.tierConfigs(tierId);
+      const tierConfig = await contractInstance.tierConfigs(tierId);
       const playerCount = Number(tierConfig.playerCount);
 
       // Get enrolled players
-      const enrolledPlayers = await contract.getEnrolledPlayers(tierId, instanceId);
+      const enrolledPlayers = await contractInstance.getEnrolledPlayers(tierId, instanceId);
 
       // Calculate total rounds
       const totalRounds = Math.ceil(Math.log2(playerCount));
@@ -1600,13 +1603,13 @@ export default function TicTacBlock() {
       // Fetch all rounds and matches
       const rounds = [];
       for (let roundNum = 0; roundNum < totalRounds; roundNum++) {
-        const roundInfo = await contract.getRoundInfo(tierId, instanceId, roundNum);
+        const roundInfo = await contractInstance.getRoundInfo(tierId, instanceId, roundNum);
         const totalMatches = Number(roundInfo[0]);
 
         const matches = [];
         for (let matchNum = 0; matchNum < totalMatches; matchNum++) {
           try {
-            const matchData = await contract.getMatch(tierId, instanceId, roundNum, matchNum);
+            const matchData = await contractInstance.getMatch(tierId, instanceId, roundNum, matchNum);
             matches.push({
               player1: matchData[0],
               player2: matchData[1],
@@ -1629,8 +1632,7 @@ export default function TicTacBlock() {
         rounds.push({ roundNumber: roundNum, matches });
       }
 
-      // Set viewing tournament state
-      setViewingTournament({
+      return {
         tierId,
         instanceId,
         status,
@@ -1640,7 +1642,24 @@ export default function TicTacBlock() {
         playerCount,
         enrolledPlayers,
         rounds
-      });
+      };
+    } catch (error) {
+      console.error('Error refreshing tournament bracket:', error);
+      return null;
+    }
+  }, []);
+
+  // Handle entering tournament (fetch and display bracket)
+  const handleEnterTournament = async (tierId, instanceId) => {
+    if (!contract) return;
+
+    try {
+      setTournamentsLoading(true);
+
+      const bracketData = await refreshTournamentBracket(contract, tierId, instanceId);
+      if (bracketData) {
+        setViewingTournament(bracketData);
+      }
 
       setTournamentsLoading(false);
     } catch (error) {
@@ -1934,6 +1953,52 @@ export default function TicTacBlock() {
 
     return () => clearInterval(dotsInterval);
   }, [currentMatch]);
+
+  // Poll tournament bracket every 3 seconds (using refs for seamless syncing)
+  const tournamentRef = useRef(viewingTournament);
+  const contractRefForBracket = useRef(contract);
+
+  // Keep refs updated
+  useEffect(() => {
+    tournamentRef.current = viewingTournament;
+    contractRefForBracket.current = contract;
+  }, [viewingTournament, contract]);
+
+  useEffect(() => {
+    if (!viewingTournament || !contract) return;
+
+    const doSync = async () => {
+      const tournament = tournamentRef.current;
+      const contractInstance = contractRefForBracket.current;
+
+      if (!tournament || !contractInstance) return;
+
+      const updated = await refreshTournamentBracket(contractInstance, tournament.tierId, tournament.instanceId);
+      if (updated) setViewingTournament(updated);
+
+      // Reset dots to 1 after sync completes
+      setBracketSyncDots(1);
+    };
+
+    // Set up polling interval - runs every 3 seconds
+    const pollInterval = setInterval(doSync, 3000);
+
+    return () => clearInterval(pollInterval);
+  }, [viewingTournament?.tierId, viewingTournament?.instanceId, refreshTournamentBracket]);
+
+  // Increment bracket sync dots every second
+  useEffect(() => {
+    if (!viewingTournament) return;
+
+    const dotsInterval = setInterval(() => {
+      setBracketSyncDots(prev => {
+        if (prev >= 3) return 3;
+        return prev + 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(dotsInterval);
+  }, [viewingTournament]);
 
   // Loading animation component
   if (initialLoading) {
@@ -2669,6 +2734,7 @@ export default function TicTacBlock() {
                 onEnterMatch={handlePlayMatch}
                 account={account}
                 loading={tournamentsLoading}
+                syncDots={bracketSyncDots}
               />
             ) : (
               // Show Tournament List
