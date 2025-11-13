@@ -365,6 +365,238 @@ const TournamentCard = ({
   );
 };
 
+// Tournament Bracket Component
+const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, account, loading }) => {
+  const { tierId, instanceId, status, currentRound, enrolledCount, prizePool, rounds, playerCount, enrolledPlayers } = tournamentData;
+
+  // Calculate total rounds based on player count
+  const totalRounds = Math.ceil(Math.log2(playerCount));
+
+  // Find user's current match
+  const userCurrentMatch = rounds
+    .flatMap((round, roundIdx) =>
+      round.matches.map((match, matchIdx) => ({
+        ...match,
+        roundNumber: roundIdx,
+        matchNumber: matchIdx
+      }))
+    )
+    .find(match => {
+      const isUserInMatch =
+        match.player1?.toLowerCase() === account?.toLowerCase() ||
+        match.player2?.toLowerCase() === account?.toLowerCase();
+      const isNotComplete = match.matchStatus !== 2; // 2 = Completed
+      return isUserInMatch && isNotComplete;
+    });
+
+  const shortenAddress = (addr) => {
+    if (!addr || addr === '0x0000000000000000000000000000000000000000') return 'TBD';
+    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+  };
+
+  const getMatchStatusText = (matchStatus) => {
+    if (matchStatus === 0) return 'Not Started';
+    if (matchStatus === 1) return 'In Progress';
+    if (matchStatus === 2) return 'Completed';
+    return 'Unknown';
+  };
+
+  const getMatchStatusColor = (matchStatus) => {
+    if (matchStatus === 0) return 'text-gray-400';
+    if (matchStatus === 1) return 'text-yellow-400';
+    if (matchStatus === 2) return 'text-green-400';
+    return 'text-gray-400';
+  };
+
+  return (
+    <div className="mb-16">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-purple-600/30 to-blue-600/30 backdrop-blur-lg rounded-2xl p-8 border border-purple-400/30 mb-8">
+        <button
+          onClick={onBack}
+          className="mb-4 flex items-center gap-2 text-purple-300 hover:text-purple-200 transition-colors"
+        >
+          <ChevronDown className="rotate-90" size={20} />
+          Back to Tournaments
+        </button>
+
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <Trophy className="text-purple-400" size={48} />
+            <div>
+              <h2 className="text-4xl font-bold text-white">
+                Tournament T{tierId}-I{instanceId}
+              </h2>
+              <p className="text-purple-300">
+                Round {currentRound + 1} of {totalRounds}
+              </p>
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-purple-300 text-sm">Prize Pool</div>
+            <div className="text-3xl font-bold text-yellow-400">
+              {ethers.formatEther(prizePool)} ETH
+            </div>
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-4">
+          <div className="bg-black/20 rounded-lg p-4">
+            <div className="text-purple-300 text-sm mb-1">Players</div>
+            <div className="text-white font-bold text-xl">{enrolledCount} / {playerCount}</div>
+          </div>
+          <div className="bg-black/20 rounded-lg p-4">
+            <div className="text-purple-300 text-sm mb-1">Status</div>
+            <div className="text-white font-bold text-xl">
+              {status === 0 ? 'Enrolling' : status === 1 ? 'In Progress' : status === 2 ? 'Completed' : 'Unknown'}
+            </div>
+          </div>
+          <div className="bg-black/20 rounded-lg p-4">
+            <div className="text-purple-300 text-sm mb-1">Current Round</div>
+            <div className="text-white font-bold text-xl">Round {currentRound + 1}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* User's Current Match Highlight */}
+      {userCurrentMatch && (
+        <div className="bg-gradient-to-r from-green-600/30 to-emerald-600/30 backdrop-blur-lg rounded-2xl p-6 border-2 border-green-400/50 mb-8 animate-pulse">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-2xl font-bold text-white mb-2">Your Current Match</h3>
+              <div className="flex items-center gap-4 text-lg">
+                <div className="flex flex-col">
+                  <span className="text-green-300 font-semibold">
+                    {shortenAddress(userCurrentMatch.player1)}
+                  </span>
+                  {userCurrentMatch.player1?.toLowerCase() === account?.toLowerCase() && (
+                    <span className="text-yellow-300 text-xs font-bold">← THIS IS YOU</span>
+                  )}
+                </div>
+                <span className="text-white font-bold">VS</span>
+                <div className="flex flex-col">
+                  <span className="text-green-300 font-semibold">
+                    {shortenAddress(userCurrentMatch.player2)}
+                  </span>
+                  {userCurrentMatch.player2?.toLowerCase() === account?.toLowerCase() && (
+                    <span className="text-yellow-300 text-xs font-bold">THIS IS YOU →</span>
+                  )}
+                </div>
+              </div>
+              <p className="text-green-200 mt-2">
+                Round {userCurrentMatch.roundNumber + 1} • Match {userCurrentMatch.matchNumber + 1} •
+                <span className={`ml-2 ${getMatchStatusColor(userCurrentMatch.matchStatus)}`}>
+                  {getMatchStatusText(userCurrentMatch.matchStatus)}
+                </span>
+              </p>
+            </div>
+            <button
+              onClick={() => onEnterMatch(tierId, instanceId, userCurrentMatch.roundNumber, userCurrentMatch.matchNumber)}
+              disabled={loading}
+              className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold py-4 px-8 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              <Play size={24} />
+              {loading ? 'Loading...' : 'Enter Match'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Bracket View */}
+      <div className="bg-gradient-to-br from-slate-900/50 to-purple-900/30 backdrop-blur-lg rounded-2xl p-8 border border-purple-400/30">
+        <h3 className="text-2xl font-bold text-purple-300 mb-6 flex items-center gap-2">
+          <Grid size={24} />
+          Tournament Bracket
+        </h3>
+
+        <div className="space-y-8">
+          {rounds.map((round, roundIdx) => (
+            <div key={roundIdx}>
+              <h4 className="text-xl font-bold text-purple-400 mb-4">
+                Round {roundIdx + 1}
+                {roundIdx === totalRounds - 1 && ' - Finals'}
+                {roundIdx === totalRounds - 2 && rounds.length > 1 && ' - Semi-Finals'}
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {round.matches.map((match, matchIdx) => {
+                  const isUserMatch =
+                    match.player1?.toLowerCase() === account?.toLowerCase() ||
+                    match.player2?.toLowerCase() === account?.toLowerCase();
+
+                  return (
+                    <div
+                      key={matchIdx}
+                      className={`bg-black/30 rounded-xl p-4 border-2 transition-all ${
+                        isUserMatch
+                          ? 'border-green-400/70 bg-green-900/20'
+                          : 'border-purple-400/30 hover:border-purple-400/50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-purple-300 text-sm font-semibold">
+                          Match {matchIdx + 1}
+                        </span>
+                        <span className={`text-xs font-bold ${getMatchStatusColor(match.matchStatus)}`}>
+                          {getMatchStatusText(match.matchStatus)}
+                        </span>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className={`flex items-center justify-between p-2 rounded ${
+                          match.winner?.toLowerCase() === match.player1?.toLowerCase()
+                            ? 'bg-green-500/20 border border-green-400/50'
+                            : match.player1?.toLowerCase() === account?.toLowerCase()
+                            ? 'bg-yellow-500/20 border border-yellow-400/50'
+                            : 'bg-purple-500/10'
+                        }`}>
+                          <div className="flex flex-col">
+                            <span className="text-white font-mono text-sm">
+                              {shortenAddress(match.player1)}
+                            </span>
+                            {match.player1?.toLowerCase() === account?.toLowerCase() && (
+                              <span className="text-yellow-300 text-xs font-bold mt-0.5">THIS IS YOU</span>
+                            )}
+                          </div>
+                          {match.winner?.toLowerCase() === match.player1?.toLowerCase() && (
+                            <Award className="text-green-400" size={16} />
+                          )}
+                        </div>
+
+                        <div className="text-center text-purple-400 font-bold">VS</div>
+
+                        <div className={`flex items-center justify-between p-2 rounded ${
+                          match.winner?.toLowerCase() === match.player2?.toLowerCase()
+                            ? 'bg-green-500/20 border border-green-400/50'
+                            : match.player2?.toLowerCase() === account?.toLowerCase()
+                            ? 'bg-yellow-500/20 border border-yellow-400/50'
+                            : 'bg-purple-500/10'
+                        }`}>
+                          <div className="flex flex-col">
+                            <span className="text-white font-mono text-sm">
+                              {shortenAddress(match.player2)}
+                            </span>
+                            {match.player2?.toLowerCase() === account?.toLowerCase() && (
+                              <span className="text-yellow-300 text-xs font-bold mt-0.5">THIS IS YOU</span>
+                            )}
+                          </div>
+                          {match.winner?.toLowerCase() === match.player2?.toLowerCase() && (
+                            <Award className="text-green-400" size={16} />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Last Game Result Component
 const LastGameResult = ({ lastGame, account }) => {
   if (!lastGame) return null;
@@ -955,6 +1187,7 @@ export default function TicTacBlock() {
   // Tournament State
   const [tournaments, setTournaments] = useState([]);
   const [tournamentsLoading, setTournamentsLoading] = useState(false);
+  const [viewingTournament, setViewingTournament] = useState(null); // { tierId, instanceId, tournamentData, bracketData }
 
   // Helper to cycle through themes
   const cycleTheme = () => {
@@ -1333,10 +1566,99 @@ export default function TicTacBlock() {
     }
   };
 
-  // Handle entering tournament (navigate to tournament view)
+  // Handle entering tournament (fetch and display bracket)
   const handleEnterTournament = async (tierId, instanceId) => {
-    alert(`Entering tournament T${tierId}-I${instanceId}. Tournament bracket view coming soon!`);
-    // TODO: Navigate to tournament bracket/matches view
+    if (!contract) return;
+
+    try {
+      setTournamentsLoading(true);
+
+      // Get tournament info
+      const tournamentInfo = await contract.getTournamentInfo(tierId, instanceId);
+      const status = Number(tournamentInfo[0]);
+      const currentRound = Number(tournamentInfo[2]);
+      const enrolledCount = Number(tournamentInfo[3]);
+      const prizePool = tournamentInfo[4];
+
+      // Get tier config for player count
+      const tierConfig = await contract.tierConfigs(tierId);
+      const playerCount = Number(tierConfig.playerCount);
+
+      // Get enrolled players
+      const enrolledPlayers = await contract.getEnrolledPlayers(tierId, instanceId);
+
+      // Calculate total rounds
+      const totalRounds = Math.ceil(Math.log2(playerCount));
+
+      // Fetch all rounds and matches
+      const rounds = [];
+      for (let roundNum = 0; roundNum < totalRounds; roundNum++) {
+        const roundInfo = await contract.getRoundInfo(tierId, instanceId, roundNum);
+        const totalMatches = Number(roundInfo[0]);
+
+        const matches = [];
+        for (let matchNum = 0; matchNum < totalMatches; matchNum++) {
+          try {
+            const matchData = await contract.getMatch(tierId, instanceId, roundNum, matchNum);
+            matches.push({
+              player1: matchData[0],
+              player2: matchData[1],
+              currentTurn: matchData[2],
+              winner: matchData[3],
+              board: matchData[4],
+              matchStatus: Number(matchData[5]),
+              isDraw: matchData[6]
+            });
+          } catch (err) {
+            // Match might not exist yet
+            matches.push({
+              player1: '0x0000000000000000000000000000000000000000',
+              player2: '0x0000000000000000000000000000000000000000',
+              matchStatus: 0
+            });
+          }
+        }
+
+        rounds.push({ roundNumber: roundNum, matches });
+      }
+
+      // Set viewing tournament state
+      setViewingTournament({
+        tierId,
+        instanceId,
+        status,
+        currentRound,
+        enrolledCount,
+        prizePool,
+        playerCount,
+        enrolledPlayers,
+        rounds
+      });
+
+      setTournamentsLoading(false);
+    } catch (error) {
+      console.error('Error loading tournament bracket:', error);
+      alert(`Error loading tournament: ${error.message}`);
+      setTournamentsLoading(false);
+    }
+  };
+
+  // Handle entering a match from tournament bracket
+  const handlePlayMatch = async (tierId, instanceId, roundNumber, matchNumber) => {
+    if (!contract || !account) {
+      alert('Please connect your wallet first');
+      return;
+    }
+
+    // For now, show alert - full match UI implementation coming soon
+    alert(`Opening match:\nTournament: T${tierId}-I${instanceId}\nRound ${roundNumber + 1}, Match ${matchNumber + 1}\n\nFull match play UI coming soon!`);
+
+    // TODO: Implement full match UI similar to previous implementation
+    // This would include:
+    // - Fetch match data
+    // - Display game board
+    // - Handle moves and blocks
+    // - Real-time polling
   };
 
   // Initialize contract in read-only mode on mount (without wallet)
@@ -1729,71 +2051,85 @@ export default function TicTacBlock() {
 
         {/* Tournaments Section */}
         {account && contract && (
-          <div className="mb-16">
-            {/* Section Header */}
-            <div className="text-center mb-12">
-              <div className="inline-flex items-center gap-3 mb-4">
-                <Trophy className={`${theme === 'dream' ? 'text-blue-400' : theme === 'daring' ? 'text-red-400' : 'text-purple-400'}`} size={48} />
-                <h2 className={`text-5xl font-bold bg-gradient-to-r ${theme === 'dream' ? 'from-blue-400 to-cyan-400' : theme === 'daring' ? 'from-red-400 to-orange-400' : 'from-purple-400 to-blue-400'} bg-clip-text text-transparent`}>
-                  {theme === 'dream' ? 'Classic Tournaments' : theme === 'daring' ? 'Pro Tournaments' : 'Tournaments'}
-                </h2>
-              </div>
-              <p className={`text-xl ${theme === 'dream' ? 'text-blue-200' : theme === 'daring' ? 'text-red-200' : 'text-purple-200'}`}>
-                {theme === 'dream' ? 'Standard competitive play for all skill levels' : 'Advanced tournaments with block mechanics and higher stakes'}
-              </p>
-            </div>
+          <>
+            {viewingTournament ? (
+              // Show Tournament Bracket View
+              <TournamentBracket
+                tournamentData={viewingTournament}
+                onBack={() => setViewingTournament(null)}
+                onEnterMatch={handlePlayMatch}
+                account={account}
+                loading={tournamentsLoading}
+              />
+            ) : (
+              // Show Tournament List
+              <div className="mb-16">
+                {/* Section Header */}
+                <div className="text-center mb-12">
+                  <div className="inline-flex items-center gap-3 mb-4">
+                    <Trophy className={`${theme === 'dream' ? 'text-blue-400' : theme === 'daring' ? 'text-red-400' : 'text-purple-400'}`} size={48} />
+                    <h2 className={`text-5xl font-bold bg-gradient-to-r ${theme === 'dream' ? 'from-blue-400 to-cyan-400' : theme === 'daring' ? 'from-red-400 to-orange-400' : 'from-purple-400 to-blue-400'} bg-clip-text text-transparent`}>
+                      {theme === 'dream' ? 'Classic Tournaments' : theme === 'daring' ? 'Pro Tournaments' : 'Tournaments'}
+                    </h2>
+                  </div>
+                  <p className={`text-xl ${theme === 'dream' ? 'text-blue-200' : theme === 'daring' ? 'text-red-200' : 'text-purple-200'}`}>
+                    {theme === 'dream' ? 'Standard competitive play for all skill levels' : 'Advanced tournaments with block mechanics and higher stakes'}
+                  </p>
+                </div>
 
-            {/* Loading State */}
-            {tournamentsLoading && (
-              <div className="text-center py-12">
-                <div className="inline-block">
-                  <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
-                  <p className="text-purple-300">Loading tournaments...</p>
+                {/* Loading State */}
+                {tournamentsLoading && (
+                  <div className="text-center py-12">
+                    <div className="inline-block">
+                      <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
+                      <p className="text-purple-300">Loading tournaments...</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Tournament Cards Grid */}
+                {!tournamentsLoading && tournaments.length > 0 && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {tournaments.map((tournament) => (
+                      <TournamentCard
+                        key={`${tournament.tierId}-${tournament.instanceId}`}
+                        tierId={tournament.tierId}
+                        instanceId={tournament.instanceId}
+                        maxPlayers={tournament.maxPlayers}
+                        currentEnrolled={tournament.enrolledCount}
+                        entryFee={tournament.entryFee}
+                        isEnrolled={tournament.isEnrolled}
+                        onEnroll={() => handleEnroll(tournament.tierId, tournament.instanceId, tournament.entryFee)}
+                        onEnter={() => handleEnterTournament(tournament.tierId, tournament.instanceId)}
+                        loading={tournamentsLoading}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {/* Empty State */}
+                {!tournamentsLoading && tournaments.length === 0 && (
+                  <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-12 border border-purple-400/30 text-center">
+                    <Trophy className="text-purple-400/50 mx-auto mb-4" size={64} />
+                    <h3 className="text-2xl font-bold text-purple-300 mb-2">No Tournaments Available</h3>
+                    <p className="text-purple-200/70">Check back soon for new tournaments!</p>
+                  </div>
+                )}
+
+                {/* User Info Footer */}
+                <div className="mt-8 flex justify-center gap-4">
+                  <div className="bg-purple-500/20 border border-purple-400/50 rounded-xl p-4">
+                    <div className="text-purple-300 text-sm mb-1">Your Address</div>
+                    <div className="font-mono text-purple-100 font-bold">{account.slice(0, 6)}...{account.slice(-4)}</div>
+                  </div>
+                  <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-4">
+                    <div className="text-blue-300 text-sm mb-1">Network</div>
+                    <div className="font-bold text-blue-100">{networkInfo?.name || 'Connected'}</div>
+                  </div>
                 </div>
               </div>
             )}
-
-            {/* Tournament Cards Grid */}
-            {!tournamentsLoading && tournaments.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {tournaments.map((tournament) => (
-                  <TournamentCard
-                    key={`${tournament.tierId}-${tournament.instanceId}`}
-                    tierId={tournament.tierId}
-                    instanceId={tournament.instanceId}
-                    maxPlayers={tournament.maxPlayers}
-                    currentEnrolled={tournament.enrolledCount}
-                    entryFee={tournament.entryFee}
-                    isEnrolled={tournament.isEnrolled}
-                    onEnroll={() => handleEnroll(tournament.tierId, tournament.instanceId, tournament.entryFee)}
-                    onEnter={() => handleEnterTournament(tournament.tierId, tournament.instanceId)}
-                    loading={tournamentsLoading}
-                  />
-                ))}
-              </div>
-            )}
-
-            {/* Empty State */}
-            {!tournamentsLoading && tournaments.length === 0 && (
-              <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-12 border border-purple-400/30 text-center">
-                <Trophy className="text-purple-400/50 mx-auto mb-4" size={64} />
-                <h3 className="text-2xl font-bold text-purple-300 mb-2">No Tournaments Available</h3>
-                <p className="text-purple-200/70">Check back soon for new tournaments!</p>
-              </div>
-            )}
-
-            {/* User Info Footer */}
-            <div className="mt-8 flex justify-center gap-4">
-              <div className="bg-purple-500/20 border border-purple-400/50 rounded-xl p-4">
-                <div className="text-purple-300 text-sm mb-1">Your Address</div>
-                <div className="font-mono text-purple-100 font-bold">{account.slice(0, 6)}...{account.slice(-4)}</div>
-              </div>
-              <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-4">
-                <div className="text-blue-300 text-sm mb-1">Network</div>
-                <div className="font-bold text-blue-100">{networkInfo?.name || 'Connected'}</div>
-              </div>
-            </div>
-          </div>
+          </>
         )}
 
         {/* Not Connected State - Call to Action */}
