@@ -3021,129 +3021,76 @@ export default function TicTacBlock() {
                       </div>
                     </div>
 
-                    {/* Award Transactions Section */}
+                    {/* Top Prize Recipients Section */}
                     {cachedStats.tournaments?.length > 0 && (
                       <div className="mt-6 bg-gradient-to-br from-green-600/20 to-emerald-600/20 backdrop-blur-lg rounded-2xl p-6 border border-green-400/30">
                         <div className="flex items-center gap-3 mb-4">
                           <Coins className="text-green-400" size={32} />
-                          <h3 className="text-2xl font-bold text-white">Award Transactions</h3>
+                          <h3 className="text-2xl font-bold text-white">Top Prize Recipients</h3>
                         </div>
-                        <div className="space-y-2 max-h-96 overflow-y-auto">
+                        <div className="space-y-2 max-h-64 overflow-y-auto">
                           {(() => {
                             try {
-                              // Collect all award transactions with details
-                              const awardTransactions = [];
-                              let txNumber = 1;
+                              // Collect all prize recipients
+                              const recipients = new Map();
 
                               cachedStats.tournaments.forEach(tournament => {
-                                if (tournament.participants && tournament.prizes && tournament.rankings && tournament.participantCount) {
+                                if (tournament.participants && tournament.prizes && tournament.participantCount) {
                                   const participantArray = Array.from(tournament.participants);
                                   const prizesArray = Array.from(tournament.prizes);
-                                  const rankingsArray = Array.from(tournament.rankings);
                                   const count = Number(tournament.participantCount);
-                                  const tournamentId = tournament.tournamentId ? Number(tournament.tournamentId) : 'N/A';
-                                  const tierId = Number(tournament.tierId);
 
                                   for (let i = 0; i < count && i < participantArray.length; i++) {
                                     const addr = participantArray[i];
                                     const prize = prizesArray[i];
-                                    const rank = rankingsArray[i] ? Number(rankingsArray[i]) : null;
 
                                     if (addr && prize && addr !== ethers.ZeroAddress) {
                                       const prizeEth = parseFloat(ethers.formatEther(prize));
                                       if (prizeEth > 0) {
-                                        awardTransactions.push({
-                                          txNumber: txNumber++,
-                                          address: addr,
-                                          rank: rank,
-                                          amount: prizeEth,
-                                          tournamentId: tournamentId,
-                                          tierId: tierId
-                                        });
+                                        const current = recipients.get(addr.toLowerCase()) || 0;
+                                        recipients.set(addr.toLowerCase(), current + prizeEth);
                                       }
                                     }
                                   }
                                 }
                               });
 
-                              // Sort by transaction number (most recent first)
-                              awardTransactions.reverse();
+                              // Convert to array and sort by total prizes
+                              const sortedRecipients = Array.from(recipients.entries())
+                                .sort((a, b) => b[1] - a[1])
+                                .slice(0, 10);
 
-                              if (awardTransactions.length === 0) {
+                              if (sortedRecipients.length === 0) {
                                 return (
                                   <div className="text-green-300/70 text-sm text-center py-4">
-                                    No award transactions available yet
+                                    No prize data available yet
                                   </div>
                                 );
                               }
 
-                              return (
-                                <>
-                                  {/* Header Row */}
-                                  <div className="grid grid-cols-4 gap-2 bg-green-500/20 p-3 rounded-lg border border-green-400/30 font-bold text-green-300 text-xs sticky top-0">
-                                    <div>TX #</div>
-                                    <div>Wallet</div>
-                                    <div>Rank</div>
-                                    <div className="text-right">Amount</div>
+                              return sortedRecipients.map(([address, total], idx) => (
+                                <div
+                                  key={address}
+                                  className="flex items-center justify-between bg-green-500/10 p-3 rounded-lg border border-green-400/20"
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-full bg-green-500/30 flex items-center justify-center text-green-300 font-bold text-sm border-2 border-green-400">
+                                      #{idx + 1}
+                                    </div>
+                                    <span className="text-white font-mono text-sm">
+                                      {address.slice(0, 6)}...{address.slice(-4)}
+                                    </span>
                                   </div>
-
-                                  {/* Award Rows */}
-                                  {awardTransactions.map((tx) => (
-                                    <div
-                                      key={`${tx.tournamentId}-${tx.address}`}
-                                      className="grid grid-cols-4 gap-2 items-center bg-green-500/10 p-3 rounded-lg border border-green-400/20 hover:bg-green-500/15 transition-colors"
-                                    >
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-green-300 font-mono text-sm">
-                                          #{tx.txNumber}
-                                        </span>
-                                      </div>
-                                      <div className="text-white font-mono text-xs">
-                                        {tx.address.slice(0, 6)}...{tx.address.slice(-4)}
-                                      </div>
-                                      <div>
-                                        {tx.rank ? (
-                                          <div className="inline-flex items-center gap-1">
-                                            {tx.rank === 1 && <Trophy className="text-yellow-400" size={14} />}
-                                            {tx.rank === 2 && <Trophy className="text-gray-400" size={14} />}
-                                            {tx.rank === 3 && <Trophy className="text-amber-600" size={14} />}
-                                            <span className={`text-sm font-bold ${
-                                              tx.rank === 1 ? 'text-yellow-400' :
-                                              tx.rank === 2 ? 'text-gray-400' :
-                                              tx.rank === 3 ? 'text-amber-600' :
-                                              'text-green-300'
-                                            }`}>
-                                              {tx.rank}
-                                            </span>
-                                          </div>
-                                        ) : (
-                                          <span className="text-green-300/50 text-sm">-</span>
-                                        )}
-                                      </div>
-                                      <div className="text-right">
-                                        <span className="text-green-400 font-bold text-sm">
-                                          {tx.amount.toFixed(4)} ETH
-                                        </span>
-                                      </div>
-                                    </div>
-                                  ))}
-
-                                  {/* Summary Footer */}
-                                  <div className="grid grid-cols-4 gap-2 bg-green-500/20 p-3 rounded-lg border border-green-400/30 mt-2 sticky bottom-0">
-                                    <div className="col-span-3 text-green-300 font-bold text-sm">
-                                      Total Awarded ({awardTransactions.length} transactions)
-                                    </div>
-                                    <div className="text-right text-green-400 font-bold text-lg">
-                                      {awardTransactions.reduce((sum, tx) => sum + tx.amount, 0).toFixed(4)} ETH
-                                    </div>
-                                  </div>
-                                </>
-                              );
+                                  <span className="text-green-400 font-bold text-lg">
+                                    {total.toFixed(4)} ETH
+                                  </span>
+                                </div>
+                              ));
                             } catch (err) {
-                              console.warn('Error calculating award transactions:', err);
+                              console.warn('Error calculating top recipients:', err);
                               return (
                                 <div className="text-red-300/70 text-sm text-center py-4">
-                                  Error loading award data
+                                  Error loading prize data
                                 </div>
                               );
                             }
