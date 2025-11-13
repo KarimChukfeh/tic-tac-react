@@ -1186,8 +1186,8 @@ export default function TicTacBlock() {
   const [lastGame, setLastGame] = useState(null);
   const [totalGamesPlayed, setTotalGamesPlayed] = useState(0);
 
-  // Theme State - 'dream' (blue/cyan), 'daring' (red/orange), 'classic' (traditional)
-  const [theme, setTheme] = useState('dream');
+  // Theme State - 'dream' (blue/cyan), 'daring' (red/orange)
+  const [theme, setTheme] = useState('daring');
   const [expandedFaq, setExpandedFaq] = useState(null);
 
   // Tournament State
@@ -1211,7 +1211,6 @@ export default function TicTacBlock() {
   const cycleTheme = () => {
     setTheme(current => {
       if (current === 'dream') return 'daring';
-      if (current === 'daring') return 'classic';
       return 'dream';
     });
   };
@@ -1263,24 +1262,6 @@ export default function TicTacBlock() {
       infoIcon: 'text-red-400',
       infoTitle: 'text-orange-300',
       infoText: 'text-red-200'
-    },
-    classic: {
-      gradient: 'linear-gradient(to bottom right, rgb(15, 23, 42), rgb(30, 58, 138), rgb(15, 23, 42))',
-      icon: '🎮',
-      label: 'Classic',
-      // Hero section colors
-      heroGlow: 'from-blue-500 via-cyan-500 to-blue-500',
-      heroIcon: 'text-blue-400',
-      heroTitle: 'from-blue-400 via-cyan-400 to-blue-400',
-      heroText: 'text-blue-200',
-      heroSubtext: 'text-blue-300',
-      buttonGradient: 'from-blue-500 to-cyan-500',
-      buttonHover: 'hover:from-blue-600 hover:to-cyan-600',
-      infoCard: 'from-blue-500/20 to-cyan-500/20',
-      infoBorder: 'border-blue-400/30',
-      infoIcon: 'text-blue-400',
-      infoTitle: 'text-blue-300',
-      infoText: 'text-blue-200'
     }
   };
 
@@ -2088,59 +2069,24 @@ export default function TicTacBlock() {
   }
 
   return (
-    <div className={theme === 'classic' ? "min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 text-white" : ""} style={theme !== 'classic' ? {
+    <div style={{
       minHeight: '100vh',
       background: currentTheme.gradient,
       color: '#fff',
       position: 'relative',
       overflow: 'hidden'
-    } : {}}>
-      {/* Particle Background (Dream/Daring Themes Only) */}
-      {theme !== 'classic' && <ParticleBackground colors={currentTheme.particleColors} />}
+    }}>
+      {/* Particle Background */}
+      <ParticleBackground colors={currentTheme.particleColors} />
 
       {/* Trust Banner */}
-      <div className={theme === 'classic' ? "bg-blue-600/20 border-b border-blue-500/30 backdrop-blur-sm" : ""} style={theme !== 'classic' ? {
+      <div style={{
         background: theme === 'dream' ? 'rgba(0, 100, 200, 0.2)' : 'rgba(139, 0, 0, 0.2)',
         borderBottom: `1px solid ${currentTheme.border}`,
         backdropFilter: 'blur(10px)',
         position: 'relative',
         zIndex: 10
-      } : { position: 'relative', zIndex: 10 }}>
-        {/* Theme Toggle Switch - Desktop: fixed top-right, Mobile: in banner */}
-        <div className="theme-toggle-wrapper">
-          <button
-            onClick={cycleTheme}
-            className="theme-toggle-btn"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: theme === 'classic' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255, 255, 255, 0.1)',
-              backdropFilter: 'blur(10px)',
-              border: theme === 'classic' ? '2px solid rgba(59, 130, 246, 0.5)' : `2px solid ${currentTheme.border}`,
-              borderRadius: '20px',
-              padding: '6px 12px',
-              color: '#fff',
-              fontWeight: 'bold',
-              fontSize: '12px',
-              cursor: 'pointer',
-              transition: 'all 0.3s ease',
-              boxShadow: theme === 'classic' ? '0 0 15px rgba(59, 130, 246, 0.3)' : `0 0 15px ${currentTheme.glow}`
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.transform = 'scale(1.05)';
-              e.target.style.boxShadow = theme === 'classic' ? '0 0 25px rgba(59, 130, 246, 0.5)' : `0 0 25px ${currentTheme.glow}`;
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.transform = 'scale(1)';
-              e.target.style.boxShadow = theme === 'classic' ? '0 0 15px rgba(59, 130, 246, 0.3)' : `0 0 15px ${currentTheme.glow}`;
-            }}
-          >
-            <span className="theme-toggle-icon">{currentTheme.icon}</span>
-            <span className="theme-toggle-text">{currentTheme.label}</span>
-          </button>
-        </div>
-
+      }}>
         <div className="max-w-7xl mx-auto px-6 py-3">
           <div className="flex flex-wrap items-center justify-between gap-4 text-sm">
             <div className="flex items-center gap-6">
@@ -2253,6 +2199,40 @@ export default function TicTacBlock() {
           </div>
               </div>
             </div>
+          </div>
+
+          {/* Theme Toggle */}
+          <div className="mt-4 max-w-2xl mx-auto flex justify-center">
+            <button
+              onClick={cycleTheme}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                background: 'rgba(255, 255, 255, 0.1)',
+                backdropFilter: 'blur(10px)',
+                border: `3px solid ${currentTheme.border}`,
+                borderRadius: '30px',
+                padding: '16px 32px',
+                color: '#fff',
+                fontWeight: 'bold',
+                fontSize: '20px',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                boxShadow: `0 0 25px ${currentTheme.glow}`
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.transform = 'scale(1.05)';
+                e.target.style.boxShadow = `0 0 35px ${currentTheme.glow}`;
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.transform = 'scale(1)';
+                e.target.style.boxShadow = `0 0 25px ${currentTheme.glow}`;
+              }}
+            >
+              <span style={{ fontSize: '28px' }}>{currentTheme.icon}</span>
+              <span>{currentTheme.label}</span>
+            </button>
           </div>
 
           {/* Connection Status Panel (for debugging) */}
