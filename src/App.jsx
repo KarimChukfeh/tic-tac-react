@@ -1194,6 +1194,7 @@ export default function TicTacBlock() {
   const [matchLoading, setMatchLoading] = useState(false);
   const [blockMode, setBlockMode] = useState(false);
   const [moveHistory, setMoveHistory] = useState([]);
+  const [syncDots, setSyncDots] = useState(1);
 
   // Helper to cycle through themes
   const cycleTheme = () => {
@@ -1650,10 +1651,10 @@ export default function TicTacBlock() {
   };
 
   // Refresh match data from contract
-  const refreshMatchData = async (contract, account, matchInfo) => {
+  const refreshMatchData = useCallback(async (contractInstance, userAccount, matchInfo) => {
     try {
       const { tierId, instanceId, roundNumber, matchNumber } = matchInfo;
-      const matchData = await contract.getMatch(tierId, instanceId, roundNumber, matchNumber);
+      const matchData = await contractInstance.getMatch(tierId, instanceId, roundNumber, matchNumber);
 
       const player1 = matchData[0];
       const player2 = matchData[1];
@@ -1679,8 +1680,8 @@ export default function TicTacBlock() {
       }
 
       const boardState = Array.from(board).map(cell => Number(cell));
-      const isPlayer1 = actualPlayer1.toLowerCase() === account.toLowerCase();
-      const isYourTurn = currentTurn.toLowerCase() === account.toLowerCase();
+      const isPlayer1 = actualPlayer1.toLowerCase() === userAccount.toLowerCase();
+      const isYourTurn = currentTurn.toLowerCase() === userAccount.toLowerCase();
 
       return {
         ...matchInfo,
@@ -1701,7 +1702,7 @@ export default function TicTacBlock() {
       console.error('Error refreshing match:', error);
       return null;
     }
-  };
+  }, []); // No dependencies - pure function
 
   // Handle cell click for making moves
   const handleCellClick = async (cellIndex) => {
@@ -1884,17 +1885,55 @@ export default function TicTacBlock() {
     }
   }, [theme, contract, account, fetchTournaments]);
 
-  // Poll match data every 3 seconds when viewing a match
+  // Poll match data every 3 seconds when viewing a match (using refs for seamless syncing)
+  const matchRef = useRef(currentMatch);
+  const contractRef = useRef(contract);
+  const accountRef = useRef(account);
+
+  // Keep refs updated
+  useEffect(() => {
+    matchRef.current = currentMatch;
+    contractRef.current = contract;
+    accountRef.current = account;
+  }, [currentMatch, contract, account]);
+
   useEffect(() => {
     if (!currentMatch || !contract || !account) return;
 
-    const pollInterval = setInterval(async () => {
-      const updated = await refreshMatchData(contract, account, currentMatch);
+    const doSync = async () => {
+      const match = matchRef.current;
+      const contractInstance = contractRef.current;
+      const userAccount = accountRef.current;
+
+      if (!match || !contractInstance || !userAccount) return;
+
+      const updated = await refreshMatchData(contractInstance, userAccount, match);
       if (updated) setCurrentMatch(updated);
-    }, 3000);
+
+      // Reset dots to 1 after sync completes
+      setSyncDots(1);
+    };
+
+    // Set up polling interval - runs every 3 seconds
+    const pollInterval = setInterval(doSync, 3000);
 
     return () => clearInterval(pollInterval);
-  }, [currentMatch, contract, account]);
+  }, [currentMatch?.tierId, currentMatch?.instanceId, currentMatch?.roundNumber, currentMatch?.matchNumber, refreshMatchData]);
+
+  // Increment sync dots every second (1 -> 2 -> 3, then resets when sync completes)
+  useEffect(() => {
+    if (!currentMatch) return;
+
+    const dotsInterval = setInterval(() => {
+      setSyncDots(prev => {
+        // Cap at 3 dots
+        if (prev >= 3) return 3;
+        return prev + 1;
+      });
+    }, 1000); // Add one dot every second
+
+    return () => clearInterval(dotsInterval);
+  }, [currentMatch]);
 
   // Loading animation component
   if (initialLoading) {
@@ -2235,10 +2274,16 @@ export default function TicTacBlock() {
 
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h2 className="text-3xl font-bold text-white mb-2">
-                    Tournament Match
-                  </h2>
-                  <p className="text-purple-300">
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-3xl font-bold text-white">
+                      Tournament Match
+                    </h2>
+                    <span className="text-cyan-400 text-sm font-semibold flex items-center gap-1">
+                      <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
+                      Syncing{'.'.repeat(syncDots)}
+                    </span>
+                  </div>
+                  <p className="text-purple-300 mt-2">
                     T{currentMatch.tierId}-I{currentMatch.instanceId} • Round {currentMatch.roundNumber + 1} • Match {currentMatch.matchNumber + 1}
                   </p>
                 </div>
@@ -2415,6 +2460,201 @@ export default function TicTacBlock() {
                 </div>
               </div>
             )}
+
+            {/* Dev/Debug Section */}
+            <div className="mt-6 bg-slate-900/80 rounded-xl p-6 border-2 border-yellow-500/50">
+              <h3 className="text-xl font-bold text-yellow-400 mb-4 flex items-center gap-2">
+                <Code size={20} />
+                Dev/Debug Info
+              </h3>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Match Identifiers */}
+                <div className="bg-black/30 rounded-lg p-4 border border-yellow-500/20">
+                  <h4 className="text-sm font-bold text-yellow-300 mb-3 uppercase tracking-wide">Match Identifiers</h4>
+                  <div className="space-y-2 text-sm font-mono">
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Tier ID:</span>
+                      <span className="text-white font-bold">{currentMatch.tierId}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Instance ID:</span>
+                      <span className="text-white font-bold">{currentMatch.instanceId}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Round Number:</span>
+                      <span className="text-white font-bold">{currentMatch.roundNumber}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Match Number:</span>
+                      <span className="text-white font-bold">{currentMatch.matchNumber}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Match Status */}
+                <div className="bg-black/30 rounded-lg p-4 border border-yellow-500/20">
+                  <h4 className="text-sm font-bold text-yellow-300 mb-3 uppercase tracking-wide">Match Status</h4>
+                  <div className="space-y-2 text-sm font-mono">
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Status:</span>
+                      <span className="text-white font-bold">
+                        {currentMatch.matchStatus === 0 ? 'Not Started (0)' :
+                         currentMatch.matchStatus === 1 ? 'In Progress (1)' :
+                         'Completed (2)'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Initialized:</span>
+                      <span className={`font-bold ${currentMatch.isMatchInitialized ? 'text-green-400' : 'text-red-400'}`}>
+                        {currentMatch.isMatchInitialized ? 'YES' : 'NO'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Is Draw:</span>
+                      <span className={`font-bold ${currentMatch.isDraw ? 'text-yellow-400' : 'text-gray-500'}`}>
+                        {currentMatch.isDraw ? 'YES' : 'NO'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Last Moved Cell:</span>
+                      <span className="text-white font-bold">{currentMatch.lastMovedCell}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Players */}
+                <div className="bg-black/30 rounded-lg p-4 border border-yellow-500/20">
+                  <h4 className="text-sm font-bold text-yellow-300 mb-3 uppercase tracking-wide">Players</h4>
+                  <div className="space-y-3 text-sm">
+                    <div>
+                      <div className="text-gray-400 mb-1">Player 1 (X):</div>
+                      <div className="font-mono text-xs text-white bg-blue-500/20 p-2 rounded break-all">
+                        {currentMatch.player1}
+                      </div>
+                      {currentMatch.player1?.toLowerCase() === account?.toLowerCase() && (
+                        <div className="text-yellow-400 text-xs font-bold mt-1">👈 THIS IS YOU</div>
+                      )}
+                    </div>
+                    <div>
+                      <div className="text-gray-400 mb-1">Player 2 (O):</div>
+                      <div className="font-mono text-xs text-white bg-pink-500/20 p-2 rounded break-all">
+                        {currentMatch.player2}
+                      </div>
+                      {currentMatch.player2?.toLowerCase() === account?.toLowerCase() && (
+                        <div className="text-yellow-400 text-xs font-bold mt-1">👈 THIS IS YOU</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Turn & Winner */}
+                <div className="bg-black/30 rounded-lg p-4 border border-yellow-500/20">
+                  <h4 className="text-sm font-bold text-yellow-300 mb-3 uppercase tracking-wide">Turn & Winner</h4>
+                  <div className="space-y-3 text-sm">
+                    <div>
+                      <div className="text-gray-400 mb-1">Current Turn:</div>
+                      <div className="font-mono text-xs text-white bg-purple-500/20 p-2 rounded break-all">
+                        {currentMatch.currentTurn || 'Not Started'}
+                      </div>
+                      {currentMatch.isYourTurn && (
+                        <div className="text-green-400 text-xs font-bold mt-1">✅ YOUR TURN!</div>
+                      )}
+                    </div>
+                    <div>
+                      <div className="text-gray-400 mb-1">Winner:</div>
+                      <div className="font-mono text-xs text-white bg-green-500/20 p-2 rounded break-all">
+                        {currentMatch.winner && currentMatch.winner !== '0x0000000000000000000000000000000000000000'
+                          ? currentMatch.winner
+                          : 'None'}
+                      </div>
+                      {currentMatch.winner?.toLowerCase() === account?.toLowerCase() && currentMatch.matchStatus === 2 && (
+                        <div className="text-yellow-400 text-xs font-bold mt-1">🏆 YOU WON!</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Board State */}
+                <div className="bg-black/30 rounded-lg p-4 border border-yellow-500/20 lg:col-span-2">
+                  <h4 className="text-sm font-bold text-yellow-300 mb-3 uppercase tracking-wide">Board State (Array)</h4>
+                  <div className="font-mono text-sm">
+                    <div className="text-gray-400 mb-2">Raw board array (0=empty, 1=X, 2=O):</div>
+                    <div className="bg-black/50 p-3 rounded text-white overflow-x-auto">
+                      [{currentMatch.board.join(', ')}]
+                    </div>
+                    <div className="mt-3 grid grid-cols-3 gap-2">
+                      {currentMatch.board.map((cell, idx) => (
+                        <div
+                          key={idx}
+                          className={`text-center p-2 rounded font-bold ${
+                            cell === 0 ? 'bg-gray-700/30 text-gray-400' :
+                            cell === 1 ? 'bg-blue-500/30 text-blue-300' :
+                            'bg-pink-500/30 text-pink-300'
+                          }`}
+                        >
+                          Cell {idx}: {cell === 0 ? 'Empty' : cell === 1 ? 'X' : 'O'}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* User Context */}
+                <div className="bg-black/30 rounded-lg p-4 border border-yellow-500/20 lg:col-span-2">
+                  <h4 className="text-sm font-bold text-yellow-300 mb-3 uppercase tracking-wide">Your Context</h4>
+                  <div className="space-y-2 text-sm font-mono">
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">You are Player:</span>
+                      <span className="text-white font-bold">
+                        {currentMatch.isPlayer1 ? 'Player 1 (X)' : 'Player 2 (O)'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Your Symbol:</span>
+                      <span className="text-white font-bold text-lg">{currentMatch.userSymbol}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Is Your Turn:</span>
+                      <span className={`font-bold ${currentMatch.isYourTurn ? 'text-green-400' : 'text-red-400'}`}>
+                        {currentMatch.isYourTurn ? 'YES' : 'NO'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Your Moves Made:</span>
+                      <span className="text-white font-bold">
+                        {currentMatch.board.filter(c => c === (currentMatch.isPlayer1 ? 1 : 2)).length}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Opponent Moves:</span>
+                      <span className="text-white font-bold">
+                        {currentMatch.board.filter(c => c === (currentMatch.isPlayer1 ? 2 : 1)).length}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* All Moves from History */}
+                {moveHistory.length > 0 && (
+                  <div className="bg-black/30 rounded-lg p-4 border border-yellow-500/20 lg:col-span-2">
+                    <h4 className="text-sm font-bold text-yellow-300 mb-3 uppercase tracking-wide">Complete Move History</h4>
+                    <div className="space-y-1 max-h-60 overflow-y-auto">
+                      {moveHistory.map((move, idx) => (
+                        <div key={idx} className="flex items-center gap-3 text-xs font-mono bg-purple-500/10 p-2 rounded">
+                          <span className="text-gray-400">#{idx + 1}</span>
+                          <span className="text-white font-bold">{move.player}</span>
+                          <span className="text-purple-400">→ Cell {move.cell}</span>
+                          <span className="text-gray-500 ml-auto">
+                            {new Date(move.timestamp).toLocaleTimeString()}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
