@@ -2948,31 +2948,91 @@ export default function TicTacBlock() {
                                 </div>
                               </div>
 
-                              {/* Total Awards Stats */}
+                              {/* Total Awards Distributed */}
                               <div className="bg-purple-500/10 rounded-lg p-4 border border-purple-400/20">
-                                <div className="text-purple-300 text-sm mb-2">Total Awards Distributed</div>
-                                <div className="text-2xl font-bold text-green-400">
-                                  {(() => {
-                                    try {
-                                      let total = 0;
-                                      cachedStats.tournaments.forEach(tournament => {
-                                        if (tournament.prizes && tournament.participantCount) {
-                                          const prizesArray = Array.from(tournament.prizes);
-                                          const count = Number(tournament.participantCount);
-                                          for (let i = 0; i < count && i < prizesArray.length; i++) {
-                                            if (prizesArray[i]) {
-                                              total += parseFloat(ethers.formatEther(prizesArray[i]));
+                                <div className="text-purple-300 text-sm mb-3 font-bold">Total Awards Distributed</div>
+                                {(() => {
+                                  try {
+                                    // Aggregate awards by address
+                                    const addressAwards = new Map();
+                                    let totalAwarded = 0;
+
+                                    cachedStats.tournaments.forEach(tournament => {
+                                      if (tournament.participants && tournament.prizes && tournament.participantCount) {
+                                        const participantArray = Array.from(tournament.participants);
+                                        const prizesArray = Array.from(tournament.prizes);
+                                        const count = Number(tournament.participantCount);
+
+                                        for (let i = 0; i < count && i < participantArray.length; i++) {
+                                          const addr = participantArray[i];
+                                          const prize = prizesArray[i];
+
+                                          if (addr && prize && addr !== ethers.ZeroAddress) {
+                                            const prizeEth = parseFloat(ethers.formatEther(prize));
+                                            if (prizeEth > 0) {
+                                              const current = addressAwards.get(addr.toLowerCase()) || 0;
+                                              addressAwards.set(addr.toLowerCase(), current + prizeEth);
+                                              totalAwarded += prizeEth;
                                             }
                                           }
                                         }
-                                      });
-                                      return total > 0 ? `${total.toFixed(4)} ETH` : 'N/A';
-                                    } catch (err) {
-                                      console.warn('Error calculating total awards:', err);
-                                      return 'N/A';
+                                      }
+                                    });
+
+                                    // Sort by amount (highest first)
+                                    const sortedAwards = Array.from(addressAwards.entries())
+                                      .sort((a, b) => b[1] - a[1]);
+
+                                    if (sortedAwards.length === 0) {
+                                      return (
+                                        <div className="text-purple-300/70 text-sm text-center py-2">
+                                          No awards distributed yet
+                                        </div>
+                                      );
                                     }
-                                  })()}
-                                </div>
+
+                                    return (
+                                      <>
+                                        {/* Total Summary */}
+                                        <div className="bg-green-500/20 p-3 rounded-lg border border-green-400/30 mb-3">
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-green-300 text-sm">Grand Total</span>
+                                            <span className="text-2xl font-bold text-green-400">
+                                              {totalAwarded.toFixed(4)} ETH
+                                            </span>
+                                          </div>
+                                          <div className="text-green-300/70 text-xs mt-1">
+                                            to {sortedAwards.length} unique recipient{sortedAwards.length !== 1 ? 's' : ''}
+                                          </div>
+                                        </div>
+
+                                        {/* Address List */}
+                                        <div className="space-y-2 max-h-64 overflow-y-auto">
+                                          {sortedAwards.map(([address, amount]) => (
+                                            <div
+                                              key={address}
+                                              className="flex items-center justify-between bg-purple-500/10 p-2 rounded border border-purple-400/20"
+                                            >
+                                              <span className="text-white font-mono text-xs">
+                                                {address.slice(0, 8)}...{address.slice(-6)}
+                                              </span>
+                                              <span className="text-green-400 font-bold text-sm">
+                                                {amount.toFixed(4)} ETH
+                                              </span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </>
+                                    );
+                                  } catch (err) {
+                                    console.warn('Error calculating total awards:', err);
+                                    return (
+                                      <div className="text-red-300/70 text-sm text-center py-2">
+                                        Error loading award data
+                                      </div>
+                                    );
+                                  }
+                                })()}
                               </div>
                             </>
                           )}
@@ -2992,19 +3052,97 @@ export default function TicTacBlock() {
                           </div>
                           {cachedStats.matches?.length > 0 && (
                             <>
-                              <div className="bg-cyan-500/10 rounded-lg p-4 border border-cyan-400/20">
-                                <div className="text-cyan-300 text-sm mb-1">Draws</div>
-                                <div className="text-2xl font-bold text-white">
-                                  {cachedStats.matches.filter(m => m?.isDraw).length}
+                              {/* Match Statistics Grid */}
+                              <div className="grid grid-cols-2 gap-3">
+                                <div className="bg-cyan-500/10 rounded-lg p-4 border border-cyan-400/20">
+                                  <div className="text-cyan-300 text-sm mb-1">Wins</div>
+                                  <div className="text-2xl font-bold text-green-400">
+                                    {cachedStats.matches.filter(m => m?.winner && m.winner !== ethers.ZeroAddress && !m?.isDraw).length}
+                                  </div>
+                                </div>
+                                <div className="bg-yellow-500/10 rounded-lg p-4 border border-yellow-400/20">
+                                  <div className="text-yellow-300 text-sm mb-1">Draws</div>
+                                  <div className="text-2xl font-bold text-yellow-400">
+                                    {cachedStats.matches.filter(m => m?.isDraw).length}
+                                  </div>
                                 </div>
                               </div>
+
+                              {/* Draw Rate */}
+                              <div className="bg-yellow-500/10 rounded-lg p-4 border border-yellow-400/20">
+                                <div className="text-yellow-300 text-sm mb-1">Draw Rate</div>
+                                <div className="flex items-center justify-between">
+                                  <div className="text-2xl font-bold text-yellow-400">
+                                    {((cachedStats.matches.filter(m => m?.isDraw).length / cachedStats.matches.length) * 100).toFixed(1)}%
+                                  </div>
+                                  <div className="text-xs text-yellow-300/70">
+                                    {cachedStats.matches.filter(m => m?.isDraw).length} of {cachedStats.matches.length} matches
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Draw Scenarios List */}
+                              {cachedStats.matches.filter(m => m?.isDraw).length > 0 && (
+                                <div className="bg-yellow-500/10 rounded-lg p-4 border border-yellow-400/20">
+                                  <div className="flex items-center gap-2 mb-3">
+                                    <AlertCircle className="text-yellow-400" size={16} />
+                                    <div className="text-yellow-300 text-sm font-bold">Draw Scenarios</div>
+                                  </div>
+                                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                                    {[...cachedStats.matches]
+                                      .filter(m => m?.isDraw)
+                                      .slice(-10)
+                                      .reverse()
+                                      .map((match, idx) => (
+                                        <div key={idx} className="bg-yellow-500/10 p-3 rounded border border-yellow-400/20">
+                                          <div className="flex items-center justify-between mb-2">
+                                            <div className="flex items-center gap-2">
+                                              <div className="w-6 h-6 rounded-full bg-yellow-500/30 flex items-center justify-center text-yellow-300 font-bold text-xs border border-yellow-400">
+                                                =
+                                              </div>
+                                              <span className="text-yellow-200 text-xs font-bold">Draw Match</span>
+                                            </div>
+                                            <span className="text-yellow-300/70 text-xs">
+                                              Tier {match?.tierId !== undefined ? Number(match.tierId) : '?'}
+                                            </span>
+                                          </div>
+                                          <div className="grid grid-cols-2 gap-2 text-xs">
+                                            <div className="bg-cyan-500/20 p-2 rounded border border-cyan-400/20">
+                                              <div className="text-cyan-300/70 mb-1">Player 1</div>
+                                              <div className="text-white font-mono">
+                                                {match?.player1 ? `${match.player1.slice(0, 6)}...${match.player1.slice(-4)}` : 'Unknown'}
+                                              </div>
+                                            </div>
+                                            <div className="bg-orange-500/20 p-2 rounded border border-orange-400/20">
+                                              <div className="text-orange-300/70 mb-1">Player 2</div>
+                                              <div className="text-white font-mono">
+                                                {match?.player2 ? `${match.player2.slice(0, 6)}...${match.player2.slice(-4)}` : 'Unknown'}
+                                              </div>
+                                            </div>
+                                          </div>
+                                          {match?.startTime && match?.endTime && (
+                                            <div className="mt-2 text-xs text-yellow-300/70">
+                                              Duration: {Math.floor((Number(match.endTime) - Number(match.startTime)) / 60)} minutes
+                                            </div>
+                                          )}
+                                        </div>
+                                      ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Recent Matches (All) */}
                               <div className="bg-cyan-500/10 rounded-lg p-4 border border-cyan-400/20">
-                                <div className="text-cyan-300 text-sm mb-2">Recent Matches</div>
+                                <div className="text-cyan-300 text-sm mb-2">Recent Matches (All)</div>
                                 <div className="space-y-2 max-h-32 overflow-y-auto">
                                   {[...cachedStats.matches].slice(-5).reverse().map((match, idx) => (
-                                    <div key={idx} className="flex items-center justify-between text-xs bg-cyan-500/5 p-2 rounded">
-                                      <span className="text-cyan-200">
-                                        {match?.isDraw ? 'Draw' : 'Winner'}
+                                    <div key={idx} className={`flex items-center justify-between text-xs p-2 rounded ${
+                                      match?.isDraw
+                                        ? 'bg-yellow-500/10 border border-yellow-400/20'
+                                        : 'bg-cyan-500/5 border border-cyan-400/10'
+                                    }`}>
+                                      <span className={match?.isDraw ? 'text-yellow-300 font-bold' : 'text-cyan-200'}>
+                                        {match?.isDraw ? '🟰 Draw' : '🏆 Winner'}
                                       </span>
                                       <span className="text-white font-mono">
                                         {match?.isDraw
