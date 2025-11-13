@@ -2884,6 +2884,7 @@ export default function TicTacBlock() {
                       </div>
                     </div>
                   ) : cachedStats && (cachedStats.matches.length > 0 || cachedStats.tournaments.length > 0) ? (
+                    <>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {/* Cached Tournaments */}
                       <div className="bg-gradient-to-br from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-6 border border-purple-400/30">
@@ -2897,21 +2898,83 @@ export default function TicTacBlock() {
                             <div className="text-3xl font-bold text-white">{cachedStats.tournaments?.length || 0}</div>
                           </div>
                           {cachedStats.tournaments?.length > 0 && (
-                            <div className="bg-purple-500/10 rounded-lg p-4 border border-purple-400/20">
-                              <div className="text-purple-300 text-sm mb-2">Recent Winners</div>
-                              <div className="space-y-2 max-h-48 overflow-y-auto">
-                                {cachedStats.tournaments.slice(0, 5).map((tournament, idx) => (
-                                  <div key={idx} className="flex items-center justify-between text-xs bg-purple-500/5 p-2 rounded">
-                                    <span className="text-purple-200">Tier {Number(tournament.tierId)}</span>
-                                    <span className="text-white font-mono">
-                                      {tournament.winner && tournament.winner !== ethers.ZeroAddress
-                                        ? `${tournament.winner.slice(0, 6)}...${tournament.winner.slice(-4)}`
-                                        : 'No winner'}
-                                    </span>
-                                  </div>
-                                ))}
+                            <>
+                              <div className="bg-purple-500/10 rounded-lg p-4 border border-purple-400/20">
+                                <div className="text-purple-300 text-sm mb-2">Recent Winners</div>
+                                <div className="space-y-2 max-h-48 overflow-y-auto">
+                                  {cachedStats.tournaments.slice(0, 5).map((tournament, idx) => {
+                                    const winner = tournament.winner;
+                                    const hasWinner = winner && winner !== ethers.ZeroAddress;
+
+                                    // Find winner's prize (winner has ranking 1)
+                                    let winnerPrize = null;
+                                    if (hasWinner && tournament.rankings && tournament.prizes && tournament.participants) {
+                                      try {
+                                        const participantArray = Array.from(tournament.participants);
+                                        const rankingsArray = Array.from(tournament.rankings);
+                                        const prizesArray = Array.from(tournament.prizes);
+
+                                        const winnerIndex = participantArray.findIndex(
+                                          p => p && p.toLowerCase() === winner.toLowerCase()
+                                        );
+
+                                        if (winnerIndex !== -1 && prizesArray[winnerIndex]) {
+                                          winnerPrize = ethers.formatEther(prizesArray[winnerIndex]);
+                                        }
+                                      } catch (err) {
+                                        console.warn('Error parsing winner prize:', err);
+                                      }
+                                    }
+
+                                    return (
+                                      <div key={idx} className="bg-purple-500/5 p-2 rounded space-y-1">
+                                        <div className="flex items-center justify-between text-xs">
+                                          <span className="text-purple-200">Tier {Number(tournament.tierId)}</span>
+                                          <span className="text-white font-mono">
+                                            {hasWinner
+                                              ? `${winner.slice(0, 6)}...${winner.slice(-4)}`
+                                              : 'No winner'}
+                                          </span>
+                                        </div>
+                                        {winnerPrize && (
+                                          <div className="flex items-center justify-between text-xs">
+                                            <span className="text-purple-300/70">Prize Awarded</span>
+                                            <span className="text-green-400 font-bold">{parseFloat(winnerPrize).toFixed(4)} ETH</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
                               </div>
-                            </div>
+
+                              {/* Total Awards Stats */}
+                              <div className="bg-purple-500/10 rounded-lg p-4 border border-purple-400/20">
+                                <div className="text-purple-300 text-sm mb-2">Total Awards Distributed</div>
+                                <div className="text-2xl font-bold text-green-400">
+                                  {(() => {
+                                    try {
+                                      let total = 0;
+                                      cachedStats.tournaments.forEach(tournament => {
+                                        if (tournament.prizes && tournament.participantCount) {
+                                          const prizesArray = Array.from(tournament.prizes);
+                                          const count = Number(tournament.participantCount);
+                                          for (let i = 0; i < count && i < prizesArray.length; i++) {
+                                            if (prizesArray[i]) {
+                                              total += parseFloat(ethers.formatEther(prizesArray[i]));
+                                            }
+                                          }
+                                        }
+                                      });
+                                      return total > 0 ? `${total.toFixed(4)} ETH` : 'N/A';
+                                    } catch (err) {
+                                      console.warn('Error calculating total awards:', err);
+                                      return 'N/A';
+                                    }
+                                  })()}
+                                </div>
+                              </div>
+                            </>
                           )}
                         </div>
                       </div>
@@ -2957,6 +3020,138 @@ export default function TicTacBlock() {
                         </div>
                       </div>
                     </div>
+
+                    {/* Award Transactions Section */}
+                    {cachedStats.tournaments?.length > 0 && (
+                      <div className="mt-6 bg-gradient-to-br from-green-600/20 to-emerald-600/20 backdrop-blur-lg rounded-2xl p-6 border border-green-400/30">
+                        <div className="flex items-center gap-3 mb-4">
+                          <Coins className="text-green-400" size={32} />
+                          <h3 className="text-2xl font-bold text-white">Award Transactions</h3>
+                        </div>
+                        <div className="space-y-2 max-h-96 overflow-y-auto">
+                          {(() => {
+                            try {
+                              // Collect all award transactions with details
+                              const awardTransactions = [];
+                              let txNumber = 1;
+
+                              cachedStats.tournaments.forEach(tournament => {
+                                if (tournament.participants && tournament.prizes && tournament.rankings && tournament.participantCount) {
+                                  const participantArray = Array.from(tournament.participants);
+                                  const prizesArray = Array.from(tournament.prizes);
+                                  const rankingsArray = Array.from(tournament.rankings);
+                                  const count = Number(tournament.participantCount);
+                                  const tournamentId = tournament.tournamentId ? Number(tournament.tournamentId) : 'N/A';
+                                  const tierId = Number(tournament.tierId);
+
+                                  for (let i = 0; i < count && i < participantArray.length; i++) {
+                                    const addr = participantArray[i];
+                                    const prize = prizesArray[i];
+                                    const rank = rankingsArray[i] ? Number(rankingsArray[i]) : null;
+
+                                    if (addr && prize && addr !== ethers.ZeroAddress) {
+                                      const prizeEth = parseFloat(ethers.formatEther(prize));
+                                      if (prizeEth > 0) {
+                                        awardTransactions.push({
+                                          txNumber: txNumber++,
+                                          address: addr,
+                                          rank: rank,
+                                          amount: prizeEth,
+                                          tournamentId: tournamentId,
+                                          tierId: tierId
+                                        });
+                                      }
+                                    }
+                                  }
+                                }
+                              });
+
+                              // Sort by transaction number (most recent first)
+                              awardTransactions.reverse();
+
+                              if (awardTransactions.length === 0) {
+                                return (
+                                  <div className="text-green-300/70 text-sm text-center py-4">
+                                    No award transactions available yet
+                                  </div>
+                                );
+                              }
+
+                              return (
+                                <>
+                                  {/* Header Row */}
+                                  <div className="grid grid-cols-4 gap-2 bg-green-500/20 p-3 rounded-lg border border-green-400/30 font-bold text-green-300 text-xs sticky top-0">
+                                    <div>TX #</div>
+                                    <div>Wallet</div>
+                                    <div>Rank</div>
+                                    <div className="text-right">Amount</div>
+                                  </div>
+
+                                  {/* Award Rows */}
+                                  {awardTransactions.map((tx) => (
+                                    <div
+                                      key={`${tx.tournamentId}-${tx.address}`}
+                                      className="grid grid-cols-4 gap-2 items-center bg-green-500/10 p-3 rounded-lg border border-green-400/20 hover:bg-green-500/15 transition-colors"
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-green-300 font-mono text-sm">
+                                          #{tx.txNumber}
+                                        </span>
+                                      </div>
+                                      <div className="text-white font-mono text-xs">
+                                        {tx.address.slice(0, 6)}...{tx.address.slice(-4)}
+                                      </div>
+                                      <div>
+                                        {tx.rank ? (
+                                          <div className="inline-flex items-center gap-1">
+                                            {tx.rank === 1 && <Trophy className="text-yellow-400" size={14} />}
+                                            {tx.rank === 2 && <Trophy className="text-gray-400" size={14} />}
+                                            {tx.rank === 3 && <Trophy className="text-amber-600" size={14} />}
+                                            <span className={`text-sm font-bold ${
+                                              tx.rank === 1 ? 'text-yellow-400' :
+                                              tx.rank === 2 ? 'text-gray-400' :
+                                              tx.rank === 3 ? 'text-amber-600' :
+                                              'text-green-300'
+                                            }`}>
+                                              {tx.rank}
+                                            </span>
+                                          </div>
+                                        ) : (
+                                          <span className="text-green-300/50 text-sm">-</span>
+                                        )}
+                                      </div>
+                                      <div className="text-right">
+                                        <span className="text-green-400 font-bold text-sm">
+                                          {tx.amount.toFixed(4)} ETH
+                                        </span>
+                                      </div>
+                                    </div>
+                                  ))}
+
+                                  {/* Summary Footer */}
+                                  <div className="grid grid-cols-4 gap-2 bg-green-500/20 p-3 rounded-lg border border-green-400/30 mt-2 sticky bottom-0">
+                                    <div className="col-span-3 text-green-300 font-bold text-sm">
+                                      Total Awarded ({awardTransactions.length} transactions)
+                                    </div>
+                                    <div className="text-right text-green-400 font-bold text-lg">
+                                      {awardTransactions.reduce((sum, tx) => sum + tx.amount, 0).toFixed(4)} ETH
+                                    </div>
+                                  </div>
+                                </>
+                              );
+                            } catch (err) {
+                              console.warn('Error calculating award transactions:', err);
+                              return (
+                                <div className="text-red-300/70 text-sm text-center py-4">
+                                  Error loading award data
+                                </div>
+                              );
+                            }
+                          })()}
+                        </div>
+                      </div>
+                    )}
+                    </>
                   ) : (
                     <div className="bg-gradient-to-r from-cyan-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-12 border border-cyan-400/30 text-center">
                       <History className="text-cyan-400/50 mx-auto mb-4" size={64} />
