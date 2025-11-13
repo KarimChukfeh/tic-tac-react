@@ -2146,23 +2146,41 @@ export default function TicTacBlock() {
             <div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
           <Trophy className="text-green-400" size={20} />
-          <span className="font-bold text-green-300">Winner Takes 95%</span>
+          <span className="font-bold text-green-300">
+            {theme === 'daring' ? 'Winner Takes All' : 'Winner Takes 95%'}
+          </span>
               </div>
-              <p className="text-sm text-green-200">Champion walks away with almost the entire pot</p>
+              <p className="text-sm text-green-200">
+                {theme === 'daring'
+                  ? 'High stakes - winner claims the entire prize pool'
+                  : 'Champion walks away with almost the entire pot'}
+              </p>
             </div>
             <div className="bg-gradient-to-br from-yellow-500/20 to-amber-500/20 border border-yellow-400/30 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
           <DollarSign className="text-yellow-400" size={20} />
-          <span className="font-bold text-yellow-300">0.002 ETH Entry</span>
+          <span className="font-bold text-yellow-300">
+            {theme === 'daring' ? '0.01 ETH Entry' : '0.002 ETH Entry'}
+          </span>
               </div>
-              <p className="text-sm text-yellow-200">Low stakes, high strategy gameplay</p>
+              <p className="text-sm text-yellow-200">
+                {theme === 'daring'
+                  ? 'Higher stakes for serious competitors'
+                  : 'Low stakes, high strategy gameplay'}
+              </p>
             </div>
             <div className={`bg-gradient-to-br ${currentTheme.infoCard} border ${currentTheme.infoBorder} rounded-xl p-4`}>
               <div className="flex items-center gap-2 mb-2">
           <Zap className={currentTheme.infoIcon} size={20} />
-          <span className={`font-bold ${currentTheme.infoTitle}`}>Random First Move</span>
+          <span className={`font-bold ${currentTheme.infoTitle}`}>
+            {theme === 'daring' ? 'Block Mechanic' : 'Random First Move'}
+          </span>
               </div>
-              <p className={`text-sm ${currentTheme.infoText}`}>On-chain coin flip decides who starts</p>
+              <p className={`text-sm ${currentTheme.infoText}`}>
+                {theme === 'daring'
+                  ? 'Advanced blocking strategy - control the board'
+                  : 'On-chain coin flip decides who starts'}
+              </p>
             </div>
           </div>
 
