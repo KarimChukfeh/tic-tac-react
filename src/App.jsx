@@ -1203,6 +1203,10 @@ export default function TicTacBlock() {
   const [moveHistory, setMoveHistory] = useState([]);
   const [syncDots, setSyncDots] = useState(1);
 
+  // Cached Stats State
+  const [cachedStats, setCachedStats] = useState(null);
+  const [cachedStatsLoading, setCachedStatsLoading] = useState(false);
+
   // Helper to cycle through themes
   const cycleTheme = () => {
     setTheme(current => {
@@ -1548,6 +1552,54 @@ export default function TicTacBlock() {
       setTournamentsLoading(false);
     }
   }, [contract, account]);
+
+  // Fetch cached tournament and match stats
+  const fetchCachedStats = useCallback(async () => {
+    if (!contract) return;
+
+    try {
+      setCachedStatsLoading(true);
+
+      let matches = [];
+      let tournaments = [];
+
+      // Fetch all cached matches with error handling
+      try {
+        const allCachedMatches = await contract.getAllCachedMatches();
+        // Convert to plain array and filter existing matches
+        matches = Array.from(allCachedMatches).filter(m => m && m.exists);
+      } catch (err) {
+        console.warn('Error fetching cached matches:', err.message || err);
+      }
+
+      // Get recent tournaments from each tier (limit to 5 per tier for simplicity)
+      for (let tierId = 0; tierId < 7; tierId++) {
+        try {
+          const tierTournaments = await contract.getRecentTournaments(tierId, 5);
+          // Convert to plain array and filter existing tournaments
+          const validTournaments = Array.from(tierTournaments).filter(t => t && t.exists);
+          tournaments.push(...validTournaments);
+        } catch (err) {
+          // Silent fail - tier may not have tournaments yet
+          console.log(`No tournaments found for tier ${tierId}`);
+        }
+      }
+
+      setCachedStats({
+        matches,
+        tournaments
+      });
+      setCachedStatsLoading(false);
+    } catch (error) {
+      console.error('Error fetching cached stats:', error.message || error);
+      // Set empty stats on error so UI doesn't break
+      setCachedStats({
+        matches: [],
+        tournaments: []
+      });
+      setCachedStatsLoading(false);
+    }
+  }, [contract]);
 
   // Handle tournament enrollment
   const handleEnroll = async (tierId, instanceId, entryFee) => {
@@ -1903,6 +1955,13 @@ export default function TicTacBlock() {
       fetchTournaments(tierId);
     }
   }, [theme, contract, account, fetchTournaments]);
+
+  // Fetch cached stats when contract is available
+  useEffect(() => {
+    if (contract) {
+      fetchCachedStats();
+    }
+  }, [contract, fetchCachedStats]);
 
   // Poll match data every 3 seconds when viewing a match (using refs for seamless syncing)
   const matchRef = useRef(currentMatch);
@@ -2801,6 +2860,110 @@ export default function TicTacBlock() {
                     <div className="text-blue-300 text-sm mb-1">Network</div>
                     <div className="font-bold text-blue-100">{networkInfo?.name || 'Connected'}</div>
                   </div>
+                </div>
+
+                {/* Cached Tournament & Match Stats Section */}
+                <div className="mt-16">
+                  <div className="text-center mb-8">
+                    <div className="inline-flex items-center gap-3 mb-4">
+                      <History className="text-cyan-400" size={48} />
+                      <h2 className="text-4xl font-bold text-white">
+                        Cached Stats
+                      </h2>
+                    </div>
+                    <p className="text-cyan-200/70 text-lg max-w-2xl mx-auto">
+                      Historical tournament and match data stored on-chain
+                    </p>
+                  </div>
+
+                  {cachedStatsLoading ? (
+                    <div className="text-center py-12">
+                      <div className="inline-block">
+                        <div className="w-16 h-16 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin mx-auto mb-4"></div>
+                        <p className="text-cyan-300">Loading cached stats...</p>
+                      </div>
+                    </div>
+                  ) : cachedStats && (cachedStats.matches.length > 0 || cachedStats.tournaments.length > 0) ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Cached Tournaments */}
+                      <div className="bg-gradient-to-br from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-6 border border-purple-400/30">
+                        <div className="flex items-center gap-3 mb-4">
+                          <Trophy className="text-purple-400" size={32} />
+                          <h3 className="text-2xl font-bold text-white">Cached Tournaments</h3>
+                        </div>
+                        <div className="space-y-3">
+                          <div className="bg-purple-500/10 rounded-lg p-4 border border-purple-400/20">
+                            <div className="text-purple-300 text-sm mb-1">Total Cached</div>
+                            <div className="text-3xl font-bold text-white">{cachedStats.tournaments?.length || 0}</div>
+                          </div>
+                          {cachedStats.tournaments?.length > 0 && (
+                            <div className="bg-purple-500/10 rounded-lg p-4 border border-purple-400/20">
+                              <div className="text-purple-300 text-sm mb-2">Recent Winners</div>
+                              <div className="space-y-2 max-h-48 overflow-y-auto">
+                                {cachedStats.tournaments.slice(0, 5).map((tournament, idx) => (
+                                  <div key={idx} className="flex items-center justify-between text-xs bg-purple-500/5 p-2 rounded">
+                                    <span className="text-purple-200">Tier {Number(tournament.tierId)}</span>
+                                    <span className="text-white font-mono">
+                                      {tournament.winner && tournament.winner !== ethers.ZeroAddress
+                                        ? `${tournament.winner.slice(0, 6)}...${tournament.winner.slice(-4)}`
+                                        : 'No winner'}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Cached Matches */}
+                      <div className="bg-gradient-to-br from-cyan-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-6 border border-cyan-400/30">
+                        <div className="flex items-center gap-3 mb-4">
+                          <Grid className="text-cyan-400" size={32} />
+                          <h3 className="text-2xl font-bold text-white">Cached Matches</h3>
+                        </div>
+                        <div className="space-y-3">
+                          <div className="bg-cyan-500/10 rounded-lg p-4 border border-cyan-400/20">
+                            <div className="text-cyan-300 text-sm mb-1">Total Cached</div>
+                            <div className="text-3xl font-bold text-white">{cachedStats.matches?.length || 0}</div>
+                          </div>
+                          {cachedStats.matches?.length > 0 && (
+                            <>
+                              <div className="bg-cyan-500/10 rounded-lg p-4 border border-cyan-400/20">
+                                <div className="text-cyan-300 text-sm mb-1">Draws</div>
+                                <div className="text-2xl font-bold text-white">
+                                  {cachedStats.matches.filter(m => m?.isDraw).length}
+                                </div>
+                              </div>
+                              <div className="bg-cyan-500/10 rounded-lg p-4 border border-cyan-400/20">
+                                <div className="text-cyan-300 text-sm mb-2">Recent Matches</div>
+                                <div className="space-y-2 max-h-32 overflow-y-auto">
+                                  {[...cachedStats.matches].slice(-5).reverse().map((match, idx) => (
+                                    <div key={idx} className="flex items-center justify-between text-xs bg-cyan-500/5 p-2 rounded">
+                                      <span className="text-cyan-200">
+                                        {match?.isDraw ? 'Draw' : 'Winner'}
+                                      </span>
+                                      <span className="text-white font-mono">
+                                        {match?.isDraw
+                                          ? 'Tie Game'
+                                          : match?.winner ? `${match.winner.slice(0, 6)}...${match.winner.slice(-4)}` : 'Unknown'}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-gradient-to-r from-cyan-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-12 border border-cyan-400/30 text-center">
+                      <History className="text-cyan-400/50 mx-auto mb-4" size={64} />
+                      <h3 className="text-2xl font-bold text-cyan-300 mb-2">No Cached Data Available</h3>
+                      <p className="text-cyan-200/70">Statistics will appear as tournaments and matches are completed</p>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
