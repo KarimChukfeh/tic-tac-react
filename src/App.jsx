@@ -1189,6 +1189,12 @@ export default function TicTacBlock() {
   const [tournamentsLoading, setTournamentsLoading] = useState(false);
   const [viewingTournament, setViewingTournament] = useState(null); // { tierId, instanceId, tournamentData, bracketData }
 
+  // Match State
+  const [currentMatch, setCurrentMatch] = useState(null);
+  const [matchLoading, setMatchLoading] = useState(false);
+  const [blockMode, setBlockMode] = useState(false);
+  const [moveHistory, setMoveHistory] = useState([]);
+
   // Helper to cycle through themes
   const cycleTheme = () => {
     setTheme(current => {
@@ -1643,6 +1649,127 @@ export default function TicTacBlock() {
     }
   };
 
+  // Refresh match data from contract
+  const refreshMatchData = async (contract, account, matchInfo) => {
+    try {
+      const { tierId, instanceId, roundNumber, matchNumber } = matchInfo;
+      const matchData = await contract.getMatch(tierId, instanceId, roundNumber, matchNumber);
+
+      const player1 = matchData[0];
+      const player2 = matchData[1];
+      const currentTurn = matchData[2];
+      const winner = matchData[3];
+      const board = matchData[4];
+      const matchStatus = Number(matchData[5]);
+      const isDraw = matchData[6];
+      const firstPlayer = matchData[8];
+      const lastMovedCell = Number(matchData[9]);
+
+      const zeroAddress = '0x0000000000000000000000000000000000000000';
+      const isMatchInitialized =
+        player1.toLowerCase() !== zeroAddress &&
+        player2.toLowerCase() !== zeroAddress;
+
+      let actualPlayer1 = player1;
+      let actualPlayer2 = player2;
+
+      if (!isMatchInitialized && matchInfo.player1 && matchInfo.player2) {
+        actualPlayer1 = matchInfo.player1;
+        actualPlayer2 = matchInfo.player2;
+      }
+
+      const boardState = Array.from(board).map(cell => Number(cell));
+      const isPlayer1 = actualPlayer1.toLowerCase() === account.toLowerCase();
+      const isYourTurn = currentTurn.toLowerCase() === account.toLowerCase();
+
+      return {
+        ...matchInfo,
+        player1: actualPlayer1,
+        player2: actualPlayer2,
+        currentTurn,
+        winner,
+        board: boardState,
+        matchStatus,
+        isDraw,
+        isPlayer1,
+        isYourTurn,
+        userSymbol: isPlayer1 ? 'X' : 'O',
+        lastMovedCell,
+        isMatchInitialized
+      };
+    } catch (error) {
+      console.error('Error refreshing match:', error);
+      return null;
+    }
+  };
+
+  // Handle cell click for making moves
+  const handleCellClick = async (cellIndex) => {
+    if (!currentMatch || !contract || !account) return;
+
+    if (blockMode) {
+      await handleBlockMove(cellIndex);
+      return;
+    }
+
+    if (!currentMatch.isYourTurn) {
+      alert("It's not your turn!");
+      return;
+    }
+    if (currentMatch.board[cellIndex] !== 0) {
+      alert('Cell already taken!');
+      return;
+    }
+    if (currentMatch.matchStatus === 2) {
+      alert('Match is already complete!');
+      return;
+    }
+
+    try {
+      setMatchLoading(true);
+      const { tierId, instanceId, roundNumber, matchNumber } = currentMatch;
+
+      const tx = await contract.makeMove(tierId, instanceId, roundNumber, matchNumber, cellIndex);
+      await tx.wait();
+
+      const updated = await refreshMatchData(contract, account, currentMatch);
+      if (updated) {
+        setCurrentMatch(updated);
+        setMoveHistory(prev => [...prev, { player: currentMatch.userSymbol, cell: cellIndex, timestamp: Date.now() }]);
+      }
+      setMatchLoading(false);
+    } catch (error) {
+      console.error('Error making move:', error);
+      alert(`Error making move: ${error.message}`);
+      setMatchLoading(false);
+    }
+  };
+
+  // Handle block move
+  const handleBlockMove = async (cellIndex) => {
+    if (!currentMatch || !contract) return;
+
+    try {
+      setMatchLoading(true);
+      const { tierId, instanceId, roundNumber, matchNumber } = currentMatch;
+
+      const tx = await contract.blockLastMove(tierId, instanceId, roundNumber, matchNumber);
+      await tx.wait();
+
+      const updated = await refreshMatchData(contract, account, currentMatch);
+      if (updated) setCurrentMatch(updated);
+
+      setBlockMode(false);
+      setMatchLoading(false);
+      alert('Block successful!');
+    } catch (error) {
+      console.error('Error blocking:', error);
+      alert(`Error blocking: ${error.message}`);
+      setMatchLoading(false);
+      setBlockMode(false);
+    }
+  };
+
   // Handle entering a match from tournament bracket
   const handlePlayMatch = async (tierId, instanceId, roundNumber, matchNumber) => {
     if (!contract || !account) {
@@ -1650,15 +1777,50 @@ export default function TicTacBlock() {
       return;
     }
 
-    // For now, show alert - full match UI implementation coming soon
-    alert(`Opening match:\nTournament: T${tierId}-I${instanceId}\nRound ${roundNumber + 1}, Match ${matchNumber + 1}\n\nFull match play UI coming soon!`);
+    try {
+      setMatchLoading(true);
 
-    // TODO: Implement full match UI similar to previous implementation
-    // This would include:
-    // - Fetch match data
-    // - Display game board
-    // - Handle moves and blocks
-    // - Real-time polling
+      const matchData = await contract.getMatch(tierId, instanceId, roundNumber, matchNumber);
+      const player1 = matchData[0];
+      const player2 = matchData[1];
+
+      const zeroAddress = '0x0000000000000000000000000000000000000000';
+      let actualPlayer1 = player1;
+      let actualPlayer2 = player2;
+
+      if (player1.toLowerCase() === zeroAddress) {
+        const enrolledPlayers = await contract.getEnrolledPlayers(tierId, instanceId);
+        if (enrolledPlayers.length >= 2) {
+          actualPlayer1 = enrolledPlayers[0];
+          actualPlayer2 = enrolledPlayers[1];
+        }
+      }
+
+      const updated = await refreshMatchData(contract, account, {
+        tierId, instanceId, roundNumber, matchNumber,
+        player1: actualPlayer1,
+        player2: actualPlayer2
+      });
+
+      if (updated) {
+        setCurrentMatch(updated);
+        setMoveHistory([]);
+        setBlockMode(false);
+      }
+
+      setMatchLoading(false);
+    } catch (error) {
+      console.error('Error loading match:', error);
+      alert(`Error loading match: ${error.message}`);
+      setMatchLoading(false);
+    }
+  };
+
+  // Close match view
+  const closeMatch = () => {
+    setCurrentMatch(null);
+    setBlockMode(false);
+    setMoveHistory([]);
   };
 
   // Initialize contract in read-only mode on mount (without wallet)
@@ -1722,8 +1884,17 @@ export default function TicTacBlock() {
     }
   }, [theme, contract, account, fetchTournaments]);
 
-  // Tournament contract doesn't need continuous polling for old game events
-  // Match-specific polling happens in the match UI component
+  // Poll match data every 3 seconds when viewing a match
+  useEffect(() => {
+    if (!currentMatch || !contract || !account) return;
+
+    const pollInterval = setInterval(async () => {
+      const updated = await refreshMatchData(contract, account, currentMatch);
+      if (updated) setCurrentMatch(updated);
+    }, 3000);
+
+    return () => clearInterval(pollInterval);
+  }, [currentMatch, contract, account]);
 
   // Loading animation component
   if (initialLoading) {
@@ -2049,8 +2220,206 @@ export default function TicTacBlock() {
           )}
         </div>
 
+        {/* Match View - Shows when player enters a match */}
+        {account && contract && currentMatch && (
+          <div className="mb-16">
+            {/* Match Header */}
+            <div className="bg-gradient-to-r from-purple-600/30 to-blue-600/30 backdrop-blur-lg rounded-2xl p-6 border border-purple-400/30 mb-8">
+              <button
+                onClick={closeMatch}
+                className="mb-4 flex items-center gap-2 text-purple-300 hover:text-purple-200 transition-colors"
+              >
+                <ChevronDown className="rotate-90" size={20} />
+                Back to Tournament
+              </button>
+
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-3xl font-bold text-white mb-2">
+                    Tournament Match
+                  </h2>
+                  <p className="text-purple-300">
+                    T{currentMatch.tierId}-I{currentMatch.instanceId} • Round {currentMatch.roundNumber + 1} • Match {currentMatch.matchNumber + 1}
+                  </p>
+                </div>
+                <div className={`px-4 py-2 rounded-xl font-bold ${
+                  currentMatch.matchStatus === 0 ? 'bg-gray-500/20 text-gray-300' :
+                  currentMatch.matchStatus === 1 ? 'bg-yellow-500/20 text-yellow-300' :
+                  'bg-green-500/20 text-green-300'
+                }`}>
+                  {currentMatch.matchStatus === 0 ? 'Not Started' :
+                   currentMatch.matchStatus === 1 ? 'In Progress' :
+                   currentMatch.isDraw ? 'Draw' : 'Complete'}
+                </div>
+              </div>
+
+              {!currentMatch.isMatchInitialized && (
+                <div className="bg-yellow-500/20 border border-yellow-400/50 rounded-xl p-4 mb-4">
+                  <p className="text-yellow-200 text-sm">
+                    ⚠️ Match not started yet. Waiting for a player to make the first move...
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* 3-Column Layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Left Panel - Player 1 Info */}
+              <div className="bg-gradient-to-br from-blue-600/20 to-cyan-600/20 backdrop-blur-lg rounded-2xl p-6 border border-blue-400/30">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-2xl font-bold">
+                    X
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-white">Player 1</h3>
+                    <p className="text-blue-300 font-mono text-sm">
+                      {currentMatch.player1.slice(0, 6)}...{currentMatch.player1.slice(-4)}
+                    </p>
+                    {currentMatch.player1?.toLowerCase() === account?.toLowerCase() && (
+                      <span className="text-yellow-300 text-xs font-bold">THIS IS YOU</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="bg-black/20 rounded-lg p-3">
+                    <div className="text-blue-300 text-sm mb-1">Symbol</div>
+                    <div className="text-white font-bold text-2xl">X</div>
+                  </div>
+                  <div className="bg-black/20 rounded-lg p-3">
+                    <div className="text-blue-300 text-sm mb-1">Moves Made</div>
+                    <div className="text-white font-bold text-xl">
+                      {currentMatch.board.filter(c => c === 1).length}
+                    </div>
+                  </div>
+                  {currentMatch.isPlayer1 && currentMatch.isYourTurn && (
+                    <div className="bg-green-500/20 border border-green-400 rounded-lg p-3 text-center">
+                      <span className="text-green-300 font-bold">Your Turn!</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Center Panel - Game Board */}
+              <div className="bg-gradient-to-br from-purple-600/20 to-pink-600/20 backdrop-blur-lg rounded-2xl p-6 border border-purple-400/30">
+                <h3 className="text-2xl font-bold text-center text-white mb-6">Game Board</h3>
+
+                {/* Tic Tac Toe Grid */}
+                <div className="grid grid-cols-3 gap-3 mb-6">
+                  {currentMatch.board.map((cell, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleCellClick(idx)}
+                      disabled={matchLoading || currentMatch.matchStatus === 2 || !currentMatch.isYourTurn}
+                      className={`aspect-square rounded-xl flex items-center justify-center text-4xl font-bold transition-all transform hover:scale-105 disabled:cursor-not-allowed ${
+                        cell === 0
+                          ? 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-200'
+                          : cell === 1
+                          ? 'bg-blue-500/40 text-blue-200'
+                          : 'bg-pink-500/40 text-pink-200'
+                      } ${
+                        currentMatch.lastMovedCell === idx && currentMatch.matchStatus === 1
+                          ? 'ring-2 ring-yellow-400 animate-pulse'
+                          : ''
+                      }`}
+                    >
+                      {cell === 1 ? 'X' : cell === 2 ? 'O' : blockMode ? '🚫' : ''}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Game Controls */}
+                <div className="space-y-3">
+                  {currentMatch.matchStatus === 1 && currentMatch.isYourTurn && (
+                    <button
+                      onClick={() => setBlockMode(!blockMode)}
+                      disabled={matchLoading}
+                      className={`w-full py-3 px-4 rounded-xl font-bold transition-all ${
+                        blockMode
+                          ? 'bg-red-500 hover:bg-red-600 text-white'
+                          : 'bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 border border-yellow-400'
+                      }`}
+                    >
+                      {blockMode ? 'Cancel Block' : '🛡️ Block Last Move'}
+                    </button>
+                  )}
+
+                  {currentMatch.matchStatus === 2 && (
+                    <div className="bg-green-500/20 border border-green-400 rounded-xl p-4 text-center">
+                      <p className="text-white font-bold text-xl mb-2">
+                        {currentMatch.isDraw ? "It's a Draw!" : 'Match Complete!'}
+                      </p>
+                      {!currentMatch.isDraw && (
+                        <p className="text-green-300">
+                          Winner: {currentMatch.winner.slice(0, 6)}...{currentMatch.winner.slice(-4)}
+                          {currentMatch.winner?.toLowerCase() === account?.toLowerCase() && ' (YOU!)'}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Right Panel - Player 2 Info */}
+              <div className="bg-gradient-to-br from-pink-600/20 to-purple-600/20 backdrop-blur-lg rounded-2xl p-6 border border-pink-400/30">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 bg-pink-500 rounded-full flex items-center justify-center text-2xl font-bold">
+                    O
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-white">Player 2</h3>
+                    <p className="text-pink-300 font-mono text-sm">
+                      {currentMatch.player2.slice(0, 6)}...{currentMatch.player2.slice(-4)}
+                    </p>
+                    {currentMatch.player2?.toLowerCase() === account?.toLowerCase() && (
+                      <span className="text-yellow-300 text-xs font-bold">THIS IS YOU</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="bg-black/20 rounded-lg p-3">
+                    <div className="text-pink-300 text-sm mb-1">Symbol</div>
+                    <div className="text-white font-bold text-2xl">O</div>
+                  </div>
+                  <div className="bg-black/20 rounded-lg p-3">
+                    <div className="text-pink-300 text-sm mb-1">Moves Made</div>
+                    <div className="text-white font-bold text-xl">
+                      {currentMatch.board.filter(c => c === 2).length}
+                    </div>
+                  </div>
+                  {!currentMatch.isPlayer1 && currentMatch.isYourTurn && (
+                    <div className="bg-green-500/20 border border-green-400 rounded-lg p-3 text-center">
+                      <span className="text-green-300 font-bold">Your Turn!</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Move History */}
+            {moveHistory.length > 0 && (
+              <div className="mt-6 bg-slate-900/50 rounded-xl p-6 border border-purple-500/30">
+                <h3 className="text-xl font-bold text-purple-300 mb-4 flex items-center gap-2">
+                  <History size={20} />
+                  Move History
+                </h3>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {moveHistory.map((move, idx) => (
+                    <div key={idx} className="flex items-center gap-3 text-sm bg-purple-500/10 p-2 rounded">
+                      <span className="text-purple-300">Move {idx + 1}:</span>
+                      <span className="text-white font-bold">{move.player}</span>
+                      <span className="text-purple-400">→ Cell {move.cell}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Tournaments Section */}
-        {account && contract && (
+        {account && contract && !currentMatch && (
           <>
             {viewingTournament ? (
               // Show Tournament Bracket View
