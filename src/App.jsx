@@ -15,7 +15,7 @@
  *    Block Explorer: https://arbiscan.io
  */
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   Wallet, Grid, Swords, Clock, Shield, Lock, Eye, Code, ExternalLink,
   Trophy, Play, Users, DollarSign, Zap, TrendingUp, History,
@@ -258,6 +258,109 @@ const GameProgress = ({ status, player1, player2, moveCount }) => {
           </div>
         ))}
       </div>
+    </div>
+  );
+};
+
+// Tournament Card Component
+const TournamentCard = ({
+  tierId,
+  instanceId,
+  maxPlayers,
+  currentEnrolled,
+  entryFee,
+  isEnrolled,
+  onEnroll,
+  onEnter,
+  loading
+}) => {
+  const isFull = currentEnrolled >= maxPlayers;
+  const enrollmentPercentage = (currentEnrolled / maxPlayers) * 100;
+
+  return (
+    <div className="bg-gradient-to-br from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-6 border-2 border-purple-400/40 hover:border-purple-400/70 transition-all hover:shadow-xl hover:shadow-purple-500/20">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Trophy className="text-purple-400" size={24} />
+          <h3 className="text-xl font-bold text-white">
+            Tier {tierId} • #{instanceId}
+          </h3>
+        </div>
+        {isFull && (
+          <div className="bg-red-500/20 border border-red-400 px-3 py-1 rounded-full">
+            <span className="text-red-300 text-xs font-bold">FULL</span>
+          </div>
+        )}
+        {!isFull && !isEnrolled && (
+          <div className="bg-green-500/20 border border-green-400 px-3 py-1 rounded-full">
+            <span className="text-green-300 text-xs font-bold">OPEN</span>
+          </div>
+        )}
+        {isEnrolled && (
+          <div className="bg-blue-500/20 border border-blue-400 px-3 py-1 rounded-full">
+            <span className="text-blue-300 text-xs font-bold">ENROLLED</span>
+          </div>
+        )}
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="bg-black/20 rounded-lg p-3">
+          <div className="flex items-center gap-2 mb-1">
+            <Users className="text-purple-300" size={16} />
+            <span className="text-purple-300 text-xs font-semibold">Players</span>
+          </div>
+          <div className="text-white font-bold text-lg">
+            {currentEnrolled} / {maxPlayers}
+          </div>
+        </div>
+
+        <div className="bg-black/20 rounded-lg p-3">
+          <div className="flex items-center gap-2 mb-1">
+            <Coins className="text-yellow-300" size={16} />
+            <span className="text-yellow-300 text-xs font-semibold">Entry Fee</span>
+          </div>
+          <div className="text-white font-bold text-lg">
+            {entryFee} ETH
+          </div>
+        </div>
+      </div>
+
+      {/* Progress Bar */}
+      <div className="mb-4">
+        <div className="flex justify-between text-xs text-purple-300 mb-1">
+          <span>Enrollment</span>
+          <span>{enrollmentPercentage.toFixed(0)}%</span>
+        </div>
+        <div className="w-full bg-black/30 rounded-full h-2 overflow-hidden">
+          <div
+            className="h-full bg-gradient-to-r from-purple-500 to-blue-500 transition-all duration-500 rounded-full"
+            style={{ width: `${enrollmentPercentage}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Action Button */}
+      {isEnrolled ? (
+        <button
+          onClick={onEnter}
+          disabled={loading}
+          className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
+        >
+          <Play size={18} />
+          {loading ? 'Loading...' : 'Enter Tournament'}
+        </button>
+      ) : (
+        <button
+          onClick={onEnroll}
+          disabled={loading || isFull}
+          className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
+        >
+          <Trophy size={18} />
+          {loading ? 'Enrolling...' : isFull ? 'Tournament Full' : 'Enroll Now'}
+        </button>
+      )}
     </div>
   );
 };
@@ -849,6 +952,10 @@ export default function TicTacBlock() {
   const [theme, setTheme] = useState('dream');
   const [expandedFaq, setExpandedFaq] = useState(null);
 
+  // Tournament State
+  const [tournaments, setTournaments] = useState([]);
+  const [tournamentsLoading, setTournamentsLoading] = useState(false);
+
   // Helper to cycle through themes
   const cycleTheme = () => {
     setTheme(current => {
@@ -1138,6 +1245,100 @@ export default function TicTacBlock() {
     }
   };
 
+  // Fetch tournaments for a specific tier
+  const fetchTournaments = useCallback(async (tierId) => {
+    if (!contract) return;
+
+    try {
+      setTournamentsLoading(true);
+
+      // Get tier overview which returns arrays of data for all instances
+      const tierOverview = await contract.getTierOverview(tierId);
+      const statuses = tierOverview[0];
+      const enrolledCounts = tierOverview[1];
+      const prizePools = tierOverview[2];
+
+      // Get tier config to get correct player count
+      const tierConfig = await contract.tierConfigs(tierId);
+      const maxPlayers = Number(tierConfig.playerCount);
+
+      // Get entry fee for this tier
+      const fee = await contract.ENTRY_FEES(tierId);
+      const entryFeeFormatted = ethers.formatEther(fee);
+
+      // Build tournament data array
+      const tournamentData = [];
+      for (let i = 0; i < statuses.length; i++) {
+        const instanceId = i;
+        const status = Number(statuses[i]);
+        const enrolledCount = Number(enrolledCounts[i]);
+
+        // Check if user is enrolled (if wallet connected)
+        let isEnrolled = false;
+        if (account) {
+          try {
+            isEnrolled = await contract.isEnrolled(tierId, instanceId, account);
+          } catch (err) {
+            console.log('Could not check enrollment status:', err);
+          }
+        }
+
+        tournamentData.push({
+          tierId,
+          instanceId,
+          status,
+          enrolledCount,
+          maxPlayers,
+          entryFee: entryFeeFormatted,
+          isEnrolled
+        });
+      }
+
+      setTournaments(tournamentData);
+      setTournamentsLoading(false);
+    } catch (error) {
+      console.error('Error fetching tournaments:', error);
+      setTournamentsLoading(false);
+    }
+  }, [contract, account]);
+
+  // Handle tournament enrollment
+  const handleEnroll = async (tierId, instanceId, entryFee) => {
+    if (!contract || !account) {
+      alert('Please connect your wallet first');
+      return;
+    }
+
+    try {
+      setTournamentsLoading(true);
+
+      // Convert entry fee to wei
+      const feeInWei = ethers.parseEther(entryFee);
+
+      // Call enrollInTournament function with entry fee as value
+      const tx = await contract.enrollInTournament(tierId, instanceId, { value: feeInWei });
+      await tx.wait();
+
+      alert('Successfully enrolled in tournament!');
+
+      // Refresh tournament data
+      const currentTierId = theme === 'dream' ? 0 : 1;
+      await fetchTournaments(currentTierId);
+
+      setTournamentsLoading(false);
+    } catch (error) {
+      console.error('Error enrolling:', error);
+      alert(`Error enrolling: ${error.message}`);
+      setTournamentsLoading(false);
+    }
+  };
+
+  // Handle entering tournament (navigate to tournament view)
+  const handleEnterTournament = async (tierId, instanceId) => {
+    alert(`Entering tournament T${tierId}-I${instanceId}. Tournament bracket view coming soon!`);
+    // TODO: Navigate to tournament bracket/matches view
+  };
+
   // Initialize contract in read-only mode on mount (without wallet)
   useEffect(() => {
     const initReadOnlyContract = async () => {
@@ -1189,6 +1390,15 @@ export default function TicTacBlock() {
       });
     }
   }, []);
+
+  // Fetch tournaments when theme or contract changes
+  useEffect(() => {
+    if (contract) {
+      // Determine tier based on theme: dream = tier 0 (Classic), daring = tier 1 (Pro)
+      const tierId = theme === 'dream' ? 0 : 1;
+      fetchTournaments(tierId);
+    }
+  }, [theme, contract, account, fetchTournaments]);
 
   // Tournament contract doesn't need continuous polling for old game events
   // Match-specific polling happens in the match UI component
@@ -1517,32 +1727,70 @@ export default function TicTacBlock() {
           )}
         </div>
 
-        {/* Tournaments Coming Soon Section */}
+        {/* Tournaments Section */}
         {account && contract && (
-          <div className="bg-gradient-to-r from-purple-600/30 to-blue-600/30 backdrop-blur-lg rounded-2xl p-12 border border-purple-400/30 mb-16">
-            <div className="text-center">
-              <div className="mb-6">
-                <Trophy className="text-purple-400 mx-auto animate-pulse" size={80} />
+          <div className="mb-16">
+            {/* Section Header */}
+            <div className="text-center mb-12">
+              <div className="inline-flex items-center gap-3 mb-4">
+                <Trophy className={`${theme === 'dream' ? 'text-blue-400' : theme === 'daring' ? 'text-red-400' : 'text-purple-400'}`} size={48} />
+                <h2 className={`text-5xl font-bold bg-gradient-to-r ${theme === 'dream' ? 'from-blue-400 to-cyan-400' : theme === 'daring' ? 'from-red-400 to-orange-400' : 'from-purple-400 to-blue-400'} bg-clip-text text-transparent`}>
+                  {theme === 'dream' ? 'Classic Tournaments' : theme === 'daring' ? 'Pro Tournaments' : 'Tournaments'}
+                </h2>
               </div>
-              <h2 className="text-5xl font-bold mb-4 bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
-                Tournaments Coming Soon
-              </h2>
-              <p className="text-2xl text-purple-200 mb-6">
-                Get ready for epic competitive play!
+              <p className={`text-xl ${theme === 'dream' ? 'text-blue-200' : theme === 'daring' ? 'text-red-200' : 'text-purple-200'}`}>
+                {theme === 'dream' ? 'Standard competitive play for all skill levels' : 'Advanced tournaments with block mechanics and higher stakes'}
               </p>
-              <p className="text-lg text-purple-300 max-w-2xl mx-auto">
-                We're building a revolutionary tournament system with real ETH prizes.
-                Stay connected to be the first to compete when we launch.
-              </p>
-              <div className="mt-8 flex justify-center gap-4">
-                <div className="bg-purple-500/20 border border-purple-400/50 rounded-xl p-4">
-                  <div className="text-purple-300 text-sm mb-1">Your Address</div>
-                  <div className="font-mono text-purple-100 font-bold">{account.slice(0, 6)}...{account.slice(-4)}</div>
+            </div>
+
+            {/* Loading State */}
+            {tournamentsLoading && (
+              <div className="text-center py-12">
+                <div className="inline-block">
+                  <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
+                  <p className="text-purple-300">Loading tournaments...</p>
                 </div>
-                <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-4">
-                  <div className="text-blue-300 text-sm mb-1">Network</div>
-                  <div className="font-bold text-blue-100">{networkInfo?.name || 'Connected'}</div>
-                </div>
+              </div>
+            )}
+
+            {/* Tournament Cards Grid */}
+            {!tournamentsLoading && tournaments.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {tournaments.map((tournament) => (
+                  <TournamentCard
+                    key={`${tournament.tierId}-${tournament.instanceId}`}
+                    tierId={tournament.tierId}
+                    instanceId={tournament.instanceId}
+                    maxPlayers={tournament.maxPlayers}
+                    currentEnrolled={tournament.enrolledCount}
+                    entryFee={tournament.entryFee}
+                    isEnrolled={tournament.isEnrolled}
+                    onEnroll={() => handleEnroll(tournament.tierId, tournament.instanceId, tournament.entryFee)}
+                    onEnter={() => handleEnterTournament(tournament.tierId, tournament.instanceId)}
+                    loading={tournamentsLoading}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Empty State */}
+            {!tournamentsLoading && tournaments.length === 0 && (
+              <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-12 border border-purple-400/30 text-center">
+                <Trophy className="text-purple-400/50 mx-auto mb-4" size={64} />
+                <h3 className="text-2xl font-bold text-purple-300 mb-2">No Tournaments Available</h3>
+                <p className="text-purple-200/70">Check back soon for new tournaments!</p>
+              </div>
+            )}
+
+            {/* User Info Footer */}
+            <div className="mt-8 flex justify-center gap-4">
+              <div className="bg-purple-500/20 border border-purple-400/50 rounded-xl p-4">
+                <div className="text-purple-300 text-sm mb-1">Your Address</div>
+                <div className="font-mono text-purple-100 font-bold">{account.slice(0, 6)}...{account.slice(-4)}</div>
+              </div>
+              <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-4">
+                <div className="text-blue-300 text-sm mb-1">Network</div>
+                <div className="font-bold text-blue-100">{networkInfo?.name || 'Connected'}</div>
               </div>
             </div>
           </div>
