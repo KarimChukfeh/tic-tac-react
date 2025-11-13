@@ -2898,29 +2898,44 @@ export default function TicTacBlock() {
                           {cachedStats.tournaments?.length > 0 && (
                             <>
                               <div className="bg-purple-500/10 rounded-lg p-4 border border-purple-400/20">
-                                <div className="text-purple-300 text-sm mb-2">Recent Winners</div>
+                                <div className="text-purple-300 text-sm mb-2">Recent Tournaments</div>
                                 <div className="space-y-2 max-h-48 overflow-y-auto">
                                   {cachedStats.tournaments.slice(0, 5).map((tournament, idx) => {
                                     const winner = tournament.winner;
                                     const hasWinner = winner && winner !== ethers.ZeroAddress;
 
-                                    // Find winner's prize (winner has ranking 1)
+                                    // Check for multiple prize recipients (draw scenarios)
                                     let winnerPrize = null;
-                                    if (hasWinner && tournament.rankings && tournament.prizes && tournament.participants) {
+                                    let prizeRecipients = 0;
+                                    let hasMultipleWinners = false;
+
+                                    if (tournament.prizes && tournament.participants && tournament.participantCount) {
                                       try {
                                         const participantArray = Array.from(tournament.participants);
-                                        const rankingsArray = Array.from(tournament.rankings);
                                         const prizesArray = Array.from(tournament.prizes);
+                                        const count = Number(tournament.participantCount);
 
-                                        const winnerIndex = participantArray.findIndex(
-                                          p => p && p.toLowerCase() === winner.toLowerCase()
-                                        );
+                                        // Count participants who received prizes
+                                        for (let i = 0; i < count && i < participantArray.length; i++) {
+                                          const prize = prizesArray[i];
+                                          if (prize && parseFloat(ethers.formatEther(prize)) > 0) {
+                                            prizeRecipients++;
+                                          }
+                                        }
 
-                                        if (winnerIndex !== -1 && prizesArray[winnerIndex]) {
-                                          winnerPrize = ethers.formatEther(prizesArray[winnerIndex]);
+                                        hasMultipleWinners = prizeRecipients > 1;
+
+                                        // Get winner's prize
+                                        if (hasWinner) {
+                                          const winnerIndex = participantArray.findIndex(
+                                            p => p && p.toLowerCase() === winner.toLowerCase()
+                                          );
+                                          if (winnerIndex !== -1 && prizesArray[winnerIndex]) {
+                                            winnerPrize = ethers.formatEther(prizesArray[winnerIndex]);
+                                          }
                                         }
                                       } catch (err) {
-                                        console.warn('Error parsing winner prize:', err);
+                                        console.warn('Error parsing tournament prizes:', err);
                                       }
                                     }
 
@@ -2938,6 +2953,14 @@ export default function TicTacBlock() {
                                           <div className="flex items-center justify-between text-xs">
                                             <span className="text-purple-300/70">Prize Awarded</span>
                                             <span className="text-green-400 font-bold">{parseFloat(winnerPrize).toFixed(4)} ETH</span>
+                                          </div>
+                                        )}
+                                        {hasMultipleWinners && (
+                                          <div className="flex items-center gap-1 text-xs">
+                                            <AlertCircle className="text-yellow-400" size={12} />
+                                            <span className="text-yellow-300">
+                                              Shared prize ({prizeRecipients} recipients)
+                                            </span>
                                           </div>
                                         )}
                                       </div>

@@ -14,6 +14,37 @@
     "inputs": [
       {
         "indexed": true,
+        "internalType": "uint8",
+        "name": "tierId",
+        "type": "uint8"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint8",
+        "name": "instanceId",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint8",
+        "name": "roundNumber",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint8",
+        "name": "remainingPlayers",
+        "type": "uint8"
+      }
+    ],
+    "name": "AllDrawRoundDetected",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
         "internalType": "bytes32",
         "name": "matchKey",
         "type": "bytes32"
@@ -379,6 +410,43 @@
       }
     ],
     "name": "TournamentCompleted",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint8",
+        "name": "tierId",
+        "type": "uint8"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint8",
+        "name": "instanceId",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint8",
+        "name": "roundNumber",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint8",
+        "name": "sharedWinnerCount",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "prizePerWinner",
+        "type": "uint256"
+      }
+    ],
+    "name": "TournamentCompletedAllDraw",
     "type": "event"
   },
   {
@@ -2473,6 +2541,16 @@
         "internalType": "bool",
         "name": "initialized",
         "type": "bool"
+      },
+      {
+        "internalType": "uint8",
+        "name": "drawCount",
+        "type": "uint8"
+      },
+      {
+        "internalType": "bool",
+        "name": "allMatchesDrew",
+        "type": "bool"
       }
     ],
     "stateMutability": "view",
@@ -3104,6 +3182,16 @@
         "internalType": "bool",
         "name": "finalsWasDraw",
         "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "allDrawResolution",
+        "type": "bool"
+      },
+      {
+        "internalType": "uint8",
+        "name": "allDrawRound",
+        "type": "uint8"
       }
     ],
     "stateMutability": "view",
