@@ -159,9 +159,24 @@ const calculatePrizes = (pot, isDraw) => {
 };
 
 // Prize Distribution Component
-const PrizeDistribution = ({ pot, winner, winnerAddress }) => {
+const PrizeDistribution = ({ pot, winner, winnerAddress, theme }) => {
   const isDraw = winner === 'draw';
   const prizes = calculatePrizes(pot, isDraw);
+
+  // Theme-aware colors for total pot
+  const potColors = theme === 'dream'
+    ? {
+        bg: 'bg-purple-500/20',
+        border: 'border-purple-400/50',
+        text: 'text-purple-200',
+        textBold: 'text-purple-300'
+      }
+    : {
+        bg: 'bg-blue-500/20',
+        border: 'border-blue-400/50',
+        text: 'text-blue-200',
+        textBold: 'text-blue-300'
+      };
 
   return (
     <div className="bg-gradient-to-br from-yellow-500/20 to-amber-500/20 border-2 border-yellow-400/50 rounded-xl p-6">
@@ -205,9 +220,9 @@ const PrizeDistribution = ({ pot, winner, winnerAddress }) => {
             </div>
           </>
         )}
-        <div className="flex justify-between items-center bg-purple-500/20 rounded-lg p-3 border-2 border-purple-400/50">
-          <span className="text-purple-200 font-bold">Total Pot</span>
-          <span className="text-purple-300 font-bold text-xl">{pot} ETH</span>
+        <div className={`flex justify-between items-center ${potColors.bg} rounded-lg p-3 border-2 ${potColors.border}`}>
+          <span className={`${potColors.text} font-bold`}>Total Pot</span>
+          <span className={`${potColors.textBold} font-bold text-xl`}>{pot} ETH</span>
         </div>
       </div>
     </div>
@@ -272,20 +287,48 @@ const TournamentCard = ({
   isEnrolled,
   onEnroll,
   onEnter,
-  loading
+  loading,
+  tierName,
+  theme
 }) => {
   const isFull = currentEnrolled >= maxPlayers;
   const enrollmentPercentage = (currentEnrolled / maxPlayers) * 100;
 
+  // Theme-aware colors: Dream = purple/cyan, Dare = blue/orange
+  const colors = theme === 'dream'
+    ? {
+        cardBg: 'from-purple-600/20 to-blue-600/20',
+        cardBorder: 'border-purple-400/40 hover:border-purple-400/70',
+        cardShadow: 'hover:shadow-purple-500/20',
+        icon: 'text-purple-400',
+        text: 'text-purple-300',
+        textMuted: 'text-purple-300/70',
+        progress: 'from-purple-500 to-blue-500',
+        buttonEnter: 'from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600'
+      }
+    : {
+        cardBg: 'from-blue-600/20 to-cyan-600/20',
+        cardBorder: 'border-blue-400/40 hover:border-blue-400/70',
+        cardShadow: 'hover:shadow-blue-500/20',
+        icon: 'text-blue-400',
+        text: 'text-blue-300',
+        textMuted: 'text-blue-300/70',
+        progress: 'from-blue-500 to-cyan-500',
+        buttonEnter: 'from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600'
+      };
+
   return (
-    <div className="bg-gradient-to-br from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-6 border-2 border-purple-400/40 hover:border-purple-400/70 transition-all hover:shadow-xl hover:shadow-purple-500/20">
+    <div className={`bg-gradient-to-br ${colors.cardBg} backdrop-blur-lg rounded-2xl p-6 border-2 ${colors.cardBorder} transition-all hover:shadow-xl ${colors.cardShadow}`}>
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <Trophy className="text-purple-400" size={24} />
-          <h3 className="text-xl font-bold text-white">
-            Tier {tierId} • #{instanceId}
-          </h3>
+          <Trophy className={colors.icon} size={24} />
+          <div>
+            <h3 className="text-xl font-bold text-white">
+              {tierName || `Tier ${tierId}`}
+            </h3>
+            <div className={`text-xs ${colors.textMuted}`}>Instance #{instanceId}</div>
+          </div>
         </div>
         {isFull && (
           <div className="bg-red-500/20 border border-red-400 px-3 py-1 rounded-full">
@@ -308,8 +351,8 @@ const TournamentCard = ({
       <div className="grid grid-cols-2 gap-4 mb-4">
         <div className="bg-black/20 rounded-lg p-3">
           <div className="flex items-center gap-2 mb-1">
-            <Users className="text-purple-300" size={16} />
-            <span className="text-purple-300 text-xs font-semibold">Players</span>
+            <Users className={colors.text} size={16} />
+            <span className={`${colors.text} text-xs font-semibold`}>Players</span>
           </div>
           <div className="text-white font-bold text-lg">
             {currentEnrolled} / {maxPlayers}
@@ -329,13 +372,13 @@ const TournamentCard = ({
 
       {/* Progress Bar */}
       <div className="mb-4">
-        <div className="flex justify-between text-xs text-purple-300 mb-1">
+        <div className={`flex justify-between text-xs ${colors.text} mb-1`}>
           <span>Enrollment</span>
           <span>{enrollmentPercentage.toFixed(0)}%</span>
         </div>
         <div className="w-full bg-black/30 rounded-full h-2 overflow-hidden">
           <div
-            className="h-full bg-gradient-to-r from-purple-500 to-blue-500 transition-all duration-500 rounded-full"
+            className={`h-full bg-gradient-to-r ${colors.progress} transition-all duration-500 rounded-full`}
             style={{ width: `${enrollmentPercentage}%` }}
           />
         </div>
@@ -346,7 +389,7 @@ const TournamentCard = ({
         <button
           onClick={onEnter}
           disabled={loading}
-          className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
+          className={`w-full bg-gradient-to-r ${colors.buttonEnter} text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2`}
         >
           <Play size={18} />
           {loading ? 'Loading...' : 'Enter Tournament'}
@@ -366,7 +409,7 @@ const TournamentCard = ({
 };
 
 // Tournament Bracket Component
-const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, account, loading, syncDots }) => {
+const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, account, loading, syncDots, theme }) => {
   const { tierId, instanceId, status, currentRound, enrolledCount, prizePool, rounds, playerCount, enrolledPlayers } = tournamentData;
 
   // Calculate total rounds based on player count
@@ -408,13 +451,30 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, account, load
     return 'text-gray-400';
   };
 
+  // Theme-aware colors
+  const colors = theme === 'dream'
+    ? {
+        headerBg: 'from-purple-600/30 to-blue-600/30',
+        headerBorder: 'border-purple-400/30',
+        text: 'text-purple-300',
+        textHover: 'hover:text-purple-200',
+        icon: 'text-purple-400'
+      }
+    : {
+        headerBg: 'from-blue-600/30 to-cyan-600/30',
+        headerBorder: 'border-blue-400/30',
+        text: 'text-blue-300',
+        textHover: 'hover:text-blue-200',
+        icon: 'text-blue-400'
+      };
+
   return (
     <div className="mb-16">
       {/* Header */}
-      <div className="bg-gradient-to-r from-purple-600/30 to-blue-600/30 backdrop-blur-lg rounded-2xl p-8 border border-purple-400/30 mb-8">
+      <div className={`bg-gradient-to-r ${colors.headerBg} backdrop-blur-lg rounded-2xl p-8 border ${colors.headerBorder} mb-8`}>
         <button
           onClick={onBack}
-          className="mb-4 flex items-center gap-2 text-purple-300 hover:text-purple-200 transition-colors"
+          className={`mb-4 flex items-center gap-2 ${colors.text} ${colors.textHover} transition-colors`}
         >
           <ChevronDown className="rotate-90" size={20} />
           Back to Tournaments
@@ -422,7 +482,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, account, load
 
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
-            <Trophy className="text-purple-400" size={48} />
+            <Trophy className={colors.icon} size={48} />
             <div>
               <div className="flex items-center gap-3">
                 <h2 className="text-4xl font-bold text-white">
@@ -433,13 +493,13 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, account, load
                   Syncing{'.'.repeat(syncDots)}
                 </span>
               </div>
-              <p className="text-purple-300">
+              <p className={colors.text}>
                 Round {currentRound + 1} of {totalRounds}
               </p>
             </div>
           </div>
           <div className="text-right">
-            <div className="text-purple-300 text-sm">Prize Pool</div>
+            <div className={`${colors.text} text-sm`}>Prize Pool</div>
             <div className="text-3xl font-bold text-yellow-400">
               {ethers.formatEther(prizePool)} ETH
             </div>
@@ -449,17 +509,17 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, account, load
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4">
           <div className="bg-black/20 rounded-lg p-4">
-            <div className="text-purple-300 text-sm mb-1">Players</div>
+            <div className={`${colors.text} text-sm mb-1`}>Players</div>
             <div className="text-white font-bold text-xl">{enrolledCount} / {playerCount}</div>
           </div>
           <div className="bg-black/20 rounded-lg p-4">
-            <div className="text-purple-300 text-sm mb-1">Status</div>
+            <div className={`${colors.text} text-sm mb-1`}>Status</div>
             <div className="text-white font-bold text-xl">
               {status === 0 ? 'Enrolling' : status === 1 ? 'In Progress' : status === 2 ? 'Completed' : 'Unknown'}
             </div>
           </div>
           <div className="bg-black/20 rounded-lg p-4">
-            <div className="text-purple-300 text-sm mb-1">Current Round</div>
+            <div className={`${colors.text} text-sm mb-1`}>Current Round</div>
             <div className="text-white font-bold text-xl">Round {currentRound + 1}</div>
           </div>
         </div>
@@ -510,8 +570,8 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, account, load
       )}
 
       {/* Bracket View */}
-      <div className="bg-gradient-to-br from-slate-900/50 to-purple-900/30 backdrop-blur-lg rounded-2xl p-8 border border-purple-400/30">
-        <h3 className="text-2xl font-bold text-purple-300 mb-6 flex items-center gap-2">
+      <div className={`bg-gradient-to-br from-slate-900/50 to-${theme === 'dream' ? 'purple' : 'blue'}-900/30 backdrop-blur-lg rounded-2xl p-8 border ${colors.headerBorder}`}>
+        <h3 className={`text-2xl font-bold ${colors.text} mb-6 flex items-center gap-2`}>
           <Grid size={24} />
           Tournament Bracket
         </h3>
@@ -519,7 +579,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, account, load
         <div className="space-y-8">
           {rounds.map((round, roundIdx) => (
             <div key={roundIdx}>
-              <h4 className="text-xl font-bold text-purple-400 mb-4">
+              <h4 className={`text-xl font-bold ${colors.icon} mb-4`}>
                 Round {roundIdx + 1}
                 {roundIdx === totalRounds - 1 && ' - Finals'}
                 {roundIdx === totalRounds - 2 && rounds.length > 1 && ' - Semi-Finals'}
@@ -830,7 +890,7 @@ const ActiveGameDisplay = ({ game, account, onMove, onStartGame, loading, refres
             moveCount={moveCount}
           />
 
-          {gameOver && <PrizeDistribution pot={game.pot} winner={isDraw ? 'draw' : 'winner'} winnerAddress={contractWinner} />}
+          {gameOver && <PrizeDistribution pot={game.pot} winner={isDraw ? 'draw' : 'winner'} winnerAddress={contractWinner} theme={theme} />}
         </div>
 
         {/* Center: Board Section */}
@@ -1213,6 +1273,20 @@ export default function TicTacBlock() {
       if (current === 'dream') return 'daring';
       return 'dream';
     });
+  };
+
+  // Helper to get tier name
+  const getTierName = (tierId) => {
+    const tierNames = {
+      0: 'Classic',
+      1: 'Minor',
+      2: 'Standard',
+      3: 'Major',
+      4: 'Mega',
+      5: 'Ultimate',
+      6: 'Rapid'
+    };
+    return tierNames[tierId] || `Tier ${tierId}`;
   };
 
   // Theme-specific colors
@@ -1931,9 +2005,66 @@ export default function TicTacBlock() {
   // Fetch tournaments when theme or contract changes
   useEffect(() => {
     if (contract) {
-      // Determine tier based on theme: dream = tier 0 (Classic), daring = tier 1 (Pro)
-      const tierId = theme === 'dream' ? 0 : 1;
-      fetchTournaments(tierId);
+      if (theme === 'dream') {
+        // Dream mode: only tier 0 (Classic)
+        fetchTournaments(0);
+      } else if (theme === 'daring') {
+        // Daring mode: fetch all tiers 1-6
+        const fetchAllDaringTiers = async () => {
+          setTournamentsLoading(true);
+          const allTournaments = [];
+
+          for (let tierId = 1; tierId <= 6; tierId++) {
+            try {
+              // Get tier overview which returns arrays of data for all instances
+              const tierOverview = await contract.getTierOverview(tierId);
+              const statuses = tierOverview[0];
+              const enrolledCounts = tierOverview[1];
+              // prizePools = tierOverview[2]; // Available but not needed for card display
+
+              // Get tier config to get correct player count
+              const tierConfig = await contract.tierConfigs(tierId);
+              const maxPlayers = Number(tierConfig.playerCount);
+
+              // Get entry fee for this tier
+              const fee = await contract.ENTRY_FEES(tierId);
+              const entryFeeFormatted = ethers.formatEther(fee);
+
+              console.log(`Tier ${tierId}: ${statuses.length} instances`);
+
+              // Create tournament objects for each instance
+              for (let i = 0; i < statuses.length; i++) {
+                const status = Number(statuses[i]);
+                const enrolledCount = Number(enrolledCounts[i]);
+
+                // Check if user is enrolled
+                let isEnrolled = false;
+                if (account) {
+                  isEnrolled = await contract.isEnrolled(tierId, i, account);
+                }
+
+                allTournaments.push({
+                  tierId,
+                  instanceId: i,
+                  status,
+                  enrolledCount,
+                  maxPlayers,
+                  entryFee: entryFeeFormatted,
+                  isEnrolled
+                });
+              }
+            } catch (error) {
+              console.error(`Error fetching tier ${tierId}:`, error);
+            }
+          }
+
+          console.log(`Total tournaments found: ${allTournaments.length}`);
+          setTournaments(allTournaments);
+          setTournamentsLoading(false);
+        };
+
+        fetchAllDaringTiers();
+      }
     }
   }, [theme, contract, account, fetchTournaments]);
 
@@ -2792,6 +2923,7 @@ export default function TicTacBlock() {
                 account={account}
                 loading={tournamentsLoading}
                 syncDots={bracketSyncDots}
+                theme={theme}
               />
             ) : (
               // Show Tournament List
@@ -2821,22 +2953,85 @@ export default function TicTacBlock() {
 
                 {/* Tournament Cards Grid */}
                 {!tournamentsLoading && tournaments.length > 0 && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {tournaments.map((tournament) => (
-                      <TournamentCard
-                        key={`${tournament.tierId}-${tournament.instanceId}`}
-                        tierId={tournament.tierId}
-                        instanceId={tournament.instanceId}
-                        maxPlayers={tournament.maxPlayers}
-                        currentEnrolled={tournament.enrolledCount}
-                        entryFee={tournament.entryFee}
-                        isEnrolled={tournament.isEnrolled}
-                        onEnroll={() => handleEnroll(tournament.tierId, tournament.instanceId, tournament.entryFee)}
-                        onEnter={() => handleEnterTournament(tournament.tierId, tournament.instanceId)}
-                        loading={tournamentsLoading}
-                      />
-                    ))}
-                  </div>
+                  <>
+                    {theme === 'daring' ? (
+                      // Grouped by tier for Dare mode
+                      (() => {
+                        // Define tier order: Rapid, Minor, Standard, Major, Mega, Ultimate
+                        const tierOrder = [6, 1, 2, 3, 4, 5];
+                        const tierColors = {
+                          6: { bg: 'from-yellow-600/20 to-orange-600/20', border: 'border-yellow-400/40', text: 'text-yellow-400', icon: '⚡' },
+                          1: { bg: 'from-blue-600/20 to-cyan-600/20', border: 'border-blue-400/40', text: 'text-blue-400', icon: '🔹' },
+                          2: { bg: 'from-cyan-600/20 to-teal-600/20', border: 'border-cyan-400/40', text: 'text-cyan-400', icon: '💎' },
+                          3: { bg: 'from-purple-600/20 to-pink-600/20', border: 'border-purple-400/40', text: 'text-purple-400', icon: '⭐' },
+                          4: { bg: 'from-red-600/20 to-rose-600/20', border: 'border-red-400/40', text: 'text-red-400', icon: '🔥' },
+                          5: { bg: 'from-orange-600/20 to-amber-600/20', border: 'border-orange-400/40', text: 'text-orange-400', icon: '👑' }
+                        };
+
+                        return tierOrder.map((tierId) => {
+                          const tierTournaments = tournaments.filter(t => t.tierId === tierId);
+                          if (tierTournaments.length === 0) return null;
+
+                          const tierColor = tierColors[tierId];
+                          const maxPlayers = tierTournaments[0]?.maxPlayers || 0;
+                          const playerLabel = maxPlayers === 2 ? '1v1' : `${maxPlayers} players`;
+
+                          return (
+                            <div key={tierId} className="mb-12">
+                              {/* Tier Header */}
+                              <div className={`bg-gradient-to-r ${tierColor.bg} backdrop-blur-lg rounded-xl p-4 border ${tierColor.border} mb-6`}>
+                                <h3 className={`text-2xl font-bold ${tierColor.text} flex items-center gap-2`}>
+                                  <span className="text-3xl">{tierColor.icon}</span>
+                                  {getTierName(tierId)} Tier
+                                  <span className="text-sm opacity-70 ml-2">({playerLabel})</span>
+                                </h3>
+                              </div>
+
+                              {/* Tier Tournaments Grid */}
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                {tierTournaments.map((tournament) => (
+                                  <TournamentCard
+                                    key={`${tournament.tierId}-${tournament.instanceId}`}
+                                    tierId={tournament.tierId}
+                                    instanceId={tournament.instanceId}
+                                    maxPlayers={tournament.maxPlayers}
+                                    currentEnrolled={tournament.enrolledCount}
+                                    entryFee={tournament.entryFee}
+                                    isEnrolled={tournament.isEnrolled}
+                                    onEnroll={() => handleEnroll(tournament.tierId, tournament.instanceId, tournament.entryFee)}
+                                    onEnter={() => handleEnterTournament(tournament.tierId, tournament.instanceId)}
+                                    loading={tournamentsLoading}
+                                    tierName={getTierName(tournament.tierId)}
+                                    theme={theme}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        });
+                      })()
+                    ) : (
+                      // Single grid for Dream mode
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        {tournaments.map((tournament) => (
+                          <TournamentCard
+                            key={`${tournament.tierId}-${tournament.instanceId}`}
+                            tierId={tournament.tierId}
+                            instanceId={tournament.instanceId}
+                            maxPlayers={tournament.maxPlayers}
+                            currentEnrolled={tournament.enrolledCount}
+                            entryFee={tournament.entryFee}
+                            isEnrolled={tournament.isEnrolled}
+                            onEnroll={() => handleEnroll(tournament.tierId, tournament.instanceId, tournament.entryFee)}
+                            onEnter={() => handleEnterTournament(tournament.tierId, tournament.instanceId)}
+                            loading={tournamentsLoading}
+                            tierName={getTierName(tournament.tierId)}
+                            theme={theme}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </>
                 )}
 
                 {/* Empty State */}
