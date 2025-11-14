@@ -289,10 +289,52 @@ const TournamentCard = ({
   onEnter,
   loading,
   tierName,
-  theme
+  theme,
+  firstEnrollmentTime,
+  countdownActive,
+  onManualStart
 }) => {
   const isFull = currentEnrolled >= maxPlayers;
   const enrollmentPercentage = (currentEnrolled / maxPlayers) * 100;
+
+  // Countdown timer logic - using contract's 1 minute duration
+  const ENROLLMENT_DURATION = 1 * 60; // 1 minute in seconds (matches contract)
+  const [timeRemaining, setTimeRemaining] = useState(0);
+  const [countdownExpired, setCountdownExpired] = useState(false);
+
+  useEffect(() => {
+    if (!countdownActive || !firstEnrollmentTime) {
+      setTimeRemaining(0);
+      setCountdownExpired(false);
+      return;
+    }
+
+    const updateTimer = () => {
+      const now = Math.floor(Date.now() / 1000); // Current time in seconds
+      const deadline = firstEnrollmentTime + ENROLLMENT_DURATION;
+      const remaining = deadline - now;
+
+      if (remaining <= 0) {
+        setTimeRemaining(0);
+        setCountdownExpired(true);
+      } else {
+        setTimeRemaining(remaining);
+        setCountdownExpired(false);
+      }
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+
+    return () => clearInterval(interval);
+  }, [firstEnrollmentTime, countdownActive]);
+
+  const formatTime = (seconds) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${hours}h ${minutes}m ${secs}s`;
+  };
 
   // Theme-aware colors: Dream = purple/cyan, Dare = blue/orange
   const colors = theme === 'dream'
@@ -384,7 +426,35 @@ const TournamentCard = ({
         </div>
       </div>
 
-      {/* Action Button */}
+      {/* Countdown Timer */}
+      {countdownActive && (
+        <div className="mb-4 bg-orange-500/20 border border-orange-400/50 rounded-lg p-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Clock className="text-orange-400" size={16} />
+              <span className="text-orange-300 text-xs font-semibold">
+                {countdownExpired ? 'Countdown Expired' : 'Time Remaining'}
+              </span>
+            </div>
+            <span className="text-orange-300 font-bold text-sm">
+              {countdownExpired ? '0h 0m 0s' : formatTime(timeRemaining)}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Action Buttons */}
+      {countdownExpired && isEnrolled && !isFull ? (
+        <button
+          onClick={() => onManualStart(tierId, instanceId)}
+          disabled={loading}
+          className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 mb-2"
+        >
+          <Zap size={18} />
+          {loading ? 'Starting...' : 'Force Start Tournament'}
+        </button>
+      ) : null}
+
       {isEnrolled ? (
         <button
           onClick={onEnter}
@@ -410,10 +480,49 @@ const TournamentCard = ({
 
 // Tournament Bracket Component
 const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, account, loading, syncDots, theme }) => {
-  const { tierId, instanceId, status, currentRound, enrolledCount, prizePool, rounds, playerCount, enrolledPlayers } = tournamentData;
+  const { tierId, instanceId, status, currentRound, enrolledCount, prizePool, rounds, playerCount, enrolledPlayers, firstEnrollmentTime, countdownActive } = tournamentData;
 
   // Calculate total rounds based on player count
   const totalRounds = Math.ceil(Math.log2(playerCount));
+
+  // Countdown timer logic for enrollment
+  const ENROLLMENT_DURATION = 1 * 60; // 1 minute in seconds (matches contract)
+  const [timeRemaining, setTimeRemaining] = useState(0);
+  const [countdownExpired, setCountdownExpired] = useState(false);
+
+  useEffect(() => {
+    if (!countdownActive || !firstEnrollmentTime || status !== 0) {
+      setTimeRemaining(0);
+      setCountdownExpired(false);
+      return;
+    }
+
+    const updateTimer = () => {
+      const now = Math.floor(Date.now() / 1000);
+      const deadline = firstEnrollmentTime + ENROLLMENT_DURATION;
+      const remaining = deadline - now;
+
+      if (remaining <= 0) {
+        setTimeRemaining(0);
+        setCountdownExpired(true);
+      } else {
+        setTimeRemaining(remaining);
+        setCountdownExpired(false);
+      }
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+
+    return () => clearInterval(interval);
+  }, [firstEnrollmentTime, countdownActive, status]);
+
+  const formatTime = (seconds) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${hours}h ${minutes}m ${secs}s`;
+  };
 
   // Find user's current match
   const userCurrentMatch = rounds
@@ -523,6 +632,28 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, account, load
             <div className="text-white font-bold text-xl">Round {currentRound + 1}</div>
           </div>
         </div>
+
+        {/* Countdown Timer (only show during enrollment) */}
+        {countdownActive && status === 0 && (
+          <div className="mt-4 bg-orange-500/20 border border-orange-400/50 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Clock className="text-orange-400" size={20} />
+                <span className="text-orange-300 font-semibold">
+                  {countdownExpired ? 'Enrollment Countdown Expired' : 'Enrollment Time Remaining'}
+                </span>
+              </div>
+              <span className="text-orange-300 font-bold text-lg">
+                {countdownExpired ? '0h 0m 0s' : formatTime(timeRemaining)}
+              </span>
+            </div>
+            {countdownExpired && (
+              <p className="text-orange-200 text-sm mt-2">
+                Enrolled players can force-start the tournament from the tournament list.
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* User's Current Match Highlight */}
@@ -576,8 +707,9 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, account, load
           Tournament Bracket
         </h3>
 
-        <div className="space-y-8">
-          {rounds.map((round, roundIdx) => (
+        {rounds && rounds.length > 0 ? (
+          <div className="space-y-8">
+            {rounds.map((round, roundIdx) => (
             <div key={roundIdx}>
               <h4 className={`text-xl font-bold ${colors.icon} mb-4`}>
                 Round {roundIdx + 1}
@@ -650,14 +782,35 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, account, load
                             <Award className="text-green-400" size={16} />
                           )}
                         </div>
+
+                        {/* Enter Match Button for user's matches */}
+                        {isUserMatch && match.matchStatus !== 2 && (
+                          <button
+                            onClick={() => onEnterMatch(tierId, instanceId, roundIdx, matchIdx)}
+                            disabled={loading || match.matchStatus === 0}
+                            className="w-full mt-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 disabled:from-gray-500 disabled:to-gray-600 text-white font-bold py-2 px-4 rounded-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
+                          >
+                            <Play size={16} />
+                            {match.matchStatus === 0 ? 'Waiting to Start' : 'Enter Match'}
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
                 })}
               </div>
             </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <div className={`${colors.text} text-lg`}>
+              {status === 0
+                ? 'Tournament bracket will be generated once the tournament starts.'
+                : 'No bracket data available.'}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1390,8 +1543,8 @@ export default function TicTacBlock() {
             symbol: 'ETH',
             decimals: 18,
           },
-          rpcUrls: ['http://127.0.0.1:8545'],
-          blockExplorerUrls: ['http://localhost:8545'],
+          rpcUrls: ['http://127.0.0.1:8547'],
+          blockExplorerUrls: ['http://localhost:8547'],
               },
             ],
           });
@@ -1493,6 +1646,44 @@ export default function TicTacBlock() {
 
   // Verify contract is deployed (simplified for tournament contract)
   const loadContractData = async (contractInstance, isInitialLoad = false) => {
+    // Always try to fetch cached stats first, even if contract verification fails
+    try {
+      console.log('🔄 Fetching cached stats...');
+      setCachedStatsLoading(true);
+
+      let matches = [];
+      let tournaments = [];
+
+      // Fetch all cached matches
+      try {
+        const allCachedMatches = await contractInstance.getAllCachedMatches();
+        matches = Array.from(allCachedMatches).filter(m => m && m.exists);
+        console.log('✅ Fetched', matches.length, 'cached matches');
+      } catch (err) {
+        console.warn('Error fetching cached matches:', err.message || err);
+      }
+
+      // Get recent tournaments from each tier
+      for (let tierId = 0; tierId < 7; tierId++) {
+        try {
+          const tierTournaments = await contractInstance.getRecentTournaments(tierId, 5);
+          const validTournaments = Array.from(tierTournaments).filter(t => t && t.exists);
+          tournaments.push(...validTournaments);
+        } catch (err) {
+          console.log(`No tournaments found for tier ${tierId}`);
+        }
+      }
+
+      console.log('✅ Fetched', tournaments.length, 'cached tournaments');
+      setCachedStats({ matches, tournaments });
+      setCachedStatsLoading(false);
+    } catch (err) {
+      console.error('Could not fetch cached stats:', err);
+      setCachedStats({ matches: [], tournaments: [] });
+      setCachedStatsLoading(false);
+    }
+
+    // Now verify contract deployment
     try {
       setContractStatus('checking');
 
@@ -1589,6 +1780,17 @@ export default function TicTacBlock() {
           }
         }
 
+        // Get enrollment countdown data
+        let firstEnrollmentTime = 0;
+        let countdownActive = false;
+        try {
+          const tournamentInfo = await contract.tournaments(tierId, instanceId);
+          firstEnrollmentTime = Number(tournamentInfo.firstEnrollmentTime);
+          countdownActive = tournamentInfo.countdownActive;
+        } catch (err) {
+          console.log('Could not fetch tournament countdown data:', err);
+        }
+
         tournamentData.push({
           tierId,
           instanceId,
@@ -1596,7 +1798,9 @@ export default function TicTacBlock() {
           enrolledCount,
           maxPlayers,
           entryFee: entryFeeFormatted,
-          isEnrolled
+          isEnrolled,
+          firstEnrollmentTime,
+          countdownActive
         });
       }
 
@@ -1656,6 +1860,74 @@ export default function TicTacBlock() {
     }
   }, [contract]);
 
+  // Fetch all Dare mode tiers (extracted for reuse)
+  const fetchAllDaringTiers = useCallback(async () => {
+    if (!contract) return;
+
+    setTournamentsLoading(true);
+    const allTournaments = [];
+
+    for (let tierId = 1; tierId <= 6; tierId++) {
+      try {
+        // Get tier overview which returns arrays of data for all instances
+        const tierOverview = await contract.getTierOverview(tierId);
+        const statuses = tierOverview[0];
+        const enrolledCounts = tierOverview[1];
+
+        // Get tier config to get correct player count
+        const tierConfig = await contract.tierConfigs(tierId);
+        const maxPlayers = Number(tierConfig.playerCount);
+
+        // Get entry fee for this tier
+        const fee = await contract.ENTRY_FEES(tierId);
+        const entryFeeFormatted = ethers.formatEther(fee);
+
+        console.log(`Tier ${tierId}: ${statuses.length} instances`);
+
+        // Create tournament objects for each instance
+        for (let i = 0; i < statuses.length; i++) {
+          const status = Number(statuses[i]);
+          const enrolledCount = Number(enrolledCounts[i]);
+
+          // Check if user is enrolled
+          let isEnrolled = false;
+          if (account) {
+            isEnrolled = await contract.isEnrolled(tierId, i, account);
+          }
+
+          // Get enrollment countdown data
+          let firstEnrollmentTime = 0;
+          let countdownActive = false;
+          try {
+            const tournamentInfo = await contract.tournaments(tierId, i);
+            firstEnrollmentTime = Number(tournamentInfo.firstEnrollmentTime);
+            countdownActive = tournamentInfo.countdownActive;
+          } catch (err) {
+            console.log('Could not fetch tournament countdown data:', err);
+          }
+
+          allTournaments.push({
+            tierId,
+            instanceId: i,
+            status,
+            enrolledCount,
+            maxPlayers,
+            entryFee: entryFeeFormatted,
+            isEnrolled,
+            firstEnrollmentTime,
+            countdownActive
+          });
+        }
+      } catch (error) {
+        console.error(`Error fetching tier ${tierId}:`, error);
+      }
+    }
+
+    console.log(`Total tournaments found: ${allTournaments.length}`);
+    setTournaments(allTournaments);
+    setTournamentsLoading(false);
+  }, [contract, account]);
+
   // Handle tournament enrollment
   const handleEnroll = async (tierId, instanceId, entryFee) => {
     if (!contract || !account) {
@@ -1676,13 +1948,134 @@ export default function TicTacBlock() {
       alert('Successfully enrolled in tournament!');
 
       // Refresh tournament data
-      const currentTierId = theme === 'dream' ? 0 : 1;
-      await fetchTournaments(currentTierId);
+      if (theme === 'dream') {
+        await fetchTournaments(0);
+      } else if (theme === 'daring') {
+        // Re-fetch all Dare mode tiers
+        await fetchAllDaringTiers();
+      }
 
       setTournamentsLoading(false);
     } catch (error) {
       console.error('Error enrolling:', error);
       alert(`Error enrolling: ${error.message}`);
+      setTournamentsLoading(false);
+    }
+  };
+
+  // Handle manual tournament start (when countdown expires)
+  const handleManualStart = async (tierId, instanceId) => {
+    if (!contract || !account) {
+      alert('Please connect your wallet first');
+      return;
+    }
+
+    try {
+      setTournamentsLoading(true);
+
+      // First check if this instance exists
+      const instanceCount = Number(await contract.INSTANCE_COUNTS(tierId));
+      console.log(`Instance count for tier ${tierId}: ${instanceCount}`);
+
+      if (instanceId >= instanceCount) {
+        alert(`Invalid instance ID. Tier ${tierId} only has ${instanceCount} instances (0-${instanceCount-1})`);
+        setTournamentsLoading(false);
+        return;
+      }
+
+      // Get tournament info to validate
+      const tournamentInfo = await contract.tournaments(tierId, instanceId);
+      const enrolledCount = Number(tournamentInfo.enrolledCount);
+      const status = Number(tournamentInfo.status);
+      const countdownActive = tournamentInfo.countdownActive;
+
+      console.log('Manual start attempt:', { tierId, instanceId, enrolledCount, status, countdownActive, instanceCount });
+
+      // Validation checks
+      if (status !== 0) {
+        alert('Tournament has already started or completed');
+        setTournamentsLoading(false);
+        return;
+      }
+
+      if (!countdownActive) {
+        alert('Countdown is not active for this tournament');
+        setTournamentsLoading(false);
+        return;
+      }
+
+      if (enrolledCount < 1) {
+        alert('Tournament has no enrolled players');
+        setTournamentsLoading(false);
+        return;
+      }
+
+      // Check if user is enrolled
+      const isEnrolled = await contract.isEnrolled(tierId, instanceId, account);
+      if (!isEnrolled) {
+        alert('You must be enrolled in the tournament to force-start it');
+        setTournamentsLoading(false);
+        return;
+      }
+
+      // Special case: if only 1 player enrolled, they win automatically
+      if (enrolledCount === 1) {
+        const confirmStart = window.confirm(
+          'You are the only enrolled player. Force-starting will declare you the winner and award you the prize. Continue?'
+        );
+        if (!confirmStart) {
+          setTournamentsLoading(false);
+          return;
+        }
+      }
+
+      // Call manualStartTournament function
+      console.log('Calling manualStartTournament with:', {
+        tierId,
+        instanceId,
+        tierIdType: typeof tierId,
+        instanceIdType: typeof instanceId,
+        enrolledCount,
+        status,
+        countdownActive,
+        isEnrolled
+      });
+
+      const tx = await contract.manualStartTournament(tierId, instanceId);
+      console.log('Transaction sent:', tx.hash);
+      await tx.wait();
+      console.log('Transaction confirmed');
+
+      alert('Tournament started successfully!');
+
+      // Refresh tournament data
+      if (theme === 'dream') {
+        await fetchTournaments(0);
+      } else if (theme === 'daring') {
+        // Re-fetch all Dare mode tiers
+        await fetchAllDaringTiers();
+      }
+
+      setTournamentsLoading(false);
+    } catch (error) {
+      console.error('Error starting tournament:', error);
+      console.error('Full error object:', JSON.stringify(error, null, 2));
+
+      let errorMessage = error.message;
+      if (error.message.includes('ARRAY_RANGE_ERROR')) {
+        // More detailed error for array range issues
+        errorMessage = `Tournament cannot be started. This may be due to:\n- Invalid tier ID (${tierId}) or instance ID (${instanceId})\n- Tournament already started\n- Contract state issue\n\nCheck console for full error details.`;
+      } else if (error.message.includes('CountdownNotExpired')) {
+        errorMessage = 'Countdown has not expired yet';
+      } else if (error.message.includes('NotEnrolled')) {
+        errorMessage = 'You must be enrolled to force-start the tournament';
+      } else if (error.message.includes('TournamentAlreadyStarted')) {
+        errorMessage = 'Tournament has already been started';
+      } else if (error.message.includes('InvalidTournamentStatus')) {
+        errorMessage = 'Tournament is not in enrollment phase';
+      }
+
+      alert(`Error starting tournament: ${errorMessage}`);
       setTournamentsLoading(false);
     }
   };
@@ -1703,6 +2096,17 @@ export default function TicTacBlock() {
 
       // Get enrolled players
       const enrolledPlayers = await contractInstance.getEnrolledPlayers(tierId, instanceId);
+
+      // Get countdown data
+      let firstEnrollmentTime = 0;
+      let countdownActive = false;
+      try {
+        const tournamentData = await contractInstance.tournaments(tierId, instanceId);
+        firstEnrollmentTime = Number(tournamentData.firstEnrollmentTime);
+        countdownActive = tournamentData.countdownActive;
+      } catch (err) {
+        console.log('Could not fetch countdown data:', err);
+      }
 
       // Calculate total rounds
       const totalRounds = Math.ceil(Math.log2(playerCount));
@@ -1748,7 +2152,9 @@ export default function TicTacBlock() {
         prizePool,
         playerCount,
         enrolledPlayers,
-        rounds
+        rounds,
+        firstEnrollmentTime,
+        countdownActive
       };
     } catch (error) {
       console.error('Error refreshing tournament bracket:', error);
@@ -1955,7 +2361,7 @@ export default function TicTacBlock() {
     const initReadOnlyContract = async () => {
       try {
         // Use local network RPC
-        const provider = new ethers.JsonRpcProvider('http://127.0.0.1:8545');
+        const provider = new ethers.JsonRpcProvider('http://127.0.0.1:8547');
 
         const readOnlyContract = new ethers.Contract(
           CONTRACT_ADDRESS,
@@ -1985,7 +2391,7 @@ export default function TicTacBlock() {
           setAccount(null);
           // Reinitialize read-only contract when disconnected
           const initReadOnlyContract = async () => {
-            const provider = new ethers.JsonRpcProvider('http://127.0.0.1:8545');
+            const provider = new ethers.JsonRpcProvider('http://127.0.0.1:8547');
             const readOnlyContract = new ethers.Contract(CONTRACT_ADDRESS, DUMMY_ABI, provider);
             setContract(readOnlyContract);
             await loadContractData(readOnlyContract);
@@ -2010,63 +2416,10 @@ export default function TicTacBlock() {
         fetchTournaments(0);
       } else if (theme === 'daring') {
         // Daring mode: fetch all tiers 1-6
-        const fetchAllDaringTiers = async () => {
-          setTournamentsLoading(true);
-          const allTournaments = [];
-
-          for (let tierId = 1; tierId <= 6; tierId++) {
-            try {
-              // Get tier overview which returns arrays of data for all instances
-              const tierOverview = await contract.getTierOverview(tierId);
-              const statuses = tierOverview[0];
-              const enrolledCounts = tierOverview[1];
-              // prizePools = tierOverview[2]; // Available but not needed for card display
-
-              // Get tier config to get correct player count
-              const tierConfig = await contract.tierConfigs(tierId);
-              const maxPlayers = Number(tierConfig.playerCount);
-
-              // Get entry fee for this tier
-              const fee = await contract.ENTRY_FEES(tierId);
-              const entryFeeFormatted = ethers.formatEther(fee);
-
-              console.log(`Tier ${tierId}: ${statuses.length} instances`);
-
-              // Create tournament objects for each instance
-              for (let i = 0; i < statuses.length; i++) {
-                const status = Number(statuses[i]);
-                const enrolledCount = Number(enrolledCounts[i]);
-
-                // Check if user is enrolled
-                let isEnrolled = false;
-                if (account) {
-                  isEnrolled = await contract.isEnrolled(tierId, i, account);
-                }
-
-                allTournaments.push({
-                  tierId,
-                  instanceId: i,
-                  status,
-                  enrolledCount,
-                  maxPlayers,
-                  entryFee: entryFeeFormatted,
-                  isEnrolled
-                });
-              }
-            } catch (error) {
-              console.error(`Error fetching tier ${tierId}:`, error);
-            }
-          }
-
-          console.log(`Total tournaments found: ${allTournaments.length}`);
-          setTournaments(allTournaments);
-          setTournamentsLoading(false);
-        };
-
         fetchAllDaringTiers();
       }
     }
-  }, [theme, contract, account, fetchTournaments]);
+  }, [theme, contract, account, fetchTournaments, fetchAllDaringTiers]);
 
   // Fetch cached stats when contract is available
   useEffect(() => {
@@ -3003,6 +3356,9 @@ export default function TicTacBlock() {
                                     loading={tournamentsLoading}
                                     tierName={getTierName(tournament.tierId)}
                                     theme={theme}
+                                    firstEnrollmentTime={tournament.firstEnrollmentTime}
+                                    countdownActive={tournament.countdownActive}
+                                    onManualStart={handleManualStart}
                                   />
                                 ))}
                               </div>
@@ -3027,6 +3383,9 @@ export default function TicTacBlock() {
                             loading={tournamentsLoading}
                             tierName={getTierName(tournament.tierId)}
                             theme={theme}
+                            firstEnrollmentTime={tournament.firstEnrollmentTime}
+                            countdownActive={tournament.countdownActive}
+                            onManualStart={handleManualStart}
                           />
                         ))}
                       </div>
@@ -3054,9 +3413,37 @@ export default function TicTacBlock() {
                     <div className="font-bold text-blue-100">{networkInfo?.name || 'Connected'}</div>
                   </div>
                 </div>
+              </div>
+            )}
+          </>
+        )}
 
-                {/* Cached Tournament & Match Stats Section */}
-                <div className="mt-16">
+        {/* Not Connected State - Call to Action */}
+        {!account && (
+          <div className="bg-gradient-to-r from-purple-600/30 to-pink-600/30 backdrop-blur-lg rounded-2xl p-8 border border-purple-400/30 mb-16">
+            <h2 className="text-4xl font-bold mb-6 flex items-center gap-3 justify-center">
+              <Wallet className="text-purple-400" />
+              Ready to Compete?
+            </h2>
+            <div className="text-center py-8 bg-purple-500/10 rounded-xl border border-purple-400/30">
+              <p className="text-2xl text-purple-200 mb-4 font-bold">Connect Your Wallet</p>
+              <p className="text-lg text-purple-300 mb-6">Get ready for tournaments with real ETH prizes!</p>
+              <button
+        onClick={connectWallet}
+        disabled={loading}
+        className="inline-flex items-center gap-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 px-10 py-5 rounded-2xl font-bold text-2xl shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+        <Wallet size={28} />
+        {loading ? 'Connecting...' : 'Connect Wallet'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Cached Tournament & Match Stats Section - Always Visible */}
+      <div className="max-w-7xl mx-auto px-6 pb-12" style={{ position: 'relative', zIndex: 10 }}>
+        <div className="mt-16">
                   <div className="text-center mb-8">
                     <div className="inline-flex items-center gap-3 mb-4">
                       <History className="text-cyan-400" size={48} />
@@ -3460,33 +3847,7 @@ export default function TicTacBlock() {
                       <p className="text-cyan-200/70">Statistics will appear as tournaments and matches are completed</p>
                     </div>
                   )}
-                </div>
-              </div>
-            )}
-          </>
-        )}
-
-        {/* Not Connected State - Call to Action */}
-        {!account && (
-          <div className="bg-gradient-to-r from-purple-600/30 to-pink-600/30 backdrop-blur-lg rounded-2xl p-8 border border-purple-400/30 mb-16">
-            <h2 className="text-4xl font-bold mb-6 flex items-center gap-3 justify-center">
-              <Wallet className="text-purple-400" />
-              Ready to Compete?
-            </h2>
-            <div className="text-center py-8 bg-purple-500/10 rounded-xl border border-purple-400/30">
-              <p className="text-2xl text-purple-200 mb-4 font-bold">Connect Your Wallet</p>
-              <p className="text-lg text-purple-300 mb-6">Get ready for tournaments with real ETH prizes!</p>
-              <button
-          onClick={connectWallet}
-          disabled={loading}
-          className="inline-flex items-center gap-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 px-10 py-5 rounded-2xl font-bold text-2xl shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-          <Wallet size={28} />
-          {loading ? 'Connecting...' : 'Connect Wallet'}
-              </button>
-            </div>
-          </div>
-        )}
+        </div>
       </div>
 
       {/* Zero Trust Architecture */}

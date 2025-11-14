@@ -45,6 +45,31 @@
     "inputs": [
       {
         "indexed": true,
+        "internalType": "uint8",
+        "name": "tierId",
+        "type": "uint8"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint8",
+        "name": "instanceId",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "countdownEndTime",
+        "type": "uint256"
+      }
+    ],
+    "name": "EnrollmentCountdownStarted",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
         "internalType": "bytes32",
         "name": "matchKey",
         "type": "bytes32"
@@ -230,6 +255,37 @@
         "type": "uint8"
       },
       {
+        "indexed": false,
+        "internalType": "uint8",
+        "name": "roundNumber",
+        "type": "uint8"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "player",
+        "type": "address"
+      }
+    ],
+    "name": "PlayerAutoAdvancedWalkover",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint8",
+        "name": "tierId",
+        "type": "uint8"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint8",
+        "name": "instanceId",
+        "type": "uint8"
+      },
+      {
         "indexed": true,
         "internalType": "address",
         "name": "player",
@@ -336,6 +392,37 @@
       }
     ],
     "name": "RoundInitialized",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint8",
+        "name": "tierId",
+        "type": "uint8"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint8",
+        "name": "instanceId",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint8",
+        "name": "finalEnrolledCount",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "countdownDuration",
+        "type": "uint256"
+      }
+    ],
+    "name": "TournamentAutoStartedByCountdown",
     "type": "event"
   },
   {
@@ -2157,6 +2244,24 @@
   {
     "inputs": [
       {
+        "internalType": "uint8",
+        "name": "tierId",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint8",
+        "name": "instanceId",
+        "type": "uint8"
+      }
+    ],
+    "name": "manualStartTournament",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
@@ -3192,6 +3297,16 @@
         "internalType": "uint8",
         "name": "allDrawRound",
         "type": "uint8"
+      },
+      {
+        "internalType": "uint256",
+        "name": "firstEnrollmentTime",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "countdownActive",
+        "type": "bool"
       }
     ],
     "stateMutability": "view",
