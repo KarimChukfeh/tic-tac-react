@@ -1505,7 +1505,7 @@ export default function TicTacBlock() {
     },
     {
       q: "Why tic-tac-toe on the blockchain?",
-      a: "Tic-tac-toe is the perfect game for blockchain: it's simple, fast, deterministic, and impossible to cheat when moves are recorded on-chain. Unlike poker or complex games that require trusted randomness, tic-tac-toe is pure skill and strategy. Every move is public, verifiable, and immutable."
+      a: "Tic-tac-toe is the perfect game for blockchain: it's simple, fast, deterministic, and impossible to cheat when moves are recorded on-chain. Unlike poker or complex games that require trusted randomness, tic-tac-toe is pure skill and strategy. Every move is recorded on-chain, and game outcomes are cryptographically secured."
     },
     {
       q: "What if my opponent doesn't move?",
@@ -1513,11 +1513,11 @@ export default function TicTacBlock() {
     },
     {
       q: "Can this really run forever?",
-      a: "Yes. Once deployed, the smart contract lives on Ethereum permanently. There's no off-switch, no admin panel, no company required. Even if this website disappears, anyone can interact with the contract directly via Etherscan or build their own interface."
+      a: "Yes. The smart contract is deployed on Arbitrum (an Ethereum Layer 2) with no off-switch, no admin panel, and no company required to keep it running. Even if this website disappears, anyone can interact with the contract directly via Arbiscan or build their own interface. The contract continues executing and game outcomes remain permanent."
     },
     {
       q: "How do I know the prize pool is safe?",
-      a: "All entry fees go directly to the smart contract. The contract holds the funds and distributes them automatically when a winner is determined. No human can access the funds. You can verify this by reading the contract code on Etherscan."
+      a: "All entry fees go directly to the smart contract on Arbitrum. The contract holds the funds and distributes them automatically when a winner is determined. No human can access the funds. You can verify this by reading the contract code on Arbiscan."
     }
   ];
 
@@ -2618,11 +2618,11 @@ export default function TicTacBlock() {
             Provably Fair • <a href="#zero-trust" className={`${currentTheme.heroText} hover:text-green-300 transition-colors underline decoration-${theme === 'daring' ? 'red' : 'blue'}-400/50 hover:decoration-green-400 underline-offset-4`}>Zero Trust</a> • 100% On-Chain
           </p>
           <p className={`text-lg ${currentTheme.heroSubtext} max-w-3xl mx-auto mb-8`}>
-            Play Tic-Tac-Toe on Ethereum. Real opponents. Real ETH on the line.
+            Play Tic-Tac-Toe on Arbitrum. Real opponents. Real ETH on the line.
             <br/>
             No servers. No trust.
             <br/>
-            Every move is a transaction. Every game is provably fair. Forever.
+            Every move is a transaction. Game outcomes are permanent on-chain.
           </p>
 
           {/* Game Info Cards */}
@@ -2692,12 +2692,19 @@ export default function TicTacBlock() {
               <div className="flex items-start gap-3">
           <Info size={18} className={`${currentTheme.infoIcon} mt-0.5 flex-shrink-0`} />
           <div className="text-sm w-full">
-            <p className={`${currentTheme.heroText} font-medium mb-1`}>Why Arbitrum?</p>
-            <p className={`${currentTheme.heroSubtext}/80 leading-relaxed`}>
+            <p className={`${currentTheme.heroText} font-medium mb-2`}>Why Arbitrum?</p>
+            <p className={`${currentTheme.heroSubtext}/80 leading-relaxed mb-3`}>
               This game runs on <a href="https://arbitrum.io" target="_blank" rel="noopener noreferrer" className={`font-semibold ${currentTheme.heroText} hover:${theme === 'daring' ? 'text-red-100' : 'text-blue-100'} underline decoration-${theme === 'daring' ? 'red' : 'blue'}-400/50 hover:decoration-${theme === 'daring' ? 'orange' : 'blue'}-300 transition-colors`}>Arbitrum One</a>, an Ethereum Layer 2 network.
-              If prompted, simply click to switch networks in MetaMask — it's instant, free, and uses the same ETH you already have.
-              No bridging required. <span className={currentTheme.heroText}>Lower fees, same security.</span>
             </p>
+            <div className={`${currentTheme.heroSubtext}/80 leading-relaxed space-y-2 text-sm`}>
+              <p><strong className={currentTheme.heroText}>First time on Arbitrum?</strong> You'll need to:</p>
+              <ol className="list-decimal list-inside pl-2 space-y-1">
+                <li>Switch to Arbitrum network in MetaMask (instant and free)</li>
+                <li>Bridge ETH from Ethereum mainnet to Arbitrum (~15 min, requires L1 gas)</li>
+              </ol>
+              <p><strong className={currentTheme.heroText}>Already have Arbitrum ETH?</strong> Just switch networks and play.</p>
+              <p className="pt-1"><span className={currentTheme.heroText}>Lower fees than Ethereum mainnet. Final outcomes secured by Ethereum L1.</span></p>
+            </div>
           </div>
               </div>
             </div>
@@ -3858,7 +3865,7 @@ export default function TicTacBlock() {
 
             <div className="bg-green-500/10 border-l-4 border-green-400 p-6 rounded-r-xl mb-8">
               <p className="text-lg leading-relaxed text-green-100">
-          Eternal TicTacToe is a <strong className="text-green-300">fully autonomous protocol</strong> deployed on Ethereum. Every game move is recorded on-chain. Every rule is enforced by immutable code. No servers can go down. No admins can interfere. No company can shut it down.
+          Eternal TicTacToe is a <strong className="text-green-300">fully autonomous protocol</strong> deployed on Arbitrum (Ethereum Layer 2). Every game move is recorded on-chain. Every rule is enforced by immutable code. No servers can go down. No admins can interfere. No company can shut it down.
               </p>
             </div>
 
@@ -3870,7 +3877,7 @@ export default function TicTacBlock() {
           <ul className="space-y-2 text-green-100">
             <li className="flex items-start gap-2">
               <span className="text-green-400 mt-1">✓</span>
-              <span>Every move recorded on-chain permanently</span>
+              <span>Every move recorded on-chain</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-green-400 mt-1">✓</span>
@@ -3886,7 +3893,7 @@ export default function TicTacBlock() {
             </li>
             <li className="flex items-start gap-2">
               <span className="text-green-400 mt-1">✓</span>
-              <span>Instant winner determination</span>
+              <span>Game outcomes permanent on L1</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-green-400 mt-1">→</span>
@@ -3951,10 +3958,10 @@ export default function TicTacBlock() {
             <strong className="text-yellow-200">Anyone can build their own game interface</strong> to this protocol. All interfaces connect to the same games, display the same boards, and follow the same rules.
           </p>
           <p>
-            <strong className="text-yellow-200">This website is optional.</strong> You could play via Etherscan, build your own UI, or use any third-party interface. The trust-free guarantee comes from Ethereum, not from this website.
+            <strong className="text-yellow-200">This website is optional.</strong> You could play via Arbiscan, build your own UI, or use any third-party interface. The outcomes are secured by Arbitrum (and ultimately Ethereum L1), not by this website.
           </p>
           <p>
-            <strong className="text-yellow-200">True digital permanence.</strong> Even if every website disappears, the game continues forever. Your games, your wins, and your prizes are secured by Ethereum's immutable ledger.
+            <strong className="text-yellow-200">Game outcomes are permanent.</strong> Even if every website disappears, the game continues forever. Your wins and prizes are secured by smart contracts settling to Ethereum L1.
           </p>
               </div>
             </div>
@@ -3996,24 +4003,44 @@ export default function TicTacBlock() {
 
         {/* Whitepaper Section */}
         <div id="whitepaper" className="bg-gradient-to-br from-purple-900/30 to-indigo-900/30 backdrop-blur-lg rounded-2xl p-8 md:p-12 border border-purple-500/30 mb-16">
-          <h2 className="text-4xl font-bold text-purple-300 mb-6">What's the point?</h2>
-          <p className="text-purple-100 mb-4">Most people have heard of crypto, but not <em>why it matters.</em></p>
-
-          <h2 className="text-2xl font-bold mb-3 text-purple-300">Beyond Buzzwords</h2>
-
-          <p className="text-purple-100 mb-2">You may know:</p>
+          <h1 className="text-4xl font-bold text-purple-300 mb-6">What's the point?</h1>
+          
+          <p className="text-purple-100 mb-4"><strong>TLDR:</strong></p>
           <ul className="list-disc pl-6 mb-6 text-purple-100 space-y-1">
-            <li>Bitcoin goes up and down.</li>
-            <li>Ethereum is cool too.</li>
-            <li>Some people get rich. Some people get wrecked.</li>
-            <li>There are coins with dogs on them.</li>
+            <li><strong>Tic Tac Toe</strong> we all know and love</li>
+            <li>Fully <strong>On-Chain</strong></li>
+            <li><strong>Real ETH on the line</strong></li>
           </ul>
+          
 
-          <p className="text-purple-100 mb-8">This article explains <strong className="text-purple-200">what crypto was really meant to be.</strong></p>
+
+          <h1 className="text-4xl font-bold text-purple-300 mb-6">But it's also about Web 3</h1>
+
+          <div className="bg-purple-500/10 border-l-4 border-purple-400 p-4 rounded-r-xl mb-6">
+            <p className="text-lg text-purple-100 mb-2"><strong>Most people have heard of crypto, but not <em>why it matters.</em></strong></p>
+          </div>
+
+          <br/>
+          
+          <h2 className="text-2xl font-bold mb-3 text-purple-300">We all know</h2>
+
+          <ul className="list-disc pl-6 mb-6 text-purple-100 space-y-1">
+            <li>Bitcoin is gold</li>
+            <li>Ethereum is silver.</li>
+            <li>100000x "Buy this new memecoin ASAP!</li>
+            <li>Sometimes a moon landing?</li>
+            <li>Some get rich. Most get wrecked.</li>
+            <li>...</li>
+          </ul>
 
           <hr className="border-purple-500/30 my-8" />
 
-          <h2 className="text-2xl font-bold mb-3 text-purple-300">What Even <em>is</em> a Blockchain?</h2>
+          <h2 className="text-2xl font-bold mb-3 text-purple-300">This article explains <strong className="text-purple-200">what crypto was really meant to be.</strong></h2>
+
+          <hr className="border-purple-500/30 my-8" />
+
+
+          <h2 className="text-2xl font-bold mb-3 text-purple-300">What Even is a Blockchain?</h2>
 
           <p className="text-purple-100 mb-4">Forget influencers and dollar signs for a moment.</p>
 
@@ -4025,7 +4052,7 @@ export default function TicTacBlock() {
           <p className="text-purple-100 mb-2">There is <strong className="text-purple-200">no server</strong>.</p>
           <p className="text-purple-100 mb-2">There is <strong className="text-purple-200">no admin account</strong>.</p>
           <p className="text-purple-100 mb-2">There is <strong className="text-purple-200">no need to trust a person or a company.</strong></p>
-          <p className="text-purple-100 mb-8 text-xl font-bold">Everyone sees the same truth.</p>
+          <p className="text-purple-100 mb-8 text-xl font-bold">Everyone sees the same final state.</p>
 
           <hr className="border-purple-500/30 my-8" />
 
@@ -4044,7 +4071,7 @@ export default function TicTacBlock() {
           <p className="text-purple-100 mb-6 text-xl font-bold">That's blockchain.</p>
 
           <div className="bg-purple-500/10 border-l-4 border-purple-400 p-4 rounded-r-xl mb-8">
-            <p className="text-purple-200 italic">The truth comes from <strong>consensus</strong>, not <strong>authority</strong>.</p>
+            <p className="text-purple-200 italic">Final state comes from <strong>consensus</strong>, not <strong>authority</strong>.</p>
           </div>
 
           <hr className="border-purple-500/30 my-8" />
@@ -4068,7 +4095,7 @@ export default function TicTacBlock() {
                 <tr className="border-b border-purple-500/20">
                   <td className="p-3">NFT images</td>
                   <td className="p-3">Stored on a private server</td>
-                  <td className="p-3">Stored on decentralized data networks</td>
+                  <td className="p-3">Stored on decentralized networks (IPFS, Arweave)</td>
                 </tr>
                 <tr className="border-b border-purple-500/20">
                   <td className="p-3">Altcoins</td>
@@ -4078,7 +4105,7 @@ export default function TicTacBlock() {
                 <tr className="border-b border-purple-500/20">
                   <td className="p-3">Games</td>
                   <td className="p-3">Run on private servers</td>
-                  <td className="p-3">Run fully on-chain, publicly</td>
+                  <td className="p-3">Run on-chain (L1 or L2)</td>
                 </tr>
               </tbody>
             </table>
@@ -4115,23 +4142,29 @@ export default function TicTacBlock() {
             <li>No "trust me bro"</li>
           </ul>
 
-          <p className="text-purple-100 mb-8 text-xl font-bold">Just math, consensus, and Ethereum.</p>
+          <p className="text-purple-100 mb-8 text-xl font-bold">Just math, consensus, and Arbitrum (secured by Ethereum).</p>
 
           <hr className="border-purple-500/30 my-8" />
 
           <h2 className="text-2xl font-bold mb-3 text-purple-300">Verify It Yourself</h2>
 
-          <p className="text-purple-100 mb-3">No trust needed.</p>
+          <p className="text-purple-100 mb-3">No trust needed for outcomes.</p>
 
           <ul className="list-disc pl-6 mb-6 text-purple-100 space-y-1">
             <li>View the contract</li>
             <li>Read the code</li>
             <li>Confirm the game logic</li>
-            <li>Watch every move</li>
+            <li>Verify game outcomes</li>
             <li>Verify every payout</li>
           </ul>
 
-          <p className="text-purple-100 mb-6 text-xl font-bold">The truth is on-chain.</p>
+          <p className="text-purple-100 mb-4 text-xl font-bold">Game outcomes are permanent on-chain.</p>
+
+          <div className="bg-purple-500/10 border border-purple-400/30 rounded-lg p-4 mb-6">
+            <p className="text-purple-200 text-sm leading-relaxed">
+              <strong>Note on verification:</strong> This protocol runs on Arbitrum, an Ethereum Layer 2. Contract execution continues forever, and final outcomes (winners, payouts) are permanent and cryptographically secured on Ethereum L1. Individual transaction data is available through Arbitrum's sequencer and can be independently verified within the dispute window (~7 days). After that, historical move-by-move data relies on archived records, though final outcomes remain cryptographically provable on Ethereum L1.
+            </p>
+          </div>
 
           <h3 className="text-xl font-bold mb-3 text-purple-300">Contract Address:</h3>
           <a
@@ -4149,8 +4182,8 @@ export default function TicTacBlock() {
       <div className="border-t border-white/10" style={{ position: 'relative', zIndex: 10 }}>
         <div className="max-w-7xl mx-auto px-6 py-8 text-center text-sm text-blue-300">
           <p className="font-semibold text-lg mb-2">Dummy TicTacToe Protocol</p>
-          <p>Built on Ethereum. Runs forever. No servers required.</p>
-          <p className="mt-2">Smart contracts are immutable and transparent. Always verify before interacting.</p>
+          <p>Built on Arbitrum (Ethereum L2). Runs forever. No servers required.</p>
+          <p className="mt-2">Contract code is immutable. Game outcomes are permanent and verifiable. Always verify before interacting.</p>
         </div>
       </div>
 
