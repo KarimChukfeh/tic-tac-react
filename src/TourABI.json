@@ -466,6 +466,25 @@
     "inputs": [
       {
         "indexed": true,
+        "internalType": "address",
+        "name": "recipient",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "ProtocolWithdrawal",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
         "internalType": "uint8",
         "name": "tierId",
         "type": "uint8"
@@ -1374,6 +1393,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "TIER_6_CACHE_SIZE",
+    "outputs": [
+      {
+        "internalType": "uint8",
+        "name": "",
+        "type": "uint8"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "uint256",
@@ -1419,6 +1451,32 @@
         "internalType": "uint8",
         "name": "",
         "type": "uint8"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "accumulatedOwnerFees",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "accumulatedProtocolFees",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -2162,6 +2220,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "getOwnerFeesBalance",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "address",
@@ -2252,6 +2323,19 @@
         "internalType": "uint8",
         "name": "percentage",
         "type": "uint8"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getProtocolFeesBalance",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -3996,6 +4080,90 @@
         "type": "uint256"
       }
     ],
+    "name": "tier6TournamentCache",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "exists",
+        "type": "bool"
+      },
+      {
+        "internalType": "uint8",
+        "name": "tierId",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint8",
+        "name": "instanceId",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint256",
+        "name": "tournamentId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      },
+      {
+        "internalType": "enum TicTacTour.Mode",
+        "name": "mode",
+        "type": "uint8"
+      },
+      {
+        "internalType": "enum TicTacTour.TournamentCompletionType",
+        "name": "completionType",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint256",
+        "name": "totalPrizePool",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "totalAwarded",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "winner",
+        "type": "address"
+      },
+      {
+        "internalType": "uint8",
+        "name": "participantCount",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint8",
+        "name": "matchCount",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint256",
+        "name": "startTime",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "duration",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
     "name": "tierConfigs",
     "outputs": [
       {
@@ -4290,6 +4458,20 @@
   {
     "inputs": [],
     "name": "withdrawFees",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "withdrawOwnerFees",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "withdrawProtocolFees",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

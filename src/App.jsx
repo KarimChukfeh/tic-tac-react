@@ -1592,12 +1592,13 @@ export default function TicTacBlock() {
   const [totalGamesPlayed, setTotalGamesPlayed] = useState(0);
 
   // Theme State - 'dream' (blue/cyan), 'daring' (red/orange)
-  const [theme, setTheme] = useState('dream');
+  const [theme, setTheme] = useState('daring');
   const [expandedFaq, setExpandedFaq] = useState(null);
 
   // Tournament State
   const [tournaments, setTournaments] = useState([]);
   const [tournamentsLoading, setTournamentsLoading] = useState(false);
+  const [tournamentsSyncDots, setTournamentsSyncDots] = useState(1);
   const [viewingTournament, setViewingTournament] = useState(null); // { tierId, instanceId, tournamentData, bracketData }
   const [bracketSyncDots, setBracketSyncDots] = useState(1);
 
@@ -1611,6 +1612,7 @@ export default function TicTacBlock() {
   // Cached Stats State
   const [cachedStats, setCachedStats] = useState(null);
   const [cachedStatsLoading, setCachedStatsLoading] = useState(false);
+  const [cachedStatsSyncDots, setCachedStatsSyncDots] = useState(1);
 
   // Helper to cycle through themes
   const cycleTheme = () => {
@@ -1643,8 +1645,8 @@ export default function TicTacBlock() {
       border: 'rgba(0, 255, 255, 0.3)',
       glow: 'rgba(0, 255, 255, 0.3)',
       particleColors: ['#00ffff', '#ff00ff'],
-      icon: '✨',
-      label: 'Dream',
+      icon: '🔥',
+      label: 'Dare to Level Up?',
       // Hero section colors
       heroGlow: 'from-blue-500 via-cyan-500 to-blue-500',
       heroIcon: 'text-blue-400',
@@ -1666,8 +1668,8 @@ export default function TicTacBlock() {
       border: 'rgba(255, 69, 0, 0.3)',
       glow: 'rgba(255, 69, 0, 0.3)',
       particleColors: ['#ff4500', '#ffa500'],
-      icon: '🔥',
-      label: 'Dare',
+      icon: '✨',
+      label: 'Back to Classic',
       // Hero section colors
       heroGlow: 'from-red-500 via-orange-500 to-red-500',
       heroIcon: 'text-red-400',
@@ -1935,11 +1937,13 @@ export default function TicTacBlock() {
   };
 
   // Fetch tournaments for a specific tier
-  const fetchTournaments = useCallback(async (tierId) => {
+  const fetchTournaments = useCallback(async (tierId, silent = false) => {
     if (!contract) return;
 
     try {
-      setTournamentsLoading(true);
+      if (!silent) {
+        setTournamentsLoading(true);
+      }
 
       // Get tier overview which returns arrays of data for all instances
       const tierOverview = await contract.getTierOverview(tierId);
@@ -2030,19 +2034,25 @@ export default function TicTacBlock() {
       }
 
       setTournaments(tournamentData);
-      setTournamentsLoading(false);
+      if (!silent) {
+        setTournamentsLoading(false);
+      }
     } catch (error) {
       console.error('Error fetching tournaments:', error);
-      setTournamentsLoading(false);
+      if (!silent) {
+        setTournamentsLoading(false);
+      }
     }
   }, [contract, account]);
 
   // Fetch cached tournament and match stats
-  const fetchCachedStats = useCallback(async () => {
+  const fetchCachedStats = useCallback(async (silent = false) => {
     if (!contract) return;
 
     try {
-      setCachedStatsLoading(true);
+      if (!silent) {
+        setCachedStatsLoading(true);
+      }
 
       let matches = [];
       let tournaments = [];
@@ -2081,7 +2091,9 @@ export default function TicTacBlock() {
         partialTournaments,
         abandonedTournaments
       });
-      setCachedStatsLoading(false);
+      if (!silent) {
+        setCachedStatsLoading(false);
+      }
     } catch (error) {
       console.error('Error fetching cached stats:', error.message || error);
       // Set empty stats on error so UI doesn't break
@@ -2092,15 +2104,19 @@ export default function TicTacBlock() {
         partialTournaments: [],
         abandonedTournaments: []
       });
-      setCachedStatsLoading(false);
+      if (!silent) {
+        setCachedStatsLoading(false);
+      }
     }
   }, [contract]);
 
   // Fetch all Dare mode tiers (extracted for reuse)
-  const fetchAllDaringTiers = useCallback(async () => {
+  const fetchAllDaringTiers = useCallback(async (silent = false) => {
     if (!contract) return;
 
-    setTournamentsLoading(true);
+    if (!silent) {
+      setTournamentsLoading(true);
+    }
     const allTournaments = [];
 
     for (let tierId = 1; tierId <= 6; tierId++) {
@@ -2178,7 +2194,9 @@ export default function TicTacBlock() {
 
     console.log(`Total tournaments found: ${allTournaments.length}`);
     setTournaments(allTournaments);
-    setTournamentsLoading(false);
+    if (!silent) {
+      setTournamentsLoading(false);
+    }
   }, [contract, account]);
 
   // Handle tournament enrollment
@@ -2451,6 +2469,7 @@ export default function TicTacBlock() {
         }
       }
 
+      console.log('🔍 CLAIM ATTEMPT:', { tierId, instanceId, type: typeof instanceId });
       console.log('Calling claimAbandonedEnrollmentPool with:', { tierId, instanceId });
 
       const tx = await contract.claimAbandonedEnrollmentPool(tierId, instanceId);
@@ -2928,6 +2947,117 @@ export default function TicTacBlock() {
 
     return () => clearInterval(dotsInterval);
   }, [viewingTournament]);
+
+  // Auto-refresh tournament cards every 3 seconds (smooth update without clearing the list)
+  const themeRef = useRef(theme);
+  const contractRefForTournaments = useRef(contract);
+
+  // Keep refs updated
+  useEffect(() => {
+    themeRef.current = theme;
+    contractRefForTournaments.current = contract;
+  }, [theme, contract]);
+
+  useEffect(() => {
+    // Only run auto-refresh when:
+    // 1. Contract is available
+    // 2. Not viewing a specific tournament (i.e., on the tournament list view)
+    // 3. Not in the initial loading state
+    if (!contract || viewingTournament || initialLoading || currentMatch) return;
+
+    const doTournamentSync = async () => {
+      const currentTheme = themeRef.current;
+      const contractInstance = contractRefForTournaments.current;
+
+      if (!contractInstance) return;
+
+      try {
+        // Refresh tournaments based on current theme (silent mode to avoid loading state)
+        if (currentTheme === 'dream') {
+          await fetchTournaments(0, true);
+        } else if (currentTheme === 'daring') {
+          await fetchAllDaringTiers(true);
+        }
+
+        // Reset sync dots to 1 after sync completes
+        setTournamentsSyncDots(1);
+      } catch (err) {
+        console.log('Tournament sync error:', err);
+      }
+    };
+
+    // Set up polling interval - runs every 3 seconds
+    const pollInterval = setInterval(doTournamentSync, 3000);
+
+    return () => clearInterval(pollInterval);
+  }, [contract, viewingTournament, initialLoading, currentMatch, theme, fetchTournaments, fetchAllDaringTiers]);
+
+  // Increment tournament sync dots every second
+  useEffect(() => {
+    // Only animate sync dots when on tournament list view
+    if (viewingTournament || initialLoading || currentMatch) return;
+
+    const dotsInterval = setInterval(() => {
+      setTournamentsSyncDots(prev => {
+        if (prev >= 3) return 3;
+        return prev + 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(dotsInterval);
+  }, [viewingTournament, initialLoading, currentMatch]);
+
+  // Auto-refresh cached stats every 3 seconds (smooth update without clearing the list)
+  const contractRefForCachedStats = useRef(contract);
+
+  // Keep ref updated
+  useEffect(() => {
+    contractRefForCachedStats.current = contract;
+  }, [contract]);
+
+  useEffect(() => {
+    // Only run auto-refresh when:
+    // 1. Contract is available
+    // 2. Not in the initial loading state
+    // 3. Not viewing tournament or match
+    if (!contract || initialLoading || viewingTournament || currentMatch) return;
+
+    const doCachedStatsSync = async () => {
+      const contractInstance = contractRefForCachedStats.current;
+
+      if (!contractInstance) return;
+
+      try {
+        // Refresh cached stats in silent mode
+        await fetchCachedStats(true);
+
+        // Reset sync dots to 1 after sync completes
+        setCachedStatsSyncDots(1);
+      } catch (err) {
+        console.log('Cached stats sync error:', err);
+      }
+    };
+
+    // Set up polling interval - runs every 3 seconds
+    const pollInterval = setInterval(doCachedStatsSync, 3000);
+
+    return () => clearInterval(pollInterval);
+  }, [contract, initialLoading, viewingTournament, currentMatch, fetchCachedStats]);
+
+  // Increment cached stats sync dots every second
+  useEffect(() => {
+    // Only animate sync dots when not in loading or viewing states
+    if (initialLoading || viewingTournament || currentMatch) return;
+
+    const dotsInterval = setInterval(() => {
+      setCachedStatsSyncDots(prev => {
+        if (prev >= 3) return 3;
+        return prev + 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(dotsInterval);
+  }, [initialLoading, viewingTournament, currentMatch]);
 
   // Loading animation component
   if (initialLoading) {
@@ -3697,9 +3827,17 @@ export default function TicTacBlock() {
                 <div className="text-center mb-12">
                   <div className="inline-flex items-center gap-3 mb-4">
                     <Trophy className={`${theme === 'dream' ? 'text-blue-400' : theme === 'daring' ? 'text-red-400' : 'text-purple-400'}`} size={48} />
-                    <h2 className={`text-5xl font-bold bg-gradient-to-r ${theme === 'dream' ? 'from-blue-400 to-cyan-400' : theme === 'daring' ? 'from-red-400 to-orange-400' : 'from-purple-400 to-blue-400'} bg-clip-text text-transparent`}>
-                      {theme === 'dream' ? 'Classic Tournaments' : theme === 'daring' ? 'Pro Tournaments' : 'Tournaments'}
-                    </h2>
+                    <div className="flex flex-col items-start">
+                      <h2 className={`text-5xl font-bold bg-gradient-to-r ${theme === 'dream' ? 'from-blue-400 to-cyan-400' : theme === 'daring' ? 'from-red-400 to-orange-400' : 'from-purple-400 to-blue-400'} bg-clip-text text-transparent`}>
+                        {theme === 'dream' ? 'Classic Tournaments' : theme === 'daring' ? 'Pro Tournaments' : 'Tournaments'}
+                      </h2>
+                      {!tournamentsLoading && tournaments.length > 0 && (
+                        <span className={`text-sm font-semibold flex items-center gap-1 mt-1 ${theme === 'dream' ? 'text-cyan-400' : 'text-orange-400'}`}>
+                          <div className={`w-2 h-2 ${theme === 'dream' ? 'bg-cyan-400' : 'bg-orange-400'} rounded-full animate-pulse`}></div>
+                          Syncing{'.'.repeat(tournamentsSyncDots)}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <p className={`text-xl ${theme === 'dream' ? 'text-blue-200' : theme === 'daring' ? 'text-red-200' : 'text-purple-200'}`}>
                     {theme === 'dream' ? 'Standard competitive play for all skill levels' : 'Advanced tournaments with block mechanics and higher stakes'}
@@ -3865,9 +4003,17 @@ export default function TicTacBlock() {
                   <div className="text-center mb-8">
                     <div className="inline-flex items-center gap-3 mb-4">
                       <History className="text-cyan-400" size={48} />
-                      <h2 className="text-4xl font-bold text-white">
-                        Cached Stats
-                      </h2>
+                      <div className="flex flex-col items-start">
+                        <h2 className="text-4xl font-bold text-white">
+                          Cached Stats
+                        </h2>
+                        {!cachedStatsLoading && cachedStats && (cachedStats.matches.length > 0 || cachedStats.tournaments.length > 0) && (
+                          <span className="text-sm font-semibold flex items-center gap-1 mt-1 text-cyan-400">
+                            <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
+                            Syncing{'.'.repeat(cachedStatsSyncDots)}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <p className="text-cyan-200/70 text-lg max-w-2xl mx-auto">
                       Historical tournament and match data stored on-chain
