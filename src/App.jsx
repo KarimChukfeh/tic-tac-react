@@ -290,44 +290,92 @@ const TournamentCard = ({
   loading,
   tierName,
   theme,
-  firstEnrollmentTime,
-  countdownActive,
-  onManualStart
+  enrollmentTimeout,
+  hasStartedViaTimeout,
+  totalForfeitedFees,
+  onManualStart,
+  onClaimAbandonedPool,
+  tournamentStatus
 }) => {
   const isFull = currentEnrolled >= maxPlayers;
   const enrollmentPercentage = (currentEnrolled / maxPlayers) * 100;
 
-  // Countdown timer logic - using contract's 1 minute duration
-  const ENROLLMENT_DURATION = 1 * 60; // 1 minute in seconds (matches contract)
-  const [timeRemaining, setTimeRemaining] = useState(0);
-  const [countdownExpired, setCountdownExpired] = useState(false);
+  // Timeout tier system state
+  const [timeoutState, setTimeoutState] = useState({
+    activeTier: 0,
+    canStartTier1: false,
+    canStartTier2: false,
+    timeToTier1: 0,
+    timeToTier2: 0,
+    forfeitPool: 0n
+  });
 
   useEffect(() => {
-    if (!countdownActive || !firstEnrollmentTime) {
-      setTimeRemaining(0);
-      setCountdownExpired(false);
+    if (!enrollmentTimeout) {
+      setTimeoutState({
+        activeTier: 0,
+        canStartTier1: false,
+        canStartTier2: false,
+        timeToTier1: 0,
+        timeToTier2: 0,
+        forfeitPool: 0n
+      });
       return;
     }
 
-    const updateTimer = () => {
-      const now = Math.floor(Date.now() / 1000); // Current time in seconds
-      const deadline = firstEnrollmentTime + ENROLLMENT_DURATION;
-      const remaining = deadline - now;
+    const updateTimeoutState = () => {
+      const now = Math.floor(Date.now() / 1000);
+      const tier1Start = Number(enrollmentTimeout.tier1Start);
+      const tier2Start = Number(enrollmentTimeout.tier2Start);
+      const contractActiveTier = Number(enrollmentTimeout.activeTier);
+      const forfeitPool = enrollmentTimeout.forfeitPool || 0n;
 
-      if (remaining <= 0) {
-        setTimeRemaining(0);
-        setCountdownExpired(true);
-      } else {
-        setTimeRemaining(remaining);
-        setCountdownExpired(false);
+      const timeToTier1 = tier1Start > 0 ? Math.max(0, tier1Start - now) : 0;
+      const timeToTier2 = tier2Start > 0 ? Math.max(0, tier2Start - now) : 0;
+
+      // Calculate if we can start based on current time vs tier times
+      const canStartTier1 = tier1Start > 0 && now >= tier1Start;
+      const canStartTier2 = tier2Start > 0 && now >= tier2Start;
+
+      // Determine active tier based on time
+      let activeTier = 0;
+      if (canStartTier2) {
+        activeTier = 2;
+      } else if (canStartTier1) {
+        activeTier = 1;
       }
+
+      // Debug logging
+      if (tier1Start > 0 || contractActiveTier > 0) {
+        console.log(`[${tierId}-${instanceId}] Timeout State Update:`, {
+          now,
+          tier1Start,
+          tier2Start,
+          contractActiveTier,
+          calculatedActiveTier: activeTier,
+          canStartTier1,
+          canStartTier2,
+          timeToTier1,
+          timeToTier2,
+          forfeitPool: forfeitPool.toString()
+        });
+      }
+
+      setTimeoutState({
+        activeTier,
+        canStartTier1,
+        canStartTier2,
+        timeToTier1,
+        timeToTier2,
+        forfeitPool
+      });
     };
 
-    updateTimer();
-    const interval = setInterval(updateTimer, 1000);
+    updateTimeoutState();
+    const interval = setInterval(updateTimeoutState, 1000);
 
     return () => clearInterval(interval);
-  }, [firstEnrollmentTime, countdownActive]);
+  }, [enrollmentTimeout, tierId, instanceId]);
 
   const formatTime = (seconds) => {
     const hours = Math.floor(seconds / 3600);
@@ -426,32 +474,161 @@ const TournamentCard = ({
         </div>
       </div>
 
-      {/* Countdown Timer */}
-      {countdownActive && (
-        <div className="mb-4 bg-orange-500/20 border border-orange-400/50 rounded-lg p-3">
-          <div className="flex items-center justify-between">
+      {/* Enrollment Status Message - Show when in enrollment but timeout not started */}
+      {enrollmentTimeout && currentEnrolled > 0 && currentEnrolled < maxPlayers && !(timeoutState.timeToTier1 > 0 || timeoutState.activeTier > 0 || timeoutState.canStart) && (
+        <div className="mb-4 bg-blue-500/20 border border-blue-400/50 rounded-lg p-3">
+          <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
-              <Clock className="text-orange-400" size={16} />
-              <span className="text-orange-300 text-xs font-semibold">
-                {countdownExpired ? 'Countdown Expired' : 'Time Remaining'}
+              <Clock className="text-blue-400" size={16} />
+              <span className="text-blue-300 text-xs font-semibold">
+                Waiting for more players
               </span>
             </div>
-            <span className="text-orange-300 font-bold text-sm">
-              {countdownExpired ? '0h 0m 0s' : formatTime(timeRemaining)}
+            <span className="text-blue-300/70 text-xs">
+              {currentEnrolled} / {maxPlayers} enrolled • Force start will unlock after enrollment window closes or tournament fills
             </span>
           </div>
         </div>
       )}
 
+      {/* Tournament Full - Waiting to Start */}
+      {currentEnrolled >= maxPlayers && !(timeoutState.timeToTier1 > 0 || timeoutState.activeTier > 0 || timeoutState.canStart) && tournamentStatus === 0 && (
+        <div className="mb-4 bg-green-500/20 border border-green-400/50 rounded-lg p-3">
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="text-green-400" size={16} />
+              <span className="text-green-300 text-xs font-semibold">
+                Tournament Full - Ready to Start
+              </span>
+            </div>
+            <span className="text-green-300/70 text-xs">
+              All {maxPlayers} players enrolled • Force start will be available soon
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Enrollment Timeout Tier System - Show when timeout system is active or has started */}
+      {enrollmentTimeout && (timeoutState.timeToTier1 > 0 || timeoutState.activeTier > 0 || timeoutState.canStart) && (
+        <div className="mb-4 space-y-2">
+          {/* Main Countdown Timer */}
+          {timeoutState.timeToTier1 > 0 && timeoutState.activeTier === 0 ? (
+            <div className="bg-gradient-to-r from-orange-500/20 to-red-500/20 border border-orange-400/50 rounded-lg p-4">
+              <div className="text-center">
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <Clock className="text-orange-400" size={20} />
+                  <span className="text-orange-300 text-sm font-semibold">Force Start Unlocks In</span>
+                </div>
+                <div className="text-orange-300 font-bold text-3xl">
+                  {formatTime(timeoutState.timeToTier1)}
+                </div>
+                <div className="text-orange-300/70 text-xs mt-1">
+                  Enrolled players will be able to force start the tournament
+                </div>
+              </div>
+            </div>
+          ) : (timeoutState.canStartTier1 || timeoutState.canStartTier2) && timeoutState.activeTier >= 1 ? (
+            <div className={`bg-gradient-to-r ${timeoutState.canStartTier2 ? 'from-red-500/20 to-red-600/20 border-red-400/50' : 'from-green-500/20 to-emerald-500/20 border-green-400/50'} border rounded-lg p-4`}>
+              <div className="text-center">
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  {timeoutState.canStartTier2 ? <Coins className="text-red-400" size={20} /> : <Zap className="text-green-400" size={20} />}
+                  <span className={`${timeoutState.canStartTier2 ? 'text-red-300' : 'text-green-300'} text-sm font-semibold`}>
+                    {timeoutState.canStartTier2 ? 'Pool Claim Available!' : 'Force Start Available!'}
+                  </span>
+                </div>
+                <div className={`${timeoutState.canStartTier2 ? 'text-red-300' : 'text-green-300'} text-sm`}>
+                  {timeoutState.canStartTier2
+                    ? 'Anyone can claim the abandoned enrollment pool'
+                    : 'Any enrolled player can force start this tournament'
+                  }
+                </div>
+                {timeoutState.timeToTier2 > 0 && timeoutState.activeTier === 1 && (
+                  <div className="text-green-300/70 text-xs mt-2">
+                    Claim access opens to everyone in {formatTime(timeoutState.timeToTier2)}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : null}
+
+          {/* Tier 1 Window */}
+          <div className={`border rounded-lg p-3 ${
+            timeoutState.activeTier >= 1 ? 'bg-green-500/20 border-green-400/50' : 'bg-gray-500/20 border-gray-400/50'
+          }`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Clock className={timeoutState.activeTier >= 1 ? 'text-green-400' : 'text-gray-400'} size={16} />
+                <span className={`text-xs font-semibold ${timeoutState.activeTier >= 1 ? 'text-green-300' : 'text-gray-400'}`}>
+                  Tier 1: Any Enrolled Player Can Force Start
+                </span>
+              </div>
+              <span className={`font-bold text-sm ${timeoutState.activeTier >= 1 ? 'text-green-300' : 'text-gray-400'}`}>
+                {timeoutState.activeTier >= 1 ? 'ACTIVE' : formatTime(timeoutState.timeToTier1)}
+              </span>
+            </div>
+          </div>
+
+          {/* Tier 2 Window (if exists) - Show when tier2 is configured */}
+          {(timeoutState.timeToTier2 > 0 || timeoutState.activeTier >= 2) && (
+            <div className={`border rounded-lg p-3 ${
+              timeoutState.activeTier >= 2 ? 'bg-red-500/20 border-red-400/50' : 'bg-gray-500/20 border-gray-400/50'
+            }`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Coins className={timeoutState.activeTier >= 2 ? 'text-red-400' : 'text-gray-400'} size={16} />
+                  <span className={`text-xs font-semibold ${timeoutState.activeTier >= 2 ? 'text-red-300' : 'text-gray-400'}`}>
+                    Tier 2: Anyone Can Claim Pool
+                  </span>
+                </div>
+                <span className={`font-bold text-sm ${timeoutState.activeTier >= 2 ? 'text-red-300' : 'text-gray-400'}`}>
+                  {timeoutState.activeTier >= 2 ? 'ACTIVE' : formatTime(timeoutState.timeToTier2)}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Forfeit Pool Display */}
+          {timeoutState.forfeitPool && timeoutState.forfeitPool > 0n && (
+            <div className="bg-purple-500/20 border border-purple-400/50 rounded-lg p-2">
+              <div className="flex items-center justify-between">
+                <span className="text-purple-300 text-xs font-semibold">Forfeit Pool</span>
+                <span className="text-purple-300 font-bold text-sm">
+                  {ethers.formatEther(timeoutState.forfeitPool)} ETH
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Debug Info - Remove after testing */}
+      {enrollmentTimeout && (timeoutState.activeTier > 0 || timeoutState.timeToTier1 > 0) && (
+        <div className="mb-2 bg-gray-800/50 border border-gray-600 rounded p-2 text-xs text-gray-300">
+          <div>Tier1: {timeoutState.canStartTier1 ? '✅' : '❌'} | Tier2: {timeoutState.canStartTier2 ? '✅' : '❌'} | isEnrolled: {isEnrolled ? '✅' : '❌'}</div>
+          <div>activeTier: {timeoutState.activeTier} | Button: {((timeoutState.canStartTier1 && isEnrolled) || timeoutState.canStartTier2) ? '✅ VISIBLE' : '❌ HIDDEN'}</div>
+        </div>
+      )}
+
       {/* Action Buttons */}
-      {countdownExpired && isEnrolled && !isFull ? (
+      {timeoutState.canStartTier2 ? (
+        // Tier 2: Anyone can claim the abandoned pool
+        <button
+          onClick={() => onClaimAbandonedPool(tierId, instanceId)}
+          disabled={loading}
+          className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 mb-2"
+        >
+          <Coins size={18} />
+          {loading ? 'Claiming...' : 'claimAbandonedEnrollmentPool'}
+        </button>
+      ) : (timeoutState.canStartTier1 && isEnrolled) ? (
+        // Tier 1: Enrolled players can force start
         <button
           onClick={() => onManualStart(tierId, instanceId)}
           disabled={loading}
           className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 mb-2"
         >
           <Zap size={18} />
-          {loading ? 'Starting...' : 'Force Start Tournament'}
+          {loading ? 'Starting...' : 'forceStartTournament'}
         </button>
       ) : null}
 
@@ -472,6 +649,21 @@ const TournamentCard = ({
         >
           <Trophy size={18} />
           {loading ? 'Enrolling...' : isFull ? 'Tournament Full' : 'Enroll Now'}
+        </button>
+      )}
+
+      {/* Abandoned Pool Claim Button - show for completed/abandoned tournaments with claimable funds */}
+      {onClaimAbandonedPool && tournamentStatus >= 2 && (
+        (totalForfeitedFees && totalForfeitedFees > 0n) ||
+        (timeoutState.forfeitPool && timeoutState.forfeitPool > 0n)
+      ) && (
+        <button
+          onClick={() => onClaimAbandonedPool(tierId, instanceId)}
+          disabled={loading}
+          className="w-full mt-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
+        >
+          <Coins size={18} />
+          {loading ? 'Claiming...' : `claimAbandonedEnrollmentPool (${ethers.formatEther(totalForfeitedFees || timeoutState.forfeitPool)} ETH)`}
         </button>
       )}
     </div>
@@ -1400,7 +1592,7 @@ export default function TicTacBlock() {
   const [totalGamesPlayed, setTotalGamesPlayed] = useState(0);
 
   // Theme State - 'dream' (blue/cyan), 'daring' (red/orange)
-  const [theme, setTheme] = useState('daring');
+  const [theme, setTheme] = useState('dream');
   const [expandedFaq, setExpandedFaq] = useState(null);
 
   // Tournament State
@@ -1763,6 +1955,21 @@ export default function TicTacBlock() {
       const fee = await contract.ENTRY_FEES(tierId);
       const entryFeeFormatted = ethers.formatEther(fee);
 
+      // Get tier timeout configs
+      let tierTimeoutConfig = null;
+      try {
+        tierTimeoutConfig = await contract.tierTimeoutConfigs(tierId);
+        console.log(`Tier ${tierId} timeout config:`, {
+          enrollmentWindow: Number(tierTimeoutConfig.enrollmentWindow),
+          matchMoveTimeout: Number(tierTimeoutConfig.matchMoveTimeout),
+          roundCompletionTimeout: Number(tierTimeoutConfig.roundCompletionTimeout),
+          prizeClaimWindow: Number(tierTimeoutConfig.prizeClaimWindow),
+          tierEscalationInterval: Number(tierTimeoutConfig.tierEscalationInterval)
+        });
+      } catch (err) {
+        console.log('Could not fetch tier timeout config:', err);
+      }
+
       // Build tournament data array
       const tournamentData = [];
       for (let i = 0; i < statuses.length; i++) {
@@ -1780,15 +1987,30 @@ export default function TicTacBlock() {
           }
         }
 
-        // Get enrollment countdown data
-        let firstEnrollmentTime = 0;
-        let countdownActive = false;
+        // Get enrollment timeout data with tier information
+        let enrollmentTimeout = null;
+        let hasStartedViaTimeout = false;
+        let totalForfeitedFees = 0n;
         try {
           const tournamentInfo = await contract.tournaments(tierId, instanceId);
-          firstEnrollmentTime = Number(tournamentInfo.firstEnrollmentTime);
-          countdownActive = tournamentInfo.countdownActive;
+          enrollmentTimeout = tournamentInfo.enrollmentTimeout;
+          hasStartedViaTimeout = tournamentInfo.hasStartedViaTimeout;
+          totalForfeitedFees = tournamentInfo.totalForfeitedFees || 0n;
+
+          // Debug logging
+          if (enrollmentTimeout) {
+            console.log(`Tournament ${tierId}-${instanceId} timeout data:`, {
+              tier1Start: Number(enrollmentTimeout.tier1Start),
+              tier2Start: Number(enrollmentTimeout.tier2Start),
+              activeTier: Number(enrollmentTimeout.activeTier),
+              canStart: enrollmentTimeout.canStart,
+              forfeitPool: enrollmentTimeout.forfeitPool?.toString() || '0',
+              hasStartedViaTimeout,
+              totalForfeitedFees: totalForfeitedFees.toString()
+            });
+          }
         } catch (err) {
-          console.log('Could not fetch tournament countdown data:', err);
+          console.log('Could not fetch tournament timeout data:', err);
         }
 
         tournamentData.push({
@@ -1799,8 +2021,11 @@ export default function TicTacBlock() {
           maxPlayers,
           entryFee: entryFeeFormatted,
           isEnrolled,
-          firstEnrollmentTime,
-          countdownActive
+          enrollmentTimeout,
+          hasStartedViaTimeout,
+          totalForfeitedFees,
+          tournamentStatus: status, // Store raw status for conditional rendering
+          tierTimeoutConfig // Include timeout configuration
         });
       }
 
@@ -1844,9 +2069,17 @@ export default function TicTacBlock() {
         }
       }
 
+      // Group tournaments by completion type
+      const organicTournaments = tournaments.filter(t => Number(t.completionType) === 0);
+      const partialTournaments = tournaments.filter(t => Number(t.completionType) === 1);
+      const abandonedTournaments = tournaments.filter(t => Number(t.completionType) === 2);
+
       setCachedStats({
         matches,
-        tournaments
+        tournaments,
+        organicTournaments,
+        partialTournaments,
+        abandonedTournaments
       });
       setCachedStatsLoading(false);
     } catch (error) {
@@ -1854,7 +2087,10 @@ export default function TicTacBlock() {
       // Set empty stats on error so UI doesn't break
       setCachedStats({
         matches: [],
-        tournaments: []
+        tournaments: [],
+        organicTournaments: [],
+        partialTournaments: [],
+        abandonedTournaments: []
       });
       setCachedStatsLoading(false);
     }
@@ -1895,15 +2131,30 @@ export default function TicTacBlock() {
             isEnrolled = await contract.isEnrolled(tierId, i, account);
           }
 
-          // Get enrollment countdown data
-          let firstEnrollmentTime = 0;
-          let countdownActive = false;
+          // Get enrollment timeout data with tier information
+          let enrollmentTimeout = null;
+          let hasStartedViaTimeout = false;
+          let totalForfeitedFees = 0n;
           try {
             const tournamentInfo = await contract.tournaments(tierId, i);
-            firstEnrollmentTime = Number(tournamentInfo.firstEnrollmentTime);
-            countdownActive = tournamentInfo.countdownActive;
+            enrollmentTimeout = tournamentInfo.enrollmentTimeout;
+            hasStartedViaTimeout = tournamentInfo.hasStartedViaTimeout;
+            totalForfeitedFees = tournamentInfo.totalForfeitedFees || 0n;
+
+            // Debug logging
+            if (enrollmentTimeout) {
+              console.log(`Tournament ${tierId}-${i} timeout data:`, {
+                tier1Start: Number(enrollmentTimeout.tier1Start),
+                tier2Start: Number(enrollmentTimeout.tier2Start),
+                activeTier: Number(enrollmentTimeout.activeTier),
+                canStart: enrollmentTimeout.canStart,
+                forfeitPool: enrollmentTimeout.forfeitPool?.toString() || '0',
+                hasStartedViaTimeout,
+                totalForfeitedFees: totalForfeitedFees.toString()
+              });
+            }
           } catch (err) {
-            console.log('Could not fetch tournament countdown data:', err);
+            console.log('Could not fetch tournament timeout data:', err);
           }
 
           allTournaments.push({
@@ -1914,8 +2165,10 @@ export default function TicTacBlock() {
             maxPlayers,
             entryFee: entryFeeFormatted,
             isEnrolled,
-            firstEnrollmentTime,
-            countdownActive
+            enrollmentTimeout,
+            hasStartedViaTimeout,
+            totalForfeitedFees,
+            tournamentStatus: status // Store raw status for conditional rendering
           });
         }
       } catch (error) {
@@ -1963,7 +2216,7 @@ export default function TicTacBlock() {
     }
   };
 
-  // Handle manual tournament start (when countdown expires)
+  // Handle force start tournament (with timeout tier system)
   const handleManualStart = async (tierId, instanceId) => {
     if (!contract || !account) {
       alert('Please connect your wallet first');
@@ -1987,9 +2240,24 @@ export default function TicTacBlock() {
       const tournamentInfo = await contract.tournaments(tierId, instanceId);
       const enrolledCount = Number(tournamentInfo.enrolledCount);
       const status = Number(tournamentInfo.status);
-      const countdownActive = tournamentInfo.countdownActive;
+      const enrollmentTimeout = tournamentInfo.enrollmentTimeout;
 
-      console.log('Manual start attempt:', { tierId, instanceId, enrolledCount, status, countdownActive, instanceCount });
+      // Extract timeout tier information
+      const tier1Start = Number(enrollmentTimeout.tier1Start);
+      const tier2Start = Number(enrollmentTimeout.tier2Start);
+      const forfeitPool = enrollmentTimeout.forfeitPool;
+
+      // Calculate client-side tier availability
+      const now = Math.floor(Date.now() / 1000);
+      const canStartTier1 = tier1Start > 0 && now >= tier1Start;
+      const canStartTier2 = tier2Start > 0 && now >= tier2Start;
+
+      console.log('Force start attempt:', {
+        tierId, instanceId, enrolledCount, status,
+        tier1Start, tier2Start, now,
+        canStartTier1, canStartTier2,
+        forfeitPool: forfeitPool.toString()
+      });
 
       // Validation checks
       if (status !== 0) {
@@ -1998,8 +2266,21 @@ export default function TicTacBlock() {
         return;
       }
 
-      if (!countdownActive) {
-        alert('Countdown is not active for this tournament');
+      // Check if any tier window is open
+      if (!canStartTier1 && !canStartTier2) {
+        let timeUntilCanStart = 0;
+
+        if (tier1Start > 0) {
+          timeUntilCanStart = tier1Start - now;
+        }
+
+        if (timeUntilCanStart > 0) {
+          const minutes = Math.floor(timeUntilCanStart / 60);
+          const seconds = timeUntilCanStart % 60;
+          alert(`Tournament cannot be force-started yet. Wait ${minutes}m ${seconds}s for the timeout window to open.`);
+        } else {
+          alert('Tournament cannot be force-started at this time');
+        }
         setTournamentsLoading(false);
         return;
       }
@@ -2010,43 +2291,66 @@ export default function TicTacBlock() {
         return;
       }
 
-      // Check if user is enrolled
+      // Check if user is enrolled (only required for tier 1)
       const isEnrolled = await contract.isEnrolled(tierId, instanceId, account);
-      if (!isEnrolled) {
-        alert('You must be enrolled in the tournament to force-start it');
+
+      // This function should only be called for Tier 1 now
+      // Tier 2 should use handleClaimAbandonedPool instead
+      if (canStartTier2) {
+        alert('This tournament has reached Tier 2. Please use the claimAbandonedEnrollmentPool button instead.');
         setTournamentsLoading(false);
         return;
       }
 
-      // Special case: if only 1 player enrolled, they win automatically
-      if (enrolledCount === 1) {
-        const confirmStart = window.confirm(
-          'You are the only enrolled player. Force-starting will declare you the winner and award you the prize. Continue?'
-        );
-        if (!confirmStart) {
-          setTournamentsLoading(false);
-          return;
-        }
+      // Tier 1: Only enrolled players can start
+      if (!isEnrolled) {
+        alert('You must be enrolled in the tournament to force-start it at Tier 1.');
+        setTournamentsLoading(false);
+        return;
       }
 
-      // Call manualStartTournament function
-      console.log('Calling manualStartTournament with:', {
+      // Build warning message for Tier 1 force start
+      let warningMessage = '';
+
+      if (enrolledCount === 1) {
+        // Tier 1: Only you are enrolled
+        warningMessage = 'You are the only enrolled player. Force-starting will declare you the winner and award you the prize pool';
+        if (forfeitPool && forfeitPool > 0n) {
+          warningMessage += ` plus any forfeited fees (${ethers.formatEther(forfeitPool)} ETH)`;
+        }
+        warningMessage += '. Continue?';
+      } else {
+        // Tier 1: Multiple players enrolled
+        warningMessage = `Force-starting will begin the tournament with ${enrolledCount} players`;
+        if (forfeitPool && forfeitPool > 0n) {
+          warningMessage += `. Forfeit pool of ${ethers.formatEther(forfeitPool)} ETH will be distributed`;
+        }
+        warningMessage += '. Continue?';
+      }
+
+      const confirmStart = window.confirm(warningMessage);
+      if (!confirmStart) {
+        setTournamentsLoading(false);
+        return;
+      }
+
+      // Call forceStartTournament function
+      console.log('Calling forceStartTournament with:', {
         tierId,
         instanceId,
-        tierIdType: typeof tierId,
-        instanceIdType: typeof instanceId,
         enrolledCount,
         status,
-        countdownActive,
+        canStartTier1,
+        canStartTier2,
         isEnrolled
       });
 
-      const tx = await contract.manualStartTournament(tierId, instanceId);
+      const tx = await contract.forceStartTournament(tierId, instanceId);
       console.log('Transaction sent:', tx.hash);
       await tx.wait();
       console.log('Transaction confirmed');
 
-      alert('Tournament started successfully!');
+      alert('Tournament force-started successfully!');
 
       // Refresh tournament data
       if (theme === 'dream') {
@@ -2058,24 +2362,125 @@ export default function TicTacBlock() {
 
       setTournamentsLoading(false);
     } catch (error) {
-      console.error('Error starting tournament:', error);
+      console.error('Error force-starting tournament:', error);
       console.error('Full error object:', JSON.stringify(error, null, 2));
 
       let errorMessage = error.message;
       if (error.message.includes('ARRAY_RANGE_ERROR')) {
-        // More detailed error for array range issues
         errorMessage = `Tournament cannot be started. This may be due to:\n- Invalid tier ID (${tierId}) or instance ID (${instanceId})\n- Tournament already started\n- Contract state issue\n\nCheck console for full error details.`;
-      } else if (error.message.includes('CountdownNotExpired')) {
-        errorMessage = 'Countdown has not expired yet';
+      } else if (error.message.includes('TimeoutNotReached')) {
+        errorMessage = 'Enrollment timeout window has not been reached yet';
       } else if (error.message.includes('NotEnrolled')) {
         errorMessage = 'You must be enrolled to force-start the tournament';
       } else if (error.message.includes('TournamentAlreadyStarted')) {
         errorMessage = 'Tournament has already been started';
       } else if (error.message.includes('InvalidTournamentStatus')) {
         errorMessage = 'Tournament is not in enrollment phase';
+      } else if (error.message.includes('CannotForceStart')) {
+        errorMessage = 'Tournament cannot be force-started yet - timeout tier requirements not met';
       }
 
-      alert(`Error starting tournament: ${errorMessage}`);
+      alert(`Error force-starting tournament: ${errorMessage}`);
+      setTournamentsLoading(false);
+    }
+  };
+
+  // Handle claiming abandoned enrollment pool
+  const handleClaimAbandonedPool = async (tierId, instanceId) => {
+    if (!contract || !account) {
+      alert('Please connect your wallet first');
+      return;
+    }
+
+    try {
+      setTournamentsLoading(true);
+
+      // Get tournament info to validate
+      const tournamentInfo = await contract.tournaments(tierId, instanceId);
+      const status = Number(tournamentInfo.status);
+      const enrolledCount = Number(tournamentInfo.enrolledCount);
+      const enrollmentTimeout = tournamentInfo.enrollmentTimeout;
+      const forfeitPool = enrollmentTimeout.forfeitPool || 0n;
+
+      // Calculate tier availability
+      const tier1Start = Number(enrollmentTimeout.tier1Start);
+      const tier2Start = Number(enrollmentTimeout.tier2Start);
+      const now = Math.floor(Date.now() / 1000);
+      const canStartTier2 = tier2Start > 0 && now >= tier2Start;
+
+      console.log('Claim abandoned pool attempt:', {
+        tierId, instanceId, status, enrolledCount,
+        canStartTier2, tier2Start, now,
+        forfeitPool: forfeitPool.toString()
+      });
+
+      // For ongoing tournaments (status 0), check if we're in Tier 2
+      if (status === 0) {
+        if (!canStartTier2) {
+          alert('Tier 2 has not opened yet. Wait for the timeout period to complete.');
+          setTournamentsLoading(false);
+          return;
+        }
+
+        const confirmClaim = window.confirm(
+          `Claim the entire tournament pool (Tier 2 - Abandoned Tournament)?\n\n` +
+          `This tournament has ${enrolledCount} enrolled player${enrolledCount !== 1 ? 's' : ''} but failed to start in time.\n` +
+          `You will receive the entire enrollment pool${forfeitPool > 0n ? ` plus ${ethers.formatEther(forfeitPool)} ETH in forfeited fees` : ''}.\n\n` +
+          `The tournament will be reset after claiming.`
+        );
+
+        if (!confirmClaim) {
+          setTournamentsLoading(false);
+          return;
+        }
+      } else {
+        // For completed tournaments (status >= 2)
+        if (forfeitPool <= 0n) {
+          alert('No forfeited funds to claim');
+          setTournamentsLoading(false);
+          return;
+        }
+
+        const confirmClaim = window.confirm(
+          `Claim ${ethers.formatEther(forfeitPool)} ETH from abandoned enrollment pool?\n\nThis pool consists of forfeited entry fees from players who did not start the tournament.`
+        );
+
+        if (!confirmClaim) {
+          setTournamentsLoading(false);
+          return;
+        }
+      }
+
+      console.log('Calling claimAbandonedEnrollmentPool with:', { tierId, instanceId });
+
+      const tx = await contract.claimAbandonedEnrollmentPool(tierId, instanceId);
+      console.log('Transaction sent:', tx.hash);
+      await tx.wait();
+      console.log('Transaction confirmed');
+
+      alert('Abandoned enrollment pool claimed successfully!');
+
+      // Refresh tournament data
+      if (theme === 'dream') {
+        await fetchTournaments(0);
+      } else if (theme === 'daring') {
+        await fetchAllDaringTiers();
+      }
+
+      setTournamentsLoading(false);
+    } catch (error) {
+      console.error('Error claiming abandoned pool:', error);
+
+      let errorMessage = error.message;
+      if (error.message.includes('NothingToClaim')) {
+        errorMessage = 'No forfeited funds available to claim';
+      } else if (error.message.includes('TournamentNotEnded')) {
+        errorMessage = 'Tournament must be completed before claiming abandoned pool';
+      } else if (error.message.includes('ClaimWindowNotOpen')) {
+        errorMessage = 'Claim window is not open yet';
+      }
+
+      alert(`Error claiming abandoned pool: ${errorMessage}`);
       setTournamentsLoading(false);
     }
   };
@@ -3363,9 +3768,12 @@ export default function TicTacBlock() {
                                     loading={tournamentsLoading}
                                     tierName={getTierName(tournament.tierId)}
                                     theme={theme}
-                                    firstEnrollmentTime={tournament.firstEnrollmentTime}
-                                    countdownActive={tournament.countdownActive}
+                                    enrollmentTimeout={tournament.enrollmentTimeout}
+                                    hasStartedViaTimeout={tournament.hasStartedViaTimeout}
+                                    totalForfeitedFees={tournament.totalForfeitedFees}
+                                    tournamentStatus={tournament.tournamentStatus}
                                     onManualStart={handleManualStart}
+                                    onClaimAbandonedPool={handleClaimAbandonedPool}
                                   />
                                 ))}
                               </div>
@@ -3390,9 +3798,12 @@ export default function TicTacBlock() {
                             loading={tournamentsLoading}
                             tierName={getTierName(tournament.tierId)}
                             theme={theme}
-                            firstEnrollmentTime={tournament.firstEnrollmentTime}
-                            countdownActive={tournament.countdownActive}
+                            enrollmentTimeout={tournament.enrollmentTimeout}
+                            hasStartedViaTimeout={tournament.hasStartedViaTimeout}
+                            totalForfeitedFees={tournament.totalForfeitedFees}
+                            tournamentStatus={tournament.tournamentStatus}
                             onManualStart={handleManualStart}
+                            onClaimAbandonedPool={handleClaimAbandonedPool}
                           />
                         ))}
                       </div>
@@ -3486,77 +3897,142 @@ export default function TicTacBlock() {
                           </div>
                           {cachedStats.tournaments?.length > 0 && (
                             <>
-                              <div className="bg-purple-500/10 rounded-lg p-4 border border-purple-400/20">
-                                <div className="text-purple-300 text-sm mb-2">Recent Tournaments</div>
-                                <div className="space-y-2 max-h-48 overflow-y-auto">
-                                  {cachedStats.tournaments.slice(0, 5).map((tournament, idx) => {
-                                    const winner = tournament.winner;
-                                    const hasWinner = winner && winner !== ethers.ZeroAddress;
+                              {/* Organic Tournaments */}
+                              {cachedStats.organicTournaments?.length > 0 && (
+                                <div className="bg-green-500/10 rounded-lg p-4 border border-green-400/20">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <Trophy className="text-green-400" size={16} />
+                                    <div className="text-green-300 text-sm font-semibold">Organic ({cachedStats.organicTournaments.length})</div>
+                                  </div>
+                                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                                    {cachedStats.organicTournaments.slice(0, 5).map((tournament, idx) => {
+                                      const winner = tournament.winner;
+                                      const hasWinner = winner && winner !== ethers.ZeroAddress;
+                                      let winnerPrize = null;
 
-                                    // Check for multiple prize recipients (draw scenarios)
-                                    let winnerPrize = null;
-                                    let prizeRecipients = 0;
-                                    let hasMultipleWinners = false;
-
-                                    if (tournament.prizes && tournament.participants && tournament.participantCount) {
-                                      try {
-                                        const participantArray = Array.from(tournament.participants);
-                                        const prizesArray = Array.from(tournament.prizes);
-                                        const count = Number(tournament.participantCount);
-
-                                        // Count participants who received prizes
-                                        for (let i = 0; i < count && i < participantArray.length; i++) {
-                                          const prize = prizesArray[i];
-                                          if (prize && parseFloat(ethers.formatEther(prize)) > 0) {
-                                            prizeRecipients++;
-                                          }
-                                        }
-
-                                        hasMultipleWinners = prizeRecipients > 1;
-
-                                        // Get winner's prize
-                                        if (hasWinner) {
+                                      if (hasWinner && tournament.prizes && tournament.participants) {
+                                        try {
+                                          const participantArray = Array.from(tournament.participants);
+                                          const prizesArray = Array.from(tournament.prizes);
                                           const winnerIndex = participantArray.findIndex(
                                             p => p && p.toLowerCase() === winner.toLowerCase()
                                           );
                                           if (winnerIndex !== -1 && prizesArray[winnerIndex]) {
                                             winnerPrize = ethers.formatEther(prizesArray[winnerIndex]);
                                           }
+                                        } catch (err) {
+                                          console.warn('Error parsing tournament prizes:', err);
                                         }
-                                      } catch (err) {
-                                        console.warn('Error parsing tournament prizes:', err);
                                       }
-                                    }
 
-                                    return (
-                                      <div key={idx} className="bg-purple-500/5 p-2 rounded space-y-1">
-                                        <div className="flex items-center justify-between text-xs">
-                                          <span className="text-purple-200">Tier {Number(tournament.tierId)}</span>
-                                          <span className="text-white font-mono">
-                                            {hasWinner
-                                              ? `${winner.slice(0, 6)}...${winner.slice(-4)}`
-                                              : 'No winner'}
-                                          </span>
-                                        </div>
-                                        {winnerPrize && (
+                                      return (
+                                        <div key={idx} className="bg-green-500/5 p-2 rounded space-y-1">
                                           <div className="flex items-center justify-between text-xs">
-                                            <span className="text-purple-300/70">Prize Awarded</span>
-                                            <span className="text-green-400 font-bold">{parseFloat(winnerPrize).toFixed(4)} ETH</span>
-                                          </div>
-                                        )}
-                                        {hasMultipleWinners && (
-                                          <div className="flex items-center gap-1 text-xs">
-                                            <AlertCircle className="text-yellow-400" size={12} />
-                                            <span className="text-yellow-300">
-                                              Shared prize ({prizeRecipients} recipients)
+                                            <span className="text-green-200">Tier {Number(tournament.tierId)}</span>
+                                            <span className="text-white font-mono">
+                                              {hasWinner ? `${winner.slice(0, 6)}...${winner.slice(-4)}` : 'No winner'}
                                             </span>
                                           </div>
-                                        )}
-                                      </div>
-                                    );
-                                  })}
+                                          {winnerPrize && (
+                                            <div className="flex items-center justify-between text-xs">
+                                              <span className="text-green-300/70">Prize Awarded</span>
+                                              <span className="text-green-400 font-bold">{parseFloat(winnerPrize).toFixed(4)} ETH</span>
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
                                 </div>
-                              </div>
+                              )}
+
+                              {/* Partial/Force Started Tournaments */}
+                              {cachedStats.partialTournaments?.length > 0 && (
+                                <div className="bg-orange-500/10 rounded-lg p-4 border border-orange-400/20">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <Zap className="text-orange-400" size={16} />
+                                    <div className="text-orange-300 text-sm font-semibold">Force Started ({cachedStats.partialTournaments.length})</div>
+                                  </div>
+                                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                                    {cachedStats.partialTournaments.slice(0, 5).map((tournament, idx) => {
+                                      const winner = tournament.winner;
+                                      const hasWinner = winner && winner !== ethers.ZeroAddress;
+                                      let winnerPrize = null;
+
+                                      if (hasWinner && tournament.prizes && tournament.participants) {
+                                        try {
+                                          const participantArray = Array.from(tournament.participants);
+                                          const prizesArray = Array.from(tournament.prizes);
+                                          const winnerIndex = participantArray.findIndex(
+                                            p => p && p.toLowerCase() === winner.toLowerCase()
+                                          );
+                                          if (winnerIndex !== -1 && prizesArray[winnerIndex]) {
+                                            winnerPrize = ethers.formatEther(prizesArray[winnerIndex]);
+                                          }
+                                        } catch (err) {
+                                          console.warn('Error parsing tournament prizes:', err);
+                                        }
+                                      }
+
+                                      return (
+                                        <div key={idx} className="bg-orange-500/5 p-2 rounded space-y-1">
+                                          <div className="flex items-center justify-between text-xs">
+                                            <span className="text-orange-200">Tier {Number(tournament.tierId)}</span>
+                                            <span className="text-white font-mono">
+                                              {hasWinner ? `${winner.slice(0, 6)}...${winner.slice(-4)}` : 'No winner'}
+                                            </span>
+                                          </div>
+                                          {winnerPrize && (
+                                            <div className="flex items-center justify-between text-xs">
+                                              <span className="text-orange-300/70">Prize Awarded</span>
+                                              <span className="text-green-400 font-bold">{parseFloat(winnerPrize).toFixed(4)} ETH</span>
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Abandoned/Claimed Tournaments */}
+                              {cachedStats.abandonedTournaments?.length > 0 && (
+                                <div className="bg-red-500/10 rounded-lg p-4 border border-red-400/20">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <Coins className="text-red-400" size={16} />
+                                    <div className="text-red-300 text-sm font-semibold">Abandoned & Claimed ({cachedStats.abandonedTournaments.length})</div>
+                                  </div>
+                                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                                    {cachedStats.abandonedTournaments.slice(0, 5).map((tournament, idx) => {
+                                      const winner = tournament.winner;
+                                      const hasWinner = winner && winner !== ethers.ZeroAddress;
+                                      let claimAmount = null;
+
+                                      // For abandoned tournaments, show the claimed amount
+                                      if (tournament.totalAwarded && tournament.totalAwarded > 0n) {
+                                        claimAmount = ethers.formatEther(tournament.totalAwarded);
+                                      }
+
+                                      return (
+                                        <div key={idx} className="bg-red-500/5 p-2 rounded space-y-1">
+                                          <div className="flex items-center justify-between text-xs">
+                                            <span className="text-red-200">Tier {Number(tournament.tierId)}</span>
+                                            <span className="text-white font-mono">
+                                              {hasWinner ? `${winner.slice(0, 6)}...${winner.slice(-4)}` : 'Unclaimed'}
+                                            </span>
+                                          </div>
+                                          {claimAmount && (
+                                            <div className="flex items-center justify-between text-xs">
+                                              <span className="text-red-300/70">Pool Claimed</span>
+                                              <span className="text-yellow-400 font-bold">{parseFloat(claimAmount).toFixed(4)} ETH</span>
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
 
                               {/* Total Awards Distributed */}
                               <div className="bg-purple-500/10 rounded-lg p-4 border border-purple-400/20">
