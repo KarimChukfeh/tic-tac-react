@@ -475,7 +475,7 @@ const TournamentCard = ({
       </div>
 
       {/* Enrollment Status Message - Show when in enrollment but escalation not started */}
-      {enrollmentTimeout && currentEnrolled > 0 && currentEnrolled < maxPlayers && !(escalationState.timeToEscalation1 > 0 || escalationState.activeEscalation > 0 || escalationState.canStart) && (
+      {enrollmentTimeout && currentEnrolled > 0 && currentEnrolled < maxPlayers && !(escalationState.timeToEscalation1 > 0 || escalationState.activeEscalation > 0) && (
         <div className="mb-4 bg-blue-500/20 border border-blue-400/50 rounded-lg p-3">
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
@@ -509,7 +509,7 @@ const TournamentCard = ({
       )}
 
       {/* Enrollment Escalation System - Show when escalation system is active or has started */}
-      {enrollmentTimeout && (escalationState.timeToEscalation1 > 0 || escalationState.activeEscalation > 0 || escalationState.canStart) && (
+      {enrollmentTimeout && (escalationState.timeToEscalation1 > 0 || escalationState.activeEscalation > 0) && (
         <div className="mb-4 space-y-2">
           {/* Main Countdown Timer */}
           {escalationState.timeToEscalation1 > 0 && escalationState.activeEscalation === 0 ? (
@@ -1713,7 +1713,7 @@ export default function TicTacBlock() {
   const [totalGamesPlayed, setTotalGamesPlayed] = useState(0);
 
   // Theme State - 'dream' (blue/cyan), 'daring' (red/orange)
-  const [theme, setTheme] = useState('daring');
+  const [theme, setTheme] = useState('dream');
   const [expandedFaq, setExpandedFaq] = useState(null);
   const [showThemeToggle, setShowThemeToggle] = useState(true);
 
@@ -2146,7 +2146,6 @@ export default function TicTacBlock() {
               escalation1Start: Number(enrollmentTimeout.escalation1Start),
               escalation2Start: Number(enrollmentTimeout.escalation2Start),
               activeEscalation: Number(enrollmentTimeout.activeEscalation),
-              canStart: enrollmentTimeout.canStart,
               forfeitPool: enrollmentTimeout.forfeitPool?.toString() || '0',
               hasStartedViaTimeout
             });
@@ -2298,7 +2297,6 @@ export default function TicTacBlock() {
                 escalation1Start: Number(enrollmentTimeout.escalation1Start),
                 escalation2Start: Number(enrollmentTimeout.escalation2Start),
                 activeEscalation: Number(enrollmentTimeout.activeEscalation),
-                canStart: enrollmentTimeout.canStart,
                 forfeitPool: enrollmentTimeout.forfeitPool?.toString() || '0',
                 hasStartedViaTimeout
               });
@@ -2703,8 +2701,8 @@ export default function TicTacBlock() {
               board: matchData[4],
               matchStatus: Number(matchData[5]),
               isDraw: matchData[6],
-              lastMoveTime: Number(matchData[7]),
-              startTime: Number(matchData[8]),
+              startTime: Number(matchData[7]),
+              lastMoveTime: Number(matchData[8]),
               timeoutState
             });
           } catch (err) {

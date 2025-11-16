@@ -76,74 +76,6 @@
     "inputs": [
       {
         "indexed": true,
-        "internalType": "uint8",
-        "name": "tierId",
-        "type": "uint8"
-      },
-      {
-        "indexed": true,
-        "internalType": "uint8",
-        "name": "instanceId",
-        "type": "uint8"
-      },
-      {
-        "indexed": false,
-        "internalType": "enum TicTacTour.BlockType",
-        "name": "blockType",
-        "type": "uint8"
-      },
-      {
-        "indexed": false,
-        "internalType": "enum TicTacTour.EscalationLevel",
-        "name": "newLevel",
-        "type": "uint8"
-      }
-    ],
-    "name": "EscalationLevelIncreased",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "uint8",
-        "name": "tierId",
-        "type": "uint8"
-      },
-      {
-        "indexed": true,
-        "internalType": "uint8",
-        "name": "instanceId",
-        "type": "uint8"
-      },
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "claimant",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "amount",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "enum TicTacTour.EscalationLevel",
-        "name": "escalation",
-        "type": "uint8"
-      }
-    ],
-    "name": "FinalsPrizeClaimed",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
         "internalType": "bytes32",
         "name": "matchKey",
         "type": "bytes32"
@@ -193,49 +125,6 @@
       }
     ],
     "name": "MatchCompleted",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "uint8",
-        "name": "tierId",
-        "type": "uint8"
-      },
-      {
-        "indexed": true,
-        "internalType": "uint8",
-        "name": "instanceId",
-        "type": "uint8"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint8",
-        "name": "roundNum",
-        "type": "uint8"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint8",
-        "name": "matchNum",
-        "type": "uint8"
-      },
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "resolver",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "reward",
-        "type": "uint256"
-      }
-    ],
-    "name": "MatchResolvedByTimeout",
     "type": "event"
   },
   {
@@ -554,43 +443,6 @@
       {
         "indexed": false,
         "internalType": "uint8",
-        "name": "roundNum",
-        "type": "uint8"
-      },
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "completer",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "reward",
-        "type": "uint256"
-      }
-    ],
-    "name": "RoundForceCompleted",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "uint8",
-        "name": "tierId",
-        "type": "uint8"
-      },
-      {
-        "indexed": true,
-        "internalType": "uint8",
-        "name": "instanceId",
-        "type": "uint8"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint8",
         "name": "roundNumber",
         "type": "uint8"
       },
@@ -853,45 +705,21 @@
     "type": "event"
   },
   {
-    "anonymous": false,
-    "inputs": [
+    "inputs": [],
+    "name": "BASE_MOVE_TIMEOUT",
+    "outputs": [
       {
-        "indexed": true,
-        "internalType": "uint8",
-        "name": "tierId",
-        "type": "uint8"
-      },
-      {
-        "indexed": true,
-        "internalType": "uint8",
-        "name": "instanceId",
-        "type": "uint8"
-      },
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "claimant",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint8",
-        "name": "rank",
-        "type": "uint8"
-      },
-      {
-        "indexed": false,
         "internalType": "uint256",
-        "name": "amount",
+        "name": "",
         "type": "uint256"
       }
     ],
-    "name": "UnclaimedPrizeClaimed",
-    "type": "event"
+    "stateMutability": "view",
+    "type": "function"
   },
   {
     "inputs": [],
-    "name": "BASE_MOVE_TIMEOUT",
+    "name": "BASIS_POINTS",
     "outputs": [
       {
         "internalType": "uint256",
@@ -924,71 +752,6 @@
       }
     ],
     "name": "ENTRY_FEES",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "FINALS_ESCALATION_2_DELAY",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "FINALS_ESCALATION_3_DELAY",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "FINALS_ESCALATION_4_DELAY",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "FINALS_ESCALATION_5_DELAY",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "FINALS_MOVE_TIMEOUT",
     "outputs": [
       {
         "internalType": "uint256",
@@ -1033,7 +796,33 @@
   },
   {
     "inputs": [],
-    "name": "MATCH_ESCALATION_2_DELAY",
+    "name": "NO_CELL",
+    "outputs": [
+      {
+        "internalType": "uint8",
+        "name": "",
+        "type": "uint8"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "NO_ROUND",
+    "outputs": [
+      {
+        "internalType": "uint8",
+        "name": "",
+        "type": "uint8"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "OWNER_SHARE_BPS",
     "outputs": [
       {
         "internalType": "uint256",
@@ -1046,7 +835,7 @@
   },
   {
     "inputs": [],
-    "name": "MATCH_ESCALATION_3_DELAY",
+    "name": "PARTICIPANTS_SHARE_BPS",
     "outputs": [
       {
         "internalType": "uint256",
@@ -1059,124 +848,7 @@
   },
   {
     "inputs": [],
-    "name": "MATCH_ESCALATION_4_DELAY",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "MATCH_ESCALATION_5_DELAY",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "MOVE_TIMEOUT",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "PRIZE_ESCALATION_1_WINDOW",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "PRIZE_ESCALATION_2_WINDOW",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "PRIZE_ESCALATION_3_WINDOW",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "ROUND_ESCALATION_1_TIMEOUT",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "ROUND_ESCALATION_2_DELAY",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "ROUND_ESCALATION_3_DELAY",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "ROUND_ESCALATION_4_DELAY",
+    "name": "PROTOCOL_SHARE_BPS",
     "outputs": [
       {
         "internalType": "uint256",
@@ -1477,40 +1149,6 @@
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "activePlayersByRound",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
       }
     ],
     "stateMutability": "view",
@@ -2865,69 +2503,6 @@
         "type": "address"
       }
     ],
-    "name": "hasClaimedPrize",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "incompleteMatchIndexes",
-    "outputs": [
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      },
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
     "name": "isEnrolled",
     "outputs": [
       {
@@ -3303,60 +2878,6 @@
         "type": "address"
       }
     ],
-    "name": "playerAdvancement",
-    "outputs": [
-      {
-        "internalType": "uint8",
-        "name": "highestRoundReached",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint8",
-        "name": "currentRound",
-        "type": "uint8"
-      },
-      {
-        "internalType": "bool",
-        "name": "isEliminated",
-        "type": "bool"
-      },
-      {
-        "internalType": "bool",
-        "name": "isActive",
-        "type": "bool"
-      },
-      {
-        "internalType": "uint256",
-        "name": "eliminationTime",
-        "type": "uint256"
-      },
-      {
-        "internalType": "bytes32",
-        "name": "currentMatchId",
-        "type": "bytes32"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      },
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
     "name": "playerForfeitedAmounts",
     "outputs": [
       {
@@ -3502,35 +3023,6 @@
         "type": "uint8"
       }
     ],
-    "name": "roundStalled",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
     "name": "rounds",
     "outputs": [
       {
@@ -3557,63 +3049,6 @@
         "internalType": "bool",
         "name": "allMatchesDrew",
         "type": "bool"
-      },
-      {
-        "components": [
-          {
-            "internalType": "uint256",
-            "name": "firstMatchCompletedTime",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "escalation1UnblockTime",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "escalation2UnblockTime",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "escalation3UnblockTime",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "escalation4UnblockTime",
-            "type": "uint256"
-          },
-          {
-            "internalType": "enum TicTacTour.EscalationLevel",
-            "name": "activeEscalation",
-            "type": "uint8"
-          },
-          {
-            "internalType": "bool",
-            "name": "roundStalled",
-            "type": "bool"
-          },
-          {
-            "internalType": "uint256",
-            "name": "totalForfeitPool",
-            "type": "uint256"
-          }
-        ],
-        "internalType": "struct TicTacTour.RoundProgressionState",
-        "name": "progressionState",
-        "type": "tuple"
-      },
-      {
-        "internalType": "bool",
-        "name": "wasForceCompleted",
-        "type": "bool"
-      },
-      {
-        "internalType": "address",
-        "name": "forceCompleteClaimant",
-        "type": "address"
       }
     ],
     "stateMutability": "view",
@@ -4263,16 +3698,6 @@
       },
       {
         "internalType": "uint256",
-        "name": "roundCompletionTimeout",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "prizeClaimWindow",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
         "name": "tierEscalationInterval",
         "type": "uint256"
       }
@@ -4412,43 +3837,6 @@
         "type": "bool"
       },
       {
-        "components": [
-          {
-            "internalType": "uint256",
-            "name": "tournamentEndTime",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "escalation1Start",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "escalation2Start",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "escalation3Start",
-            "type": "uint256"
-          },
-          {
-            "internalType": "enum TicTacTour.EscalationLevel",
-            "name": "activeEscalation",
-            "type": "uint8"
-          },
-          {
-            "internalType": "uint256",
-            "name": "totalUnclaimed",
-            "type": "uint256"
-          }
-        ],
-        "internalType": "struct TicTacTour.PrizeClaimState",
-        "name": "prizeClaimState",
-        "type": "tuple"
-      },
-      {
         "internalType": "address",
         "name": "firstEnroller",
         "type": "address"
@@ -4466,35 +3854,6 @@
       {
         "internalType": "uint256",
         "name": "forceStartTimestamp",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
-    "name": "unclaimedPrizesByRank",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
         "type": "uint256"
       }
     ],
