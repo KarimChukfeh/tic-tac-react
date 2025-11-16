@@ -87,6 +87,37 @@
         "type": "uint8"
       },
       {
+        "indexed": false,
+        "internalType": "enum TicTacTour.BlockType",
+        "name": "blockType",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "enum TicTacTour.EscalationLevel",
+        "name": "newLevel",
+        "type": "uint8"
+      }
+    ],
+    "name": "EscalationLevelIncreased",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint8",
+        "name": "tierId",
+        "type": "uint8"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint8",
+        "name": "instanceId",
+        "type": "uint8"
+      },
+      {
         "indexed": true,
         "internalType": "address",
         "name": "claimant",
@@ -100,8 +131,8 @@
       },
       {
         "indexed": false,
-        "internalType": "enum TicTacTour.UnblockTier",
-        "name": "tier",
+        "internalType": "enum TicTacTour.EscalationLevel",
+        "name": "escalation",
         "type": "uint8"
       }
     ],
@@ -837,37 +868,6 @@
         "type": "uint8"
       },
       {
-        "indexed": false,
-        "internalType": "enum TicTacTour.BlockType",
-        "name": "blockType",
-        "type": "uint8"
-      },
-      {
-        "indexed": false,
-        "internalType": "enum TicTacTour.UnblockTier",
-        "name": "newTier",
-        "type": "uint8"
-      }
-    ],
-    "name": "UnblockTierEscalated",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "uint8",
-        "name": "tierId",
-        "type": "uint8"
-      },
-      {
-        "indexed": true,
-        "internalType": "uint8",
-        "name": "instanceId",
-        "type": "uint8"
-      },
-      {
         "indexed": true,
         "internalType": "address",
         "name": "claimant",
@@ -936,59 +936,59 @@
   },
   {
     "inputs": [],
+    "name": "FINALS_ESCALATION_2_DELAY",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "FINALS_ESCALATION_3_DELAY",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "FINALS_ESCALATION_4_DELAY",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "FINALS_ESCALATION_5_DELAY",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "FINALS_MOVE_TIMEOUT",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "FINALS_TIER_2_DELAY",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "FINALS_TIER_3_DELAY",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "FINALS_TIER_4_DELAY",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "FINALS_TIER_5_DELAY",
     "outputs": [
       {
         "internalType": "uint256",
@@ -1033,7 +1033,7 @@
   },
   {
     "inputs": [],
-    "name": "MATCH_TIER_2_DELAY",
+    "name": "MATCH_ESCALATION_2_DELAY",
     "outputs": [
       {
         "internalType": "uint256",
@@ -1046,7 +1046,7 @@
   },
   {
     "inputs": [],
-    "name": "MATCH_TIER_3_DELAY",
+    "name": "MATCH_ESCALATION_3_DELAY",
     "outputs": [
       {
         "internalType": "uint256",
@@ -1059,7 +1059,7 @@
   },
   {
     "inputs": [],
-    "name": "MATCH_TIER_4_DELAY",
+    "name": "MATCH_ESCALATION_4_DELAY",
     "outputs": [
       {
         "internalType": "uint256",
@@ -1072,7 +1072,7 @@
   },
   {
     "inputs": [],
-    "name": "MATCH_TIER_5_DELAY",
+    "name": "MATCH_ESCALATION_5_DELAY",
     "outputs": [
       {
         "internalType": "uint256",
@@ -1098,7 +1098,7 @@
   },
   {
     "inputs": [],
-    "name": "PRIZE_TIER_1_WINDOW",
+    "name": "PRIZE_ESCALATION_1_WINDOW",
     "outputs": [
       {
         "internalType": "uint256",
@@ -1111,7 +1111,7 @@
   },
   {
     "inputs": [],
-    "name": "PRIZE_TIER_2_WINDOW",
+    "name": "PRIZE_ESCALATION_2_WINDOW",
     "outputs": [
       {
         "internalType": "uint256",
@@ -1124,7 +1124,7 @@
   },
   {
     "inputs": [],
-    "name": "PRIZE_TIER_3_WINDOW",
+    "name": "PRIZE_ESCALATION_3_WINDOW",
     "outputs": [
       {
         "internalType": "uint256",
@@ -1137,7 +1137,7 @@
   },
   {
     "inputs": [],
-    "name": "ROUND_TIER_1_TIMEOUT",
+    "name": "ROUND_ESCALATION_1_TIMEOUT",
     "outputs": [
       {
         "internalType": "uint256",
@@ -1150,7 +1150,7 @@
   },
   {
     "inputs": [],
-    "name": "ROUND_TIER_2_DELAY",
+    "name": "ROUND_ESCALATION_2_DELAY",
     "outputs": [
       {
         "internalType": "uint256",
@@ -1163,7 +1163,7 @@
   },
   {
     "inputs": [],
-    "name": "ROUND_TIER_3_DELAY",
+    "name": "ROUND_ESCALATION_3_DELAY",
     "outputs": [
       {
         "internalType": "uint256",
@@ -1176,7 +1176,7 @@
   },
   {
     "inputs": [],
-    "name": "ROUND_TIER_4_DELAY",
+    "name": "ROUND_ESCALATION_4_DELAY",
     "outputs": [
       {
         "internalType": "uint256",
@@ -3103,32 +3103,32 @@
         "components": [
           {
             "internalType": "uint256",
-            "name": "tier1Start",
+            "name": "escalation1Start",
             "type": "uint256"
           },
           {
             "internalType": "uint256",
-            "name": "tier2Start",
+            "name": "escalation2Start",
             "type": "uint256"
           },
           {
             "internalType": "uint256",
-            "name": "tier3Start",
+            "name": "escalation3Start",
             "type": "uint256"
           },
           {
             "internalType": "uint256",
-            "name": "tier4Start",
+            "name": "escalation4Start",
             "type": "uint256"
           },
           {
             "internalType": "uint256",
-            "name": "tier5Start",
+            "name": "escalation5Start",
             "type": "uint256"
           },
           {
-            "internalType": "enum TicTacTour.UnblockTier",
-            "name": "activeTier",
+            "internalType": "enum TicTacTour.EscalationLevel",
+            "name": "activeEscalation",
             "type": "uint8"
           },
           {
@@ -3516,27 +3516,27 @@
           },
           {
             "internalType": "uint256",
-            "name": "tier1UnblockTime",
+            "name": "escalation1UnblockTime",
             "type": "uint256"
           },
           {
             "internalType": "uint256",
-            "name": "tier2UnblockTime",
+            "name": "escalation2UnblockTime",
             "type": "uint256"
           },
           {
             "internalType": "uint256",
-            "name": "tier3UnblockTime",
+            "name": "escalation3UnblockTime",
             "type": "uint256"
           },
           {
             "internalType": "uint256",
-            "name": "tier4UnblockTime",
+            "name": "escalation4UnblockTime",
             "type": "uint256"
           },
           {
-            "internalType": "enum TicTacTour.UnblockTier",
-            "name": "activeTier",
+            "internalType": "enum TicTacTour.EscalationLevel",
+            "name": "activeEscalation",
             "type": "uint8"
           },
           {
@@ -4332,17 +4332,17 @@
         "components": [
           {
             "internalType": "uint256",
-            "name": "tier1Start",
+            "name": "escalation1Start",
             "type": "uint256"
           },
           {
             "internalType": "uint256",
-            "name": "tier2Start",
+            "name": "escalation2Start",
             "type": "uint256"
           },
           {
-            "internalType": "enum TicTacTour.UnblockTier",
-            "name": "activeTier",
+            "internalType": "enum TicTacTour.EscalationLevel",
+            "name": "activeEscalation",
             "type": "uint8"
           },
           {
@@ -4369,22 +4369,22 @@
           },
           {
             "internalType": "uint256",
-            "name": "tier1Start",
+            "name": "escalation1Start",
             "type": "uint256"
           },
           {
             "internalType": "uint256",
-            "name": "tier2Start",
+            "name": "escalation2Start",
             "type": "uint256"
           },
           {
             "internalType": "uint256",
-            "name": "tier3Start",
+            "name": "escalation3Start",
             "type": "uint256"
           },
           {
-            "internalType": "enum TicTacTour.UnblockTier",
-            "name": "activeTier",
+            "internalType": "enum TicTacTour.EscalationLevel",
+            "name": "activeEscalation",
             "type": "uint8"
           },
           {

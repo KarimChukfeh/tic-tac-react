@@ -300,79 +300,79 @@ const TournamentCard = ({
   const isFull = currentEnrolled >= maxPlayers;
   const enrollmentPercentage = (currentEnrolled / maxPlayers) * 100;
 
-  // Timeout tier system state
-  const [timeoutState, setTimeoutState] = useState({
-    activeTier: 0,
-    canStartTier1: false,
-    canStartTier2: false,
-    timeToTier1: 0,
-    timeToTier2: 0,
+  // Escalation system state (for enrollment force-start)
+  const [escalationState, setEscalationState] = useState({
+    activeEscalation: 0,
+    canStartEscalation1: false,
+    canStartEscalation2: false,
+    timeToEscalation1: 0,
+    timeToEscalation2: 0,
     forfeitPool: 0n
   });
 
   useEffect(() => {
     if (!enrollmentTimeout) {
-      setTimeoutState({
-        activeTier: 0,
-        canStartTier1: false,
-        canStartTier2: false,
-        timeToTier1: 0,
-        timeToTier2: 0,
+      setEscalationState({
+        activeEscalation: 0,
+        canStartEscalation1: false,
+        canStartEscalation2: false,
+        timeToEscalation1: 0,
+        timeToEscalation2: 0,
         forfeitPool: 0n
       });
       return;
     }
 
-    const updateTimeoutState = () => {
+    const updateEscalationState = () => {
       const now = Math.floor(Date.now() / 1000);
-      const tier1Start = Number(enrollmentTimeout.tier1Start);
-      const tier2Start = Number(enrollmentTimeout.tier2Start);
-      const contractActiveTier = Number(enrollmentTimeout.activeTier);
+      const escalation1Start = Number(enrollmentTimeout.escalation1Start);
+      const escalation2Start = Number(enrollmentTimeout.escalation2Start);
+      const contractActiveEscalation = Number(enrollmentTimeout.activeEscalation);
       const forfeitPool = enrollmentTimeout.forfeitPool || 0n;
 
-      const timeToTier1 = tier1Start > 0 ? Math.max(0, tier1Start - now) : 0;
-      const timeToTier2 = tier2Start > 0 ? Math.max(0, tier2Start - now) : 0;
+      const timeToEscalation1 = escalation1Start > 0 ? Math.max(0, escalation1Start - now) : 0;
+      const timeToEscalation2 = escalation2Start > 0 ? Math.max(0, escalation2Start - now) : 0;
 
-      // Calculate if we can start based on current time vs tier times
-      const canStartTier1 = tier1Start > 0 && now >= tier1Start;
-      const canStartTier2 = tier2Start > 0 && now >= tier2Start;
+      // Calculate if we can start based on current time vs escalation times
+      const canStartEscalation1 = escalation1Start > 0 && now >= escalation1Start;
+      const canStartEscalation2 = escalation2Start > 0 && now >= escalation2Start;
 
-      // Determine active tier based on time
-      let activeTier = 0;
-      if (canStartTier2) {
-        activeTier = 2;
-      } else if (canStartTier1) {
-        activeTier = 1;
+      // Determine active escalation based on time
+      let activeEscalation = 0;
+      if (canStartEscalation2) {
+        activeEscalation = 2;
+      } else if (canStartEscalation1) {
+        activeEscalation = 1;
       }
 
       // Debug logging
-      if (tier1Start > 0 || contractActiveTier > 0) {
-        console.log(`[${tierId}-${instanceId}] Timeout State Update:`, {
+      if (escalation1Start > 0 || contractActiveEscalation > 0) {
+        console.log(`[${tierId}-${instanceId}] Escalation State Update:`, {
           now,
-          tier1Start,
-          tier2Start,
-          contractActiveTier,
-          calculatedActiveTier: activeTier,
-          canStartTier1,
-          canStartTier2,
-          timeToTier1,
-          timeToTier2,
+          escalation1Start,
+          escalation2Start,
+          contractActiveEscalation,
+          calculatedActiveEscalation: activeEscalation,
+          canStartEscalation1,
+          canStartEscalation2,
+          timeToEscalation1,
+          timeToEscalation2,
           forfeitPool: forfeitPool.toString()
         });
       }
 
-      setTimeoutState({
-        activeTier,
-        canStartTier1,
-        canStartTier2,
-        timeToTier1,
-        timeToTier2,
+      setEscalationState({
+        activeEscalation,
+        canStartEscalation1,
+        canStartEscalation2,
+        timeToEscalation1,
+        timeToEscalation2,
         forfeitPool
       });
     };
 
-    updateTimeoutState();
-    const interval = setInterval(updateTimeoutState, 1000);
+    updateEscalationState();
+    const interval = setInterval(updateEscalationState, 1000);
 
     return () => clearInterval(interval);
   }, [enrollmentTimeout, tierId, instanceId]);
@@ -474,8 +474,8 @@ const TournamentCard = ({
         </div>
       </div>
 
-      {/* Enrollment Status Message - Show when in enrollment but timeout not started */}
-      {enrollmentTimeout && currentEnrolled > 0 && currentEnrolled < maxPlayers && !(timeoutState.timeToTier1 > 0 || timeoutState.activeTier > 0 || timeoutState.canStart) && (
+      {/* Enrollment Status Message - Show when in enrollment but escalation not started */}
+      {enrollmentTimeout && currentEnrolled > 0 && currentEnrolled < maxPlayers && !(escalationState.timeToEscalation1 > 0 || escalationState.activeEscalation > 0 || escalationState.canStart) && (
         <div className="mb-4 bg-blue-500/20 border border-blue-400/50 rounded-lg p-3">
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
@@ -492,7 +492,7 @@ const TournamentCard = ({
       )}
 
       {/* Tournament Full - Waiting to Start */}
-      {currentEnrolled >= maxPlayers && !(timeoutState.timeToTier1 > 0 || timeoutState.activeTier > 0 || timeoutState.canStart) && tournamentStatus === 0 && (
+      {currentEnrolled >= maxPlayers && !(escalationState.timeToEscalation1 > 0 || escalationState.activeEscalation > 0 || escalationState.canStart) && tournamentStatus === 0 && (
         <div className="mb-4 bg-green-500/20 border border-green-400/50 rounded-lg p-3">
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
@@ -508,11 +508,11 @@ const TournamentCard = ({
         </div>
       )}
 
-      {/* Enrollment Timeout Tier System - Show when timeout system is active or has started */}
-      {enrollmentTimeout && (timeoutState.timeToTier1 > 0 || timeoutState.activeTier > 0 || timeoutState.canStart) && (
+      {/* Enrollment Escalation System - Show when escalation system is active or has started */}
+      {enrollmentTimeout && (escalationState.timeToEscalation1 > 0 || escalationState.activeEscalation > 0 || escalationState.canStart) && (
         <div className="mb-4 space-y-2">
           {/* Main Countdown Timer */}
-          {timeoutState.timeToTier1 > 0 && timeoutState.activeTier === 0 ? (
+          {escalationState.timeToEscalation1 > 0 && escalationState.activeEscalation === 0 ? (
             <div className="bg-gradient-to-r from-orange-500/20 to-red-500/20 border border-orange-400/50 rounded-lg p-4">
               <div className="text-center">
                 <div className="flex items-center justify-center gap-2 mb-2">
@@ -520,80 +520,80 @@ const TournamentCard = ({
                   <span className="text-orange-300 text-sm font-semibold">Force Start Unlocks In</span>
                 </div>
                 <div className="text-orange-300 font-bold text-3xl">
-                  {formatTime(timeoutState.timeToTier1)}
+                  {formatTime(escalationState.timeToEscalation1)}
                 </div>
                 <div className="text-orange-300/70 text-xs mt-1">
                   Enrolled players will be able to force start the tournament
                 </div>
               </div>
             </div>
-          ) : (timeoutState.canStartTier1 || timeoutState.canStartTier2) && timeoutState.activeTier >= 1 ? (
-            <div className={`bg-gradient-to-r ${timeoutState.canStartTier2 ? 'from-red-500/20 to-red-600/20 border-red-400/50' : 'from-green-500/20 to-emerald-500/20 border-green-400/50'} border rounded-lg p-4`}>
+          ) : (escalationState.canStartEscalation1 || escalationState.canStartEscalation2) && escalationState.activeEscalation >= 1 ? (
+            <div className={`bg-gradient-to-r ${escalationState.canStartEscalation2 ? 'from-red-500/20 to-red-600/20 border-red-400/50' : 'from-green-500/20 to-emerald-500/20 border-green-400/50'} border rounded-lg p-4`}>
               <div className="text-center">
                 <div className="flex items-center justify-center gap-2 mb-2">
-                  {timeoutState.canStartTier2 ? <Coins className="text-red-400" size={20} /> : <Zap className="text-green-400" size={20} />}
-                  <span className={`${timeoutState.canStartTier2 ? 'text-red-300' : 'text-green-300'} text-sm font-semibold`}>
-                    {timeoutState.canStartTier2 ? 'Pool Claim Available!' : 'Force Start Available!'}
+                  {escalationState.canStartEscalation2 ? <Coins className="text-red-400" size={20} /> : <Zap className="text-green-400" size={20} />}
+                  <span className={`${escalationState.canStartEscalation2 ? 'text-red-300' : 'text-green-300'} text-sm font-semibold`}>
+                    {escalationState.canStartEscalation2 ? 'Pool Claim Available!' : 'Force Start Available!'}
                   </span>
                 </div>
-                <div className={`${timeoutState.canStartTier2 ? 'text-red-300' : 'text-green-300'} text-sm`}>
-                  {timeoutState.canStartTier2
+                <div className={`${escalationState.canStartEscalation2 ? 'text-red-300' : 'text-green-300'} text-sm`}>
+                  {escalationState.canStartEscalation2
                     ? 'Anyone can claim the abandoned enrollment pool'
                     : 'Any enrolled player can force start this tournament'
                   }
                 </div>
-                {timeoutState.timeToTier2 > 0 && timeoutState.activeTier === 1 && (
+                {escalationState.timeToEscalation2 > 0 && escalationState.activeEscalation === 1 && (
                   <div className="text-green-300/70 text-xs mt-2">
-                    Claim access opens to everyone in {formatTime(timeoutState.timeToTier2)}
+                    Claim access opens to everyone in {formatTime(escalationState.timeToEscalation2)}
                   </div>
                 )}
               </div>
             </div>
           ) : null}
 
-          {/* Tier 1 Window */}
+          {/* Escalation Level 1 Window */}
           <div className={`border rounded-lg p-3 ${
-            timeoutState.activeTier >= 1 ? 'bg-green-500/20 border-green-400/50' : 'bg-gray-500/20 border-gray-400/50'
+            escalationState.activeEscalation >= 1 ? 'bg-green-500/20 border-green-400/50' : 'bg-gray-500/20 border-gray-400/50'
           }`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Clock className={timeoutState.activeTier >= 1 ? 'text-green-400' : 'text-gray-400'} size={16} />
-                <span className={`text-xs font-semibold ${timeoutState.activeTier >= 1 ? 'text-green-300' : 'text-gray-400'}`}>
-                  Tier 1: Any Enrolled Player Can Force Start
+                <Clock className={escalationState.activeEscalation >= 1 ? 'text-green-400' : 'text-gray-400'} size={16} />
+                <span className={`text-xs font-semibold ${escalationState.activeEscalation >= 1 ? 'text-green-300' : 'text-gray-400'}`}>
+                  Escalation 1: Any Enrolled Player Can Force Start
                 </span>
               </div>
-              <span className={`font-bold text-sm ${timeoutState.activeTier >= 1 ? 'text-green-300' : 'text-gray-400'}`}>
-                {timeoutState.activeTier >= 1 ? 'ACTIVE' : formatTime(timeoutState.timeToTier1)}
+              <span className={`font-bold text-sm ${escalationState.activeEscalation >= 1 ? 'text-green-300' : 'text-gray-400'}`}>
+                {escalationState.activeEscalation >= 1 ? 'ACTIVE' : formatTime(escalationState.timeToEscalation1)}
               </span>
             </div>
           </div>
 
-          {/* Tier 2 Window (if exists) - Show when tier2 is configured */}
-          {(timeoutState.timeToTier2 > 0 || timeoutState.activeTier >= 2) && (
+          {/* Escalation Level 2 Window (if exists) - Show when escalation2 is configured */}
+          {(escalationState.timeToEscalation2 > 0 || escalationState.activeEscalation >= 2) && (
             <div className={`border rounded-lg p-3 ${
-              timeoutState.activeTier >= 2 ? 'bg-red-500/20 border-red-400/50' : 'bg-gray-500/20 border-gray-400/50'
+              escalationState.activeEscalation >= 2 ? 'bg-red-500/20 border-red-400/50' : 'bg-gray-500/20 border-gray-400/50'
             }`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Coins className={timeoutState.activeTier >= 2 ? 'text-red-400' : 'text-gray-400'} size={16} />
-                  <span className={`text-xs font-semibold ${timeoutState.activeTier >= 2 ? 'text-red-300' : 'text-gray-400'}`}>
-                    Tier 2: Anyone Can Claim Pool
+                  <Coins className={escalationState.activeEscalation >= 2 ? 'text-red-400' : 'text-gray-400'} size={16} />
+                  <span className={`text-xs font-semibold ${escalationState.activeEscalation >= 2 ? 'text-red-300' : 'text-gray-400'}`}>
+                    Escalation 2: Anyone Can Claim Pool
                   </span>
                 </div>
-                <span className={`font-bold text-sm ${timeoutState.activeTier >= 2 ? 'text-red-300' : 'text-gray-400'}`}>
-                  {timeoutState.activeTier >= 2 ? 'ACTIVE' : formatTime(timeoutState.timeToTier2)}
+                <span className={`font-bold text-sm ${escalationState.activeEscalation >= 2 ? 'text-red-300' : 'text-gray-400'}`}>
+                  {escalationState.activeEscalation >= 2 ? 'ACTIVE' : formatTime(escalationState.timeToEscalation2)}
                 </span>
               </div>
             </div>
           )}
 
           {/* Forfeit Pool Display */}
-          {timeoutState.forfeitPool && timeoutState.forfeitPool > 0n && (
+          {escalationState.forfeitPool && escalationState.forfeitPool > 0n && (
             <div className="bg-purple-500/20 border border-purple-400/50 rounded-lg p-2">
               <div className="flex items-center justify-between">
                 <span className="text-purple-300 text-xs font-semibold">Forfeit Pool</span>
                 <span className="text-purple-300 font-bold text-sm">
-                  {ethers.formatEther(timeoutState.forfeitPool)} ETH
+                  {ethers.formatEther(escalationState.forfeitPool)} ETH
                 </span>
               </div>
             </div>
@@ -602,16 +602,16 @@ const TournamentCard = ({
       )}
 
       {/* Debug Info - Remove after testing */}
-      {enrollmentTimeout && (timeoutState.activeTier > 0 || timeoutState.timeToTier1 > 0) && (
+      {enrollmentTimeout && (escalationState.activeEscalation > 0 || escalationState.timeToEscalation1 > 0) && (
         <div className="mb-2 bg-gray-800/50 border border-gray-600 rounded p-2 text-xs text-gray-300">
-          <div>Tier1: {timeoutState.canStartTier1 ? '✅' : '❌'} | Tier2: {timeoutState.canStartTier2 ? '✅' : '❌'} | isEnrolled: {isEnrolled ? '✅' : '❌'}</div>
-          <div>activeTier: {timeoutState.activeTier} | Button: {((timeoutState.canStartTier1 && isEnrolled) || timeoutState.canStartTier2) ? '✅ VISIBLE' : '❌ HIDDEN'}</div>
+          <div>Esc1: {escalationState.canStartEscalation1 ? '✅' : '❌'} | Esc2: {escalationState.canStartEscalation2 ? '✅' : '❌'} | isEnrolled: {isEnrolled ? '✅' : '❌'}</div>
+          <div>activeEscalation: {escalationState.activeEscalation} | Button: {((escalationState.canStartEscalation1 && isEnrolled) || escalationState.canStartEscalation2) ? '✅ VISIBLE' : '❌ HIDDEN'}</div>
         </div>
       )}
 
       {/* Action Buttons */}
-      {timeoutState.canStartTier2 ? (
-        // Tier 2: Anyone can claim the abandoned pool
+      {escalationState.canStartEscalation2 ? (
+        // Escalation 2: Anyone can claim the abandoned pool
         <button
           onClick={() => onClaimAbandonedPool(tierId, instanceId)}
           disabled={loading}
@@ -620,8 +620,8 @@ const TournamentCard = ({
           <Coins size={18} />
           {loading ? 'Claiming...' : 'Claim Abandoned Pool'}
         </button>
-      ) : (timeoutState.canStartTier1 && isEnrolled) ? (
-        // Tier 1: Enrolled players can force start
+      ) : (escalationState.canStartEscalation1 && isEnrolled) ? (
+        // Escalation 1: Enrolled players can force start
         <button
           onClick={() => onManualStart(tierId, instanceId)}
           disabled={loading || !account}
@@ -1977,11 +1977,11 @@ export default function TicTacBlock() {
       const fee = await contract.ENTRY_FEES(tierId);
       const entryFeeFormatted = ethers.formatEther(fee);
 
-      // Get tier timeout configs
+      // Get tier escalation and timeout configs
       let tierTimeoutConfig = null;
       try {
         tierTimeoutConfig = await contract.tierTimeoutConfigs(tierId);
-        console.log(`Tier ${tierId} timeout config:`, {
+        console.log(`Tier ${tierId} escalation & timeout config:`, {
           enrollmentWindow: Number(tierTimeoutConfig.enrollmentWindow),
           matchMoveTimeout: Number(tierTimeoutConfig.matchMoveTimeout),
           roundCompletionTimeout: Number(tierTimeoutConfig.roundCompletionTimeout),
@@ -2019,10 +2019,10 @@ export default function TicTacBlock() {
 
           // Debug logging
           if (enrollmentTimeout) {
-            console.log(`Tournament ${tierId}-${instanceId} timeout data:`, {
-              tier1Start: Number(enrollmentTimeout.tier1Start),
-              tier2Start: Number(enrollmentTimeout.tier2Start),
-              activeTier: Number(enrollmentTimeout.activeTier),
+            console.log(`Tournament ${tierId}-${instanceId} escalation data:`, {
+              escalation1Start: Number(enrollmentTimeout.escalation1Start),
+              escalation2Start: Number(enrollmentTimeout.escalation2Start),
+              activeEscalation: Number(enrollmentTimeout.activeEscalation),
               canStart: enrollmentTimeout.canStart,
               forfeitPool: enrollmentTimeout.forfeitPool?.toString() || '0',
               hasStartedViaTimeout
@@ -2171,10 +2171,10 @@ export default function TicTacBlock() {
 
             // Debug logging
             if (enrollmentTimeout) {
-              console.log(`Tournament ${tierId}-${i} timeout data:`, {
-                tier1Start: Number(enrollmentTimeout.tier1Start),
-                tier2Start: Number(enrollmentTimeout.tier2Start),
-                activeTier: Number(enrollmentTimeout.activeTier),
+              console.log(`Tournament ${tierId}-${i} escalation data:`, {
+                escalation1Start: Number(enrollmentTimeout.escalation1Start),
+                escalation2Start: Number(enrollmentTimeout.escalation2Start),
+                activeEscalation: Number(enrollmentTimeout.activeEscalation),
                 canStart: enrollmentTimeout.canStart,
                 forfeitPool: enrollmentTimeout.forfeitPool?.toString() || '0',
                 hasStartedViaTimeout
@@ -2270,20 +2270,20 @@ export default function TicTacBlock() {
       const status = Number(tournamentInfo.status);
       const enrollmentTimeout = tournamentInfo.enrollmentTimeout;
 
-      // Extract timeout tier information
-      const tier1Start = Number(enrollmentTimeout.tier1Start);
-      const tier2Start = Number(enrollmentTimeout.tier2Start);
+      // Extract escalation level information
+      const escalation1Start = Number(enrollmentTimeout.escalation1Start);
+      const escalation2Start = Number(enrollmentTimeout.escalation2Start);
       const forfeitPool = enrollmentTimeout.forfeitPool;
 
-      // Calculate client-side tier availability
+      // Calculate client-side escalation availability
       const now = Math.floor(Date.now() / 1000);
-      const canStartTier1 = tier1Start > 0 && now >= tier1Start;
-      const canStartTier2 = tier2Start > 0 && now >= tier2Start;
+      const canStartEscalation1 = escalation1Start > 0 && now >= escalation1Start;
+      const canStartEscalation2 = escalation2Start > 0 && now >= escalation2Start;
 
       console.log('Force start attempt:', {
         tierId, instanceId, enrolledCount, status,
-        tier1Start, tier2Start, now,
-        canStartTier1, canStartTier2,
+        escalation1Start, escalation2Start, now,
+        canStartEscalation1, canStartEscalation2,
         forfeitPool: forfeitPool.toString()
       });
 
@@ -2294,18 +2294,18 @@ export default function TicTacBlock() {
         return;
       }
 
-      // Check if any tier window is open
-      if (!canStartTier1 && !canStartTier2) {
+      // Check if any escalation window is open
+      if (!canStartEscalation1 && !canStartEscalation2) {
         let timeUntilCanStart = 0;
 
-        if (tier1Start > 0) {
-          timeUntilCanStart = tier1Start - now;
+        if (escalation1Start > 0) {
+          timeUntilCanStart = escalation1Start - now;
         }
 
         if (timeUntilCanStart > 0) {
           const minutes = Math.floor(timeUntilCanStart / 60);
           const seconds = timeUntilCanStart % 60;
-          alert(`Tournament cannot be force-started yet. Wait ${minutes}m ${seconds}s for the timeout window to open.`);
+          alert(`Tournament cannot be force-started yet. Wait ${minutes}m ${seconds}s for the escalation window to open.`);
         } else {
           alert('Tournament cannot be force-started at this time');
         }
@@ -2319,36 +2319,36 @@ export default function TicTacBlock() {
         return;
       }
 
-      // Check if user is enrolled (only required for tier 1)
+      // Check if user is enrolled (only required for escalation 1)
       const isEnrolled = await contract.isEnrolled(tierId, instanceId, account);
 
-      // This function should only be called for Tier 1 now
-      // Tier 2 should use handleClaimAbandonedPool instead
-      if (canStartTier2) {
-        alert('This tournament has reached Tier 2. Please use the claimAbandonedEnrollmentPool button instead.');
+      // This function should only be called for Escalation 1 now
+      // Escalation 2 should use handleClaimAbandonedPool instead
+      if (canStartEscalation2) {
+        alert('This tournament has reached Escalation 2. Please use the claimAbandonedEnrollmentPool button instead.');
         setTournamentsLoading(false);
         return;
       }
 
-      // Tier 1: Only enrolled players can start
+      // Escalation 1: Only enrolled players can start
       if (!isEnrolled) {
-        alert('You must be enrolled in the tournament to force-start it at Tier 1.');
+        alert('You must be enrolled in the tournament to force-start it at Escalation 1.');
         setTournamentsLoading(false);
         return;
       }
 
-      // Build warning message for Tier 1 force start
+      // Build warning message for Escalation 1 force start
       let warningMessage = '';
 
       if (enrolledCount === 1) {
-        // Tier 1: Only you are enrolled
+        // Escalation 1: Only you are enrolled
         warningMessage = 'You are the only enrolled player. Force-starting will declare you the winner and award you the prize pool';
         if (forfeitPool && forfeitPool > 0n) {
           warningMessage += ` plus any forfeited fees (${ethers.formatEther(forfeitPool)} ETH)`;
         }
         warningMessage += '. Continue?';
       } else {
-        // Tier 1: Multiple players enrolled
+        // Escalation 1: Multiple players enrolled
         warningMessage = `Force-starting will begin the tournament with ${enrolledCount} players`;
         if (forfeitPool && forfeitPool > 0n) {
           warningMessage += `. Forfeit pool of ${ethers.formatEther(forfeitPool)} ETH will be distributed`;
@@ -2368,8 +2368,8 @@ export default function TicTacBlock() {
         instanceId,
         enrolledCount,
         status,
-        canStartTier1,
-        canStartTier2,
+        canStartEscalation1,
+        canStartEscalation2,
         isEnrolled
       });
 
@@ -2430,28 +2430,28 @@ export default function TicTacBlock() {
       const enrollmentTimeout = tournamentInfo.enrollmentTimeout;
       const forfeitPool = enrollmentTimeout.forfeitPool || 0n;
 
-      // Calculate tier availability
-      const tier1Start = Number(enrollmentTimeout.tier1Start);
-      const tier2Start = Number(enrollmentTimeout.tier2Start);
+      // Calculate escalation availability
+      const escalation1Start = Number(enrollmentTimeout.escalation1Start);
+      const escalation2Start = Number(enrollmentTimeout.escalation2Start);
       const now = Math.floor(Date.now() / 1000);
-      const canStartTier2 = tier2Start > 0 && now >= tier2Start;
+      const canStartEscalation2 = escalation2Start > 0 && now >= escalation2Start;
 
       console.log('Claim abandoned pool attempt:', {
         tierId, instanceId, status, enrolledCount,
-        canStartTier2, tier2Start, now,
+        canStartEscalation2, escalation2Start, now,
         forfeitPool: forfeitPool.toString()
       });
 
-      // For ongoing tournaments (status 0), check if we're in Tier 2
+      // For ongoing tournaments (status 0), check if we're in Escalation 2
       if (status === 0) {
-        if (!canStartTier2) {
-          alert('Tier 2 has not opened yet. Wait for the timeout period to complete.');
+        if (!canStartEscalation2) {
+          alert('Escalation 2 has not opened yet. Wait for the escalation period to complete.');
           setTournamentsLoading(false);
           return;
         }
 
         const confirmClaim = window.confirm(
-          `Claim the entire tournament pool (Tier 2 - Abandoned Tournament)?\n\n` +
+          `Claim the entire tournament pool (Escalation 2 - Abandoned Tournament)?\n\n` +
           `This tournament has ${enrolledCount} enrolled player${enrolledCount !== 1 ? 's' : ''} but failed to start in time.\n` +
           `You will receive the entire enrollment pool${forfeitPool > 0n ? ` plus ${ethers.formatEther(forfeitPool)} ETH in forfeited fees` : ''}.\n\n` +
           `The tournament will be reset after claiming.`
