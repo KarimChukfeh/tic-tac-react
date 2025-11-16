@@ -1598,7 +1598,6 @@ export default function TicTacBlock() {
   // Tournament State
   const [tournaments, setTournaments] = useState([]);
   const [tournamentsLoading, setTournamentsLoading] = useState(false);
-  const [tournamentsSyncDots, setTournamentsSyncDots] = useState(1);
   const [viewingTournament, setViewingTournament] = useState(null); // { tierId, instanceId, tournamentData, bracketData }
   const [bracketSyncDots, setBracketSyncDots] = useState(1);
 
@@ -1612,7 +1611,6 @@ export default function TicTacBlock() {
   // Cached Stats State
   const [cachedStats, setCachedStats] = useState(null);
   const [cachedStatsLoading, setCachedStatsLoading] = useState(false);
-  const [cachedStatsSyncDots, setCachedStatsSyncDots] = useState(1);
 
   // Helper to cycle through themes
   const cycleTheme = () => {
@@ -2958,106 +2956,15 @@ export default function TicTacBlock() {
     contractRefForTournaments.current = contract;
   }, [theme, contract]);
 
-  useEffect(() => {
-    // Only run auto-refresh when:
-    // 1. Contract is available
-    // 2. Not viewing a specific tournament (i.e., on the tournament list view)
-    // 3. Not in the initial loading state
-    if (!contract || viewingTournament || initialLoading || currentMatch) return;
+  // Tournament auto-sync removed - tournaments will only refresh on manual actions
 
-    const doTournamentSync = async () => {
-      const currentTheme = themeRef.current;
-      const contractInstance = contractRefForTournaments.current;
-
-      if (!contractInstance) return;
-
-      try {
-        // Refresh tournaments based on current theme (silent mode to avoid loading state)
-        if (currentTheme === 'dream') {
-          await fetchTournaments(0, true);
-        } else if (currentTheme === 'daring') {
-          await fetchAllDaringTiers(true);
-        }
-
-        // Reset sync dots to 1 after sync completes
-        setTournamentsSyncDots(1);
-      } catch (err) {
-        console.log('Tournament sync error:', err);
-      }
-    };
-
-    // Set up polling interval - runs every 3 seconds
-    const pollInterval = setInterval(doTournamentSync, 3000);
-
-    return () => clearInterval(pollInterval);
-  }, [contract, viewingTournament, initialLoading, currentMatch, theme, fetchTournaments, fetchAllDaringTiers]);
-
-  // Increment tournament sync dots every second
-  useEffect(() => {
-    // Only animate sync dots when on tournament list view
-    if (viewingTournament || initialLoading || currentMatch) return;
-
-    const dotsInterval = setInterval(() => {
-      setTournamentsSyncDots(prev => {
-        if (prev >= 3) return 3;
-        return prev + 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(dotsInterval);
-  }, [viewingTournament, initialLoading, currentMatch]);
-
-  // Auto-refresh cached stats every 3 seconds (smooth update without clearing the list)
+  // Cached stats auto-sync removed - stats will only refresh on manual actions
   const contractRefForCachedStats = useRef(contract);
 
   // Keep ref updated
   useEffect(() => {
     contractRefForCachedStats.current = contract;
   }, [contract]);
-
-  useEffect(() => {
-    // Only run auto-refresh when:
-    // 1. Contract is available
-    // 2. Not in the initial loading state
-    // 3. Not viewing tournament or match
-    if (!contract || initialLoading || viewingTournament || currentMatch) return;
-
-    const doCachedStatsSync = async () => {
-      const contractInstance = contractRefForCachedStats.current;
-
-      if (!contractInstance) return;
-
-      try {
-        // Refresh cached stats in silent mode
-        await fetchCachedStats(true);
-
-        // Reset sync dots to 1 after sync completes
-        setCachedStatsSyncDots(1);
-      } catch (err) {
-        console.log('Cached stats sync error:', err);
-      }
-    };
-
-    // Set up polling interval - runs every 3 seconds
-    const pollInterval = setInterval(doCachedStatsSync, 3000);
-
-    return () => clearInterval(pollInterval);
-  }, [contract, initialLoading, viewingTournament, currentMatch, fetchCachedStats]);
-
-  // Increment cached stats sync dots every second
-  useEffect(() => {
-    // Only animate sync dots when not in loading or viewing states
-    if (initialLoading || viewingTournament || currentMatch) return;
-
-    const dotsInterval = setInterval(() => {
-      setCachedStatsSyncDots(prev => {
-        if (prev >= 3) return 3;
-        return prev + 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(dotsInterval);
-  }, [initialLoading, viewingTournament, currentMatch]);
 
   // Loading animation component
   if (initialLoading) {
@@ -3831,12 +3738,6 @@ export default function TicTacBlock() {
                       <h2 className={`text-5xl font-bold bg-gradient-to-r ${theme === 'dream' ? 'from-blue-400 to-cyan-400' : theme === 'daring' ? 'from-red-400 to-orange-400' : 'from-purple-400 to-blue-400'} bg-clip-text text-transparent`}>
                         {theme === 'dream' ? 'Classic Tournaments' : theme === 'daring' ? 'Pro Tournaments' : 'Tournaments'}
                       </h2>
-                      {!tournamentsLoading && tournaments.length > 0 && (
-                        <span className={`text-sm font-semibold flex items-center gap-1 mt-1 ${theme === 'dream' ? 'text-cyan-400' : 'text-orange-400'}`}>
-                          <div className={`w-2 h-2 ${theme === 'dream' ? 'bg-cyan-400' : 'bg-orange-400'} rounded-full animate-pulse`}></div>
-                          Syncing{'.'.repeat(tournamentsSyncDots)}
-                        </span>
-                      )}
                     </div>
                   </div>
                   <p className={`text-xl ${theme === 'dream' ? 'text-blue-200' : theme === 'daring' ? 'text-red-200' : 'text-purple-200'}`}>
@@ -4007,12 +3908,6 @@ export default function TicTacBlock() {
                         <h2 className="text-4xl font-bold text-white">
                           Cached Stats
                         </h2>
-                        {!cachedStatsLoading && cachedStats && (cachedStats.matches.length > 0 || cachedStats.tournaments.length > 0) && (
-                          <span className="text-sm font-semibold flex items-center gap-1 mt-1 text-cyan-400">
-                            <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
-                            Syncing{'.'.repeat(cachedStatsSyncDots)}
-                          </span>
-                        )}
                       </div>
                     </div>
                     <p className="text-cyan-200/70 text-lg max-w-2xl mx-auto">
