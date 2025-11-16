@@ -4361,11 +4361,6 @@
         "type": "bool"
       },
       {
-        "internalType": "uint256",
-        "name": "totalForfeitedFees",
-        "type": "uint256"
-      },
-      {
         "components": [
           {
             "internalType": "uint256",

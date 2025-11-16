@@ -292,10 +292,10 @@ const TournamentCard = ({
   theme,
   enrollmentTimeout,
   hasStartedViaTimeout,
-  totalForfeitedFees,
   onManualStart,
   onClaimAbandonedPool,
-  tournamentStatus
+  tournamentStatus,
+  account
 }) => {
   const isFull = currentEnrolled >= maxPlayers;
   const enrollmentPercentage = (currentEnrolled / maxPlayers) * 100;
@@ -618,52 +618,50 @@ const TournamentCard = ({
           className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 mb-2"
         >
           <Coins size={18} />
-          {loading ? 'Claiming...' : 'claimAbandonedEnrollmentPool'}
+          {loading ? 'Claiming...' : 'Claim Abandoned Pool'}
         </button>
       ) : (timeoutState.canStartTier1 && isEnrolled) ? (
         // Tier 1: Enrolled players can force start
         <button
           onClick={() => onManualStart(tierId, instanceId)}
-          disabled={loading}
+          disabled={loading || !account}
           className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 mb-2"
         >
           <Zap size={18} />
-          {loading ? 'Starting...' : 'forceStartTournament'}
+          {loading ? 'Starting...' : !account ? 'Connect Wallet to Force Start' : 'Force Start Tournament'}
         </button>
-      ) : null}
+      ) : null} 
 
       {isEnrolled ? (
         <button
           onClick={onEnter}
-          disabled={loading}
+          disabled={loading || !account}
           className={`w-full bg-gradient-to-r ${colors.buttonEnter} text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2`}
         >
           <Play size={18} />
-          {loading ? 'Loading...' : 'Enter Tournament'}
+          {loading ? 'Loading...' : !account ? 'Connect Wallet to Enter' : 'Enter Tournament'}
         </button>
       ) : (
         <button
           onClick={onEnroll}
-          disabled={loading || isFull}
+          disabled={loading || isFull || !account}
           className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
         >
           <Trophy size={18} />
-          {loading ? 'Enrolling...' : isFull ? 'Tournament Full' : 'Enroll Now'}
+          {loading ? 'Enrolling...' : !account ? 'Connect Wallet to Enroll' : isFull ? 'Tournament Full' : 'Enroll Now'}
         </button>
       )}
 
       {/* Abandoned Pool Claim Button - show for completed/abandoned tournaments with claimable funds */}
-      {onClaimAbandonedPool && tournamentStatus >= 2 && (
-        (totalForfeitedFees && totalForfeitedFees > 0n) ||
-        (timeoutState.forfeitPool && timeoutState.forfeitPool > 0n)
-      ) && (
+      {onClaimAbandonedPool && tournamentStatus >= 2 &&
+        timeoutState.forfeitPool && timeoutState.forfeitPool > 0n && (
         <button
           onClick={() => onClaimAbandonedPool(tierId, instanceId)}
-          disabled={loading}
+          disabled={loading || !account}
           className="w-full mt-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
         >
           <Coins size={18} />
-          {loading ? 'Claiming...' : `claimAbandonedEnrollmentPool (${ethers.formatEther(totalForfeitedFees || timeoutState.forfeitPool)} ETH)`}
+          {loading ? 'Claiming...' : !account ? 'Connect Wallet to Claim' : `claimAbandonedEnrollmentPool (${ethers.formatEther(timeoutState.forfeitPool)} ETH)`}
         </button>
       )}
     </div>
@@ -1594,6 +1592,7 @@ export default function TicTacBlock() {
   // Theme State - 'dream' (blue/cyan), 'daring' (red/orange)
   const [theme, setTheme] = useState('daring');
   const [expandedFaq, setExpandedFaq] = useState(null);
+  const [showThemeToggle, setShowThemeToggle] = useState(true);
 
   // Tournament State
   const [tournaments, setTournaments] = useState([]);
@@ -1915,6 +1914,27 @@ export default function TicTacBlock() {
         setEntryFee('0.01');
       }
 
+      // Fetch tournaments during initial load (no wallet required)
+      if (isInitialLoad) {
+        console.log('🔄 Fetching tournaments for initial load...');
+        try {
+          // Fetch based on the current theme
+          const currentTheme = themeRef.current || 'daring';
+
+          if (currentTheme === 'dream') {
+            // Fetch Dream mode tournaments (tier 0)
+            await fetchTournaments(0, false);
+          } else {
+            // Fetch all Daring mode tiers
+            await fetchAllDaringTiers(false);
+          }
+
+          console.log('✅ Initial tournament data loaded');
+        } catch (err) {
+          console.warn('Could not fetch tournaments on initial load:', err);
+        }
+      }
+
       // Mark initial loading as complete
       if (isInitialLoad) {
         setInitialLoading(false);
@@ -1992,12 +2012,10 @@ export default function TicTacBlock() {
         // Get enrollment timeout data with tier information
         let enrollmentTimeout = null;
         let hasStartedViaTimeout = false;
-        let totalForfeitedFees = 0n;
         try {
           const tournamentInfo = await contract.tournaments(tierId, instanceId);
           enrollmentTimeout = tournamentInfo.enrollmentTimeout;
           hasStartedViaTimeout = tournamentInfo.hasStartedViaTimeout;
-          totalForfeitedFees = tournamentInfo.totalForfeitedFees || 0n;
 
           // Debug logging
           if (enrollmentTimeout) {
@@ -2007,8 +2025,7 @@ export default function TicTacBlock() {
               activeTier: Number(enrollmentTimeout.activeTier),
               canStart: enrollmentTimeout.canStart,
               forfeitPool: enrollmentTimeout.forfeitPool?.toString() || '0',
-              hasStartedViaTimeout,
-              totalForfeitedFees: totalForfeitedFees.toString()
+              hasStartedViaTimeout
             });
           }
         } catch (err) {
@@ -2025,7 +2042,6 @@ export default function TicTacBlock() {
           isEnrolled,
           enrollmentTimeout,
           hasStartedViaTimeout,
-          totalForfeitedFees,
           tournamentStatus: status, // Store raw status for conditional rendering
           tierTimeoutConfig // Include timeout configuration
         });
@@ -2148,12 +2164,10 @@ export default function TicTacBlock() {
           // Get enrollment timeout data with tier information
           let enrollmentTimeout = null;
           let hasStartedViaTimeout = false;
-          let totalForfeitedFees = 0n;
           try {
             const tournamentInfo = await contract.tournaments(tierId, i);
             enrollmentTimeout = tournamentInfo.enrollmentTimeout;
             hasStartedViaTimeout = tournamentInfo.hasStartedViaTimeout;
-            totalForfeitedFees = tournamentInfo.totalForfeitedFees || 0n;
 
             // Debug logging
             if (enrollmentTimeout) {
@@ -2163,8 +2177,7 @@ export default function TicTacBlock() {
                 activeTier: Number(enrollmentTimeout.activeTier),
                 canStart: enrollmentTimeout.canStart,
                 forfeitPool: enrollmentTimeout.forfeitPool?.toString() || '0',
-                hasStartedViaTimeout,
-                totalForfeitedFees: totalForfeitedFees.toString()
+                hasStartedViaTimeout
               });
             }
           } catch (err) {
@@ -2181,7 +2194,6 @@ export default function TicTacBlock() {
             isEnrolled,
             enrollmentTimeout,
             hasStartedViaTimeout,
-            totalForfeitedFees,
             tournamentStatus: status // Store raw status for conditional rendering
           });
         }
@@ -2966,6 +2978,25 @@ export default function TicTacBlock() {
     contractRefForCachedStats.current = contract;
   }, [contract]);
 
+  // Scroll listener to hide theme toggle when scrolled past hero section
+  useEffect(() => {
+    const handleScroll = () => {
+      // Get the hero section height (approximately where "Why Arbitrum?" ends)
+      // We'll hide the button when scrolled past ~600px
+      const scrollPosition = window.scrollY;
+      const threshold = 600;
+
+      if (scrollPosition > threshold) {
+        setShowThemeToggle(false);
+      } else {
+        setShowThemeToggle(true);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   // Loading animation component
   if (initialLoading) {
     return (
@@ -3000,10 +3031,65 @@ export default function TicTacBlock() {
       background: currentTheme.gradient,
       color: '#fff',
       position: 'relative',
-      overflow: 'hidden'
+      overflow: 'hidden',
+      transition: 'background 0.8s ease-in-out'
     }}>
       {/* Particle Background */}
       <ParticleBackground colors={currentTheme.particleColors} />
+
+      {/* Fixed Theme Toggle - Top Right */}
+      <button
+        onClick={cycleTheme}
+        className="theme-toggle-button"
+        style={{
+          position: 'fixed',
+          top: '94px',
+          right: '24px',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '7px',
+          background: 'rgba(255, 255, 255, 0.1)',
+          backdropFilter: 'blur(10px)',
+          border: `2px solid ${currentTheme.border}`,
+          borderRadius: '18px',
+          padding: '8px 14px',
+          color: '#fff',
+          fontWeight: 'bold',
+          fontSize: '12px',
+          cursor: 'pointer',
+          transition: 'all 0.3s ease',
+          boxShadow: `0 0 16px ${currentTheme.glow}`,
+          opacity: showThemeToggle ? 1 : 0,
+          pointerEvents: showThemeToggle ? 'auto' : 'none'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'scale(1.05)';
+          e.currentTarget.style.boxShadow = `0 0 24px ${currentTheme.glow}`;
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = 'scale(1)';
+          e.currentTarget.style.boxShadow = `0 0 16px ${currentTheme.glow}`;
+        }}
+      >
+        <span style={{ fontSize: '18px' }}>{currentTheme.icon}</span>
+        <span>{currentTheme.label}</span>
+      </button>
+      <style>{`
+        * {
+          transition: background-color 3s ease-in-out,
+                      border-color 3s ease-in-out,
+                      box-shadow 3s ease-in-out,
+                      color 0.1s ease-in-out,
+                      background 3s ease-in-out !important;
+        }
+
+        @media (min-width: 1024px) {
+          .theme-toggle-button {
+            right: 175px !important;
+          }
+        }
+      `}</style>
 
       {/* Trust Banner */}
       <div style={{
@@ -3011,7 +3097,8 @@ export default function TicTacBlock() {
         borderBottom: `1px solid ${currentTheme.border}`,
         backdropFilter: 'blur(10px)',
         position: 'relative',
-        zIndex: 10
+        zIndex: 10,
+        transition: 'background 3s ease-in-out, border-bottom 5s ease-in-out'
       }}>
         <div className="max-w-7xl mx-auto px-6 py-3">
           <div className="flex flex-wrap items-center justify-between gap-4 text-sm">
@@ -3060,11 +3147,11 @@ export default function TicTacBlock() {
             Provably Fair • <a href="#zero-trust" className={`${currentTheme.heroText} hover:text-green-300 transition-colors underline decoration-${theme === 'daring' ? 'red' : 'blue'}-400/50 hover:decoration-green-400 underline-offset-4`}>Zero Trust</a> • 100% On-Chain
           </p>
           <p className={`text-lg ${currentTheme.heroSubtext} max-w-3xl mx-auto mb-8`}>
-            Play Tic-Tac-Toe on Arbitrum. Real opponents. Real ETH on the line.
+            Play Tic-Tac-Toe on the blockchain. Real opponents. Real ETH on the line.
             <br/>
-            No servers. No trust.
+            No servers required. No trust needed.
             <br/>
-            Every move is a transaction. Game outcomes are permanent on-chain.
+            Every move is a transaction. Every outcome is permanently on-chain.
           </p>
 
           {/* Game Info Cards */}
@@ -3152,39 +3239,6 @@ export default function TicTacBlock() {
             </div>
           </div>
 
-          {/* Theme Toggle */}
-          <div className="mt-4 max-w-2xl mx-auto flex justify-center">
-            <button
-              onClick={cycleTheme}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                background: 'rgba(255, 255, 255, 0.1)',
-                backdropFilter: 'blur(10px)',
-                border: `3px solid ${currentTheme.border}`,
-                borderRadius: '30px',
-                padding: '16px 32px',
-                color: '#fff',
-                fontWeight: 'bold',
-                fontSize: '20px',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease',
-                boxShadow: `0 0 25px ${currentTheme.glow}`
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.transform = 'scale(1.05)';
-                e.target.style.boxShadow = `0 0 35px ${currentTheme.glow}`;
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.transform = 'scale(1)';
-                e.target.style.boxShadow = `0 0 25px ${currentTheme.glow}`;
-              }}
-            >
-              <span style={{ fontSize: '28px' }}>{currentTheme.icon}</span>
-              <span>{currentTheme.label}</span>
-            </button>
-          </div>
 
           {/* Connection Status Panel (for debugging) */}
           {account && (networkInfo || contractStatus !== 'not_checked') && (
@@ -3714,7 +3768,7 @@ export default function TicTacBlock() {
         )}
 
         {/* Tournaments Section */}
-        {account && contract && !currentMatch && (
+        {contract && !currentMatch && (
           <>
             {viewingTournament ? (
               // Show Tournament Bracket View
@@ -3809,10 +3863,10 @@ export default function TicTacBlock() {
                                     theme={theme}
                                     enrollmentTimeout={tournament.enrollmentTimeout}
                                     hasStartedViaTimeout={tournament.hasStartedViaTimeout}
-                                    totalForfeitedFees={tournament.totalForfeitedFees}
                                     tournamentStatus={tournament.tournamentStatus}
                                     onManualStart={handleManualStart}
                                     onClaimAbandonedPool={handleClaimAbandonedPool}
+                                    account={account}
                                   />
                                 ))}
                               </div>
@@ -3839,10 +3893,10 @@ export default function TicTacBlock() {
                             theme={theme}
                             enrollmentTimeout={tournament.enrollmentTimeout}
                             hasStartedViaTimeout={tournament.hasStartedViaTimeout}
-                            totalForfeitedFees={tournament.totalForfeitedFees}
                             tournamentStatus={tournament.tournamentStatus}
                             onManualStart={handleManualStart}
                             onClaimAbandonedPool={handleClaimAbandonedPool}
+                            account={account}
                           />
                         ))}
                       </div>
@@ -3859,42 +3913,22 @@ export default function TicTacBlock() {
                   </div>
                 )}
 
-                {/* User Info Footer */}
-                <div className="mt-8 flex justify-center gap-4">
-                  <div className="bg-purple-500/20 border border-purple-400/50 rounded-xl p-4">
-                    <div className="text-purple-300 text-sm mb-1">Your Address</div>
-                    <div className="font-mono text-purple-100 font-bold">{account.slice(0, 6)}...{account.slice(-4)}</div>
+                {/* User Info Footer - Only show when wallet is connected */}
+                {account && (
+                  <div className="mt-8 flex justify-center gap-4">
+                    <div className="bg-purple-500/20 border border-purple-400/50 rounded-xl p-4">
+                      <div className="text-purple-300 text-sm mb-1">Your Address</div>
+                      <div className="font-mono text-purple-100 font-bold">{account.slice(0, 6)}...{account.slice(-4)}</div>
+                    </div>
+                    <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-4">
+                      <div className="text-blue-300 text-sm mb-1">Network</div>
+                      <div className="font-bold text-blue-100">{networkInfo?.name || 'Connected'}</div>
+                    </div>
                   </div>
-                  <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-4">
-                    <div className="text-blue-300 text-sm mb-1">Network</div>
-                    <div className="font-bold text-blue-100">{networkInfo?.name || 'Connected'}</div>
-                  </div>
-                </div>
+                )}
               </div>
             )}
           </>
-        )}
-
-        {/* Not Connected State - Call to Action */}
-        {!account && (
-          <div className="bg-gradient-to-r from-purple-600/30 to-pink-600/30 backdrop-blur-lg rounded-2xl p-8 border border-purple-400/30 mb-16">
-            <h2 className="text-4xl font-bold mb-6 flex items-center gap-3 justify-center">
-              <Wallet className="text-purple-400" />
-              Ready to Compete?
-            </h2>
-            <div className="text-center py-8 bg-purple-500/10 rounded-xl border border-purple-400/30">
-              <p className="text-2xl text-purple-200 mb-4 font-bold">Connect Your Wallet</p>
-              <p className="text-lg text-purple-300 mb-6">Get ready for tournaments with real ETH prizes!</p>
-              <button
-        onClick={connectWallet}
-        disabled={loading}
-        className="inline-flex items-center gap-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 px-10 py-5 rounded-2xl font-bold text-2xl shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-        <Wallet size={28} />
-        {loading ? 'Connecting...' : 'Connect Wallet'}
-              </button>
-            </div>
-          </div>
         )}
       </div>
 
@@ -4705,7 +4739,7 @@ export default function TicTacBlock() {
       </div>
 
       {/* CSS Animations & Custom Styles */}
-      <style jsx>{`
+      <style>{`
         /* Smooth scrolling for anchor links */
         html {
           scroll-behavior: smooth;
