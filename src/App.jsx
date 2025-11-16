@@ -3084,9 +3084,23 @@ export default function TicTacBlock() {
                       background 3s ease-in-out !important;
         }
 
+        .theme-toggle-button {
+          transform: scale(0.575) !important;
+          transform-origin: top right;
+        }
+
+        .theme-toggle-button:hover {
+          transform: scale(0.6) !important;
+        }
+
         @media (min-width: 1024px) {
           .theme-toggle-button {
             right: 175px !important;
+            transform: scale(1) !important;
+          }
+
+          .theme-toggle-button:hover {
+            transform: scale(1.05) !important;
           }
         }
       `}</style>
