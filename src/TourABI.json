@@ -1700,6 +1700,34 @@
         "type": "uint8"
       }
     ],
+    "name": "claimMatchSlotByReplacement",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint8",
+        "name": "tierId",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint8",
+        "name": "instanceId",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint8",
+        "name": "roundNumber",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint8",
+        "name": "matchNumber",
+        "type": "uint8"
+      }
+    ],
     "name": "claimTimeoutWin",
     "outputs": [],
     "stateMutability": "nonpayable",
@@ -1789,6 +1817,34 @@
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint8",
+        "name": "tierId",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint8",
+        "name": "instanceId",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint8",
+        "name": "roundNumber",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint8",
+        "name": "matchNumber",
+        "type": "uint8"
+      }
+    ],
+    "name": "forceEliminateStalledMatch",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -2183,6 +2239,11 @@
       {
         "internalType": "uint256",
         "name": "startTime",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "lastMoveTime",
         "type": "uint256"
       },
       {
@@ -3114,16 +3175,6 @@
           {
             "internalType": "uint256",
             "name": "escalation3Start",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "escalation4Start",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "escalation5Start",
             "type": "uint256"
           },
           {

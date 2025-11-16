@@ -642,14 +642,28 @@ const TournamentCard = ({
           {loading ? 'Loading...' : !account ? 'Connect Wallet to Enter' : 'Enter Tournament'}
         </button>
       ) : (
-        <button
-          onClick={onEnroll}
-          disabled={loading || isFull || !account}
-          className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
-        >
-          <Trophy size={18} />
-          {loading ? 'Enrolling...' : !account ? 'Connect Wallet to Enroll' : isFull ? 'Tournament Full' : 'Enroll Now'}
-        </button>
+        <>
+          <button
+            onClick={onEnroll}
+            disabled={loading || isFull || !account}
+            className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
+          >
+            <Trophy size={18} />
+            {loading ? 'Enrolling...' : !account ? 'Connect Wallet to Enroll' : isFull ? 'Tournament Full' : 'Enroll Now'}
+          </button>
+
+          {/* Spectate/View Bracket button for non-enrolled users */}
+          {tournamentStatus >= 1 && (
+            <button
+              onClick={onEnter}
+              disabled={loading}
+              className={`w-full mt-2 bg-gradient-to-r from-indigo-500/70 to-purple-500/70 hover:from-indigo-600/80 hover:to-purple-600/80 text-white font-bold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 flex items-center justify-center gap-2 border border-indigo-400/30`}
+            >
+              <Eye size={16} />
+              View Bracket & Spectate
+            </button>
+          )}
+        </>
       )}
 
       {/* Abandoned Pool Claim Button - show for completed/abandoned tournaments with claimable funds */}
@@ -669,7 +683,7 @@ const TournamentCard = ({
 };
 
 // Tournament Bracket Component
-const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, account, loading, syncDots, theme }) => {
+const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceEliminate, onClaimReplacement, account, loading, syncDots, theme }) => {
   const { tierId, instanceId, status, currentRound, enrolledCount, prizePool, rounds, playerCount, enrolledPlayers, firstEnrollmentTime, countdownActive } = tournamentData;
 
   // Calculate total rounds based on player count
@@ -912,22 +926,84 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, account, load
                     match.player1?.toLowerCase() === account?.toLowerCase() ||
                     match.player2?.toLowerCase() === account?.toLowerCase();
 
+                  // Calculate move timeout
+                  const MOVE_TIMEOUT = 60; // 60 seconds
+                  const now = Math.floor(Date.now() / 1000);
+                  const timeReference = match.lastMoveTime > 0 ? match.lastMoveTime : match.startTime;
+                  const timeSinceLastMove = timeReference > 0 ? now - timeReference : 0;
+                  const timeRemaining = timeReference > 0 ? Math.max(0, MOVE_TIMEOUT - timeSinceLastMove) : null;
+                  const isTimeout = timeRemaining !== null && timeRemaining === 0;
+
+                  // Check escalation status
+                  // If timeout is active on contract, use that
+                  const hasEscalation = match.timeoutState && match.timeoutState.timeoutActive;
+                  const activeEscalation = match.timeoutState?.activeEscalation || 0;
+
+                  // If contract hasn't activated yet, calculate client-side escalation based on time
+                  let clientEscalation = 0;
+                  if (!hasEscalation && isTimeout && match.matchStatus === 1) {
+                    // Time since timeout started
+                    const timeoutDuration = timeSinceLastMove - MOVE_TIMEOUT;
+                    if (timeoutDuration >= 180) { // 3 minutes = 180s for Esc 3
+                      clientEscalation = 3;
+                    } else if (timeoutDuration >= 120) { // 2 minutes = 120s for Esc 2
+                      clientEscalation = 2;
+                    } else if (timeoutDuration >= 60) { // 1 minute = 60s for Esc 1
+                      clientEscalation = 1;
+                    }
+                  }
+
+                  const effectiveEscalation = hasEscalation ? activeEscalation : clientEscalation;
+                  const canForceEliminate = effectiveEscalation >= 2;
+                  const canReplace = effectiveEscalation >= 3;
+
+                  // Calculate border color based on escalation and timeout
+                  let borderClass = 'border-purple-400/30 hover:border-purple-400/50';
+                  if (isUserMatch) {
+                    borderClass = 'border-green-400/70 bg-green-900/20';
+                  } else if (canReplace) {
+                    borderClass = 'border-red-400 bg-red-900/20 animate-pulse';
+                  } else if (canForceEliminate) {
+                    borderClass = 'border-yellow-400 bg-yellow-900/20';
+                  } else if (hasEscalation) {
+                    borderClass = 'border-orange-400 bg-orange-900/20';
+                  } else if (isTimeout && match.matchStatus === 1) {
+                    borderClass = 'border-orange-400/60 bg-orange-900/10';
+                  }
+
                   return (
                     <div
                       key={matchIdx}
-                      className={`bg-black/30 rounded-xl p-4 border-2 transition-all ${
-                        isUserMatch
-                          ? 'border-green-400/70 bg-green-900/20'
-                          : 'border-purple-400/30 hover:border-purple-400/50'
-                      }`}
+                      className={`bg-black/30 rounded-xl p-4 border-2 transition-all ${borderClass}`}
                     >
                       <div className="flex items-center justify-between mb-3">
                         <span className="text-purple-300 text-sm font-semibold">
                           Match {matchIdx + 1}
                         </span>
-                        <span className={`text-xs font-bold ${getMatchStatusColor(match.matchStatus)}`}>
-                          {getMatchStatusText(match.matchStatus)}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          {effectiveEscalation > 0 && (
+                            <span className={`text-xs font-bold px-2 py-1 rounded ${
+                              canReplace ? 'bg-red-500/30 text-red-300' :
+                              canForceEliminate ? 'bg-yellow-500/30 text-yellow-300' :
+                              'bg-orange-500/30 text-orange-300'
+                            }`}>
+                              ⚡ ESC {effectiveEscalation}
+                            </span>
+                          )}
+                          {effectiveEscalation === 0 && timeRemaining !== null && match.matchStatus === 1 && (
+                            <span className={`text-xs font-bold px-2 py-1 rounded font-mono ${
+                              timeRemaining === 0 ? 'bg-red-500/30 text-red-300 animate-pulse' :
+                              timeRemaining <= 10 ? 'bg-red-500/20 text-red-300' :
+                              timeRemaining <= 30 ? 'bg-yellow-500/20 text-yellow-300' :
+                              'bg-blue-500/20 text-blue-300'
+                            }`}>
+                              ⏱️ {Math.floor(timeRemaining / 60)}:{(timeRemaining % 60).toString().padStart(2, '0')}
+                            </span>
+                          )}
+                          <span className={`text-xs font-bold ${getMatchStatusColor(match.matchStatus)}`}>
+                            {getMatchStatusText(match.matchStatus)}
+                          </span>
+                        </div>
                       </div>
 
                       <div className="space-y-2">
@@ -983,6 +1059,53 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, account, load
                             <Play size={16} />
                             {match.matchStatus === 0 ? 'Waiting to Start' : 'Enter Match'}
                           </button>
+                        )}
+
+                        {/* Escalation CTAs for outsiders */}
+                        {!isUserMatch && match.matchStatus !== 2 && (
+                          <>
+                            {/* Escalation 2: Force Eliminate */}
+                            {canForceEliminate && !canReplace && (
+                              <div className="mt-2">
+                                <button
+                                  onClick={() => onForceEliminate({
+                                    tierId,
+                                    instanceId,
+                                    roundNumber: roundIdx,
+                                    matchNumber: matchIdx
+                                  })}
+                                  disabled={loading}
+                                  className="w-full bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-all transform hover:scale-105 disabled:opacity-50 flex items-center justify-center gap-2"
+                                >
+                                  ⚡ Force Eliminate (Higher Rank)
+                                </button>
+                                <p className="text-xs text-yellow-300 mt-1 text-center">
+                                  Escalation 2: Eliminate both stalled players
+                                </p>
+                              </div>
+                            )}
+
+                            {/* Escalation 3: Replace Both Players */}
+                            {canReplace && (
+                              <div className="mt-2">
+                                <button
+                                  onClick={() => onClaimReplacement({
+                                    tierId,
+                                    instanceId,
+                                    roundNumber: roundIdx,
+                                    matchNumber: matchIdx
+                                  })}
+                                  disabled={loading}
+                                  className="w-full bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white font-bold py-2 px-4 rounded-lg transition-all transform hover:scale-105 disabled:opacity-50 animate-pulse flex items-center justify-center gap-2"
+                                >
+                                  🎯 Claim Match & Replace Both
+                                </button>
+                                <p className="text-xs text-red-300 mt-1 text-center">
+                                  Escalation 3: Take this match slot and advance!
+                                </p>
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
                     </div>
@@ -2555,6 +2678,23 @@ export default function TicTacBlock() {
         for (let matchNum = 0; matchNum < totalMatches; matchNum++) {
           try {
             const matchData = await contractInstance.getMatch(tierId, instanceId, roundNum, matchNum);
+
+            // Fetch escalation state from matches mapping
+            const matchKey = ethers.keccak256(ethers.AbiCoder.defaultAbiCoder().encode(
+              ['uint8', 'uint8', 'uint8', 'uint8'],
+              [tierId, instanceId, roundNum, matchNum]
+            ));
+            const matchesData = await contractInstance.matches(matchKey);
+
+            const timeoutState = {
+              escalation1Start: Number(matchesData.timeoutState.escalation1Start),
+              escalation2Start: Number(matchesData.timeoutState.escalation2Start),
+              escalation3Start: Number(matchesData.timeoutState.escalation3Start),
+              activeEscalation: Number(matchesData.timeoutState.activeEscalation),
+              timeoutActive: matchesData.timeoutState.timeoutActive,
+              forfeitAmount: matchesData.timeoutState.forfeitAmount
+            };
+
             matches.push({
               player1: matchData[0],
               player2: matchData[1],
@@ -2562,14 +2702,18 @@ export default function TicTacBlock() {
               winner: matchData[3],
               board: matchData[4],
               matchStatus: Number(matchData[5]),
-              isDraw: matchData[6]
+              isDraw: matchData[6],
+              lastMoveTime: Number(matchData[7]),
+              startTime: Number(matchData[8]),
+              timeoutState
             });
           } catch (err) {
             // Match might not exist yet
             matches.push({
               player1: '0x0000000000000000000000000000000000000000',
               player2: '0x0000000000000000000000000000000000000000',
-              matchStatus: 0
+              matchStatus: 0,
+              timeoutState: null
             });
           }
         }
@@ -2629,8 +2773,10 @@ export default function TicTacBlock() {
       const board = matchData[4];
       const matchStatus = Number(matchData[5]);
       const isDraw = matchData[6];
-      const firstPlayer = matchData[8];
-      const lastMovedCell = Number(matchData[9]);
+      const startTime = Number(matchData[7]);
+      const lastMoveTime = Number(matchData[8]);
+      const firstPlayer = matchData[9];
+      const lastMovedCell = Number(matchData[10]);
 
       const zeroAddress = '0x0000000000000000000000000000000000000000';
       const isMatchInitialized =
@@ -2644,6 +2790,26 @@ export default function TicTacBlock() {
         actualPlayer1 = matchInfo.player1;
         actualPlayer2 = matchInfo.player2;
       }
+
+      // Fetch timeout state from matches mapping
+      const matchKey = ethers.keccak256(ethers.AbiCoder.defaultAbiCoder().encode(
+        ['uint8', 'uint8', 'uint8', 'uint8'],
+        [tierId, instanceId, roundNumber, matchNumber]
+      ));
+      const matchesData = await contractInstance.matches(matchKey);
+
+      const timeoutState = {
+        escalation1Start: Number(matchesData.timeoutState.escalation1Start),
+        escalation2Start: Number(matchesData.timeoutState.escalation2Start),
+        escalation3Start: Number(matchesData.timeoutState.escalation3Start),
+        activeEscalation: Number(matchesData.timeoutState.activeEscalation),
+        timeoutActive: matchesData.timeoutState.timeoutActive,
+        forfeitAmount: matchesData.timeoutState.forfeitAmount
+      };
+
+      const isTimedOut = matchesData.isTimedOut;
+      const timeoutClaimant = matchesData.timeoutClaimant;
+      const timeoutClaimReward = matchesData.timeoutClaimReward;
 
       const boardState = Array.from(board).map(cell => Number(cell));
       const isPlayer1 = actualPlayer1.toLowerCase() === userAccount.toLowerCase();
@@ -2662,7 +2828,13 @@ export default function TicTacBlock() {
         isYourTurn,
         userSymbol: isPlayer1 ? 'X' : 'O',
         lastMovedCell,
-        isMatchInitialized
+        isMatchInitialized,
+        timeoutState,
+        isTimedOut,
+        timeoutClaimant,
+        timeoutClaimReward,
+        lastMoveTime,
+        startTime
       };
     } catch (error) {
       console.error('Error refreshing match:', error);
@@ -2734,6 +2906,94 @@ export default function TicTacBlock() {
       alert(`Error blocking: ${error.message}`);
       setMatchLoading(false);
       setBlockMode(false);
+    }
+  };
+
+  // Handle Escalation 1: Opponent claims timeout win
+  const handleClaimTimeoutWin = async () => {
+    if (!currentMatch || !contract) return;
+
+    try {
+      setMatchLoading(true);
+      const { tierId, instanceId, roundNumber, matchNumber } = currentMatch;
+
+      const tx = await contract.claimTimeoutWin(tierId, instanceId, roundNumber, matchNumber);
+      await tx.wait();
+
+      alert('Timeout victory claimed! You win by opponent forfeit.');
+      setCurrentMatch(null); // Exit match view
+      setMatchLoading(false);
+    } catch (error) {
+      console.error('Error claiming timeout win:', error);
+      alert(`Error claiming timeout win: ${error.message}`);
+      setMatchLoading(false);
+    }
+  };
+
+  // Handle Escalation 2: Higher-ranked player force eliminates stalled match
+  const handleForceEliminateStalledMatch = async (matchData = null) => {
+    const match = matchData || currentMatch;
+    if (!match || !contract) return;
+
+    try {
+      setMatchLoading(true);
+      const { tierId, instanceId, roundNumber, matchNumber } = match;
+
+      const tx = await contract.forceEliminateStalledMatch(tierId, instanceId, roundNumber, matchNumber);
+      await tx.wait();
+
+      alert('Match eliminated! Both players have been forfeited.');
+
+      // Exit match view if in one
+      if (currentMatch) setCurrentMatch(null);
+
+      // Refresh tournament bracket if viewing it
+      if (viewingTournament) {
+        const updated = await refreshTournamentBracket(contract, tierId, instanceId);
+        if (updated) setViewingTournament(updated);
+      }
+
+      setMatchLoading(false);
+    } catch (error) {
+      console.error('Error force eliminating match:', error);
+      alert(`Error force eliminating match: ${error.message}`);
+      setMatchLoading(false);
+    }
+  };
+
+  // Handle Escalation 3: Outsider claims match slot by replacement
+  const handleClaimMatchSlotByReplacement = async (matchData = null) => {
+    // If called from bracket, matchData will be provided
+    // If called from match view, use currentMatch
+    const match = matchData || currentMatch;
+    if (!match || !contract) return;
+
+    try {
+      setMatchLoading(true);
+      const { tierId, instanceId, roundNumber, matchNumber } = match;
+
+      const tx = await contract.claimMatchSlotByReplacement(tierId, instanceId, roundNumber, matchNumber);
+      await tx.wait();
+
+      alert('Match slot claimed! You have replaced both players and advanced.');
+
+      // If in match view, refresh it
+      if (currentMatch) {
+        const updated = await refreshMatchData(contract, account, currentMatch);
+        if (updated) setCurrentMatch(updated);
+      }
+
+      // Refresh tournament bracket if viewing it
+      if (viewingTournament) {
+        const updated = await refreshTournamentBracket(contract, tierId, instanceId);
+        if (updated) setViewingTournament(updated);
+      }
+
+      setMatchLoading(false);
+    } catch (error) {
+      console.error('Error claiming match slot:', error);
+      alert(`Error claiming match slot: ${error.message}`);
+      setMatchLoading(false);
     }
   };
 
@@ -2943,6 +3203,51 @@ export default function TicTacBlock() {
 
     return () => clearInterval(pollInterval);
   }, [viewingTournament?.tierId, viewingTournament?.instanceId, refreshTournamentBracket]);
+
+  // Poll current match every 2 seconds for live timer updates (using refs for seamless syncing)
+  const currentMatchRef = useRef(currentMatch);
+  const contractRefForMatch = useRef(contract);
+  const accountRefForMatch = useRef(account);
+
+  // Keep refs updated
+  useEffect(() => {
+    currentMatchRef.current = currentMatch;
+    contractRefForMatch.current = contract;
+    accountRefForMatch.current = account;
+  }, [currentMatch, contract, account]);
+
+  useEffect(() => {
+    if (!currentMatch || !contract || !account) return;
+
+    const doMatchSync = async () => {
+      const match = currentMatchRef.current;
+      const contractInstance = contractRefForMatch.current;
+      const userAccount = accountRefForMatch.current;
+
+      if (!match || !contractInstance || !userAccount) return;
+
+      try {
+        const updatedMatch = await refreshMatchData(
+          contractInstance,
+          userAccount,
+          match
+        );
+        if (updatedMatch) {
+          setCurrentMatch(updatedMatch);
+        }
+      } catch (error) {
+        console.error('Error syncing match:', error);
+      }
+
+      // Reset sync dots to 1 after sync completes
+      setSyncDots(1);
+    };
+
+    // Set up polling interval - runs every 2 seconds for responsive timers
+    const matchPollInterval = setInterval(doMatchSync, 2000);
+
+    return () => clearInterval(matchPollInterval);
+  }, [currentMatch?.tierId, currentMatch?.instanceId, currentMatch?.roundNumber, currentMatch?.matchNumber, account, refreshMatchData]);
 
   // Increment bracket sync dots every second
   useEffect(() => {
@@ -3512,6 +3817,151 @@ export default function TicTacBlock() {
                     </button>
                   )}
 
+                  {/* Move Timeout Timer - Shows before escalation */}
+                  {currentMatch.matchStatus === 1 && (currentMatch.lastMoveTime !== undefined || currentMatch.startTime !== undefined) && (() => {
+                    const now = Math.floor(Date.now() / 1000);
+                    const MOVE_TIMEOUT = 60; // 1 minute in seconds
+                    // Use lastMoveTime if available, otherwise use startTime for first move
+                    const timeReference = currentMatch.lastMoveTime > 0 ? currentMatch.lastMoveTime : currentMatch.startTime;
+                    const timeSinceLastMove = now - timeReference;
+                    const timeRemaining = Math.max(0, MOVE_TIMEOUT - timeSinceLastMove);
+
+                    const formatTime = (secs) => {
+                      const mins = Math.floor(secs / 60);
+                      const seconds = secs % 60;
+                      return `${mins}:${seconds.toString().padStart(2, '0')}`;
+                    };
+
+                    // Show timer if we have a valid time reference
+                    if (timeReference > 0) {
+                      const isYourTurn = currentMatch.isYourTurn;
+                      const isLowTime = timeRemaining <= 10;
+
+                      return (
+                        <div className={`border rounded-xl p-3 ${
+                          isLowTime ? 'bg-red-500/20 border-red-400 animate-pulse' : 'bg-blue-500/20 border-blue-400'
+                        }`}>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Clock className={isLowTime ? 'text-red-400' : 'text-blue-400'} size={18} />
+                              <span className={`text-sm font-bold ${isLowTime ? 'text-red-300' : 'text-blue-300'}`}>
+                                {isYourTurn ? 'Your Turn' : 'Opponent\'s Turn'}
+                              </span>
+                            </div>
+                            <div className={`text-lg font-mono font-bold ${
+                              isLowTime ? 'text-red-300' : timeRemaining <= 30 ? 'text-yellow-300' : 'text-blue-300'
+                            }`}>
+                              {timeRemaining > 0 ? formatTime(timeRemaining) : '⚠️ TIMEOUT'}
+                            </div>
+                          </div>
+                          {isYourTurn && timeRemaining > 0 && (
+                            <div className="text-xs text-blue-300/70 mt-1">
+                              Make your move before time runs out!
+                            </div>
+                          )}
+                          {timeRemaining === 0 && !isYourTurn && (
+                            <div className="mt-2">
+                              <button
+                                onClick={handleClaimTimeoutWin}
+                                disabled={matchLoading}
+                                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-2 px-4 rounded-lg transition-all disabled:opacity-50"
+                              >
+                                ⏰ Claim Timeout Victory
+                              </button>
+                              <div className="text-xs text-green-300 mt-1 text-center">
+                                Your opponent ran out of time!
+                              </div>
+                            </div>
+                          )}
+                          {timeRemaining === 0 && isYourTurn && (
+                            <div className="text-xs text-red-300 mt-1">
+                              ⚡ Time's up! Your opponent can claim victory...
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+
+                  {/* Match Timeout Escalation UI */}
+                  {currentMatch.timeoutState && currentMatch.timeoutState.timeoutActive && currentMatch.matchStatus === 1 && (() => {
+                    const now = Math.floor(Date.now() / 1000);
+                    const { escalation1Start, escalation2Start, escalation3Start, activeEscalation } = currentMatch.timeoutState;
+
+                    const timeToEsc1 = escalation1Start > 0 ? Math.max(0, escalation1Start - now) : 0;
+                    const timeToEsc2 = escalation2Start > 0 ? Math.max(0, escalation2Start - now) : 0;
+                    const timeToEsc3 = escalation3Start > 0 ? Math.max(0, escalation3Start - now) : 0;
+
+                    const canClaimTimeout = activeEscalation >= 1 && !currentMatch.isYourTurn;
+                    const canForceEliminate = activeEscalation >= 2;
+                    const canReplace = activeEscalation >= 3;
+
+                    const formatTime = (secs) => {
+                      const mins = Math.floor(secs / 60);
+                      const seconds = secs % 60;
+                      return `${mins}:${seconds.toString().padStart(2, '0')}`;
+                    };
+
+                    return (
+                      <div className="bg-orange-500/20 border border-orange-400 rounded-xl p-4">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Clock className="text-orange-400" size={20} />
+                          <span className="text-orange-300 font-bold text-sm">Match Timeout Active</span>
+                        </div>
+
+                        {/* Escalation 1 */}
+                        {activeEscalation >= 1 && canClaimTimeout && (
+                          <button
+                            onClick={handleClaimTimeoutWin}
+                            disabled={matchLoading}
+                            className="w-full mb-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-2 px-4 rounded-lg transition-all disabled:opacity-50"
+                          >
+                            ⏰ Claim Timeout Victory
+                          </button>
+                        )}
+
+                        {/* Countdown timers */}
+                        <div className="space-y-1 text-xs">
+                          {timeToEsc1 > 0 && activeEscalation < 1 && (
+                            <div className="text-orange-300">Esc 1 in: {formatTime(timeToEsc1)}</div>
+                          )}
+                          {timeToEsc2 > 0 && activeEscalation < 2 && (
+                            <div className="text-orange-300">Esc 2 in: {formatTime(timeToEsc2)}</div>
+                          )}
+                          {timeToEsc3 > 0 && activeEscalation < 3 && (
+                            <div className="text-orange-300">Esc 3 in: {formatTime(timeToEsc3)}</div>
+                          )}
+                          {activeEscalation >= 1 && <div className="text-green-400 font-bold">✓ Escalation 1 Active</div>}
+                          {activeEscalation >= 2 && <div className="text-yellow-400 font-bold">✓ Escalation 2 Active</div>}
+                          {activeEscalation >= 3 && <div className="text-red-400 font-bold">✓ Escalation 3 Active</div>}
+                        </div>
+
+                        {/* Escalation 2 */}
+                        {canForceEliminate && (
+                          <button
+                            onClick={handleForceEliminateStalledMatch}
+                            disabled={matchLoading}
+                            className="w-full mt-2 bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-all disabled:opacity-50"
+                          >
+                            ⚡ Force Eliminate Both (Higher Rank)
+                          </button>
+                        )}
+
+                        {/* Escalation 3 */}
+                        {canReplace && (
+                          <button
+                            onClick={handleClaimMatchSlotByReplacement}
+                            disabled={matchLoading}
+                            className="w-full mt-2 bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white font-bold py-2 px-4 rounded-lg transition-all disabled:opacity-50"
+                          >
+                            🎯 Replace Both Players & Advance
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })()}
+
                   {currentMatch.matchStatus === 2 && (
                     <div className="bg-green-500/20 border border-green-400 rounded-xl p-4 text-center">
                       <p className="text-white font-bold text-xl mb-2">
@@ -3790,6 +4240,8 @@ export default function TicTacBlock() {
                 tournamentData={viewingTournament}
                 onBack={() => setViewingTournament(null)}
                 onEnterMatch={handlePlayMatch}
+                onForceEliminate={handleForceEliminateStalledMatch}
+                onClaimReplacement={handleClaimMatchSlotByReplacement}
                 account={account}
                 loading={tournamentsLoading}
                 syncDots={bracketSyncDots}
