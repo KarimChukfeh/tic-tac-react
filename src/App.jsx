@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import DUMMY_ABI from './TourABI.json';
+import ReactMarkdown from 'react-markdown';
 
 // Particle Background Component (Dream/Daring Themes)
 const ParticleBackground = ({ colors }) => {
@@ -169,6 +170,77 @@ const ParticleBackground = ({ colors }) => {
           </div>
         );
       })}
+    </div>
+  );
+};
+
+// Whitepaper Markdown Renderer Component
+const WhitepaperSection = () => {
+  const [markdown, setMarkdown] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetch('/ETTT_Whitepaper.md')
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Failed to load whitepaper');
+        }
+        return response.text();
+      })
+      .then(text => {
+        setMarkdown(text);
+        setLoading(false);
+      })
+      .catch(err => {
+        setError(err.message);
+        setLoading(false);
+      });
+  }, []);
+
+  if (loading) {
+    return (
+      <div id="whitepaper" className="bg-gradient-to-br from-purple-900/30 to-indigo-900/30 backdrop-blur-lg rounded-2xl p-8 md:p-12 border border-purple-500/30 mb-16">
+        <p className="text-purple-100 text-center">Loading whitepaper...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div id="whitepaper" className="bg-gradient-to-br from-purple-900/30 to-indigo-900/30 backdrop-blur-lg rounded-2xl p-8 md:p-12 border border-purple-500/30 mb-16">
+        <p className="text-red-400 text-center">Error loading whitepaper: {error}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div id="whitepaper" className="bg-gradient-to-br from-purple-900/30 to-indigo-900/30 backdrop-blur-lg rounded-2xl p-8 md:p-12 border border-purple-500/30 mb-16">
+      <ReactMarkdown
+        components={{
+          h1: ({node, ...props}) => <h1 className="text-4xl font-bold text-purple-300 mb-6 mt-8" {...props} />,
+          h2: ({node, ...props}) => <h2 className="text-3xl font-bold text-purple-300 mb-4 mt-8" {...props} />,
+          h3: ({node, ...props}) => <h3 className="text-2xl font-bold text-purple-300 mb-3 mt-6" {...props} />,
+          p: ({node, ...props}) => <p className="text-purple-100 mb-4 leading-relaxed" {...props} />,
+          ul: ({node, ...props}) => <ul className="list-disc pl-6 mb-6 text-purple-100 space-y-2" {...props} />,
+          ol: ({node, ...props}) => <ol className="list-decimal pl-6 mb-6 text-purple-100 space-y-2" {...props} />,
+          li: ({node, ...props}) => <li className="text-purple-100" {...props} />,
+          code: ({node, inline, ...props}) => inline
+            ? <code className="bg-purple-500/20 px-2 py-1 rounded text-purple-200 text-sm" {...props} />
+            : <code className="block bg-purple-900/50 p-4 rounded-lg text-purple-200 text-sm overflow-x-auto mb-4" {...props} />,
+          pre: ({node, ...props}) => <pre className="bg-purple-900/50 p-4 rounded-lg overflow-x-auto mb-4" {...props} />,
+          blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-purple-400 pl-4 italic text-purple-200 my-4" {...props} />,
+          hr: ({node, ...props}) => <hr className="border-purple-500/30 my-8" {...props} />,
+          a: ({node, ...props}) => <a className="text-purple-300 hover:text-purple-200 underline" {...props} />,
+          strong: ({node, ...props}) => <strong className="text-purple-200 font-bold" {...props} />,
+          table: ({node, ...props}) => <div className="overflow-x-auto mb-6"><table className="w-full border-collapse" {...props} /></div>,
+          thead: ({node, ...props}) => <thead className="border-b border-purple-500/30" {...props} />,
+          th: ({node, ...props}) => <th className="text-left p-3 text-purple-300" {...props} />,
+          td: ({node, ...props}) => <td className="p-3 text-purple-100 border-b border-purple-500/20" {...props} />,
+        }}
+      >
+        {markdown}
+      </ReactMarkdown>
     </div>
   );
 };
@@ -5088,10 +5160,7 @@ export default function TicTacBlock() {
 
             {/* Link to Whitepaper */}
             <div className="mt-8 text-center">
-              <a
-          href="#whitepaper"
-          className="inline-flex items-center gap-2 text-purple-300 hover:text-purple-200 font-semibold text-lg underline decoration-purple-400/50 hover:decoration-purple-300 transition-colors"
-              >
+              <a href="#whitepaper" className="inline-flex items-center gap-2 text-purple-300 hover:text-purple-200 font-semibold text-lg underline decoration-purple-400/50 hover:decoration-purple-300 transition-colors">
             Read Full Whitepaper
               </a>
             </div>
@@ -5122,180 +5191,7 @@ export default function TicTacBlock() {
         </div>
 
         {/* Whitepaper Section */}
-        <div id="whitepaper" className="bg-gradient-to-br from-purple-900/30 to-indigo-900/30 backdrop-blur-lg rounded-2xl p-8 md:p-12 border border-purple-500/30 mb-16">
-          <h1 className="text-4xl font-bold text-purple-300 mb-6">What's the point?</h1>
-          
-          <p className="text-purple-100 mb-4"><strong>TLDR:</strong></p>
-          <ul className="list-disc pl-6 mb-6 text-purple-100 space-y-1">
-            <li><strong>Tic Tac Toe</strong> we all know and love</li>
-            <li>Fully <strong>On-Chain</strong></li>
-            <li><strong>Real ETH on the line</strong></li>
-          </ul>
-          
-
-
-          <h1 className="text-4xl font-bold text-purple-300 mb-6">But it's also about Web 3</h1>
-
-          <div className="bg-purple-500/10 border-l-4 border-purple-400 p-4 rounded-r-xl mb-6">
-            <p className="text-lg text-purple-100 mb-2"><strong>Most people have heard of crypto, but not <em>why it matters.</em></strong></p>
-          </div>
-
-          <br/>
-          
-          <h2 className="text-2xl font-bold mb-3 text-purple-300">We all know</h2>
-
-          <ul className="list-disc pl-6 mb-6 text-purple-100 space-y-1">
-            <li>Bitcoin is gold</li>
-            <li>Ethereum is silver.</li>
-            <li>100000x "Buy this new memecoin ASAP!</li>
-            <li>Sometimes a moon landing?</li>
-            <li>Some get rich. Most get wrecked.</li>
-            <li>...</li>
-          </ul>
-
-          <hr className="border-purple-500/30 my-8" />
-
-          <h2 className="text-2xl font-bold mb-3 text-purple-300">This article explains <strong className="text-purple-200">what crypto was really meant to be.</strong></h2>
-
-          <hr className="border-purple-500/30 my-8" />
-
-
-          <h2 className="text-2xl font-bold mb-3 text-purple-300">What Even is a Blockchain?</h2>
-
-          <p className="text-purple-100 mb-4">Forget influencers and dollar signs for a moment.</p>
-
-          <div className="bg-purple-500/10 border-l-4 border-purple-400 p-4 rounded-r-xl mb-6">
-            <p className="text-lg text-purple-100 mb-2"><strong>Blockchain is about bookkeeping.</strong></p>
-            <p className="text-purple-200 italic">If everyone has the same book, you don't need to trust a bookkeeper.</p>
-          </div>
-
-          <p className="text-purple-100 mb-2">There is <strong className="text-purple-200">no server</strong>.</p>
-          <p className="text-purple-100 mb-2">There is <strong className="text-purple-200">no admin account</strong>.</p>
-          <p className="text-purple-100 mb-2">There is <strong className="text-purple-200">no need to trust a person or a company.</strong></p>
-          <p className="text-purple-100 mb-8 text-xl font-bold">Everyone sees the same final state.</p>
-
-          <hr className="border-purple-500/30 my-8" />
-
-          <h3 className="text-xl font-bold mb-3 text-purple-300">The Fruit Ledger Analogy</h3>
-
-          <p className="text-purple-100 mb-3">Imagine a bowl of apples.</p>
-          <ul className="list-disc pl-6 mb-4 text-purple-100 space-y-1">
-            <li>If one person keeps track of the bowl, you must trust them.</li>
-            <li>They could lie, steal, or miscount.</li>
-          </ul>
-
-          <p className="text-purple-100 mb-4">But if <strong className="text-purple-200">100 people</strong> all keep <strong className="text-purple-200">identical notebooks</strong>, and every apple in or out is recorded by <strong className="text-purple-200">everyone</strong>, no single person can cheat.</p>
-
-          <p className="text-purple-100 mb-4">If someone tries to falsify their notebook, everyone else rejects it.</p>
-
-          <p className="text-purple-100 mb-6 text-xl font-bold">That's blockchain.</p>
-
-          <div className="bg-purple-500/10 border-l-4 border-purple-400 p-4 rounded-r-xl mb-8">
-            <p className="text-purple-200 italic">Final state comes from <strong>consensus</strong>, not <strong>authority</strong>.</p>
-          </div>
-
-          <hr className="border-purple-500/30 my-8" />
-
-          <h2 className="text-2xl font-bold mb-3 text-purple-300">Why Do Scams Still Happen in Crypto?</h2>
-
-          <p className="text-purple-100 mb-4">Because <strong className="text-purple-200">most "crypto" projects are not actually decentralized.</strong></p>
-
-          <p className="text-purple-100 mb-3">They <em>claim</em> to be blockchain-based, but:</p>
-
-          <div className="overflow-x-auto mb-6">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="border-b border-purple-500/30">
-                  <th className="text-left p-3 text-purple-300">Feature</th>
-                  <th className="text-left p-3 text-purple-300">Many Crypto Projects</th>
-                  <th className="text-left p-3 text-purple-300">Actual Blockchain</th>
-                </tr>
-              </thead>
-              <tbody className="text-purple-100">
-                <tr className="border-b border-purple-500/20">
-                  <td className="p-3">NFT images</td>
-                  <td className="p-3">Stored on a private server</td>
-                  <td className="p-3">Stored on decentralized networks (IPFS, Arweave)</td>
-                </tr>
-                <tr className="border-b border-purple-500/20">
-                  <td className="p-3">Altcoins</td>
-                  <td className="p-3">Controlled by creators</td>
-                  <td className="p-3">Controlled only by immutable code</td>
-                </tr>
-                <tr className="border-b border-purple-500/20">
-                  <td className="p-3">Games</td>
-                  <td className="p-3">Run on private servers</td>
-                  <td className="p-3">Run on-chain (L1 or L2)</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <p className="text-purple-100 mb-4">These projects <strong className="text-purple-200">use the blockchain as marketing</strong>, while <strong className="text-purple-200">real control remains centralized.</strong></p>
-
-          <p className="text-purple-100 mb-6 text-xl font-bold">That is NOT really blockchain!</p>
-
-          <hr className="border-purple-500/30 my-8" />
-
-          <h2 className="text-2xl font-bold mb-3 text-purple-300">How Is This Any Different?</h2>
-
-          <h3 className="text-xl font-bold mb-3 text-purple-300">Because the Eternal Tic Tac Toe Protocol (ETTTP)</h3>
-
-          <p className="text-purple-100 mb-3"><strong className="text-purple-200">Is Not:</strong></p>
-          <ul className="list-disc pl-6 mb-6 text-purple-100 space-y-1">
-            <li>A new token to trade</li>
-            <li>A marketing stunt with no utility</li>
-          </ul>
-
-          <p className="text-purple-100 mb-3"><strong className="text-purple-200">Is strictly:</strong></p>
-          <p className="text-purple-100 mb-6">A <strong className="text-purple-200">self-running</strong>, <strong className="text-purple-200">immutable</strong>, <strong className="text-purple-200">on-chain game and reward system</strong> that cannot be altered, paused, or manipulated — not even by its creator.</p>
-
-
-          <p className="text-purple-100 mb-6 text-xl font-bold">It runs itself. Forever. On-chain.</p>
-
-          <ul className="list-disc pl-6 mb-6 text-purple-100 space-y-1">
-            <li>No servers</li>
-            <li>No databases</li>
-            <li>No moderators</li>
-            <li>No owner keys</li>
-            <li>No cookies</li>
-            <li>No "trust me bro"</li>
-          </ul>
-
-          <p className="text-purple-100 mb-8 text-xl font-bold">Just math, consensus, and Arbitrum (secured by Ethereum).</p>
-
-          <hr className="border-purple-500/30 my-8" />
-
-          <h2 className="text-2xl font-bold mb-3 text-purple-300">Verify It Yourself</h2>
-
-          <p className="text-purple-100 mb-3">No trust needed for outcomes.</p>
-
-          <ul className="list-disc pl-6 mb-6 text-purple-100 space-y-1">
-            <li>View the contract</li>
-            <li>Read the code</li>
-            <li>Confirm the game logic</li>
-            <li>Verify game outcomes</li>
-            <li>Verify every payout</li>
-          </ul>
-
-          <p className="text-purple-100 mb-4 text-xl font-bold">Game outcomes are permanent on-chain.</p>
-
-          <div className="bg-purple-500/10 border border-purple-400/30 rounded-lg p-4 mb-6">
-            <p className="text-purple-200 text-sm leading-relaxed">
-              <strong>Note on verification:</strong> This protocol runs on Arbitrum, an Ethereum Layer 2. Contract execution continues forever, and final outcomes (winners, payouts) are permanent and cryptographically secured on Ethereum L1. Individual transaction data is available through Arbitrum's sequencer and can be independently verified within the dispute window (~7 days). After that, historical move-by-move data relies on archived records, though final outcomes remain cryptographically provable on Ethereum L1.
-            </p>
-          </div>
-
-          <h3 className="text-xl font-bold mb-3 text-purple-300">Contract Address:</h3>
-          <a
-            href={ETHERSCAN_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-purple-300 hover:text-purple-200 underline decoration-purple-400/50 hover:decoration-purple-300 transition-colors inline-flex items-center gap-2"
-          >
-            View on Arbiscan <ExternalLink size={16} />
-          </a>
-        </div>
+        <WhitepaperSection />
       </div>
 
       {/* Footer */}
