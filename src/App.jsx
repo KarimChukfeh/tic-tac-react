@@ -382,8 +382,8 @@ const calculatePrizes = (pot, isDraw) => {
     };
   } else {
     return {
-      winnerPayout: (potValue * 0.95).toFixed(6),
-      houseFee: (potValue * 0.05).toFixed(6)
+      winnerPayout: (potValue * 0.90).toFixed(6),
+      houseFee: (potValue * 0.10).toFixed(6)
     };
   }
 };
@@ -431,7 +431,7 @@ const PrizeDistribution = ({ pot, winner, winnerAddress, theme }) => {
           <>
             <div className="bg-green-500/20 rounded-lg p-3 border-2 border-green-400/50">
               <div className="flex justify-between items-center mb-2">
-          <span className="text-green-200">Winner Payout (95%)</span>
+          <span className="text-green-200">Winner Payout (90%)</span>
           <span className="text-green-300 font-bold text-xl">{prizes.winnerPayout} ETH</span>
               </div>
               {winnerAddress && winnerAddress !== ethers.ZeroAddress && (
@@ -1437,7 +1437,7 @@ const LastGameResult = ({ lastGame, account }) => {
             )}
             {userWon && (
               <div className="bg-green-900/30 rounded-lg p-3 border border-green-400/30">
-          <div className="text-green-300 font-bold text-lg">Prize Won: 95% of pot</div>
+          <div className="text-green-300 font-bold text-lg">Prize Won: 90% of pot</div>
               </div>
             )}
             <div className="text-sm text-slate-300">
@@ -1518,7 +1518,7 @@ const LastGameResult = ({ lastGame, account }) => {
           <span className="text-sm text-indigo-300">Outcome</span>
               </div>
               <span className="text-white font-bold">
-          {isDraw ? 'Draw - Both Refunded 45%' : 'Winner Takes 95%'}
+          {isDraw ? 'Draw - Both Refunded 45%' : 'Winner Takes 90%'}
               </span>
             </div>
           </div>
@@ -1694,7 +1694,7 @@ const ActiveGameDisplay = ({ game, account, onMove, onStartGame, loading, refres
               <>
                 <div className="text-4xl">🎉</div>
                 <div>VICTORY!</div>
-                <div className="text-sm opacity-80">You won 95% of the pot!</div>
+                <div className="text-sm opacity-80">You won 90% of the pot!</div>
                 <div className="text-xs mt-2 font-mono bg-green-900/30 px-3 py-1 rounded inline-block">
                   {shortenAddress(contractWinner)}
                 </div>
@@ -2045,7 +2045,7 @@ export default function TicTacBlock() {
   const faqs = [
     {
       q: "How do duel arenas work?",
-      a: "Duel arenas are 1v1 tic-tac-toe matches on the blockchain. Two players join a room by paying the entry fee, then one player starts the match. Players take turns making moves on-chain. The winner takes the prize pool, minus a small platform fee."
+      a: "Duel arenas are 1v1 tic-tac-toe matches on the blockchain. Two players join a room by paying the entry fee, then one player starts the match. Players take turns making moves on-chain. The winner receives 90% of the total entry fees (with 7.5% to owner and 2.5% to protocol)."
     },
     {
       q: "Why tic-tac-toe on the blockchain?",
@@ -3711,13 +3711,13 @@ export default function TicTacBlock() {
               <div className="flex items-center gap-2 mb-2">
           <Trophy className="text-green-400" size={20} />
           <span className="font-bold text-green-300">
-            {theme === 'daring' ? 'Winner Takes All' : 'Winner Takes 95%'}
+            {theme === 'daring' ? 'Winner Takes 90%' : 'Winner Takes 90%'}
           </span>
               </div>
               <p className="text-sm text-green-200">
                 {theme === 'daring'
-                  ? 'High stakes - winner claims the entire prize pool'
-                  : 'Champion walks away with almost the entire pot'}
+                  ? 'High stakes - winner receives 90% of total entry fees'
+                  : 'Champion walks away with 90% of the pot'}
               </p>
             </div>
             <div className="bg-gradient-to-br from-yellow-500/20 to-amber-500/20 border border-yellow-400/30 rounded-xl p-4">
