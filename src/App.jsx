@@ -1943,7 +1943,7 @@ export default function TicTacBlock() {
   const [totalGamesPlayed, setTotalGamesPlayed] = useState(0);
 
   // Theme State - 'dream' (blue/cyan), 'daring' (red/orange)
-  const [theme, setTheme] = useState('dream');
+  const [theme, setTheme] = useState('daring');
   const [expandedFaq, setExpandedFaq] = useState(null);
   const [showThemeToggle, setShowThemeToggle] = useState(true);
 
