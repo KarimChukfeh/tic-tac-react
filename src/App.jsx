@@ -26,8 +26,19 @@ import DUMMY_ABI from './TourABI.json';
 
 // Particle Background Component (Dream/Daring Themes)
 const ParticleBackground = ({ colors }) => {
-  const particles = useMemo(() =>
-    Array.from({ length: 50 }, (_, i) => {
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const particles = useMemo(() => {
+    const particleCount = isMobile ? 25 : 50;
+    return Array.from({ length: particleCount }, (_, i) => {
       const useFirstColor = Math.random() > 0.5;
       return {
         id: i,
@@ -37,26 +48,120 @@ const ParticleBackground = ({ colors }) => {
         colorIndex: useFirstColor ? 0 : 1,
         symbol: useFirstColor ? 'X' : 'O'
       };
-    }), []
-  );
+    });
+  }, [isMobile]);
+
+  const particleRefs = useRef([]);
+  const [connections, setConnections] = useState([]);
+  const animationFrameRef = useRef(null);
+
+  useEffect(() => {
+    const animate = () => {
+      const canvasWidth = window.innerWidth;
+      const canvasHeight = window.innerHeight;
+
+      const positions = particleRefs.current.map((ref, i) => {
+        if (!ref) return null;
+        const rect = ref.getBoundingClientRect();
+        const x = rect.left + rect.width / 2;
+        const y = rect.top + rect.height / 2;
+
+        // Check if particle is within canvas bounds
+        const inBounds = x >= 0 && x <= canvasWidth && y >= 0 && y <= canvasHeight;
+
+        return {
+          id: i,
+          x,
+          y,
+          colorIndex: particles[i].colorIndex,
+          inBounds
+        };
+      }).filter(p => p !== null);
+
+      // Calculate nearest top-right neighbor for each particle to create a chain
+      const newConnections = [];
+      positions.forEach((particle, idx) => {
+        // Skip if particle is out of bounds
+        if (!particle.inBounds) return;
+
+        // Filter to only particles that are to the top-right (higher x AND lower y)
+        const topRightParticles = positions
+          .map((other, otherIdx) => {
+            if (otherIdx === idx) return null;
+            // Skip if target particle is out of bounds
+            if (!other.inBounds) return null;
+            // Top-right means: x is greater (more to the right) AND y is less (higher up on screen)
+            if (other.x <= particle.x || other.y >= particle.y) return null;
+
+            const distance = Math.sqrt(Math.pow(particle.x - other.x, 2) + Math.pow(particle.y - other.y, 2));
+            return { idx: otherIdx, distance };
+          })
+          .filter(p => p !== null)
+          .sort((a, b) => a.distance - b.distance);
+
+        // Connect to the nearest top-right particle
+        if (topRightParticles.length > 0) {
+          const nearest = topRightParticles[0];
+          const connId = `${idx}-${nearest.idx}`;
+
+          newConnections.push({
+            id: connId,
+            x1: particle.x,
+            y1: particle.y,
+            x2: positions[nearest.idx].x,
+            y2: positions[nearest.idx].y,
+            color: colors[particle.colorIndex]
+          });
+        }
+      });
+
+      setConnections(newConnections);
+      animationFrameRef.current = requestAnimationFrame(animate);
+    };
+
+    animationFrameRef.current = requestAnimationFrame(animate);
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, [particles, colors]);
 
   return (
-    <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 1 }}>
-      {particles.map(p => {
+    <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 1, overflow: 'hidden' }}>
+      {/* SVG for lines */}
+      <svg style={{ position: 'absolute', width: '100%', height: '100%', inset: 0 }}>
+        {connections.map((conn) => (
+          <line
+            key={conn.id}
+            x1={conn.x1}
+            y1={conn.y1}
+            x2={conn.x2}
+            y2={conn.y2}
+            stroke={conn.color}
+            strokeWidth="2"
+            opacity="0.1"
+          />
+        ))}
+      </svg>
+
+      {/* Particles */}
+      {particles.map((p, idx) => {
         const color = colors[p.colorIndex];
         return (
           <div
             key={p.id}
+            ref={el => particleRefs.current[idx] = el}
+            className="particle"
             style={{
               position: 'absolute',
               left: `${p.left}%`,
+              transform: 'translateY(100vh)',
               animation: `particle-float ${p.duration}s linear infinite`,
               animationDelay: `${p.delay}s`,
               willChange: 'transform, opacity',
               color: color,
-              fontSize: '16px',
               fontWeight: 'bold',
-              opacity: 0.4,
               textShadow: `0 0 8px ${color}`
             }}
           >
@@ -5261,21 +5366,53 @@ export default function TicTacBlock() {
           box-shadow: 0 0 20px currentColor;
         }
 
-        /* Particle animation for Dream theme */
+        /* Particle styles */
+        .particle {
+          font-size: 16px;
+        }
+
+        /* Mobile particle adjustments */
+        @media (max-width: 768px) {
+          .particle {
+            font-size: 12px;
+          }
+        }
+
+        /* Particle animation for Dream theme - Desktop */
         @keyframes particle-float {
           0% {
             transform: translateY(100vh) translateX(0);
-            opacity: 0;
+            opacity: 0.3;
           }
           10% {
-            opacity: 1;
+            opacity: 0.5;
           }
           90% {
             opacity: 1;
           }
           100% {
-            transform: translateY(-100vh) translateX(100px);
+            transform: translateY(calc(-100vh - 100px)) translateX(100px);
             opacity: 0;
+          }
+        }
+
+        /* Mobile particle animation with lower opacity */
+        @media (max-width: 768px) {
+          @keyframes particle-float {
+            0% {
+              transform: translateY(100vh) translateX(0);
+              opacity: 0.2;
+            }
+            10% {
+              opacity: 0.3;
+            }
+            90% {
+              opacity: 0.7;
+            }
+            100% {
+              transform: translateY(calc(-100vh - 100px)) translateX(100px);
+              opacity: 0;
+            }
           }
         }
 
