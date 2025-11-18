@@ -17,6 +17,90 @@ This whitepaper details the protocol's technical architecture, game-theoretic me
 
 ---
 
+## Table of Contents
+
+1. [Introduction: The State of Web3 Gaming](#1-introduction-the-state-of-web3-gaming)
+   - [1.1 The Promise vs. Reality](#11-the-promise-vs-reality)
+   - [1.2 The Path Forward: Blockchain-Native Design](#12-the-path-forward-blockchain-native-design)
+   - [1.3 Why Tic-Tac-Toe?](#13-why-tic-tac-toe)
+
+2. [Core Innovation: The Blocking Mechanic](#2-core-innovation-the-blocking-mechanic)
+   - [2.1 Classic Mode vs. Pro Mode](#21-classic-mode-vs-pro-mode)
+   - [2.2 Blocking Mechanic Rules](#22-blocking-mechanic-rules)
+   - [2.3 Game-Theoretic Implications](#23-game-theoretic-implications)
+
+3. [Tournament Architecture](#3-tournament-architecture)
+   - [3.1 Multi-Tiered Structure](#31-multi-tiered-structure)
+   - [3.2 Instance Management](#32-instance-management)
+   - [3.3 Tournament Lifecycle](#33-tournament-lifecycle)
+   - [3.4 Match Initialization and Pairing](#34-match-initialization-and-pairing)
+   - [3.5 Round Structure and Progression](#35-round-structure-and-progression)
+
+4. [Economic Sustainability](#4-economic-sustainability)
+   - [4.1 The Sustainability Problem in Web3](#41-the-sustainability-problem-in-web3)
+   - [4.2 ETTT's Economic Model](#42-etts-economic-model)
+   - [4.3 Automatic Fee Distribution](#43-automatic-fee-distribution)
+   - [4.4 Prize Distribution](#44-prize-distribution)
+   - [4.5 Economic Viability Analysis](#45-economic-viability-analysis)
+
+5. [Anti-Stalling Mechanisms](#5-anti-stalling-mechanisms)
+   - [5.1 The Stalling Problem](#51-the-stalling-problem)
+   - [5.2 Enrollment Timeout System](#52-enrollment-timeout-system)
+   - [5.3 Match Timeout System](#53-match-timeout-system)
+   - [5.4 Financial Incentive Structure](#54-financial-incentive-structure)
+   - [5.5 All-Draw Resolution](#55-all-draw-resolution)
+
+6. [Data Lifecycle & Scalability](#6-data-lifecycle--scalability)
+   - [6.1 The Storage Cost Problem](#61-the-storage-cost-problem)
+   - [6.2 ETTT's Bounded Storage Model](#62-etts-bounded-storage-model)
+   - [6.3 What Gets Cached vs. What Gets Deleted](#63-what-gets-cached-vs-what-gets-deleted)
+   - [6.4 Cache Access Patterns](#64-cache-access-patterns)
+   - [6.5 Economic Implications](#65-economic-implications)
+   - [6.6 Scalability Analysis](#66-scalability-analysis)
+
+7. [Security & Trust Minimization](#7-security--trust-minimization)
+   - [7.1 No Admin Functions for Gameplay](#71-no-admin-functions-for-gameplay)
+   - [7.2 ReentrancyGuard Protection](#72-reentrancyguard-protection)
+   - [7.3 Deterministic Outcomes](#73-deterministic-outcomes)
+   - [7.4 Prize Pool Isolation](#74-prize-pool-isolation)
+   - [7.5 Transparent Verification](#75-transparent-verification)
+
+8. [Technical Implementation Details](#8-technical-implementation-details)
+   - [8.1 Contract Architecture](#81-contract-architecture)
+   - [8.2 Storage Layout Optimization](#82-storage-layout-optimization)
+   - [8.3 Event Emissions](#83-event-emissions)
+   - [8.4 Gas Cost Analysis](#84-gas-cost-analysis)
+   - [8.5 Frontend Integration](#85-frontend-integration)
+
+9. [Comparison to Traditional Gaming Platforms](#9-comparison-to-traditional-gaming-platforms)
+   - [9.1 Centralized Gaming Platforms](#91-centralized-gaming-platforms)
+   - [9.2 ETTT's Advantages](#92-etts-advantages)
+   - [9.3 Trade-offs](#93-trade-offs)
+
+10. [Security Through Simplicity](#10-security-through-simplicity)
+    - [10.1 Atomic State Transitions](#101-atomic-state-transitions)
+    - [10.2 Zero External Dependencies](#102-zero-external-dependencies)
+    - [10.3 Immutable Game Logic](#103-immutable-game-logic)
+    - [10.4 Self-Contained Economic Model](#104-self-contained-economic-model)
+    - [10.5 Complete Transparency](#105-complete-transparency)
+    - [10.6 Limited Scope, Bounded Risk](#106-limited-scope-bounded-risk)
+
+11. [Philosophical Implications](#11-philosophical-implications)
+    - [11.1 What Blockchain Actually Enables](#111-what-blockchain-actually-enables)
+    - [11.2 The "Good Enough" Principle](#112-the-good-enough-principle)
+    - [11.3 Honest Design](#113-honest-design)
+    - [11.4 The Cultural Shift](#114-the-cultural-shift)
+
+12. [Conclusion](#12-conclusion)
+
+**Appendices:**
+- [Appendix A: Contract Specification](#appendix-a-contract-specification)
+- [Appendix B: Game Theory Analysis](#appendix-b-game-theory-analysis)
+- [Appendix C: Economic Modeling](#appendix-c-economic-modeling)
+- [References](#references)
+
+---
+
 ## 1. Introduction: The State of Web3 Gaming
 
 ### 1.1 The Promise vs. Reality
@@ -90,20 +174,6 @@ The blocking mechanic creates several layers of strategic depth:
 
 **Strategic Pressure**: Knowing your opponent still has their block available (because you can see they haven't used it) affects risk-taking. Players become more conservative in pursuing obvious winning threats, as their opponent can block the critical cell.
 
-### 2.4 Why This Works On-Chain
-
-The blocking mechanic's discrete nature makes it perfect for on-chain implementation. Each game state transition is simple:
-
-1. Verify the move is legal (cell is empty and not blocked)
-2. Update board state
-3. Clear any previous block
-4. Check for win/draw conditions
-5. Switch turns
-
-This logic executes in constant time regardless of game complexity. The contract's `makeMove` function (lines 1037-1217) handles all validation and state transitions atomically, ensuring game integrity without requiring off-chain computation.
-
----
-
 ## 3. Tournament Architecture
 
 ### 3.1 Multi-Tiered Structure
@@ -158,7 +228,7 @@ A tournament progresses through distinct phases:
 
 **Phase 4 - Round Progression**: When all matches in a round complete, the contract initializes the next round, pairing winners from the previous round. This continues until a single winner emerges or special conditions trigger (discussed in Section 5.5).
 
-**Phase 5 - Prize Distribution**: Upon tournament completion, the contract distributes the prize pool according to predefined percentages. Players claim prizes via `claimPrize(tierId, instanceId)`.
+**Phase 5 - Prize Distribution**: Upon tournament completion, the contract automatically distributes the prize pool to winners according to predefined percentages. Prizes are transferred directly to players' addresses atomically when the tournament ends.
 
 ### 3.4 Match Initialization and Pairing
 
@@ -237,42 +307,47 @@ Entry fees split into three pools:
 
 **2.5% Protocol Fee**: A smaller ongoing fee that can fund future protocol improvements, security audits, or ecosystem development.
 
-### 4.3 Fee Accumulation and Withdrawal
+### 4.3 Automatic Fee Distribution
 
-The contract accumulates fees separately for auditability:
-
-```solidity
-uint256 public accumulatedOwnerFees;
-uint256 public accumulatedProtocolFees;
-```
-
-These accumulate with every tournament enrollment:
+The contract immediately distributes fees upon enrollment, eliminating the need for accumulated balances:
 
 ```solidity
-function enrollInTournament(uint8 tierId, uint8 instanceId, Mode mode) 
-    external 
-    payable 
-    nonReentrant 
+function enrollInTournament(uint8 tierId, uint8 instanceId)
+    external
+    payable
+    nonReentrant
 {
-    // ... validation logic
-    
-    // Split fee
-    uint256 toParticipants = (msg.value * PARTICIPANTS_SHARE_BPS) / BASIS_POINTS;
-    uint256 toOwner = (msg.value * OWNER_SHARE_BPS) / BASIS_POINTS;
-    uint256 toProtocol = msg.value - toParticipants - toOwner;
-    
-    // Accumulate fees
-    accumulatedOwnerFees += toOwner;
-    accumulatedProtocolFees += toProtocol;
-    
-    // Add to prize pool
-    tournament.prizePool += toParticipants;
-    
+    require(msg.value == tierConfigs[tierId].entryFee, "Incorrect entry fee");
+
+    // Split entry fee into three pools using basis points
+    uint256 participantsShare = (msg.value * PARTICIPANTS_SHARE_BPS) / BASIS_POINTS;
+    uint256 ownerShare = (msg.value * OWNER_SHARE_BPS) / BASIS_POINTS;
+    uint256 protocolShare = (msg.value * PROTOCOL_SHARE_BPS) / BASIS_POINTS;
+
+    // Update forfeit pool with participants' share only (for potential public claim)
+    tournament.enrollmentTimeout.forfeitPool += participantsShare;
+
+    // Immediately transfer owner and protocol shares
+    (bool ownerSuccess, ) = payable(owner).call{value: ownerShare}("");
+    require(ownerSuccess, "Owner fee transfer failed");
+    emit OwnerFeePaid(owner, ownerShare);
+
+    (bool protocolSuccess, ) = payable(owner).call{value: protocolShare}("");
+    require(protocolSuccess, "Protocol fee transfer failed");
+    emit ProtocolFeePaid(owner, protocolShare);
+
     // ... enrollment logic
 }
 ```
 
-The owner can withdraw accumulated fees anytime via `withdrawOwnerFees()` or `withdrawProtocolFees()`. Prize pools remain locked until tournament completion, ensuring winners always receive payouts.
+This atomic distribution approach provides several advantages:
+- **No accumulated balances**: Eliminates the need for separate withdrawal functions
+- **Immediate settlement**: Owner and protocol fees are paid instantly upon each enrollment
+- **Simpler accounting**: No need to track accumulated fee balances across tournaments
+- **Gas efficiency**: Eliminates the gas cost of separate withdrawal transactions
+- **Transparent cash flow**: Events are emitted for each fee payment, making revenue tracking straightforward
+
+Prize pools remain locked in the contract until tournament completion, ensuring winners always receive their payouts.
 
 ### 4.4 Prize Distribution
 
@@ -310,7 +385,7 @@ function _distributePrizes(uint8 tierId, uint8 instanceId) internal {
 }
 ```
 
-Players claim prizes separately via `claimPrize()`, preventing reentrancy attacks and gas limit issues when distributing to many winners.
+Prizes are automatically transferred to winners' addresses when the tournament completes, with the transfers happening atomically within the `_distributePrizes()` function. This immediate distribution ensures players receive their winnings without requiring additional transactions.
 
 ### 4.5 Economic Viability Analysis
 
@@ -610,33 +685,18 @@ This is fundamentally different from most blockchain applications, which experie
 
 ### 7.1 No Admin Functions for Gameplay
 
-The contract's owner has exactly two capabilities:
+The contract's owner has no administrative control over gameplay or funds:
 
 ```solidity
-function withdrawOwnerFees() external nonReentrant {
-    require(msg.sender == owner, "Only owner can withdraw");
-    require(accumulatedOwnerFees > 0, "No owner fees to withdraw");
-    
-    uint256 amount = accumulatedOwnerFees;
-    accumulatedOwnerFees = 0;
-    
-    (bool success, ) = payable(owner).call{value: amount}("");
-    require(success, "Owner fee withdrawal failed");
-}
+address public immutable owner;
 
-function withdrawProtocolFees() external nonReentrant {
-    require(msg.sender == owner, "Only owner can withdraw");
-    require(accumulatedProtocolFees > 0, "No protocol fees to withdraw");
-    
-    uint256 amount = accumulatedProtocolFees;
-    accumulatedProtocolFees = 0;
-    
-    (bool success, ) = payable(owner).call{value: amount}("");
-    require(success, "Protocol fee withdrawal failed");
-}
+// Owner receives fees automatically upon enrollment
+// No withdrawal functions needed - fees are transferred atomically
 ```
 
-That's it. The owner cannot:
+Since fees are automatically distributed upon each enrollment (as shown in Section 4.3), the owner has no special functions to call for fee collection. Revenue flows automatically as players enroll.
+
+The owner cannot:
 - Cancel tournaments
 - Modify entry fees
 - Change prize distributions
@@ -672,12 +732,12 @@ contract TicTacTour is ReentrancyGuard {
     {
         // ... enrollment logic
     }
-    
-    function claimPrize(uint8 tierId, uint8 instanceId) 
-        external 
-        nonReentrant  // Prevents reentrancy during prize claims
+
+    function _distributePrizes(uint8 tierId, uint8 instanceId)
+        internal
+        nonReentrant  // Prevents reentrancy during prize distribution
     {
-        // ... prize claiming logic
+        // ... prize distribution logic with transfers
     }
 }
 ```
@@ -842,8 +902,8 @@ Typical gas costs per operation (estimates on Arbitrum):
 
 - **enrollInTournament**: ~80,000 gas (~$0.01 at 0.1 gwei)
 - **makeMove**: ~60,000-120,000 gas depending on outcome (~$0.01-0.02)
-- **claimPrize**: ~40,000 gas (~$0.005)
 - **forceStartTournament**: ~120,000 gas (~$0.015)
+- **Prize distribution** (automatic): ~40,000-100,000 gas total depending on number of winners (paid by the transaction that completes the tournament)
 
 These costs are negligible compared to entry fees, making the protocol economically viable even for small-stakes tournaments.
 
@@ -920,78 +980,207 @@ These trade-offs are acceptable because they're necessary for trustless operatio
 
 ---
 
-## 10. Future Extensions & Composability
+## 10. Security Through Simplicity
 
-### 10.1 Protocol Composability
+ETTT's security model differs fundamentally from complex DeFi protocols. Rather than layering defenses against sophisticated attacks, we eliminate entire classes of vulnerabilities through architectural simplicity. This section explains how design choices prevent common blockchain exploits without requiring extensive security infrastructure.
 
-As a fully on-chain protocol, ETTT can be composed with other smart contracts:
+### 10.1 Atomic State Transitions
 
-**Tournament Sponsorships**: Other protocols could sponsor tournaments by contributing to prize pools:
-
-```solidity
-function sponsorTournament(uint8 tierId, uint8 instanceId) external payable {
-    require(msg.value > 0, "Must send ETH");
-    TournamentInstance storage tournament = tournaments[tierId][instanceId];
-    require(tournament.status == TournamentStatus.Enrolling, "Can only sponsor enrolling tournaments");
-    
-    tournament.prizePool += msg.value;
-    emit TournamentSponsored(tierId, instanceId, msg.sender, msg.value);
-}
-```
-
-**NFT Rewards**: Other contracts could mint achievement NFTs for tournament winners:
+The protocol achieves reentrancy protection through simple, atomic state transitions rather than complex guard patterns:
 
 ```solidity
-interface ITournamentNFT {
-    function mintWinnerNFT(address winner, uint8 tierId, uint256 timestamp) external;
-}
+function makeMove(uint8 tierId, uint8 instanceId, uint8 roundNumber,
+                  uint8 matchNumber, uint8 cell) external nonReentrant {
+    // 1. Validate inputs
+    require(cell < 9, "Invalid cell");
+    require(msg.sender == currentPlayer, "Not your turn");
 
-// In ETTT contract:
-function _distributePrizes(uint8 tierId, uint8 instanceId) internal {
-    // ... existing prize distribution
-    
-    // Call external NFT contract if configured
-    if (nftContract != address(0)) {
-        ITournamentNFT(nftContract).mintWinnerNFT(tournament.winner, tierId, block.timestamp);
+    // 2. Update state
+    board[cell] = currentPlayerSymbol;
+    turn = opposingPlayer;
+
+    // 3. Check win condition (pure function, no external calls)
+    if (_checkWin(board)) {
+        _completeMatch(winner);
     }
+
+    // No external calls during critical operations
+    // No opportunities for reentrancy exploitation
 }
 ```
 
-**Betting Markets**: Prediction markets could allow spectators to bet on tournament outcomes, with oracle queries to the ETTT contract for settlement.
+Each game action follows a simple pattern: validate → update state → emit events. No external calls occur during state transitions. Prize distributions use the same atomic pattern—all transfers complete within a single transaction frame, making reentrancy attacks impossible by construction rather than by defensive programming.
 
-### 10.2 Additional Game Modes
+This contrasts with DeFi protocols that must guard against:
+- Flash loan attacks during multi-step operations
+- Reentrancy through callback functions
+- Front-running of complex state updates
 
-The contract architecture supports adding new game modes:
+ETTT's game logic has no callbacks, no flash loans, no multi-step operations that could be exploited. The attack surface doesn't exist.
 
-- **Timed Pro Mode**: Shorter move timeouts for fast-paced competition
-- **Team Tournaments**: 2v2 or 3v3 team-based competitions
-- **Handicap Matches**: Experienced players get fewer blocks or other constraints
-- **Variant Rules**: Different board sizes (4x4 tic-tac-toe), multiple blocks per game, etc.
+### 10.2 Zero External Dependencies
 
-These could be implemented as separate tier configurations or entirely new contracts that integrate with the existing player statistics system.
+Most DeFi exploits involve manipulating external data sources. ETTT eliminates this attack vector entirely:
 
-### 10.3 Cross-Chain Deployment
+```solidity
+// No price oracles
+// No external data feeds
+// No liquidity pool integrations
+// No governance token voting
 
-ETTT can be deployed on any EVM-compatible chain:
+function _checkWin(Cell[9] memory board) internal pure returns (bool) {
+    // Pure game logic - deterministic outcome based solely on board state
+    // No external state, no external calls, no manipulation vectors
+    return (
+        (board[0] == board[1] && board[1] == board[2] && board[0] != Cell.Empty) ||
+        (board[3] == board[4] && board[4] == board[5] && board[3] != Cell.Empty) ||
+        // ... remaining win conditions
+    );
+}
+```
 
-- **Arbitrum**: Current deployment, optimal for gas efficiency
-- **Optimism**: Alternative L2 with different security/decentralization trade-offs
-- **Base**: Coinbase's L2, good for mainstream adoption
-- **Ethereum L1**: Maximum decentralization, higher costs
-- **Polygon**: Alternative scaling solution with different characteristics
+Consider the attack surfaces this eliminates:
 
-Each deployment would be independent, but player statistics could potentially be aggregated across chains through oracle bridges or off-chain indexing.
+**No Oracle Manipulation**: DeFi protocols relying on price oracles can be exploited through flash loan attacks that temporarily manipulate reported prices. ETTT determines winners through pure on-chain logic—there's no external price to manipulate.
 
-### 10.4 DAO Governance (Future)
+**No Governance Attacks**: Protocols with governance tokens face risks of voting manipulation or malicious proposals. ETTT has no governance layer—all rules are immutable code.
 
-While the current contract has no governance, future versions could implement limited DAO control over:
+**No Liquidity Vulnerabilities**: AMM protocols face complex attacks exploiting slippage, liquidity ratios, and token interactions. ETTT doesn't interact with external token contracts or liquidity pools.
 
-- Adding new tournament tiers
-- Adjusting timeout parameters
-- Setting new entry fee levels
-- Allocating protocol fees to development grants
+**No Cross-Protocol Dependencies**: Many DeFi exploits chain vulnerabilities across multiple protocols. ETTT is self-contained—it doesn't call other protocols, so can't be part of complex attack chains.
 
-This would be implemented as a separate governance contract that has limited upgrade authority, preserving core game logic immutability while allowing parameter optimization based on community feedback.
+This independence means ETTT's security doesn't depend on external protocols remaining secure. The protocol operates correctly regardless of what happens in broader DeFi ecosystems.
+
+### 10.3 Immutable Game Logic
+
+The contract has no upgrade mechanisms, admin backdoors, or parameter governance:
+
+```solidity
+contract TicTacTour is ReentrancyGuard {
+    address public immutable owner;  // Cannot be changed
+
+    // Fee distribution constants (immutable)
+    uint256 public constant PARTICIPANTS_SHARE_BPS = 9000;
+    uint256 public constant OWNER_SHARE_BPS = 750;
+    uint256 public constant PROTOCOL_SHARE_BPS = 250;
+
+    // Tier configurations (immutable arrays)
+    uint8[7] public TIER_SIZES = [2, 4, 8, 16, 64, 128, 2];
+    uint256[7] public ENTRY_FEES = [0.001 ether, 0.002 ether, ...];
+
+    // No admin functions for:
+    // - Pausing tournaments
+    // - Modifying fee structures
+    // - Changing game rules
+    // - Upgrading contract logic
+}
+```
+
+This immutability provides several security guarantees:
+
+**No Insider Attacks**: Developers can't drain funds, change rules mid-tournament, or give themselves advantages. The owner receives fees automatically (7.5% per enrollment) but has no special capabilities beyond what any player can observe in the code.
+
+**No Governance Manipulation**: Many protocols have been exploited through governance attacks—buying voting power to pass malicious proposals. ETTT has no governance layer to manipulate.
+
+**Predictable Economics**: Players enrolling today know with certainty that fee structures won't change tomorrow. Entry fees, prize distributions, and timeout parameters are fixed in immutable storage.
+
+**No Upgrade Risks**: Upgradeable contracts introduce complexity and trust assumptions. ETTT's logic is permanent—what you verify today remains true forever.
+
+The trade-off is that bugs cannot be fixed without deploying a new contract and migrating users. We accept this limitation because it eliminates entire categories of attack:
+- Admin key compromises
+- Malicious governance proposals
+- Backdoor insertion through upgrades
+- Parameter manipulation
+
+### 10.4 Self-Contained Economic Model
+
+The protocol's economic flows are completely internal—no external borrowing, lending, or complex value transfers:
+
+```solidity
+function enrollInTournament(uint8 tierId, uint8 instanceId) external payable {
+    // Funds flow in exactly three directions:
+
+    // 1. Owner fee (7.5%) - transferred immediately
+    (bool ownerSuccess, ) = payable(owner).call{value: ownerShare}("");
+
+    // 2. Protocol fee (2.5%) - transferred immediately
+    (bool protocolSuccess, ) = payable(owner).call{value: protocolShare}("");
+
+    // 3. Prize pool (90%) - held until tournament completes
+    tournament.enrollmentTimeout.forfeitPool += participantsShare;
+
+    // That's it. No:
+    // - Leveraged positions
+    // - Collateralized debt
+    // - Liquidity mining
+    // - Yield farming
+    // - Token bonding curves
+}
+```
+
+This simplicity eliminates several exploit categories:
+
+**No Leverage Attacks**: Protocols offering leverage face liquidation cascade risks and margin manipulation. ETTT has no leverage—players pay entry fees and receive prizes. Nothing more complex.
+
+**No Impermanent Loss**: Liquidity providers in AMMs face impermanent loss risks. ETTT has no liquidity pools—entry fees become prize pools, then prizes are paid out. Value doesn't move through intermediate DeFi primitives.
+
+**No Token Economic Exploits**: Protocols with native tokens face risks around token emissions, inflation, and market manipulation. ETTT operates purely in ETH—no token mechanics to exploit.
+
+**No Systemic Risk Exposure**: DeFi protocols can fail due to contagion from other protocols they integrate with. ETTT stands alone—external protocol failures don't affect tournament operations.
+
+The entire economic system is: players pay entry fees → fees split immediately → tournaments run → winners get prizes. This linear flow has no complex interactions that create exploitable edge cases.
+
+### 10.5 Complete Transparency
+
+Every aspect of protocol operation is publicly verifiable in real-time:
+
+```solidity
+// All game state is public
+struct GameState {
+    Cell[9] board;              // Current board state
+    address player1;            // Player addresses
+    address player2;
+    address currentPlayer;      // Whose turn
+    bool player1UsedBlock;      // Block usage
+    bool player2UsedBlock;
+    uint256 lastMoveTimestamp;  // Timeout tracking
+    // ... all state publicly readable
+}
+
+// All critical operations emit events
+event MoveMade(uint8 tierId, uint8 instanceId, uint8 round, uint8 match,
+               address player, uint8 cell, uint256 timestamp);
+event MatchCompleted(uint8 tierId, uint8 instanceId, uint8 round, uint8 match,
+                     address winner, uint256 timestamp);
+event PrizeDistributed(uint8 tierId, uint8 instanceId, address player,
+                       uint256 amount);
+```
+
+This transparency serves multiple security functions:
+
+**Real-Time Auditing**: Anyone can verify that tournaments operate correctly by watching events and querying state. Anomalies are immediately visible—no waiting for financial reports or third-party audits.
+
+**Reproducible Outcomes**: Every game outcome can be independently verified. If someone claims they should have won but didn't receive a prize, the blockchain contains irrefutable proof of what actually occurred.
+
+**Public Forensics**: If exploitation occurs, the complete transaction history exists for analysis. Unlike traditional systems where logs can be altered or hidden, blockchain data is permanent and tamper-proof.
+
+**Trustless Verification**: Players don't need to trust that the protocol "probably" works correctly. They can verify specific tournaments they participate in, checking that moves were valid, winners were determined correctly, and prizes were distributed as promised.
+
+This differs from traditional gaming platforms where game servers are black boxes. You trust that the platform operates fairly, but you can't verify it. ETTT inverts this model—trust is optional because verification is always possible.
+
+### 10.6 Limited Scope, Bounded Risk
+
+The protocol's narrow scope inherently limits potential damage from any undiscovered vulnerabilities:
+
+**Bounded Loss**: The maximum loss from any exploit is limited to funds in active tournaments. There are no accumulated treasury funds, no staked governance tokens, no liquidity pools that could be drained. An attacker compromising a single tournament affects only that tournament's prize pool.
+
+**No Cascading Failures**: Exploiting one tournament doesn't grant access to others. Each tournament operates independently with isolated state. Unlike DeFi protocols where one exploit can drain entire treasuries, ETTT's architecture compartmentalizes risk.
+
+**Clear Security Perimeter**: The attack surface is well-defined—game logic, prize distribution, and timeout mechanisms. Security analysis can focus comprehensively on these components rather than trying to reason about complex interactions across multiple DeFi primitives.
+
+**Fail-Safe Defaults**: If something goes wrong with a specific tournament, the worst outcome is that tournament's prize pool becomes temporarily locked. Other tournaments continue operating normally. The protocol has no single point of failure that could halt all operations.
+
+This risk architecture means even a significant vulnerability would have limited blast radius. Compare this to DeFi protocols where single exploits have drained hundreds of millions of dollars—ETTT's maximum exposure per tournament is measured in ETH, not millions of dollars.
 
 ---
 
@@ -1093,10 +1282,11 @@ This is what real Web3 looks like: useful, honest, sustainable, and truly decent
 **Core Functions**:
 - `enrollInTournament(tierId, instanceId, mode)`: Join a tournament
 - `makeMove(tierId, instanceId, round, match, cell)`: Make a game move
-- `claimPrize(tierId, instanceId)`: Claim won prizes
 - `forceStartTournament(tierId, instanceId)`: Start partially-filled tournament
 - `claimTimeoutVictory(tierId, instanceId, round, match)`: Claim opponent timeout
 - `declareRW3()`: Return RW3 compliance declaration
+
+Note: Prizes are automatically distributed when tournaments complete - no manual claiming required.
 
 **View Functions**:
 - `getTournament(tierId, instanceId)`: Get tournament state

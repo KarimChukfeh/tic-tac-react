@@ -225,9 +225,13 @@ const WhitepaperSection = () => {
           ul: ({node, ...props}) => <ul className="list-disc pl-6 mb-6 text-purple-100 space-y-2" {...props} />,
           ol: ({node, ...props}) => <ol className="list-decimal pl-6 mb-6 text-purple-100 space-y-2" {...props} />,
           li: ({node, ...props}) => <li className="text-purple-100" {...props} />,
-          code: ({node, inline, ...props}) => inline
-            ? <code className="bg-purple-500/20 px-2 py-1 rounded text-purple-200 text-sm" {...props} />
-            : <code className="block bg-purple-900/50 p-4 rounded-lg text-purple-200 text-sm overflow-x-auto mb-4" {...props} />,
+          code: ({node, inline, className, ...props}) => {
+            // Check if it's inline code (single backticks) or block code (triple backticks)
+            const isInline = inline || !className?.includes('language-');
+            return isInline
+              ? <code className="bg-purple-500/20 px-2 py-1 rounded text-purple-200 text-sm" {...props} />
+              : <code className="block bg-purple-900/50 p-4 rounded-lg text-purple-200 text-sm overflow-x-auto mb-4" {...props} />;
+          },
           pre: ({node, ...props}) => <pre className="bg-purple-900/50 p-4 rounded-lg overflow-x-auto mb-4" {...props} />,
           blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-purple-400 pl-4 italic text-purple-200 my-4" {...props} />,
           hr: ({node, ...props}) => <hr className="border-purple-500/30 my-8" {...props} />,
