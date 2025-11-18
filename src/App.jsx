@@ -840,7 +840,7 @@ const TournamentCard = ({
       )}
 
       {/* Action Buttons */}
-      {tournamentStatus === 0 && escalationState.canStartEscalation2 ? (
+      {escalationState.canStartEscalation2 ? (
         // Escalation 2: Anyone can claim the abandoned pool
         <button
           onClick={() => onClaimAbandonedPool(tierId, instanceId)}
@@ -850,7 +850,7 @@ const TournamentCard = ({
           <Coins size={18} />
           {loading ? 'Claiming...' : 'Claim Abandoned Pool'}
         </button>
-      ) : (tournamentStatus === 0 && escalationState.canStartEscalation1 && isEnrolled) ? (
+      ) : (escalationState.canStartEscalation1 && isEnrolled) ? (
         // Escalation 1: Enrolled players can force start
         <button
           onClick={() => onManualStart(tierId, instanceId)}
@@ -3408,44 +3408,7 @@ export default function TicTacBlock() {
       if (!match || !contractInstance || !userAccount) return;
 
       const updated = await refreshMatchData(contractInstance, userAccount, match);
-
-      // Check if match just ended
-      if (updated && updated.matchStatus === 2 && match.matchStatus !== 2) {
-        const zeroAddress = '0x0000000000000000000000000000000000000000';
-        const userWon = updated.winner.toLowerCase() === userAccount.toLowerCase();
-        const isDraw = updated.isDraw || updated.winner.toLowerCase() === zeroAddress;
-
-        // Refresh cached stats
-        await fetchCachedStats(true);
-
-        // Refresh tournament data
-        if (theme === 'dream') {
-          await fetchTournaments(updated.tierId);
-        } else if (theme === 'daring') {
-          await fetchAllDaringTiers();
-        }
-
-        if (isDraw) {
-          alert('Match ended in a draw!');
-          // Go back to tournament brackets
-          setCurrentMatch(null);
-          const bracketData = await refreshTournamentBracket(contractInstance, updated.tierId, updated.instanceId);
-          if (bracketData) setViewingTournament(bracketData);
-        } else if (userWon) {
-          alert('You won!');
-          // Go back to tournament brackets
-          setCurrentMatch(null);
-          const bracketData = await refreshTournamentBracket(contractInstance, updated.tierId, updated.instanceId);
-          if (bracketData) setViewingTournament(bracketData);
-        } else {
-          alert('You lost');
-          // Go back to tournaments list
-          setCurrentMatch(null);
-          setViewingTournament(null);
-        }
-      } else if (updated) {
-        setCurrentMatch(updated);
-      }
+      if (updated) setCurrentMatch(updated);
 
       // Reset dots to 1 after sync completes
       setSyncDots(1);
@@ -3455,7 +3418,7 @@ export default function TicTacBlock() {
     const pollInterval = setInterval(doSync, 3000);
 
     return () => clearInterval(pollInterval);
-  }, [currentMatch?.tierId, currentMatch?.instanceId, currentMatch?.roundNumber, currentMatch?.matchNumber, refreshMatchData, fetchCachedStats, theme, fetchTournaments, fetchAllDaringTiers, refreshTournamentBracket]);
+  }, [currentMatch?.tierId, currentMatch?.instanceId, currentMatch?.roundNumber, currentMatch?.matchNumber, refreshMatchData]);
 
   // Increment sync dots every second (1 -> 2 -> 3, then resets when sync completes)
   useEffect(() => {
