@@ -3576,20 +3576,20 @@ export default function TicTacBlock() {
         className="theme-toggle-button"
         style={{
           position: 'fixed',
-          top: '94px',
+          top: window.innerWidth <= 768 ? '110px' : '94px',
           right: '24px',
           zIndex: 9999,
           display: 'flex',
           alignItems: 'center',
-          gap: '7px',
+          gap: window.innerWidth <= 768 ? '10px' : '7px',
           background: 'rgba(255, 255, 255, 0.1)',
           backdropFilter: 'blur(10px)',
           border: `2px solid ${currentTheme.border}`,
-          borderRadius: '18px',
-          padding: '8px 14px',
+          borderRadius: window.innerWidth <= 768 ? '24px' : '18px',
+          padding: window.innerWidth <= 768 ? '12px 18px' : '8px 14px',
           color: '#fff',
           fontWeight: 'bold',
-          fontSize: '12px',
+          fontSize: window.innerWidth <= 768 ? '15px' : '12px',
           cursor: 'pointer',
           transition: 'all 0.3s ease',
           boxShadow: `0 0 16px ${currentTheme.glow}`,
@@ -3605,7 +3605,7 @@ export default function TicTacBlock() {
           e.currentTarget.style.boxShadow = `0 0 16px ${currentTheme.glow}`;
         }}
       >
-        <span style={{ fontSize: '18px' }}>{currentTheme.icon}</span>
+        <span style={{ fontSize: window.innerWidth <= 768 ? '24px' : '18px' }}>{currentTheme.icon}</span>
         <span>{currentTheme.label}</span>
       </button>
       <style>{`
@@ -3648,11 +3648,11 @@ export default function TicTacBlock() {
         transition: 'background 3s ease-in-out, border-bottom 5s ease-in-out'
       }}>
         <div className="max-w-7xl mx-auto px-6 py-3">
-          <div className="flex flex-wrap items-center justify-between gap-4 text-sm">
-            <div className="flex items-center gap-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-4 text-xs md:text-sm">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 md:gap-6 justify-center md:justify-start">
               <div className="flex items-center gap-2">
           <Shield className="text-blue-400" size={16} />
-          <span className="text-blue-100 font-medium">100% On-Chain Games</span>
+          <span className="text-blue-100 font-medium">100% On-Chain</span>
               </div>
               <div className="flex items-center gap-2">
           <Lock className="text-blue-400" size={16} />
@@ -3662,12 +3662,16 @@ export default function TicTacBlock() {
           <Eye className="text-blue-400" size={16} />
           <span className="text-blue-100 font-medium">Every Move Verifiable</span>
               </div>
+              <div className="flex items-center gap-2">
+          <CheckCircle className="text-blue-400" size={16} />
+          <span className="text-blue-100 font-medium">Zero Trackers</span>
+              </div>
             </div>
             <a
               href={ETHERSCAN_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 text-blue-300 hover:text-blue-200 transition-colors"
+              className="flex items-center gap-2 text-blue-300 hover:text-blue-200 transition-colors justify-center md:justify-start"
             >
               <Code size={16} />
               <span className="font-mono text-xs">{shortenAddress(CONTRACT_ADDRESS)}</span>
