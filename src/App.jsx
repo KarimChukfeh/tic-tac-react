@@ -54,7 +54,7 @@ const ParticleBackground = ({ colors }) => {
               animationDelay: `${p.delay}s`,
               willChange: 'transform, opacity',
               color: color,
-              fontSize: '12px',
+              fontSize: '16px',
               fontWeight: 'bold',
               opacity: 0.4,
               textShadow: `0 0 8px ${color}`
@@ -3380,11 +3380,11 @@ export default function TicTacBlock() {
       </button>
       <style>{`
         * {
-          transition: background-color 3s ease-in-out,
-                      border-color 3s ease-in-out,
-                      box-shadow 3s ease-in-out,
+          transition: background-color 2s ease-in-out,
+                      border-color 1s ease-in-out,
+                      box-shadow 1s ease-in-out,
                       color 0.1s ease-in-out,
-                      background 3s ease-in-out !important;
+                      background 1s ease-in-out !important;
         }
 
         .theme-toggle-button {
