@@ -72,6 +72,7 @@ This whitepaper details the protocol's technical architecture, game-theoretic me
    - [8.3 Event Emissions](#83-event-emissions)
    - [8.4 Gas Cost Analysis](#84-gas-cost-analysis)
    - [8.5 Frontend Integration](#85-frontend-integration)
+   - [8.6 Privacy-First Frontend Architecture](#86-privacy-first-frontend-architecture)
 
 9. [Comparison to Traditional Gaming Platforms](#9-comparison-to-traditional-gaming-platforms)
    - [9.1 Centralized Gaming Platforms](#91-centralized-gaming-platforms)
@@ -928,6 +929,43 @@ contract.on("TournamentCompleted", (tierId, instanceId, winner, prize) => {
 ```
 
 Frontends read state directly from the blockchain and submit transactions directly to the contract. No API servers, no authentication systems, no databases—just Web3 providers (MetaMask, WalletConnect, etc.) connecting users to the protocol.
+
+### 8.6 Privacy-First Frontend Architecture
+
+While the frontend is hosted on traditional web infrastructure for practical accessibility, it implements a zero-surveillance architecture that respects user privacy:
+
+**No Data Collection:**
+- Zero cookies stored locally
+- Zero analytics or tracking scripts
+- Zero external API calls beyond blockchain interactions
+- Zero user data transmitted to servers
+
+**Blockchain-Only Communication:**
+
+```javascript
+// Frontend only communicates with blockchain
+const provider = new ethers.providers.Web3Provider(window.ethereum);
+const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
+
+// No analytics.track(), no fetch() to APIs, no data mining
+await contract.enrollInTournament(tierId, instanceId, mode, { value: entryFee });
+```
+
+**Why This Matters:**
+
+Most "Web3" applications still operate surveillance capitalism models—collecting user data, tracking behavior, and monetizing attention. ETTT's frontend proves this is unnecessary. The application generates revenue through tournament fees, not user exploitation.
+
+This approach demonstrates that Web3's promise of user sovereignty extends beyond financial assets to data privacy. Users can verify the frontend's privacy claims by inspecting network requests—they'll only see blockchain transactions.
+
+**Verifiable Privacy:**
+
+Open your browser's network inspector while using ETTT. You'll observe:
+- Requests to blockchain RPC endpoints (e.g., Arbitrum nodes)
+- Wallet extension communication (MetaMask, etc.)
+- Static asset loading (HTML, CSS, JS)
+- **Nothing else**: No Google Analytics, no Facebook pixels, no third-party trackers, no backend APIs collecting user data
+
+This privacy model isn't marketing—it's architecturally enforced. There's no backend to collect data even if we wanted to. The application is a pure client-side interface to a smart contract.
 
 ---
 
