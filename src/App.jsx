@@ -24,6 +24,7 @@ import {
 import { ethers } from 'ethers';
 import DUMMY_ABI from './TourABI.json';
 import ReactMarkdown from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
 
 // Particle Background Component (Dream/Daring Themes)
 const ParticleBackground = ({ colors }) => {
@@ -214,13 +215,37 @@ const WhitepaperSection = () => {
     );
   }
 
+  // Helper function to generate heading IDs (slug)
+  const generateId = (text) => {
+    if (!text) return '';
+    return text
+      .toString()
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, '-')           // Replace spaces with hyphens
+      .replace(/[^\w\-]+/g, '')       // Remove non-word chars except hyphens
+      .replace(/\-\-+/g, '-')         // Replace multiple hyphens with single hyphen
+      .replace(/^-+/, '')             // Trim hyphens from start
+      .replace(/-+$/, '');            // Trim hyphens from end
+  };
+
   return (
     <div id="whitepaper" className="bg-gradient-to-br from-purple-900/30 to-indigo-900/30 backdrop-blur-lg rounded-2xl p-8 md:p-12 border border-purple-500/30 mb-16">
       <ReactMarkdown
+        rehypePlugins={[rehypeRaw]}
         components={{
-          h1: ({node, ...props}) => <h1 className="text-4xl font-bold text-purple-300 mb-6 mt-8" {...props} />,
-          h2: ({node, ...props}) => <h2 className="text-3xl font-bold text-purple-300 mb-4 mt-8" {...props} />,
-          h3: ({node, ...props}) => <h3 className="text-2xl font-bold text-purple-300 mb-3 mt-6" {...props} />,
+          h1: ({node, children, ...props}) => {
+            const id = generateId(children);
+            return <h1 id={id} className="text-4xl font-bold text-purple-300 mb-6 mt-8" {...props}>{children}</h1>;
+          },
+          h2: ({node, children, ...props}) => {
+            const id = generateId(children);
+            return <h2 id={id} className="text-3xl font-bold text-purple-300 mb-4 mt-8" {...props}>{children}</h2>;
+          },
+          h3: ({node, children, ...props}) => {
+            const id = generateId(children);
+            return <h3 id={id} className="text-2xl font-bold text-purple-300 mb-3 mt-6" {...props}>{children}</h3>;
+          },
           p: ({node, ...props}) => <p className="text-purple-100 mb-4 leading-relaxed" {...props} />,
           ul: ({node, ...props}) => <ul className="list-disc pl-6 mb-6 text-purple-100 space-y-2" {...props} />,
           ol: ({node, ...props}) => <ol className="list-decimal pl-6 mb-6 text-purple-100 space-y-2" {...props} />,
@@ -235,12 +260,36 @@ const WhitepaperSection = () => {
           pre: ({node, ...props}) => <pre className="bg-purple-900/50 p-4 rounded-lg overflow-x-auto mb-4" {...props} />,
           blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-purple-400 pl-4 italic text-purple-200 my-4" {...props} />,
           hr: ({node, ...props}) => <hr className="border-purple-500/30 my-8" {...props} />,
-          a: ({node, ...props}) => <a className="text-purple-300 hover:text-purple-200 underline" {...props} />,
+          a: ({node, href, children, ...props}) => {
+            // Handle internal anchor links with smooth scrolling
+            if (href?.startsWith('#')) {
+              return (
+                <a
+                  href={href}
+                  className="text-purple-300 hover:text-purple-200 underline cursor-pointer"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const element = document.getElementById(href.slice(1));
+                    if (element) {
+                      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                  }}
+                  {...props}
+                >
+                  {children}
+                </a>
+              );
+            }
+            // External links
+            return <a href={href} className="text-purple-300 hover:text-purple-200 underline" target="_blank" rel="noopener noreferrer" {...props}>{children}</a>;
+          },
           strong: ({node, ...props}) => <strong className="text-purple-200 font-bold" {...props} />,
           table: ({node, ...props}) => <div className="overflow-x-auto mb-6"><table className="w-full border-collapse" {...props} /></div>,
           thead: ({node, ...props}) => <thead className="border-b border-purple-500/30" {...props} />,
           th: ({node, ...props}) => <th className="text-left p-3 text-purple-300" {...props} />,
           td: ({node, ...props}) => <td className="p-3 text-purple-100 border-b border-purple-500/20" {...props} />,
+          details: ({node, ...props}) => <details className="mb-6 border border-purple-500/30 rounded-lg p-4 bg-purple-900/20" {...props} />,
+          summary: ({node, ...props}) => <summary className="cursor-pointer text-purple-300 text-xl font-bold mb-2 hover:text-purple-200 transition-colors" {...props} />,
         }}
       >
         {markdown}

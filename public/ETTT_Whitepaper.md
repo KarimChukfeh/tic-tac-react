@@ -17,7 +17,8 @@ This whitepaper details the protocol's technical architecture, game-theoretic me
 
 ---
 
-## Table of Contents
+<details>
+<summary><strong>Table of Contents</strong></summary>
 
 1. [Introduction: The State of Web3 Gaming](#1-introduction-the-state-of-web3-gaming)
    - [1.1 The Promise vs. Reality](#11-the-promise-vs-reality)
@@ -97,7 +98,8 @@ This whitepaper details the protocol's technical architecture, game-theoretic me
 - [Appendix A: Contract Specification](#appendix-a-contract-specification)
 - [Appendix B: Game Theory Analysis](#appendix-b-game-theory-analysis)
 - [Appendix C: Economic Modeling](#appendix-c-economic-modeling)
-- [References](#references)
+
+</details>
 
 ---
 
@@ -1340,20 +1342,6 @@ At ETH = $2,000:
 - Protocol Fund: $1,008/hour = $8.8M/year
 
 These numbers demonstrate the protocol's economic viability at scale while maintaining player-friendly 90% prize pool allocation.
-
----
-
-## References
-
-1. Buterin, V. (2014). "Ethereum White Paper: A Next-Generation Smart Contract and Decentralized Application Platform"
-
-2. OpenZeppelin. (2023). "Smart Contract Security Best Practices"
-
-3. Arbitrum Documentation. (2024). "Layer 2 Scaling Solutions"
-
-4. Neumann, J. & Morgenstern, O. (1944). "Theory of Games and Economic Behavior"
-
-5. Nakamoto, S. (2008). "Bitcoin: A Peer-to-Peer Electronic Cash System"
 
 ---
 
