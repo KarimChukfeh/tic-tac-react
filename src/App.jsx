@@ -3482,32 +3482,96 @@ export default function TicTacBlock() {
           match
         );
         if (updatedMatch) {
-          // Check if player was eliminated by advanced player (double forfeit)
           const zeroAddress = '0x0000000000000000000000000000000000000000';
           const matchWasCompleted = updatedMatch.matchStatus === 2 && match.matchStatus !== 2;
-          const isDoubleForfeited = updatedMatch.winner.toLowerCase() === zeroAddress && !updatedMatch.isDraw;
           const wasParticipant =
             updatedMatch.player1.toLowerCase() === userAccount.toLowerCase() ||
             updatedMatch.player2.toLowerCase() === userAccount.toLowerCase();
 
+          // Case 1: Single Match Forfeit (Escalation 1 - opponent claims victory)
+          if (matchWasCompleted &&
+              updatedMatch.isTimedOut &&
+              updatedMatch.winner.toLowerCase() !== zeroAddress &&
+              !updatedMatch.isDraw &&
+              wasParticipant) {
+            const userWon = updatedMatch.winner.toLowerCase() === userAccount.toLowerCase();
+            if (userWon) {
+              alert('You won by forfeit! Your opponent failed to move in time.');
+
+              // Stay in match view to see final board
+              setCurrentMatch(null);
+
+              // Refresh and show tournament bracket
+              await fetchCachedStats(true);
+              if (theme === 'dream') {
+                await fetchTournaments(updatedMatch.tierId);
+              } else if (theme === 'daring') {
+                await fetchAllDaringTiers();
+              }
+
+              const bracketData = await refreshTournamentBracket(contractInstance, updatedMatch.tierId, updatedMatch.instanceId);
+              if (bracketData) setViewingTournament(bracketData);
+            } else {
+              alert('You lost by forfeit. You failed to move in time and your opponent claimed victory.');
+
+              setCurrentMatch(null);
+              setViewingTournament(null);
+
+              await fetchCachedStats(true);
+              if (theme === 'dream') {
+                await fetchTournaments(updatedMatch.tierId);
+              } else if (theme === 'daring') {
+                await fetchAllDaringTiers();
+              }
+            }
+            return;
+          }
+
+          // Case 2: Higher-Round Intervention (Escalation 2 - both players eliminated)
+          const isDoubleForfeited = updatedMatch.winner.toLowerCase() === zeroAddress && !updatedMatch.isDraw;
           if (matchWasCompleted && isDoubleForfeited && wasParticipant) {
-            // Player was eliminated by advanced player
             alert('You were eliminated from the tournament. Both you and your opponent were removed due to inactivity by an advanced player.');
 
-            // Clear match and tournament view
             setCurrentMatch(null);
             setViewingTournament(null);
 
-            // Refresh data
             await fetchCachedStats(true);
             if (theme === 'dream') {
               await fetchTournaments(updatedMatch.tierId);
             } else if (theme === 'daring') {
               await fetchAllDaringTiers();
             }
-          } else {
-            setCurrentMatch(updatedMatch);
+            return;
           }
+
+          // Case 3: Final Outsider Claim (Escalation 3 - external outsider claims prize pool)
+          // This is detected when timeoutClaimant is set and user is a participant
+          if (matchWasCompleted &&
+              updatedMatch.timeoutClaimant &&
+              updatedMatch.timeoutClaimant.toLowerCase() !== zeroAddress &&
+              wasParticipant) {
+            const claimerIsExternal =
+              updatedMatch.timeoutClaimant.toLowerCase() !== updatedMatch.player1.toLowerCase() &&
+              updatedMatch.timeoutClaimant.toLowerCase() !== updatedMatch.player2.toLowerCase();
+
+            if (claimerIsExternal) {
+              alert('An external outsider claimed the prize pool for this match due to prolonged inactivity. You have been eliminated from the tournament.');
+
+              setCurrentMatch(null);
+              setViewingTournament(null);
+
+              await fetchCachedStats(true);
+              if (theme === 'dream') {
+                await fetchTournaments(updatedMatch.tierId);
+              } else if (theme === 'daring') {
+                await fetchAllDaringTiers();
+              }
+              return;
+            }
+          }
+
+          // Normal match update
+          setCurrentMatch(updatedMatch);
         }
       } catch (error) {
         console.error('Error syncing match:', error);
@@ -3521,7 +3585,7 @@ export default function TicTacBlock() {
     const matchPollInterval = setInterval(doMatchSync, 2000);
 
     return () => clearInterval(matchPollInterval);
-  }, [currentMatch?.tierId, currentMatch?.instanceId, currentMatch?.roundNumber, currentMatch?.matchNumber, account, refreshMatchData, theme, fetchCachedStats, fetchTournaments, fetchAllDaringTiers]);
+  }, [currentMatch?.tierId, currentMatch?.instanceId, currentMatch?.roundNumber, currentMatch?.matchNumber, account, refreshMatchData, theme, fetchCachedStats, fetchTournaments, fetchAllDaringTiers, refreshTournamentBracket]);
 
   // Increment bracket sync dots every second
   useEffect(() => {
