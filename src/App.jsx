@@ -2306,6 +2306,9 @@ export default function TicTacBlock() {
         });
       }
 
+      // Sort by enrolledCount descending (most enrolled first)
+      tournamentData.sort((a, b) => b.enrolledCount - a.enrolledCount);
+
       setTournaments(tournamentData);
       if (!silent) {
         setTournamentsLoading(false);
@@ -2461,7 +2464,30 @@ export default function TicTacBlock() {
     }
 
     console.log(`Total tournaments found: ${allTournaments.length}`);
-    setTournaments(allTournaments);
+
+    // Sort within each tier by enrolledCount descending (most enrolled first)
+    const tierGroups = {};
+    allTournaments.forEach(tournament => {
+      if (!tierGroups[tournament.tierId]) {
+        tierGroups[tournament.tierId] = [];
+      }
+      tierGroups[tournament.tierId].push(tournament);
+    });
+
+    // Sort each tier's instances
+    Object.values(tierGroups).forEach(tierTournaments => {
+      tierTournaments.sort((a, b) => b.enrolledCount - a.enrolledCount);
+    });
+
+    // Flatten back to a single array, maintaining tier order (1-6)
+    const sortedTournaments = [];
+    for (let tierId = 1; tierId <= 6; tierId++) {
+      if (tierGroups[tierId]) {
+        sortedTournaments.push(...tierGroups[tierId]);
+      }
+    }
+
+    setTournaments(sortedTournaments);
     if (!silent) {
       setTournamentsLoading(false);
     }
