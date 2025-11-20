@@ -747,18 +747,8 @@ const TournamentCard = ({
       )}
 
       {/* Action Buttons */}
-      {escalationState.canStartEscalation2 ? (
-        // Escalation 2: Anyone can claim the abandoned pool
-        <button
-          onClick={() => onClaimAbandonedPool(tierId, instanceId)}
-          disabled={loading}
-          className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 mb-2"
-        >
-          <Coins size={18} />
-          {loading ? 'Claiming...' : 'Claim Abandoned Pool'}
-        </button>
-      ) : (escalationState.canStartEscalation1 && isEnrolled) ? (
-        // Escalation 1: Enrolled players can force start
+      {/* Escalation 1: Enrolled players can force start */}
+      {tournamentStatus === 0 && escalationState.canStartEscalation1 && isEnrolled && (
         <button
           onClick={() => onManualStart(tierId, instanceId)}
           disabled={loading || !account}
@@ -767,7 +757,19 @@ const TournamentCard = ({
           <Zap size={18} />
           {loading ? 'Starting...' : !account ? 'Connect Wallet to Force Start' : 'Force Start Tournament'}
         </button>
-      ) : null} 
+      )}
+
+      {/* Escalation 2: Anyone can claim the abandoned pool */}
+      {tournamentStatus === 0 && escalationState.canStartEscalation2 && (
+        <button
+          onClick={() => onClaimAbandonedPool(tierId, instanceId)}
+          disabled={loading}
+          className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 mb-2"
+        >
+          <Coins size={18} />
+          {loading ? 'Claiming...' : 'Claim Abandoned Pool'}
+        </button>
+      )} 
 
       {isEnrolled ? (
         <button
@@ -887,17 +889,31 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
   };
 
-  const getMatchStatusText = (matchStatus) => {
+  const getMatchStatusText = (matchStatus, winner, isDraw) => {
     if (matchStatus === 0) return 'Not Started';
     if (matchStatus === 1) return 'In Progress';
-    if (matchStatus === 2) return 'Completed';
+    if (matchStatus === 2) {
+      const zeroAddress = '0x0000000000000000000000000000000000000000';
+      // Check for double forfeit: completed, zero address winner, not a draw
+      if (winner && winner.toLowerCase() === zeroAddress && !isDraw) {
+        return 'Eliminated - Double Forfeit';
+      }
+      return 'Completed';
+    }
     return 'Unknown';
   };
 
-  const getMatchStatusColor = (matchStatus) => {
+  const getMatchStatusColor = (matchStatus, winner, isDraw) => {
     if (matchStatus === 0) return 'text-gray-400';
     if (matchStatus === 1) return 'text-yellow-400';
-    if (matchStatus === 2) return 'text-green-400';
+    if (matchStatus === 2) {
+      const zeroAddress = '0x0000000000000000000000000000000000000000';
+      // Check for double forfeit: completed, zero address winner, not a draw
+      if (winner && winner.toLowerCase() === zeroAddress && !isDraw) {
+        return 'text-red-400';
+      }
+      return 'text-green-400';
+    }
     return 'text-gray-400';
   };
 
@@ -995,6 +1011,38 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
             )}
           </div>
         )}
+
+        {/* Enrolled Players List */}
+        {enrolledPlayers && enrolledPlayers.length > 0 && (
+          <div className="mt-4 bg-black/20 rounded-lg p-4 border border-purple-400/30">
+            <div className="flex items-center gap-2 mb-3">
+              <Users className={colors.icon} size={20} />
+              <h4 className={`${colors.text} font-semibold`}>
+                Enrolled Players ({enrolledPlayers.length})
+              </h4>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-48 overflow-y-auto">
+              {enrolledPlayers.map((address, idx) => (
+                <div
+                  key={idx}
+                  className={`font-mono text-sm p-2 rounded ${
+                    address.toLowerCase() === account?.toLowerCase()
+                      ? 'bg-yellow-500/20 border border-yellow-400/50 text-yellow-300 font-bold'
+                      : 'bg-purple-500/10 text-purple-300'
+                  }`}
+                >
+                  {address.toLowerCase() === account?.toLowerCase() && (
+                    <span className="text-yellow-400 text-xs mr-1">→</span>
+                  )}
+                  {shortenAddress(address)}
+                  {address.toLowerCase() === account?.toLowerCase() && (
+                    <span className="text-yellow-400 text-xs ml-1">←</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* User's Current Match Highlight */}
@@ -1024,8 +1072,8 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
               </div>
               <p className="text-green-200 mt-2">
                 Round {userCurrentMatch.roundNumber + 1} • Match {userCurrentMatch.matchNumber + 1} •
-                <span className={`ml-2 ${getMatchStatusColor(userCurrentMatch.matchStatus)}`}>
-                  {getMatchStatusText(userCurrentMatch.matchStatus)}
+                <span className={`ml-2 ${getMatchStatusColor(userCurrentMatch.matchStatus, userCurrentMatch.winner, userCurrentMatch.isDraw)}`}>
+                  {getMatchStatusText(userCurrentMatch.matchStatus, userCurrentMatch.winner, userCurrentMatch.isDraw)}
                 </span>
               </p>
             </div>
@@ -1137,8 +1185,8 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
                               ⏱️ {Math.floor(timeRemaining / 60)}:{(timeRemaining % 60).toString().padStart(2, '0')}
                             </span>
                           )}
-                          <span className={`text-xs font-bold ${getMatchStatusColor(match.matchStatus)}`}>
-                            {getMatchStatusText(match.matchStatus)}
+                          <span className={`text-xs font-bold ${getMatchStatusColor(match.matchStatus, match.winner, match.isDraw)}`}>
+                            {getMatchStatusText(match.matchStatus, match.winner, match.isDraw)}
                           </span>
                         </div>
                       </div>
@@ -1202,7 +1250,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
                         {!isUserMatch && match.matchStatus !== 2 && (
                           <>
                             {/* Escalation 2: Force Eliminate */}
-                            {canForceEliminate && !canReplace && (
+                            {canForceEliminate && (
                               <div className="mt-2">
                                 <button
                                   onClick={() => onForceEliminate({
@@ -2606,7 +2654,7 @@ export default function TicTacBlock() {
       // Check if user is enrolled (only required for escalation 1)
       const isEnrolled = await contract.isEnrolled(tierId, instanceId, account);
 
-      // This function should only be called for Escalation 1 now
+      // // This function should only be called for Escalation 1 now
       // Escalation 2 should use handleClaimAbandonedPool instead
       if (canStartEscalation2) {
         alert('This tournament has reached Escalation 2. Please use the claimAbandonedEnrollmentPool button instead.');
@@ -3131,11 +3179,10 @@ export default function TicTacBlock() {
       const tx = await contract.forceEliminateStalledMatch(tierId, instanceId, roundNumber, matchNumber);
       await tx.wait();
 
-      alert('Match eliminated! Both players have been forfeited.');
+      alert('Stalled match eliminated! Tournament can now continue.');
 
-      // Exit match view and go back to tournaments list
+      // Exit match view and go to tournament bracket
       setCurrentMatch(null);
-      setViewingTournament(null);
 
       // Refresh cached stats
       await fetchCachedStats(true);
@@ -3145,6 +3192,12 @@ export default function TicTacBlock() {
         await fetchTournaments(tierId);
       } else if (theme === 'daring') {
         await fetchAllDaringTiers();
+      }
+
+      // Refresh and show tournament bracket
+      const bracketData = await refreshTournamentBracket(contract, tierId, instanceId);
+      if (bracketData) {
+        setViewingTournament(bracketData);
       }
 
       setMatchLoading(false);
@@ -3429,7 +3482,32 @@ export default function TicTacBlock() {
           match
         );
         if (updatedMatch) {
-          setCurrentMatch(updatedMatch);
+          // Check if player was eliminated by advanced player (double forfeit)
+          const zeroAddress = '0x0000000000000000000000000000000000000000';
+          const matchWasCompleted = updatedMatch.matchStatus === 2 && match.matchStatus !== 2;
+          const isDoubleForfeited = updatedMatch.winner.toLowerCase() === zeroAddress && !updatedMatch.isDraw;
+          const wasParticipant =
+            updatedMatch.player1.toLowerCase() === userAccount.toLowerCase() ||
+            updatedMatch.player2.toLowerCase() === userAccount.toLowerCase();
+
+          if (matchWasCompleted && isDoubleForfeited && wasParticipant) {
+            // Player was eliminated by advanced player
+            alert('You were eliminated from the tournament. Both you and your opponent were removed due to inactivity by an advanced player.');
+
+            // Clear match and tournament view
+            setCurrentMatch(null);
+            setViewingTournament(null);
+
+            // Refresh data
+            await fetchCachedStats(true);
+            if (theme === 'dream') {
+              await fetchTournaments(updatedMatch.tierId);
+            } else if (theme === 'daring') {
+              await fetchAllDaringTiers();
+            }
+          } else {
+            setCurrentMatch(updatedMatch);
+          }
         }
       } catch (error) {
         console.error('Error syncing match:', error);
@@ -3443,7 +3521,7 @@ export default function TicTacBlock() {
     const matchPollInterval = setInterval(doMatchSync, 2000);
 
     return () => clearInterval(matchPollInterval);
-  }, [currentMatch?.tierId, currentMatch?.instanceId, currentMatch?.roundNumber, currentMatch?.matchNumber, account, refreshMatchData]);
+  }, [currentMatch?.tierId, currentMatch?.instanceId, currentMatch?.roundNumber, currentMatch?.matchNumber, account, refreshMatchData, theme, fetchCachedStats, fetchTournaments, fetchAllDaringTiers]);
 
   // Increment bracket sync dots every second
   useEffect(() => {
@@ -4670,9 +4748,14 @@ export default function TicTacBlock() {
                                         <div key={idx} className="bg-green-500/5 p-2 rounded space-y-1">
                                           <div className="flex items-center justify-between text-xs">
                                             <span className="text-green-200">Tier {Number(tournament.tierId)}</span>
-                                            <span className="text-white font-mono">
-                                              {hasWinner ? `${winner.slice(0, 6)}...${winner.slice(-4)}` : 'No winner'}
-                                            </span>
+                                            <div className="flex flex-col items-end">
+                                              <span className="text-white font-mono">
+                                                {hasWinner ? `${winner.slice(0, 6)}...${winner.slice(-4)}` : 'No winner'}
+                                              </span>
+                                              {hasWinner && winner.toLowerCase() === account?.toLowerCase() && (
+                                                <span className="text-yellow-400 text-xs font-bold">THIS IS YOU</span>
+                                              )}
+                                            </div>
                                           </div>
                                           {winnerPrize && (
                                             <div className="flex items-center justify-between text-xs">
@@ -4719,9 +4802,14 @@ export default function TicTacBlock() {
                                         <div key={idx} className="bg-orange-500/5 p-2 rounded space-y-1">
                                           <div className="flex items-center justify-between text-xs">
                                             <span className="text-orange-200">Tier {Number(tournament.tierId)}</span>
-                                            <span className="text-white font-mono">
-                                              {hasWinner ? `${winner.slice(0, 6)}...${winner.slice(-4)}` : 'No winner'}
-                                            </span>
+                                            <div className="flex flex-col items-end">
+                                              <span className="text-white font-mono">
+                                                {hasWinner ? `${winner.slice(0, 6)}...${winner.slice(-4)}` : 'No winner'}
+                                              </span>
+                                              {hasWinner && winner.toLowerCase() === account?.toLowerCase() && (
+                                                <span className="text-yellow-400 text-xs font-bold">THIS IS YOU</span>
+                                              )}
+                                            </div>
                                           </div>
                                           {winnerPrize && (
                                             <div className="flex items-center justify-between text-xs">
@@ -4758,9 +4846,14 @@ export default function TicTacBlock() {
                                         <div key={idx} className="bg-red-500/5 p-2 rounded space-y-1">
                                           <div className="flex items-center justify-between text-xs">
                                             <span className="text-red-200">Tier {Number(tournament.tierId)}</span>
-                                            <span className="text-white font-mono">
-                                              {hasWinner ? `${winner.slice(0, 6)}...${winner.slice(-4)}` : 'Unclaimed'}
-                                            </span>
+                                            <div className="flex flex-col items-end">
+                                              <span className="text-white font-mono">
+                                                {hasWinner ? `${winner.slice(0, 6)}...${winner.slice(-4)}` : 'Unclaimed'}
+                                              </span>
+                                              {hasWinner && winner.toLowerCase() === account?.toLowerCase() && (
+                                                <span className="text-yellow-400 text-xs font-bold">THIS IS YOU</span>
+                                              )}
+                                            </div>
                                           </div>
                                           {claimAmount && (
                                             <div className="flex items-center justify-between text-xs">
@@ -4838,11 +4931,24 @@ export default function TicTacBlock() {
                                           {sortedAwards.map(([address, amount]) => (
                                             <div
                                               key={address}
-                                              className="flex items-center justify-between bg-purple-500/10 p-2 rounded border border-purple-400/20"
+                                              className={`flex items-center justify-between p-2 rounded border ${
+                                                address.toLowerCase() === account?.toLowerCase()
+                                                  ? 'bg-yellow-500/20 border-yellow-400/50'
+                                                  : 'bg-purple-500/10 border-purple-400/20'
+                                              }`}
                                             >
-                                              <span className="text-white font-mono text-xs">
-                                                {address.slice(0, 8)}...{address.slice(-6)}
-                                              </span>
+                                              <div className="flex flex-col">
+                                                <span className={`font-mono text-xs ${
+                                                  address.toLowerCase() === account?.toLowerCase()
+                                                    ? 'text-yellow-300'
+                                                    : 'text-white'
+                                                }`}>
+                                                  {address.slice(0, 8)}...{address.slice(-6)}
+                                                </span>
+                                                {address.toLowerCase() === account?.toLowerCase() && (
+                                                  <span className="text-yellow-400 text-xs font-bold">THIS IS YOU</span>
+                                                )}
+                                              </div>
                                               <span className="text-green-400 font-bold text-sm">
                                                 {amount.toFixed(4)} ETH
                                               </span>
