@@ -5824,6 +5824,73 @@ Block: [Current block number]`;
             font-size: 12px;
           }
         }
+
+        /* Mobile text size reduction - reduce all text by 4 points */
+        @media (max-width: 768px) {
+          body {
+            font-size: 12px;
+          }
+
+          h1 {
+            font-size: calc(1em - 4px);
+          }
+
+          h2 {
+            font-size: calc(1em - 4px);
+          }
+
+          h3 {
+            font-size: calc(1em - 4px);
+          }
+
+          h4 {
+            font-size: calc(1em - 4px);
+          }
+
+          p, span, div, button, a {
+            font-size: inherit;
+          }
+
+          .text-xs {
+            font-size: 0.5rem !important; /* 8px instead of 12px */
+          }
+
+          .text-sm {
+            font-size: 0.625rem !important; /* 10px instead of 14px */
+          }
+
+          .text-base {
+            font-size: 0.75rem !important; /* 12px instead of 16px */
+          }
+
+          .text-lg {
+            font-size: 0.875rem !important; /* 14px instead of 18px */
+          }
+
+          .text-xl {
+            font-size: 1rem !important; /* 16px instead of 20px */
+          }
+
+          .text-2xl {
+            font-size: 1.25rem !important; /* 20px instead of 24px */
+          }
+
+          .text-3xl {
+            font-size: 1.625rem !important; /* 26px instead of 30px */
+          }
+
+          .text-4xl {
+            font-size: 1.875rem !important; /* 30px instead of 36px */
+          }
+
+          .text-5xl {
+            font-size: 2.375rem !important; /* 38px instead of 48px */
+          }
+
+          .text-6xl {
+            font-size: 2.875rem !important; /* 46px instead of 60px */
+          }
+        }
       `}</style>
 
       {/* RW3 Declaration Popup - Rendered at root level with highest z-index */}
