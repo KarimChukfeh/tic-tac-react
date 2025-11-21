@@ -3986,7 +3986,7 @@ Block: [Current block number]`;
                 }}
               >
           <Shield className="text-blue-400" size={16} />
-          <span className="text-blue-100 font-medium">RW3 Compliant</span>
+          <span className="text-blue-100 font-medium underline decoration-blue-400/50 underline-offset-2" style={{ textDecorationThickness: '0.5px' }}>RW3 Compliant</span>
               </div>
             </div>
             <a
@@ -5900,12 +5900,28 @@ Block: [Current block number]`;
           style={{
             boxShadow: '0 0 20px rgba(59, 130, 246, 0.3)',
             zIndex: 999999,
+            width: (() => {
+              const viewportWidth = window.innerWidth;
+              if (viewportWidth <= 768) {
+                return 'auto';
+              } else {
+                // Fixed width on desktop for proper centering
+                return '500px';
+              }
+            })(),
             left: (() => {
               const viewportWidth = window.innerWidth;
-              const popupWidth = Math.min(500, viewportWidth - 32); // 16px padding on each side
-              const idealLeft = rw3BadgeRect.left;
-              const maxLeft = viewportWidth - popupWidth - 16;
-              return `${Math.max(16, Math.min(idealLeft, maxLeft))}px`;
+              const popupWidth = viewportWidth <= 768 ? Math.min(500, viewportWidth - 32) : 500;
+
+              // On mobile, align with badge. On desktop, center horizontally
+              if (viewportWidth <= 768) {
+                const idealLeft = rw3BadgeRect.left;
+                const maxLeft = viewportWidth - popupWidth - 16;
+                return `${Math.max(16, Math.min(idealLeft, maxLeft))}px`;
+              } else {
+                // Center on desktop
+                return `${(viewportWidth - popupWidth) / 2}px`;
+              }
             })(),
             top: (() => {
               const viewportHeight = window.innerHeight;
