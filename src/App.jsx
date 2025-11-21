@@ -1943,6 +1943,29 @@ export default function TicTacBlock() {
   const [cachedStats, setCachedStats] = useState(null);
   const [cachedStatsLoading, setCachedStatsLoading] = useState(false);
 
+  // RW3 Declaration State
+  const [rw3Declaration, setRw3Declaration] = useState(null);
+  const [showRw3Popup, setShowRw3Popup] = useState(false);
+  const [rw3BadgeRect, setRw3BadgeRect] = useState(null);
+
+  // Fetch RW3 Declaration
+  const fetchRw3Declaration = useCallback(async (contractInstance) => {
+    try {
+      const declaration = await contractInstance.declareRW3();
+      setRw3Declaration(declaration);
+      console.log('RW3 Declaration:', declaration);
+    } catch (error) {
+      console.error('Error fetching RW3 declaration:', error);
+    }
+  }, []);
+
+  // Fetch RW3 declaration when contract is available
+  useEffect(() => {
+    if (contract) {
+      fetchRw3Declaration(contract);
+    }
+  }, [contract, fetchRw3Declaration]);
+
   // Helper to cycle through themes
   const cycleTheme = () => {
     setTheme(current => {
@@ -3805,6 +3828,32 @@ export default function TicTacBlock() {
           <CheckCircle className="text-blue-400" size={16} />
           <span className="text-blue-100 font-medium">Zero Trackers</span>
               </div>
+              <div
+                className="flex items-center gap-2 cursor-pointer hover:bg-blue-900/30 px-2 py-1 rounded transition-colors"
+                onMouseEnter={() => {
+                  if (rw3Declaration) {
+                    const badge = document.getElementById('rw3-badge');
+                    if (badge) {
+                      setRw3BadgeRect(badge.getBoundingClientRect());
+                    }
+                    setShowRw3Popup(true);
+                  }
+                }}
+                onMouseLeave={() => setShowRw3Popup(false)}
+                onClick={() => {
+                  if (rw3Declaration) {
+                    const badge = document.getElementById('rw3-badge');
+                    if (badge) {
+                      setRw3BadgeRect(badge.getBoundingClientRect());
+                    }
+                    setShowRw3Popup(!showRw3Popup);
+                  }
+                }}
+                id="rw3-badge"
+              >
+          <Shield className="text-blue-400" size={16} />
+          <span className="text-blue-100 font-medium">RW3 Compliant</span>
+              </div>
             </div>
             <a
               href={ETHERSCAN_URL}
@@ -5642,6 +5691,26 @@ export default function TicTacBlock() {
           }
         }
       `}</style>
+
+      {/* RW3 Declaration Popup - Rendered at root level with highest z-index */}
+      {showRw3Popup && rw3Declaration && rw3BadgeRect && (
+        <div
+          className="fixed bg-gray-900 border border-blue-500 rounded-lg shadow-xl p-4 min-w-[300px] max-w-[500px]"
+          style={{
+            boxShadow: '0 0 20px rgba(59, 130, 246, 0.3)',
+            zIndex: 999999,
+            left: `${rw3BadgeRect.left}px`,
+            top: `${rw3BadgeRect.bottom + 8}px`,
+            pointerEvents: 'auto',
+          }}
+          onMouseEnter={() => setShowRw3Popup(true)}
+          onMouseLeave={() => setShowRw3Popup(false)}
+        >
+          <div className="text-blue-100 text-xs whitespace-pre-wrap break-words font-mono">
+            {rw3Declaration}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
