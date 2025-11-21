@@ -759,15 +759,15 @@ const TournamentCard = ({
         </button>
       )}
 
-      {/* Escalation 2: Anyone can claim the abandoned pool */}
+      {/* Escalation 2: Anyone can claim abandoned pool */}
       {tournamentStatus === 0 && escalationState.canStartEscalation2 && (
         <button
           onClick={() => onClaimAbandonedPool(tierId, instanceId)}
-          disabled={loading}
+          disabled={loading || !account}
           className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 mb-2"
         >
           <Coins size={18} />
-          {loading ? 'Claiming...' : 'Claim Abandoned Pool'}
+          {loading ? 'Claiming...' : !account ? 'Connect Wallet to Claim' : 'Claim Abandoned Pool'}
         </button>
       )} 
 
@@ -822,8 +822,8 @@ const TournamentCard = ({
 };
 
 // Tournament Bracket Component
-const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceEliminate, onClaimReplacement, account, loading, syncDots, theme }) => {
-  const { tierId, instanceId, status, currentRound, enrolledCount, prizePool, rounds, playerCount, enrolledPlayers, firstEnrollmentTime, countdownActive } = tournamentData;
+const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceEliminate, onClaimReplacement, onManualStart, account, loading, syncDots, theme }) => {
+  const { tierId, instanceId, status, currentRound, enrolledCount, prizePool, rounds, playerCount, enrolledPlayers, firstEnrollmentTime, countdownActive, enrollmentTimeout } = tournamentData;
 
   // Calculate total rounds based on player count
   const totalRounds = Math.ceil(Math.log2(playerCount));
@@ -1006,11 +1006,12 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
             </div>
             {countdownExpired && (
               <p className="text-orange-200 text-sm mt-2">
-                Enrolled players can force-start the tournament from the tournament list.
+                Enrolled players can force-start the tournament using the button below.
               </p>
             )}
           </div>
         )}
+
 
         {/* Enrolled Players List */}
         {enrolledPlayers && enrolledPlayers.length > 0 && (
@@ -1043,6 +1044,29 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
             </div>
           </div>
         )}
+
+        {/* Force Start Button for Enrolled Players during Escalation */}
+        {status === 0 && enrollmentTimeout && account && enrolledPlayers?.some(addr => addr.toLowerCase() === account.toLowerCase()) && (() => {
+          const now = Math.floor(Date.now() / 1000);
+          const escalation1Start = Number(enrollmentTimeout.escalation1Start);
+          const canForceStart = escalation1Start > 0 && now >= escalation1Start;
+
+          return canForceStart && (
+            <div className="mt-4">
+              <button
+                onClick={() => onManualStart(tierId, instanceId)}
+                disabled={loading}
+                className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
+              >
+                <Zap size={18} />
+                {loading ? 'Starting...' : 'Force Start Tournament'}
+              </button>
+              <p className="text-orange-300 text-xs text-center mt-2">
+                Escalation 1: You can force start this tournament as an enrolled player
+              </p>
+            </div>
+          );
+        })()}
       </div>
 
       {/* User's Current Match Highlight */}
@@ -2390,23 +2414,27 @@ export default function TicTacBlock() {
         console.warn('Error fetching cached matches:', err.message || err);
       }
 
-      // Get recent tournaments from each tier (limit to 5 per tier for simplicity)
-      for (let tierId = 0; tierId < 7; tierId++) {
-        try {
-          const tierTournaments = await contract.getRecentTournaments(tierId, 5);
-          // Convert to plain array and filter existing tournaments
-          const validTournaments = Array.from(tierTournaments).filter(t => t && t.exists);
-          tournaments.push(...validTournaments);
-        } catch (err) {
-          // Silent fail - tier may not have tournaments yet
-          console.log(`No tournaments found for tier ${tierId}`);
-        }
+      // Fetch all completed tournaments
+      try {
+        const allCompletedTournaments = await contract.getAllCompletedTournaments();
+        // Convert to plain array and filter existing tournaments
+        tournaments = Array.from(allCompletedTournaments).filter(t => t && t.exists);
+        console.log(`Fetched ${tournaments.length} completed tournaments`);
+      } catch (err) {
+        console.error('Error fetching completed tournaments:', err);
       }
 
       // Group tournaments by completion type
       const organicTournaments = tournaments.filter(t => Number(t.completionType) === 0);
       const partialTournaments = tournaments.filter(t => Number(t.completionType) === 1);
       const abandonedTournaments = tournaments.filter(t => Number(t.completionType) === 2);
+
+      console.log('Tournament breakdown:', {
+        total: tournaments.length,
+        organic: organicTournaments.length,
+        partial: partialTournaments.length,
+        abandoned: abandonedTournaments.length
+      });
 
       setCachedStats({
         matches,
@@ -2651,20 +2679,12 @@ export default function TicTacBlock() {
         return;
       }
 
-      // Check if user is enrolled (only required for escalation 1)
+      // Check if user is enrolled
       const isEnrolled = await contract.isEnrolled(tierId, instanceId, account);
 
-      // // This function should only be called for Escalation 1 now
-      // Escalation 2 should use handleClaimAbandonedPool instead
-      if (canStartEscalation2) {
-        alert('This tournament has reached Escalation 2. Please use the claimAbandonedEnrollmentPool button instead.');
-        setTournamentsLoading(false);
-        return;
-      }
-
-      // Escalation 1: Only enrolled players can start
+      // Only enrolled players can force start
       if (!isEnrolled) {
-        alert('You must be enrolled in the tournament to force-start it at Escalation 1.');
+        alert('You must be enrolled in the tournament to force-start it.');
         setTournamentsLoading(false);
         return;
       }
@@ -2880,10 +2900,12 @@ export default function TicTacBlock() {
       // Get countdown data
       let firstEnrollmentTime = 0;
       let countdownActive = false;
+      let enrollmentTimeout = null;
       try {
         const tournamentData = await contractInstance.tournaments(tierId, instanceId);
         firstEnrollmentTime = Number(tournamentData.firstEnrollmentTime);
         countdownActive = tournamentData.countdownActive;
+        enrollmentTimeout = tournamentData.enrollmentTimeout;
       } catch (err) {
         console.log('Could not fetch countdown data:', err);
       }
@@ -2955,7 +2977,8 @@ export default function TicTacBlock() {
         enrolledPlayers,
         rounds,
         firstEnrollmentTime,
-        countdownActive
+        countdownActive,
+        enrollmentTimeout
       };
     } catch (error) {
       console.error('Error refreshing tournament bracket:', error);
@@ -4577,13 +4600,13 @@ export default function TicTacBlock() {
         {contract && !currentMatch && (
           <>
             {viewingTournament ? (
-              // Show Tournament Bracket View
               <TournamentBracket
                 tournamentData={viewingTournament}
                 onBack={() => setViewingTournament(null)}
                 onEnterMatch={handlePlayMatch}
                 onForceEliminate={handleForceEliminateStalledMatch}
                 onClaimReplacement={handleClaimMatchSlotByReplacement}
+                onManualStart={handleManualStart}
                 account={account}
                 loading={tournamentsLoading}
                 syncDots={bracketSyncDots}
@@ -4789,43 +4812,61 @@ export default function TicTacBlock() {
                                   </div>
                                   <div className="space-y-2 max-h-48 overflow-y-auto">
                                     {cachedStats.organicTournaments.slice(0, 5).map((tournament, idx) => {
-                                      const winner = tournament.winner;
-                                      const hasWinner = winner && winner !== ethers.ZeroAddress;
-                                      let winnerPrize = null;
+                                      // Extract all prize recipients with their amounts
+                                      let prizeRecipients = [];
 
-                                      if (hasWinner && tournament.prizes && tournament.participants) {
-                                        try {
-                                          const participantArray = Array.from(tournament.participants);
-                                          const prizesArray = Array.from(tournament.prizes);
-                                          const winnerIndex = participantArray.findIndex(
-                                            p => p && p.toLowerCase() === winner.toLowerCase()
-                                          );
-                                          if (winnerIndex !== -1 && prizesArray[winnerIndex]) {
-                                            winnerPrize = ethers.formatEther(prizesArray[winnerIndex]);
-                                          }
-                                        } catch (err) {
-                                          console.warn('Error parsing tournament prizes:', err);
-                                        }
+                                      if (tournament.prizeWinners && tournament.prizeWinners.length > 0) {
+                                        // New structure: prizeWinners array with player, prize, and ranking
+                                        prizeRecipients = Array.from(tournament.prizeWinners)
+                                          .filter(r => r && r.player && r.player !== ethers.ZeroAddress && r.prize > 0n)
+                                          .map(r => ({
+                                            player: r.player,
+                                            prize: ethers.formatEther(r.prize),
+                                            ranking: r.ranking ? Number(r.ranking) : null
+                                          }));
+                                      } else if (tournament.prizes && tournament.participants) {
+                                        // Fallback to old structure
+                                        const participantArray = Array.from(tournament.participants);
+                                        const prizesArray = Array.from(tournament.prizes);
+                                        prizeRecipients = participantArray
+                                          .map((player, i) => ({
+                                            player,
+                                            prize: prizesArray[i] ? ethers.formatEther(prizesArray[i]) : '0',
+                                            ranking: i + 1
+                                          }))
+                                          .filter(r => r.player && r.player !== ethers.ZeroAddress && parseFloat(r.prize) > 0);
                                       }
 
                                       return (
-                                        <div key={idx} className="bg-green-500/5 p-2 rounded space-y-1">
-                                          <div className="flex items-center justify-between text-xs">
-                                            <span className="text-green-200">Tier {Number(tournament.tierId)}</span>
-                                            <div className="flex flex-col items-end">
-                                              <span className="text-white font-mono">
-                                                {hasWinner ? `${winner.slice(0, 6)}...${winner.slice(-4)}` : 'No winner'}
-                                              </span>
-                                              {hasWinner && winner.toLowerCase() === account?.toLowerCase() && (
-                                                <span className="text-yellow-400 text-xs font-bold">THIS IS YOU</span>
-                                              )}
-                                            </div>
+                                        <div key={idx} className="bg-green-500/5 p-3 rounded space-y-2">
+                                          <div className="flex items-center justify-between text-xs border-b border-green-400/20 pb-1">
+                                            <span className="text-green-200 font-semibold">Tier {Number(tournament.tierId)}</span>
+                                            <span className="text-green-300/70">{prizeRecipients.length} winner{prizeRecipients.length !== 1 ? 's' : ''}</span>
                                           </div>
-                                          {winnerPrize && (
-                                            <div className="flex items-center justify-between text-xs">
-                                              <span className="text-green-300/70">Prize Awarded</span>
-                                              <span className="text-green-400 font-bold">{parseFloat(winnerPrize).toFixed(4)} ETH</span>
+                                          {prizeRecipients.length > 0 ? (
+                                            <div className="space-y-1.5">
+                                              {prizeRecipients.map((recipient, recipientIdx) => (
+                                                <div key={recipientIdx} className="bg-green-500/5 p-2 rounded border border-green-400/10">
+                                                  <div className="flex items-center justify-between text-xs mb-1">
+                                                    <div className="flex flex-col">
+                                                      <span className={`font-mono ${
+                                                        recipient.player.toLowerCase() === account?.toLowerCase()
+                                                          ? 'text-yellow-300 font-bold'
+                                                          : 'text-white'
+                                                      }`}>
+                                                        #{recipient.ranking} {recipient.player.slice(0, 6)}...{recipient.player.slice(-4)}
+                                                      </span>
+                                                      {recipient.player.toLowerCase() === account?.toLowerCase() && (
+                                                        <span className="text-yellow-400 text-xs font-bold">THIS IS YOU</span>
+                                                      )}
+                                                    </div>
+                                                    <span className="text-green-400 font-bold">{parseFloat(recipient.prize).toFixed(4)} ETH</span>
+                                                  </div>
+                                                </div>
+                                              ))}
                                             </div>
+                                          ) : (
+                                            <div className="text-xs text-green-300/50 text-center py-2">No prize data available</div>
                                           )}
                                         </div>
                                       );
@@ -4843,43 +4884,61 @@ export default function TicTacBlock() {
                                   </div>
                                   <div className="space-y-2 max-h-48 overflow-y-auto">
                                     {cachedStats.partialTournaments.slice(0, 5).map((tournament, idx) => {
-                                      const winner = tournament.winner;
-                                      const hasWinner = winner && winner !== ethers.ZeroAddress;
-                                      let winnerPrize = null;
+                                      // Extract all prize recipients with their amounts
+                                      let prizeRecipients = [];
 
-                                      if (hasWinner && tournament.prizes && tournament.participants) {
-                                        try {
-                                          const participantArray = Array.from(tournament.participants);
-                                          const prizesArray = Array.from(tournament.prizes);
-                                          const winnerIndex = participantArray.findIndex(
-                                            p => p && p.toLowerCase() === winner.toLowerCase()
-                                          );
-                                          if (winnerIndex !== -1 && prizesArray[winnerIndex]) {
-                                            winnerPrize = ethers.formatEther(prizesArray[winnerIndex]);
-                                          }
-                                        } catch (err) {
-                                          console.warn('Error parsing tournament prizes:', err);
-                                        }
+                                      if (tournament.prizeWinners && tournament.prizeWinners.length > 0) {
+                                        // New structure: prizeWinners array with player, prize, and ranking
+                                        prizeRecipients = Array.from(tournament.prizeWinners)
+                                          .filter(r => r && r.player && r.player !== ethers.ZeroAddress && r.prize > 0n)
+                                          .map(r => ({
+                                            player: r.player,
+                                            prize: ethers.formatEther(r.prize),
+                                            ranking: r.ranking ? Number(r.ranking) : null
+                                          }));
+                                      } else if (tournament.prizes && tournament.participants) {
+                                        // Fallback to old structure
+                                        const participantArray = Array.from(tournament.participants);
+                                        const prizesArray = Array.from(tournament.prizes);
+                                        prizeRecipients = participantArray
+                                          .map((player, i) => ({
+                                            player,
+                                            prize: prizesArray[i] ? ethers.formatEther(prizesArray[i]) : '0',
+                                            ranking: i + 1
+                                          }))
+                                          .filter(r => r.player && r.player !== ethers.ZeroAddress && parseFloat(r.prize) > 0);
                                       }
 
                                       return (
-                                        <div key={idx} className="bg-orange-500/5 p-2 rounded space-y-1">
-                                          <div className="flex items-center justify-between text-xs">
-                                            <span className="text-orange-200">Tier {Number(tournament.tierId)}</span>
-                                            <div className="flex flex-col items-end">
-                                              <span className="text-white font-mono">
-                                                {hasWinner ? `${winner.slice(0, 6)}...${winner.slice(-4)}` : 'No winner'}
-                                              </span>
-                                              {hasWinner && winner.toLowerCase() === account?.toLowerCase() && (
-                                                <span className="text-yellow-400 text-xs font-bold">THIS IS YOU</span>
-                                              )}
-                                            </div>
+                                        <div key={idx} className="bg-orange-500/5 p-3 rounded space-y-2">
+                                          <div className="flex items-center justify-between text-xs border-b border-orange-400/20 pb-1">
+                                            <span className="text-orange-200 font-semibold">Tier {Number(tournament.tierId)}</span>
+                                            <span className="text-orange-300/70">{prizeRecipients.length} winner{prizeRecipients.length !== 1 ? 's' : ''}</span>
                                           </div>
-                                          {winnerPrize && (
-                                            <div className="flex items-center justify-between text-xs">
-                                              <span className="text-orange-300/70">Prize Awarded</span>
-                                              <span className="text-green-400 font-bold">{parseFloat(winnerPrize).toFixed(4)} ETH</span>
+                                          {prizeRecipients.length > 0 ? (
+                                            <div className="space-y-1.5">
+                                              {prizeRecipients.map((recipient, recipientIdx) => (
+                                                <div key={recipientIdx} className="bg-orange-500/5 p-2 rounded border border-orange-400/10">
+                                                  <div className="flex items-center justify-between text-xs mb-1">
+                                                    <div className="flex flex-col">
+                                                      <span className={`font-mono ${
+                                                        recipient.player.toLowerCase() === account?.toLowerCase()
+                                                          ? 'text-yellow-300 font-bold'
+                                                          : 'text-white'
+                                                      }`}>
+                                                        #{recipient.ranking} {recipient.player.slice(0, 6)}...{recipient.player.slice(-4)}
+                                                      </span>
+                                                      {recipient.player.toLowerCase() === account?.toLowerCase() && (
+                                                        <span className="text-yellow-400 text-xs font-bold">THIS IS YOU</span>
+                                                      )}
+                                                    </div>
+                                                    <span className="text-green-400 font-bold">{parseFloat(recipient.prize).toFixed(4)} ETH</span>
+                                                  </div>
+                                                </div>
+                                              ))}
                                             </div>
+                                          ) : (
+                                            <div className="text-xs text-orange-300/50 text-center py-2">No prize data available</div>
                                           )}
                                         </div>
                                       );
@@ -4942,7 +5001,21 @@ export default function TicTacBlock() {
                                     let totalAwarded = 0;
 
                                     cachedStats.tournaments.forEach(tournament => {
-                                      if (tournament.participants && tournament.prizes && tournament.participantCount) {
+                                      // Try new prizeWinners structure first
+                                      if (tournament.prizeWinners && tournament.prizeWinners.length > 0) {
+                                        Array.from(tournament.prizeWinners)
+                                          .filter(r => r && r.player && r.player !== ethers.ZeroAddress && r.prize > 0n)
+                                          .forEach(r => {
+                                            const addr = r.player;
+                                            const prizeEth = parseFloat(ethers.formatEther(r.prize));
+                                            if (prizeEth > 0) {
+                                              const current = addressAwards.get(addr.toLowerCase()) || 0;
+                                              addressAwards.set(addr.toLowerCase(), current + prizeEth);
+                                              totalAwarded += prizeEth;
+                                            }
+                                          });
+                                      } else if (tournament.participants && tournament.prizes && tournament.participantCount) {
+                                        // Fallback to old structure
                                         const participantArray = Array.from(tournament.participants);
                                         const prizesArray = Array.from(tournament.prizes);
                                         const count = Number(tournament.participantCount);

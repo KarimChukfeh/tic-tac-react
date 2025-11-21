@@ -1178,102 +1178,6 @@
   {
     "inputs": [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
-    "name": "cachedTournamentMatches",
-    "outputs": [
-      {
-        "internalType": "bytes32",
-        "name": "",
-        "type": "bytes32"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
-    "name": "cachedTournamentParticipants",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
-    "name": "cachedTournamentPrizes",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
-    "name": "cachedTournamentRankings",
-    "outputs": [
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
         "internalType": "uint8",
         "name": "tierId",
         "type": "uint8"
@@ -1343,6 +1247,90 @@
     "name": "claimTimeoutWin",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "completedTournaments",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "exists",
+        "type": "bool"
+      },
+      {
+        "internalType": "uint8",
+        "name": "tierId",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint8",
+        "name": "instanceId",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint256",
+        "name": "tournamentId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      },
+      {
+        "internalType": "enum TicTacTour.Mode",
+        "name": "mode",
+        "type": "uint8"
+      },
+      {
+        "internalType": "enum TicTacTour.TournamentCompletionType",
+        "name": "completionType",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint256",
+        "name": "totalPrizePool",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "totalAwarded",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "winner",
+        "type": "address"
+      },
+      {
+        "internalType": "uint8",
+        "name": "participantCount",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint8",
+        "name": "matchCount",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint256",
+        "name": "startTime",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "duration",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -1581,6 +1569,113 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "getAllCompletedTournaments",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "bool",
+            "name": "exists",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint8",
+            "name": "tierId",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "instanceId",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint256",
+            "name": "tournamentId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "timestamp",
+            "type": "uint256"
+          },
+          {
+            "internalType": "enum TicTacTour.Mode",
+            "name": "mode",
+            "type": "uint8"
+          },
+          {
+            "internalType": "enum TicTacTour.TournamentCompletionType",
+            "name": "completionType",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint256",
+            "name": "totalPrizePool",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "totalAwarded",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "winner",
+            "type": "address"
+          },
+          {
+            "internalType": "uint8",
+            "name": "participantCount",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "matchCount",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint256",
+            "name": "startTime",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "duration",
+            "type": "uint256"
+          },
+          {
+            "components": [
+              {
+                "internalType": "address",
+                "name": "player",
+                "type": "address"
+              },
+              {
+                "internalType": "uint8",
+                "name": "ranking",
+                "type": "uint8"
+              },
+              {
+                "internalType": "uint256",
+                "name": "prize",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct TicTacTour.PrizeWinner[]",
+            "name": "prizeWinners",
+            "type": "tuple[]"
+          }
+        ],
+        "internalType": "struct TicTacTour.CachedTournamentData[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "address",
@@ -1780,6 +1875,132 @@
   {
     "inputs": [
       {
+        "internalType": "uint256",
+        "name": "index",
+        "type": "uint256"
+      }
+    ],
+    "name": "getCompletedTournament",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "bool",
+            "name": "exists",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint8",
+            "name": "tierId",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "instanceId",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint256",
+            "name": "tournamentId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "timestamp",
+            "type": "uint256"
+          },
+          {
+            "internalType": "enum TicTacTour.Mode",
+            "name": "mode",
+            "type": "uint8"
+          },
+          {
+            "internalType": "enum TicTacTour.TournamentCompletionType",
+            "name": "completionType",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint256",
+            "name": "totalPrizePool",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "totalAwarded",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "winner",
+            "type": "address"
+          },
+          {
+            "internalType": "uint8",
+            "name": "participantCount",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "matchCount",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint256",
+            "name": "startTime",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "duration",
+            "type": "uint256"
+          },
+          {
+            "components": [
+              {
+                "internalType": "address",
+                "name": "player",
+                "type": "address"
+              },
+              {
+                "internalType": "uint8",
+                "name": "ranking",
+                "type": "uint8"
+              },
+              {
+                "internalType": "uint256",
+                "name": "prize",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct TicTacTour.PrizeWinner[]",
+            "name": "prizeWinners",
+            "type": "tuple[]"
+          }
+        ],
+        "internalType": "struct TicTacTour.CachedTournamentData",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getCompletedTournamentCount",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "uint8",
         "name": "tierId",
         "type": "uint8"
@@ -1961,25 +2182,6 @@
   {
     "inputs": [
       {
-        "internalType": "address",
-        "name": "player",
-        "type": "address"
-      }
-    ],
-    "name": "getPlayerTournamentCount",
-    "outputs": [
-      {
-        "internalType": "uint8",
-        "name": "count",
-        "type": "uint8"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
         "internalType": "uint8",
         "name": "tierId",
         "type": "uint8"
@@ -2106,102 +2308,6 @@
       },
       {
         "internalType": "uint8",
-        "name": "count",
-        "type": "uint8"
-      }
-    ],
-    "name": "getRecentTournaments",
-    "outputs": [
-      {
-        "components": [
-          {
-            "internalType": "bool",
-            "name": "exists",
-            "type": "bool"
-          },
-          {
-            "internalType": "uint8",
-            "name": "tierId",
-            "type": "uint8"
-          },
-          {
-            "internalType": "uint8",
-            "name": "instanceId",
-            "type": "uint8"
-          },
-          {
-            "internalType": "uint256",
-            "name": "tournamentId",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "timestamp",
-            "type": "uint256"
-          },
-          {
-            "internalType": "enum TicTacTour.Mode",
-            "name": "mode",
-            "type": "uint8"
-          },
-          {
-            "internalType": "enum TicTacTour.TournamentCompletionType",
-            "name": "completionType",
-            "type": "uint8"
-          },
-          {
-            "internalType": "uint256",
-            "name": "totalPrizePool",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "totalAwarded",
-            "type": "uint256"
-          },
-          {
-            "internalType": "address",
-            "name": "winner",
-            "type": "address"
-          },
-          {
-            "internalType": "uint8",
-            "name": "participantCount",
-            "type": "uint8"
-          },
-          {
-            "internalType": "uint8",
-            "name": "matchCount",
-            "type": "uint8"
-          },
-          {
-            "internalType": "uint256",
-            "name": "startTime",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "duration",
-            "type": "uint256"
-          }
-        ],
-        "internalType": "struct TicTacTour.CachedTournamentData[]",
-        "name": "recentTournaments",
-        "type": "tuple[]"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint8",
-        "name": "tierId",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint8",
         "name": "instanceId",
         "type": "uint8"
       },
@@ -2275,97 +2381,6 @@
         "internalType": "uint8[]",
         "name": "percentages",
         "type": "uint8[]"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "tournamentId",
-        "type": "uint256"
-      }
-    ],
-    "name": "getTournamentById",
-    "outputs": [
-      {
-        "components": [
-          {
-            "internalType": "bool",
-            "name": "exists",
-            "type": "bool"
-          },
-          {
-            "internalType": "uint8",
-            "name": "tierId",
-            "type": "uint8"
-          },
-          {
-            "internalType": "uint8",
-            "name": "instanceId",
-            "type": "uint8"
-          },
-          {
-            "internalType": "uint256",
-            "name": "tournamentId",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "timestamp",
-            "type": "uint256"
-          },
-          {
-            "internalType": "enum TicTacTour.Mode",
-            "name": "mode",
-            "type": "uint8"
-          },
-          {
-            "internalType": "enum TicTacTour.TournamentCompletionType",
-            "name": "completionType",
-            "type": "uint8"
-          },
-          {
-            "internalType": "uint256",
-            "name": "totalPrizePool",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "totalAwarded",
-            "type": "uint256"
-          },
-          {
-            "internalType": "address",
-            "name": "winner",
-            "type": "address"
-          },
-          {
-            "internalType": "uint8",
-            "name": "participantCount",
-            "type": "uint8"
-          },
-          {
-            "internalType": "uint8",
-            "name": "matchCount",
-            "type": "uint8"
-          },
-          {
-            "internalType": "uint256",
-            "name": "startTime",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "duration",
-            "type": "uint256"
-          }
-        ],
-        "internalType": "struct TicTacTour.CachedTournamentData",
-        "name": "tournament",
-        "type": "tuple"
       }
     ],
     "stateMutability": "view",
@@ -2753,25 +2768,6 @@
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "nextTournamentCacheIndex",
-    "outputs": [
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
     "inputs": [],
     "name": "owner",
     "outputs": [
@@ -2997,594 +2993,6 @@
         "internalType": "bool",
         "name": "allMatchesDrew",
         "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "tier0TournamentCache",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "exists",
-        "type": "bool"
-      },
-      {
-        "internalType": "uint8",
-        "name": "tierId",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint8",
-        "name": "instanceId",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint256",
-        "name": "tournamentId",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "timestamp",
-        "type": "uint256"
-      },
-      {
-        "internalType": "enum TicTacTour.Mode",
-        "name": "mode",
-        "type": "uint8"
-      },
-      {
-        "internalType": "enum TicTacTour.TournamentCompletionType",
-        "name": "completionType",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint256",
-        "name": "totalPrizePool",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "totalAwarded",
-        "type": "uint256"
-      },
-      {
-        "internalType": "address",
-        "name": "winner",
-        "type": "address"
-      },
-      {
-        "internalType": "uint8",
-        "name": "participantCount",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint8",
-        "name": "matchCount",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint256",
-        "name": "startTime",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "duration",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "tier1TournamentCache",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "exists",
-        "type": "bool"
-      },
-      {
-        "internalType": "uint8",
-        "name": "tierId",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint8",
-        "name": "instanceId",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint256",
-        "name": "tournamentId",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "timestamp",
-        "type": "uint256"
-      },
-      {
-        "internalType": "enum TicTacTour.Mode",
-        "name": "mode",
-        "type": "uint8"
-      },
-      {
-        "internalType": "enum TicTacTour.TournamentCompletionType",
-        "name": "completionType",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint256",
-        "name": "totalPrizePool",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "totalAwarded",
-        "type": "uint256"
-      },
-      {
-        "internalType": "address",
-        "name": "winner",
-        "type": "address"
-      },
-      {
-        "internalType": "uint8",
-        "name": "participantCount",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint8",
-        "name": "matchCount",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint256",
-        "name": "startTime",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "duration",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "tier2TournamentCache",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "exists",
-        "type": "bool"
-      },
-      {
-        "internalType": "uint8",
-        "name": "tierId",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint8",
-        "name": "instanceId",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint256",
-        "name": "tournamentId",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "timestamp",
-        "type": "uint256"
-      },
-      {
-        "internalType": "enum TicTacTour.Mode",
-        "name": "mode",
-        "type": "uint8"
-      },
-      {
-        "internalType": "enum TicTacTour.TournamentCompletionType",
-        "name": "completionType",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint256",
-        "name": "totalPrizePool",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "totalAwarded",
-        "type": "uint256"
-      },
-      {
-        "internalType": "address",
-        "name": "winner",
-        "type": "address"
-      },
-      {
-        "internalType": "uint8",
-        "name": "participantCount",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint8",
-        "name": "matchCount",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint256",
-        "name": "startTime",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "duration",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "tier3TournamentCache",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "exists",
-        "type": "bool"
-      },
-      {
-        "internalType": "uint8",
-        "name": "tierId",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint8",
-        "name": "instanceId",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint256",
-        "name": "tournamentId",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "timestamp",
-        "type": "uint256"
-      },
-      {
-        "internalType": "enum TicTacTour.Mode",
-        "name": "mode",
-        "type": "uint8"
-      },
-      {
-        "internalType": "enum TicTacTour.TournamentCompletionType",
-        "name": "completionType",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint256",
-        "name": "totalPrizePool",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "totalAwarded",
-        "type": "uint256"
-      },
-      {
-        "internalType": "address",
-        "name": "winner",
-        "type": "address"
-      },
-      {
-        "internalType": "uint8",
-        "name": "participantCount",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint8",
-        "name": "matchCount",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint256",
-        "name": "startTime",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "duration",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "tier4TournamentCache",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "exists",
-        "type": "bool"
-      },
-      {
-        "internalType": "uint8",
-        "name": "tierId",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint8",
-        "name": "instanceId",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint256",
-        "name": "tournamentId",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "timestamp",
-        "type": "uint256"
-      },
-      {
-        "internalType": "enum TicTacTour.Mode",
-        "name": "mode",
-        "type": "uint8"
-      },
-      {
-        "internalType": "enum TicTacTour.TournamentCompletionType",
-        "name": "completionType",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint256",
-        "name": "totalPrizePool",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "totalAwarded",
-        "type": "uint256"
-      },
-      {
-        "internalType": "address",
-        "name": "winner",
-        "type": "address"
-      },
-      {
-        "internalType": "uint8",
-        "name": "participantCount",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint8",
-        "name": "matchCount",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint256",
-        "name": "startTime",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "duration",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "tier5TournamentCache",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "exists",
-        "type": "bool"
-      },
-      {
-        "internalType": "uint8",
-        "name": "tierId",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint8",
-        "name": "instanceId",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint256",
-        "name": "tournamentId",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "timestamp",
-        "type": "uint256"
-      },
-      {
-        "internalType": "enum TicTacTour.Mode",
-        "name": "mode",
-        "type": "uint8"
-      },
-      {
-        "internalType": "enum TicTacTour.TournamentCompletionType",
-        "name": "completionType",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint256",
-        "name": "totalPrizePool",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "totalAwarded",
-        "type": "uint256"
-      },
-      {
-        "internalType": "address",
-        "name": "winner",
-        "type": "address"
-      },
-      {
-        "internalType": "uint8",
-        "name": "participantCount",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint8",
-        "name": "matchCount",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint256",
-        "name": "startTime",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "duration",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "tier6TournamentCache",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "exists",
-        "type": "bool"
-      },
-      {
-        "internalType": "uint8",
-        "name": "tierId",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint8",
-        "name": "instanceId",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint256",
-        "name": "tournamentId",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "timestamp",
-        "type": "uint256"
-      },
-      {
-        "internalType": "enum TicTacTour.Mode",
-        "name": "mode",
-        "type": "uint8"
-      },
-      {
-        "internalType": "enum TicTacTour.TournamentCompletionType",
-        "name": "completionType",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint256",
-        "name": "totalPrizePool",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "totalAwarded",
-        "type": "uint256"
-      },
-      {
-        "internalType": "address",
-        "name": "winner",
-        "type": "address"
-      },
-      {
-        "internalType": "uint8",
-        "name": "participantCount",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint8",
-        "name": "matchCount",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint256",
-        "name": "startTime",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "duration",
-        "type": "uint256"
       }
     ],
     "stateMutability": "view",
