@@ -2588,7 +2588,13 @@ export default function TicTacBlock() {
 
       alert('Successfully enrolled in tournament!');
 
-      // Refresh tournament data
+      // Navigate to tournament bracket view
+      const bracketData = await refreshTournamentBracket(contract, tierId, instanceId);
+      if (bracketData) {
+        setViewingTournament(bracketData);
+      }
+
+      // Refresh tournament data in background
       if (theme === 'dream') {
         await fetchTournaments(0);
       } else if (theme === 'daring') {
