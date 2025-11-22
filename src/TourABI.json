@@ -360,6 +360,43 @@
         "type": "uint8"
       },
       {
+        "indexed": false,
+        "internalType": "uint8",
+        "name": "roundNumber",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "player1",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "player2",
+        "type": "address"
+      }
+    ],
+    "name": "PlayersConsolidated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint8",
+        "name": "tierId",
+        "type": "uint8"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint8",
+        "name": "instanceId",
+        "type": "uint8"
+      },
+      {
         "indexed": true,
         "internalType": "address",
         "name": "player",

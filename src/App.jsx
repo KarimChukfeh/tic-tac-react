@@ -782,26 +782,27 @@ const TournamentCard = ({
         </button>
       ) : (
         <>
-          <button
-            onClick={onEnroll}
-            disabled={loading || isFull || !account}
-            className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
-          >
-            <Trophy size={18} />
-            {loading ? 'Enrolling...' : !account ? 'Connect Wallet to Enroll' : isFull ? 'Tournament Full' : 'Enroll Now'}
-          </button>
-
-          {/* Spectate/View Bracket button for non-enrolled users */}
-          {tournamentStatus >= 1 && (
+          {/* Enroll button for non-enrolled users (only during enrollment phase) */}
+          {tournamentStatus === 0 && !isFull && (
             <button
-              onClick={onEnter}
-              disabled={loading}
-              className={`w-full mt-2 bg-gradient-to-r from-indigo-500/70 to-purple-500/70 hover:from-indigo-600/80 hover:to-purple-600/80 text-white font-bold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 flex items-center justify-center gap-2 border border-indigo-400/30`}
+              onClick={onEnroll}
+              disabled={loading || !account}
+              className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
             >
-              <Eye size={16} />
-              View Bracket & Spectate
+              <Trophy size={18} />
+              {loading ? 'Enrolling...' : !account ? 'Connect Wallet to Enroll' : 'Enroll Now'}
             </button>
           )}
+
+          {/* Enter Tournament / View Bracket button for non-enrolled users */}
+          <button
+            onClick={onEnter}
+            disabled={loading}
+            className={`w-full ${tournamentStatus === 0 && !isFull ? 'mt-2' : ''} bg-gradient-to-r ${colors.buttonEnter} text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 border ${colors.cardBorder}`}
+          >
+            <Eye size={18} />
+            {loading ? 'Loading...' : 'Enter Tournament'}
+          </button>
         </>
       )}
 
@@ -822,7 +823,7 @@ const TournamentCard = ({
 };
 
 // Tournament Bracket Component
-const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceEliminate, onClaimReplacement, onManualStart, account, loading, syncDots, theme }) => {
+const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceEliminate, onClaimReplacement, onManualStart, onEnroll, account, loading, syncDots, theme, isEnrolled, entryFee, isFull }) => {
   const { tierId, instanceId, status, currentRound, enrolledCount, prizePool, rounds, playerCount, enrolledPlayers, firstEnrollmentTime, countdownActive, enrollmentTimeout } = tournamentData;
 
   // Calculate total rounds based on player count
@@ -990,6 +991,23 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
           </div>
         </div>
 
+        {/* Enroll Button for Unenrolled Players */}
+        {status === 0 && account && !isEnrolled && !isFull && (
+          <div className="mt-4">
+            <button
+              onClick={() => onEnroll(tierId, instanceId, entryFee)}
+              disabled={loading}
+              className={`w-full bg-gradient-to-r ${colors.buttonEnter} text-white font-bold py-4 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2`}
+            >
+              <Trophy size={20} />
+              {loading ? 'Enrolling...' : `Enroll in Tournament (${entryFee} ETH)`}
+            </button>
+            <p className={`${colors.textMuted} text-xs text-center mt-2`}>
+              Join this tournament and compete for the prize pool
+            </p>
+          </div>
+        )}
+
         {/* Countdown Timer (only show during enrollment) */}
         {countdownActive && status === 0 && (
           <div className="mt-4 bg-orange-500/20 border border-orange-400/50 rounded-lg p-4">
@@ -1045,26 +1063,95 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
           </div>
         )}
 
-        {/* Force Start Button for Enrolled Players during Escalation */}
-        {status === 0 && enrollmentTimeout && account && enrolledPlayers?.some(addr => addr.toLowerCase() === account.toLowerCase()) && (() => {
+        {/* Enrollment Escalation Timers */}
+        {status === 0 && enrollmentTimeout && (() => {
           const now = Math.floor(Date.now() / 1000);
           const escalation1Start = Number(enrollmentTimeout.escalation1Start);
-          const canForceStart = escalation1Start > 0 && now >= escalation1Start;
+          const escalation2Start = Number(enrollmentTimeout.escalation2Start);
+          const isEnrolledUser = account && enrolledPlayers?.some(addr => addr.toLowerCase() === account.toLowerCase());
 
-          return canForceStart && (
-            <div className="mt-4">
-              <button
-                onClick={() => onManualStart(tierId, instanceId)}
-                disabled={loading}
-                className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
-              >
-                <Zap size={18} />
-                {loading ? 'Starting...' : 'Force Start Tournament'}
-              </button>
-              <p className="text-orange-300 text-xs text-center mt-2">
-                Escalation 1: You can force start this tournament as an enrolled player
-              </p>
-            </div>
+          const timeToEsc1 = escalation1Start > 0 ? Math.max(0, escalation1Start - now) : 0;
+          const timeToEsc2 = escalation2Start > 0 ? Math.max(0, escalation2Start - now) : 0;
+          const canForceStart = escalation1Start > 0 && now >= escalation1Start;
+          const canAnyoneStart = escalation2Start > 0 && now >= escalation2Start;
+
+          return (
+            <>
+              {/* Show escalation timers if they're active */}
+              {(timeToEsc1 > 0 || timeToEsc2 > 0 || canForceStart || canAnyoneStart) && (
+                <div className="mt-4 bg-gradient-to-r from-orange-500/20 to-red-500/20 border border-orange-400/50 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <AlertCircle className="text-orange-400" size={20} />
+                    <h4 className="text-orange-300 font-semibold">Enrollment Escalation Status</h4>
+                  </div>
+
+                  <div className="space-y-2">
+                    {/* Escalation 1 */}
+                    <div className={`p-3 rounded-lg ${canForceStart ? 'bg-orange-500/30 border border-orange-400' : 'bg-black/20'}`}>
+                      <div className="flex items-center justify-between">
+                        <span className={`text-sm font-semibold ${canForceStart ? 'text-orange-200' : 'text-orange-300/70'}`}>
+                          Escalation 1: Enrolled Players Can Force Start
+                        </span>
+                        {timeToEsc1 > 0 ? (
+                          <span className="text-orange-300 font-mono text-sm">{formatTime(timeToEsc1)}</span>
+                        ) : (
+                          <span className="text-orange-200 font-bold text-xs">ACTIVE</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Escalation 2 */}
+                    <div className={`p-3 rounded-lg ${canAnyoneStart ? 'bg-red-500/30 border border-red-400' : 'bg-black/20'}`}>
+                      <div className="flex items-center justify-between">
+                        <span className={`text-sm font-semibold ${canAnyoneStart ? 'text-red-200' : 'text-red-300/70'}`}>
+                          Escalation 2: Anyone Can Terminate & Claim Pool
+                        </span>
+                        {timeToEsc2 > 0 ? (
+                          <span className="text-red-300 font-mono text-sm">{formatTime(timeToEsc2)}</span>
+                        ) : canAnyoneStart ? (
+                          <span className="text-red-200 font-bold text-xs">ACTIVE</span>
+                        ) : (
+                          <span className="text-red-300/50 font-mono text-xs">Pending</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Force Start Button */}
+              {canForceStart && isEnrolledUser && (
+                <div className="mt-4">
+                  <button
+                    onClick={() => onManualStart(tierId, instanceId)}
+                    disabled={loading}
+                    className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
+                  >
+                    <Zap size={18} />
+                    {loading ? 'Starting...' : 'Force Start Tournament'}
+                  </button>
+                  <p className="text-orange-300 text-xs text-center mt-2">
+                    You can force start this tournament as an enrolled player
+                  </p>
+                </div>
+              )}
+
+              {canAnyoneStart && !isEnrolledUser && (
+                <div className="mt-4">
+                  <button
+                    onClick={() => onManualStart(tierId, instanceId)}
+                    disabled={loading}
+                    className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
+                  >
+                    <Zap size={18} />
+                    {loading ? 'Terminating...' : 'Terminate & Claim Abandoned Pool'}
+                  </button>
+                  <p className="text-red-300 text-xs text-center mt-2">
+                    Anyone can terminate this tournament and claim the abandoned pool at Escalation 2
+                  </p>
+                </div>
+              )}
+            </>
           );
         })()}
       </div>
@@ -2715,8 +2802,11 @@ Block: [Current block number]`;
     try {
       setTournamentsLoading(true);
 
+      console.log('Enrolling with:', { tierId, instanceId, entryFee, type: typeof entryFee });
+
       // Convert entry fee to wei
       const feeInWei = ethers.parseEther(entryFee);
+      console.log('Fee in wei:', feeInWei.toString());
 
       // Call enrollInTournament function with entry fee as value
       const tx = await contract.enrollInTournament(tierId, instanceId, { value: feeInWei });
@@ -3032,9 +3122,10 @@ Block: [Current block number]`;
       const enrolledCount = Number(tournamentInfo[3]);
       const prizePool = tournamentInfo[4];
 
-      // Get tier config for player count
+      // Get tier config for player count and entry fee
       const tierConfig = await contractInstance.tierConfigs(tierId);
       const playerCount = Number(tierConfig.playerCount);
+      const entryFee = tierConfig.entryFee;
 
       // Get enrolled players
       const enrolledPlayers = await contractInstance.getEnrolledPlayers(tierId, instanceId);
@@ -3116,6 +3207,7 @@ Block: [Current block number]`;
         enrolledCount,
         prizePool,
         playerCount,
+        entryFee,
         enrolledPlayers,
         rounds,
         firstEnrollmentTime,
@@ -4796,10 +4888,14 @@ Block: [Current block number]`;
                 onForceEliminate={handleForceEliminateStalledMatch}
                 onClaimReplacement={handleClaimMatchSlotByReplacement}
                 onManualStart={handleManualStart}
+                onEnroll={handleEnroll}
                 account={account}
                 loading={tournamentsLoading}
                 syncDots={bracketSyncDots}
                 theme={theme}
+                isEnrolled={viewingTournament?.enrolledPlayers?.some(addr => addr.toLowerCase() === account?.toLowerCase())}
+                entryFee={viewingTournament?.entryFee ? ethers.formatEther(viewingTournament.entryFee) : '0'}
+                isFull={viewingTournament?.enrolledCount >= viewingTournament?.playerCount}
               />
             ) : (
               // Show Tournament List
