@@ -503,6 +503,37 @@
         "type": "uint8"
       },
       {
+        "indexed": false,
+        "internalType": "uint8",
+        "name": "playerCount",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint8",
+        "name": "instanceCount",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "entryFee",
+        "type": "uint256"
+      }
+    ],
+    "name": "TierRegistered",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint8",
+        "name": "tierId",
+        "type": "uint8"
+      },
+      {
         "indexed": true,
         "internalType": "uint8",
         "name": "instanceId",
@@ -743,19 +774,6 @@
   },
   {
     "inputs": [],
-    "name": "BASE_MOVE_TIMEOUT",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
     "name": "BASIS_POINTS",
     "outputs": [
       {
@@ -769,7 +787,33 @@
   },
   {
     "inputs": [],
-    "name": "DEFAULT_TIER_ESCALATION",
+    "name": "DEFAULT_ENROLLMENT_WINDOW",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "DEFAULT_ESCALATION_INTERVAL",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "DEFAULT_MATCH_MOVE_TIMEOUT",
     "outputs": [
       {
         "internalType": "uint256",
@@ -783,9 +827,9 @@
   {
     "inputs": [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
+        "internalType": "uint8",
+        "name": "tierId",
+        "type": "uint8"
       }
     ],
     "name": "ENTRY_FEES",
@@ -802,9 +846,9 @@
   {
     "inputs": [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
+        "internalType": "uint8",
+        "name": "tierId",
+        "type": "uint8"
       }
     ],
     "name": "INSTANCE_COUNTS",
@@ -897,261 +941,11 @@
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "TEST_TIER_ESCALATION",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "TIER_0_CACHE_SIZE",
-    "outputs": [
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
     "inputs": [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "TIER_0_PRIZES",
-    "outputs": [
-      {
         "internalType": "uint8",
-        "name": "",
+        "name": "tierId",
         "type": "uint8"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "TIER_1_CACHE_SIZE",
-    "outputs": [
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "TIER_1_PRIZES",
-    "outputs": [
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "TIER_2_CACHE_SIZE",
-    "outputs": [
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "TIER_2_PRIZES",
-    "outputs": [
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "TIER_3_CACHE_SIZE",
-    "outputs": [
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "TIER_3_PRIZES",
-    "outputs": [
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "TIER_4_CACHE_SIZE",
-    "outputs": [
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "TIER_4_PRIZES",
-    "outputs": [
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "TIER_5_CACHE_SIZE",
-    "outputs": [
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "TIER_5_PRIZES",
-    "outputs": [
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "TIER_6_CACHE_SIZE",
-    "outputs": [
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "TIER_6_PRIZES",
-    "outputs": [
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "TIER_COUNT",
-    "outputs": [
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
       }
     ],
     "name": "TIER_SIZES",
@@ -1322,12 +1116,12 @@
         "type": "uint256"
       },
       {
-        "internalType": "enum TicTacTour.Mode",
+        "internalType": "enum ETour.Mode",
         "name": "mode",
         "type": "uint8"
       },
       {
-        "internalType": "enum TicTacTour.TournamentCompletionType",
+        "internalType": "enum ETour.TournamentCompletionType",
         "name": "completionType",
         "type": "uint8"
       },
@@ -1352,11 +1146,6 @@
         "type": "uint8"
       },
       {
-        "internalType": "uint8",
-        "name": "matchCount",
-        "type": "uint8"
-      },
-      {
         "internalType": "uint256",
         "name": "startTime",
         "type": "uint256"
@@ -1365,6 +1154,11 @@
         "internalType": "uint256",
         "name": "duration",
         "type": "uint256"
+      },
+      {
+        "internalType": "uint8",
+        "name": "matchCount",
+        "type": "uint8"
       }
     ],
     "stateMutability": "view",
@@ -1552,7 +1346,7 @@
             "type": "uint256"
           },
           {
-            "internalType": "enum TicTacTour.Cell[9]",
+            "internalType": "enum TicTacChain.Cell[9]",
             "name": "board",
             "type": "uint8[9]"
           },
@@ -1597,7 +1391,7 @@
             "type": "bool"
           }
         ],
-        "internalType": "struct TicTacTour.CachedMatchData[]",
+        "internalType": "struct TicTacChain.CachedMatchData[]",
         "name": "cachedMatches",
         "type": "tuple[]"
       }
@@ -1637,12 +1431,12 @@
             "type": "uint256"
           },
           {
-            "internalType": "enum TicTacTour.Mode",
+            "internalType": "enum ETour.Mode",
             "name": "mode",
             "type": "uint8"
           },
           {
-            "internalType": "enum TicTacTour.TournamentCompletionType",
+            "internalType": "enum ETour.TournamentCompletionType",
             "name": "completionType",
             "type": "uint8"
           },
@@ -1667,11 +1461,6 @@
             "type": "uint8"
           },
           {
-            "internalType": "uint8",
-            "name": "matchCount",
-            "type": "uint8"
-          },
-          {
             "internalType": "uint256",
             "name": "startTime",
             "type": "uint256"
@@ -1680,6 +1469,11 @@
             "internalType": "uint256",
             "name": "duration",
             "type": "uint256"
+          },
+          {
+            "internalType": "uint8",
+            "name": "matchCount",
+            "type": "uint8"
           },
           {
             "components": [
@@ -1699,12 +1493,12 @@
                 "type": "uint256"
               }
             ],
-            "internalType": "struct TicTacTour.PrizeWinner[]",
+            "internalType": "struct ETour.PrizeWinner[]",
             "name": "prizeWinners",
             "type": "tuple[]"
           }
         ],
-        "internalType": "struct TicTacTour.CachedTournamentData[]",
+        "internalType": "struct ETour.CachedTournamentData[]",
         "name": "",
         "type": "tuple[]"
       }
@@ -1760,7 +1554,7 @@
             "type": "uint256"
           },
           {
-            "internalType": "enum TicTacTour.Cell[9]",
+            "internalType": "enum TicTacChain.Cell[9]",
             "name": "board",
             "type": "uint8[9]"
           },
@@ -1805,7 +1599,7 @@
             "type": "bool"
           }
         ],
-        "internalType": "struct TicTacTour.CachedMatchData",
+        "internalType": "struct TicTacChain.CachedMatchData",
         "name": "",
         "type": "tuple"
       }
@@ -1856,7 +1650,7 @@
             "type": "uint256"
           },
           {
-            "internalType": "enum TicTacTour.Cell[9]",
+            "internalType": "enum TicTacChain.Cell[9]",
             "name": "board",
             "type": "uint8[9]"
           },
@@ -1901,7 +1695,7 @@
             "type": "bool"
           }
         ],
-        "internalType": "struct TicTacTour.CachedMatchData",
+        "internalType": "struct TicTacChain.CachedMatchData",
         "name": "",
         "type": "tuple"
       }
@@ -1947,12 +1741,12 @@
             "type": "uint256"
           },
           {
-            "internalType": "enum TicTacTour.Mode",
+            "internalType": "enum ETour.Mode",
             "name": "mode",
             "type": "uint8"
           },
           {
-            "internalType": "enum TicTacTour.TournamentCompletionType",
+            "internalType": "enum ETour.TournamentCompletionType",
             "name": "completionType",
             "type": "uint8"
           },
@@ -1977,11 +1771,6 @@
             "type": "uint8"
           },
           {
-            "internalType": "uint8",
-            "name": "matchCount",
-            "type": "uint8"
-          },
-          {
             "internalType": "uint256",
             "name": "startTime",
             "type": "uint256"
@@ -1990,6 +1779,11 @@
             "internalType": "uint256",
             "name": "duration",
             "type": "uint256"
+          },
+          {
+            "internalType": "uint8",
+            "name": "matchCount",
+            "type": "uint8"
           },
           {
             "components": [
@@ -2009,12 +1803,12 @@
                 "type": "uint256"
               }
             ],
-            "internalType": "struct TicTacTour.PrizeWinner[]",
+            "internalType": "struct ETour.PrizeWinner[]",
             "name": "prizeWinners",
             "type": "tuple[]"
           }
         ],
-        "internalType": "struct TicTacTour.CachedTournamentData",
+        "internalType": "struct ETour.CachedTournamentData",
         "name": "",
         "type": "tuple"
       }
@@ -2105,12 +1899,12 @@
         "type": "address"
       },
       {
-        "internalType": "enum TicTacTour.Cell[9]",
+        "internalType": "enum TicTacChain.Cell[9]",
         "name": "board",
         "type": "uint8[9]"
       },
       {
-        "internalType": "enum TicTacTour.MatchStatus",
+        "internalType": "enum ETour.MatchStatus",
         "name": "status",
         "type": "uint8"
       },
@@ -2283,7 +2077,7 @@
             "type": "uint256"
           },
           {
-            "internalType": "enum TicTacTour.Cell[9]",
+            "internalType": "enum TicTacChain.Cell[9]",
             "name": "board",
             "type": "uint8[9]"
           },
@@ -2328,7 +2122,7 @@
             "type": "bool"
           }
         ],
-        "internalType": "struct TicTacTour.CachedMatchData[]",
+        "internalType": "struct TicTacChain.CachedMatchData[]",
         "name": "recentMatches",
         "type": "tuple[]"
       }
@@ -2386,7 +2180,7 @@
     "name": "getTierOverview",
     "outputs": [
       {
-        "internalType": "enum TicTacTour.TournamentStatus[]",
+        "internalType": "enum ETour.TournamentStatus[]",
         "name": "statuses",
         "type": "uint8[]"
       },
@@ -2439,12 +2233,12 @@
     "name": "getTournamentInfo",
     "outputs": [
       {
-        "internalType": "enum TicTacTour.TournamentStatus",
+        "internalType": "enum ETour.TournamentStatus",
         "name": "status",
         "type": "uint8"
       },
       {
-        "internalType": "enum TicTacTour.Mode",
+        "internalType": "enum ETour.Mode",
         "name": "mode",
         "type": "uint8"
       },
@@ -2686,7 +2480,7 @@
         "type": "address"
       },
       {
-        "internalType": "enum TicTacTour.MatchStatus",
+        "internalType": "enum ETour.MatchStatus",
         "name": "status",
         "type": "uint8"
       },
@@ -2753,7 +2547,7 @@
             "type": "uint256"
           },
           {
-            "internalType": "enum TicTacTour.EscalationLevel",
+            "internalType": "enum ETour.EscalationLevel",
             "name": "activeEscalation",
             "type": "uint8"
           },
@@ -2768,7 +2562,7 @@
             "type": "uint256"
           }
         ],
-        "internalType": "struct TicTacTour.MatchTimeoutState",
+        "internalType": "struct ETour.MatchTimeoutState",
         "name": "timeoutState",
         "type": "tuple"
       },
@@ -3038,9 +2832,9 @@
   {
     "inputs": [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
+        "internalType": "uint8",
+        "name": "tierId",
+        "type": "uint8"
       }
     ],
     "name": "tierConfigs",
@@ -3070,29 +2864,13 @@
     "type": "function"
   },
   {
-    "inputs": [
+    "inputs": [],
+    "name": "tierCount",
+    "outputs": [
       {
         "internalType": "uint8",
         "name": "",
         "type": "uint8"
-      }
-    ],
-    "name": "tierTimeoutConfigs",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "enrollmentWindow",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "matchMoveTimeout",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "tierEscalationInterval",
-        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -3143,12 +2921,12 @@
         "type": "uint8"
       },
       {
-        "internalType": "enum TicTacTour.TournamentStatus",
+        "internalType": "enum ETour.TournamentStatus",
         "name": "status",
         "type": "uint8"
       },
       {
-        "internalType": "enum TicTacTour.Mode",
+        "internalType": "enum ETour.Mode",
         "name": "mode",
         "type": "uint8"
       },
@@ -3210,7 +2988,7 @@
             "type": "uint256"
           },
           {
-            "internalType": "enum TicTacTour.EscalationLevel",
+            "internalType": "enum ETour.EscalationLevel",
             "name": "activeEscalation",
             "type": "uint8"
           },
@@ -3220,7 +2998,7 @@
             "type": "uint256"
           }
         ],
-        "internalType": "struct TicTacTour.EnrollmentTimeoutState",
+        "internalType": "struct ETour.EnrollmentTimeoutState",
         "name": "enrollmentTimeout",
         "type": "tuple"
       },

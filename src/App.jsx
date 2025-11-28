@@ -2022,7 +2022,6 @@ export default function TicTacBlock() {
   // Match State
   const [currentMatch, setCurrentMatch] = useState(null);
   const [matchLoading, setMatchLoading] = useState(false);
-  const [blockMode, setBlockMode] = useState(false);
   const [moveHistory, setMoveHistory] = useState([]);
   const [syncDots, setSyncDots] = useState(1);
 
@@ -2477,8 +2476,8 @@ Block: [Current block number]`;
           const currentTheme = themeRef.current || 'daring';
 
           if (currentTheme === 'dream') {
-            // Fetch Dream mode tournaments (tier 0)
-            await fetchTournaments(0, false);
+            // Fetch Dream mode tournaments (all tiers 0-6)
+            await fetchAllDaringTiers(false);
           } else {
             // Fetch all Daring mode tiers
             await fetchAllDaringTiers(false);
@@ -2694,7 +2693,7 @@ Block: [Current block number]`;
     }
     const allTournaments = [];
 
-    for (let tierId = 1; tierId <= 6; tierId++) {
+    for (let tierId = 0; tierId <= 6; tierId++) {
       try {
         // Get tier overview which returns arrays of data for all instances
         const tierOverview = await contract.getTierOverview(tierId);
@@ -2778,9 +2777,9 @@ Block: [Current block number]`;
       tierTournaments.sort((a, b) => b.enrolledCount - a.enrolledCount);
     });
 
-    // Flatten back to a single array, maintaining tier order (1-6)
+    // Flatten back to a single array, maintaining tier order (0-6)
     const sortedTournaments = [];
-    for (let tierId = 1; tierId <= 6; tierId++) {
+    for (let tierId = 0; tierId <= 6; tierId++) {
       if (tierGroups[tierId]) {
         sortedTournaments.push(...tierGroups[tierId]);
       }
@@ -2822,7 +2821,7 @@ Block: [Current block number]`;
 
       // Refresh tournament data in background
       if (theme === 'dream') {
-        await fetchTournaments(0);
+        await fetchAllDaringTiers();
       } else if (theme === 'daring') {
         // Re-fetch all Dare mode tiers
         await fetchAllDaringTiers();
@@ -2973,7 +2972,7 @@ Block: [Current block number]`;
 
       // Refresh tournament data
       if (theme === 'dream') {
-        await fetchTournaments(0);
+        await fetchAllDaringTiers();
       } else if (theme === 'daring') {
         // Re-fetch all Dare mode tiers
         await fetchAllDaringTiers();
@@ -3089,7 +3088,7 @@ Block: [Current block number]`;
 
       // Refresh tournament data
       if (theme === 'dream') {
-        await fetchTournaments(0);
+        await fetchAllDaringTiers();
       } else if (theme === 'daring') {
         await fetchAllDaringTiers();
       }
@@ -3326,11 +3325,6 @@ Block: [Current block number]`;
   const handleCellClick = async (cellIndex) => {
     if (!currentMatch || !contract || !account) return;
 
-    if (blockMode) {
-      await handleBlockMove(cellIndex);
-      return;
-    }
-
     if (!currentMatch.isYourTurn) {
       alert("It's not your turn!");
       return;
@@ -3364,31 +3358,6 @@ Block: [Current block number]`;
     }
   };
 
-  // Handle block move
-  const handleBlockMove = async (cellIndex) => {
-    if (!currentMatch || !contract) return;
-
-    try {
-      setMatchLoading(true);
-      const { tierId, instanceId, roundNumber, matchNumber } = currentMatch;
-
-      const tx = await contract.blockLastMove(tierId, instanceId, roundNumber, matchNumber);
-      await tx.wait();
-
-      const updated = await refreshMatchData(contract, account, currentMatch);
-      if (updated) setCurrentMatch(updated);
-
-      setBlockMode(false);
-      setMatchLoading(false);
-      alert('Block successful!');
-    } catch (error) {
-      console.error('Error blocking:', error);
-      alert(`Error blocking: ${error.message}`);
-      setMatchLoading(false);
-      setBlockMode(false);
-    }
-  };
-
   // Handle Escalation 1: Opponent claims timeout win
   const handleClaimTimeoutWin = async () => {
     if (!currentMatch || !contract) return;
@@ -3411,7 +3380,7 @@ Block: [Current block number]`;
 
       // Refresh tournament data
       if (theme === 'dream') {
-        await fetchTournaments(tierId);
+        await fetchAllDaringTiers();
       } else if (theme === 'daring') {
         await fetchAllDaringTiers();
       }
@@ -3446,7 +3415,7 @@ Block: [Current block number]`;
 
       // Refresh tournament data
       if (theme === 'dream') {
-        await fetchTournaments(tierId);
+        await fetchAllDaringTiers();
       } else if (theme === 'daring') {
         await fetchAllDaringTiers();
       }
@@ -3490,7 +3459,7 @@ Block: [Current block number]`;
 
       // Refresh tournament data
       if (theme === 'dream') {
-        await fetchTournaments(tierId);
+        await fetchAllDaringTiers();
       } else if (theme === 'daring') {
         await fetchAllDaringTiers();
       }
@@ -3538,7 +3507,6 @@ Block: [Current block number]`;
       if (updated) {
         setCurrentMatch(updated);
         setMoveHistory([]);
-        setBlockMode(false);
       }
 
       setMatchLoading(false);
@@ -3552,7 +3520,6 @@ Block: [Current block number]`;
   // Close match view
   const closeMatch = () => {
     setCurrentMatch(null);
-    setBlockMode(false);
     setMoveHistory([]);
   };
 
@@ -3612,8 +3579,8 @@ Block: [Current block number]`;
   useEffect(() => {
     if (contract) {
       if (theme === 'dream') {
-        // Dream mode: only tier 0 (Classic)
-        fetchTournaments(0);
+        // Dream mode: fetch all tiers 0-6 (now includes all tiers)
+        fetchAllDaringTiers();
       } else if (theme === 'daring') {
         // Daring mode: fetch all tiers 1-6
         fetchAllDaringTiers();
@@ -3761,7 +3728,7 @@ Block: [Current block number]`;
               // Refresh and show tournament bracket
               await fetchCachedStats(true);
               if (theme === 'dream') {
-                await fetchTournaments(updatedMatch.tierId);
+                await fetchAllDaringTiers();
               } else if (theme === 'daring') {
                 await fetchAllDaringTiers();
               }
@@ -3776,7 +3743,7 @@ Block: [Current block number]`;
 
               await fetchCachedStats(true);
               if (theme === 'dream') {
-                await fetchTournaments(updatedMatch.tierId);
+                await fetchAllDaringTiers();
               } else if (theme === 'daring') {
                 await fetchAllDaringTiers();
               }
@@ -3794,7 +3761,7 @@ Block: [Current block number]`;
 
             await fetchCachedStats(true);
             if (theme === 'dream') {
-              await fetchTournaments(updatedMatch.tierId);
+              await fetchAllDaringTiers();
             } else if (theme === 'daring') {
               await fetchAllDaringTiers();
             }
@@ -3819,7 +3786,7 @@ Block: [Current block number]`;
 
               await fetchCachedStats(true);
               if (theme === 'dream') {
-                await fetchTournaments(updatedMatch.tierId);
+                await fetchAllDaringTiers();
               } else if (theme === 'daring') {
                 await fetchAllDaringTiers();
               }
@@ -4442,27 +4409,13 @@ Block: [Current block number]`;
                           : ''
                       }`}
                     >
-                      {cell === 1 ? 'X' : cell === 2 ? 'O' : blockMode ? '🚫' : ''}
+                      {cell === 1 ? 'X' : cell === 2 ? 'O' : ''}
                     </button>
                   ))}
                 </div>
 
                 {/* Game Controls */}
                 <div className="space-y-3">
-                  {currentMatch.matchStatus === 1 && currentMatch.isYourTurn && (
-                    <button
-                      onClick={() => setBlockMode(!blockMode)}
-                      disabled={matchLoading}
-                      className={`w-full py-3 px-4 rounded-xl font-bold transition-all ${
-                        blockMode
-                          ? 'bg-red-500 hover:bg-red-600 text-white'
-                          : 'bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 border border-yellow-400'
-                      }`}
-                    >
-                      {blockMode ? 'Cancel Block' : '🛡️ Block Last Move'}
-                    </button>
-                  )}
-
                   {/* Move Timeout Timer - Shows before escalation */}
                   {currentMatch.matchStatus === 1 && (currentMatch.lastMoveTime !== undefined || currentMatch.startTime !== undefined) && (() => {
                     const now = Math.floor(Date.now() / 1000);
@@ -4911,7 +4864,7 @@ Block: [Current block number]`;
                     </div>
                   </div>
                   <p className={`text-xl ${theme === 'dream' ? 'text-blue-200' : theme === 'daring' ? 'text-red-200' : 'text-purple-200'}`}>
-                    {theme === 'dream' ? 'Standard competitive play for all skill levels' : 'Advanced tournaments with block mechanics and higher stakes'}
+                    {theme === 'dream' ? 'Competitive play with multiple tiers for all skill levels' : 'Advanced tournaments with higher stakes'}
                   </p>
                 </div>
 
@@ -4928,95 +4881,68 @@ Block: [Current block number]`;
                 {/* Tournament Cards Grid */}
                 {!tournamentsLoading && tournaments.length > 0 && (
                   <>
-                    {theme === 'daring' ? (
-                      // Grouped by tier for Dare mode
-                      (() => {
-                        // Define tier order: Rapid, Minor, Standard, Major, Mega, Ultimate
-                        const tierOrder = [6, 1, 2, 3, 4, 5];
-                        const tierColors = {
-                          6: { bg: 'from-yellow-600/20 to-orange-600/20', border: 'border-yellow-400/40', text: 'text-yellow-400', icon: '⚡' },
-                          1: { bg: 'from-blue-600/20 to-cyan-600/20', border: 'border-blue-400/40', text: 'text-blue-400', icon: '🔹' },
-                          2: { bg: 'from-cyan-600/20 to-teal-600/20', border: 'border-cyan-400/40', text: 'text-cyan-400', icon: '💎' },
-                          3: { bg: 'from-purple-600/20 to-pink-600/20', border: 'border-purple-400/40', text: 'text-purple-400', icon: '⭐' },
-                          4: { bg: 'from-red-600/20 to-rose-600/20', border: 'border-red-400/40', text: 'text-red-400', icon: '🔥' },
-                          5: { bg: 'from-orange-600/20 to-amber-600/20', border: 'border-orange-400/40', text: 'text-orange-400', icon: '👑' }
-                        };
+                    {/* Grouped by tier for both Dream and Daring modes */}
+                    {(() => {
+                      // Define tier order: Classic, Rapid, Minor, Standard, Major, Mega, Ultimate
+                      const tierOrder = [0, 6, 1, 2, 3, 4, 5];
+                      const tierColors = {
+                        0: { bg: 'from-blue-600/20 to-purple-600/20', border: 'border-blue-400/40', text: 'text-blue-400', icon: '🎯' },
+                        6: { bg: 'from-yellow-600/20 to-orange-600/20', border: 'border-yellow-400/40', text: 'text-yellow-400', icon: '⚡' },
+                        1: { bg: 'from-blue-600/20 to-cyan-600/20', border: 'border-blue-400/40', text: 'text-blue-400', icon: '🔹' },
+                        2: { bg: 'from-cyan-600/20 to-teal-600/20', border: 'border-cyan-400/40', text: 'text-cyan-400', icon: '💎' },
+                        3: { bg: 'from-purple-600/20 to-pink-600/20', border: 'border-purple-400/40', text: 'text-purple-400', icon: '⭐' },
+                        4: { bg: 'from-red-600/20 to-rose-600/20', border: 'border-red-400/40', text: 'text-red-400', icon: '🔥' },
+                        5: { bg: 'from-orange-600/20 to-amber-600/20', border: 'border-orange-400/40', text: 'text-orange-400', icon: '👑' }
+                      };
 
-                        return tierOrder.map((tierId) => {
-                          const tierTournaments = tournaments.filter(t => t.tierId === tierId);
-                          if (tierTournaments.length === 0) return null;
+                      return tierOrder.map((tierId) => {
+                        const tierTournaments = tournaments.filter(t => t.tierId === tierId);
+                        if (tierTournaments.length === 0) return null;
 
-                          const tierColor = tierColors[tierId];
-                          const maxPlayers = tierTournaments[0]?.maxPlayers || 0;
-                          const playerLabel = maxPlayers === 2 ? '1v1' : `${maxPlayers} players`;
+                        const tierColor = tierColors[tierId];
+                        const maxPlayers = tierTournaments[0]?.maxPlayers || 0;
+                        const playerLabel = maxPlayers === 2 ? '1v1' : `${maxPlayers} players`;
 
-                          return (
-                            <div key={tierId} className="mb-12">
-                              {/* Tier Header */}
-                              <div className={`bg-gradient-to-r ${tierColor.bg} backdrop-blur-lg rounded-xl p-4 border ${tierColor.border} mb-6`}>
-                                <h3 className={`text-2xl font-bold ${tierColor.text} flex items-center gap-2`}>
-                                  <span className="text-3xl">{tierColor.icon}</span>
-                                  {getTierName(tierId)} Tier
-                                  <span className="text-sm opacity-70 ml-2">({playerLabel})</span>
-                                </h3>
-                              </div>
-
-                              {/* Tier Tournaments Grid */}
-                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                                {tierTournaments.map((tournament) => (
-                                  <TournamentCard
-                                    key={`${tournament.tierId}-${tournament.instanceId}`}
-                                    tierId={tournament.tierId}
-                                    instanceId={tournament.instanceId}
-                                    maxPlayers={tournament.maxPlayers}
-                                    currentEnrolled={tournament.enrolledCount}
-                                    entryFee={tournament.entryFee}
-                                    isEnrolled={tournament.isEnrolled}
-                                    onEnroll={() => handleEnroll(tournament.tierId, tournament.instanceId, tournament.entryFee)}
-                                    onEnter={() => handleEnterTournament(tournament.tierId, tournament.instanceId)}
-                                    loading={tournamentsLoading}
-                                    tierName={getTierName(tournament.tierId)}
-                                    theme={theme}
-                                    enrollmentTimeout={tournament.enrollmentTimeout}
-                                    hasStartedViaTimeout={tournament.hasStartedViaTimeout}
-                                    tournamentStatus={tournament.tournamentStatus}
-                                    onManualStart={handleManualStart}
-                                    onClaimAbandonedPool={handleClaimAbandonedPool}
-                                    account={account}
-                                  />
-                                ))}
-                              </div>
+                        return (
+                          <div key={tierId} className="mb-12">
+                            {/* Tier Header */}
+                            <div className={`bg-gradient-to-r ${tierColor.bg} backdrop-blur-lg rounded-xl p-4 border ${tierColor.border} mb-6`}>
+                              <h3 className={`text-2xl font-bold ${tierColor.text} flex items-center gap-2`}>
+                                <span className="text-3xl">{tierColor.icon}</span>
+                                {getTierName(tierId)} Tier
+                                <span className="text-sm opacity-70 ml-2">({playerLabel})</span>
+                              </h3>
                             </div>
-                          );
-                        });
-                      })()
-                    ) : (
-                      // Single grid for Dream mode
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                        {tournaments.map((tournament) => (
-                          <TournamentCard
-                            key={`${tournament.tierId}-${tournament.instanceId}`}
-                            tierId={tournament.tierId}
-                            instanceId={tournament.instanceId}
-                            maxPlayers={tournament.maxPlayers}
-                            currentEnrolled={tournament.enrolledCount}
-                            entryFee={tournament.entryFee}
-                            isEnrolled={tournament.isEnrolled}
-                            onEnroll={() => handleEnroll(tournament.tierId, tournament.instanceId, tournament.entryFee)}
-                            onEnter={() => handleEnterTournament(tournament.tierId, tournament.instanceId)}
-                            loading={tournamentsLoading}
-                            tierName={getTierName(tournament.tierId)}
-                            theme={theme}
-                            enrollmentTimeout={tournament.enrollmentTimeout}
-                            hasStartedViaTimeout={tournament.hasStartedViaTimeout}
-                            tournamentStatus={tournament.tournamentStatus}
-                            onManualStart={handleManualStart}
-                            onClaimAbandonedPool={handleClaimAbandonedPool}
-                            account={account}
-                          />
-                        ))}
-                      </div>
-                    )}
+
+                            {/* Tier Tournaments Grid */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                              {tierTournaments.map((tournament) => (
+                                <TournamentCard
+                                  key={`${tournament.tierId}-${tournament.instanceId}`}
+                                  tierId={tournament.tierId}
+                                  instanceId={tournament.instanceId}
+                                  maxPlayers={tournament.maxPlayers}
+                                  currentEnrolled={tournament.enrolledCount}
+                                  entryFee={tournament.entryFee}
+                                  isEnrolled={tournament.isEnrolled}
+                                  onEnroll={() => handleEnroll(tournament.tierId, tournament.instanceId, tournament.entryFee)}
+                                  onEnter={() => handleEnterTournament(tournament.tierId, tournament.instanceId)}
+                                  loading={tournamentsLoading}
+                                  tierName={getTierName(tournament.tierId)}
+                                  theme={theme}
+                                  enrollmentTimeout={tournament.enrollmentTimeout}
+                                  hasStartedViaTimeout={tournament.hasStartedViaTimeout}
+                                  tournamentStatus={tournament.tournamentStatus}
+                                  onManualStart={handleManualStart}
+                                  onClaimAbandonedPool={handleClaimAbandonedPool}
+                                  account={account}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
                   </>
                 )}
 
