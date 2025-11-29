@@ -914,7 +914,7 @@ export default function ChessOnChain() {
   const [contractStatus, setContractStatus] = useState('not_checked');
 
   // Theme State
-  const [theme, setTheme] = useState('daring');
+  const [theme, setTheme] = useState('dream');
   const [showThemeToggle, setShowThemeToggle] = useState(true);
 
   // Tournament State
@@ -1573,37 +1573,7 @@ export default function ChessOnChain() {
     }}>
       {/* Particle Background */}
       <ParticleBackground colors={currentTheme.particleColors} />
-
-      {/* Theme Toggle */}
-      <button
-        onClick={cycleTheme}
-        style={{
-          position: 'fixed',
-          top: '94px',
-          right: '24px',
-          zIndex: 9999,
-          display: 'flex',
-          alignItems: 'center',
-          gap: '7px',
-          background: 'rgba(255, 255, 255, 0.1)',
-          backdropFilter: 'blur(10px)',
-          border: `2px solid ${currentTheme.border}`,
-          borderRadius: '18px',
-          padding: '8px 14px',
-          color: '#fff',
-          fontWeight: 'bold',
-          fontSize: '12px',
-          cursor: 'pointer',
-          boxShadow: `0 0 16px ${currentTheme.glow}`,
-          opacity: showThemeToggle ? 1 : 0,
-          pointerEvents: showThemeToggle ? 'auto' : 'none',
-          transition: 'all 0.3s ease'
-        }}
-      >
-        <span style={{ fontSize: '18px' }}>{currentTheme.icon}</span>
-        <span>{currentTheme.label}</span>
-      </button>
-
+      
       {/* Trust Banner */}
       <div style={{
         background: theme === 'dream' ? 'rgba(0, 100, 200, 0.2)' : 'rgba(139, 0, 0, 0.2)',
