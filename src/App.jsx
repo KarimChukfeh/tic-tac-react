@@ -2009,7 +2009,7 @@ export default function TicTacBlock() {
   const [totalGamesPlayed, setTotalGamesPlayed] = useState(0);
 
   // Theme State - 'dream' (blue/cyan), 'daring' (red/orange)
-  const [theme, setTheme] = useState('daring');
+  const [theme, setTheme] = useState('dream');
   const [expandedFaq, setExpandedFaq] = useState(null);
   const [showThemeToggle, setShowThemeToggle] = useState(true);
 
@@ -3903,74 +3903,6 @@ Block: [Current block number]`;
     }}>
       {/* Particle Background */}
       <ParticleBackground colors={currentTheme.particleColors} />
-
-      {/* Fixed Theme Toggle - Top Right */}
-      <button
-        onClick={cycleTheme}
-        className="theme-toggle-button"
-        style={{
-          position: 'fixed',
-          top: window.innerWidth <= 768 ? '134px' : '94px',
-          right: '24px',
-          zIndex: 9999,
-          display: 'flex',
-          alignItems: 'center',
-          gap: window.innerWidth <= 768 ? '10px' : '7px',
-          background: 'rgba(255, 255, 255, 0.1)',
-          backdropFilter: 'blur(10px)',
-          border: `2px solid ${currentTheme.border}`,
-          borderRadius: window.innerWidth <= 768 ? '24px' : '18px',
-          padding: window.innerWidth <= 768 ? '12px 18px' : '8px 14px',
-          color: '#fff',
-          fontWeight: 'bold',
-          fontSize: window.innerWidth <= 768 ? '15px' : '12px',
-          cursor: 'pointer',
-          transition: 'all 0.3s ease',
-          boxShadow: `0 0 16px ${currentTheme.glow}`,
-          opacity: showThemeToggle ? 1 : 0,
-          pointerEvents: showThemeToggle ? 'auto' : 'none'
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.transform = 'scale(1.05)';
-          e.currentTarget.style.boxShadow = `0 0 24px ${currentTheme.glow}`;
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.transform = 'scale(1)';
-          e.currentTarget.style.boxShadow = `0 0 16px ${currentTheme.glow}`;
-        }}
-      >
-        <span style={{ fontSize: window.innerWidth <= 768 ? '24px' : '18px' }}>{currentTheme.icon}</span>
-        <span>{currentTheme.label}</span>
-      </button>
-      <style>{`
-        * {
-          transition: background-color 2s ease-in-out,
-                      border-color 1s ease-in-out,
-                      box-shadow 1s ease-in-out,
-                      color 0.1s ease-in-out,
-                      background 1s ease-in-out !important;
-        }
-
-        .theme-toggle-button {
-          transform: scale(0.575) !important;
-          transform-origin: top right;
-        }
-
-        .theme-toggle-button:hover {
-          transform: scale(0.6) !important;
-        }
-
-        @media (min-width: 1024px) {
-          .theme-toggle-button {
-            right: 175px !important;
-            transform: scale(1) !important;
-          }
-
-          .theme-toggle-button:hover {
-            transform: scale(1.05) !important;
-          }
-        }
-      `}</style>
 
       {/* Trust Banner */}
       <div style={{

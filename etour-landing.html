@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ETour Protocol - Pure Competition. No Bullshit.</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #0a0e27;
+            color: #e0e6ff;
+            overflow-x: hidden;
+        }
+
+        /* Floating Particles */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .particle {
+            position: absolute;
+            font-size: 1.5rem;
+            opacity: 0.25;
+            animation: float 20s infinite;
+        }
+
+        .particle.x { color: #06b6d4; }
+        .particle.o { color: #a855f7; }
+        .particle.chess { color: #3b82f6; }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            25% { transform: translate(50px, -50px) rotate(90deg); }
+            50% { transform: translate(-30px, -100px) rotate(180deg); }
+            75% { transform: translate(-80px, -50px) rotate(270deg); }
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            position: relative;
+            z-index: 10;
+        }
+
+        /* Hero Section */
+        .hero {
+            text-align: center;
+            padding: 6rem 0 4rem;
+            min-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .hero-badge {
+            display: inline-block;
+            background: rgba(6, 182, 212, 0.15);
+            border: 1px solid rgba(6, 182, 212, 0.4);
+            color: #06b6d4;
+            padding: 0.5rem 1.25rem;
+            border-radius: 30px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 2rem;
+            letter-spacing: 0.5px;
+        }
+
+        h1 {
+            font-size: 4.5rem;
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 1.5rem;
+            color: #f8fafc;
+        }
+
+        h1 .gradient {
+            background: linear-gradient(135deg, #06b6d4, #3b82f6, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-subtitle {
+            font-size: 1.5rem;
+            color: #94a3b8;
+            margin-bottom: 3rem;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 1.6;
+        }
+
+        /* RW3 Principles - The Hook */
+        .rw3-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 3rem;
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .rw3-item {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 12px;
+            padding: 1.25rem 1rem;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .rw3-item:hover {
+            border-color: rgba(6, 182, 212, 0.5);
+            transform: translateY(-3px);
+        }
+
+        .rw3-icon {
+            font-size: 1.75rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .rw3-item h3 {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #f8fafc;
+            margin-bottom: 0.25rem;
+        }
+
+        .rw3-item p {
+            font-size: 0.8rem;
+            color: #64748b;
+        }
+
+        /* CTA Buttons */
+        .cta-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-play {
+            background: linear-gradient(135deg, #06b6d4, #3b82f6);
+            color: white;
+            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
+            font-size: 1.2rem;
+            padding: 1.25rem 3rem;
+        }
+
+        .btn-play:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(59, 130, 246, 0.5);
+        }
+
+        .btn-build {
+            background: transparent;
+            border: 2px solid rgba(168, 85, 247, 0.5);
+            color: #a855f7;
+            font-size: 1.2rem;
+            padding: 1.25rem 3rem;
+        }
+
+        .btn-build:hover {
+            background: rgba(168, 85, 247, 0.1);
+            border-color: #a855f7;
+            transform: translateY(-3px);
+        }
+
+        .cta-subtext {
+            font-size: 0.9rem;
+            color: #64748b;
+        }
+
+        /* Divider */
+        .section-divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.3), transparent);
+            margin: 4rem 0;
+        }
+
+        /* What It Is Section */
+        .what-section {
+            padding: 4rem 0;
+        }
+
+        .what-section h2 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: #f8fafc;
+        }
+
+        .what-section .subtitle {
+            text-align: center;
+            color: #94a3b8;
+            font-size: 1.15rem;
+            max-width: 700px;
+            margin: 0 auto 3rem;
+        }
+
+        .what-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        .what-card {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 16px;
+            padding: 2.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .what-card:hover {
+            border-color: rgba(59, 130, 246, 0.4);
+            transform: translateY(-5px);
+        }
+
+        .what-card.gamer {
+            border-top: 3px solid #06b6d4;
+        }
+
+        .what-card.dev {
+            border-top: 3px solid #a855f7;
+        }
+
+        .what-card .label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 1rem;
+        }
+
+        .what-card.gamer .label { color: #06b6d4; }
+        .what-card.dev .label { color: #a855f7; }
+
+        .what-card h3 {
+            font-size: 1.5rem;
+            color: #f8fafc;
+            margin-bottom: 1rem;
+        }
+
+        .what-card p {
+            color: #94a3b8;
+            line-height: 1.7;
+            margin-bottom: 1.5rem;
+        }
+
+        .what-card ul {
+            list-style: none;
+        }
+
+        .what-card li {
+            color: #cbd5e1;
+            padding: 0.5rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+
+        .what-card li::before {
+            content: "→";
+            position: absolute;
+            left: 0;
+            color: #3b82f6;
+        }
+
+        /* Games Section */
+        .games-section {
+            padding: 4rem 0;
+        }
+
+        .games-section h2 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            color: #f8fafc;
+        }
+
+        .games-section .subtitle {
+            text-align: center;
+            color: #94a3b8;
+            margin-bottom: 3rem;
+        }
+
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+        }
+
+        .game-card {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 16px;
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .game-card:hover {
+            transform: translateY(-8px);
+            border-color: rgba(59, 130, 246, 0.5);
+            box-shadow: 0 15px 40px rgba(59, 130, 246, 0.2);
+        }
+
+        .game-card.coming-soon {
+            opacity: 0.6;
+        }
+
+        .game-icon {
+            font-size: 3.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .game-card h3 {
+            font-size: 1.5rem;
+            color: #f8fafc;
+            margin-bottom: 0.5rem;
+        }
+
+        .game-card .stakes {
+            font-size: 0.85rem;
+            color: #06b6d4;
+            margin-bottom: 1rem;
+        }
+
+        .game-card p {
+            color: #94a3b8;
+            font-size: 0.95rem;
+            margin-bottom: 1.5rem;
+            line-height: 1.5;
+        }
+
+        .btn-game {
+            background: linear-gradient(135deg, #06b6d4, #3b82f6);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            border-radius: 8px;
+            width: 100%;
+        }
+
+        .btn-game:hover {
+            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-game:disabled {
+            background: rgba(100, 116, 139, 0.3);
+            cursor: not-allowed;
+        }
+
+        .coming-soon-badge {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: rgba(168, 85, 247, 0.2);
+            color: #a855f7;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        /* Developer Section */
+        .dev-section {
+            padding: 4rem 0;
+        }
+
+        .dev-content {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(168, 85, 247, 0.3);
+            border-radius: 20px;
+            padding: 3rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            align-items: center;
+        }
+
+        .dev-text h2 {
+            font-size: 2rem;
+            color: #f8fafc;
+            margin-bottom: 1rem;
+        }
+
+        .dev-text p {
+            color: #94a3b8;
+            line-height: 1.7;
+            margin-bottom: 1.5rem;
+        }
+
+        .dev-features {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin-bottom: 2rem;
+        }
+
+        .dev-feature {
+            background: rgba(168, 85, 247, 0.1);
+            border: 1px solid rgba(168, 85, 247, 0.3);
+            color: #a855f7;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+        }
+
+        .dev-links {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .btn-github {
+            background: #f8fafc;
+            color: #0a0e27;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+
+        .btn-docs {
+            background: transparent;
+            border: 1px solid rgba(168, 85, 247, 0.5);
+            color: #a855f7;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+        }
+
+        .code-preview {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(168, 85, 247, 0.3);
+            border-radius: 12px;
+            padding: 1.5rem;
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: 0.85rem;
+            color: #cbd5e1;
+            overflow-x: auto;
+        }
+
+        .code-preview .keyword { color: #a855f7; }
+        .code-preview .function { color: #06b6d4; }
+        .code-preview .comment { color: #64748b; }
+        .code-preview .string { color: #10b981; }
+
+        /* RW3 Manifesto Section */
+        .manifesto-section {
+            padding: 4rem 0;
+            text-align: center;
+        }
+
+        .manifesto-section h2 {
+            font-size: 2rem;
+            color: #f8fafc;
+            margin-bottom: 1rem;
+        }
+
+        .manifesto-section .subtitle {
+            color: #94a3b8;
+            max-width: 600px;
+            margin: 0 auto 2rem;
+        }
+
+        .manifesto-link {
+            color: #06b6d4;
+            text-decoration: none;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .manifesto-link:hover {
+            color: #3b82f6;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 3rem 0;
+            border-top: 1px solid rgba(59, 130, 246, 0.2);
+            margin-top: 4rem;
+        }
+
+        footer p {
+            color: #64748b;
+        }
+
+        footer .brand {
+            color: #94a3b8;
+            font-weight: 600;
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            h1 { font-size: 3rem; }
+            .rw3-grid { grid-template-columns: repeat(2, 1fr); }
+            .what-grid { grid-template-columns: 1fr; }
+            .games-grid { grid-template-columns: 1fr; }
+            .dev-content { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 600px) {
+            h1 { font-size: 2.25rem; }
+            .hero-subtitle { font-size: 1.1rem; }
+            .rw3-grid { grid-template-columns: 1fr 1fr; }
+            .cta-buttons { flex-direction: column; width: 100%; }
+            .btn-play, .btn-build { width: 100%; justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Floating Particles -->
+    <div class="particles">
+        <div class="particle x" style="top: 10%; left: 5%;">✕</div>
+        <div class="particle o" style="top: 15%; left: 90%;">○</div>
+        <div class="particle chess" style="top: 25%; left: 15%;">♔</div>
+        <div class="particle x" style="top: 40%; right: 10%;">✕</div>
+        <div class="particle o" style="top: 60%; left: 8%;">○</div>
+        <div class="particle chess" style="top: 70%; right: 15%;">♟</div>
+        <div class="particle x" style="top: 80%; left: 85%;">✕</div>
+        <div class="particle o" style="bottom: 10%; left: 50%;">○</div>
+    </div>
+
+    <div class="container">
+        <!-- Hero Section -->
+        <section class="hero">
+            <span class="hero-badge">Reclaim Web3</span>
+            
+            <h1>
+                <span class="gradient">Pure Competition.</span><br>
+                No Bullshit.
+            </h1>
+            
+            <p class="hero-subtitle">
+                Competitive gaming infrastructure that runs forever, needs no servers, 
+                and doesn't try to sell you a token. Just skill vs skill, ETH on the line.
+            </p>
+
+            <!-- RW3 Principles as the Hook -->
+            <div class="rw3-grid">
+                <div class="rw3-item">
+                    <div class="rw3-icon">⛓️</div>
+                    <h3>Fully On-Chain</h3>
+                    <p>Every move. Every outcome.</p>
+                </div>
+                <div class="rw3-item">
+                    <div class="rw3-icon">♾️</div>
+                    <h3>Self-Sustaining</h3>
+                    <p>No funding needed. Ever.</p>
+                </div>
+                <div class="rw3-item">
+                    <div class="rw3-icon">🚫</div>
+                    <h3>No Tokens</h3>
+                    <p>ETH only. No altcoin BS.</p>
+                </div>
+                <div class="rw3-item">
+                    <div class="rw3-icon">🔓</div>
+                    <h3>Open Source</h3>
+                    <p>Free forever. MIT licensed.</p>
+                </div>
+            </div>
+
+            <div class="cta-section">
+                <div class="cta-buttons">
+                    <a href="#games" class="btn btn-play">▶ Play Now</a>
+                    <a href="#build" class="btn btn-build">{ } Build a Game</a>
+                </div>
+                <p class="cta-subtext">Live on Arbitrum One • Gas costs ~$0.01 per move</p>
+            </div>
+        </section>
+
+        <div class="section-divider"></div>
+
+        <!-- What It Is Section -->
+        <section class="what-section">
+            <h2>One Protocol. Two Paths.</h2>
+            <p class="subtitle">
+                Whether you're here to compete or create, ETour is built for you.
+            </p>
+
+            <div class="what-grid">
+                <div class="what-card gamer">
+                    <span class="label">For Gamers</span>
+                    <h3>Play for Real Stakes</h3>
+                    <p>
+                        Join perpetual tournaments where your skill determines your earnings. 
+                        No accounts, no sign-ups—just connect your wallet and compete.
+                    </p>
+                    <ul>
+                        <li>Instant matchmaking across multiple stake tiers</li>
+                        <li>Provably fair—impossible to cheat or manipulate</li>
+                        <li>Winnings sent directly to your wallet</li>
+                        <li>Play from anywhere, anytime</li>
+                    </ul>
+                </div>
+
+                <div class="what-card dev">
+                    <span class="label">For Developers</span>
+                    <h3>Build Without Limits</h3>
+                    <p>
+                        Drop-in tournament infrastructure for any competitive game. 
+                        Focus on your game logic—we handle matchmaking, stakes, and payouts.
+                    </p>
+                    <ul>
+                        <li>Implement 2 functions, get a full tournament system</li>
+                        <li>Supports 2-128 player brackets</li>
+                        <li>Built-in timeout and anti-stalling mechanics</li>
+                        <li>No backend required—runs entirely on-chain</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <div class="section-divider"></div>
+
+        <!-- Games Section -->
+        <section class="games-section" id="games">
+            <h2>Live Games</h2>
+            <p class="subtitle">Built on ETour Protocol • Real ETH • Real Competition</p>
+
+            <div class="games-grid">
+                <div class="game-card">
+                    <div class="game-icon">⭕</div>
+                    <h3>Eternal TicTacToe</h3>
+                    <div class="stakes">0.001 - 0.1 ETH</div>
+                    <p>The classic solved game—now with stakes. Perfect for learning the ropes.</p>
+                    <a href="#" class="btn btn-game">Play Now</a>
+                </div>
+
+                <div class="game-card">
+                    <div class="game-icon">♔</div>
+                    <h3>ChessOnChain</h3>
+                    <div class="stakes">0.01 - 1 ETH</div>
+                    <p>Full chess rules verified on-chain. Castling, en passant, promotion—all of it.</p>
+                    <a href="#" class="btn btn-game">Play Now</a>
+                </div>
+
+                <div class="game-card coming-soon">
+                    <span class="coming-soon-badge">Coming Soon</span>
+                    <div class="game-icon">🚢</div>
+                    <h3>Battleship</h3>
+                    <div class="stakes">High Stakes</div>
+                    <p>Strategic naval warfare with hidden information. Commitment-reveal mechanics.</p>
+                    <button class="btn btn-game" disabled>Coming Soon</button>
+                </div>
+            </div>
+        </section>
+
+        <div class="section-divider"></div>
+
+        <!-- Developer Section -->
+        <section class="dev-section" id="build">
+            <div class="dev-content">
+                <div class="dev-text">
+                    <h2>Ship Your Game in Hours, Not Months</h2>
+                    <p>
+                        ETour handles the hard parts—matchmaking, stake management, 
+                        timeout escalation, winner determination, and payout distribution. 
+                        You just define what a valid move looks like and how to determine a winner.
+                    </p>
+                    
+                    <div class="dev-features">
+                        <span class="dev-feature">Solidity Interface</span>
+                        <span class="dev-feature">MIT Licensed</span>
+                        <span class="dev-feature">Gas Optimized</span>
+                        <span class="dev-feature">Fully Documented</span>
+                        <span class="dev-feature">Test Suite Included</span>
+                    </div>
+
+                    <div class="dev-links">
+                        <a href="#" class="btn btn-github">
+                            <svg fill="currentColor" viewBox="0 0 24 24" style="width: 18px; height: 18px; margin-right: 4px;">
+                                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                            </svg>
+                            GitHub
+                        </a>
+                        <a href="#" class="btn btn-docs">Documentation →</a>
+                    </div>
+                </div>
+
+                <div class="code-preview">
+                    <span class="comment">// Your entire integration</span><br><br>
+                    <span class="keyword">contract</span> <span class="function">YourGame</span> <span class="keyword">is</span> IETourGame {<br><br>
+                    &nbsp;&nbsp;<span class="keyword">function</span> <span class="function">validateMove</span>(<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;bytes <span class="keyword">memory</span> moveData<br>
+                    &nbsp;&nbsp;) <span class="keyword">external view returns</span> (bool) {<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">// Your game rules here</span><br>
+                    &nbsp;&nbsp;}<br><br>
+                    &nbsp;&nbsp;<span class="keyword">function</span> <span class="function">checkWinner</span>(<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;GameState <span class="keyword">memory</span> state<br>
+                    &nbsp;&nbsp;) <span class="keyword">external view returns</span> (address) {<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">// Your win condition here</span><br>
+                    &nbsp;&nbsp;}<br>
+                    }
+                </div>
+            </div>
+        </section>
+
+        <div class="section-divider"></div>
+
+        <!-- RW3 Manifesto Link -->
+        <section class="manifesto-section">
+            <h2>Built on Principles</h2>
+            <p class="subtitle">
+                ETour is part of the Reclaim Web3 movement—a return to what 
+                blockchain was supposed to be before the speculation took over.
+            </p>
+            <a href="#" class="manifesto-link">
+                Read the RW3 Manifesto →
+            </a>
+        </section>
+    </div>
+
+    <footer>
+        <p><span class="brand">ETour Protocol</span> • Built on Arbitrum One • Open Source • Reclaim Web3</p>
+        <p style="margin-top: 0.75rem; font-size: 0.85rem;">© 2025 ETour Protocol. MIT License.</p>
+    </footer>
+</body>
+</html>
