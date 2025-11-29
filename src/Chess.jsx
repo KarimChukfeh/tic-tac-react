@@ -8,7 +8,8 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   Wallet, Grid, Swords, Clock, Shield, Lock, Eye, Code, ExternalLink,
-  Trophy, Play, Users, Zap, Award, Coins, ChevronDown
+  Trophy, Play, Users, Zap, Award, Coins, ChevronDown, ChevronUp, Info,
+  History, AlertCircle
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import CHESS_ABI from './COCABI.json';
@@ -149,6 +150,22 @@ const ChessBoard = ({
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [promotionSquare, setPromotionSquare] = useState(null);
   const [pendingMove, setPendingMove] = useState(null);
+  const [boardSize, setBoardSize] = useState(null);
+  const containerRef = useRef(null);
+
+  // Calculate board size to fit viewport while staying square
+  useEffect(() => {
+    const updateSize = () => {
+      const vh60 = window.innerHeight * 0.6;
+      const containerWidth = containerRef.current?.offsetWidth || window.innerWidth * 0.9;
+      const size = Math.min(vh60, containerWidth);
+      setBoardSize(size);
+    };
+
+    updateSize();
+    window.addEventListener('resize', updateSize);
+    return () => window.removeEventListener('resize', updateSize);
+  }, []);
 
   // Determine if current user is white or black
   const isPlayer1 = account && player1?.toLowerCase() === account.toLowerCase();
@@ -353,16 +370,14 @@ const ChessBoard = ({
         </div>
       )}
 
-      {/* Board container - constrained to viewport */}
-      <div
-        className="grid grid-cols-8 gap-0 border-4 border-amber-900 rounded-lg overflow-hidden shadow-2xl w-full"
-        style={{
-          aspectRatio: '1',
-          maxWidth: 'min(100%, 60vh)',
-          maxHeight: '60vh'
-        }}
-      >
-        {renderBoard()}
+      {/* Board container with JS-calculated size for cross-browser compatibility */}
+      <div ref={containerRef} className="w-full flex justify-center">
+        <div
+          className="grid grid-cols-8 gap-0 border-4 border-amber-900 rounded-lg overflow-hidden shadow-2xl"
+          style={boardSize ? { width: boardSize, height: boardSize } : { width: '60vh', height: '60vh', maxWidth: '100%' }}
+        >
+          {renderBoard()}
+        </div>
       </div>
 
       {/* Promotion Dialog */}
@@ -387,11 +402,11 @@ const ChessBoard = ({
 
       {/* Turn indicator */}
       {matchStatus === 1 && (
-        <div className={`mt-4 text-center py-3 px-4 rounded-xl font-bold text-lg border-2 w-full ${
+        <div className={`mt-4 text-center py-3 px-4 rounded-xl font-bold text-lg border-2 ${
           isMyTurn
             ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-green-400 text-green-300 animate-pulse'
             : 'bg-blue-500/10 border-blue-400/50 text-blue-300'
-        }`} style={{ maxWidth: 'min(100%, 60vh)' }}>
+        }`} style={boardSize ? { width: boardSize } : { maxWidth: '100%' }}>
           {isMyTurn ? (
             <div className="space-y-1">
               <div className="text-xl">♟️ YOUR TURN</div>
@@ -408,7 +423,7 @@ const ChessBoard = ({
 
       {/* Check indicator */}
       {(whiteInCheck || blackInCheck) && matchStatus === 1 && (
-        <div className="mt-2 text-center py-2 px-4 rounded-lg bg-red-500/30 border border-red-400 text-red-300 font-bold animate-pulse w-full" style={{ maxWidth: 'min(100%, 60vh)' }}>
+        <div className="mt-2 text-center py-2 px-4 rounded-lg bg-red-500/30 border border-red-400 text-red-300 font-bold animate-pulse" style={boardSize ? { width: boardSize } : { maxWidth: '100%' }}>
           ⚠️ {whiteInCheck ? 'White' : 'Black'} King is in CHECK!
         </div>
       )}
@@ -928,6 +943,37 @@ export default function ChessOnChain() {
   const [matchLoading, setMatchLoading] = useState(false);
   const [syncDots, setSyncDots] = useState(1);
 
+  // FAQ State
+  const [expandedFaq, setExpandedFaq] = useState(null);
+
+  // Cached Stats State
+  const [cachedStats, setCachedStats] = useState(null);
+  const [cachedStatsLoading, setCachedStatsLoading] = useState(false);
+
+  // FAQ data for chess
+  const faqs = [
+    {
+      q: "How do chess tournaments work?",
+      a: "Chess tournaments are bracket-style competitions on the blockchain. Players enroll by paying an entry fee, then compete in single-elimination matches. Each move is recorded on-chain, and the smart contract validates all moves according to official chess rules. Winners advance until a champion is crowned."
+    },
+    {
+      q: "Why chess on the blockchain?",
+      a: "Chess is the perfect game for blockchain: it's deterministic, skill-based, and has clear rules that can be fully encoded in a smart contract. Every move is recorded on-chain, making cheating impossible. Game outcomes are cryptographically secured and permanent."
+    },
+    {
+      q: "What if my opponent doesn't move?",
+      a: "Each player has a time limit per move (5 minutes). If a player fails to make a move within the time limit, their opponent can claim victory through the timeout mechanism. The smart contract enforces all timeouts automatically—no disputes, no moderators needed."
+    },
+    {
+      q: "Are all chess rules supported?",
+      a: "Yes! The smart contract implements full chess rules including castling (both kingside and queenside), en passant captures, pawn promotion to any piece, check and checkmate detection, and stalemate draws. Every special move is validated on-chain."
+    },
+    {
+      q: "How do I know the prize pool is safe?",
+      a: "All entry fees go directly to the smart contract. The contract holds the funds and distributes them automatically when a winner is determined. No human can access the funds. You can verify this by reading the contract code on the block explorer."
+    }
+  ];
+
   // Theme colors
   const themeColors = {
     dream: {
@@ -1062,6 +1108,53 @@ export default function ChessOnChain() {
 
   // Load contract data
   const loadContractData = async (contractInstance, isInitialLoad = false) => {
+    // Always try to fetch cached stats first
+    try {
+      console.log('🔄 Fetching cached stats...');
+      setCachedStatsLoading(true);
+
+      let matches = [];
+      let tournaments = [];
+
+      // Fetch recent cached matches
+      try {
+        const recentMatches = await contractInstance.getRecentCachedMatches(100);
+        matches = Array.from(recentMatches).filter(m => m && m.exists);
+        console.log('✅ Fetched', matches.length, 'cached matches');
+      } catch (err) {
+        console.warn('Error fetching cached matches:', err.message || err);
+      }
+
+      // Fetch all completed tournaments
+      try {
+        const allTournaments = await contractInstance.getAllCompletedTournaments();
+        tournaments = Array.from(allTournaments).filter(t => t && t.exists);
+        console.log('✅ Fetched', tournaments.length, 'cached tournaments');
+      } catch (err) {
+        console.warn('Error fetching cached tournaments:', err.message || err);
+      }
+
+      // Categorize tournaments by completion type
+      // CompletionType: 0=NotCompleted, 1=Organic, 2=Partial, 3=Abandoned
+      const organicTournaments = tournaments.filter(t => Number(t.completionType) === 1);
+      const partialTournaments = tournaments.filter(t => Number(t.completionType) === 2);
+      const abandonedTournaments = tournaments.filter(t => Number(t.completionType) === 3);
+
+      setCachedStats({
+        matches,
+        tournaments,
+        organicTournaments,
+        partialTournaments,
+        abandonedTournaments
+      });
+      setCachedStatsLoading(false);
+    } catch (err) {
+      console.error('Could not fetch cached stats:', err);
+      setCachedStats({ matches: [], tournaments: [], organicTournaments: [], partialTournaments: [], abandonedTournaments: [] });
+      setCachedStatsLoading(false);
+    }
+
+    // Verify contract deployment
     try {
       setContractStatus('checking');
 
@@ -1613,41 +1706,101 @@ export default function ChessOnChain() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-6 py-8" style={{ position: 'relative', zIndex: 10 }}>
+      <div className="max-w-7xl mx-auto px-6 py-12" style={{ position: 'relative', zIndex: 10 }}>
         {/* Hero Section */}
         <div className="text-center mb-16">
-          <div className={`inline-block mb-6 p-1 rounded-full bg-gradient-to-r ${currentTheme.heroGlow}`}>
-            <div className="bg-slate-900 rounded-full px-6 py-2">
-              <span className="text-6xl">♔</span>
+          <div className="inline-block mb-6">
+            <div className="relative">
+              <div className={`absolute -inset-4 bg-gradient-to-r ${currentTheme.heroGlow} rounded-full blur-xl opacity-50 animate-pulse`}></div>
+              <span className="relative text-8xl">♔</span>
             </div>
           </div>
-          <h1 className={`text-6xl md:text-7xl font-bold mb-6 bg-gradient-to-r ${currentTheme.heroTitle} bg-clip-text text-transparent`}>
+
+          <h1 className={`text-6xl md:text-7xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r ${currentTheme.heroTitle}`}>
             ChessOnChain
           </h1>
-          <p className={`text-xl md:text-2xl ${currentTheme.heroText} mb-8 max-w-3xl mx-auto`}>
-            Play chess on the blockchain. Every move verified. Every game immutable.
+          <p className={`text-2xl ${currentTheme.heroText} mb-6`}>
+            Provably Fair • Zero Trust • 100% On-Chain
+          </p>
+          <p className={`text-lg ${currentTheme.heroSubtext} max-w-3xl mx-auto mb-8`}>
+            Play Chess on the blockchain. Real opponents. Real ETH on the line.
+            <br/>
+            No servers required. No trust needed.
+            <br/>
+            Every move is a transaction. Every outcome is permanently on-chain.
           </p>
 
-          {/* Connect Wallet Button */}
+          {/* Game Info Cards */}
+          <div className="grid md:grid-cols-3 gap-4 max-w-4xl mx-auto mb-8">
+            <div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Trophy className="text-green-400" size={20} />
+                <span className="font-bold text-green-300">Winner Takes 90%</span>
+              </div>
+              <p className="text-sm text-green-200">
+                Champion walks away with 90% of the tournament pot
+              </p>
+            </div>
+            <div className="bg-gradient-to-br from-yellow-500/20 to-amber-500/20 border border-yellow-400/30 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Coins className="text-yellow-400" size={20} />
+                <span className="font-bold text-yellow-300">ETH Entry Fees</span>
+              </div>
+              <p className="text-sm text-yellow-200">
+                Multiple tiers from casual to high stakes
+              </p>
+            </div>
+            <div className="bg-gradient-to-br from-purple-500/20 to-blue-500/20 border border-purple-400/30 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Zap className="text-purple-400" size={20} />
+                <span className="font-bold text-purple-300">Full Chess Rules</span>
+              </div>
+              <p className="text-sm text-purple-200">
+                Castling, en passant, promotion - all verified on-chain
+              </p>
+            </div>
+          </div>
+
+          {/* Connect Wallet CTA */}
           {!account ? (
             <button
               onClick={connectWallet}
               disabled={loading}
-              className={`bg-gradient-to-r ${currentTheme.buttonGradient} ${currentTheme.buttonHover} text-white font-bold py-4 px-8 rounded-xl text-xl transition-all transform hover:scale-105 disabled:opacity-50 flex items-center gap-3 mx-auto`}
+              className={`inline-flex items-center gap-3 bg-gradient-to-r ${currentTheme.buttonGradient} ${currentTheme.buttonHover} px-10 py-5 rounded-2xl font-bold text-2xl shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
             >
-              <Wallet size={24} />
-              {loading ? 'Connecting...' : 'Connect Wallet'}
+              <Wallet size={28} />
+              {loading ? 'Connecting...' : 'Connect Wallet to Enter'}
             </button>
           ) : (
-            <div className="flex items-center justify-center gap-4">
-              <div className="bg-green-500/20 border border-green-400 px-6 py-3 rounded-xl">
-                <span className="text-green-300 font-mono">{shortenAddress(account)}</span>
-              </div>
-              <div className="bg-blue-500/20 border border-blue-400 px-4 py-3 rounded-xl">
-                <span className="text-blue-300">{networkInfo?.name || 'Connected'}</span>
-              </div>
+            <div className="inline-flex items-center gap-4 bg-green-500/20 border border-green-400/50 px-8 py-4 rounded-2xl">
+              <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+              <span className="font-mono text-lg">{shortenAddress(account)}</span>
             </div>
           )}
+
+          {/* Why Arbitrum Info */}
+          <div className="mt-6 max-w-2xl mx-auto">
+            <div className={`bg-${theme === 'daring' ? 'red' : 'blue'}-500/10 border border-${theme === 'daring' ? 'red' : 'blue'}-400/30 rounded-lg p-4`}>
+              <div className="flex items-start gap-3">
+                <Info size={18} className={`${currentTheme.heroIcon} mt-0.5 flex-shrink-0`} />
+                <div className="text-sm w-full">
+                  <p className={`${currentTheme.heroText} font-medium mb-2`}>Why Arbitrum?</p>
+                  <p className={`${currentTheme.heroSubtext} opacity-80 leading-relaxed mb-3`}>
+                    This game runs on <a href="https://arbitrum.io" target="_blank" rel="noopener noreferrer" className={`font-semibold ${currentTheme.heroText} hover:text-green-300 underline decoration-current/50 hover:decoration-green-300 transition-colors`}>Arbitrum One</a>, an Ethereum Layer 2 network.
+                  </p>
+                  <div className={`${currentTheme.heroSubtext} opacity-80 leading-relaxed space-y-2 text-sm`}>
+                    <p><strong className={currentTheme.heroText}>First time on Arbitrum?</strong> You'll need to:</p>
+                    <ol className="list-decimal list-inside pl-2 space-y-1">
+                      <li>Switch to Arbitrum network in MetaMask (instant and free)</li>
+                      <li>Bridge ETH from Ethereum mainnet to Arbitrum (~15 min, requires L1 gas)</li>
+                    </ol>
+                    <p><strong className={currentTheme.heroText}>Already have Arbitrum ETH?</strong> Just switch networks and play.</p>
+                    <p className="pt-1"><span className={currentTheme.heroText}>Lower fees than Ethereum mainnet. Final outcomes secured by Ethereum L1.</span></p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Match View */}
@@ -1899,56 +2052,641 @@ export default function ChessOnChain() {
           </>
         )}
 
-        {/* FAQ Section */}
-        <div className="mb-16">
-          <div className="text-center mb-8">
-            <h2 className={`text-4xl font-bold bg-gradient-to-r ${currentTheme.heroTitle} bg-clip-text text-transparent`}>
-              Frequently Asked Questions
-            </h2>
-          </div>
+      </div>
 
-          <div className="space-y-4 max-w-3xl mx-auto">
-            {[
-              {
-                q: "How does on-chain chess work?",
-                a: "Every move is recorded as a blockchain transaction. The smart contract validates all moves according to chess rules, including special moves like castling, en passant, and pawn promotion. Game outcomes are cryptographically secured and immutable."
-              },
-              {
-                q: "What happens if my opponent doesn't move?",
-                a: "Each player has a time limit per move. If a player fails to move in time, you can claim victory through the timeout mechanism. The smart contract enforces all timeouts automatically."
-              },
-              {
-                q: "Is this really fully on-chain?",
-                a: "Yes! All game logic runs in the smart contract. The frontend is just a viewer - you could interact with the contract directly via Etherscan or build your own interface."
-              },
-              {
-                q: "How are tournaments structured?",
-                a: "Tournaments use a single-elimination bracket format. Players enroll by paying the entry fee, and prizes are distributed to winners automatically by the smart contract."
-              }
-            ].map((faq, idx) => (
-              <div key={idx} className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-xl border border-purple-400/30 overflow-hidden">
+      {/* Zero Trust Architecture */}
+      <div id="zero-trust" className="max-w-7xl mx-auto px-6 pb-12" style={{ position: 'relative', zIndex: 10 }}>
+        <div className="bg-gradient-to-br from-green-900/30 to-emerald-900/30 backdrop-blur-lg rounded-2xl p-8 md:p-12 border border-green-500/30 mb-16">
+          <div className="max-w-4xl mx-auto">
+            <h2 className="text-4xl font-bold mb-6 text-center text-green-300">Zero-Trust Architecture</h2>
+
+            <div className="bg-green-500/10 border-l-4 border-green-400 p-6 rounded-r-xl mb-8">
+              <p className="text-lg leading-relaxed text-green-100">
+                ChessOnChain is a <strong className="text-green-300">fully autonomous protocol</strong> deployed on Arbitrum (Ethereum Layer 2). Every chess move is recorded on-chain. Every rule is enforced by immutable code. No servers can go down. No admins can interfere. No company can shut it down.
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6 mb-8">
+              <div className="bg-white/5 backdrop-blur-sm border border-green-500/20 rounded-xl p-6">
+                <h3 className="text-xl font-bold mb-3 text-green-300 flex items-center gap-2">
+                  <span className="text-2xl">♔</span> The Chess Protocol
+                </h3>
+                <ul className="space-y-2 text-green-100">
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-400 mt-1">✓</span>
+                    <span>Every move recorded on-chain</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-400 mt-1">✓</span>
+                    <span>Full chess rules enforced by smart contract</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-400 mt-1">✓</span>
+                    <span>Automatic timeout enforcement</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-400 mt-1">✓</span>
+                    <span>Checkmate & stalemate detection</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-400 mt-1">✓</span>
+                    <span>Game outcomes permanent on L1</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-400 mt-1">→</span>
+                    <a
+                      href={`https://arbiscan.io/address/${CONTRACT_ADDRESS}#code`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-green-300 hover:text-green-200 underline decoration-green-400/50 hover:decoration-green-300 transition-colors"
+                    >
+                      Read the immutable source code here.
+                    </a>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="bg-white/5 backdrop-blur-sm border border-blue-500/20 rounded-xl p-6">
+                <h3 className="text-xl font-bold mb-3 text-blue-300 flex items-center gap-2">
+                  <span className="text-2xl">🌐</span> This Interface
+                </h3>
+                <ul className="space-y-2 text-blue-100">
+                  <li className="flex items-start gap-2">
+                    <span className="text-blue-400 mt-1">•</span>
+                    <span>Demo interface by creator</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-blue-400 mt-1">•</span>
+                    <span>Reads 100% public blockchain data</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-blue-400 mt-1">•</span>
+                    <span>Simply calls smart contract functions</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-blue-400 mt-1">•</span>
+                    <span>Can be rebuilt by anyone</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-blue-400 mt-1">•</span>
+                    <span>No special privileges</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-blue-400 mt-1">→</span>
+                    <span className="text-blue-300">
+                      Feel free to fork it and build your own!
+                    </span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="bg-yellow-500/10 border border-yellow-400/30 rounded-xl p-6">
+              <h3 className="text-xl font-bold mb-3 text-yellow-300 flex items-center gap-2">
+                <span className="text-2xl">💡</span> What This Means
+              </h3>
+              <div className="space-y-3 text-yellow-100">
+                <p>
+                  <strong className="text-yellow-200">Anyone can build their own chess interface</strong> to this protocol. All interfaces connect to the same games, display the same boards, and follow the same rules.
+                </p>
+                <p>
+                  <strong className="text-yellow-200">This website is optional.</strong> You could play via Arbiscan, build your own UI, or use any third-party interface. The outcomes are secured by Arbitrum (and ultimately Ethereum L1), not by this website.
+                </p>
+                <p>
+                  <strong className="text-yellow-200">Game outcomes are permanent.</strong> Even if every website disappears, the game continues forever. Your wins and prizes are secured by smart contracts settling to Ethereum L1.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* FAQ Section */}
+        <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-8 border border-white/10 mb-16">
+          <h2 className="text-3xl font-bold mb-8 text-center">Frequently Asked Questions</h2>
+          <div className="space-y-4 max-w-4xl mx-auto">
+            {faqs.map((faq, idx) => (
+              <div key={idx} className="border border-blue-500/20 rounded-lg overflow-hidden">
                 <button
-                  className="w-full text-left p-6 flex items-center justify-between hover:bg-white/5 transition-colors"
-                  onClick={() => {}}
+                  onClick={() => setExpandedFaq(expandedFaq === idx ? null : idx)}
+                  className="w-full px-6 py-4 flex items-center justify-between bg-white/5 hover:bg-white/10 transition-colors"
                 >
-                  <span className="text-lg font-semibold text-white">{faq.q}</span>
+                  <span className="font-semibold text-left">{faq.q}</span>
+                  {expandedFaq === idx ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                 </button>
-                <div className="px-6 pb-6">
-                  <p className="text-purple-200">{faq.a}</p>
-                </div>
+                {expandedFaq === idx && (
+                  <div className="px-6 py-4 bg-white/5 border-t border-blue-500/20">
+                    <p className="text-blue-200 leading-relaxed">{faq.a}</p>
+                  </div>
+                )}
               </div>
             ))}
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="text-center py-8 border-t border-purple-400/20">
-          <p className="text-purple-300/70">
-            ChessOnChain - Fully On-Chain Chess Tournaments
-          </p>
-          <p className="text-purple-400/50 text-sm mt-2">
-            Smart Contract: {CONTRACT_ADDRESS}
-          </p>
+        {/* Cached Stats Section */}
+        <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-8 border border-white/10 mb-16">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-3 mb-4">
+              <History className="text-cyan-400" size={40} />
+              <h2 className="text-4xl font-bold">
+                <span className="bg-gradient-to-r from-cyan-400 to-purple-400 text-transparent bg-clip-text">
+                  Cached Stats
+                </span>
+              </h2>
+            </div>
+            <p className="text-cyan-200/70 text-lg max-w-2xl mx-auto">
+              Historical tournament and match data stored on-chain
+            </p>
+          </div>
+
+          {cachedStatsLoading ? (
+            <div className="text-center py-12">
+              <div className="inline-block">
+                <div className="w-16 h-16 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin mx-auto mb-4"></div>
+                <p className="text-cyan-300">Loading cached stats...</p>
+              </div>
+            </div>
+          ) : cachedStats && (cachedStats.matches.length > 0 || cachedStats.tournaments.length > 0) ? (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Cached Tournaments */}
+                <div className="bg-gradient-to-br from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-6 border border-purple-400/30">
+                  <div className="flex items-center gap-3 mb-4">
+                    <Trophy className="text-purple-400" size={32} />
+                    <h3 className="text-2xl font-bold text-white">Cached Tournaments</h3>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="bg-purple-500/10 rounded-lg p-4 border border-purple-400/20">
+                      <div className="text-purple-300 text-sm mb-1">Total Cached</div>
+                      <div className="text-3xl font-bold text-white">{cachedStats.tournaments?.length || 0}</div>
+                    </div>
+                    {cachedStats.tournaments?.length > 0 && (
+                      <>
+                        {/* Organic Tournaments */}
+                        {cachedStats.organicTournaments?.length > 0 && (
+                          <div className="bg-green-500/10 rounded-lg p-4 border border-green-400/20">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Trophy className="text-green-400" size={16} />
+                              <div className="text-green-300 text-sm font-semibold">Organic ({cachedStats.organicTournaments.length})</div>
+                            </div>
+                            <div className="space-y-2 max-h-48 overflow-y-auto">
+                              {cachedStats.organicTournaments.slice(0, 5).map((tournament, idx) => {
+                                let prizeRecipients = [];
+                                if (tournament.prizeWinners && tournament.prizeWinners.length > 0) {
+                                  prizeRecipients = Array.from(tournament.prizeWinners)
+                                    .filter(r => r && r.player && r.player !== ethers.ZeroAddress && r.prize > 0n)
+                                    .map(r => ({
+                                      player: r.player,
+                                      prize: ethers.formatEther(r.prize),
+                                      ranking: r.ranking ? Number(r.ranking) : null
+                                    }));
+                                }
+                                return (
+                                  <div key={idx} className="bg-green-500/5 p-3 rounded space-y-2">
+                                    <div className="flex items-center justify-between text-xs border-b border-green-400/20 pb-1">
+                                      <span className="text-green-200 font-semibold">Tier {Number(tournament.tierId)}</span>
+                                      <span className="text-green-300/70">{prizeRecipients.length} winner{prizeRecipients.length !== 1 ? 's' : ''}</span>
+                                    </div>
+                                    {prizeRecipients.length > 0 ? (
+                                      <div className="space-y-1.5">
+                                        {prizeRecipients.map((recipient, recipientIdx) => (
+                                          <div key={recipientIdx} className="bg-green-500/5 p-2 rounded border border-green-400/10">
+                                            <div className="flex items-center justify-between text-xs mb-1">
+                                              <div className="flex flex-col">
+                                                <span className={`font-mono ${
+                                                  recipient.player.toLowerCase() === account?.toLowerCase()
+                                                    ? 'text-yellow-300 font-bold'
+                                                    : 'text-white'
+                                                }`}>
+                                                  #{recipient.ranking} {recipient.player.slice(0, 6)}...{recipient.player.slice(-4)}
+                                                </span>
+                                                {recipient.player.toLowerCase() === account?.toLowerCase() && (
+                                                  <span className="text-yellow-400 text-xs font-bold">THIS IS YOU</span>
+                                                )}
+                                              </div>
+                                              <span className="text-green-400 font-bold">{parseFloat(recipient.prize).toFixed(4)} ETH</span>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <div className="text-xs text-green-300/50 text-center py-2">No prize data available</div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Partial/Force Started Tournaments */}
+                        {cachedStats.partialTournaments?.length > 0 && (
+                          <div className="bg-orange-500/10 rounded-lg p-4 border border-orange-400/20">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Zap className="text-orange-400" size={16} />
+                              <div className="text-orange-300 text-sm font-semibold">Force Started ({cachedStats.partialTournaments.length})</div>
+                            </div>
+                            <div className="space-y-2 max-h-48 overflow-y-auto">
+                              {cachedStats.partialTournaments.slice(0, 5).map((tournament, idx) => {
+                                let prizeRecipients = [];
+                                if (tournament.prizeWinners && tournament.prizeWinners.length > 0) {
+                                  prizeRecipients = Array.from(tournament.prizeWinners)
+                                    .filter(r => r && r.player && r.player !== ethers.ZeroAddress && r.prize > 0n)
+                                    .map(r => ({
+                                      player: r.player,
+                                      prize: ethers.formatEther(r.prize),
+                                      ranking: r.ranking ? Number(r.ranking) : null
+                                    }));
+                                }
+                                return (
+                                  <div key={idx} className="bg-orange-500/5 p-3 rounded space-y-2">
+                                    <div className="flex items-center justify-between text-xs border-b border-orange-400/20 pb-1">
+                                      <span className="text-orange-200 font-semibold">Tier {Number(tournament.tierId)}</span>
+                                      <span className="text-orange-300/70">{prizeRecipients.length} winner{prizeRecipients.length !== 1 ? 's' : ''}</span>
+                                    </div>
+                                    {prizeRecipients.length > 0 ? (
+                                      <div className="space-y-1.5">
+                                        {prizeRecipients.map((recipient, recipientIdx) => (
+                                          <div key={recipientIdx} className="bg-orange-500/5 p-2 rounded border border-orange-400/10">
+                                            <div className="flex items-center justify-between text-xs mb-1">
+                                              <div className="flex flex-col">
+                                                <span className={`font-mono ${
+                                                  recipient.player.toLowerCase() === account?.toLowerCase()
+                                                    ? 'text-yellow-300 font-bold'
+                                                    : 'text-white'
+                                                }`}>
+                                                  #{recipient.ranking} {recipient.player.slice(0, 6)}...{recipient.player.slice(-4)}
+                                                </span>
+                                                {recipient.player.toLowerCase() === account?.toLowerCase() && (
+                                                  <span className="text-yellow-400 text-xs font-bold">THIS IS YOU</span>
+                                                )}
+                                              </div>
+                                              <span className="text-green-400 font-bold">{parseFloat(recipient.prize).toFixed(4)} ETH</span>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <div className="text-xs text-orange-300/50 text-center py-2">No prize data available</div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Abandoned/Claimed Tournaments */}
+                        {cachedStats.abandonedTournaments?.length > 0 && (
+                          <div className="bg-red-500/10 rounded-lg p-4 border border-red-400/20">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Coins className="text-red-400" size={16} />
+                              <div className="text-red-300 text-sm font-semibold">Abandoned & Claimed ({cachedStats.abandonedTournaments.length})</div>
+                            </div>
+                            <div className="space-y-2 max-h-48 overflow-y-auto">
+                              {cachedStats.abandonedTournaments.slice(0, 5).map((tournament, idx) => {
+                                const winner = tournament.winner;
+                                const hasWinner = winner && winner !== ethers.ZeroAddress;
+                                let claimAmount = null;
+                                if (tournament.totalAwarded && tournament.totalAwarded > 0n) {
+                                  claimAmount = ethers.formatEther(tournament.totalAwarded);
+                                }
+                                return (
+                                  <div key={idx} className="bg-red-500/5 p-2 rounded space-y-1">
+                                    <div className="flex items-center justify-between text-xs">
+                                      <span className="text-red-200">Tier {Number(tournament.tierId)}</span>
+                                      <div className="flex flex-col items-end">
+                                        <span className="text-white font-mono">
+                                          {hasWinner ? `${winner.slice(0, 6)}...${winner.slice(-4)}` : 'Unclaimed'}
+                                        </span>
+                                        {hasWinner && winner.toLowerCase() === account?.toLowerCase() && (
+                                          <span className="text-yellow-400 text-xs font-bold">THIS IS YOU</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                    {claimAmount && (
+                                      <div className="flex items-center justify-between text-xs">
+                                        <span className="text-red-300/70">Pool Claimed</span>
+                                        <span className="text-yellow-400 font-bold">{parseFloat(claimAmount).toFixed(4)} ETH</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Total Awards Distributed */}
+                        <div className="bg-purple-500/10 rounded-lg p-4 border border-purple-400/20">
+                          <div className="text-purple-300 text-sm mb-3 font-bold">Total Awards Distributed</div>
+                          {(() => {
+                            try {
+                              const addressAwards = new Map();
+                              let totalAwarded = 0;
+
+                              cachedStats.tournaments.forEach(tournament => {
+                                if (tournament.prizeWinners && tournament.prizeWinners.length > 0) {
+                                  Array.from(tournament.prizeWinners)
+                                    .filter(r => r && r.player && r.player !== ethers.ZeroAddress && r.prize > 0n)
+                                    .forEach(r => {
+                                      const addr = r.player;
+                                      const prizeEth = parseFloat(ethers.formatEther(r.prize));
+                                      if (prizeEth > 0) {
+                                        const current = addressAwards.get(addr.toLowerCase()) || 0;
+                                        addressAwards.set(addr.toLowerCase(), current + prizeEth);
+                                        totalAwarded += prizeEth;
+                                      }
+                                    });
+                                }
+                              });
+
+                              const sortedAwards = Array.from(addressAwards.entries())
+                                .sort((a, b) => b[1] - a[1]);
+
+                              if (sortedAwards.length === 0) {
+                                return (
+                                  <div className="text-purple-300/70 text-sm text-center py-2">
+                                    No awards distributed yet
+                                  </div>
+                                );
+                              }
+
+                              return (
+                                <>
+                                  <div className="bg-green-500/20 p-3 rounded-lg border border-green-400/30 mb-3">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-green-300 text-sm">Grand Total</span>
+                                      <span className="text-2xl font-bold text-green-400">
+                                        {totalAwarded.toFixed(4)} ETH
+                                      </span>
+                                    </div>
+                                    <div className="text-green-300/70 text-xs mt-1">
+                                      to {sortedAwards.length} unique recipient{sortedAwards.length !== 1 ? 's' : ''}
+                                    </div>
+                                  </div>
+                                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                                    {sortedAwards.map(([address, amount]) => (
+                                      <div
+                                        key={address}
+                                        className={`flex items-center justify-between p-2 rounded border ${
+                                          address.toLowerCase() === account?.toLowerCase()
+                                            ? 'bg-yellow-500/20 border-yellow-400/50'
+                                            : 'bg-purple-500/10 border-purple-400/20'
+                                        }`}
+                                      >
+                                        <div className="flex flex-col">
+                                          <span className={`font-mono text-xs ${
+                                            address.toLowerCase() === account?.toLowerCase()
+                                              ? 'text-yellow-300'
+                                              : 'text-white'
+                                          }`}>
+                                            {address.slice(0, 8)}...{address.slice(-6)}
+                                          </span>
+                                          {address.toLowerCase() === account?.toLowerCase() && (
+                                            <span className="text-yellow-400 text-xs font-bold">THIS IS YOU</span>
+                                          )}
+                                        </div>
+                                        <span className="text-green-400 font-bold text-sm">
+                                          {amount.toFixed(4)} ETH
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </>
+                              );
+                            } catch (err) {
+                              console.warn('Error calculating total awards:', err);
+                              return (
+                                <div className="text-red-300/70 text-sm text-center py-2">
+                                  Error loading award data
+                                </div>
+                              );
+                            }
+                          })()}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Cached Matches */}
+                <div className="bg-gradient-to-br from-cyan-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-6 border border-cyan-400/30">
+                  <div className="flex items-center gap-3 mb-4">
+                    <Swords className="text-cyan-400" size={32} />
+                    <h3 className="text-2xl font-bold text-white">Cached Matches</h3>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="bg-cyan-500/10 rounded-lg p-4 border border-cyan-400/20">
+                      <div className="text-cyan-300 text-sm mb-1">Total Cached</div>
+                      <div className="text-3xl font-bold text-white">{cachedStats.matches?.length || 0}</div>
+                    </div>
+                    {cachedStats.matches?.length > 0 && (
+                      <>
+                        {/* Match Statistics Grid */}
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="bg-cyan-500/10 rounded-lg p-4 border border-cyan-400/20">
+                            <div className="text-cyan-300 text-sm mb-1">Decisive</div>
+                            <div className="text-2xl font-bold text-green-400">
+                              {cachedStats.matches.filter(m => m?.winner && m.winner !== ethers.ZeroAddress && !m?.isDraw).length}
+                            </div>
+                          </div>
+                          <div className="bg-yellow-500/10 rounded-lg p-4 border border-yellow-400/20">
+                            <div className="text-yellow-300 text-sm mb-1">Draws</div>
+                            <div className="text-2xl font-bold text-yellow-400">
+                              {cachedStats.matches.filter(m => m?.isDraw).length}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Draw Rate */}
+                        <div className="bg-yellow-500/10 rounded-lg p-4 border border-yellow-400/20">
+                          <div className="text-yellow-300 text-sm mb-1">Draw Rate</div>
+                          <div className="flex items-center justify-between">
+                            <div className="text-2xl font-bold text-yellow-400">
+                              {((cachedStats.matches.filter(m => m?.isDraw).length / cachedStats.matches.length) * 100).toFixed(1)}%
+                            </div>
+                            <div className="text-xs text-yellow-300/70">
+                              {cachedStats.matches.filter(m => m?.isDraw).length} of {cachedStats.matches.length} matches
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Average Move Count */}
+                        <div className="bg-cyan-500/10 rounded-lg p-4 border border-cyan-400/20">
+                          <div className="text-cyan-300 text-sm mb-1">Average Moves per Game</div>
+                          <div className="text-2xl font-bold text-cyan-400">
+                            {(cachedStats.matches.reduce((sum, m) => sum + Number(m?.totalMoves || 0), 0) / cachedStats.matches.length).toFixed(1)}
+                          </div>
+                        </div>
+
+                        {/* Draw Scenarios List */}
+                        {cachedStats.matches.filter(m => m?.isDraw).length > 0 && (
+                          <div className="bg-yellow-500/10 rounded-lg p-4 border border-yellow-400/20">
+                            <div className="flex items-center gap-2 mb-3">
+                              <AlertCircle className="text-yellow-400" size={16} />
+                              <div className="text-yellow-300 text-sm font-bold">Draw Scenarios</div>
+                            </div>
+                            <div className="space-y-2 max-h-48 overflow-y-auto">
+                              {[...cachedStats.matches]
+                                .filter(m => m?.isDraw)
+                                .slice(-10)
+                                .reverse()
+                                .map((match, idx) => (
+                                  <div key={idx} className="bg-yellow-500/10 p-3 rounded border border-yellow-400/20">
+                                    <div className="flex items-center justify-between mb-2">
+                                      <div className="flex items-center gap-2">
+                                        <div className="w-6 h-6 rounded-full bg-yellow-500/30 flex items-center justify-center text-yellow-300 font-bold text-xs border border-yellow-400">
+                                          =
+                                        </div>
+                                        <span className="text-yellow-200 text-xs font-bold">Draw Match</span>
+                                      </div>
+                                      <span className="text-yellow-300/70 text-xs">
+                                        Tier {match?.tierId !== undefined ? Number(match.tierId) : '?'} • {Number(match?.totalMoves || 0)} moves
+                                      </span>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2 text-xs">
+                                      <div className="bg-cyan-500/20 p-2 rounded border border-cyan-400/20">
+                                        <div className="text-cyan-300/70 mb-1">White</div>
+                                        <div className="text-white font-mono">
+                                          {match?.player1 ? `${match.player1.slice(0, 6)}...${match.player1.slice(-4)}` : 'Unknown'}
+                                        </div>
+                                      </div>
+                                      <div className="bg-orange-500/20 p-2 rounded border border-orange-400/20">
+                                        <div className="text-orange-300/70 mb-1">Black</div>
+                                        <div className="text-white font-mono">
+                                          {match?.player2 ? `${match.player2.slice(0, 6)}...${match.player2.slice(-4)}` : 'Unknown'}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    {match?.startTime && match?.endTime && (
+                                      <div className="mt-2 text-xs text-yellow-300/70">
+                                        Duration: {Math.floor((Number(match.endTime) - Number(match.startTime)) / 60)} minutes
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Recent Matches (All) */}
+                        <div className="bg-cyan-500/10 rounded-lg p-4 border border-cyan-400/20">
+                          <div className="text-cyan-300 text-sm mb-2">Recent Matches (All)</div>
+                          <div className="space-y-2 max-h-32 overflow-y-auto">
+                            {[...cachedStats.matches].slice(-5).reverse().map((match, idx) => (
+                              <div key={idx} className={`flex items-center justify-between text-xs p-2 rounded ${
+                                match?.isDraw
+                                  ? 'bg-yellow-500/10 border border-yellow-400/20'
+                                  : 'bg-cyan-500/5 border border-cyan-400/10'
+                              }`}>
+                                <span className={match?.isDraw ? 'text-yellow-300 font-bold' : 'text-cyan-200'}>
+                                  {match?.isDraw ? '🟰 Draw' : '🏆 Winner'}
+                                </span>
+                                <span className="text-white font-mono">
+                                  {match?.isDraw
+                                    ? `${Number(match?.totalMoves || 0)} moves`
+                                    : match?.winner ? `${match.winner.slice(0, 6)}...${match.winner.slice(-4)}` : 'Unknown'}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Top Prize Recipients Section */}
+              {cachedStats.tournaments?.length > 0 && (
+                <div className="mt-6 bg-gradient-to-br from-green-600/20 to-emerald-600/20 backdrop-blur-lg rounded-2xl p-6 border border-green-400/30">
+                  <div className="flex items-center gap-3 mb-4">
+                    <Coins className="text-green-400" size={32} />
+                    <h3 className="text-2xl font-bold text-white">Top Prize Recipients</h3>
+                  </div>
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {(() => {
+                      try {
+                        const recipients = new Map();
+
+                        cachedStats.tournaments.forEach(tournament => {
+                          if (tournament.prizeWinners && tournament.prizeWinners.length > 0) {
+                            Array.from(tournament.prizeWinners)
+                              .filter(r => r && r.player && r.player !== ethers.ZeroAddress && r.prize > 0n)
+                              .forEach(r => {
+                                const addr = r.player;
+                                const prizeEth = parseFloat(ethers.formatEther(r.prize));
+                                if (prizeEth > 0) {
+                                  const current = recipients.get(addr.toLowerCase()) || 0;
+                                  recipients.set(addr.toLowerCase(), current + prizeEth);
+                                }
+                              });
+                          }
+                        });
+
+                        const sortedRecipients = Array.from(recipients.entries())
+                          .sort((a, b) => b[1] - a[1])
+                          .slice(0, 10);
+
+                        if (sortedRecipients.length === 0) {
+                          return (
+                            <div className="text-green-300/70 text-sm text-center py-4">
+                              No prize data available yet
+                            </div>
+                          );
+                        }
+
+                        return sortedRecipients.map(([address, total], idx) => (
+                          <div
+                            key={address}
+                            className="flex items-center justify-between bg-green-500/10 p-3 rounded-lg border border-green-400/20"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-green-500/30 flex items-center justify-center text-green-300 font-bold text-sm border-2 border-green-400">
+                                #{idx + 1}
+                              </div>
+                              <span className="text-white font-mono text-sm">
+                                {address.slice(0, 6)}...{address.slice(-4)}
+                              </span>
+                            </div>
+                            <span className="text-green-400 font-bold text-lg">
+                              {total.toFixed(4)} ETH
+                            </span>
+                          </div>
+                        ));
+                      } catch (err) {
+                        console.warn('Error calculating top recipients:', err);
+                        return (
+                          <div className="text-red-300/70 text-sm text-center py-4">
+                            Error loading prize data
+                          </div>
+                        );
+                      }
+                    })()}
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="bg-gradient-to-r from-cyan-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-12 border border-cyan-400/30 text-center">
+              <History className="text-cyan-400/50 mx-auto mb-4" size={64} />
+              <h3 className="text-2xl font-bold text-cyan-300 mb-2">No Cached Data Available</h3>
+              <p className="text-cyan-200/70">
+                Historical data will appear here once tournaments complete and matches are played.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="border-t border-white/10" style={{ position: 'relative', zIndex: 10 }}>
+        <div className="max-w-7xl mx-auto px-6 py-8 text-center text-sm text-blue-300">
+          <p className="font-semibold text-lg mb-2">ChessOnChain Protocol</p>
+          <p>Built on Arbitrum (Ethereum L2). Runs forever. No servers required.</p>
+          <p className="mt-2">Contract code is immutable. Game outcomes are permanent and verifiable. Always verify before interacting.</p>
+          <p className="mt-4 font-mono text-xs text-blue-400/50">{CONTRACT_ADDRESS}</p>
         </div>
       </div>
 
