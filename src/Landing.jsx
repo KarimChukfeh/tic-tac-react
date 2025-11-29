@@ -132,7 +132,7 @@ export default function Landing() {
         {/* Hero Section */}
         <section className="text-center py-24 min-h-[90vh] flex flex-col justify-center">
           <span className="inline-block bg-cyan-500/15 border border-cyan-500/40 text-cyan-400 px-5 py-2 rounded-full text-sm font-semibold mb-8 tracking-wide">
-            Reclaim Web3
+            Reclaim Web3 • ETour Protocol
           </span>
 
           <h1 className="text-5xl md:text-7xl font-extrabold leading-tight mb-6 text-slate-100">
@@ -148,9 +148,9 @@ export default function Landing() {
 
           <p className="text-lg md:text-xl text-slate-400 mb-12 max-w-2xl mx-auto leading-relaxed">
             Competitive gaming infrastructure that runs forever, needs no servers,
-            and doesn't try to sell you a token. Just skill vs skill, ETH on the line.
+            and doesn't try to sell you a token. Just skill vs skill, <strong>ETH on the line.</strong>
           </p>
-
+          
           {/* RW3 Principles */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12 max-w-4xl mx-auto">
             <RW3Item icon="⛓️" title="Fully On-Chain" description="Every move. Every outcome." />
@@ -236,7 +236,7 @@ export default function Landing() {
               icon="♔"
               title="ChessOnChain"
               stakes="0.01 - 1 ETH"
-              description="Full chess rules verified on-chain. Castling, en passant, promotion—all of it."
+              description="Full chess rules verified on-chain. Castling, en passant, awll of it."
               href="/chess"
             />
             <GameCard
