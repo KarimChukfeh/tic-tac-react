@@ -289,8 +289,8 @@ export default function Landing() {
             <div>
               <h2 className="text-3xl font-bold text-slate-100 mb-4">Ship Your Game in Hours, Not Months</h2>
               <p className="text-slate-400 leading-relaxed mb-6">
-                ETour handles the hard parts—matchmaking, stake management,
-                timeout escalation, winner determination, and payout distribution.
+                ETour handles the hard parts: matchmaking, stake management,
+                timeout escalation, bracket advancement, and payout distribution.
                 You just define what a valid move looks like and how to determine a winner.
               </p>
 
