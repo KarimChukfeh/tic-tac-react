@@ -2288,8 +2288,8 @@ Block: [Current block number]`;
             symbol: 'ETH',
             decimals: 18,
           },
-          rpcUrls: ['http://127.0.0.1:8547'],
-          blockExplorerUrls: ['http://localhost:8547'],
+          rpcUrls: ['http://127.0.0.1:8545'],
+          blockExplorerUrls: ['http://localhost:8545'],
               },
             ],
           });
@@ -3528,7 +3528,7 @@ Block: [Current block number]`;
     const initReadOnlyContract = async () => {
       try {
         // Use local network RPC
-        const provider = new ethers.JsonRpcProvider('http://127.0.0.1:8547');
+        const provider = new ethers.JsonRpcProvider('http://127.0.0.1:8545');
 
         const readOnlyContract = new ethers.Contract(
           CONTRACT_ADDRESS,
@@ -3558,7 +3558,7 @@ Block: [Current block number]`;
           setAccount(null);
           // Reinitialize read-only contract when disconnected
           const initReadOnlyContract = async () => {
-            const provider = new ethers.JsonRpcProvider('http://127.0.0.1:8547');
+            const provider = new ethers.JsonRpcProvider('http://127.0.0.1:8545');
             const readOnlyContract = new ethers.Contract(CONTRACT_ADDRESS, DUMMY_ABI, provider);
             setContract(readOnlyContract);
             await loadContractData(readOnlyContract);

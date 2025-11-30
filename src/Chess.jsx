@@ -1040,7 +1040,7 @@ export default function ChessOnChain() {
               chainId: '0x64aba',
               chainName: 'Local Network',
               nativeCurrency: { name: 'Ethereum', symbol: 'ETH', decimals: 18 },
-              rpcUrls: ['http://127.0.0.1:8547'],
+              rpcUrls: ['http://127.0.0.1:8545'],
             }],
           });
         } catch (addError) {
@@ -1511,7 +1511,7 @@ export default function ChessOnChain() {
   useEffect(() => {
     const initReadOnlyContract = async () => {
       try {
-        const provider = new ethers.JsonRpcProvider('http://127.0.0.1:8547');
+        const provider = new ethers.JsonRpcProvider('http://127.0.0.1:8545');
 
         const readOnlyContract = new ethers.Contract(
           CONTRACT_ADDRESS,
