@@ -344,9 +344,14 @@ const ChessBoard = ({
       const isLastMoveFrom = lastMove && lastMove.from === actualIdx;
       const isLastMoveTo = lastMove && lastMove.to === actualIdx;
 
-      // Determine if last move was by player or opponent
-      // If it's my turn now, the last move was opponent's. If not my turn, last move was mine.
-      const wasMyMove = lastMove && !isMyTurn;
+      // Determine if last move was made by ME based on the piece that moved
+      // My moves = green/yellow, Opponent's moves = orange/red
+      const movedPiece = lastMove && board[lastMove.to];
+      const movedPieceColor = movedPiece ? Number(movedPiece.color) : 0;
+      const isMyMove = lastMove && (
+        (movedPieceColor === 1 && isPlayer1) || // White piece and I'm white
+        (movedPieceColor === 2 && isPlayer2)    // Black piece and I'm black
+      );
 
       // Hide piece at destination during animation (animated piece shows instead)
       const hideForAnimation = animatingMove && actualIdx === animatingMove.to;
@@ -372,42 +377,42 @@ const ChessBoard = ({
       const fileLabel = String.fromCharCode(97 + actualCol);
 
       // Color scheme for last move highlighting
-      // Player's move: green (from) → yellow (to)
-      // Opponent's move: orange (from) → red (to)
+      // My moves: green (from) → yellow (to)
+      // Opponent's moves: orange (from) → red (to)
       const getLastMoveFromClass = () => {
         if (!isLastMoveFrom || isSelected || isKingInCheck) return '';
-        return wasMyMove
-          ? 'bg-emerald-500/50 ring-2 ring-emerald-400 ring-inset'  // Player: green from
-          : 'bg-orange-500/50 ring-2 ring-orange-400 ring-inset';   // Opponent: orange from
+        return isMyMove
+          ? 'bg-emerald-500/50 ring-2 ring-emerald-400 ring-inset'  // My move: green from
+          : 'bg-orange-500/50 ring-2 ring-orange-400 ring-inset';   // Opponent's move: orange from
       };
 
       const getLastMoveToClass = () => {
         if (!isLastMoveTo || isSelected || isKingInCheck) return '';
-        return wasMyMove
-          ? 'bg-yellow-400/50 ring-2 ring-yellow-300 ring-inset'    // Player: yellow to
-          : 'bg-red-500/50 ring-2 ring-red-400 ring-inset';         // Opponent: red to
+        return isMyMove
+          ? 'bg-yellow-400/50 ring-2 ring-yellow-300 ring-inset'    // My move: yellow to
+          : 'bg-red-500/50 ring-2 ring-red-400 ring-inset';         // Opponent's move: red to
       };
 
       const getLastMoveShadow = () => {
         if (isSelected) return '0 0 20px rgba(6, 182, 212, 0.3)';
         if (isLastMoveTo && !isKingInCheck) {
-          return wasMyMove
-            ? 'inset 0 0 20px rgba(234, 179, 8, 0.5)'    // Player: yellow glow
-            : 'inset 0 0 20px rgba(239, 68, 68, 0.5)';   // Opponent: red glow
+          return isMyMove
+            ? 'inset 0 0 20px rgba(234, 179, 8, 0.5)'    // My move: yellow glow
+            : 'inset 0 0 20px rgba(239, 68, 68, 0.5)';   // Opponent's move: red glow
         }
         if (isLastMoveFrom && !isKingInCheck) {
-          return wasMyMove
-            ? 'inset 0 0 15px rgba(16, 185, 129, 0.4)'   // Player: green glow
-            : 'inset 0 0 15px rgba(249, 115, 22, 0.4)';  // Opponent: orange glow
+          return isMyMove
+            ? 'inset 0 0 15px rgba(16, 185, 129, 0.4)'   // My move: green glow
+            : 'inset 0 0 15px rgba(249, 115, 22, 0.4)';  // Opponent's move: orange glow
         }
         return 'none';
       };
 
       const getPieceGlow = () => {
         if (!isLastMoveTo || hideForAnimation || pieceType === 0) return undefined;
-        return wasMyMove
-          ? 'drop-shadow(0 0 10px rgba(234, 179, 8, 0.8))'    // Player: yellow glow
-          : 'drop-shadow(0 0 10px rgba(239, 68, 68, 0.8))';   // Opponent: red glow
+        return isMyMove
+          ? 'drop-shadow(0 0 10px rgba(234, 179, 8, 0.8))'    // My move: yellow glow
+          : 'drop-shadow(0 0 10px rgba(239, 68, 68, 0.8))';   // Opponent's move: red glow
       };
 
       // When a piece is selected, potential target squares should highlight yellow on hover
@@ -490,14 +495,12 @@ const ChessBoard = ({
 
     const pieceColor = animatingMove.piece ? Number(animatingMove.piece.color) : 0;
 
-    // Determine if this is player's move or opponent's move based on piece color
-    // White pieces (color=1) belong to player1, Black pieces (color=2) belong to player2
+    // Determine if this is MY move based on piece color
+    // My moves = yellow glow, Opponent's moves = red glow
     const isMyAnimatedMove = (pieceColor === 1 && isPlayer1) || (pieceColor === 2 && isPlayer2);
-
-    // Player's move: yellow glow, Opponent's move: red glow
     const animationGlow = isMyAnimatedMove
-      ? 'rgba(234, 179, 8, 0.8)'   // Yellow for player
-      : 'rgba(239, 68, 68, 0.8)';  // Red for opponent
+      ? 'rgba(234, 179, 8, 0.8)'   // My move: yellow glow
+      : 'rgba(239, 68, 68, 0.8)';  // Opponent's move: red glow
 
     return (
       <div
