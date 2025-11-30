@@ -351,7 +351,7 @@ export default function Landing() {
             blockchain was supposed to be before the speculation took over.
           </p>
           <a
-            href="#"
+            href="https://reclaimweb3.com"
             className="text-cyan-400 font-semibold inline-flex items-center gap-2 transition-all duration-300 hover:text-blue-400"
           >
             Read the RW3 Manifesto →
