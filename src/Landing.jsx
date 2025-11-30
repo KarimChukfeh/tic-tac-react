@@ -178,9 +178,9 @@ export default function Landing() {
             <TrustDivider />
             <TrustBadge icon="⛓️" text="Fully On-Chain" />
             <TrustDivider />
-            <TrustBadge icon="♾️" text="Runs Forever" />
+            <TrustBadge icon="🌱" text="Self-Sustaining" />
             <TrustDivider />
-            <TrustBadge icon="⚖️" text="Zero Trust" />
+            <TrustBadge icon="⚖️" text="Fair Play" />
           </div>
 
           <p className="text-lg md:text-xl text-slate-400 mb-12 max-w-2xl mx-auto leading-relaxed">
