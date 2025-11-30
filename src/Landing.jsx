@@ -149,7 +149,7 @@ export default function Landing() {
 
       <div className="max-w-6xl mx-auto px-8 relative z-10">
         {/* Hero Section */}
-        <section className="text-center py-24 min-h-[90vh] flex flex-col justify-center">
+        <section className="text-center py-16 min-h-[70vh] flex flex-col justify-center">
           {/* Brand Intro */}
           <p className="text-3xl md:text-4xl text-slate-500 mb-8 tracking-[4px] uppercase">
             <span
@@ -356,6 +356,8 @@ export default function Landing() {
           </p>
           <a
             href="https://reclaimweb3.com"
+            target="_blank"
+            rel="noopener noreferrer"
             className="text-cyan-400 font-semibold inline-flex items-center gap-2 transition-all duration-300 hover:text-blue-400"
           >
             Read the RW3 Manifesto →
@@ -366,9 +368,9 @@ export default function Landing() {
       {/* Footer */}
       <footer className="text-center py-12 border-t border-blue-500/20 mt-16">
         <p className="text-slate-500">
-          <span className="text-slate-400 font-semibold">ETour Protocol</span> • Built on Arbitrum One • Open Source • Reclaim Web3
+          Respects RW3 Principles • No Company Required • No Contacts Needed
+          {/* <span className="text-slate-400 font-semibold">ETour Protocol</span> • Built on Arbitrum One • Open Source • Reclaim Web3 */}
         </p>
-        <p className="mt-3 text-sm text-slate-600">© 2025 ETour Protocol. MIT License.</p>
       </footer>
 
       {/* Keyframe animations */}
