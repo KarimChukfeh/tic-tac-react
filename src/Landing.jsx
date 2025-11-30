@@ -33,7 +33,7 @@ function FloatingParticles() {
         <div
           key={i}
           className="absolute text-2xl opacity-25 animate-float"
-          style={{ ...p.style, color: getColor(p.type), animationDelay: `${i * 2}s` }}
+          style={{ ...p.style, color: getColor(p.type), animationDelay: `-${i * 3}s` }}
         >
           {p.symbol}
         </div>
