@@ -157,9 +157,10 @@ const ChessBoard = ({
   // Calculate board size to fit viewport while staying square
   useEffect(() => {
     const updateSize = () => {
-      const vh60 = window.innerHeight * 0.6;
+      const vh55 = window.innerHeight * 0.55;
       const containerWidth = containerRef.current?.offsetWidth || window.innerWidth * 0.9;
-      const size = Math.min(vh60, containerWidth);
+      // Cap at 500px max for better layout balance
+      const size = Math.min(vh55, containerWidth, 500);
       setBoardSize(size);
     };
 
@@ -325,29 +326,49 @@ const ChessBoard = ({
         <div
           key={displayIdx}
           onClick={() => handleSquareClick(displayIdx)}
-          className={`relative aspect-square flex items-center justify-center cursor-pointer transition-all duration-150
-            ${isLight ? 'bg-amber-100' : 'bg-amber-700'}
-            ${isSelected ? 'ring-4 ring-yellow-400 ring-inset' : ''}
-            ${isKingInCheck ? 'bg-red-500' : ''}
-            ${isMyTurn && isMyPiece(piece) ? 'hover:brightness-110' : ''}
+          className={`relative aspect-square flex items-center justify-center cursor-pointer transition-all duration-200
+            ${isLight
+              ? 'bg-slate-700/50'
+              : 'bg-slate-900/80'}
+            ${isSelected
+              ? 'ring-2 ring-cyan-400 ring-inset bg-cyan-500/30'
+              : ''}
+            ${isKingInCheck
+              ? 'bg-red-500/50 ring-2 ring-red-400 ring-inset'
+              : ''}
+            ${isMyTurn && isMyPiece(piece) && !isSelected
+              ? 'hover:bg-cyan-500/20'
+              : ''}
           `}
+          style={{
+            boxShadow: isSelected ? '0 0 20px rgba(6, 182, 212, 0.3)' : 'none'
+          }}
         >
           <span
-            className={`text-4xl md:text-5xl select-none ${pieceColor === 1 ? 'text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]' : 'text-gray-900'}`}
+            className={`text-3xl md:text-4xl lg:text-5xl select-none transition-transform duration-200 ${
+              isSelected ? 'scale-110' : ''
+            } ${pieceColor === 1
+              ? 'text-slate-100 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]'
+              : 'text-purple-300 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]'
+            }`}
           >
             {getPieceSymbol(piece)}
           </span>
 
           {/* Rank labels */}
           {showRankLabel && (
-            <span className={`absolute left-1 top-0.5 text-xs font-bold ${isLight ? 'text-amber-700' : 'text-amber-100'}`}>
+            <span className={`absolute left-1 top-0.5 text-[10px] font-medium ${
+              isLight ? 'text-slate-500' : 'text-slate-600'
+            }`}>
               {rankLabel}
             </span>
           )}
 
           {/* File labels */}
           {showFileLabel && (
-            <span className={`absolute right-1 bottom-0.5 text-xs font-bold ${isLight ? 'text-amber-700' : 'text-amber-100'}`}>
+            <span className={`absolute right-1 bottom-0.5 text-[10px] font-medium ${
+              isLight ? 'text-slate-500' : 'text-slate-600'
+            }`}>
               {fileLabel}
             </span>
           )}
@@ -361,21 +382,26 @@ const ChessBoard = ({
     <div className="relative flex flex-col items-center">
       {/* Timer */}
       {matchStatus === 1 && (
-        <div className={`mb-4 text-center py-2 px-4 rounded-lg font-mono text-lg font-bold w-full ${
+        <div className={`mb-4 text-center py-2 px-6 rounded-full font-mono text-base font-semibold backdrop-blur-sm ${
           timeRemaining !== null && timeRemaining < 60
-            ? 'bg-red-500/30 text-red-300 animate-pulse'
-            : 'bg-blue-500/20 text-blue-300'
+            ? 'bg-red-500/20 text-red-300 border border-red-500/40 animate-pulse'
+            : 'bg-slate-800/60 text-cyan-300 border border-cyan-500/30'
         }`}>
-          <Clock className="inline-block mr-2" size={20} />
-          Move Timer: {formatTime(timeRemaining)}
+          <Clock className="inline-block mr-2" size={16} />
+          {formatTime(timeRemaining)}
         </div>
       )}
 
       {/* Board container with JS-calculated size for cross-browser compatibility */}
       <div ref={containerRef} className="w-full flex justify-center">
         <div
-          className="grid grid-cols-8 gap-0 border-4 border-amber-900 rounded-lg overflow-hidden shadow-2xl"
-          style={boardSize ? { width: boardSize, height: boardSize } : { width: '60vh', height: '60vh', maxWidth: '100%' }}
+          className="grid grid-cols-8 gap-0 rounded-xl overflow-hidden"
+          style={{
+            ...(boardSize ? { width: boardSize, height: boardSize } : { width: '60vh', height: '60vh', maxWidth: '100%' }),
+            background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.9))',
+            border: '1px solid rgba(148, 163, 184, 0.2)',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(6, 182, 212, 0.1), inset 0 1px 0 rgba(255,255,255,0.05)'
+          }}
         >
           {renderBoard()}
         </div>
@@ -383,17 +409,38 @@ const ChessBoard = ({
 
       {/* Promotion Dialog */}
       {promotionSquare !== null && (
-        <div className="absolute inset-0 bg-black/70 flex items-center justify-center rounded-lg">
-          <div className="bg-slate-800 p-6 rounded-xl border-2 border-purple-400">
-            <h3 className="text-white font-bold text-xl mb-4 text-center">Choose Promotion</h3>
-            <div className="flex gap-4">
+        <div className="absolute inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center rounded-xl">
+          <div
+            className="p-6 rounded-2xl"
+            style={{
+              background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.95))',
+              border: '1px solid rgba(168, 85, 247, 0.4)',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 30px rgba(168, 85, 247, 0.2)'
+            }}
+          >
+            <h3 className="text-slate-100 font-bold text-lg mb-4 text-center">Promote Pawn</h3>
+            <div className="flex gap-3">
               {[5, 4, 3, 2].map((pieceType) => (
                 <button
                   key={pieceType}
                   onClick={() => handlePromotion(pieceType)}
-                  className="w-16 h-16 bg-amber-100 rounded-lg hover:bg-amber-200 transition-colors flex items-center justify-center text-4xl"
+                  className="w-14 h-14 md:w-16 md:h-16 rounded-xl flex items-center justify-center text-3xl md:text-4xl transition-all duration-200 hover:scale-110"
+                  style={{
+                    background: 'rgba(51, 65, 85, 0.6)',
+                    border: '1px solid rgba(148, 163, 184, 0.3)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(6, 182, 212, 0.2)';
+                    e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.5)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(51, 65, 85, 0.6)';
+                    e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.3)';
+                  }}
                 >
-                  {PIECE_SYMBOLS[isWhite ? 'white' : 'black'][PIECE_TYPES[pieceType]]}
+                  <span className={isWhite ? 'text-slate-100' : 'text-purple-300'}>
+                    {PIECE_SYMBOLS[isWhite ? 'white' : 'black'][PIECE_TYPES[pieceType]]}
+                  </span>
                 </button>
               ))}
             </div>
@@ -403,20 +450,38 @@ const ChessBoard = ({
 
       {/* Turn indicator */}
       {matchStatus === 1 && (
-        <div className={`mt-4 text-center py-3 px-4 rounded-xl font-bold text-lg border-2 ${
-          isMyTurn
-            ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-green-400 text-green-300 animate-pulse'
-            : 'bg-blue-500/10 border-blue-400/50 text-blue-300'
-        }`} style={boardSize ? { width: boardSize } : { maxWidth: '100%' }}>
+        <div
+          className={`mt-4 text-center py-3 px-6 rounded-xl font-semibold text-base backdrop-blur-sm ${
+            isMyTurn
+              ? 'text-cyan-300'
+              : 'text-slate-400'
+          }`}
+          style={{
+            ...(boardSize ? { width: boardSize } : { maxWidth: '100%' }),
+            background: isMyTurn
+              ? 'linear-gradient(135deg, rgba(6, 182, 212, 0.15), rgba(59, 130, 246, 0.15))'
+              : 'rgba(30, 41, 59, 0.6)',
+            border: isMyTurn
+              ? '1px solid rgba(6, 182, 212, 0.4)'
+              : '1px solid rgba(148, 163, 184, 0.2)',
+            boxShadow: isMyTurn ? '0 0 20px rgba(6, 182, 212, 0.15)' : 'none'
+          }}
+        >
           {isMyTurn ? (
             <div className="space-y-1">
-              <div className="text-xl">♟️ YOUR TURN</div>
-              <div className="text-sm opacity-80">You are playing as {isWhite ? 'White' : 'Black'}</div>
+              <div className="text-lg flex items-center justify-center gap-2">
+                <span className="inline-block w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+                Your Move
+              </div>
+              <div className="text-sm text-slate-400">Playing as {isWhite ? 'White' : 'Black'}</div>
             </div>
           ) : (
             <div className="space-y-1">
-              <div>⏳ Opponent's Turn</div>
-              <div className="text-sm opacity-80">Waiting for their move...</div>
+              <div className="flex items-center justify-center gap-2">
+                <span className="inline-block w-2 h-2 rounded-full bg-slate-500 animate-pulse"></span>
+                Opponent's Turn
+              </div>
+              <div className="text-sm text-slate-500">Waiting for their move...</div>
             </div>
           )}
         </div>
@@ -424,8 +489,16 @@ const ChessBoard = ({
 
       {/* Check indicator */}
       {(whiteInCheck || blackInCheck) && matchStatus === 1 && (
-        <div className="mt-2 text-center py-2 px-4 rounded-lg bg-red-500/30 border border-red-400 text-red-300 font-bold animate-pulse" style={boardSize ? { width: boardSize } : { maxWidth: '100%' }}>
-          ⚠️ {whiteInCheck ? 'White' : 'Black'} King is in CHECK!
+        <div
+          className="mt-3 text-center py-2 px-6 rounded-full text-red-300 font-semibold text-sm animate-pulse"
+          style={{
+            ...(boardSize ? { width: boardSize } : { maxWidth: '100%' }),
+            background: 'rgba(239, 68, 68, 0.15)',
+            border: '1px solid rgba(239, 68, 68, 0.4)',
+            boxShadow: '0 0 20px rgba(239, 68, 68, 0.2)'
+          }}
+        >
+          {whiteInCheck ? 'White' : 'Black'} King in Check
         </div>
       )}
     </div>
@@ -1870,32 +1943,58 @@ export default function ChessOnChain() {
               </div>
 
               {/* Game Layout */}
-              <div className="grid lg:grid-cols-3 gap-6">
-                {/* Left: Player 1 (White) */}
-                <div className="bg-slate-900/50 rounded-xl p-6 border border-blue-500/30">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-2xl font-bold text-black border-2 border-blue-400">
-                      ♔
+              <div className="flex flex-col xl:flex-row gap-6">
+                {/* Player Cards - Side by side on mobile/tablet, stacked on left for desktop */}
+                <div className="flex flex-row xl:flex-col gap-4 xl:w-56 shrink-0">
+                  {/* Player 1 (White) */}
+                  <div className="flex-1 bg-slate-900/50 rounded-xl p-4 border border-blue-500/30">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-xl font-bold text-black border-2 border-blue-400 shrink-0">
+                        ♔
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-lg font-bold text-white">White</h3>
+                        <p className="text-blue-300 font-mono text-xs truncate">
+                          {shortenAddress(currentMatch.player1)}
+                        </p>
+                        {currentMatch.player1?.toLowerCase() === account?.toLowerCase() && (
+                          <span className="text-yellow-300 text-xs font-bold">YOU</span>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-white">White</h3>
-                      <p className="text-blue-300 font-mono text-sm">
-                        {shortenAddress(currentMatch.player1)}
-                      </p>
-                      {currentMatch.player1?.toLowerCase() === account?.toLowerCase() && (
-                        <span className="text-yellow-300 text-xs font-bold">THIS IS YOU</span>
-                      )}
-                    </div>
+                    {currentMatch.whiteInCheck && (
+                      <div className="bg-red-500/20 border border-red-400 rounded-lg p-2 text-center">
+                        <span className="text-red-300 text-xs font-bold">⚠️ CHECK</span>
+                      </div>
+                    )}
                   </div>
-                  {currentMatch.whiteInCheck && (
-                    <div className="bg-red-500/20 border border-red-400 rounded-lg p-2 text-center">
-                      <span className="text-red-300 text-sm font-bold">⚠️ IN CHECK</span>
+
+                  {/* Player 2 (Black) */}
+                  <div className="flex-1 bg-slate-900/50 rounded-xl p-4 border border-pink-500/30">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-10 h-10 bg-gray-900 rounded-full flex items-center justify-center text-xl font-bold text-white border-2 border-pink-400 shrink-0">
+                        ♚
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-lg font-bold text-white">Black</h3>
+                        <p className="text-pink-300 font-mono text-xs truncate">
+                          {shortenAddress(currentMatch.player2)}
+                        </p>
+                        {currentMatch.player2?.toLowerCase() === account?.toLowerCase() && (
+                          <span className="text-yellow-300 text-xs font-bold">YOU</span>
+                        )}
+                      </div>
                     </div>
-                  )}
+                    {currentMatch.blackInCheck && (
+                      <div className="bg-red-500/20 border border-red-400 rounded-lg p-2 text-center">
+                        <span className="text-red-300 text-xs font-bold">⚠️ CHECK</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Center: Board */}
-                <div className="lg:col-span-1 flex flex-col items-center">
+                <div className="flex-1 flex flex-col items-center min-w-0">
                   <ChessBoard
                     board={currentMatch.board}
                     onMove={handleMakeMove}
@@ -1919,8 +2018,7 @@ export default function ChessOnChain() {
                     <button
                       onClick={handleResign}
                       disabled={matchLoading}
-                      className="w-full mt-4 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold py-2 px-4 rounded-lg transition-all disabled:opacity-50"
-                      style={{ maxWidth: 'min(100%, 60vh)' }}
+                      className="mt-4 bg-red-500/20 hover:bg-red-500/30 text-red-300 font-semibold py-2 px-6 rounded-full transition-all disabled:opacity-50 border border-red-500/40"
                     >
                       🏳️ Resign
                     </button>
@@ -1928,7 +2026,14 @@ export default function ChessOnChain() {
 
                   {/* Match Complete */}
                   {currentMatch.matchStatus === 2 && (
-                    <div className="mt-4 bg-green-500/20 border border-green-400 rounded-xl p-4 text-center w-full" style={{ maxWidth: 'min(100%, 60vh)' }}>
+                    <div
+                      className="mt-4 rounded-xl p-4 text-center w-full max-w-md"
+                      style={{
+                        background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(16, 185, 129, 0.15))',
+                        border: '1px solid rgba(34, 197, 94, 0.4)',
+                        boxShadow: '0 0 20px rgba(34, 197, 94, 0.15)'
+                      }}
+                    >
                       <p className="text-white font-bold text-xl mb-2">
                         {currentMatch.isDraw ? "It's a Draw!" : 'Checkmate!'}
                       </p>
@@ -1938,29 +2043,6 @@ export default function ChessOnChain() {
                           {currentMatch.winner?.toLowerCase() === account?.toLowerCase() && ' (YOU!)'}
                         </p>
                       )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Right: Player 2 (Black) */}
-                <div className="bg-slate-900/50 rounded-xl p-6 border border-pink-500/30">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-12 h-12 bg-gray-900 rounded-full flex items-center justify-center text-2xl font-bold text-white border-2 border-pink-400">
-                      ♚
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-white">Black</h3>
-                      <p className="text-pink-300 font-mono text-sm">
-                        {shortenAddress(currentMatch.player2)}
-                      </p>
-                      {currentMatch.player2?.toLowerCase() === account?.toLowerCase() && (
-                        <span className="text-yellow-300 text-xs font-bold">THIS IS YOU</span>
-                      )}
-                    </div>
-                  </div>
-                  {currentMatch.blackInCheck && (
-                    <div className="bg-red-500/20 border border-red-400 rounded-lg p-2 text-center">
-                      <span className="text-red-300 text-sm font-bold">⚠️ IN CHECK</span>
                     </div>
                   )}
                 </div>
