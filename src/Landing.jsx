@@ -151,14 +151,13 @@ export default function Landing() {
         {/* Hero Section */}
         <section className="text-center py-16 min-h-[70vh] flex flex-col justify-center">
           {/* Brand Intro */}
-          <p className="text-3xl md:text-4xl text-slate-500 mb-8 tracking-[4px] uppercase">
+          <p className="text-7xl md:text-7xl text-slate-500 mb-8 tracking-[4px] uppercase">
             <span
               className="font-bold bg-clip-text text-transparent"
               style={{ background: 'linear-gradient(135deg, #06b6d4, #3b82f6)', WebkitBackgroundClip: 'text' }}
             >
               ETour
             </span>{' '}
-            is
           </p>
 
           <h1 className="text-5xl md:text-7xl font-extrabold leading-tight mb-6 text-slate-100">
@@ -221,7 +220,7 @@ export default function Landing() {
         {/* What It Is Section */}
         <section className="py-16">
           <h2 className="text-center text-4xl font-bold text-slate-100 mb-4">One Protocol. Unlimited Potential.</h2>
-          <p className="text-center text-slate-400 text-lg max-w-2xl mx-auto mb-12">
+          <p className="text-center text-slate-400 text-xl md:text-2xl max-w-2xl mx-auto mb-12">
             ETour is built for <strong>creators</strong>.
           </p>
 
