@@ -122,6 +122,20 @@ function DevFeature({ children }) {
   );
 }
 
+// Trust Badge Component
+function TrustBadge({ icon, text }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 bg-slate-900/80 border border-blue-500/30 text-slate-400 px-4 py-2 rounded-md text-sm font-medium">
+      <span className="text-cyan-400">{icon}</span> {text}
+    </span>
+  );
+}
+
+// Trust Divider
+function TrustDivider() {
+  return <span className="text-blue-500/30 text-xs">•</span>;
+}
+
 // Main Landing Component
 export default function Landing() {
   return (
@@ -131,9 +145,16 @@ export default function Landing() {
       <div className="max-w-6xl mx-auto px-8 relative z-10">
         {/* Hero Section */}
         <section className="text-center py-24 min-h-[90vh] flex flex-col justify-center">
-          <span className="inline-block bg-cyan-500/15 border border-cyan-500/40 text-cyan-400 px-5 py-2 rounded-full text-sm font-semibold mb-8 tracking-wide">
-            Reclaim Web3 • ETour Protocol
-          </span>
+          {/* Brand Intro */}
+          <p className="text-2xl text-slate-500 mb-6 tracking-[3px] uppercase">
+            <span
+              className="font-bold bg-clip-text text-transparent"
+              style={{ background: 'linear-gradient(135deg, #06b6d4, #3b82f6)', WebkitBackgroundClip: 'text' }}
+            >
+              ETour
+            </span>{' '}
+            means
+          </p>
 
           <h1 className="text-5xl md:text-7xl font-extrabold leading-tight mb-6 text-slate-100">
             <span
@@ -146,17 +167,28 @@ export default function Landing() {
             No Bullshit.
           </h1>
 
+          {/* Trust Bar */}
+          <div className="flex justify-center items-center gap-2 flex-wrap mt-6 mb-8">
+            <TrustBadge icon="💎" text="ETH Only" />
+            <TrustDivider />
+            <TrustBadge icon="⛓️" text="Fully On-Chain" />
+            <TrustDivider />
+            <TrustBadge icon="♾️" text="Runs Forever" />
+            <TrustDivider />
+            <TrustBadge icon="⚖️" text="Zero Trust" />
+          </div>
+
           <p className="text-lg md:text-xl text-slate-400 mb-12 max-w-2xl mx-auto leading-relaxed">
             Competitive gaming infrastructure that runs forever, needs no servers,
-            and doesn't try to sell you a token. Just skill vs skill, <strong>ETH on the line.</strong>
+            and doesn't try to sell you a token. Just skill vs skill, ETH on the line.
           </p>
           
-          {/* RW3 Principles */}
+          {/* Value Props Grid */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12 max-w-4xl mx-auto">
-            <RW3Item icon="⛓️" title="Fully On-Chain" description="Every move. Every outcome." />
-            <RW3Item icon="♾️" title="Self-Sustaining" description="No funding needed. Ever." />
-            <RW3Item icon="🚫" title="No Tokens" description="ETH only. No altcoin BS." />
-            <RW3Item icon="🔓" title="Open Source" description="Free forever. MIT licensed." />
+            <RW3Item icon="🎯" title="Skill Wins" description="No luck. No RNG." />
+            <RW3Item icon="⚡" title="Instant Payouts" description="Win → Wallet. Done." />
+            <RW3Item icon="🔒" title="Can't Cheat" description="Every move verified." />
+            <RW3Item icon="🌍" title="Always Live" description="24/7. No downtime." />
           </div>
 
           {/* CTA Buttons */}
