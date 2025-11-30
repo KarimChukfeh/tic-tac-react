@@ -208,7 +208,6 @@ export default function Landing() {
                 {'{ }'} Build a Game
               </a>
             </div>
-            <p className="text-sm text-slate-500">Live on Arbitrum One • Gas costs ~$0.01 per move</p>
           </div>
         </section>
 
@@ -216,9 +215,9 @@ export default function Landing() {
 
         {/* What It Is Section */}
         <section className="py-16">
-          <h2 className="text-center text-4xl font-bold text-slate-100 mb-4">One Protocol. Two Paths.</h2>
+          <h2 className="text-center text-4xl font-bold text-slate-100 mb-4">One Protocol. Unlimited Potential.</h2>
           <p className="text-center text-slate-400 text-lg max-w-2xl mx-auto mb-12">
-            Whether you're here to compete or create, ETour is built for you.
+            ETour is built for <strong>gamers</strong> and for <strong>creators</strong>.
           </p>
 
           <div className="grid md:grid-cols-2 gap-8">
@@ -226,7 +225,7 @@ export default function Landing() {
               type="gamer"
               label="For Gamers"
               title="Play for Real Stakes"
-              description="Join perpetual tournaments where your skill determines your earnings. No accounts, no sign-ups—just connect your wallet and compete."
+              description="Join perpetual tournaments where your skill determines your earnings. No accounts, no sign-ups. Just connect your wallet and compete."
               items={[
                 'Instant matchmaking across multiple stake tiers',
                 'Provably fair—impossible to cheat or manipulate',
@@ -238,7 +237,7 @@ export default function Landing() {
               type="dev"
               label="For Developers"
               title="Build Without Limits"
-              description="Drop-in tournament infrastructure for any competitive game. Focus on your game logic—we handle matchmaking, stakes, and payouts."
+              description="Drop-in tournament infrastructure for any competitive game. Focus on your game logic. ETour handles matchmaking, stakes, and payouts."
               items={[
                 'Implement 2 functions, get a full tournament system',
                 'Supports 2-128 player brackets',
