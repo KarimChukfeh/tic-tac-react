@@ -348,7 +348,7 @@ export default function Landing() {
         <SectionDivider />
 
         {/* Manifesto Section */}
-        <section className="py-16 text-center">
+        <section className="py-8 text-center">
           <h2 className="text-3xl font-bold text-slate-100 mb-4">Built on Principles</h2>
           <p className="text-slate-400 max-w-xl mx-auto mb-8">
             ETour is part of the <a href="https://reclaimweb3.com" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:text-blue-400 transition-colors">Reclaim Web 3</a> movement. A return to what
@@ -366,7 +366,7 @@ export default function Landing() {
       </div>
 
       {/* Footer */}
-      <footer className="text-center py-12 border-t border-blue-500/20 mt-16">
+      <footer className="text-center py-8 border-t border-blue-500/20 mt-8">
         <p className="text-slate-500">
           Respects RW3 Principles • No Company Required • No Contacts Needed
           {/* <span className="text-slate-400 font-semibold">ETour Protocol</span> • Built on Arbitrum One • Open Source • Reclaim Web3 */}
