@@ -199,19 +199,19 @@ export default function Landing() {
           {/* CTA Buttons */}
           <div className="flex flex-col items-center gap-4">
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <a
-                href="#games"
-                className="px-12 py-5 text-lg font-semibold rounded-xl text-white transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_30px_rgba(59,130,246,0.5)] inline-flex items-center gap-2"
+              <button
+                onClick={() => document.getElementById('games')?.scrollIntoView({ behavior: 'smooth' })}
+                className="px-12 py-5 text-lg font-semibold rounded-xl text-white transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_30px_rgba(59,130,246,0.5)] inline-flex items-center gap-2 cursor-pointer"
                 style={{ background: 'linear-gradient(135deg, #06b6d4, #3b82f6)', boxShadow: '0 4px 20px rgba(59, 130, 246, 0.3)' }}
               >
                 ▶ Play Now
-              </a>
-              <a
-                href="#build"
-                className="px-12 py-5 text-lg font-semibold rounded-xl bg-transparent border-2 border-purple-500/50 text-purple-400 transition-all duration-300 hover:bg-purple-500/10 hover:border-purple-400 hover:-translate-y-1 inline-flex items-center gap-2"
+              </button>
+              <button
+                onClick={() => document.getElementById('build')?.scrollIntoView({ behavior: 'smooth' })}
+                className="px-12 py-5 text-lg font-semibold rounded-xl bg-transparent border-2 border-purple-500/50 text-purple-400 transition-all duration-300 hover:bg-purple-500/10 hover:border-purple-400 hover:-translate-y-1 inline-flex items-center gap-2 cursor-pointer"
               >
                 {'{ }'} Build a Game
-              </a>
+              </button>
             </div>
           </div>
         </section>
