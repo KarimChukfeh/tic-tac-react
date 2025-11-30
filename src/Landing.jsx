@@ -3,14 +3,18 @@ import { Link } from 'react-router-dom';
 // Floating Particles Component
 function FloatingParticles() {
   const particles = [
-    { type: 'x', style: { top: '10%', left: '5%' }, symbol: '✕' },
-    { type: 'o', style: { top: '15%', left: '90%' }, symbol: '○' },
-    { type: 'chess', style: { top: '25%', left: '15%' }, symbol: '♔' },
-    { type: 'x', style: { top: '40%', right: '10%' }, symbol: '✕' },
-    { type: 'o', style: { top: '60%', left: '8%' }, symbol: '○' },
-    { type: 'chess', style: { top: '70%', right: '15%' }, symbol: '♟' },
-    { type: 'x', style: { top: '80%', left: '85%' }, symbol: '✕' },
-    { type: 'o', style: { bottom: '10%', left: '50%' }, symbol: '○' },
+    { type: 'x', style: { top: '10%', left: '8%' }, symbol: '✕' },
+    { type: 'o', style: { top: '15%', left: '75%' }, symbol: '○' },
+    { type: 'chess', style: { top: '25%', left: '45%' }, symbol: '♔' },
+    { type: 'ship', style: { top: '20%', right: '15%' }, symbol: '🚢' },
+    { type: 'x', style: { top: '45%', left: '85%' }, symbol: '✕' },
+    { type: 'o', style: { top: '50%', left: '12%' }, symbol: '○' },
+    { type: 'chess', style: { top: '60%', right: '25%' }, symbol: '♟' },
+    { type: 'ship', style: { top: '70%', left: '30%' }, symbol: '🚢' },
+    { type: 'x', style: { top: '80%', right: '10%' }, symbol: '✕' },
+    { type: 'o', style: { top: '85%', left: '60%' }, symbol: '○' },
+    { type: 'chess', style: { bottom: '8%', left: '20%' }, symbol: '♔' },
+    { type: 'ship', style: { bottom: '12%', right: '35%' }, symbol: '🚢' },
   ];
 
   const getColor = (type) => {
@@ -18,6 +22,7 @@ function FloatingParticles() {
       case 'x': return '#06b6d4';
       case 'o': return '#a855f7';
       case 'chess': return '#3b82f6';
+      case 'ship': return '#22c55e';
       default: return '#fff';
     }
   };
@@ -41,7 +46,7 @@ function FloatingParticles() {
 function SectionDivider() {
   return (
     <div
-      className="h-px my-4"
+      className="h-px my-1"
       style={{ background: 'linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.3), transparent)' }}
     />
   );
@@ -146,14 +151,14 @@ export default function Landing() {
         {/* Hero Section */}
         <section className="text-center py-24 min-h-[90vh] flex flex-col justify-center">
           {/* Brand Intro */}
-          <p className="text-2xl text-slate-500 mb-6 tracking-[3px] uppercase">
+          <p className="text-3xl md:text-4xl text-slate-500 mb-8 tracking-[4px] uppercase">
             <span
               className="font-bold bg-clip-text text-transparent"
               style={{ background: 'linear-gradient(135deg, #06b6d4, #3b82f6)', WebkitBackgroundClip: 'text' }}
             >
               ETour
             </span>{' '}
-            means
+            is
           </p>
 
           <h1 className="text-5xl md:text-7xl font-extrabold leading-tight mb-6 text-slate-100">
@@ -179,8 +184,8 @@ export default function Landing() {
           </div>
 
           <p className="text-lg md:text-xl text-slate-400 mb-12 max-w-2xl mx-auto leading-relaxed">
-            Competitive gaming infrastructure that runs forever, needs no servers,
-            and doesn't try to sell you a token. Just skill vs skill, ETH on the line.
+            Competitive gaming infrastructure that runs forever, needs no servers, 
+            and doesn't try to sell you a token. Skill vs skill,<strong> real ETH on the line.</strong>
           </p>
           
           {/* Value Props Grid */}
