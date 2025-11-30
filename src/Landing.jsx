@@ -41,7 +41,7 @@ function FloatingParticles() {
 function SectionDivider() {
   return (
     <div
-      className="h-px my-16"
+      className="h-px my-4"
       style={{ background: 'linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.3), transparent)' }}
     />
   );
@@ -260,7 +260,7 @@ export default function Landing() {
               icon="⭕"
               title="Eternal TicTacToe"
               stakes="0.001 - 0.1 ETH"
-              description="The classic solved game—now with stakes. Perfect for learning the ropes."
+              description="The classic game with real stakes. Perfect for learning the ropes."
               href="/tictactoe"
             />
             <GameCard
