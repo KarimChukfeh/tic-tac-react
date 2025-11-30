@@ -163,10 +163,10 @@ const ChessBoard = ({
   // Calculate board size to fit viewport while staying square
   useEffect(() => {
     const updateSize = () => {
-      const vh55 = window.innerHeight * 0.55;
+      const vh60 = window.innerHeight * 0.60;
       const containerWidth = containerRef.current?.offsetWidth || window.innerWidth * 0.9;
-      // Cap at 500px max for better layout balance
-      const size = Math.min(vh55, containerWidth, 500);
+      // Cap at 520px max for good balance
+      const size = Math.min(vh60, containerWidth, 520);
       setBoardSize(size);
     };
 
@@ -422,7 +422,7 @@ const ChessBoard = ({
         <div
           key={displayIdx}
           onClick={() => handleSquareClick(displayIdx)}
-          className={`relative aspect-square flex items-center justify-center cursor-pointer transition-all duration-200
+          className={`relative flex items-center justify-center cursor-pointer transition-all duration-200
             ${isLight
               ? 'bg-slate-700/50'
               : 'bg-slate-900/80'}
@@ -556,13 +556,22 @@ const ChessBoard = ({
         <div
           className="relative rounded-xl overflow-hidden"
           style={{
-            ...(boardSize ? { width: boardSize, height: boardSize } : { width: '60vh', height: '60vh', maxWidth: '100%' }),
+            width: boardSize || 400,
+            height: boardSize || 400,
+            minWidth: 280,
+            minHeight: 280,
             background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.9))',
             border: '1px solid rgba(148, 163, 184, 0.2)',
             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(6, 182, 212, 0.1), inset 0 1px 0 rgba(255,255,255,0.05)'
           }}
         >
-          <div className="grid grid-cols-8 gap-0 w-full h-full">
+          <div
+            className="grid gap-0 w-full h-full"
+            style={{
+              gridTemplateColumns: 'repeat(8, 1fr)',
+              gridTemplateRows: 'repeat(8, 1fr)'
+            }}
+          >
             {renderBoard()}
           </div>
           {/* Animated piece overlay */}
