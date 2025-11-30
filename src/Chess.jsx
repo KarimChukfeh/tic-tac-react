@@ -146,13 +146,19 @@ const ChessBoard = ({
   whiteInCheck,
   blackInCheck,
   lastMoveTime,
-  startTime
+  startTime,
+  lastMove // { from: actualIdx, to: actualIdx }
 }) => {
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [promotionSquare, setPromotionSquare] = useState(null);
   const [pendingMove, setPendingMove] = useState(null);
   const [boardSize, setBoardSize] = useState(null);
   const containerRef = useRef(null);
+
+  // Animation state
+  const [animatingMove, setAnimatingMove] = useState(null); // { from, to, piece }
+  const prevBoardRef = useRef(null);
+  const prevLastMoveRef = useRef(null);
 
   // Calculate board size to fit viewport while staying square
   useEffect(() => {
@@ -168,6 +174,29 @@ const ChessBoard = ({
     window.addEventListener('resize', updateSize);
     return () => window.removeEventListener('resize', updateSize);
   }, []);
+
+  // Handle move animation
+  useEffect(() => {
+    // Only animate if lastMove changed and we have a previous board to compare
+    if (lastMove && prevBoardRef.current &&
+        (prevLastMoveRef.current?.from !== lastMove.from || prevLastMoveRef.current?.to !== lastMove.to)) {
+      const piece = board[lastMove.to]; // Piece is now at destination
+      if (piece && Number(piece.pieceType) !== 0) {
+        setAnimatingMove({
+          from: lastMove.from,
+          to: lastMove.to,
+          piece: piece
+        });
+        // Clear animation after it completes
+        const timer = setTimeout(() => {
+          setAnimatingMove(null);
+        }, 450); // Match animation duration
+        return () => clearTimeout(timer);
+      }
+    }
+    prevBoardRef.current = board;
+    prevLastMoveRef.current = lastMove;
+  }, [lastMove, board]);
 
   // Determine if current user is white or black
   const isPlayer1 = account && player1?.toLowerCase() === account.toLowerCase();
@@ -293,6 +322,15 @@ const ChessBoard = ({
     }
   };
 
+  // Helper to convert actual index to display position (row, col)
+  const getDisplayPosition = (actualIdx) => {
+    const displayIdx = shouldFlip ? 63 - actualIdx : actualIdx;
+    return {
+      row: Math.floor(displayIdx / 8),
+      col: displayIdx % 8
+    };
+  };
+
   // Render board
   const renderBoard = () => {
     const squares = [];
@@ -301,6 +339,17 @@ const ChessBoard = ({
       const piece = board[actualIdx];
       const isLight = getSquareColor(actualIdx);
       const isSelected = selectedSquare === displayIdx;
+
+      // Check if this is part of the last move
+      const isLastMoveFrom = lastMove && lastMove.from === actualIdx;
+      const isLastMoveTo = lastMove && lastMove.to === actualIdx;
+
+      // Determine if last move was by player or opponent
+      // If it's my turn now, the last move was opponent's. If not my turn, last move was mine.
+      const wasMyMove = lastMove && !isMyTurn;
+
+      // Hide piece at destination during animation (animated piece shows instead)
+      const hideForAnimation = animatingMove && actualIdx === animatingMove.to;
 
       // Check if this square's king is in check
       const pieceType = piece ? Number(piece.pieceType) : 0;
@@ -322,6 +371,48 @@ const ChessBoard = ({
       const rankLabel = 8 - actualRow;
       const fileLabel = String.fromCharCode(97 + actualCol);
 
+      // Color scheme for last move highlighting
+      // Player's move: green (from) → yellow (to)
+      // Opponent's move: orange (from) → red (to)
+      const getLastMoveFromClass = () => {
+        if (!isLastMoveFrom || isSelected || isKingInCheck) return '';
+        return wasMyMove
+          ? 'bg-emerald-500/50 ring-2 ring-emerald-400 ring-inset'  // Player: green from
+          : 'bg-orange-500/50 ring-2 ring-orange-400 ring-inset';   // Opponent: orange from
+      };
+
+      const getLastMoveToClass = () => {
+        if (!isLastMoveTo || isSelected || isKingInCheck) return '';
+        return wasMyMove
+          ? 'bg-yellow-400/50 ring-2 ring-yellow-300 ring-inset'    // Player: yellow to
+          : 'bg-red-500/50 ring-2 ring-red-400 ring-inset';         // Opponent: red to
+      };
+
+      const getLastMoveShadow = () => {
+        if (isSelected) return '0 0 20px rgba(6, 182, 212, 0.3)';
+        if (isLastMoveTo && !isKingInCheck) {
+          return wasMyMove
+            ? 'inset 0 0 20px rgba(234, 179, 8, 0.5)'    // Player: yellow glow
+            : 'inset 0 0 20px rgba(239, 68, 68, 0.5)';   // Opponent: red glow
+        }
+        if (isLastMoveFrom && !isKingInCheck) {
+          return wasMyMove
+            ? 'inset 0 0 15px rgba(16, 185, 129, 0.4)'   // Player: green glow
+            : 'inset 0 0 15px rgba(249, 115, 22, 0.4)';  // Opponent: orange glow
+        }
+        return 'none';
+      };
+
+      const getPieceGlow = () => {
+        if (!isLastMoveTo || hideForAnimation || pieceType === 0) return undefined;
+        return wasMyMove
+          ? 'drop-shadow(0 0 10px rgba(234, 179, 8, 0.8))'    // Player: yellow glow
+          : 'drop-shadow(0 0 10px rgba(239, 68, 68, 0.8))';   // Opponent: red glow
+      };
+
+      // When a piece is selected, potential target squares should highlight yellow on hover
+      const isPotentialTarget = selectedSquare !== null && !isSelected && !isMyPiece(piece);
+
       squares.push(
         <div
           key={displayIdx}
@@ -331,26 +422,37 @@ const ChessBoard = ({
               ? 'bg-slate-700/50'
               : 'bg-slate-900/80'}
             ${isSelected
-              ? 'ring-2 ring-cyan-400 ring-inset bg-cyan-500/30'
+              ? 'ring-2 ring-emerald-400 ring-inset bg-emerald-500/50'
               : ''}
             ${isKingInCheck
               ? 'bg-red-500/50 ring-2 ring-red-400 ring-inset'
               : ''}
+            ${getLastMoveFromClass()}
+            ${getLastMoveToClass()}
             ${isMyTurn && isMyPiece(piece) && !isSelected
-              ? 'hover:bg-cyan-500/20'
+              ? 'hover:bg-emerald-500/30'
+              : ''}
+            ${isMyTurn && isPotentialTarget
+              ? 'hover:bg-yellow-400/40'
               : ''}
           `}
           style={{
-            boxShadow: isSelected ? '0 0 20px rgba(6, 182, 212, 0.3)' : 'none'
+            boxShadow: isSelected
+              ? 'inset 0 0 20px rgba(16, 185, 129, 0.5)'
+              : getLastMoveShadow()
           }}
         >
           <span
-            className={`text-3xl md:text-4xl lg:text-5xl select-none transition-transform duration-200 ${
+            className={`text-3xl md:text-4xl lg:text-5xl select-none transition-all duration-300 ${
               isSelected ? 'scale-110' : ''
             } ${pieceColor === 1
               ? 'text-slate-100 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]'
               : 'text-purple-300 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]'
             }`}
+            style={{
+              opacity: hideForAnimation ? 0 : 1,
+              filter: getPieceGlow()
+            }}
           >
             {getPieceSymbol(piece)}
           </span>
@@ -378,6 +480,60 @@ const ChessBoard = ({
     return squares;
   };
 
+  // Render animated piece overlay
+  const renderAnimatedPiece = () => {
+    if (!animatingMove || !boardSize) return null;
+
+    const fromPos = getDisplayPosition(animatingMove.from);
+    const toPos = getDisplayPosition(animatingMove.to);
+    const squareSize = boardSize / 8;
+
+    const pieceColor = animatingMove.piece ? Number(animatingMove.piece.color) : 0;
+
+    // Determine if this is player's move or opponent's move based on piece color
+    // White pieces (color=1) belong to player1, Black pieces (color=2) belong to player2
+    const isMyAnimatedMove = (pieceColor === 1 && isPlayer1) || (pieceColor === 2 && isPlayer2);
+
+    // Player's move: yellow glow, Opponent's move: red glow
+    const animationGlow = isMyAnimatedMove
+      ? 'rgba(234, 179, 8, 0.8)'   // Yellow for player
+      : 'rgba(239, 68, 68, 0.8)';  // Red for opponent
+
+    return (
+      <div
+        className="absolute pointer-events-none z-20"
+        style={{
+          width: squareSize,
+          height: squareSize,
+          transform: `translate(${toPos.col * squareSize}px, ${toPos.row * squareSize}px)`,
+        }}
+      >
+        <div
+          className="w-full h-full flex items-center justify-center"
+          style={{
+            '--from-x': `${(fromPos.col - toPos.col) * squareSize}px`,
+            '--from-y': `${(fromPos.row - toPos.row) * squareSize}px`,
+          }}
+        >
+          <span
+            className={`text-3xl md:text-4xl lg:text-5xl select-none ${
+              pieceColor === 1
+                ? 'text-slate-100'
+                : 'text-purple-300'
+            }`}
+            style={{
+              transform: `translate(var(--from-x), var(--from-y))`,
+              animation: 'pieceMove 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards',
+              filter: `drop-shadow(0 0 12px ${animationGlow})`,
+            }}
+          >
+            {getPieceSymbol(animatingMove.piece)}
+          </span>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="relative flex flex-col items-center">
       {/* Timer */}
@@ -395,7 +551,7 @@ const ChessBoard = ({
       {/* Board container with JS-calculated size for cross-browser compatibility */}
       <div ref={containerRef} className="w-full flex justify-center">
         <div
-          className="grid grid-cols-8 gap-0 rounded-xl overflow-hidden"
+          className="relative rounded-xl overflow-hidden"
           style={{
             ...(boardSize ? { width: boardSize, height: boardSize } : { width: '60vh', height: '60vh', maxWidth: '100%' }),
             background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.9))',
@@ -403,9 +559,28 @@ const ChessBoard = ({
             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(6, 182, 212, 0.1), inset 0 1px 0 rgba(255,255,255,0.05)'
           }}
         >
-          {renderBoard()}
+          <div className="grid grid-cols-8 gap-0 w-full h-full">
+            {renderBoard()}
+          </div>
+          {/* Animated piece overlay */}
+          {renderAnimatedPiece()}
         </div>
       </div>
+
+      {/* Animation keyframes */}
+      <style>{`
+        @keyframes pieceMove {
+          0% {
+            transform: translate(var(--from-x), var(--from-y)) scale(1);
+          }
+          50% {
+            transform: translate(calc(var(--from-x) * 0.3), calc(var(--from-y) * 0.3)) scale(1.15);
+          }
+          100% {
+            transform: translate(0, 0) scale(1);
+          }
+        }
+      `}</style>
 
       {/* Promotion Dialog */}
       {promotionSquare !== null && (
@@ -1016,6 +1191,9 @@ export default function ChessOnChain() {
   const [currentMatch, setCurrentMatch] = useState(null);
   const [matchLoading, setMatchLoading] = useState(false);
   const [syncDots, setSyncDots] = useState(1);
+  const [lastMove, setLastMove] = useState(null); // { from: actualIdx, to: actualIdx }
+  const previousBoardRef = useRef(null);
+  const [moveHistory, setMoveHistory] = useState([]); // Array of { from, to, promotion, notation }
 
   // FAQ State
   const [expandedFaq, setExpandedFaq] = useState(null);
@@ -1097,6 +1275,57 @@ export default function ChessOnChain() {
   const cycleTheme = () => {
     setTheme(prev => prev === 'dream' ? 'daring' : 'dream');
   };
+
+  // Convert square index to chess notation (0=a8, 7=h8, 56=a1, 63=h1)
+  const squareToNotation = (idx) => {
+    const file = String.fromCharCode(97 + (idx % 8)); // a-h
+    const rank = 8 - Math.floor(idx / 8); // 8-1
+    return `${file}${rank}`;
+  };
+
+  // Piece type names for notation
+  const PIECE_NOTATION = ['', '', 'N', 'B', 'R', 'Q', 'K']; // Pawn has no letter
+
+  // Fetch and decode move history from contract
+  const fetchMoveHistory = useCallback(async (contractInstance, tierId, instanceId, roundNumber, matchNumber) => {
+    try {
+      const historyBytes = await contractInstance.getMoveHistory(tierId, instanceId, roundNumber, matchNumber);
+
+      // Decode bytes - each move is 3 bytes: from, to, promotion
+      const moves = [];
+      const bytes = ethers.getBytes(historyBytes);
+
+      for (let i = 0; i < bytes.length; i += 3) {
+        const from = bytes[i];
+        const to = bytes[i + 1];
+        const promotion = bytes[i + 2];
+
+        // Create notation (simplified - just from-to for now)
+        const fromNotation = squareToNotation(from);
+        const toNotation = squareToNotation(to);
+        let notation = `${fromNotation}-${toNotation}`;
+
+        // Add promotion piece if applicable
+        if (promotion > 0 && promotion <= 6) {
+          notation += `=${PIECE_NOTATION[promotion] || '?'}`;
+        }
+
+        moves.push({
+          moveNumber: Math.floor(i / 6) + 1, // Full move number (each full move = 2 half moves)
+          isWhite: (i / 3) % 2 === 0,
+          from,
+          to,
+          promotion,
+          notation
+        });
+      }
+
+      return moves;
+    } catch (error) {
+      console.error('Error fetching move history:', error);
+      return [];
+    }
+  }, []);
 
   // Switch to Local Network
   const switchToLocalNetwork = async () => {
@@ -1469,6 +1698,16 @@ export default function ChessOnChain() {
 
       const isPlayer1 = matchData[0].toLowerCase() === account.toLowerCase();
 
+      const boardArray = Array.from(board);
+
+      // Initialize board tracking for move detection
+      previousBoardRef.current = boardArray;
+      setLastMove(null);
+
+      // Fetch move history
+      const history = await fetchMoveHistory(contract, tierId, instanceId, roundNumber, matchNumber);
+      setMoveHistory(history);
+
       setCurrentMatch({
         tierId,
         instanceId,
@@ -1485,7 +1724,7 @@ export default function ChessOnChain() {
         fullMoveNumber: Number(matchData[8]),
         whiteInCheck: matchData[9],
         blackInCheck: matchData[10],
-        board: Array.from(board),
+        board: boardArray,
         isPlayer1,
         isYourTurn: matchData[2].toLowerCase() === account.toLowerCase()
       });
@@ -1505,6 +1744,9 @@ export default function ChessOnChain() {
     try {
       setMatchLoading(true);
 
+      // Track the move for animation before making it
+      setLastMove({ from, to });
+
       const tx = await contract.makeMove(
         currentMatch.tierId,
         currentMatch.instanceId,
@@ -1517,11 +1759,16 @@ export default function ChessOnChain() {
 
       await tx.wait();
 
-      // Refresh match data
+      // Refresh match data and move history
       const updated = await refreshMatchData(contract, account, currentMatch);
       if (updated) {
+        previousBoardRef.current = updated.board;
         setCurrentMatch(updated);
       }
+
+      // Refresh move history
+      const history = await fetchMoveHistory(contract, currentMatch.tierId, currentMatch.instanceId, currentMatch.roundNumber, currentMatch.matchNumber);
+      setMoveHistory(history);
 
       setMatchLoading(false);
     } catch (error) {
@@ -1630,6 +1877,37 @@ export default function ChessOnChain() {
     }
   }, [contract, account, fetchAllTiers]);
 
+  // Helper to detect move by comparing two boards
+  const detectMoveFromBoards = useCallback((oldBoard, newBoard) => {
+    if (!oldBoard || !newBoard) return null;
+
+    let fromSquare = null;
+    let toSquare = null;
+
+    for (let i = 0; i < 64; i++) {
+      const oldPiece = oldBoard[i];
+      const newPiece = newBoard[i];
+      const oldType = oldPiece ? Number(oldPiece.pieceType) : 0;
+      const newType = newPiece ? Number(newPiece.pieceType) : 0;
+
+      // Square had a piece but now is empty = from square
+      if (oldType !== 0 && newType === 0) {
+        fromSquare = i;
+      }
+      // Square has a different piece or piece appeared = potential to square
+      else if (oldType !== newType || (oldType !== 0 && newType !== 0 && Number(oldPiece.color) !== Number(newPiece.color))) {
+        toSquare = i;
+      }
+    }
+
+    // If we found both from and to, return the move
+    if (fromSquare !== null && toSquare !== null) {
+      return { from: fromSquare, to: toSquare };
+    }
+
+    return null;
+  }, []);
+
   // Poll match data
   const matchRef = useRef(currentMatch);
   const contractRef = useRef(contract);
@@ -1644,6 +1922,11 @@ export default function ChessOnChain() {
   useEffect(() => {
     if (!currentMatch || !contract || !account) return;
 
+    // Initialize previousBoardRef if needed
+    if (!previousBoardRef.current && currentMatch.board) {
+      previousBoardRef.current = currentMatch.board;
+    }
+
     const doSync = async () => {
       const match = matchRef.current;
       const contractInstance = contractRef.current;
@@ -1652,13 +1935,26 @@ export default function ChessOnChain() {
       if (!match || !contractInstance || !userAccount) return;
 
       const updated = await refreshMatchData(contractInstance, userAccount, match);
-      if (updated) setCurrentMatch(updated);
+      if (updated) {
+        // Detect opponent's move by comparing boards
+        if (previousBoardRef.current && updated.board) {
+          const detectedMove = detectMoveFromBoards(previousBoardRef.current, updated.board);
+          if (detectedMove) {
+            setLastMove(detectedMove);
+            // Refresh move history when a move is detected
+            const history = await fetchMoveHistory(contractInstance, match.tierId, match.instanceId, match.roundNumber, match.matchNumber);
+            setMoveHistory(history);
+          }
+        }
+        previousBoardRef.current = updated.board;
+        setCurrentMatch(updated);
+      }
       setSyncDots(1);
     };
 
     const pollInterval = setInterval(doSync, 3000);
     return () => clearInterval(pollInterval);
-  }, [currentMatch?.tierId, currentMatch?.instanceId, currentMatch?.roundNumber, currentMatch?.matchNumber, refreshMatchData]);
+  }, [currentMatch?.tierId, currentMatch?.instanceId, currentMatch?.roundNumber, currentMatch?.matchNumber, refreshMatchData, detectMoveFromBoards, fetchMoveHistory]);
 
   // Sync dots animation
   useEffect(() => {
@@ -2008,6 +2304,7 @@ export default function ChessOnChain() {
                     blackInCheck={currentMatch.blackInCheck}
                     lastMoveTime={currentMatch.lastMoveTime}
                     startTime={currentMatch.startTime}
+                    lastMove={lastMove}
                   />
 
                   {/* Resign Button */}
@@ -2067,6 +2364,49 @@ export default function ChessOnChain() {
                   <div className="text-white font-bold text-xl">{currentMatch.matchNumber + 1}</div>
                 </div>
               </div>
+
+              {/* Move History */}
+              {moveHistory.length > 0 && (
+                <div className="mt-6">
+                  <div className="flex items-center gap-2 mb-3">
+                    <History size={18} className="text-cyan-400" />
+                    <h3 className="text-white font-bold">Move History</h3>
+                    <span className="text-slate-400 text-sm">({moveHistory.length} moves)</span>
+                  </div>
+                  <div
+                    className="rounded-xl p-4 max-h-48 overflow-y-auto"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.8), rgba(30, 41, 59, 0.8))',
+                      border: '1px solid rgba(148, 163, 184, 0.2)',
+                    }}
+                  >
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-1 font-mono text-sm">
+                      {/* Group moves into pairs (white + black) */}
+                      {Array.from({ length: Math.ceil(moveHistory.length / 2) }, (_, i) => {
+                        const whiteMove = moveHistory[i * 2];
+                        const blackMove = moveHistory[i * 2 + 1];
+                        const moveNum = i + 1;
+                        return (
+                          <div key={moveNum} className="contents">
+                            <div className="flex items-center gap-2">
+                              <span className="text-slate-500 w-6 text-right">{moveNum}.</span>
+                              <span className="text-slate-100">{whiteMove?.notation || ''}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {blackMove && (
+                                <>
+                                  <span className="text-slate-500 w-6 text-right">{moveNum}...</span>
+                                  <span className="text-purple-300">{blackMove.notation}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
