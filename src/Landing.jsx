@@ -351,8 +351,8 @@ export default function Landing() {
         <section className="py-16 text-center">
           <h2 className="text-3xl font-bold text-slate-100 mb-4">Built on Principles</h2>
           <p className="text-slate-400 max-w-xl mx-auto mb-8">
-            ETour is part of the Reclaim Web3 movement—a return to what
-            blockchain was supposed to be before the speculation took over.
+            ETour is part of the <a href="https://reclaimweb3.com" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:text-blue-400 transition-colors">Reclaim Web 3</a> movement. A return to what
+            blockchain was supposed to be, before the speculation took over.
           </p>
           <a
             href="https://reclaimweb3.com"
