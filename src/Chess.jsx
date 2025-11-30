@@ -295,10 +295,10 @@ const ChessBoard = ({
         return;
       }
 
-      // Check for pawn promotion
+      // Check for pawn promotion - any pawn reaching row 0 or row 7 must promote
       const toRow = Math.floor(actualIdx / 8);
       const isPawn = fromPiece && Number(fromPiece.pieceType) === 1;
-      const isPromotionRank = (isWhite && toRow === 0) || (!isWhite && toRow === 7);
+      const isPromotionRank = toRow === 0 || toRow === 7;
 
       if (isPawn && isPromotionRank) {
         // Show promotion dialog
