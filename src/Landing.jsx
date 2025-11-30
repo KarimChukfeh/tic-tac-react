@@ -289,59 +289,168 @@ export default function Landing() {
 
         {/* Developer Section */}
         <section className="py-8 md:py-16" id="build">
-          <div className="bg-slate-900/60 border border-purple-500/30 rounded-2xl md:rounded-3xl p-5 md:p-12 grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center">
-            <div>
+          <div className="bg-slate-900/60 border border-purple-500/30 rounded-2xl md:rounded-3xl p-5 md:p-12">
+
+            {/* Header */}
+            <div className="text-center mb-10">
               <h2 className="text-2xl md:text-3xl font-bold text-slate-100 mb-4">Ship Your Game in Hours, Not Months</h2>
-              <p className="text-sm md:text-base text-slate-400 leading-relaxed mb-6">
+              <p className="text-sm md:text-base text-slate-400 leading-relaxed max-w-2xl mx-auto">
                 ETour handles the hard parts: matchmaking, stake management,
                 timeout escalation, bracket advancement, and payout distribution.
-                You just define what a valid move looks like and how to determine a winner.
+                You bring the game logic.
               </p>
+            </div>
 
-              <div className="flex flex-wrap gap-2 md:gap-3 mb-6 md:mb-8">
-                <DevFeature>Solidity Interface</DevFeature>
-                <DevFeature>MIT Licensed</DevFeature>
-                <DevFeature>Gas Optimized</DevFeature>
-                <DevFeature>Fully Documented</DevFeature>
-                <DevFeature>Test Suite Included</DevFeature>
+            {/* Two Column Layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12">
+
+              {/* Left: What You Define */}
+              <div>
+                <h3 className="text-lg font-semibold text-cyan-400 mb-4">What You Define</h3>
+
+                <div className="space-y-4 mb-8">
+                  {/* Step 1: Tournament Structure */}
+                  <div className="border-l-2 border-purple-500/50 pl-4">
+                    <h4 className="text-slate-100 font-medium mb-1">1. Tournament Tiers</h4>
+                    <p className="text-sm text-slate-400">Player counts (2-128), instances per tier, entry fees, prize distributions, timeout configs.</p>
+                  </div>
+
+                  {/* Step 2: Game State */}
+                  <div className="border-l-2 border-purple-500/50 pl-4">
+                    <h4 className="text-slate-100 font-medium mb-1">2. Match State</h4>
+                    <p className="text-sm text-slate-400">Your Match struct, board representation, turn tracking. Plus mappings and events for your game.</p>
+                  </div>
+
+                  {/* Step 3: Required Functions */}
+                  <div className="border-l-2 border-purple-500/50 pl-4">
+                    <h4 className="text-slate-100 font-medium mb-1">3. Core Functions</h4>
+                    <p className="text-sm text-slate-400 font-mono" style={{ fontSize: '12px' }}>
+                      <span className="text-cyan-400">makeMove()</span> - Execute player moves<br />
+                      <span className="text-cyan-400">_checkWinner()</span> - Your win/draw logic<br />
+                      <span className="text-cyan-400">_initializeMatchGame()</span> - Setup match state<br />
+                      <span className="text-cyan-400">_resetMatchGame()</span> - Clean up after match
+                    </p>
+                  </div>
+                </div>
+
+                {/* Feature Tags */}
+                <div className="flex flex-wrap gap-2 md:gap-3 mb-6 md:mb-8">
+                  <DevFeature>Solidity Interface</DevFeature>
+                  <DevFeature>MIT Licensed</DevFeature>
+                  <DevFeature>Gas Optimized</DevFeature>
+                  <DevFeature>Fully Documented</DevFeature>
+                  <DevFeature>Test Suite Included</DevFeature>
+                </div>
+
+                {/* CTAs */}
+                <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
+                  <a
+                    href="https://github.com/aspect-building/etour"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-slate-100 text-slate-900 px-5 md:px-6 py-3 rounded-lg font-semibold inline-flex items-center justify-center gap-2 transition-all duration-300 hover:bg-white text-sm md:text-base"
+                  >
+                    <svg fill="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+                      <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                    </svg>
+                    GitHub
+                  </a>
+                  <a
+                    href="#"
+                    className="bg-transparent border border-purple-500/50 text-purple-400 px-5 md:px-6 py-3 rounded-lg font-semibold transition-all duration-300 hover:bg-purple-500/10 text-sm md:text-base text-center"
+                  >
+                    See Full Examples →
+                  </a>
+                </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
-                <a
-                  href="https://github.com"
-                  className="bg-slate-100 text-slate-900 px-5 md:px-6 py-3 rounded-lg font-semibold inline-flex items-center justify-center gap-2 transition-all duration-300 hover:bg-white text-sm md:text-base"
-                >
-                  <svg fill="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
-                    <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-                  </svg>
-                  GitHub
-                </a>
-                <a
-                  href="#"
-                  className="bg-transparent border border-purple-500/50 text-purple-400 px-5 md:px-6 py-3 rounded-lg font-semibold transition-all duration-300 hover:bg-purple-500/10 text-sm md:text-base text-center"
-                >
-                  Documentation →
-                </a>
+              {/* Right: Code Example */}
+              <div
+                className="bg-black/50 border border-purple-500/30 rounded-xl p-4 md:p-6 font-mono text-slate-300 overflow-x-auto"
+                style={{ fontSize: '11px', lineHeight: '1.4' }}
+              >
+                <span className="text-slate-500">// Rock Paper Scissors on ETour</span><br /><br />
+
+                <span className="text-purple-400">contract</span> <span className="text-cyan-400">RPSChain</span> <span className="text-purple-400">is</span> ETour {'{'}<br /><br />
+
+                &nbsp;&nbsp;<span className="text-slate-500">// Define game state</span><br />
+                &nbsp;&nbsp;<span className="text-purple-400">enum</span> Move {'{'} None, Rock, Paper, Scissors {'}'}<br />
+                &nbsp;&nbsp;<span className="text-purple-400">struct</span> Match {'{'}<br />
+                &nbsp;&nbsp;&nbsp;&nbsp;<span className="text-purple-400">address</span> player1; <span className="text-purple-400">address</span> player2;<br />
+                &nbsp;&nbsp;&nbsp;&nbsp;Move p1Move; Move p2Move;<br />
+                &nbsp;&nbsp;&nbsp;&nbsp;MatchStatus status;<br />
+                &nbsp;&nbsp;{'}'}<br />
+                &nbsp;&nbsp;<span className="text-purple-400">mapping</span>(bytes32 {'=>'} Match) matches;<br /><br />
+
+                &nbsp;&nbsp;<span className="text-purple-400">constructor</span>() {'{'}<br />
+                &nbsp;&nbsp;&nbsp;&nbsp;<span className="text-slate-500">// Tier 0: 1v1 casual</span><br />
+                &nbsp;&nbsp;&nbsp;&nbsp;<span className="text-purple-400">uint8</span>[] <span className="text-purple-400">memory</span> t0 = [<span className="text-cyan-400">100</span>, <span className="text-cyan-400">0</span>];<br />
+                &nbsp;&nbsp;&nbsp;&nbsp;_registerTier(<br />
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span className="text-cyan-400">0</span>,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span className="text-slate-500">// tierId</span><br />
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span className="text-cyan-400">2</span>,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span className="text-slate-500">// playerCount</span><br />
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span className="text-cyan-400">10</span>,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span className="text-slate-500">// instances</span><br />
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span className="text-cyan-400">0.001 ether</span>,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span className="text-slate-500">// entryFee</span><br />
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Mode.Classic,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span className="text-slate-500">// mode</span><br />
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span className="text-cyan-400">30 minutes</span>,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span className="text-slate-500">// enrollWindow</span><br />
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span className="text-cyan-400">1 minutes</span>,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span className="text-slate-500">// moveTimeout</span><br />
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span className="text-cyan-400">1 minutes</span>,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span className="text-slate-500">// escalation</span><br />
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;t0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span className="text-slate-500">// prizes</span><br />
+                &nbsp;&nbsp;&nbsp;&nbsp;);<br /><br />
+
+                &nbsp;&nbsp;&nbsp;&nbsp;<span className="text-slate-500">// Tier 1: 8-player bracket</span><br />
+                &nbsp;&nbsp;&nbsp;&nbsp;<span className="text-purple-400">uint8</span>[] <span className="text-purple-400">memory</span> t1 = [<span className="text-cyan-400">50</span>,<span className="text-cyan-400">25</span>,<span className="text-cyan-400">15</span>,<span className="text-cyan-400">10</span>,<span className="text-cyan-400">0</span>,<span className="text-cyan-400">0</span>,<span className="text-cyan-400">0</span>,<span className="text-cyan-400">0</span>];<br />
+                &nbsp;&nbsp;&nbsp;&nbsp;_registerTier(<span className="text-cyan-400">1</span>, <span className="text-cyan-400">8</span>, <span className="text-cyan-400">4</span>, <span className="text-cyan-400">0.01 ether</span>, ...);<br />
+                &nbsp;&nbsp;{'}'}<br /><br />
+
+                &nbsp;&nbsp;<span className="text-slate-500">// Implement game functions</span><br />
+                &nbsp;&nbsp;<span className="text-purple-400">function</span> <span className="text-cyan-400">makeMove</span>(...) {'{'} <span className="text-slate-500">/* your logic */</span> {'}'}<br />
+                &nbsp;&nbsp;<span className="text-purple-400">function</span> <span className="text-cyan-400">_checkWinner</span>(...) {'{'} <span className="text-slate-500">/* RPS rules */</span> {'}'}<br />
+                &nbsp;&nbsp;<span className="text-purple-400">function</span> <span className="text-cyan-400">_initializeMatchGame</span>(...) {'{'} {'}'}<br />
+                &nbsp;&nbsp;<span className="text-purple-400">function</span> <span className="text-cyan-400">_resetMatchGame</span>(...) {'{'} {'}'}<br />
+                {'}'}
+              </div>
+
+            </div>
+
+            {/* What ETour Handles */}
+            <div className="mt-10 pt-8 border-t border-purple-500/20">
+              <h3 className="text-center text-lg font-semibold text-slate-100 mb-6">What ETour Handles For You</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center text-sm">
+                <div className="text-slate-400">
+                  <span className="text-cyan-400 text-lg">⚡</span>
+                  <p className="mt-1">Instant Matchmaking</p>
+                </div>
+                <div className="text-slate-400">
+                  <span className="text-cyan-400 text-lg">🏆</span>
+                  <p className="mt-1">Bracket Management</p>
+                </div>
+                <div className="text-slate-400">
+                  <span className="text-cyan-400 text-lg">⏱️</span>
+                  <p className="mt-1">Timeout Escalation</p>
+                </div>
+                <div className="text-slate-400">
+                  <span className="text-cyan-400 text-lg">💰</span>
+                  <p className="mt-1">Prize Distribution</p>
+                </div>
+                <div className="text-slate-400">
+                  <span className="text-cyan-400 text-lg">🛡️</span>
+                  <p className="mt-1">Anti-Stalling</p>
+                </div>
+                <div className="text-slate-400">
+                  <span className="text-cyan-400 text-lg">📊</span>
+                  <p className="mt-1">Player Stats</p>
+                </div>
+                <div className="text-slate-400">
+                  <span className="text-cyan-400 text-lg">🔄</span>
+                  <p className="mt-1">Auto Reset</p>
+                </div>
+                <div className="text-slate-400">
+                  <span className="text-cyan-400 text-lg">📜</span>
+                  <p className="mt-1">Tournament History</p>
+                </div>
               </div>
             </div>
 
-            <div
-              className="bg-black/50 border border-purple-500/30 rounded-xl p-4 md:p-6 font-mono text-xs md:text-sm text-slate-300 overflow-x-auto order-first md:order-last"
-            >
-              <span className="text-slate-500">// Your entire integration</span><br /><br />
-              <span className="text-purple-400">contract</span> <span className="text-cyan-400">YourGame</span> <span className="text-purple-400">is</span> IETourGame {'{'}<br /><br />
-              &nbsp;&nbsp;<span className="text-purple-400">function</span> <span className="text-cyan-400">validateMove</span>(<br />
-              &nbsp;&nbsp;&nbsp;&nbsp;bytes <span className="text-purple-400">memory</span> moveData<br />
-              &nbsp;&nbsp;) <span className="text-purple-400">external view returns</span> (bool) {'{'}<br />
-              &nbsp;&nbsp;&nbsp;&nbsp;<span className="text-slate-500">// Your game rules here</span><br />
-              &nbsp;&nbsp;{'}'}<br /><br />
-              &nbsp;&nbsp;<span className="text-purple-400">function</span> <span className="text-cyan-400">checkWinner</span>(<br />
-              &nbsp;&nbsp;&nbsp;&nbsp;GameState <span className="text-purple-400">memory</span> state<br />
-              &nbsp;&nbsp;) <span className="text-purple-400">external view returns</span> (address) {'{'}<br />
-              &nbsp;&nbsp;&nbsp;&nbsp;<span className="text-slate-500">// Your win condition here</span><br />
-              &nbsp;&nbsp;{'}'}<br />
-              {'}'}
-            </div>
           </div>
         </section>
 
