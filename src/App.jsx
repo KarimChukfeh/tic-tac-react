@@ -2048,77 +2048,33 @@ export default function TicTacBlock() {
     }
   }, []);
 
-  // Fetch RW3 declaration on page load (no wallet needed for view functions)
+  // Set placeholder RW3 declaration (TODO: fetch from contract when needed)
   useEffect(() => {
-    const fetchRw3OnLoad = async () => {
-      try {
-        console.log('Fetching RW3 declaration on page load (no wallet needed)...');
-
-        // Create a read-only provider
-        let provider;
-        if (window.ethereum) {
-          provider = new ethers.BrowserProvider(window.ethereum);
-        } else {
-          // Fallback to a public RPC if MetaMask not installed
-          provider = new ethers.JsonRpcProvider('https://arb1.arbitrum.io/rpc');
-        }
-
-        // Create read-only contract instance
-        const readOnlyContract = new ethers.Contract(
-          CONTRACT_ADDRESS,
-          DUMMY_ABI,
-          provider
-        );
-
-        console.log('Read-only contract created, calling declareRW3...');
-        const declaration = await readOnlyContract.declareRW3();
-        console.log('RW3 Declaration fetched successfully:', declaration);
-        setRw3Declaration(declaration);
-      } catch (error) {
-        console.error('Error fetching RW3 declaration on load:', error);
-        console.error('Error details:', error.message, error.code);
-
-        // Use fallback declaration if contract call fails
-        const fallbackDeclaration = `=== RW3 COMPLIANCE DECLARATION ===
+    const placeholderDeclaration = `=== RW3 COMPLIANCE DECLARATION ===
 
 PROJECT: Eternal Tic Tac Toe Protocol
 VERSION: 1.0
 NETWORK: Arbitrum One
-VERIFIED: Block deployed
 
 RULE 1 - REAL UTILITY:
-Skill-based tournament gaming with ETH stakes. Players compete in strategic tic-tac-toe matches with blocking mechanics. Winners determined by skill, not chance. Immediate utility through competitive gameplay and prize distribution.
+Skill-based tournament gaming with ETH stakes. Players compete in strategic matches. Winners determined by skill, not chance.
 
 RULE 2 - FULLY ON-CHAIN:
-All game logic, tournament mechanics, and prize distribution executed via smart contract. No backend servers. Frontend reads blockchain state directly. Game outcomes verifiable on-chain. Deployed on Arbitrum for cost efficiency while maintaining blockchain guarantees.
+All game logic, tournament mechanics, and prize distribution executed via smart contract. No backend servers.
 
 RULE 3 - SELF-SUSTAINING:
-Protocol fee structure covers operational costs. Tournament entry fees fund prize pools plus minimal house edge. No ongoing development dependencies. Contract functions autonomously without admin intervention.
+Protocol fee structure covers operational costs. Contract functions autonomously.
 
 RULE 4 - FAIR DISTRIBUTION:
-No pre-mine, no insider allocations. All ETH in prize pools comes from player entry fees. House edge transparent and minimal. No artificial scarcity or tokenomics manipulation.
+No pre-mine, no insider allocations. All ETH in prize pools comes from player entry fees.
 
 RULE 5 - NO ALTCOINS:
-Uses only ETH for entry fees and prizes. No governance tokens, no protocol tokens, no artificial economic layer. Pure ETH-based economics.
+Uses only ETH for entry fees and prizes. No governance tokens or protocol tokens.
 
-CONTRACT VERIFICATION:
-Address: ${CONTRACT_ADDRESS}
-Network: Arbitrum One (Chain ID: ${EXPECTED_CHAIN_ID})
-Source code: [GitHub link]
-Deployment tx: [Transaction hash]
-Audits: [Audit links if any]
+This declaration is immutable and verifiable on-chain.`;
 
-This declaration is immutable and verifiable on-chain.
-Generated: ${new Date().toISOString()}
-Block: [Current block number]`;
-
-        console.log('Using fallback RW3 declaration');
-        setRw3Declaration(fallbackDeclaration);
-      }
-    };
-
-    fetchRw3OnLoad();
-  }, [CONTRACT_ADDRESS]);
+    setRw3Declaration(placeholderDeclaration);
+  }, []);
 
   // Add mobile debugging console (Eruda) on mobile devices
   useEffect(() => {
@@ -3524,13 +3480,17 @@ Block: [Current block number]`;
     setMoveHistory([]);
   };
 
-  // Initialize contract in read-only mode on mount (without wallet)
+  // Initialize contract in read-only mode on mount (using MetaMask's provider if available)
   useEffect(() => {
     const initReadOnlyContract = async () => {
       try {
-        // Use local network RPC
-        const provider = new ethers.JsonRpcProvider('http://127.0.0.1:8545');
+        if (!window.ethereum) {
+          console.log('No wallet detected, skipping contract init until wallet connects');
+          setInitialLoading(false);
+          return;
+        }
 
+        const provider = new ethers.BrowserProvider(window.ethereum);
         const readOnlyContract = new ethers.Contract(
           CONTRACT_ADDRESS,
           DUMMY_ABI,
@@ -3538,14 +3498,13 @@ Block: [Current block number]`;
         );
 
         setContract(readOnlyContract);
-        await loadContractData(readOnlyContract, true); // Pass true for initial load
+        await loadContractData(readOnlyContract, true);
       } catch (error) {
         console.error('Error initializing read-only contract:', error);
-        setInitialLoading(false); // Stop loading even on error
+        setInitialLoading(false);
       }
     };
 
-    // Only initialize if contract is not already set
     if (!contract) {
       initReadOnlyContract();
     }
@@ -3557,14 +3516,6 @@ Block: [Current block number]`;
       window.ethereum.on('accountsChanged', (accounts) => {
         if (accounts.length === 0) {
           setAccount(null);
-          // Reinitialize read-only contract when disconnected
-          const initReadOnlyContract = async () => {
-            const provider = new ethers.JsonRpcProvider('http://127.0.0.1:8545');
-            const readOnlyContract = new ethers.Contract(CONTRACT_ADDRESS, DUMMY_ABI, provider);
-            setContract(readOnlyContract);
-            await loadContractData(readOnlyContract);
-          };
-          initReadOnlyContract();
         } else {
           connectWallet();
         }
