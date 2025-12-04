@@ -138,36 +138,29 @@ const validatePlacement = (cells, existingPlacements, currentShipId) => {
 };
 
 // Convert placed ships to uint8[17] array for contract
+// Ships must be in order: carrier(5), battleship(4), cruiser(3), submarine(3), destroyer(2)
+// Each ship's cells must be sorted ascending
 const convertPlacementToPositions = (placedShips) => {
-  const positions = [];
   const shipOrder = ['carrier', 'battleship', 'cruiser', 'submarine', 'destroyer'];
-
-  for (const shipId of shipOrder) {
-    const ship = placedShips[shipId];
-    if (ship) {
-      // Add start cell and orientation flag
-      const startCell = Math.min(...ship.cells);
-      positions.push(startCell);
-      positions.push(ship.orientation === 'h' ? 0 : 1);
-    }
-  }
-
-  // The contract expects all ship cell positions
-  // Let's flatten all cells instead
   const allCells = [];
+
   for (const shipId of shipOrder) {
     const ship = placedShips[shipId];
-    if (ship) {
-      allCells.push(...ship.cells);
+    if (ship && ship.cells) {
+      // Sort cells ascending within each ship
+      const sortedCells = [...ship.cells].sort((a, b) => a - b);
+      allCells.push(...sortedCells);
     }
   }
 
-  // Pad or truncate to 17 elements
-  while (allCells.length < 17) {
-    allCells.push(255); // NO_CELL sentinel
+  console.log('Ship positions for contract:', allCells, 'length:', allCells.length);
+
+  // Contract expects exactly 17 cells
+  if (allCells.length !== 17) {
+    console.error('Wrong number of ship cells! Expected 17, got', allCells.length);
   }
 
-  return allCells.slice(0, 17);
+  return allCells;
 };
 
 // Parse contract errors
@@ -1303,6 +1296,13 @@ export default function Battleship() {
         }
       }
 
+      // Debug: Log what we're sending
+      console.log('=== REVEAL DEBUG ===');
+      console.log('Positions:', positions);
+      console.log('Positions length:', positions?.length);
+      console.log('Signature:', sig);
+      console.log('Match coords:', { tierId, instanceId, roundNumber, matchNumber });
+
       // Submit reveal
       const tx = await contract.revealBoard(
         tierId, instanceId, roundNumber, matchNumber,
@@ -1333,8 +1333,15 @@ export default function Battleship() {
   // ============================================================================
 
   const handleTargetSelect = (cellIndex) => {
-    if (!currentMatch?.isYourTurn) return;
-    if (opponentBoard[cellIndex] !== CellState.Unknown) return;
+    if (!currentMatch?.isYourTurn) {
+      return;
+    }
+    // Allow targeting cells that are Empty (0), Unknown (4), or Ship (1, shouldn't be visible but just in case)
+    // Block cells that are already Hit (2) or Miss (3)
+    const cellState = opponentBoard[cellIndex];
+    if (cellState === CellState.Hit || cellState === CellState.Miss) {
+      return;
+    }
     setSelectedTargetCell(cellIndex);
   };
 
@@ -1376,15 +1383,86 @@ export default function Battleship() {
   // ============================================================================
 
   useEffect(() => {
-    if (!currentMatch || !contract) return;
+    if (!currentMatch || !contract || !account) return;
 
     const pollMatch = async () => {
-      const { tierId, instanceId, roundNumber, matchNumber } = matchRef.current;
-      const updated = await loadMatchData(tierId, instanceId, roundNumber, matchNumber);
-      if (updated) {
+      // Use refs to avoid stale closures
+      const currentContract = contractRef.current;
+      const currentAccount = accountRef.current;
+      const match = matchRef.current;
+
+      if (!currentContract || !currentAccount || !match) return;
+
+      const { tierId, instanceId, roundNumber, matchNumber } = match;
+
+      try {
+        const matchState = await currentContract.getMatchState(tierId, instanceId, roundNumber, matchNumber);
+
+        if (matchState.player1 === ethers.ZeroAddress) return;
+
+        const isPlayer1 = matchState.player1.toLowerCase() === currentAccount.toLowerCase();
+        const isPlayer2 = matchState.player2.toLowerCase() === currentAccount.toLowerCase();
+
+        if (!isPlayer1 && !isPlayer2) return;
+
+        let myBoardData = Array(100).fill(CellState.Empty);
+        let opponentBoardData = Array(100).fill(CellState.Unknown);
+
+        const phase = Number(matchState.phase);
+        const inCombatPhase = phase === MatchPhase.AwaitingReveals || phase === MatchPhase.InProgress;
+        const bothCommitted = matchState.player1Committed && matchState.player2Committed;
+
+        if (inCombatPhase || bothCommitted) {
+          try {
+            myBoardData = await currentContract.getMyBoard(tierId, instanceId, roundNumber, matchNumber);
+            myBoardData = Array.from(myBoardData).map(s => Number(s));
+          } catch (e) {
+            console.log('Poll: Could not fetch my board:', e);
+          }
+
+          try {
+            opponentBoardData = await currentContract.getOpponentBoard(tierId, instanceId, roundNumber, matchNumber);
+            opponentBoardData = Array.from(opponentBoardData).map(s => Number(s));
+          } catch (e) {
+            console.log('Poll: Could not fetch opponent board:', e);
+          }
+        }
+
+        const isYourTurn = matchState.currentTurn.toLowerCase() === currentAccount.toLowerCase();
+
+        console.log('Poll update - isYourTurn:', isYourTurn, 'currentTurn:', matchState.currentTurn, 'account:', currentAccount);
+
+        const updated = {
+          tierId,
+          instanceId,
+          roundNumber,
+          matchNumber,
+          player1: matchState.player1,
+          player2: matchState.player2,
+          currentTurn: matchState.currentTurn,
+          winner: matchState.winner,
+          status: Number(matchState.status),
+          phase,
+          player1Committed: matchState.player1Committed,
+          player2Committed: matchState.player2Committed,
+          player1Revealed: matchState.player1Revealed,
+          player2Revealed: matchState.player2Revealed,
+          player1ShipsRemaining: Number(matchState.player1ShipsRemaining),
+          player2ShipsRemaining: Number(matchState.player2ShipsRemaining),
+          isYourTurn,
+          isPlayer1,
+          myBoard: myBoardData,
+          opponentBoard: opponentBoardData,
+          matchExists: true
+        };
+
         setCurrentMatch(updated);
         setMyBoard(updated.myBoard);
         setOpponentBoard(updated.opponentBoard);
+      } catch (error) {
+        if (!error.message?.includes('require(false)')) {
+          console.error('Poll error:', error);
+        }
       }
     };
 
