@@ -19,19 +19,19 @@ import BATTLESHIP_ABI from './EBSABI.json';
 // CONSTANTS & CONFIGURATION
 // ============================================================================
 
-const CONTRACT_ADDRESS = '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9';
+const CONTRACT_ADDRESS = '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0';
 const EXPECTED_CHAIN_ID = 412346;
 
-// Ship definitions
+// Ship definitions (standard Battleship: 5+4+3+3+2 = 17 cells)
 const SHIP_TYPES = {
   carrier:    { id: 'carrier',    size: 5, name: 'Carrier',    color: 'bg-red-500',    hoverColor: 'hover:bg-red-400' },
   battleship: { id: 'battleship', size: 4, name: 'Battleship', color: 'bg-orange-500', hoverColor: 'hover:bg-orange-400' },
   cruiser:    { id: 'cruiser',    size: 3, name: 'Cruiser',    color: 'bg-yellow-500', hoverColor: 'hover:bg-yellow-400' },
-  submarine:  { id: 'submarine',  size: 2, name: 'Submarine',  color: 'bg-green-500',  hoverColor: 'hover:bg-green-400' },
+  submarine:  { id: 'submarine',  size: 3, name: 'Submarine',  color: 'bg-green-500',  hoverColor: 'hover:bg-green-400' },
   destroyer:  { id: 'destroyer',  size: 2, name: 'Destroyer',  color: 'bg-blue-500',   hoverColor: 'hover:bg-blue-400' },
 };
 
-// Total ship cells: 5 + 4 + 3 + 2 + 2 = 16 (but contract uses 17 for encoding)
+// Total ship cells: 5 + 4 + 3 + 3 + 2 = 17
 const TOTAL_SHIP_CELLS = 17;
 
 // Cell states from contract
@@ -43,11 +43,13 @@ const CellState = {
   Unknown: 4
 };
 
-// Match phases
+// Match phases (must match contract's MatchPhase enum)
 const MatchPhase = {
-  Setup: 0,
-  Combat: 1,
-  Completed: 2
+  NotStarted: 0,
+  AwaitingCommitments: 1,  // Setup phase - players place ships and commit
+  AwaitingReveals: 2,      // Both committed, waiting for reveals
+  InProgress: 3,           // Combat phase - players fire shots
+  Completed: 4
 };
 
 // Theme configurations
@@ -293,6 +295,7 @@ const BoardCell = ({
   previewValid,
   shipColor,
   onClick,
+  onHover,
   onDragOver,
   onDrop,
   disabled,
@@ -336,6 +339,7 @@ const BoardCell = ({
     <div
       className={`w-7 h-7 md:w-9 md:h-9 border flex items-center justify-center text-sm font-bold transition-all duration-150 ${getCellStyle()} ${isSelected ? 'ring-2 ring-yellow-400 ring-offset-1 ring-offset-slate-900' : ''}`}
       onClick={() => !disabled && onClick?.(index)}
+      onMouseEnter={() => onHover?.(index)}
       onDragOver={(e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -361,6 +365,7 @@ const BoardGrid = ({
   previewValid = false,
   selectedCell,
   onCellClick,
+  onCellHover,
   onDragOver,
   onDragLeave,
   onDrop,
@@ -433,6 +438,7 @@ const BoardGrid = ({
                 previewValid={previewValid}
                 shipColor={shipColor}
                 onClick={onCellClick}
+                onHover={onCellHover}
                 onDragOver={onDragOver}
                 onDrop={onDrop}
                 disabled={disabled}
@@ -446,8 +452,8 @@ const BoardGrid = ({
   );
 };
 
-// Draggable ship component
-const DraggableShip = ({ ship, orientation, onDragStart, onDragEnd, onRotate, isPlaced }) => {
+// Draggable/Clickable ship component
+const DraggableShip = ({ ship, orientation, onDragStart, onDragEnd, onRotate, onClick, isPlaced, isSelected }) => {
   const handleDragStart = (e) => {
     // Required for Firefox and some browsers
     e.dataTransfer.setData('text/plain', ship.id);
@@ -459,6 +465,10 @@ const DraggableShip = ({ ship, orientation, onDragStart, onDragEnd, onRotate, is
     onDragEnd?.();
   };
 
+  const handleClick = () => {
+    onClick?.(ship, orientation);
+  };
+
   if (isPlaced) return null;
 
   return (
@@ -467,7 +477,8 @@ const DraggableShip = ({ ship, orientation, onDragStart, onDragEnd, onRotate, is
         draggable
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
-        className={`flex ${orientation === 'h' ? 'flex-row' : 'flex-col'} cursor-grab active:cursor-grabbing`}
+        onClick={handleClick}
+        className={`flex ${orientation === 'h' ? 'flex-row' : 'flex-col'} cursor-pointer hover:opacity-80 transition-opacity ${isSelected ? 'ring-2 ring-yellow-400 ring-offset-2 ring-offset-slate-800' : ''}`}
       >
         {[...Array(ship.size)].map((_, i) => (
           <div
@@ -488,8 +499,8 @@ const DraggableShip = ({ ship, orientation, onDragStart, onDragEnd, onRotate, is
   );
 };
 
-// Ship dock - source of draggable ships
-const ShipDock = ({ placedShips, shipOrientations, onDragStart, onDragEnd, onRotate }) => {
+// Ship dock - source of draggable/clickable ships
+const ShipDock = ({ placedShips, shipOrientations, onDragStart, onDragEnd, onRotate, onShipClick, selectedShipId }) => {
   return (
     <GlassPanel className="w-full max-w-xs">
       <h3 className="text-cyan-300 font-bold mb-4 flex items-center gap-2">
@@ -505,12 +516,14 @@ const ShipDock = ({ placedShips, shipOrientations, onDragStart, onDragEnd, onRot
             onDragStart={onDragStart}
             onDragEnd={onDragEnd}
             onRotate={onRotate}
+            onClick={onShipClick}
             isPlaced={!!placedShips[ship.id]}
+            isSelected={selectedShipId === ship.id}
           />
         ))}
       </div>
       <p className="text-slate-400 text-xs mt-4">
-        Drag ships to board. Click rotate button to change orientation.
+        Click a ship to select, then click on the board to place. Or drag ships directly.
       </p>
     </GlassPanel>
   );
@@ -729,6 +742,7 @@ export default function Battleship() {
     carrier: 'h', battleship: 'h', cruiser: 'h', submarine: 'h', destroyer: 'h'
   });
   const [draggedShip, setDraggedShip] = useState(null);
+  const [selectedShip, setSelectedShip] = useState(null); // For click-to-place
   const [previewCells, setPreviewCells] = useState([]);
   const [previewValid, setPreviewValid] = useState(false);
 
@@ -918,8 +932,13 @@ export default function Battleship() {
       let myBoardData = Array(100).fill(CellState.Empty);
       let opponentBoardData = Array(100).fill(CellState.Unknown);
 
-      // Only fetch boards if both players have revealed
-      if (matchState.player1Revealed && matchState.player2Revealed) {
+      // Fetch boards if in combat phase (AwaitingReveals or InProgress)
+      // Contract may auto-reveal after both commit
+      const phase = Number(matchState.phase);
+      const inCombatPhase = phase === MatchPhase.AwaitingReveals || phase === MatchPhase.InProgress;
+      const bothCommitted = matchState.player1Committed && matchState.player2Committed;
+
+      if (inCombatPhase || bothCommitted) {
         try {
           myBoardData = await contract.getMyBoard(tierId, instanceId, roundNumber, matchNumber);
           myBoardData = Array.from(myBoardData).map(s => Number(s));
@@ -1080,19 +1099,19 @@ export default function Battleship() {
   const convertPositionsToPlacement = (positions) => {
     if (!positions || positions.length !== 17) return null;
 
-    const ships = ['carrier', 'battleship', 'cruiser', 'submarine', 'destroyer'];
-    const sizes = [5, 4, 3, 3, 2];
+    const shipOrder = ['carrier', 'battleship', 'cruiser', 'submarine', 'destroyer'];
     const placement = {};
     let idx = 0;
 
-    for (let i = 0; i < ships.length; i++) {
+    for (const shipId of shipOrder) {
+      const shipSize = SHIP_TYPES[shipId].size;
       const cells = [];
-      for (let j = 0; j < sizes[i]; j++) {
+      for (let j = 0; j < shipSize; j++) {
         cells.push(positions[idx++]);
       }
       // Determine orientation from cells
       const isHorizontal = cells.length > 1 && cells[1] - cells[0] === 1;
-      placement[ships[i]] = { cells, orientation: isHorizontal ? 'h' : 'v' };
+      placement[shipId] = { cells, orientation: isHorizontal ? 'h' : 'v' };
     }
 
     return placement;
@@ -1155,6 +1174,54 @@ export default function Battleship() {
       ...prev,
       [shipId]: prev[shipId] === 'h' ? 'v' : 'h'
     }));
+    // If this ship is selected, update the preview
+    if (selectedShip?.id === shipId) {
+      const newOrientation = shipOrientations[shipId] === 'h' ? 'v' : 'h';
+      setSelectedShip(prev => prev ? { ...prev, orientation: newOrientation } : null);
+    }
+  };
+
+  // Click-to-place: Select a ship from the dock
+  const handleShipSelect = (ship, orientation) => {
+    if (selectedShip?.id === ship.id) {
+      // Clicking same ship deselects it
+      setSelectedShip(null);
+      setPreviewCells([]);
+      setPreviewValid(false);
+    } else {
+      setSelectedShip({ ...ship, orientation });
+    }
+  };
+
+  // Click-to-place: Handle mouse over board cell to show preview
+  const handleCellHover = (cellIndex) => {
+    const activeShip = selectedShip || draggedShip;
+    if (!activeShip) return;
+
+    const cells = calculateShipCells(cellIndex, activeShip.size, activeShip.orientation);
+    const isValid = validatePlacement(cells, placedShips, activeShip.id);
+
+    setPreviewCells(cells);
+    setPreviewValid(isValid);
+  };
+
+  // Click-to-place: Place ship on board cell click
+  const handleCellClick = (cellIndex) => {
+    if (!selectedShip) return;
+
+    const cells = calculateShipCells(cellIndex, selectedShip.size, selectedShip.orientation);
+    const isValid = validatePlacement(cells, placedShips, selectedShip.id);
+
+    if (isValid && cells.length > 0) {
+      setPlacedShips(prev => ({
+        ...prev,
+        [selectedShip.id]: { cells, orientation: selectedShip.orientation }
+      }));
+      setSelectedShip(null);
+    }
+
+    setPreviewCells([]);
+    setPreviewValid(false);
   };
 
   const clearPlacement = () => {
@@ -1400,14 +1467,21 @@ export default function Battleship() {
       ? currentMatch.opponentRevealed
       : (isPlayer1 ? player2Revealed : player1Revealed);
 
+    // Map contract phases to UI phases
     if (phase === MatchPhase.Completed) return 'END';
-    if (phase === MatchPhase.Combat) return 'COMBAT';
+    if (phase === MatchPhase.InProgress) return 'COMBAT';
 
-    // Setup phase
-    if (!myCommitted) return 'SETUP';
-    if (!opponentCommitted) return 'WAIT_COMMIT';
-    if (!myRevealed) return 'REVEAL';
-    if (!opponentRevealed) return 'WAIT_REVEAL';
+    // AwaitingCommitments phase - show setup or waiting based on commit status
+    if (phase === MatchPhase.AwaitingCommitments || phase === MatchPhase.NotStarted) {
+      if (!myCommitted) return 'SETUP';
+      if (!opponentCommitted) return 'WAIT_COMMIT';
+    }
+
+    // AwaitingReveals phase - both need to reveal before combat
+    if (phase === MatchPhase.AwaitingReveals) {
+      if (!myRevealed) return 'REVEAL';
+      if (!opponentRevealed) return 'WAIT_REVEAL';
+    }
 
     return 'COMBAT';
   };
@@ -1529,6 +1603,8 @@ export default function Battleship() {
                   onDragStart={handleDragStart}
                   onDragEnd={handleDragEnd}
                   onRotate={handleRotate}
+                  onShipClick={handleShipSelect}
+                  selectedShipId={selectedShip?.id}
                 />
                 <div>
                   <BoardGrid
@@ -1537,6 +1613,8 @@ export default function Battleship() {
                     placedShips={placedShips}
                     previewCells={previewCells}
                     previewValid={previewValid}
+                    onCellClick={handleCellClick}
+                    onCellHover={handleCellHover}
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
                     onDrop={handleDrop}
