@@ -279,7 +279,7 @@ export default function Landing() {
               title="Battleship"
               stakes="High Stakes"
               description="Strategic naval warfare with hidden information. Commitment-reveal mechanics."
-              comingSoon
+              href="/battleship"
             />
           </div>
         </section>

@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Landing from './Landing.jsx'
 import App from './App.jsx'
 import Chess from './Chess.jsx'
+import Battleship from './Battleship.jsx'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -13,6 +14,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <Route path="/" element={<Landing />} />
         <Route path="/tictactoe" element={<App />} />
         <Route path="/chess" element={<Chess />} />
+        <Route path="/battleship" element={<Battleship />} />
       </Routes>
     </BrowserRouter>
   </React.StrictMode>,
