@@ -95,16 +95,16 @@ const getTierName = (tierId) => {
 };
 
 // Convert flat board array to 2D grid for rendering
-// Contract stores board as column-major: index = col * 6 + row
-// Row 0 is bottom, row 5 is top in contract
+// Contract stores board as row-major: index = row * 7 + col
+// Row 0 is top in contract, row 5 is bottom (where pieces land)
 const boardToGrid = (flatBoard) => {
   const grid = Array(6).fill(null).map(() => Array(7).fill(0));
-  for (let col = 0; col < 7; col++) {
-    for (let row = 0; row < 6; row++) {
-      // Contract index: col * 6 + row (row 0 = bottom)
-      // Grid position: grid[5-row][col] (row 0 = top for display)
-      const contractIdx = col * 6 + row;
-      grid[5 - row][col] = Number(flatBoard[contractIdx]);
+  for (let row = 0; row < 6; row++) {
+    for (let col = 0; col < 7; col++) {
+      // Contract index: row * 7 + col
+      // Grid position: grid[row][col] (direct mapping, row 0 = top)
+      const contractIdx = row * 7 + col;
+      grid[row][col] = Number(flatBoard[contractIdx]);
     }
   }
   return grid;
