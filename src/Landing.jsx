@@ -6,15 +6,15 @@ function FloatingParticles() {
     { type: 'x', style: { top: '10%', left: '8%' }, symbol: '✕' },
     { type: 'o', style: { top: '15%', left: '75%' }, symbol: '○' },
     { type: 'chess', style: { top: '25%', left: '45%' }, symbol: '♔' },
-    { type: 'ship', style: { top: '20%', right: '15%' }, symbol: '🚢' },
+    { type: 'disc', style: { top: '20%', right: '15%' }, symbol: '🔴' },
     { type: 'x', style: { top: '45%', left: '85%' }, symbol: '✕' },
     { type: 'o', style: { top: '50%', left: '12%' }, symbol: '○' },
     { type: 'chess', style: { top: '60%', right: '25%' }, symbol: '♟' },
-    { type: 'ship', style: { top: '70%', left: '30%' }, symbol: '🚢' },
+    { type: 'disc', style: { top: '70%', left: '30%' }, symbol: '🟡' },
     { type: 'x', style: { top: '80%', right: '10%' }, symbol: '✕' },
     { type: 'o', style: { top: '85%', left: '60%' }, symbol: '○' },
     { type: 'chess', style: { bottom: '8%', left: '20%' }, symbol: '♔' },
-    { type: 'ship', style: { bottom: '12%', right: '35%' }, symbol: '🚢' },
+    { type: 'disc', style: { bottom: '12%', right: '35%' }, symbol: '🔴' },
   ];
 
   const getColor = (type) => {
@@ -22,7 +22,7 @@ function FloatingParticles() {
       case 'x': return '#06b6d4';
       case 'o': return '#a855f7';
       case 'chess': return '#3b82f6';
-      case 'ship': return '#22c55e';
+      case 'disc': return '#ef4444';
       default: return '#fff';
     }
   };
@@ -275,11 +275,11 @@ export default function Landing() {
               href="/chess"
             />
             <GameCard
-              icon="🚢"
-              title="Battleship"
-              stakes="High Stakes"
-              description="Strategic naval warfare with hidden information. Commitment-reveal mechanics."
-              href="/battleship"
+              icon="🔴"
+              title="Connect Four"
+              stakes="0.001-0.1 ETH"
+              description="The classic vertical strategy game. Drop discs, connect four in a row to win."
+              href="/c4"
             />
           </div>
         </section>
