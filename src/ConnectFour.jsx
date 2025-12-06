@@ -208,7 +208,8 @@ const ConnectFourBoard = ({
     return -1;
   };
 
-  const cellSize = boardSize ? (boardSize - 32) / 7 : 60;
+  // Account for padding (32px) and gaps between 7 cells (6 gaps × 4px = 24px)
+  const cellSize = boardSize ? (boardSize - 32 - 24) / 7 : 60;
 
   return (
     <div ref={containerRef} className="flex flex-col items-center">
@@ -345,7 +346,6 @@ const TournamentCard = ({
   onEnter,
   loading,
   tierName,
-  theme,
   enrollmentTimeout,
   onManualStart,
   tournamentStatus,
@@ -514,7 +514,7 @@ const TournamentCard = ({
 };
 
 // Tournament Bracket Component
-const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, account, loading, syncDots, theme }) => {
+const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, account, loading, syncDots }) => {
   const { tierId, instanceId, status, currentRound, enrolledCount, prizePool, rounds, playerCount, enrolledPlayers } = tournamentData;
 
   const totalRounds = Math.ceil(Math.log2(playerCount));
@@ -731,9 +731,6 @@ export default function ConnectFour() {
   // Loading States
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
-
-  // Theme (fixed to dream)
-  const theme = 'dream';
 
   // Tournament State
   const [tournaments, setTournaments] = useState([]);
@@ -1096,8 +1093,11 @@ export default function ConnectFour() {
   // Close match
   const closeMatch = () => setCurrentMatch(null);
 
-  // Initialize read-only contract
+  // Initialize read-only contract (only if no wallet connected)
   useEffect(() => {
+    // Skip if wallet is already connected (we have a signer contract)
+    if (account) return;
+
     const initReadOnlyContract = async () => {
       try {
         const provider = new ethers.JsonRpcProvider('http://127.0.0.1:8545');
@@ -1113,7 +1113,7 @@ export default function ConnectFour() {
     };
 
     initReadOnlyContract();
-  }, [fetchAllTiers]);
+  }, [fetchAllTiers, account]);
 
   // Listen for account changes
   useEffect(() => {
@@ -1336,7 +1336,6 @@ export default function ConnectFour() {
             account={account}
             loading={loading}
             syncDots={bracketSyncDots}
-            theme={theme}
           />
         </div>
       </div>
@@ -1476,7 +1475,6 @@ export default function ConnectFour() {
                   key={idx}
                   {...t}
                   tierName={getTierName(t.tierId)}
-                  theme={theme}
                   onEnroll={() => handleEnroll(t.tierId, t.instanceId, t.entryFee)}
                   onEnter={() => handleEnterTournament(t.tierId, t.instanceId)}
                   onManualStart={handleManualStart}
