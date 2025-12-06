@@ -119,21 +119,21 @@ export default function Landing() {
           <div className="flex items-center gap-3 mb-8">
             <div className="h-px w-12 bg-gradient-to-r from-transparent to-cyan-500/50" />
             <span className="text-cyan-400 text-sm font-semibold tracking-widest uppercase">
-              Live on Arbitrum
+              Live On Chain
             </span>
             <div className="h-px w-12 bg-gradient-to-l from-transparent to-cyan-500/50" />
           </div>
           
           {/* Main Headline */}
-          <h1 className="text-5xl md:text-7xl lg:text-8xl font-black text-center leading-[0.95] mb-8">
-            <span className="block text-white">Win ETH</span>
-            <span 
-              className="block bg-clip-text text-transparent"
+          <h1 className="text-5xl md:text-7xl lg:text-8xl font-black text-center leading-[1.1] mb-8 py-2">
+            <span className="block text-white pb-1">Win ETH</span>
+            <span
+              className="block bg-clip-text text-transparent py-1"
               style={{ background: 'linear-gradient(135deg, #06b6d4, #3b82f6, #a855f7)', WebkitBackgroundClip: 'text' }}
             >
               Playing Games
             </span>
-            <span className="block text-white">You Already Know.</span>
+            <span className="block text-white pt-1">You Already Know.</span>
           </h1>
           
           {/* Subheadline */}
@@ -146,7 +146,7 @@ export default function Landing() {
           {/* Trust Signals */}
           <div className="flex flex-wrap justify-center gap-6 mb-12">
             <TrustSignal icon="🔒" text="Every move verified on-chain" />
-            <TrustSignal icon="⚡" text="Instant payouts to your wallet" />
+            <TrustSignal icon="⚡" text="Instant ETH payouts to your wallet" />
             <TrustSignal icon="🎯" text="No RNG, pure skill" />
           </div>
           
@@ -190,8 +190,8 @@ export default function Landing() {
           <div className="grid md:grid-cols-3 gap-8">
             
             <GameCard
-              icon="⭕"
-              title="Eternal Tic-Tac-Toe"
+              icon="✖️"
+              title="Tic-Tac-Toe"
               stakes="0.001 – 0.1 ETH"
               tagline="The game everyone knows. Now with real stakes and zero mercy."
               features={[
@@ -202,21 +202,7 @@ export default function Landing() {
               href="/tictactoe"
               accentColor="#06b6d4"
             />
-            
-            <GameCard
-              icon="♔"
-              title="ChessOnChain"
-              stakes="0.01 – 1 ETH"
-              tagline="Full chess. Every rule. Every move immortalized on-chain forever."
-              features={[
-                "Castling, en passant, promotion",
-                "Higher stakes for serious players",
-                "Prove your rating means something"
-              ]}
-              href="/chess"
-              accentColor="#fbbf24"
-            />
-            
+
             <GameCard
               icon="🔴"
               title="Connect Four"
@@ -229,6 +215,20 @@ export default function Landing() {
               ]}
               href="/c4"
               accentColor="#ef4444"
+            />
+
+            <GameCard
+              icon="♔"
+              title="Chess"
+              stakes="0.01 – 1 ETH"
+              tagline="Full chess. Every rule. Every move immortalized on-chain forever."
+              features={[
+                "Castling, en passant, promotion",
+                "Higher stakes for serious players",
+                "Prove your rating means something"
+              ]}
+              href="/chess"
+              accentColor="#fbbf24"
             />
             
           </div>
