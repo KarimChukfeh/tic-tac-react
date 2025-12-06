@@ -721,7 +721,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, account, load
 
 // Main Connect Four Component
 export default function ConnectFour() {
-  const CONTRACT_ADDRESS = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
+  const CONTRACT_ADDRESS = "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0";
   const EXPECTED_CHAIN_ID = 412346;
 
   // Wallet & Contract State
@@ -859,7 +859,7 @@ export default function ConnectFour() {
             tierId,
             instanceId: i,
             status: Number(statuses[i]),
-            enrolledCount: Number(enrolledCounts[i]),
+            currentEnrolled: Number(enrolledCounts[i]),
             maxPlayers,
             entryFee: entryFeeFormatted,
             isEnrolled,
@@ -872,7 +872,7 @@ export default function ConnectFour() {
       }
     }
 
-    allTournaments.sort((a, b) => b.enrolledCount - a.enrolledCount);
+    allTournaments.sort((a, b) => b.currentEnrolled - a.currentEnrolled);
     setTournaments(allTournaments);
     if (!silent) setTournamentsLoading(false);
   }, []);
