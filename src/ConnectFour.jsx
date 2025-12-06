@@ -185,7 +185,7 @@ const ConnectFourBoard = ({
   const isPlayer2 = account && player2?.toLowerCase() === account.toLowerCase();
   const isMyTurn = account && currentTurn?.toLowerCase() === account.toLowerCase();
 
-  // Player 1 (firstPlayer) is Red (1), Player 2 is Yellow (2)
+  // Player 1 (firstPlayer) is Red (1), Player 2 is Blue (2)
   const myColor = isPlayer1 ? 1 : isPlayer2 ? 2 : 0;
 
   // Convert flat board to grid
@@ -239,7 +239,7 @@ const ConnectFourBoard = ({
             >
               {hoveredColumn === col && isMyTurn && !isColumnFull && (
                 <span className="text-2xl animate-bounce">
-                  {myColor === 1 ? '🔴' : '🟡'}
+                  {myColor === 1 ? '🔴' : '🔵'}
                 </span>
               )}
             </div>
@@ -292,10 +292,10 @@ const ConnectFourBoard = ({
                           height: cellSize - 8,
                           background: cell === 1
                             ? 'radial-gradient(circle at 30% 30%, #ff6b6b, #c92a2a)'
-                            : 'radial-gradient(circle at 30% 30%, #ffd43b, #fab005)',
+                            : 'radial-gradient(circle at 30% 30%, #60a5fa, #2563eb)',
                           boxShadow: cell === 1
                             ? 'inset 0 -4px 8px rgba(0,0,0,0.3), 0 0 10px rgba(255,107,107,0.5)'
-                            : 'inset 0 -4px 8px rgba(0,0,0,0.3), 0 0 10px rgba(255,212,59,0.5)'
+                            : 'inset 0 -4px 8px rgba(0,0,0,0.3), 0 0 10px rgba(96,165,250,0.5)'
                         }}
                       />
                     ) : isPreview ? (
@@ -306,7 +306,7 @@ const ConnectFourBoard = ({
                           height: cellSize - 8,
                           background: myColor === 1
                             ? 'radial-gradient(circle at 30% 30%, #ff6b6b, #c92a2a)'
-                            : 'radial-gradient(circle at 30% 30%, #ffd43b, #fab005)'
+                            : 'radial-gradient(circle at 30% 30%, #60a5fa, #2563eb)'
                         }}
                       />
                     ) : null}
@@ -605,7 +605,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, account, load
                   key={idx}
                   className={`font-mono text-sm p-2 rounded ${
                     address.toLowerCase() === account?.toLowerCase()
-                      ? 'bg-yellow-500/20 border border-yellow-400/50 text-yellow-300 font-bold'
+                      ? 'bg-cyan-500/20 border border-cyan-400/50 text-cyan-300 font-bold'
                       : 'bg-purple-500/10 text-purple-300'
                   }`}
                 >
@@ -659,7 +659,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, account, load
                             match.winner?.toLowerCase() === match.player1?.toLowerCase()
                               ? 'bg-green-500/20 border border-green-400/50'
                               : match.player1?.toLowerCase() === account?.toLowerCase()
-                              ? 'bg-yellow-500/20 border border-yellow-400/50'
+                              ? 'bg-cyan-500/20 border border-cyan-400/50'
                               : 'bg-purple-500/10'
                           }`}>
                             <div className="flex items-center gap-2">
@@ -673,16 +673,16 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, account, load
 
                           <div className="text-center text-purple-400 font-bold">VS</div>
 
-                          {/* Player 2 - Yellow */}
+                          {/* Player 2 - Blue */}
                           <div className={`flex items-center justify-between p-2 rounded ${
                             match.winner?.toLowerCase() === match.player2?.toLowerCase()
                               ? 'bg-green-500/20 border border-green-400/50'
                               : match.player2?.toLowerCase() === account?.toLowerCase()
-                              ? 'bg-yellow-500/20 border border-yellow-400/50'
-                              : 'bg-yellow-500/10'
+                              ? 'bg-blue-500/20 border border-blue-400/50'
+                              : 'bg-blue-500/10'
                           }`}>
                             <div className="flex items-center gap-2">
-                              <span className="text-xl">🟡</span>
+                              <span className="text-xl">🔵</span>
                               <span className="text-white font-mono text-sm">{shortenAddress(match.player2)}</span>
                             </div>
                             {match.winner?.toLowerCase() === match.player2?.toLowerCase() && (
@@ -1209,7 +1209,7 @@ export default function ConnectFour() {
   if (currentMatch) {
     const isPlayer1 = currentMatch.player1?.toLowerCase() === account?.toLowerCase();
     const isPlayer2 = currentMatch.player2?.toLowerCase() === account?.toLowerCase();
-    const myColor = isPlayer1 ? 'Red' : isPlayer2 ? 'Yellow' : 'Spectator';
+    const myColor = isPlayer1 ? 'Red' : isPlayer2 ? 'Blue' : 'Spectator';
     const isGameOver = currentMatch.matchStatus === 2;
     const hasWinner = currentMatch.winner && currentMatch.winner !== '0x0000000000000000000000000000000000000000';
 
@@ -1236,7 +1236,7 @@ export default function ConnectFour() {
           {/* Game Status */}
           <div className="text-center mb-6">
             <h2 className="text-3xl font-bold text-white mb-2">Connect Four Match</h2>
-            <p className="text-purple-300">You are playing as {myColor} {myColor === 'Red' ? '🔴' : myColor === 'Yellow' ? '🟡' : ''}</p>
+            <p className="text-purple-300">You are playing as {myColor} {myColor === 'Red' ? '🔴' : myColor === 'Blue' ? '🔵' : ''}</p>
           </div>
 
           {/* Turn Indicator */}
@@ -1283,12 +1283,12 @@ export default function ConnectFour() {
             <div className="text-xl font-bold text-gray-500">VS</div>
             <div className={`flex items-center gap-2 p-3 rounded-lg ${
               currentMatch.currentTurn?.toLowerCase() === currentMatch.player2?.toLowerCase() && !isGameOver
-                ? 'bg-yellow-500/30 border border-yellow-400'
+                ? 'bg-blue-500/30 border border-blue-400'
                 : 'bg-black/30'
             }`}>
-              <span className="text-2xl">🟡</span>
+              <span className="text-2xl">🔵</span>
               <div>
-                <div className="text-xs text-gray-400">Yellow</div>
+                <div className="text-xs text-gray-400">Blue</div>
                 <div className="font-mono text-sm">{shortenAddress(currentMatch.player2)}</div>
               </div>
             </div>

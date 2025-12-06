@@ -10,7 +10,7 @@ function FloatingParticles() {
     { type: 'x', style: { top: '45%', left: '85%' }, symbol: '✕' },
     { type: 'o', style: { top: '50%', left: '12%' }, symbol: '○' },
     { type: 'chess', style: { top: '60%', right: '25%' }, symbol: '♟' },
-    { type: 'disc', style: { top: '70%', left: '30%' }, symbol: '🟡' },
+    { type: 'disc', style: { top: '70%', left: '30%' }, symbol: '🔵' },
     { type: 'x', style: { top: '80%', right: '10%' }, symbol: '✕' },
     { type: 'o', style: { top: '85%', left: '60%' }, symbol: '○' },
     { type: 'chess', style: { bottom: '8%', left: '20%' }, symbol: '♔' },
