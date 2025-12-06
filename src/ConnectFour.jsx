@@ -9,14 +9,14 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Wallet, Grid, Clock, Shield, Lock, Eye, Code, ExternalLink,
-  Trophy, Play, Users, Zap, Award, Coins, ChevronDown, Info,
+  Trophy, Play, Users, Zap, Award, Coins, ChevronDown,
   ArrowLeft
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import C4_ABI from './CFOCABI.json';
 
 // Connect Four disc particles for background
-const C4_PARTICLES = ['🔴', '🟡', '⚫', '🔴', '🟡'];
+const C4_PARTICLES = ['🔴', '🔵'];
 
 // Particle Background Component (Dream/Daring Themes)
 const ParticleBackground = ({ colors }) => {
@@ -78,16 +78,6 @@ const ParticleBackground = ({ colors }) => {
 const shortenAddress = (addr) => {
   if (!addr || addr === '0x0000000000000000000000000000000000000000') return 'TBD';
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-};
-
-// Game status labels
-const getStatusLabel = (status) => {
-  switch(status) {
-    case 0: return 'Waiting for Players';
-    case 1: return 'Game in Progress';
-    case 2: return 'Game Complete';
-    default: return 'Unknown';
-  }
 };
 
 // Get tier name
@@ -170,8 +160,7 @@ const ConnectFourBoard = ({
   matchStatus,
   loading,
   winner,
-  lastColumn,
-  firstPlayer
+  lastColumn
 }) => {
   const [hoveredColumn, setHoveredColumn] = useState(-1);
   const [boardSize, setBoardSize] = useState(null);
@@ -398,23 +387,14 @@ const TournamentCard = ({
     return `${hours}h ${minutes}m ${secs}s`;
   };
 
-  const colors = theme === 'dream'
-    ? {
-        cardBg: 'from-red-600/20 to-yellow-600/20',
-        cardBorder: 'border-red-400/40 hover:border-red-400/70',
-        icon: 'text-red-400',
-        text: 'text-red-300',
-        progress: 'from-red-500 to-yellow-500',
-        buttonEnter: 'from-red-500 to-yellow-500 hover:from-red-600 hover:to-yellow-600'
-      }
-    : {
-        cardBg: 'from-blue-600/20 to-cyan-600/20',
-        cardBorder: 'border-blue-400/40 hover:border-blue-400/70',
-        icon: 'text-blue-400',
-        text: 'text-blue-300',
-        progress: 'from-blue-500 to-cyan-500',
-        buttonEnter: 'from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600'
-      };
+  const colors = {
+    cardBg: 'from-purple-600/20 to-blue-600/20',
+    cardBorder: 'border-purple-400/40 hover:border-purple-400/70',
+    icon: 'text-purple-400',
+    text: 'text-purple-300',
+    progress: 'from-purple-500 to-blue-500',
+    buttonEnter: 'from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600'
+  };
 
   return (
     <div className={`bg-gradient-to-br ${colors.cardBg} backdrop-blur-lg rounded-2xl p-6 border-2 ${colors.cardBorder} transition-all hover:shadow-xl`}>
@@ -428,8 +408,8 @@ const TournamentCard = ({
           </div>
         </div>
         {isFull && (
-          <div className="bg-red-500/20 border border-red-400 px-3 py-1 rounded-full">
-            <span className="text-red-300 text-xs font-bold">FULL</span>
+          <div className="bg-purple-500/20 border border-purple-400 px-3 py-1 rounded-full">
+            <span className="text-purple-300 text-xs font-bold">FULL</span>
           </div>
         )}
         {!isFull && !isEnrolled && (
@@ -479,7 +459,7 @@ const TournamentCard = ({
       {/* Escalation Timer */}
       {enrollmentTimeout && escalationState.timeToEscalation1 > 0 && (
         <div className="mb-4">
-          <div className="bg-gradient-to-r from-orange-500/20 to-red-500/20 border border-orange-400/50 rounded-lg p-3 text-center">
+          <div className="bg-gradient-to-r from-orange-500/20 to-yellow-500/20 border border-orange-400/50 rounded-lg p-3 text-center">
             <Clock className="inline-block text-orange-400 mr-2" size={16} />
             <span className="text-orange-300 text-sm">Force Start in: {formatTime(escalationState.timeToEscalation1)}</span>
           </div>
@@ -491,7 +471,7 @@ const TournamentCard = ({
         <button
           onClick={() => onManualStart(tierId, instanceId)}
           disabled={loading || !account}
-          className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed mb-2 flex items-center justify-center gap-2"
+          className="w-full bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed mb-2 flex items-center justify-center gap-2"
         >
           <Zap size={18} />
           {loading ? 'Starting...' : 'Force Start Tournament'}
@@ -534,7 +514,7 @@ const TournamentCard = ({
 };
 
 // Tournament Bracket Component
-const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onManualStart, account, loading, syncDots, theme }) => {
+const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, account, loading, syncDots, theme }) => {
   const { tierId, instanceId, status, currentRound, enrolledCount, prizePool, rounds, playerCount, enrolledPlayers } = tournamentData;
 
   const totalRounds = Math.ceil(Math.log2(playerCount));
@@ -557,15 +537,13 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onManualStart
     if (matchStatus === 1) return 'text-yellow-400';
     if (matchStatus === 2) {
       const zeroAddress = '0x0000000000000000000000000000000000000000';
-      if (winner && winner.toLowerCase() === zeroAddress && !isDraw) return 'text-red-400';
+      if (winner && winner.toLowerCase() === zeroAddress && !isDraw) return 'text-purple-400';
       return 'text-green-400';
     }
     return 'text-gray-400';
   };
 
-  const colors = theme === 'dream'
-    ? { headerBg: 'from-red-600/30 to-yellow-600/30', headerBorder: 'border-red-400/30', text: 'text-red-300', icon: 'text-red-400' }
-    : { headerBg: 'from-blue-600/30 to-cyan-600/30', headerBorder: 'border-blue-400/30', text: 'text-blue-300', icon: 'text-blue-400' };
+  const colors = { headerBg: 'from-purple-600/30 to-blue-600/30', headerBorder: 'border-purple-400/30', text: 'text-purple-300', icon: 'text-purple-400' };
 
   return (
     <div className="mb-16">
@@ -616,7 +594,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onManualStart
 
         {/* Enrolled Players */}
         {enrolledPlayers && enrolledPlayers.length > 0 && (
-          <div className="mt-4 bg-black/20 rounded-lg p-4 border border-red-400/30">
+          <div className="mt-4 bg-black/20 rounded-lg p-4 border border-purple-400/30">
             <div className="flex items-center gap-2 mb-3">
               <Users className={colors.icon} size={20} />
               <h4 className={`${colors.text} font-semibold`}>Enrolled Players ({enrolledPlayers.length})</h4>
@@ -628,7 +606,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onManualStart
                   className={`font-mono text-sm p-2 rounded ${
                     address.toLowerCase() === account?.toLowerCase()
                       ? 'bg-yellow-500/20 border border-yellow-400/50 text-yellow-300 font-bold'
-                      : 'bg-red-500/10 text-red-300'
+                      : 'bg-purple-500/10 text-purple-300'
                   }`}
                 >
                   {shortenAddress(address)}
@@ -641,7 +619,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onManualStart
       </div>
 
       {/* Bracket */}
-      <div className={`bg-gradient-to-br from-slate-900/50 to-red-900/30 backdrop-blur-lg rounded-2xl p-8 border ${colors.headerBorder}`}>
+      <div className={`bg-gradient-to-br from-slate-900/50 to-purple-900/30 backdrop-blur-lg rounded-2xl p-8 border ${colors.headerBorder}`}>
         <h3 className={`text-2xl font-bold ${colors.text} mb-6 flex items-center gap-2`}>
           <Grid size={24} />
           Tournament Bracket
@@ -665,11 +643,11 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onManualStart
                       <div
                         key={matchIdx}
                         className={`bg-black/30 rounded-xl p-4 border-2 transition-all ${
-                          isUserMatch ? 'border-green-400/70 bg-green-900/20' : 'border-red-400/30 hover:border-red-400/50'
+                          isUserMatch ? 'border-green-400/70 bg-green-900/20' : 'border-purple-400/30 hover:border-purple-400/50'
                         }`}
                       >
                         <div className="flex items-center justify-between mb-3">
-                          <span className="text-red-300 text-sm font-semibold">Match {matchIdx + 1}</span>
+                          <span className="text-purple-300 text-sm font-semibold">Match {matchIdx + 1}</span>
                           <span className={`text-xs font-bold ${getMatchStatusColor(match.matchStatus, match.winner, match.isDraw)}`}>
                             {getMatchStatusText(match.matchStatus, match.winner, match.isDraw)}
                           </span>
@@ -682,7 +660,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onManualStart
                               ? 'bg-green-500/20 border border-green-400/50'
                               : match.player1?.toLowerCase() === account?.toLowerCase()
                               ? 'bg-yellow-500/20 border border-yellow-400/50'
-                              : 'bg-red-500/10'
+                              : 'bg-purple-500/10'
                           }`}>
                             <div className="flex items-center gap-2">
                               <span className="text-xl">🔴</span>
@@ -693,7 +671,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onManualStart
                             )}
                           </div>
 
-                          <div className="text-center text-red-400 font-bold">VS</div>
+                          <div className="text-center text-purple-400 font-bold">VS</div>
 
                           {/* Player 2 - Yellow */}
                           <div className={`flex items-center justify-between p-2 rounded ${
@@ -732,7 +710,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onManualStart
             ))}
           </div>
         ) : (
-          <div className="text-center py-12 text-red-300">
+          <div className="text-center py-12 text-purple-300">
             <p>No matches available yet. Tournament may be in enrollment phase.</p>
           </div>
         )}
@@ -753,11 +731,9 @@ export default function ConnectFour() {
   // Loading States
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
-  const [networkInfo, setNetworkInfo] = useState(null);
 
-  // Theme
-  const [theme, setTheme] = useState('dream');
-  const [showThemeToggle, setShowThemeToggle] = useState(true);
+  // Theme (fixed to dream)
+  const theme = 'dream';
 
   // Tournament State
   const [tournaments, setTournaments] = useState([]);
@@ -770,31 +746,16 @@ export default function ConnectFour() {
   const [matchLoading, setMatchLoading] = useState(false);
   const [syncDots, setSyncDots] = useState(1);
 
-  // Theme colors
-  const themeColors = {
-    dream: {
-      gradient: 'linear-gradient(135deg, #1a0000 0%, #330a00 50%, #1a0500 100%)',
-      particleColors: ['#ff4444', '#ffcc00'],
-      heroGlow: 'from-red-500 via-yellow-500 to-red-500',
-      heroTitle: 'from-red-400 via-yellow-400 to-red-400',
-      heroText: 'text-red-200',
-      buttonGradient: 'from-red-500 to-yellow-500',
-      buttonHover: 'hover:from-red-600 hover:to-yellow-600',
-    },
-    daring: {
-      gradient: 'linear-gradient(135deg, #0a0020 0%, #1a0050 50%, #0a0030 100%)',
-      particleColors: ['#00ffff', '#8a2be2'],
-      heroGlow: 'from-blue-500 via-cyan-500 to-blue-500',
-      heroTitle: 'from-blue-400 via-cyan-400 to-blue-400',
-      heroText: 'text-blue-200',
-      buttonGradient: 'from-blue-500 to-cyan-500',
-      buttonHover: 'hover:from-blue-600 hover:to-cyan-600',
-    }
+  // Theme colors (dream theme - matches TicTacToe and Chess)
+  const currentTheme = {
+    gradient: 'linear-gradient(135deg, #0a0020 0%, #1a0050 50%, #0a0030 100%)',
+    particleColors: ['#00ffff', '#8a2be2'],
+    heroGlow: 'from-blue-500 via-cyan-500 to-blue-500',
+    heroTitle: 'from-blue-400 via-cyan-400 to-blue-400',
+    heroText: 'text-blue-200',
+    buttonGradient: 'from-blue-500 to-cyan-500',
+    buttonHover: 'hover:from-blue-600 hover:to-cyan-600',
   };
-
-  const currentTheme = themeColors[theme];
-
-  const cycleTheme = () => setTheme(prev => prev === 'dream' ? 'daring' : 'dream');
 
   // Switch network
   const switchToLocalNetwork = async () => {
@@ -836,12 +797,6 @@ export default function ConnectFour() {
       const web3Provider = new ethers.BrowserProvider(window.ethereum);
       const network = await web3Provider.getNetwork();
 
-      setNetworkInfo({
-        name: network.name || 'Unknown',
-        chainId: network.chainId.toString(),
-        isExpected: network.chainId === BigInt(EXPECTED_CHAIN_ID)
-      });
-
       if (network.chainId !== BigInt(EXPECTED_CHAIN_ID)) {
         const shouldSwitch = window.confirm(`Wrong Network! Expected Chain ID: ${EXPECTED_CHAIN_ID}\nSwitch networks?`);
         if (shouldSwitch) {
@@ -878,7 +833,6 @@ export default function ConnectFour() {
         const tierOverview = await contractInstance.getTierOverview(tierId);
         const statuses = tierOverview[0];
         const enrolledCounts = tierOverview[1];
-        const prizePools = tierOverview[2];
 
         const tierConfig = await contractInstance.tierConfigs(tierId);
         const maxPlayers = Number(tierConfig.playerCount);
@@ -931,7 +885,6 @@ export default function ConnectFour() {
       const enrolledPlayers = await contractInstance.getEnrolledPlayers(tierId, instanceId);
 
       const rounds = [];
-      const totalRounds = Math.ceil(Math.log2(Number(tierConfig.playerCount)));
 
       for (let roundNum = 0; roundNum <= Number(tournamentInfo[2]); roundNum++) {
         try {
@@ -1229,31 +1182,24 @@ export default function ConnectFour() {
     return () => clearInterval(dotsInterval);
   }, [viewingTournament]);
 
-  // Scroll listener
-  useEffect(() => {
-    const handleScroll = () => setShowThemeToggle(window.scrollY <= 600);
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
   // Loading state
   if (initialLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-red-900 to-slate-900 text-white flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 text-white flex items-center justify-center">
         <div className="text-center">
           <div className="relative mb-8">
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-32 h-32 border-4 border-red-500/30 rounded-full"></div>
+              <div className="w-32 h-32 border-4 border-blue-500/30 rounded-full"></div>
             </div>
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-32 h-32 border-4 border-transparent border-t-red-500 rounded-full animate-spin"></div>
+              <div className="w-32 h-32 border-4 border-transparent border-t-blue-500 rounded-full animate-spin"></div>
             </div>
             <div className="relative flex items-center justify-center w-32 h-32 mx-auto">
               <span className="text-6xl">🔴</span>
             </div>
           </div>
-          <h2 className="text-2xl font-bold text-red-300 mb-2">Loading Connect Four</h2>
-          <p className="text-red-400/70">Connecting to blockchain...</p>
+          <h2 className="text-2xl font-bold text-blue-300 mb-2">Loading Connect Four</h2>
+          <p className="text-blue-400/70">Connecting to blockchain...</p>
         </div>
       </div>
     );
@@ -1276,7 +1222,7 @@ export default function ConnectFour() {
           <div className="flex items-center justify-between mb-6">
             <button
               onClick={closeMatch}
-              className="flex items-center gap-2 text-red-300 hover:text-white transition-colors"
+              className="flex items-center gap-2 text-purple-300 hover:text-white transition-colors"
             >
               <ArrowLeft size={20} />
               Back to Bracket
@@ -1290,7 +1236,7 @@ export default function ConnectFour() {
           {/* Game Status */}
           <div className="text-center mb-6">
             <h2 className="text-3xl font-bold text-white mb-2">Connect Four Match</h2>
-            <p className="text-red-300">You are playing as {myColor} {myColor === 'Red' ? '🔴' : myColor === 'Yellow' ? '🟡' : ''}</p>
+            <p className="text-purple-300">You are playing as {myColor} {myColor === 'Red' ? '🔴' : myColor === 'Yellow' ? '🟡' : ''}</p>
           </div>
 
           {/* Turn Indicator */}
@@ -1300,7 +1246,7 @@ export default function ConnectFour() {
                 hasWinner
                   ? currentMatch.winner.toLowerCase() === account?.toLowerCase()
                     ? 'bg-green-500/20 border-2 border-green-400 text-green-300'
-                    : 'bg-red-500/20 border-2 border-red-400 text-red-300'
+                    : 'bg-purple-500/20 border-2 border-purple-400 text-purple-300'
                   : 'bg-yellow-500/20 border-2 border-yellow-400 text-yellow-300'
               }`}>
                 {hasWinner
@@ -1325,7 +1271,7 @@ export default function ConnectFour() {
           <div className="flex justify-between items-center mb-6 max-w-md mx-auto">
             <div className={`flex items-center gap-2 p-3 rounded-lg ${
               currentMatch.currentTurn?.toLowerCase() === currentMatch.player1?.toLowerCase() && !isGameOver
-                ? 'bg-red-500/30 border border-red-400'
+                ? 'bg-cyan-500/30 border border-cyan-400'
                 : 'bg-black/30'
             }`}>
               <span className="text-2xl">🔴</span>
@@ -1360,14 +1306,13 @@ export default function ConnectFour() {
             loading={matchLoading}
             winner={currentMatch.winner}
             lastColumn={currentMatch.lastColumn}
-            firstPlayer={currentMatch.firstPlayer}
           />
 
           {/* Loading Overlay */}
           {matchLoading && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
               <div className="bg-slate-800 rounded-xl p-6 text-center">
-                <div className="w-12 h-12 border-4 border-red-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
                 <p className="text-white">Processing move...</p>
               </div>
             </div>
@@ -1388,7 +1333,6 @@ export default function ConnectFour() {
             tournamentData={viewingTournament}
             onBack={() => setViewingTournament(null)}
             onEnterMatch={handlePlayMatch}
-            onManualStart={handleManualStart}
             account={account}
             loading={loading}
             syncDots={bracketSyncDots}
@@ -1413,28 +1357,28 @@ export default function ConnectFour() {
       </Link>
 
       {/* Trust Banner */}
-      <div className="bg-red-900/20 border-b border-red-400/30 backdrop-blur-lg relative z-10">
+      <div className="bg-blue-900/20 border-b border-blue-400/30 backdrop-blur-lg relative z-10">
         <div className="max-w-7xl mx-auto px-6 py-3">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 text-xs md:text-sm">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 justify-center md:justify-start">
               <div className="flex items-center gap-2">
-                <Shield className="text-red-400" size={16} />
-                <span className="text-red-100 font-medium">100% On-Chain</span>
+                <Shield className="text-blue-400" size={16} />
+                <span className="text-blue-100 font-medium">100% On-Chain</span>
               </div>
               <div className="flex items-center gap-2">
-                <Lock className="text-red-400" size={16} />
-                <span className="text-red-100 font-medium">Immutable Rules</span>
+                <Lock className="text-blue-400" size={16} />
+                <span className="text-blue-100 font-medium">Immutable Rules</span>
               </div>
               <div className="flex items-center gap-2">
-                <Eye className="text-red-400" size={16} />
-                <span className="text-red-100 font-medium">Every Move Verifiable</span>
+                <Eye className="text-blue-400" size={16} />
+                <span className="text-blue-100 font-medium">Every Move Verifiable</span>
               </div>
             </div>
             <a
               href={`https://arbiscan.io/address/${CONTRACT_ADDRESS}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 text-red-300 hover:text-red-200 transition-colors justify-center md:justify-end"
+              className="flex items-center gap-2 text-blue-300 hover:text-blue-200 transition-colors justify-center md:justify-end"
             >
               <Code size={16} />
               <span className="font-mono">{CONTRACT_ADDRESS.slice(0, 10)}...{CONTRACT_ADDRESS.slice(-8)}</span>
@@ -1485,12 +1429,12 @@ export default function ConnectFour() {
               </div>
               <p className="text-sm text-yellow-200">Multiple tiers from casual to high stakes</p>
             </div>
-            <div className="bg-gradient-to-br from-red-500/20 to-orange-500/20 border border-red-400/30 rounded-xl p-4">
+            <div className="bg-gradient-to-br from-purple-500/20 to-blue-500/20 border border-purple-400/30 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
-                <Zap className="text-red-400" size={20} />
-                <span className="font-bold text-red-300">Simple Rules</span>
+                <Zap className="text-purple-400" size={20} />
+                <span className="font-bold text-purple-300">Simple Rules</span>
               </div>
-              <p className="text-sm text-red-200">Drop discs, connect 4 in any direction to win</p>
+              <p className="text-sm text-purple-200">Drop discs, connect 4 in any direction to win</p>
             </div>
           </div>
 
@@ -1514,15 +1458,15 @@ export default function ConnectFour() {
 
         {/* Tournament Cards */}
         <div className="mb-16">
-          <h2 className="text-3xl font-bold text-center mb-8 text-red-300">Available Tournaments</h2>
+          <h2 className="text-3xl font-bold text-center mb-8 text-cyan-300">Available Tournaments</h2>
 
           {tournamentsLoading ? (
             <div className="text-center py-12">
-              <div className="w-12 h-12 border-4 border-red-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-red-300">Loading tournaments...</p>
+              <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-cyan-300">Loading tournaments...</p>
             </div>
           ) : tournaments.length === 0 ? (
-            <div className="text-center py-12 text-red-300">
+            <div className="text-center py-12 text-purple-300">
               <p>No tournaments available yet.</p>
             </div>
           ) : (
@@ -1544,16 +1488,6 @@ export default function ConnectFour() {
           )}
         </div>
       </div>
-
-      {/* Theme Toggle */}
-      {showThemeToggle && (
-        <button
-          onClick={cycleTheme}
-          className="fixed top-4 right-4 z-50 px-4 py-2 bg-black/60 backdrop-blur-lg border border-white/20 rounded-lg text-white text-sm hover:bg-black/80 transition-all"
-        >
-          {theme === 'dream' ? '🌙 Daring Mode' : '✨ Dream Mode'}
-        </button>
-      )}
 
       {/* Particle Animation Keyframes */}
       <style>{`
