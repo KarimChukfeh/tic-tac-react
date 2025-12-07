@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Shield, Lock, Eye, CheckCircle, ChevronDown } from 'lucide-react';
+import { Shield, Lock, Eye, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
@@ -227,6 +227,31 @@ function WhitepaperSection() {
 // Main Landing Component
 export default function Landing() {
   const [whitepaperExpanded, setWhitepaperExpanded] = useState(false);
+  const [expandedFaq, setExpandedFaq] = useState(null);
+
+  // FAQ data
+  const faqs = [
+    {
+      q: "How do duel arenas work?",
+      a: "Duel arenas are 1v1 matches on the blockchain. Two players join a room by paying the entry fee, then one player starts the match. Players take turns making moves on-chain. The winner receives 90% of the total entry fees (with 7.5% to owner and 2.5% to protocol)."
+    },
+    {
+      q: "Why play games on the blockchain?",
+      a: "Strategy games are perfect for blockchain: they're deterministic and impossible to cheat when moves are recorded on-chain. Unlike poker or casino games that require trusted randomness, our games are pure skill. Every move is recorded on-chain, and game outcomes are cryptographically secured."
+    },
+    {
+      q: "What if my opponent doesn't move?",
+      a: "Each player has a time limit per move. If a player fails to make a move within the time limit, they automatically forfeit the game. The smart contract enforces all timeouts—no disputes, no moderators needed."
+    },
+    {
+      q: "Can this really run forever?",
+      a: "Yes. The smart contracts are deployed on Arbitrum (an Ethereum Layer 2) with no off-switch, no admin panel, and no company required to keep them running. Even if this website disappears, anyone can interact with the contracts directly via Arbiscan or build their own interface. The contracts continue executing and game outcomes remain permanent."
+    },
+    {
+      q: "How do I know the prize pool is safe?",
+      a: "All entry fees go directly to the smart contract on Arbitrum. The contract holds the funds and distributes them automatically when a winner is determined. No human can access the funds. You can verify this by reading the contract code on Arbiscan."
+    }
+  ];
 
   return (
     <div 
@@ -496,6 +521,145 @@ export default function Landing() {
               </div>
             </button>
             {whitepaperExpanded && <WhitepaperSection />}
+          </div>
+        </section>
+
+        {/* ============ ZERO TRUST ARCHITECTURE ============ */}
+        <section id="zero-trust" className="px-6 py-24 border-t border-slate-800/50">
+          <div className="max-w-5xl mx-auto">
+            <div className="bg-gradient-to-br from-green-900/30 to-emerald-900/30 backdrop-blur-lg rounded-2xl p-8 md:p-12 border border-green-500/30">
+              <div className="max-w-4xl mx-auto">
+                <h2 className="text-4xl font-bold mb-6 text-center text-green-300">Zero-Trust Architecture</h2>
+
+                <div className="bg-green-500/10 border-l-4 border-green-400 p-6 rounded-r-xl mb-8">
+                  <p className="text-lg leading-relaxed text-green-100">
+                    ETour is a <strong className="text-green-300">fully autonomous protocol</strong> deployed on Arbitrum (Ethereum Layer 2). Every game move is recorded on-chain. Every rule is enforced by immutable code. No servers can go down. No admins can interfere. No company can shut it down.
+                  </p>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-6 mb-8">
+                  <div className="bg-white/5 backdrop-blur-sm border border-green-500/20 rounded-xl p-6">
+                    <h3 className="text-xl font-bold mb-3 text-green-300 flex items-center gap-2">
+                      <span className="text-2xl">🎮</span> The Game Protocol
+                    </h3>
+                    <ul className="space-y-2 text-green-100">
+                      <li className="flex items-start gap-2">
+                        <span className="text-green-400 mt-1">✓</span>
+                        <span>Every move recorded on-chain</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-green-400 mt-1">✓</span>
+                        <span>Smart contract validates all moves</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-green-400 mt-1">✓</span>
+                        <span>Automatic timeout enforcement</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-green-400 mt-1">✓</span>
+                        <span>Provably fair matchmaking</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-green-400 mt-1">✓</span>
+                        <span>Game outcomes permanent on L1</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-green-400 mt-1">→</span>
+                        <a
+                          href="https://arbiscan.io/address/0x7fc74A84a41Ac0E4872fB94EB3d6A8998884Ec9d#code"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-green-300 hover:text-green-200 underline decoration-green-400/50 hover:decoration-green-300 transition-colors"
+                        >
+                          You can read its immutable source code here.
+                        </a>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div className="bg-white/5 backdrop-blur-sm border border-blue-500/20 rounded-xl p-6">
+                    <h3 className="text-xl font-bold mb-3 text-blue-300 flex items-center gap-2">
+                      <span className="text-2xl">🌐</span> This Interface
+                    </h3>
+                    <ul className="space-y-2 text-blue-100">
+                      <li className="flex items-start gap-2">
+                        <span className="text-blue-400 mt-1">•</span>
+                        <span>Demo interface by creator</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-blue-400 mt-1">•</span>
+                        <span>Reads 100% public blockchain data</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-blue-400 mt-1">•</span>
+                        <span>Simply calls smart contract functions</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-blue-400 mt-1">•</span>
+                        <span>Can be rebuilt by anyone</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-blue-400 mt-1">•</span>
+                        <span>No special privileges</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-blue-400 mt-1">→</span>
+                        <a
+                          href="https://github.com/KarimChukfeh/tic-tac-react"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-300 hover:text-blue-200 underline decoration-blue-400/50 hover:decoration-blue-300 transition-colors"
+                        >
+                          Feel free to fork it and build your own!
+                        </a>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="bg-yellow-500/10 border border-yellow-400/30 rounded-xl p-6">
+                  <h3 className="text-xl font-bold mb-3 text-yellow-300 flex items-center gap-2">
+                    <span className="text-2xl">💡</span> What This Means
+                  </h3>
+                  <div className="space-y-3 text-yellow-100">
+                    <p>
+                      <strong className="text-yellow-200">Anyone can build their own game interface</strong> to this protocol. All interfaces connect to the same games, display the same boards, and follow the same rules.
+                    </p>
+                    <p>
+                      <strong className="text-yellow-200">This website is optional.</strong> You could play via Arbiscan, build your own UI, or use any third-party interface. The outcomes are secured by Arbitrum (and ultimately Ethereum L1), not by this website.
+                    </p>
+                    <p>
+                      <strong className="text-yellow-200">Game outcomes are permanent.</strong> Even if every website disappears, the game continues forever. Your wins and prizes are secured by smart contracts settling to Ethereum L1.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ============ FAQ SECTION ============ */}
+        <section className="px-6 py-24 border-t border-slate-800/50">
+          <div className="max-w-4xl mx-auto">
+            <h2 className="text-4xl font-bold mb-12 text-center text-white">Frequently Asked Questions</h2>
+            <div className="space-y-4">
+              {faqs.map((faq, idx) => (
+                <div key={idx} className="border border-slate-700/50 rounded-xl overflow-hidden bg-slate-900/60">
+                  <button
+                    onClick={() => setExpandedFaq(expandedFaq === idx ? null : idx)}
+                    className="w-full px-6 py-5 flex items-center justify-between hover:bg-slate-800/50 transition-colors cursor-pointer"
+                  >
+                    <span className="font-semibold text-left text-white">{faq.q}</span>
+                    {expandedFaq === idx ? <ChevronUp size={20} className="text-cyan-400" /> : <ChevronDown size={20} className="text-slate-400" />}
+                  </button>
+                  {expandedFaq === idx && (
+                    <div className="px-6 py-5 bg-slate-800/30 border-t border-slate-700/50">
+                      <p className="text-slate-300 leading-relaxed">{faq.a}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 
