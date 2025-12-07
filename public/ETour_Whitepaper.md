@@ -1,19 +1,21 @@
-# ETour Protocol
-## Perpetual Tournament Infrastructure for Skill-Based Competition
-
-**Version 2.0**  
-**Network: Arbitrum One**  
-**December 2025**
+# ETOUR
+### Perpetual Tournament Infrastructure for Skill-Based Competition
 
 ---
 
 ## Abstract
 
-ETour Protocol is game-agnostic tournament infrastructure that enables any deterministic competitive game to run perpetual, stake-based competitions entirely on-chain. Unlike traditional Web3 gaming platforms that sell tokens or promise earnings, ETour focuses on a single value proposition: **players compete in games they already know, and the better player wins real ETH**.
+ETour is a game-agnostic tournament protocol that enables any deterministic competitive game to run perpetual, stake-based competitions entirely on-chain. 
 
-The protocol separates universal tournament mechanics: matchmaking, bracket management, timeout escalation, prize distribution, from game-specific logic. This architectural decision allows multiple games to share battle-tested infrastructure while each maintains its own rules and identity. ETour launches with three flagship games: Eternal Tic-Tac-Toe, ChessOnChain, and Connect Four, chosen specifically because they require no hidden information and can be fully verified on-chain.
+Unlike traditional Web3 gaming platforms that sell tokens or promise earnings, ETour focuses on a single value proposition: **players compete in games they already know, and the better player claims real ETH**.
 
-This whitepaper explains both the philosophical reasoning behind ETour's design decisions and the technical implementation that makes trustless competition possible. It is intended for those who want to understand not just *what* ETour does, but *why* it was built this way.
+The protocol separates universal tournament mechanics: matchmaking, bracket management, timeout escalation, prize distribution from game-specific logic. Architectural decisions allow multiple games to share battle-tested infrastructure while each maintains its own rules and identity. 
+
+ETour launches with three flagship games: Tic-Tac-Toe, Connect Four, and Chess, chosen specifically because they require no hidden information and can be fully verified on-chain.
+
+This whitepaper explains both the philosophical reasoning behind ETour's design decisions and the technical implementation that makes trustless competition possible. 
+
+It is intended for those who want to understand not just *what* ETour does, but *why* it was built this way.
 
 ---
 

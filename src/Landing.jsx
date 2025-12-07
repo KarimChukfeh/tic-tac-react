@@ -165,7 +165,7 @@ function WhitepaperSection() {
         components={{
           h1: ({node, children, ...props}) => {
             const id = generateId(children);
-            return <h1 id={id} className="text-4xl font-bold text-cyan-300 mb-6 mt-8" {...props}>{children}</h1>;
+            return <h1 id={id} className="text-4xl font-bold text-cyan-300 mb-6 mt-8 text-center" {...props}>{children}</h1>;
           },
           h2: ({node, children, ...props}) => {
             const id = generateId(children);
@@ -173,7 +173,8 @@ function WhitepaperSection() {
           },
           h3: ({node, children, ...props}) => {
             const id = generateId(children);
-            return <h3 id={id} className="text-2xl font-bold text-cyan-300 mb-3 mt-6" {...props}>{children}</h3>;
+            const isSubtitle = children?.toString().includes('Perpetual Tournament Infrastructure');
+            return <h3 id={id} className={`text-2xl font-bold text-cyan-300 mb-3 mt-6 ${isSubtitle ? 'text-center' : ''}`} {...props}>{children}</h3>;
           },
           p: ({node, ...props}) => <p className="text-slate-300 mb-4 leading-relaxed" {...props} />,
           ul: ({node, ...props}) => <ul className="list-disc pl-6 mb-6 text-slate-300 space-y-2" {...props} />,
@@ -303,9 +304,16 @@ export default function Landing() {
           {/* Eyebrow */}
           <div className="flex items-center gap-4 mb-8">
             <div className="h-px w-16 bg-gradient-to-r from-transparent to-cyan-500/50" />
-            <span className="text-cyan-400 text-base md:text-lg font-semibold tracking-widest uppercase">
+            <a
+              href="#whitepaper"
+              onClick={(e) => {
+                e.preventDefault();
+                document.getElementById('whitepaper')?.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className="text-cyan-400 text-base md:text-lg font-semibold tracking-widest uppercase hover:text-cyan-300 transition-colors cursor-pointer"
+            >
               ETour Games
-            </span>
+            </a>
             <div className="h-px w-16 bg-gradient-to-l from-transparent to-cyan-500/50" />
           </div>
           
@@ -650,7 +658,7 @@ export default function Landing() {
               <h2 className="text-4xl font-bold text-white mb-4 group-hover:text-cyan-300 transition-colors">
                 Read the Whitepaper
               </h2>
-              <p className="text-slate-400 text-lg mb-4">Deep dive into ETour protocol architecture and design.</p>
+              <p className="text-slate-400 text-lg mb-4">Deep dive into ETour's architecture and philosophy.</p>
               <div className="flex items-center justify-center gap-2 text-cyan-400 group-hover:text-cyan-300 transition-colors">
                 <span className="text-sm font-medium">{whitepaperExpanded ? 'Collapse' : 'Expand'}</span>
                 <ChevronDown
