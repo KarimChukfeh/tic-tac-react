@@ -144,7 +144,10 @@ export default function Landing() {
         </div>
 
         {/* ============ HERO SECTION ============ */}
-        <section className="min-h-screen flex flex-col justify-center items-center px-6 py-20">
+        <br/>
+        <br/>
+        <br/>
+        <section className="min-h-[70vh] flex flex-col justify-center items-center px-6 py-16">
           
           {/* Eyebrow */}
           <div className="flex items-center gap-3 mb-8">
@@ -205,7 +208,7 @@ export default function Landing() {
               Pick Your Arena
             </h2>
             <p className="text-slate-400 text-lg">
-              Three games. Multiple stake levels. One rule: <span className="text-cyan-400">the better player wins.</span>
+              Three games. Multiple stake levels. One rule: <span className="text-cyan-400">winner takes all.</span>
             </p>
           </div>
           
@@ -302,7 +305,7 @@ export default function Landing() {
             
             <div className="text-center mb-16">
               <h2 className="text-4xl font-bold text-white mb-4">Why This Isn't a Scam</h2>
-              <p className="text-slate-400 text-lg">Everything runs on Arbitrum. Nothing hidden. Nothing centralized.</p>
+              <p className="text-slate-400 text-lg">Everything runs on Ethereum. Nothing hidden. Nothing centralized.</p>
             </div>
             
             <div className="grid md:grid-cols-2 gap-8">
