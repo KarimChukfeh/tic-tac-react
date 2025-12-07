@@ -1979,9 +1979,13 @@ This declaration is immutable and verifiable on-chain.`;
     };
   }, [showRw3Popup]);
 
-  // Helper to get tier name (only tier 0 exists now)
+  // Helper to get tier name
   const getTierName = (tierId) => {
-    return tierId === 0 ? 'Classic' : `Tier ${tierId}`;
+    const tierNames = {
+      0: 'Duel',      // 2-player tournaments (64 instances)
+      1: 'Octa'       // 8-player tournaments (16 instances)
+    };
+    return tierNames[tierId] || `Tier ${tierId}`;
   };
 
   // Theme colors (single theme - classic blue/cyan)
@@ -2425,7 +2429,7 @@ This declaration is immutable and verifiable on-chain.`;
     }
   }, [getReadOnlyContract]);
 
-  // Fetch all tournaments (only tier 0 exists now)
+  // Fetch all tournaments (tier 0: 64x 2-player, tier 1: 16x 8-player)
   const fetchAllTournaments = useCallback(async (silent = false) => {
     if (!silent) {
       setTournamentsLoading(true);
@@ -2434,62 +2438,68 @@ This declaration is immutable and verifiable on-chain.`;
     // Use read-only contract to avoid MetaMask rate limiting
     const readContract = getReadOnlyContract();
     const allTournaments = [];
-    const tierId = 0; // Only tier 0 exists
 
-    try {
-      // Get tier overview which returns arrays of data for all instances
-      const tierOverview = await readContract.getTierOverview(tierId);
-      const statuses = tierOverview[0];
-      const enrolledCounts = tierOverview[1];
+    // Fetch tournaments from both tiers
+    for (let tierId = 0; tierId < 2; tierId++) {
+      try {
+        console.log(`🔄 Fetching tier ${tierId}...`);
 
-      // Get tier config to get correct player count
-      const tierConfig = await readContract.tierConfigs(tierId);
-      const maxPlayers = Number(tierConfig.playerCount);
+        // Get tier overview which returns arrays of data for all instances
+        const tierOverview = await readContract.getTierOverview(tierId);
+        console.log(`Tier ${tierId} overview:`, tierOverview);
 
-      // Get entry fee for this tier
-      const fee = await readContract.ENTRY_FEES(tierId);
-      const entryFeeFormatted = ethers.formatEther(fee);
+        const statuses = tierOverview[0];
+        const enrolledCounts = tierOverview[1];
 
-      console.log(`Tier ${tierId}: ${statuses.length} instances`);
+        // Get tier config to get correct player count
+        const tierConfig = await readContract.tierConfigs(tierId);
+        const maxPlayers = Number(tierConfig.playerCount);
+        console.log(`Tier ${tierId} config: maxPlayers=${maxPlayers}`);
 
-      // Create tournament objects for each instance
-      // for (let i = 0; i < statuses.length; i++) {
-      for (let i = 0; i < 10; i++) {
-        const status = Number(statuses[i]);
-        const enrolledCount = Number(enrolledCounts[i]);
+        // Get entry fee for this tier
+        const fee = await readContract.ENTRY_FEES(tierId);
+        const entryFeeFormatted = ethers.formatEther(fee);
 
-        // Check if user is enrolled
-        let isEnrolled = false;
-        if (account) {
-          isEnrolled = await readContract.isEnrolled(tierId, i, account);
+        console.log(`✅ Tier ${tierId}: ${statuses?.length || 0} instances, fee=${entryFeeFormatted}`);
+
+        // Create tournament objects for each instance
+        for (let i = 0; i < statuses.length; i++) {
+          const status = Number(statuses[i]);
+          const enrolledCount = Number(enrolledCounts[i]);
+
+          // Check if user is enrolled
+          let isEnrolled = false;
+          if (account) {
+            isEnrolled = await readContract.isEnrolled(tierId, i, account);
+          }
+
+          // Get enrollment timeout data
+          let enrollmentTimeout = null;
+          let hasStartedViaTimeout = false;
+          try {
+            const tournamentInfo = await readContract.tournaments(tierId, i);
+            enrollmentTimeout = tournamentInfo.enrollmentTimeout;
+            hasStartedViaTimeout = tournamentInfo.hasStartedViaTimeout;
+          } catch (err) {
+            console.log('Could not fetch tournament timeout data:', err);
+          }
+
+          allTournaments.push({
+            tierId,
+            instanceId: i,
+            status,
+            enrolledCount,
+            maxPlayers,
+            entryFee: entryFeeFormatted,
+            isEnrolled,
+            enrollmentTimeout,
+            hasStartedViaTimeout,
+            tournamentStatus: status
+          });
         }
-
-        // Get enrollment timeout data
-        let enrollmentTimeout = null;
-        let hasStartedViaTimeout = false;
-        try {
-          const tournamentInfo = await readContract.tournaments(tierId, i);
-          enrollmentTimeout = tournamentInfo.enrollmentTimeout;
-          hasStartedViaTimeout = tournamentInfo.hasStartedViaTimeout;
-        } catch (err) {
-          console.log('Could not fetch tournament timeout data:', err);
-        }
-
-        allTournaments.push({
-          tierId,
-          instanceId: i,
-          status,
-          enrolledCount,
-          maxPlayers,
-          entryFee: entryFeeFormatted,
-          isEnrolled,
-          enrollmentTimeout,
-          hasStartedViaTimeout,
-          tournamentStatus: status
-        });
+      } catch (error) {
+        console.error(`Error fetching tier ${tierId}:`, error);
       }
-    } catch (error) {
-      console.error(`Error fetching tier ${tierId}:`, error);
     }
 
     console.log(`Total tournaments found: ${allTournaments.length}`);
