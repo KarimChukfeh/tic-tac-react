@@ -137,7 +137,7 @@ export default function Landing() {
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle className="text-blue-400" size={16} />
-                <span className="text-blue-100 font-medium">Zero Trackers</span>
+                <span className="text-blue-100 font-medium">Zero Cookies</span>
               </div>
             </div>
           </div>
@@ -150,7 +150,7 @@ export default function Landing() {
           <div className="flex items-center gap-3 mb-8">
             <div className="h-px w-12 bg-gradient-to-r from-transparent to-cyan-500/50" />
             <span className="text-cyan-400 text-sm font-semibold tracking-widest uppercase">
-              Live On Chain
+              ETour Games
             </span>
             <div className="h-px w-12 bg-gradient-to-l from-transparent to-cyan-500/50" />
           </div>
