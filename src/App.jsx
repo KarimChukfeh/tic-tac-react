@@ -24,10 +24,8 @@ import {
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import DUMMY_ABI from './TourABI.json';
-import ReactMarkdown from 'react-markdown';
-import rehypeRaw from 'rehype-raw';
 
-// Particle Background Component (Dream/Daring Themes)
+// Particle Background Component
 const ParticleBackground = ({ colors }) => {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
@@ -79,129 +77,6 @@ const ParticleBackground = ({ colors }) => {
           </div>
         );
       })}
-    </div>
-  );
-};
-
-// Whitepaper Markdown Renderer Component
-const WhitepaperSection = () => {
-  const [markdown, setMarkdown] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    fetch('/ETTT_Whitepaper.md')
-      .then(response => {
-        if (!response.ok) {
-          throw new Error('Failed to load whitepaper');
-        }
-        return response.text();
-      })
-      .then(text => {
-        setMarkdown(text);
-        setLoading(false);
-      })
-      .catch(err => {
-        setError(err.message);
-        setLoading(false);
-      });
-  }, []);
-
-  if (loading) {
-    return (
-      <div id="whitepaper" className="bg-gradient-to-br from-purple-900/30 to-indigo-900/30 backdrop-blur-lg rounded-2xl p-8 md:p-12 border border-purple-500/30 mb-16">
-        <p className="text-purple-100 text-center">Loading whitepaper...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div id="whitepaper" className="bg-gradient-to-br from-purple-900/30 to-indigo-900/30 backdrop-blur-lg rounded-2xl p-8 md:p-12 border border-purple-500/30 mb-16">
-        <p className="text-red-400 text-center">Error loading whitepaper: {error}</p>
-      </div>
-    );
-  }
-
-  // Helper function to generate heading IDs (slug)
-  const generateId = (text) => {
-    if (!text) return '';
-    return text
-      .toString()
-      .toLowerCase()
-      .trim()
-      .replace(/\s+/g, '-')           // Replace spaces with hyphens
-      .replace(/[^\w\-]+/g, '')       // Remove non-word chars except hyphens
-      .replace(/\-\-+/g, '-')         // Replace multiple hyphens with single hyphen
-      .replace(/^-+/, '')             // Trim hyphens from start
-      .replace(/-+$/, '');            // Trim hyphens from end
-  };
-
-  return (
-    <div id="whitepaper" className="bg-gradient-to-br from-purple-900/30 to-indigo-900/30 backdrop-blur-lg rounded-2xl p-8 md:p-12 border border-purple-500/30 mb-16">
-      <ReactMarkdown
-        rehypePlugins={[rehypeRaw]}
-        components={{
-          h1: ({node, children, ...props}) => {
-            const id = generateId(children);
-            return <h1 id={id} className="text-4xl font-bold text-purple-300 mb-6 mt-8" {...props}>{children}</h1>;
-          },
-          h2: ({node, children, ...props}) => {
-            const id = generateId(children);
-            return <h2 id={id} className="text-3xl font-bold text-purple-300 mb-4 mt-8" {...props}>{children}</h2>;
-          },
-          h3: ({node, children, ...props}) => {
-            const id = generateId(children);
-            return <h3 id={id} className="text-2xl font-bold text-purple-300 mb-3 mt-6" {...props}>{children}</h3>;
-          },
-          p: ({node, ...props}) => <p className="text-purple-100 mb-4 leading-relaxed" {...props} />,
-          ul: ({node, ...props}) => <ul className="list-disc pl-6 mb-6 text-purple-100 space-y-2" {...props} />,
-          ol: ({node, ...props}) => <ol className="list-decimal pl-6 mb-6 text-purple-100 space-y-2" {...props} />,
-          li: ({node, ...props}) => <li className="text-purple-100" {...props} />,
-          code: ({node, inline, className, ...props}) => {
-            // Check if it's inline code (single backticks) or block code (triple backticks)
-            const isInline = inline || !className?.includes('language-');
-            return isInline
-              ? <code className="bg-purple-500/20 px-2 py-1 rounded text-purple-200 text-sm" {...props} />
-              : <code className="block bg-purple-900/50 p-4 rounded-lg text-purple-200 text-sm overflow-x-auto mb-4" {...props} />;
-          },
-          pre: ({node, ...props}) => <pre className="bg-purple-900/50 p-4 rounded-lg overflow-x-auto mb-4" {...props} />,
-          blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-purple-400 pl-4 italic text-purple-200 my-4" {...props} />,
-          hr: ({node, ...props}) => <hr className="border-purple-500/30 my-8" {...props} />,
-          a: ({node, href, children, ...props}) => {
-            // Handle internal anchor links with smooth scrolling
-            if (href?.startsWith('#')) {
-              return (
-                <a
-                  href={href}
-                  className="text-purple-300 hover:text-purple-200 underline cursor-pointer"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    const element = document.getElementById(href.slice(1));
-                    if (element) {
-                      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }
-                  }}
-                  {...props}
-                >
-                  {children}
-                </a>
-              );
-            }
-            // External links
-            return <a href={href} className="text-purple-300 hover:text-purple-200 underline" target="_blank" rel="noopener noreferrer" {...props}>{children}</a>;
-          },
-          strong: ({node, ...props}) => <strong className="text-purple-200 font-bold" {...props} />,
-          table: ({node, ...props}) => <div className="overflow-x-auto mb-6"><table className="w-full border-collapse" {...props} /></div>,
-          thead: ({node, ...props}) => <thead className="border-b border-purple-500/30" {...props} />,
-          th: ({node, ...props}) => <th className="text-left p-3 text-purple-300" {...props} />,
-          td: ({node, ...props}) => <td className="p-3 text-purple-100 border-b border-purple-500/20" {...props} />,
-          details: ({node, ...props}) => <details className="mb-6 border border-purple-500/30 rounded-lg p-4 bg-purple-900/20" {...props} />,
-          summary: ({node, ...props}) => <summary className="cursor-pointer text-purple-300 text-xl font-bold mb-2 hover:text-purple-200 transition-colors" {...props} />,
-        }}
-      >
-        {markdown}
-      </ReactMarkdown>
     </div>
   );
 };
@@ -297,24 +172,17 @@ const calculatePrizes = (pot, isDraw) => {
 };
 
 // Prize Distribution Component
-const PrizeDistribution = ({ pot, winner, winnerAddress, theme }) => {
+const PrizeDistribution = ({ pot, winner, winnerAddress }) => {
   const isDraw = winner === 'draw';
   const prizes = calculatePrizes(pot, isDraw);
 
-  // Theme-aware colors for total pot
-  const potColors = theme === 'dream'
-    ? {
-        bg: 'bg-purple-500/20',
-        border: 'border-purple-400/50',
-        text: 'text-purple-200',
-        textBold: 'text-purple-300'
-      }
-    : {
-        bg: 'bg-blue-500/20',
-        border: 'border-blue-400/50',
-        text: 'text-blue-200',
-        textBold: 'text-blue-300'
-      };
+  // Colors for total pot
+  const potColors = {
+    bg: 'bg-purple-500/20',
+    border: 'border-purple-400/50',
+    text: 'text-purple-200',
+    textBold: 'text-purple-300'
+  };
 
   return (
     <div className="bg-gradient-to-br from-yellow-500/20 to-amber-500/20 border-2 border-yellow-400/50 rounded-xl p-6">
@@ -427,9 +295,7 @@ const TournamentCard = ({
   onEnter,
   loading,
   tierName,
-  theme,
   enrollmentTimeout,
-  hasStartedViaTimeout,
   onManualStart,
   onClaimAbandonedPool,
   tournamentStatus,
@@ -522,28 +388,17 @@ const TournamentCard = ({
     return `${hours}h ${minutes}m ${secs}s`;
   };
 
-  // Theme-aware colors: Dream = purple/cyan, Dare = blue/orange
-  const colors = theme === 'dream'
-    ? {
-        cardBg: 'from-purple-600/20 to-blue-600/20',
-        cardBorder: 'border-purple-400/40 hover:border-purple-400/70',
-        cardShadow: 'hover:shadow-purple-500/20',
-        icon: 'text-purple-400',
-        text: 'text-purple-300',
-        textMuted: 'text-purple-300/70',
-        progress: 'from-purple-500 to-blue-500',
-        buttonEnter: 'from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600'
-      }
-    : {
-        cardBg: 'from-blue-600/20 to-cyan-600/20',
-        cardBorder: 'border-blue-400/40 hover:border-blue-400/70',
-        cardShadow: 'hover:shadow-blue-500/20',
-        icon: 'text-blue-400',
-        text: 'text-blue-300',
-        textMuted: 'text-blue-300/70',
-        progress: 'from-blue-500 to-cyan-500',
-        buttonEnter: 'from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600'
-      };
+  // Card colors
+  const colors = {
+    cardBg: 'from-purple-600/20 to-blue-600/20',
+    cardBorder: 'border-purple-400/40 hover:border-purple-400/70',
+    cardShadow: 'hover:shadow-purple-500/20',
+    icon: 'text-purple-400',
+    text: 'text-purple-300',
+    textMuted: 'text-purple-300/70',
+    progress: 'from-purple-500 to-blue-500',
+    buttonEnter: 'from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600'
+  };
 
   return (
     <div className={`bg-gradient-to-br ${colors.cardBg} backdrop-blur-lg rounded-2xl p-6 border-2 ${colors.cardBorder} transition-all hover:shadow-xl ${colors.cardShadow}`}>
@@ -824,7 +679,7 @@ const TournamentCard = ({
 };
 
 // Tournament Bracket Component
-const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceEliminate, onClaimReplacement, onManualStart, onEnroll, account, loading, syncDots, theme, isEnrolled, entryFee, isFull }) => {
+const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceEliminate, onClaimReplacement, onManualStart, onEnroll, account, loading, syncDots, isEnrolled, entryFee, isFull }) => {
   const { tierId, instanceId, status, currentRound, enrolledCount, prizePool, rounds, playerCount, enrolledPlayers, firstEnrollmentTime, countdownActive, enrollmentTimeout } = tournamentData;
 
   // Calculate total rounds based on player count
@@ -919,22 +774,16 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
     return 'text-gray-400';
   };
 
-  // Theme-aware colors
-  const colors = theme === 'dream'
-    ? {
-        headerBg: 'from-purple-600/30 to-blue-600/30',
-        headerBorder: 'border-purple-400/30',
-        text: 'text-purple-300',
-        textHover: 'hover:text-purple-200',
-        icon: 'text-purple-400'
-      }
-    : {
-        headerBg: 'from-blue-600/30 to-cyan-600/30',
-        headerBorder: 'border-blue-400/30',
-        text: 'text-blue-300',
-        textHover: 'hover:text-blue-200',
-        icon: 'text-blue-400'
-      };
+  // Bracket colors
+  const colors = {
+    headerBg: 'from-purple-600/30 to-blue-600/30',
+    headerBorder: 'border-purple-400/30',
+    text: 'text-purple-300',
+    textHover: 'hover:text-purple-200',
+    icon: 'text-purple-400',
+    buttonEnter: 'from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600',
+    textMuted: 'text-purple-300/70'
+  };
 
   return (
     <div className="mb-16">
@@ -1202,7 +1051,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
       )}
 
       {/* Bracket View */}
-      <div className={`bg-gradient-to-br from-slate-900/50 to-${theme === 'dream' ? 'purple' : 'blue'}-900/30 backdrop-blur-lg rounded-2xl p-8 border ${colors.headerBorder}`}>
+      <div className={`bg-gradient-to-br from-slate-900/50 to-purple-900/30 backdrop-blur-lg rounded-2xl p-8 border ${colors.headerBorder}`}>
         <h3 className={`text-2xl font-bold ${colors.text} mb-6 flex items-center gap-2`}>
           <Grid size={24} />
           Tournament Bracket
@@ -1653,7 +1502,7 @@ const ActiveGameDisplay = ({ game, account, onMove, onStartGame, loading, refres
             moveCount={moveCount}
           />
 
-          {gameOver && <PrizeDistribution pot={game.pot} winner={isDraw ? 'draw' : 'winner'} winnerAddress={contractWinner} theme={theme} />}
+          {gameOver && <PrizeDistribution pot={game.pot} winner={isDraw ? 'draw' : 'winner'} winnerAddress={contractWinner} />}
         </div>
 
         {/* Center: Board Section */}
@@ -1989,13 +1838,20 @@ const ActiveGameDisplay = ({ game, account, onMove, onStartGame, loading, refres
 };
 
 export default function TicTacBlock() {
-  const CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+  const CONTRACT_ADDRESS = "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9";
   const EXPECTED_CHAIN_ID = 412346;
+  const RPC_URL = 'http://127.0.0.1:8545';
   const ETHERSCAN_URL = `https://arbiscan.io/address/${CONTRACT_ADDRESS}`;
+
+  // Helper to get read-only contract (bypasses MetaMask for read operations)
+  const getReadOnlyContract = useCallback(() => {
+    const provider = new ethers.JsonRpcProvider(RPC_URL);
+    return new ethers.Contract(CONTRACT_ADDRESS, DUMMY_ABI, provider);
+  }, []);
 
   // Wallet & Contract State
   const [account, setAccount] = useState(null);
-  const [contract, setContract] = useState(null);
+  const [contract, setContract] = useState(null); // This contract has signer for write ops
 
   // Game State
   const [game, setGame] = useState(null);
@@ -2009,10 +1865,11 @@ export default function TicTacBlock() {
   const [lastGame, setLastGame] = useState(null);
   const [totalGamesPlayed, setTotalGamesPlayed] = useState(0);
 
-  // Theme State - 'dream' (blue/cyan), 'daring' (red/orange)
-  const [theme, setTheme] = useState('dream');
+  // UI State
   const [expandedFaq, setExpandedFaq] = useState(null);
-  const [showThemeToggle, setShowThemeToggle] = useState(true);
+
+  // Theme is now fixed (single tier, no theme switching)
+  const theme = 'dream';
 
   // Tournament State
   const [tournaments, setTournaments] = useState([]);
@@ -2122,79 +1979,33 @@ This declaration is immutable and verifiable on-chain.`;
     };
   }, [showRw3Popup]);
 
-  // Helper to cycle through themes
-  const cycleTheme = () => {
-    setTheme(current => {
-      if (current === 'dream') return 'daring';
-      return 'dream';
-    });
-  };
-
-  // Helper to get tier name
+  // Helper to get tier name (only tier 0 exists now)
   const getTierName = (tierId) => {
-    const tierNames = {
-      0: 'Classic',
-      1: 'Minor',
-      2: 'Standard',
-      3: 'Major',
-      4: 'Mega',
-      5: 'Ultimate',
-      6: 'Rapid'
-    };
-    return tierNames[tierId] || `Tier ${tierId}`;
+    return tierId === 0 ? 'Classic' : `Tier ${tierId}`;
   };
 
-  // Theme-specific colors
-  const themeColors = {
-    dream: {
-      primary: 'rgba(0, 255, 255, 0.5)',
-      secondary: 'rgba(255, 0, 255, 0.5)',
-      gradient: 'linear-gradient(135deg, #0a0015 0%, #1a0030 50%, #0f001a 100%)',
-      border: 'rgba(0, 255, 255, 0.3)',
-      glow: 'rgba(0, 255, 255, 0.3)',
-      particleColors: ['#00ffff', '#ff00ff'],
-      icon: '🔥',
-      label: 'Dare to Level Up?',
-      // Hero section colors
-      heroGlow: 'from-blue-500 via-cyan-500 to-blue-500',
-      heroIcon: 'text-blue-400',
-      heroTitle: 'from-blue-400 via-cyan-400 to-blue-400',
-      heroText: 'text-blue-200',
-      heroSubtext: 'text-blue-300',
-      buttonGradient: 'from-blue-500 to-cyan-500',
-      buttonHover: 'hover:from-blue-600 hover:to-cyan-600',
-      infoCard: 'from-blue-500/20 to-cyan-500/20',
-      infoBorder: 'border-blue-400/30',
-      infoIcon: 'text-blue-400',
-      infoTitle: 'text-blue-300',
-      infoText: 'text-blue-200'
-    },
-    daring: {
-      primary: 'rgba(255, 69, 0, 0.5)',
-      secondary: 'rgba(255, 165, 0, 0.5)',
-      gradient: 'linear-gradient(135deg, #1a0000 0%, #330a00 50%, #1a0500 100%)',
-      border: 'rgba(255, 69, 0, 0.3)',
-      glow: 'rgba(255, 69, 0, 0.3)',
-      particleColors: ['#ff4500', '#ffa500'],
-      icon: '✨',
-      label: 'Back to Classic',
-      // Hero section colors
-      heroGlow: 'from-red-500 via-orange-500 to-red-500',
-      heroIcon: 'text-red-400',
-      heroTitle: 'from-red-400 via-orange-400 to-red-400',
-      heroText: 'text-red-200',
-      heroSubtext: 'text-orange-300',
-      buttonGradient: 'from-red-500 to-orange-500',
-      buttonHover: 'hover:from-red-600 hover:to-orange-600',
-      infoCard: 'from-red-500/20 to-orange-500/20',
-      infoBorder: 'border-red-400/30',
-      infoIcon: 'text-red-400',
-      infoTitle: 'text-orange-300',
-      infoText: 'text-red-200'
-    }
+  // Theme colors (single theme - classic blue/cyan)
+  const currentTheme = {
+    primary: 'rgba(0, 255, 255, 0.5)',
+    secondary: 'rgba(255, 0, 255, 0.5)',
+    gradient: 'linear-gradient(135deg, #0a0015 0%, #1a0030 50%, #0f001a 100%)',
+    border: 'rgba(0, 255, 255, 0.3)',
+    glow: 'rgba(0, 255, 255, 0.3)',
+    particleColors: ['#00ffff', '#ff00ff'],
+    // Hero section colors
+    heroGlow: 'from-blue-500 via-cyan-500 to-blue-500',
+    heroIcon: 'text-blue-400',
+    heroTitle: 'from-blue-400 via-cyan-400 to-blue-400',
+    heroText: 'text-blue-200',
+    heroSubtext: 'text-blue-300',
+    buttonGradient: 'from-blue-500 to-cyan-500',
+    buttonHover: 'hover:from-blue-600 hover:to-cyan-600',
+    infoCard: 'from-blue-500/20 to-cyan-500/20',
+    infoBorder: 'border-blue-400/30',
+    infoIcon: 'text-blue-400',
+    infoTitle: 'text-blue-300',
+    infoText: 'text-blue-200'
   };
-
-  const currentTheme = themeColors[theme];
 
   // Previous game state for change detection
   const prevGameState = useRef(null);
@@ -2272,13 +2083,18 @@ This declaration is immutable and verifiable on-chain.`;
 
       setLoading(true);
 
-      // Request accounts
+      // Request accounts - this prompts MetaMask unlock if needed
       const accounts = await window.ethereum.request({
         method: 'eth_requestAccounts'
       });
 
-      const web3Provider = new ethers.BrowserProvider(window.ethereum);
-      const network = await web3Provider.getNetwork();
+      if (!accounts || accounts.length === 0) {
+        throw new Error('No accounts returned. Please unlock MetaMask and try again.');
+      }
+
+      // Use direct RPC for network check (avoid MetaMask rate limiting)
+      const readProvider = new ethers.JsonRpcProvider(RPC_URL);
+      const network = await readProvider.getNetwork();
 
       const networkData = {
         name: network.name || 'Unknown',
@@ -2307,8 +2123,11 @@ This declaration is immutable and verifiable on-chain.`;
         }
       }
 
+      // Get signer from MetaMask for write operations
+      const web3Provider = new ethers.BrowserProvider(window.ethereum);
       const web3Signer = await web3Provider.getSigner();
 
+      // Create contract with signer for write operations
       const contractInstance = new ethers.Contract(
         CONTRACT_ADDRESS,
         DUMMY_ABI,
@@ -2320,7 +2139,13 @@ This declaration is immutable and verifiable on-chain.`;
       setAccount(accounts[0]);
       setContract(contractInstance);
 
-      await loadContractData(contractInstance, false);
+      // Use read-only provider for loading data (avoids MetaMask rate limiting)
+      const readOnlyContract = new ethers.Contract(
+        CONTRACT_ADDRESS,
+        DUMMY_ABI,
+        readProvider
+      );
+      await loadContractData(readOnlyContract, false);
       setLoading(false);
     } catch (error) {
       console.error('Error connecting wallet:', error);
@@ -2331,6 +2156,8 @@ This declaration is immutable and verifiable on-chain.`;
         errorMessage += 'You rejected the connection request.';
       } else if (error.code === 'NETWORK_ERROR') {
         errorMessage += 'Network error. Are you connected to Arbitrum One?\n\nSwitch to Arbitrum One in MetaMask.';
+      } else if (error.code === -32002) {
+        errorMessage += 'MetaMask is busy. Please open MetaMask and complete any pending actions.';
       } else {
         errorMessage += error.message;
       }
@@ -2366,7 +2193,7 @@ This declaration is immutable and verifiable on-chain.`;
       }
 
       // Get recent tournaments from each tier
-      for (let tierId = 0; tierId < 7; tierId++) {
+      for (let tierId = 0; tierId < 3; tierId++) {
         try {
           const tierTournaments = await contractInstance.getRecentTournaments(tierId, 5);
           const validTournaments = Array.from(tierTournaments).filter(t => t && t.exists);
@@ -2429,17 +2256,7 @@ This declaration is immutable and verifiable on-chain.`;
       if (isInitialLoad) {
         console.log('🔄 Fetching tournaments for initial load...');
         try {
-          // Fetch based on the current theme
-          const currentTheme = themeRef.current || 'daring';
-
-          if (currentTheme === 'dream') {
-            // Fetch Dream mode tournaments (all tiers 0-6)
-            await fetchAllDaringTiers(false);
-          } else {
-            // Fetch all Daring mode tiers
-            await fetchAllDaringTiers(false);
-          }
-
+          await fetchAllTournaments(false);
           console.log('✅ Initial tournament data loaded');
         } catch (err) {
           console.warn('Could not fetch tournaments on initial load:', err);
@@ -2574,19 +2391,20 @@ This declaration is immutable and verifiable on-chain.`;
 
   // Fetch cached tournament and match stats
   const fetchCachedStats = useCallback(async (silent = false) => {
-    if (!contract) return;
-
     try {
       if (!silent) {
         setCachedStatsLoading(true);
       }
+
+      // Use read-only contract to avoid MetaMask rate limiting
+      const readContract = getReadOnlyContract();
 
       let matches = [];
       let tournaments = [];
 
       // Fetch all cached matches with error handling
       try {
-        const allCachedMatches = await contract.getAllCachedMatches();
+        const allCachedMatches = await readContract.getAllCachedMatches();
         // Convert to plain array and filter existing matches
         matches = Array.from(allCachedMatches).filter(m => m && m.exists);
       } catch (err) {
@@ -2595,7 +2413,7 @@ This declaration is immutable and verifiable on-chain.`;
 
       // Fetch all completed tournaments
       try {
-        const allCompletedTournaments = await contract.getAllCompletedTournaments();
+        const allCompletedTournaments = await readContract.getAllCompletedTournaments();
         // Convert to plain array and filter existing tournaments
         tournaments = Array.from(allCompletedTournaments).filter(t => t && t.exists);
         console.log(`Fetched ${tournaments.length} completed tournaments`);
@@ -2639,114 +2457,85 @@ This declaration is immutable and verifiable on-chain.`;
         setCachedStatsLoading(false);
       }
     }
-  }, [contract]);
+  }, [getReadOnlyContract]);
 
-  // Fetch all Dare mode tiers (extracted for reuse)
-  const fetchAllDaringTiers = useCallback(async (silent = false) => {
-    if (!contract) return;
-
+  // Fetch all tournaments (only tier 0 exists now)
+  const fetchAllTournaments = useCallback(async (silent = false) => {
     if (!silent) {
       setTournamentsLoading(true);
     }
+
+    // Use read-only contract to avoid MetaMask rate limiting
+    const readContract = getReadOnlyContract();
     const allTournaments = [];
+    const tierId = 0; // Only tier 0 exists
 
-    for (let tierId = 0; tierId <= 6; tierId++) {
-      try {
-        // Get tier overview which returns arrays of data for all instances
-        const tierOverview = await contract.getTierOverview(tierId);
-        const statuses = tierOverview[0];
-        const enrolledCounts = tierOverview[1];
+    try {
+      // Get tier overview which returns arrays of data for all instances
+      const tierOverview = await readContract.getTierOverview(tierId);
+      const statuses = tierOverview[0];
+      const enrolledCounts = tierOverview[1];
 
-        // Get tier config to get correct player count
-        const tierConfig = await contract.tierConfigs(tierId);
-        const maxPlayers = Number(tierConfig.playerCount);
+      // Get tier config to get correct player count
+      const tierConfig = await readContract.tierConfigs(tierId);
+      const maxPlayers = Number(tierConfig.playerCount);
 
-        // Get entry fee for this tier
-        const fee = await contract.ENTRY_FEES(tierId);
-        const entryFeeFormatted = ethers.formatEther(fee);
+      // Get entry fee for this tier
+      const fee = await readContract.ENTRY_FEES(tierId);
+      const entryFeeFormatted = ethers.formatEther(fee);
 
-        console.log(`Tier ${tierId}: ${statuses.length} instances`);
+      console.log(`Tier ${tierId}: ${statuses.length} instances`);
 
-        // Create tournament objects for each instance
-        for (let i = 0; i < statuses.length; i++) {
-          const status = Number(statuses[i]);
-          const enrolledCount = Number(enrolledCounts[i]);
+      // Create tournament objects for each instance
+      // for (let i = 0; i < statuses.length; i++) {
+      for (let i = 0; i < 10; i++) {
+        const status = Number(statuses[i]);
+        const enrolledCount = Number(enrolledCounts[i]);
 
-          // Check if user is enrolled
-          let isEnrolled = false;
-          if (account) {
-            isEnrolled = await contract.isEnrolled(tierId, i, account);
-          }
-
-          // Get enrollment timeout data with tier information
-          let enrollmentTimeout = null;
-          let hasStartedViaTimeout = false;
-          try {
-            const tournamentInfo = await contract.tournaments(tierId, i);
-            enrollmentTimeout = tournamentInfo.enrollmentTimeout;
-            hasStartedViaTimeout = tournamentInfo.hasStartedViaTimeout;
-
-            // Debug logging
-            if (enrollmentTimeout) {
-              console.log(`Tournament ${tierId}-${i} escalation data:`, {
-                escalation1Start: Number(enrollmentTimeout.escalation1Start),
-                escalation2Start: Number(enrollmentTimeout.escalation2Start),
-                activeEscalation: Number(enrollmentTimeout.activeEscalation),
-                forfeitPool: enrollmentTimeout.forfeitPool?.toString() || '0',
-                hasStartedViaTimeout
-              });
-            }
-          } catch (err) {
-            console.log('Could not fetch tournament timeout data:', err);
-          }
-
-          allTournaments.push({
-            tierId,
-            instanceId: i,
-            status,
-            enrolledCount,
-            maxPlayers,
-            entryFee: entryFeeFormatted,
-            isEnrolled,
-            enrollmentTimeout,
-            hasStartedViaTimeout,
-            tournamentStatus: status // Store raw status for conditional rendering
-          });
+        // Check if user is enrolled
+        let isEnrolled = false;
+        if (account) {
+          isEnrolled = await readContract.isEnrolled(tierId, i, account);
         }
-      } catch (error) {
-        console.error(`Error fetching tier ${tierId}:`, error);
+
+        // Get enrollment timeout data
+        let enrollmentTimeout = null;
+        let hasStartedViaTimeout = false;
+        try {
+          const tournamentInfo = await readContract.tournaments(tierId, i);
+          enrollmentTimeout = tournamentInfo.enrollmentTimeout;
+          hasStartedViaTimeout = tournamentInfo.hasStartedViaTimeout;
+        } catch (err) {
+          console.log('Could not fetch tournament timeout data:', err);
+        }
+
+        allTournaments.push({
+          tierId,
+          instanceId: i,
+          status,
+          enrolledCount,
+          maxPlayers,
+          entryFee: entryFeeFormatted,
+          isEnrolled,
+          enrollmentTimeout,
+          hasStartedViaTimeout,
+          tournamentStatus: status
+        });
       }
+    } catch (error) {
+      console.error(`Error fetching tier ${tierId}:`, error);
     }
 
     console.log(`Total tournaments found: ${allTournaments.length}`);
 
-    // Sort within each tier by enrolledCount descending (most enrolled first)
-    const tierGroups = {};
-    allTournaments.forEach(tournament => {
-      if (!tierGroups[tournament.tierId]) {
-        tierGroups[tournament.tierId] = [];
-      }
-      tierGroups[tournament.tierId].push(tournament);
-    });
+    // Sort by enrolledCount descending (most enrolled first)
+    allTournaments.sort((a, b) => b.enrolledCount - a.enrolledCount);
 
-    // Sort each tier's instances
-    Object.values(tierGroups).forEach(tierTournaments => {
-      tierTournaments.sort((a, b) => b.enrolledCount - a.enrolledCount);
-    });
-
-    // Flatten back to a single array, maintaining tier order (0-6)
-    const sortedTournaments = [];
-    for (let tierId = 0; tierId <= 6; tierId++) {
-      if (tierGroups[tierId]) {
-        sortedTournaments.push(...tierGroups[tierId]);
-      }
-    }
-
-    setTournaments(sortedTournaments);
+    setTournaments(allTournaments);
     if (!silent) {
       setTournamentsLoading(false);
     }
-  }, [contract, account]);
+  }, [getReadOnlyContract, account]);
 
   // Handle tournament enrollment
   const handleEnroll = async (tierId, instanceId, entryFee) => {
@@ -2777,12 +2566,7 @@ This declaration is immutable and verifiable on-chain.`;
       }
 
       // Refresh tournament data in background
-      if (theme === 'dream') {
-        await fetchAllDaringTiers();
-      } else if (theme === 'daring') {
-        // Re-fetch all Dare mode tiers
-        await fetchAllDaringTiers();
-      }
+      await fetchAllTournaments();
 
       setTournamentsLoading(false);
     } catch (error) {
@@ -2928,12 +2712,7 @@ This declaration is immutable and verifiable on-chain.`;
       await fetchCachedStats(true);
 
       // Refresh tournament data
-      if (theme === 'dream') {
-        await fetchAllDaringTiers();
-      } else if (theme === 'daring') {
-        // Re-fetch all Dare mode tiers
-        await fetchAllDaringTiers();
-      }
+      await fetchAllTournaments();
 
       setTournamentsLoading(false);
     } catch (error) {
@@ -3044,11 +2823,7 @@ This declaration is immutable and verifiable on-chain.`;
       await fetchCachedStats(true);
 
       // Refresh tournament data
-      if (theme === 'dream') {
-        await fetchAllDaringTiers();
-      } else if (theme === 'daring') {
-        await fetchAllDaringTiers();
-      }
+      await fetchAllTournaments();
 
       setTournamentsLoading(false);
     } catch (error) {
@@ -3336,11 +3111,7 @@ This declaration is immutable and verifiable on-chain.`;
       await fetchCachedStats(true);
 
       // Refresh tournament data
-      if (theme === 'dream') {
-        await fetchAllDaringTiers();
-      } else if (theme === 'daring') {
-        await fetchAllDaringTiers();
-      }
+      await fetchAllTournaments();
 
       setMatchLoading(false);
     } catch (error) {
@@ -3371,11 +3142,7 @@ This declaration is immutable and verifiable on-chain.`;
       await fetchCachedStats(true);
 
       // Refresh tournament data
-      if (theme === 'dream') {
-        await fetchAllDaringTiers();
-      } else if (theme === 'daring') {
-        await fetchAllDaringTiers();
-      }
+      await fetchAllTournaments();
 
       // Refresh and show tournament bracket
       const bracketData = await refreshTournamentBracket(contract, tierId, instanceId);
@@ -3415,11 +3182,7 @@ This declaration is immutable and verifiable on-chain.`;
       await fetchCachedStats(true);
 
       // Refresh tournament data
-      if (theme === 'dream') {
-        await fetchAllDaringTiers();
-      } else if (theme === 'daring') {
-        await fetchAllDaringTiers();
-      }
+      await fetchAllTournaments();
 
       setMatchLoading(false);
     } catch (error) {
@@ -3480,17 +3243,12 @@ This declaration is immutable and verifiable on-chain.`;
     setMoveHistory([]);
   };
 
-  // Initialize contract in read-only mode on mount (using MetaMask's provider if available)
+  // Initialize contract in read-only mode on mount (using public RPC - no wallet required)
   useEffect(() => {
     const initReadOnlyContract = async () => {
       try {
-        if (!window.ethereum) {
-          console.log('No wallet detected, skipping contract init until wallet connects');
-          setInitialLoading(false);
-          return;
-        }
-
-        const provider = new ethers.BrowserProvider(window.ethereum);
+        // Use JsonRpcProvider for read-only access - doesn't require MetaMask
+        const provider = new ethers.JsonRpcProvider(RPC_URL);
         const readOnlyContract = new ethers.Contract(
           CONTRACT_ADDRESS,
           DUMMY_ABI,
@@ -3501,6 +3259,7 @@ This declaration is immutable and verifiable on-chain.`;
         await loadContractData(readOnlyContract, true);
       } catch (error) {
         console.error('Error initializing read-only contract:', error);
+        // Page should still load even if contract init fails
         setInitialLoading(false);
       }
     };
@@ -3512,12 +3271,14 @@ This declaration is immutable and verifiable on-chain.`;
 
   // Listen for account changes
   useEffect(() => {
-    if (window.ethereum) {
+    if (window.ethereum && typeof window.ethereum.on === 'function') {
       window.ethereum.on('accountsChanged', (accounts) => {
         if (accounts.length === 0) {
           setAccount(null);
         } else {
-          connectWallet();
+          connectWallet().catch(err => {
+            console.error('Error reconnecting wallet:', err);
+          });
         }
       });
 
@@ -3527,25 +3288,15 @@ This declaration is immutable and verifiable on-chain.`;
     }
   }, []);
 
-  // Fetch tournaments when theme or contract changes
+  // Fetch tournaments on mount and when account changes
   useEffect(() => {
-    if (contract) {
-      if (theme === 'dream') {
-        // Dream mode: fetch all tiers 0-6 (now includes all tiers)
-        fetchAllDaringTiers();
-      } else if (theme === 'daring') {
-        // Daring mode: fetch all tiers 1-6
-        fetchAllDaringTiers();
-      }
-    }
-  }, [theme, contract, account, fetchTournaments, fetchAllDaringTiers]);
+    fetchAllTournaments();
+  }, [account, fetchAllTournaments]);
 
   // Fetch cached stats when contract is available
   useEffect(() => {
-    if (contract) {
-      fetchCachedStats();
-    }
-  }, [contract, fetchCachedStats]);
+    fetchCachedStats();
+  }, [fetchCachedStats]);
 
   // Poll match data every 3 seconds when viewing a match (using refs for seamless syncing)
   const matchRef = useRef(currentMatch);
@@ -3679,11 +3430,7 @@ This declaration is immutable and verifiable on-chain.`;
 
               // Refresh and show tournament bracket
               await fetchCachedStats(true);
-              if (theme === 'dream') {
-                await fetchAllDaringTiers();
-              } else if (theme === 'daring') {
-                await fetchAllDaringTiers();
-              }
+              await fetchAllTournaments();
 
               const bracketData = await refreshTournamentBracket(contractInstance, updatedMatch.tierId, updatedMatch.instanceId);
               if (bracketData) setViewingTournament(bracketData);
@@ -3694,11 +3441,7 @@ This declaration is immutable and verifiable on-chain.`;
               setViewingTournament(null);
 
               await fetchCachedStats(true);
-              if (theme === 'dream') {
-                await fetchAllDaringTiers();
-              } else if (theme === 'daring') {
-                await fetchAllDaringTiers();
-              }
+              await fetchAllTournaments();
             }
             return;
           }
@@ -3712,11 +3455,7 @@ This declaration is immutable and verifiable on-chain.`;
             setViewingTournament(null);
 
             await fetchCachedStats(true);
-            if (theme === 'dream') {
-              await fetchAllDaringTiers();
-            } else if (theme === 'daring') {
-              await fetchAllDaringTiers();
-            }
+            await fetchAllTournaments();
             return;
           }
 
@@ -3737,11 +3476,7 @@ This declaration is immutable and verifiable on-chain.`;
               setViewingTournament(null);
 
               await fetchCachedStats(true);
-              if (theme === 'dream') {
-                await fetchAllDaringTiers();
-              } else if (theme === 'daring') {
-                await fetchAllDaringTiers();
-              }
+              await fetchAllTournaments();
               return;
             }
           }
@@ -3761,7 +3496,7 @@ This declaration is immutable and verifiable on-chain.`;
     const matchPollInterval = setInterval(doMatchSync, 2000);
 
     return () => clearInterval(matchPollInterval);
-  }, [currentMatch?.tierId, currentMatch?.instanceId, currentMatch?.roundNumber, currentMatch?.matchNumber, account, refreshMatchData, theme, fetchCachedStats, fetchTournaments, fetchAllDaringTiers, refreshTournamentBracket]);
+  }, [currentMatch?.tierId, currentMatch?.instanceId, currentMatch?.roundNumber, currentMatch?.matchNumber, account, refreshMatchData, fetchCachedStats, fetchTournaments, fetchAllTournaments, refreshTournamentBracket]);
 
   // Increment bracket sync dots every second
   useEffect(() => {
@@ -3777,15 +3512,13 @@ This declaration is immutable and verifiable on-chain.`;
     return () => clearInterval(dotsInterval);
   }, [viewingTournament]);
 
-  // Auto-refresh tournament cards every 3 seconds (smooth update without clearing the list)
-  const themeRef = useRef(theme);
+  // Auto-refresh tournament cards (refs for seamless syncing)
   const contractRefForTournaments = useRef(contract);
 
   // Keep refs updated
   useEffect(() => {
-    themeRef.current = theme;
     contractRefForTournaments.current = contract;
-  }, [theme, contract]);
+  }, [contract]);
 
   // Tournament auto-sync removed - tournaments will only refresh on manual actions
 
@@ -3796,25 +3529,6 @@ This declaration is immutable and verifiable on-chain.`;
   useEffect(() => {
     contractRefForCachedStats.current = contract;
   }, [contract]);
-
-  // Scroll listener to hide theme toggle when scrolled past hero section
-  useEffect(() => {
-    const handleScroll = () => {
-      // Get the hero section height (approximately where "Why Arbitrum?" ends)
-      // We'll hide the button when scrolled past ~600px
-      const scrollPosition = window.scrollY;
-      const threshold = 600;
-
-      if (scrollPosition > threshold) {
-        setShowThemeToggle(false);
-      } else {
-        setShowThemeToggle(true);
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
 
   // Loading animation component
   if (initialLoading) {
@@ -3892,12 +3606,11 @@ This declaration is immutable and verifiable on-chain.`;
 
       {/* Trust Banner */}
       <div style={{
-        background: theme === 'dream' ? 'rgba(0, 100, 200, 0.2)' : 'rgba(139, 0, 0, 0.2)',
+        background: 'rgba(0, 100, 200, 0.2)',
         borderBottom: `1px solid ${currentTheme.border}`,
         backdropFilter: 'blur(10px)',
         position: 'relative',
-        zIndex: 10,
-        transition: 'background 3s ease-in-out, border-bottom 5s ease-in-out'
+        zIndex: 10
       }}>
         <div className="max-w-7xl mx-auto px-6 py-3">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-4 text-xs md:text-sm">
@@ -3993,8 +3706,8 @@ This declaration is immutable and verifiable on-chain.`;
           <h1 className={`text-6xl md:text-7xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r ${currentTheme.heroTitle}`}>
             Eternal TicTacToe
           </h1>
-          <p className={`text-2xl ${currentTheme.heroText} mb-6`}>
-            Provably Fair • <a href="#zero-trust" className={`${currentTheme.heroText} hover:text-green-300 transition-colors underline decoration-${theme === 'daring' ? 'red' : 'blue'}-400/50 hover:decoration-green-400 underline-offset-4`}>Zero Trust</a> • 100% On-Chain
+          <p className="text-2xl text-blue-200 mb-6">
+            Provably Fair • <a href="#zero-trust" className="text-blue-200 hover:text-green-300 transition-colors underline decoration-blue-400/50 hover:decoration-green-400 underline-offset-4">Zero Trust</a> • 100% On-Chain
           </p>
           <p className={`text-lg ${currentTheme.heroSubtext} max-w-3xl mx-auto mb-8`}>
             Play Tic-Tac-Toe on the blockchain. Real opponents. Real ETH on the line.
@@ -4008,41 +3721,29 @@ This declaration is immutable and verifiable on-chain.`;
           <div className="grid md:grid-cols-3 gap-4 max-w-4xl mx-auto mb-8">
             <div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
-          <Trophy className="text-green-400" size={20} />
-          <span className="font-bold text-green-300">
-            {theme === 'daring' ? 'Winner Takes 90%' : 'Winner Takes 90%'}
-          </span>
+                <Trophy className="text-green-400" size={20} />
+                <span className="font-bold text-green-300">Winner Takes 90%</span>
               </div>
               <p className="text-sm text-green-200">
-                {theme === 'daring'
-                  ? 'High stakes - winner receives 90% of total entry fees'
-                  : 'Champion walks away with 90% of the pot'}
+                Champion walks away with 90% of the pot
               </p>
             </div>
             <div className="bg-gradient-to-br from-yellow-500/20 to-amber-500/20 border border-yellow-400/30 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
-          <DollarSign className="text-yellow-400" size={20} />
-          <span className="font-bold text-yellow-300">
-            {theme === 'daring' ? '0.01 ETH Entry' : '0.002 ETH Entry'}
-          </span>
+                <DollarSign className="text-yellow-400" size={20} />
+                <span className="font-bold text-yellow-300">Low Entry Fees</span>
               </div>
               <p className="text-sm text-yellow-200">
-                {theme === 'daring'
-                  ? 'Higher stakes for serious competitors'
-                  : 'Low stakes, high strategy gameplay'}
+                Accessible stakes for all skill levels
               </p>
             </div>
-            <div className={`bg-gradient-to-br ${currentTheme.infoCard} border ${currentTheme.infoBorder} rounded-xl p-4`}>
+            <div className="bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-blue-400/30 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
-          <Zap className={currentTheme.infoIcon} size={20} />
-          <span className={`font-bold ${currentTheme.infoTitle}`}>
-            {theme === 'daring' ? 'Block Mechanic' : 'Random First Move'}
-          </span>
+                <Zap className="text-blue-400" size={20} />
+                <span className="font-bold text-blue-300">Random First Move</span>
               </div>
-              <p className={`text-sm ${currentTheme.infoText}`}>
-                {theme === 'daring'
-                  ? 'Advanced blocking strategy - control the board'
-                  : 'On-chain coin flip decides who starts'}
+              <p className="text-sm text-blue-200">
+                On-chain coin flip decides who starts
               </p>
             </div>
           </div>
@@ -4067,24 +3768,24 @@ This declaration is immutable and verifiable on-chain.`;
 
           {/* Why Arbitrum Info - Always Visible */}
           <div className="mt-6 max-w-2xl mx-auto">
-            <div className={`bg-${theme === 'daring' ? 'red' : 'blue'}-500/10 border ${currentTheme.infoBorder} rounded-lg p-4`}>
+            <div className="bg-blue-500/10 border border-blue-400/30 rounded-lg p-4">
               <div className="flex items-start gap-3">
-          <Info size={18} className={`${currentTheme.infoIcon} mt-0.5 flex-shrink-0`} />
-          <div className="text-sm w-full">
-            <p className={`${currentTheme.heroText} font-medium mb-2`}>Why Arbitrum?</p>
-            <p className={`${currentTheme.heroSubtext}/80 leading-relaxed mb-3`}>
-              This game runs on <a href="https://arbitrum.io" target="_blank" rel="noopener noreferrer" className={`font-semibold ${currentTheme.heroText} hover:${theme === 'daring' ? 'text-red-100' : 'text-blue-100'} underline decoration-${theme === 'daring' ? 'red' : 'blue'}-400/50 hover:decoration-${theme === 'daring' ? 'orange' : 'blue'}-300 transition-colors`}>Arbitrum One</a>, an Ethereum Layer 2 network.
-            </p>
-            <div className={`${currentTheme.heroSubtext}/80 leading-relaxed space-y-2 text-sm`}>
-              <p><strong className={currentTheme.heroText}>First time on Arbitrum?</strong> You'll need to:</p>
-              <ol className="list-decimal list-inside pl-2 space-y-1">
-                <li>Switch to Arbitrum network in MetaMask (instant and free)</li>
-                <li>Bridge ETH from Ethereum mainnet to Arbitrum (~15 min, requires L1 gas)</li>
-              </ol>
-              <p><strong className={currentTheme.heroText}>Already have Arbitrum ETH?</strong> Just switch networks and play.</p>
-              <p className="pt-1"><span className={currentTheme.heroText}>Lower fees than Ethereum mainnet. Final outcomes secured by Ethereum L1.</span></p>
-            </div>
-          </div>
+                <Info size={18} className="text-blue-400 mt-0.5 flex-shrink-0" />
+                <div className="text-sm w-full">
+                  <p className="text-blue-200 font-medium mb-2">Why Arbitrum?</p>
+                  <p className="text-blue-300/80 leading-relaxed mb-3">
+                    This game runs on <a href="https://arbitrum.io" target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-200 hover:text-blue-100 underline decoration-blue-400/50 hover:decoration-blue-300 transition-colors">Arbitrum One</a>, an Ethereum Layer 2 network.
+                  </p>
+                  <div className="text-blue-300/80 leading-relaxed space-y-2 text-sm">
+                    <p><strong className="text-blue-200">First time on Arbitrum?</strong> You'll need to:</p>
+                    <ol className="list-decimal list-inside pl-2 space-y-1">
+                      <li>Switch to Arbitrum network in MetaMask (instant and free)</li>
+                      <li>Bridge ETH from Ethereum mainnet to Arbitrum (~15 min, requires L1 gas)</li>
+                    </ol>
+                    <p><strong className="text-blue-200">Already have Arbitrum ETH?</strong> Just switch networks and play.</p>
+                    <p className="pt-1"><span className="text-blue-200">Lower fees than Ethereum mainnet. Final outcomes secured by Ethereum L1.</span></p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -4763,7 +4464,6 @@ This declaration is immutable and verifiable on-chain.`;
                 account={account}
                 loading={tournamentsLoading}
                 syncDots={bracketSyncDots}
-                theme={theme}
                 isEnrolled={viewingTournament?.enrolledPlayers?.some(addr => addr.toLowerCase() === account?.toLowerCase())}
                 entryFee={viewingTournament?.entryFee ? ethers.formatEther(viewingTournament.entryFee) : '0'}
                 isFull={viewingTournament?.enrolledCount >= viewingTournament?.playerCount}
@@ -4774,15 +4474,15 @@ This declaration is immutable and verifiable on-chain.`;
                 {/* Section Header */}
                 <div className="text-center mb-12">
                   <div className="inline-flex items-center gap-3 mb-4">
-                    <Trophy className={`${theme === 'dream' ? 'text-blue-400' : theme === 'daring' ? 'text-red-400' : 'text-purple-400'}`} size={48} />
+                    <Trophy className="text-blue-400" size={48} />
                     <div className="flex flex-col items-start">
-                      <h2 className={`text-5xl font-bold bg-gradient-to-r ${theme === 'dream' ? 'from-blue-400 to-cyan-400' : theme === 'daring' ? 'from-red-400 to-orange-400' : 'from-purple-400 to-blue-400'} bg-clip-text text-transparent`}>
-                        {theme === 'dream' ? 'Classic Tournaments' : theme === 'daring' ? 'Pro Tournaments' : 'Tournaments'}
+                      <h2 className="text-5xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+                        Tournaments
                       </h2>
                     </div>
                   </div>
-                  <p className={`text-xl ${theme === 'dream' ? 'text-blue-200' : theme === 'daring' ? 'text-red-200' : 'text-purple-200'}`}>
-                    {theme === 'dream' ? 'Competitive play with multiple tiers for all skill levels' : 'Advanced tournaments with higher stakes'}
+                  <p className="text-xl text-blue-200">
+                    Competitive play for all skill levels
                   </p>
                 </div>
 
@@ -4798,70 +4498,29 @@ This declaration is immutable and verifiable on-chain.`;
 
                 {/* Tournament Cards Grid */}
                 {!tournamentsLoading && tournaments.length > 0 && (
-                  <>
-                    {/* Grouped by tier for both Dream and Daring modes */}
-                    {(() => {
-                      // Define tier order: Classic, Rapid, Minor, Standard, Major, Mega, Ultimate
-                      const tierOrder = [0, 6, 1, 2, 3, 4, 5];
-                      const tierColors = {
-                        0: { bg: 'from-blue-600/20 to-purple-600/20', border: 'border-blue-400/40', text: 'text-blue-400', icon: '🎯' },
-                        6: { bg: 'from-yellow-600/20 to-orange-600/20', border: 'border-yellow-400/40', text: 'text-yellow-400', icon: '⚡' },
-                        1: { bg: 'from-blue-600/20 to-cyan-600/20', border: 'border-blue-400/40', text: 'text-blue-400', icon: '🔹' },
-                        2: { bg: 'from-cyan-600/20 to-teal-600/20', border: 'border-cyan-400/40', text: 'text-cyan-400', icon: '💎' },
-                        3: { bg: 'from-purple-600/20 to-pink-600/20', border: 'border-purple-400/40', text: 'text-purple-400', icon: '⭐' },
-                        4: { bg: 'from-red-600/20 to-rose-600/20', border: 'border-red-400/40', text: 'text-red-400', icon: '🔥' },
-                        5: { bg: 'from-orange-600/20 to-amber-600/20', border: 'border-orange-400/40', text: 'text-orange-400', icon: '👑' }
-                      };
-
-                      return tierOrder.map((tierId) => {
-                        const tierTournaments = tournaments.filter(t => t.tierId === tierId);
-                        if (tierTournaments.length === 0) return null;
-
-                        const tierColor = tierColors[tierId];
-                        const maxPlayers = tierTournaments[0]?.maxPlayers || 0;
-                        const playerLabel = maxPlayers === 2 ? '1v1' : `${maxPlayers} players`;
-
-                        return (
-                          <div key={tierId} className="mb-12">
-                            {/* Tier Header */}
-                            <div className={`bg-gradient-to-r ${tierColor.bg} backdrop-blur-lg rounded-xl p-4 border ${tierColor.border} mb-6`}>
-                              <h3 className={`text-2xl font-bold ${tierColor.text} flex items-center gap-2`}>
-                                <span className="text-3xl">{tierColor.icon}</span>
-                                {getTierName(tierId)} Tier
-                                <span className="text-sm opacity-70 ml-2">({playerLabel})</span>
-                              </h3>
-                            </div>
-
-                            {/* Tier Tournaments Grid */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                              {tierTournaments.map((tournament) => (
-                                <TournamentCard
-                                  key={`${tournament.tierId}-${tournament.instanceId}`}
-                                  tierId={tournament.tierId}
-                                  instanceId={tournament.instanceId}
-                                  maxPlayers={tournament.maxPlayers}
-                                  currentEnrolled={tournament.enrolledCount}
-                                  entryFee={tournament.entryFee}
-                                  isEnrolled={tournament.isEnrolled}
-                                  onEnroll={() => handleEnroll(tournament.tierId, tournament.instanceId, tournament.entryFee)}
-                                  onEnter={() => handleEnterTournament(tournament.tierId, tournament.instanceId)}
-                                  loading={tournamentsLoading}
-                                  tierName={getTierName(tournament.tierId)}
-                                  theme={theme}
-                                  enrollmentTimeout={tournament.enrollmentTimeout}
-                                  hasStartedViaTimeout={tournament.hasStartedViaTimeout}
-                                  tournamentStatus={tournament.tournamentStatus}
-                                  onManualStart={handleManualStart}
-                                  onClaimAbandonedPool={handleClaimAbandonedPool}
-                                  account={account}
-                                />
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      });
-                    })()}
-                  </>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {tournaments.map((tournament) => (
+                      <TournamentCard
+                        key={`${tournament.tierId}-${tournament.instanceId}`}
+                        tierId={tournament.tierId}
+                        instanceId={tournament.instanceId}
+                        maxPlayers={tournament.maxPlayers}
+                        currentEnrolled={tournament.enrolledCount}
+                        entryFee={tournament.entryFee}
+                        isEnrolled={tournament.isEnrolled}
+                        onEnroll={() => handleEnroll(tournament.tierId, tournament.instanceId, tournament.entryFee)}
+                        onEnter={() => handleEnterTournament(tournament.tierId, tournament.instanceId)}
+                        loading={tournamentsLoading}
+                        tierName={getTierName(tournament.tierId)}
+                        enrollmentTimeout={tournament.enrollmentTimeout}
+                        hasStartedViaTimeout={tournament.hasStartedViaTimeout}
+                        tournamentStatus={tournament.tournamentStatus}
+                        onManualStart={handleManualStart}
+                        onClaimAbandonedPool={handleClaimAbandonedPool}
+                        account={account}
+                      />
+                    ))}
+                  </div>
                 )}
 
                 {/* Empty State */}
@@ -5555,12 +5214,6 @@ This declaration is immutable and verifiable on-chain.`;
               </div>
             </div>
 
-            {/* Link to Whitepaper */}
-            <div className="mt-8 text-center">
-              <a href="#whitepaper" className="inline-flex items-center gap-2 text-purple-300 hover:text-purple-200 font-semibold text-lg underline decoration-purple-400/50 hover:decoration-purple-300 transition-colors">
-            Read Full Whitepaper
-              </a>
-            </div>
           </div>
         </div>
 
@@ -5587,8 +5240,6 @@ This declaration is immutable and verifiable on-chain.`;
           </div>
         </div>
 
-        {/* Whitepaper Section */}
-        <WhitepaperSection />
       </div>
 
       {/* Footer */}
@@ -5608,8 +5259,7 @@ This declaration is immutable and verifiable on-chain.`;
         }
 
         /* Add padding to account for fixed header when jumping to anchors */
-        #zero-trust,
-        #whitepaper {
+        #zero-trust {
           scroll-margin-top: 80px;
         }
 
@@ -5706,62 +5356,6 @@ This declaration is immutable and verifiable on-chain.`;
               transform: translateY(calc(-100vh - 100px)) translateX(100px);
               opacity: 0;
             }
-          }
-        }
-
-        /* Theme Toggle - Desktop: fixed, Mobile: in-flow */
-        .theme-toggle-wrapper {
-          position: fixed;
-          top: 80px;
-          right: 20px;
-          z-index: 1000;
-        }
-
-        /* Tablet styles */
-        @media (max-width: 1024px) {
-          .theme-toggle-wrapper {
-            top: 70px;
-            right: 15px;
-          }
-        }
-
-        /* Mobile styles - smaller, absolute positioned within banner (not sticky) */
-        @media (max-width: 768px) {
-          .theme-toggle-wrapper {
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            z-index: 20;
-          }
-
-          .theme-toggle-btn {
-            padding: 4px 8px !important;
-            font-size: 10px !important;
-            gap: 3px !important;
-            border-radius: 15px !important;
-          }
-
-          .theme-toggle-text {
-            display: none;
-          }
-
-          .theme-toggle-icon {
-            font-size: 14px;
-          }
-        }
-
-        @media (max-width: 480px) {
-          .theme-toggle-wrapper {
-            top: 6px;
-            right: 6px;
-          }
-
-          .theme-toggle-btn {
-            padding: 3px 6px !important;
-          }
-
-          .theme-toggle-icon {
-            font-size: 12px;
           }
         }
 

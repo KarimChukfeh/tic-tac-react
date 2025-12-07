@@ -274,12 +274,12 @@ export default function Landing() {
         <section className="min-h-[70vh] flex flex-col justify-center items-center px-6 py-16">
           
           {/* Eyebrow */}
-          <div className="flex items-center gap-3 mb-8">
-            <div className="h-px w-12 bg-gradient-to-r from-transparent to-cyan-500/50" />
-            <span className="text-cyan-400 text-sm font-semibold tracking-widest uppercase">
+          <div className="flex items-center gap-4 mb-8">
+            <div className="h-px w-16 bg-gradient-to-r from-transparent to-cyan-500/50" />
+            <span className="text-cyan-400 text-base md:text-lg font-semibold tracking-widest uppercase">
               ETour Games
             </span>
-            <div className="h-px w-12 bg-gradient-to-l from-transparent to-cyan-500/50" />
+            <div className="h-px w-16 bg-gradient-to-l from-transparent to-cyan-500/50" />
           </div>
           
           {/* Main Headline */}
