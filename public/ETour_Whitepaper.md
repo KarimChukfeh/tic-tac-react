@@ -356,7 +356,7 @@ The protocol handles odd player counts through walkover advancement—one random
 
 ### 4.4 Draw Handling
 
-Some games (notably tic-tac-toe and chess) can end in draws. ETour handles draws through several mechanisms:
+Some games (notably tic-tac-toe) can end in draws. ETour handles draws through several mechanisms:
 
 **Single Match Draw:**
 Both players are eliminated. Neither advances. This creates natural pressure to play for wins rather than safe draws.
