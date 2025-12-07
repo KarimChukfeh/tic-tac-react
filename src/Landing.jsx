@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Shield, Lock, Eye, CheckCircle } from 'lucide-react';
+import { Shield, Lock, Eye, CheckCircle, ChevronDown } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
@@ -226,6 +226,8 @@ function WhitepaperSection() {
 
 // Main Landing Component
 export default function Landing() {
+  const [whitepaperExpanded, setWhitepaperExpanded] = useState(false);
+
   return (
     <div 
       className="min-h-screen text-white overflow-x-hidden"
@@ -477,11 +479,23 @@ export default function Landing() {
         {/* ============ WHITEPAPER ============ */}
         <section id="whitepaper" className="px-6 py-24 border-t border-slate-800/50">
           <div className="max-w-5xl mx-auto">
-            <div className="text-center mb-16">
-              <h2 className="text-4xl font-bold text-white mb-4">Read the Whitepaper</h2>
-              <p className="text-slate-400 text-lg">Deep dive into ETour protocol architecture and design.</p>
-            </div>
-            <WhitepaperSection />
+            <button
+              onClick={() => setWhitepaperExpanded(!whitepaperExpanded)}
+              className="w-full text-center mb-8 group cursor-pointer"
+            >
+              <h2 className="text-4xl font-bold text-white mb-4 group-hover:text-cyan-300 transition-colors">
+                Read the Whitepaper
+              </h2>
+              <p className="text-slate-400 text-lg mb-4">Deep dive into ETour protocol architecture and design.</p>
+              <div className="flex items-center justify-center gap-2 text-cyan-400 group-hover:text-cyan-300 transition-colors">
+                <span className="text-sm font-medium">{whitepaperExpanded ? 'Collapse' : 'Expand'}</span>
+                <ChevronDown
+                  size={20}
+                  className={`transform transition-transform duration-300 ${whitepaperExpanded ? 'rotate-180' : ''}`}
+                />
+              </div>
+            </button>
+            {whitepaperExpanded && <WhitepaperSection />}
           </div>
         </section>
 
