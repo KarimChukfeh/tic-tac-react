@@ -164,7 +164,6 @@ export default function Landing() {
             >
               Prove It.
             </span>
-            <span className="block text-white pt-1">Pure Competition. Real Consequences.</span>
           </h1>
           
           {/* Subheadline */}
