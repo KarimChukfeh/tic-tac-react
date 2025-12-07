@@ -2175,44 +2175,10 @@ This declaration is immutable and verifiable on-chain.`;
 
   // Verify contract is deployed (simplified for tournament contract)
   const loadContractData = async (contractInstance, isInitialLoad = false) => {
-    // Always try to fetch cached stats first, even if contract verification fails
-    try {
-      console.log('🔄 Fetching cached stats...');
-      setCachedStatsLoading(true);
+    // Cached stats are fetched by fetchCachedStats() which is the sole source of truth
+    // This avoids overwriting categorized tournament data (organic, partial, abandoned)
 
-      let matches = [];
-      let tournaments = [];
-
-      // Fetch all cached matches
-      try {
-        const allCachedMatches = await contractInstance.getAllCachedMatches();
-        matches = Array.from(allCachedMatches).filter(m => m && m.exists);
-        console.log('✅ Fetched', matches.length, 'cached matches');
-      } catch (err) {
-        console.warn('Error fetching cached matches:', err.message || err);
-      }
-
-      // Get recent tournaments from each tier
-      for (let tierId = 0; tierId < 3; tierId++) {
-        try {
-          const tierTournaments = await contractInstance.getRecentTournaments(tierId, 5);
-          const validTournaments = Array.from(tierTournaments).filter(t => t && t.exists);
-          tournaments.push(...validTournaments);
-        } catch (err) {
-          console.log(`No tournaments found for tier ${tierId}`);
-        }
-      }
-
-      console.log('✅ Fetched', tournaments.length, 'cached tournaments');
-      setCachedStats({ matches, tournaments });
-      setCachedStatsLoading(false);
-    } catch (err) {
-      console.error('Could not fetch cached stats:', err);
-      setCachedStats({ matches: [], tournaments: [] });
-      setCachedStatsLoading(false);
-    }
-
-    // Now verify contract deployment
+    // Verify contract deployment
     try {
       setContractStatus('checking');
 
