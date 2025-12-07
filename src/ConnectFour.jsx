@@ -943,11 +943,32 @@ export default function ConnectFour() {
   // Refresh match data
   const refreshMatchData = useCallback(async (contractInstance, userAccount, match) => {
     try {
+      const { tierId, instanceId, roundNumber, matchNumber } = match;
       const matchData = await contractInstance.getMatch(
-        match.tierId, match.instanceId, match.roundNumber, match.matchNumber
+        tierId, instanceId, roundNumber, matchNumber
       );
 
       const isPlayer1 = matchData[0].toLowerCase() === userAccount.toLowerCase();
+
+      // Fetch timeout state from matches mapping
+      const matchKey = ethers.keccak256(ethers.AbiCoder.defaultAbiCoder().encode(
+        ['uint8', 'uint8', 'uint8', 'uint8'],
+        [tierId, instanceId, roundNumber, matchNumber]
+      ));
+      const matchesData = await contractInstance.matches(matchKey);
+
+      const timeoutState = {
+        escalation1Start: Number(matchesData.timeoutState.escalation1Start),
+        escalation2Start: Number(matchesData.timeoutState.escalation2Start),
+        escalation3Start: Number(matchesData.timeoutState.escalation3Start),
+        activeEscalation: Number(matchesData.timeoutState.activeEscalation),
+        timeoutActive: matchesData.timeoutState.timeoutActive,
+        forfeitAmount: matchesData.timeoutState.forfeitAmount
+      };
+
+      const isTimedOut = matchesData.isTimedOut;
+      const timeoutClaimant = matchesData.timeoutClaimant;
+      const timeoutClaimReward = matchesData.timeoutClaimReward;
 
       return {
         ...match,
@@ -964,7 +985,11 @@ export default function ConnectFour() {
         moveCount: Number(matchData[10]),
         lastColumn: Number(matchData[11]),
         isPlayer1,
-        isYourTurn: matchData[2].toLowerCase() === userAccount.toLowerCase()
+        isYourTurn: matchData[2].toLowerCase() === userAccount.toLowerCase(),
+        timeoutState,
+        isTimedOut,
+        timeoutClaimant,
+        timeoutClaimReward
       };
     } catch (error) {
       console.error('Error refreshing match:', error);
@@ -1154,6 +1179,106 @@ export default function ConnectFour() {
 
   // Close match
   const closeMatch = () => setCurrentMatch(null);
+
+  // Handle Escalation 1: Opponent claims timeout win
+  const handleClaimTimeoutWin = async () => {
+    if (!currentMatch || !contract) return;
+
+    try {
+      setMatchLoading(true);
+      const { tierId, instanceId, roundNumber, matchNumber } = currentMatch;
+
+      const tx = await contract.claimTimeoutWin(tierId, instanceId, roundNumber, matchNumber);
+      await tx.wait();
+
+      alert('Timeout victory claimed! You win by opponent forfeit.');
+
+      // Exit match view and go back to tournaments list
+      setCurrentMatch(null);
+      setViewingTournament(null);
+
+      // Refresh cached stats
+      await fetchCachedStats(contract, true);
+
+      // Refresh tournament data
+      await fetchAllTiers(contract, account, true);
+
+      setMatchLoading(false);
+    } catch (error) {
+      console.error('Error claiming timeout win:', error);
+      alert(`Error claiming timeout win: ${error.message}`);
+      setMatchLoading(false);
+    }
+  };
+
+  // Handle Escalation 2: Higher-ranked player force eliminates stalled match
+  const handleForceEliminateStalledMatch = async (matchData = null) => {
+    const match = matchData || currentMatch;
+    if (!match || !contract) return;
+
+    try {
+      setMatchLoading(true);
+      const { tierId, instanceId, roundNumber, matchNumber } = match;
+
+      const tx = await contract.forceEliminateStalledMatch(tierId, instanceId, roundNumber, matchNumber);
+      await tx.wait();
+
+      alert('Stalled match eliminated! Tournament can now continue.');
+
+      // Exit match view and go to tournament bracket
+      setCurrentMatch(null);
+
+      // Refresh cached stats
+      await fetchCachedStats(contract, true);
+
+      // Refresh tournament data
+      await fetchAllTiers(contract, account, true);
+
+      // Refresh and show tournament bracket
+      const bracketData = await refreshTournamentBracket(contract, tierId, instanceId);
+      if (bracketData) {
+        setViewingTournament(bracketData);
+      }
+
+      setMatchLoading(false);
+    } catch (error) {
+      console.error('Error force eliminating match:', error);
+      alert(`Error force eliminating match: ${error.message}`);
+      setMatchLoading(false);
+    }
+  };
+
+  // Handle Escalation 3: Outsider claims match slot by replacement
+  const handleClaimMatchSlotByReplacement = async (matchData = null) => {
+    const match = matchData || currentMatch;
+    if (!match || !contract) return;
+
+    try {
+      setMatchLoading(true);
+      const { tierId, instanceId, roundNumber, matchNumber } = match;
+
+      const tx = await contract.claimMatchSlotByReplacement(tierId, instanceId, roundNumber, matchNumber);
+      await tx.wait();
+
+      alert('Match slot claimed! You have replaced both players and advanced.');
+
+      // Exit match view and go back to tournaments list
+      setCurrentMatch(null);
+      setViewingTournament(null);
+
+      // Refresh cached stats
+      await fetchCachedStats(contract, true);
+
+      // Refresh tournament data
+      await fetchAllTiers(contract, account, true);
+
+      setMatchLoading(false);
+    } catch (error) {
+      console.error('Error claiming match slot:', error);
+      alert(`Error claiming match slot: ${error.message}`);
+      setMatchLoading(false);
+    }
+  };
 
   // Initialize read-only contract (only if no wallet connected)
   useEffect(() => {
@@ -1370,6 +1495,84 @@ export default function ConnectFour() {
             winner={currentMatch.winner}
             lastColumn={currentMatch.lastColumn}
           />
+
+          {/* Match Timeout Escalation UI */}
+          {currentMatch.timeoutState && currentMatch.timeoutState.timeoutActive && currentMatch.matchStatus === 1 && (() => {
+            const now = Math.floor(Date.now() / 1000);
+            const { escalation1Start, escalation2Start, escalation3Start, activeEscalation } = currentMatch.timeoutState;
+
+            const timeToEsc1 = escalation1Start > 0 ? Math.max(0, escalation1Start - now) : 0;
+            const timeToEsc2 = escalation2Start > 0 ? Math.max(0, escalation2Start - now) : 0;
+            const timeToEsc3 = escalation3Start > 0 ? Math.max(0, escalation3Start - now) : 0;
+
+            const canClaimTimeout = activeEscalation >= 1 && !currentMatch.isYourTurn;
+            const canForceEliminate = activeEscalation >= 2;
+            const canReplace = activeEscalation >= 3;
+
+            const formatEscTime = (secs) => {
+              const mins = Math.floor(secs / 60);
+              const seconds = secs % 60;
+              return `${mins}:${seconds.toString().padStart(2, '0')}`;
+            };
+
+            return (
+              <div className="max-w-md mx-auto mt-6 bg-orange-500/20 border border-orange-400 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Clock className="text-orange-400" size={20} />
+                  <span className="text-orange-300 font-bold text-sm">Match Timeout Active</span>
+                </div>
+
+                {/* Escalation 1 */}
+                {activeEscalation >= 1 && canClaimTimeout && (
+                  <button
+                    onClick={handleClaimTimeoutWin}
+                    disabled={matchLoading}
+                    className="w-full mb-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-2 px-4 rounded-lg transition-all disabled:opacity-50"
+                  >
+                    ⏰ Claim Timeout Victory
+                  </button>
+                )}
+
+                {/* Countdown timers */}
+                <div className="space-y-1 text-xs">
+                  {timeToEsc1 > 0 && activeEscalation < 1 && (
+                    <div className="text-orange-300">Esc 1 in: {formatEscTime(timeToEsc1)}</div>
+                  )}
+                  {timeToEsc2 > 0 && activeEscalation < 2 && (
+                    <div className="text-orange-300">Esc 2 in: {formatEscTime(timeToEsc2)}</div>
+                  )}
+                  {timeToEsc3 > 0 && activeEscalation < 3 && (
+                    <div className="text-orange-300">Esc 3 in: {formatEscTime(timeToEsc3)}</div>
+                  )}
+                  {activeEscalation >= 1 && <div className="text-green-400 font-bold">✓ Escalation 1 Active</div>}
+                  {activeEscalation >= 2 && <div className="text-yellow-400 font-bold">✓ Escalation 2 Active</div>}
+                  {activeEscalation >= 3 && <div className="text-red-400 font-bold">✓ Escalation 3 Active</div>}
+                </div>
+
+                {/* Escalation 2 */}
+                {canForceEliminate && (
+                  <button
+                    onClick={() => handleForceEliminateStalledMatch()}
+                    disabled={matchLoading}
+                    className="w-full mt-2 bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-all disabled:opacity-50"
+                  >
+                    ⚡ Force Eliminate Both (Higher Rank)
+                  </button>
+                )}
+
+                {/* Escalation 3 */}
+                {canReplace && (
+                  <button
+                    onClick={() => handleClaimMatchSlotByReplacement()}
+                    disabled={matchLoading}
+                    className="w-full mt-2 bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white font-bold py-2 px-4 rounded-lg transition-all disabled:opacity-50"
+                  >
+                    🎯 Replace Both Players & Advance
+                  </button>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Loading Overlay */}
           {matchLoading && (
