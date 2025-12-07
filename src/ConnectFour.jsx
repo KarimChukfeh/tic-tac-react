@@ -514,7 +514,7 @@ const TournamentCard = ({
 };
 
 // Tournament Bracket Component
-const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, account, loading, syncDots }) => {
+const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceEliminate, onClaimReplacement, account, loading, syncDots }) => {
   const { tierId, instanceId, status, currentRound, enrolledCount, prizePool, rounds, playerCount, enrolledPlayers } = tournamentData;
 
   const totalRounds = Math.ceil(Math.log2(playerCount));
@@ -639,12 +639,53 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, account, load
                       match.player1?.toLowerCase() === account?.toLowerCase() ||
                       match.player2?.toLowerCase() === account?.toLowerCase();
 
+                    // Calculate move timeout
+                    const MOVE_TIMEOUT = 60; // 60 seconds
+                    const now = Math.floor(Date.now() / 1000);
+                    const timeReference = match.lastMoveTime > 0 ? match.lastMoveTime : match.startTime;
+                    const timeSinceLastMove = timeReference > 0 ? now - timeReference : 0;
+                    const timeRemaining = timeReference > 0 ? Math.max(0, MOVE_TIMEOUT - timeSinceLastMove) : null;
+                    const isTimeout = timeRemaining !== null && timeRemaining === 0;
+
+                    // Check escalation status
+                    const hasEscalation = match.timeoutState && match.timeoutState.timeoutActive;
+                    const activeEscalation = match.timeoutState?.activeEscalation || 0;
+
+                    // If contract hasn't activated yet, calculate client-side escalation based on time
+                    let clientEscalation = 0;
+                    if (!hasEscalation && isTimeout && match.matchStatus === 1) {
+                      const timeoutDuration = timeSinceLastMove - MOVE_TIMEOUT;
+                      if (timeoutDuration >= 180) { // 3 minutes for Esc 3
+                        clientEscalation = 3;
+                      } else if (timeoutDuration >= 120) { // 2 minutes for Esc 2
+                        clientEscalation = 2;
+                      } else if (timeoutDuration >= 60) { // 1 minute for Esc 1
+                        clientEscalation = 1;
+                      }
+                    }
+
+                    const effectiveEscalation = hasEscalation ? activeEscalation : clientEscalation;
+                    const canForceEliminate = effectiveEscalation >= 2;
+                    const canReplace = effectiveEscalation >= 3;
+
+                    // Calculate border color based on escalation and timeout
+                    let borderClass = 'border-purple-400/30 hover:border-purple-400/50';
+                    if (isUserMatch) {
+                      borderClass = 'border-green-400/70 bg-green-900/20';
+                    } else if (canReplace) {
+                      borderClass = 'border-red-400 bg-red-900/20 animate-pulse';
+                    } else if (canForceEliminate) {
+                      borderClass = 'border-yellow-400 bg-yellow-900/20';
+                    } else if (hasEscalation) {
+                      borderClass = 'border-orange-400 bg-orange-900/20';
+                    } else if (isTimeout && match.matchStatus === 1) {
+                      borderClass = 'border-orange-400/60 bg-orange-900/10';
+                    }
+
                     return (
                       <div
                         key={matchIdx}
-                        className={`bg-black/30 rounded-xl p-4 border-2 transition-all ${
-                          isUserMatch ? 'border-green-400/70 bg-green-900/20' : 'border-purple-400/30 hover:border-purple-400/50'
-                        }`}
+                        className={`bg-black/30 rounded-xl p-4 border-2 transition-all ${borderClass}`}
                       >
                         <div className="flex items-center justify-between mb-3">
                           <span className="text-purple-300 text-sm font-semibold">Match {matchIdx + 1}</span>
@@ -700,6 +741,64 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, account, load
                               <Play size={16} />
                               {match.matchStatus === 0 ? 'Waiting to Start' : 'Enter Match'}
                             </button>
+                          )}
+
+                          {/* Escalation status indicator */}
+                          {effectiveEscalation > 0 && match.matchStatus !== 2 && (
+                            <div className={`mt-2 text-xs font-bold px-2 py-1 rounded text-center ${
+                              canReplace ? 'bg-red-500/30 text-red-300' :
+                              canForceEliminate ? 'bg-yellow-500/30 text-yellow-300' :
+                              'bg-orange-500/30 text-orange-300'
+                            }`}>
+                              Escalation {effectiveEscalation} Active
+                            </div>
+                          )}
+
+                          {/* Escalation CTAs for outsiders (enrolled players not in this match) */}
+                          {!isUserMatch && match.matchStatus !== 2 && (
+                            <>
+                              {/* Escalation 2: Force Eliminate */}
+                              {canForceEliminate && (
+                                <div className="mt-2">
+                                  <button
+                                    onClick={() => onForceEliminate({
+                                      tierId,
+                                      instanceId,
+                                      roundNumber: roundIdx,
+                                      matchNumber: matchIdx
+                                    })}
+                                    disabled={loading}
+                                    className="w-full bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-all transform hover:scale-105 disabled:opacity-50 flex items-center justify-center gap-2"
+                                  >
+                                    ⚡ Force Eliminate (Higher Rank)
+                                  </button>
+                                  <p className="text-xs text-yellow-300 mt-1 text-center">
+                                    Escalation 2: Eliminate both stalled players
+                                  </p>
+                                </div>
+                              )}
+
+                              {/* Escalation 3: Replace Both Players */}
+                              {canReplace && (
+                                <div className="mt-2">
+                                  <button
+                                    onClick={() => onClaimReplacement({
+                                      tierId,
+                                      instanceId,
+                                      roundNumber: roundIdx,
+                                      matchNumber: matchIdx
+                                    })}
+                                    disabled={loading}
+                                    className="w-full bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white font-bold py-2 px-4 rounded-lg transition-all transform hover:scale-105 disabled:opacity-50 animate-pulse flex items-center justify-center gap-2"
+                                  >
+                                    🎯 Claim Match & Replace Both
+                                  </button>
+                                  <p className="text-xs text-red-300 mt-1 text-center">
+                                    Escalation 3: Take this match slot and advance!
+                                  </p>
+                                </div>
+                              )}
+                            </>
                           )}
                         </div>
                       </div>
@@ -895,6 +994,27 @@ export default function ConnectFour() {
           for (let matchNum = 0; matchNum < Number(roundInfo.totalMatches); matchNum++) {
             try {
               const matchData = await contractInstance.getMatch(tierId, instanceId, roundNum, matchNum);
+
+              // Fetch timeout state for this match
+              let timeoutState = null;
+              try {
+                const matchKey = ethers.keccak256(ethers.AbiCoder.defaultAbiCoder().encode(
+                  ['uint8', 'uint8', 'uint8', 'uint8'],
+                  [tierId, instanceId, roundNum, matchNum]
+                ));
+                const matchesData = await contractInstance.matches(matchKey);
+                timeoutState = {
+                  escalation1Start: Number(matchesData.timeoutState.escalation1Start),
+                  escalation2Start: Number(matchesData.timeoutState.escalation2Start),
+                  escalation3Start: Number(matchesData.timeoutState.escalation3Start),
+                  activeEscalation: Number(matchesData.timeoutState.activeEscalation),
+                  timeoutActive: matchesData.timeoutState.timeoutActive,
+                  forfeitAmount: matchesData.timeoutState.forfeitAmount
+                };
+              } catch (err) {
+                // Timeout state not available
+              }
+
               matches.push({
                 player1: matchData[0],
                 player2: matchData[1],
@@ -907,10 +1027,11 @@ export default function ConnectFour() {
                 lastMoveTime: Number(matchData[8]),
                 firstPlayer: matchData[9],
                 moveCount: Number(matchData[10]),
-                lastColumn: Number(matchData[11])
+                lastColumn: Number(matchData[11]),
+                timeoutState
               });
             } catch (err) {
-              matches.push({ player1: ethers.ZeroAddress, player2: ethers.ZeroAddress, matchStatus: 0 });
+              matches.push({ player1: ethers.ZeroAddress, player2: ethers.ZeroAddress, matchStatus: 0, timeoutState: null });
             }
           }
 
@@ -1666,6 +1787,8 @@ export default function ConnectFour() {
             tournamentData={viewingTournament}
             onBack={() => setViewingTournament(null)}
             onEnterMatch={handlePlayMatch}
+            onForceEliminate={handleForceEliminateStalledMatch}
+            onClaimReplacement={handleClaimMatchSlotByReplacement}
             account={account}
             loading={loading}
             syncDots={bracketSyncDots}
