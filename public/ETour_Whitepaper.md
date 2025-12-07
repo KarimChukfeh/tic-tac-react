@@ -140,13 +140,13 @@ ETour's flagship games were chosen based on strict criteria that ensure full on-
 These criteria eliminate entire categories of games. Poker requires hidden cards. Real-time games can't wait for block confirmation. Complex simulations exceed gas limits. But within these constraints, several classic games fit perfectly.
 
 
-### 2.2 Eternal Tic-Tac-Toe
+### 2.2 Tic-Tac-Toe
 
-**Entry Point: 0.001 – 0.1 ETH**
+**Entry Point: 0.001 ETH**
 
 Tic-tac-toe serves as the accessible entry point to ETour. Everyone knows the rules. Games complete quickly. The low stakes allow new players to experience the platform mechanics without significant risk.
 
-"But tic-tac-toe is solved," critics note. "Perfect play always draws."
+> But tic-tac-toe is solved, perfect play always draws.
 
 Exactly! And that's the point. Tic-tac-toe's high draw rate makes it the perfect demonstration of ETour's draw economics. When a match ends in a draw, both players receive most of their entry fee back. On a $3 entry, approximately $2.50 returns to each player. The draw essentially costs each player $0.50, a fee for playing a fair, verified game.
 
@@ -158,11 +158,15 @@ This transforms tic-tac-toe's "flaw" into a feature:
 
 Tic-tac-toe is the "Hello World" of ETour - not because it's competitive at the highest level, but because it proves the system works. Fair games, instant payouts, sensible draw handling. If you can trust ETour with tic-tac-toe, you can trust it with chess.
 
-### 2.3 ChessOnChain
+### 2.3 Chess
 
-**Entry Point: 0.01 – 1 ETH**
+**Entry Point: 0.01 – 0.02 ETH**
 
-Chess is ETour's flagship serious competition. Full chess rules—castling, en passant, pawn promotion, fifty-move rule, threefold repetition—all verified on-chain. Every move is permanently recorded, creating an immutable record of the game.
+Chess is ETour's flagship serious competition. 
+
+Full chess rules: castling, en passant, pawn promotion, fifty-move rule, threefold repetition — all verified on-chain. 
+
+Every move is permanently recorded, creating an immutable record of the game.
 
 Chess was chosen because:
 
@@ -171,13 +175,13 @@ Chess was chosen because:
 - **Complete information** aligns perfectly with blockchain transparency
 - **Existing rating systems** give players benchmarks to prove
 
-For serious chess players, ChessOnChain offers something no centralized platform can: absolute certainty that their opponent isn't using engine assistance (each move is a transaction from their wallet) and guaranteed payout upon victory.
+For serious chess players, ChessOnChain offers something no centralized platform can: guaranteed payout upon victory.
 
 ### 2.4 Connect Four
 
 **Entry Point: 0.001 – 0.1 ETH**
 
-Connect Four occupies the middle ground—more strategic depth than tic-tac-toe, faster than chess, familiar to most players. The vertical drop mechanic creates unique tactical situations while remaining simple to verify on-chain.
+Connect Four occupies the middle ground. More strategic depth than tic-tac-toe, faster than chess, familiar to most players. The vertical drop mechanic creates unique tactical situations while remaining simple to verify on-chain.
 
 Connect Four was added because:
 
@@ -195,9 +199,9 @@ Battleship requires **hidden information**—players place ships secretly, then 
 
 2. **Off-chain computation** — Ship positions stored off-chain, only results posted on-chain. This breaks the "fully on-chain" principle entirely.
 
-Neither option aligns with ETour's RW3 principles. Hidden information games require trusting some mechanism beyond the blockchain itself. Rather than compromise, we replaced Battleship with Connect Four—a game that needs no hidden state and can be fully verified in a single transaction per move.
+Neither option aligns with ETour's principles. Hidden information games require trusting some mechanism beyond the blockchain itself. Rather than compromise, we replaced Battleship with Connect Four; a game that needs no hidden state and can be fully verified in a single transaction per move.
 
-This decision exemplifies ETour's philosophy: accept blockchain's constraints and build games that naturally fit, rather than forcing incompatible designs.
+This decision exemplifies ETour's philosophy: **accept blockchain's constraints and build games that naturally fit, rather than forcing incompatible designs.**
 
 ---
 
