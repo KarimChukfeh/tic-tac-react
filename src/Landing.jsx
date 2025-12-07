@@ -369,7 +369,7 @@ export default function Landing() {
             <GameCard
               icon="✖️"
               title="Tic-Tac-Toe"
-              stakes="0.001 – 0.1 ETH"
+              stakes="0.001 ETH"
               tagline="The game everyone knows. Now with real stakes and zero mercy."
               features={[
                 "Perfect for your first match",
@@ -383,7 +383,7 @@ export default function Landing() {
             <GameCard
               icon="🔴"
               title="Connect Four"
-              stakes="0.001 – 0.1 ETH"
+              stakes="0.002 – 0.01 ETH"
               tagline="Drop. Connect. Collect. The vertical battle for supremacy."
               features={[
                 "Deceptively deep strategy",
@@ -397,7 +397,7 @@ export default function Landing() {
             <GameCard
               icon="♔"
               title="Chess"
-              stakes="0.01 – 1 ETH"
+              stakes="0.01 – 0.02 ETH"
               tagline="Full chess. Every rule. Every move immortalized on-chain forever."
               features={[
                 "Castling, en passant, promotion",
