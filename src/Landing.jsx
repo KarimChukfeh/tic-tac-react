@@ -232,8 +232,8 @@ export default function Landing() {
   // FAQ data
   const faqs = [
     {
-      q: "How do duel arenas work?",
-      a: "Duel arenas are 1v1 matches on the blockchain. Two players join a room by paying the entry fee, then one player starts the match. Players take turns making moves on-chain. The winner receives 90% of the total entry fees (with 7.5% to owner and 2.5% to protocol)."
+      q: "How does ETour work?",
+      a: "ETour matches up enrolled players on the blockchain. Players enroll by paying an entry fee, then they take turns making moves on-chain. The winner receives 90% of the total entry fees (with 7.5% to owner and 2.5% to protocol)."
     },
     {
       q: "Why play games on the blockchain?",
@@ -501,29 +501,6 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* ============ WHITEPAPER ============ */}
-        <section id="whitepaper" className="px-6 py-24 border-t border-slate-800/50">
-          <div className="max-w-5xl mx-auto">
-            <button
-              onClick={() => setWhitepaperExpanded(!whitepaperExpanded)}
-              className="w-full text-center mb-8 group cursor-pointer"
-            >
-              <h2 className="text-4xl font-bold text-white mb-4 group-hover:text-cyan-300 transition-colors">
-                Read the Whitepaper
-              </h2>
-              <p className="text-slate-400 text-lg mb-4">Deep dive into ETour protocol architecture and design.</p>
-              <div className="flex items-center justify-center gap-2 text-cyan-400 group-hover:text-cyan-300 transition-colors">
-                <span className="text-sm font-medium">{whitepaperExpanded ? 'Collapse' : 'Expand'}</span>
-                <ChevronDown
-                  size={20}
-                  className={`transform transition-transform duration-300 ${whitepaperExpanded ? 'rotate-180' : ''}`}
-                />
-              </div>
-            </button>
-            {whitepaperExpanded && <WhitepaperSection />}
-          </div>
-        </section>
-
         {/* ============ ZERO TRUST ARCHITECTURE ============ */}
         <section id="zero-trust" className="px-6 py-24 border-t border-slate-800/50">
           <div className="max-w-5xl mx-auto">
@@ -623,7 +600,7 @@ export default function Landing() {
                   </h3>
                   <div className="space-y-3 text-yellow-100">
                     <p>
-                      <strong className="text-yellow-200">Anyone can build their own game interface</strong> to this protocol. All interfaces connect to the same games, display the same boards, and follow the same rules.
+                      <strong className="text-yellow-200">Anyone can build their own game interface</strong> to these games. All interfaces connect to the same games, display the same boards, and follow the same rules.
                     </p>
                     <p>
                       <strong className="text-yellow-200">This website is optional.</strong> You could play via Arbiscan, build your own UI, or use any third-party interface. The outcomes are secured by Arbitrum (and ultimately Ethereum L1), not by this website.
@@ -660,6 +637,29 @@ export default function Landing() {
                 </div>
               ))}
             </div>
+          </div>
+        </section>
+
+        {/* ============ WHITEPAPER ============ */}
+        <section id="whitepaper" className="px-6 py-24 border-t border-slate-800/50">
+          <div className="max-w-5xl mx-auto">
+            <button
+              onClick={() => setWhitepaperExpanded(!whitepaperExpanded)}
+              className="w-full text-center mb-8 group cursor-pointer"
+            >
+              <h2 className="text-4xl font-bold text-white mb-4 group-hover:text-cyan-300 transition-colors">
+                Read the Whitepaper
+              </h2>
+              <p className="text-slate-400 text-lg mb-4">Deep dive into ETour protocol architecture and design.</p>
+              <div className="flex items-center justify-center gap-2 text-cyan-400 group-hover:text-cyan-300 transition-colors">
+                <span className="text-sm font-medium">{whitepaperExpanded ? 'Collapse' : 'Expand'}</span>
+                <ChevronDown
+                  size={20}
+                  className={`transform transition-transform duration-300 ${whitepaperExpanded ? 'rotate-180' : ''}`}
+                />
+              </div>
+            </button>
+            {whitepaperExpanded && <WhitepaperSection />}
           </div>
         </section>
 
