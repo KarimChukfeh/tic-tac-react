@@ -448,8 +448,8 @@ Traditional platforms solve this with centralized intervention—admins who adju
 
 When a player enrolls in an unfilled tournament, a countdown begins. If the tournament doesn't fill naturally:
 
-**Escalation 1 — First Enroller Claim:**
-After the enrollment window expires, the first player to enroll can force-start the tournament with whatever players have joined, even if below capacity.
+**Escalation 1 — Enroller Claim:**
+After the enrollment window expires, enrolled players can force-start the tournament with whatever players have joined, even if below capacity.
 
 **Escalation 2 — Public Claim:**
 After an additional escalation interval, anyone can claim the forfeit pool. All enrolled players are marked as forfeited, and the claimer receives the entire prize pool.
