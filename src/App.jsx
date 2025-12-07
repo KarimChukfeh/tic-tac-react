@@ -3213,10 +3213,40 @@ This declaration is immutable and verifiable on-chain.`;
     }
   };
 
-  // Close match view
-  const closeMatch = () => {
+  // Close match view and refresh tournament bracket
+  const closeMatch = async () => {
+    const tournamentInfo = currentMatch ? {
+      tierId: currentMatch.tierId,
+      instanceId: currentMatch.instanceId
+    } : viewingTournament ? {
+      tierId: viewingTournament.tierId,
+      instanceId: viewingTournament.instanceId
+    } : null;
+
     setCurrentMatch(null);
     setMoveHistory([]);
+
+    // Refresh tournament bracket and cached stats (with loading indicator)
+    if (tournamentInfo && contract) {
+      setTournamentsLoading(true);
+      const bracketData = await refreshTournamentBracket(contract, tournamentInfo.tierId, tournamentInfo.instanceId);
+      if (bracketData) {
+        setViewingTournament(bracketData);
+      }
+      await fetchCachedStats(false);
+      setTournamentsLoading(false);
+    }
+  };
+
+  // Go back from tournament bracket to tournaments list
+  const handleBackToTournaments = async () => {
+    setViewingTournament(null);
+
+    // Refresh tournaments list and cached stats (with loading indicator)
+    if (contract) {
+      await fetchAllTournaments(false);
+      await fetchCachedStats(false);
+    }
   };
 
   // Initialize contract in read-only mode on mount (using public RPC - no wallet required)
@@ -4431,7 +4461,7 @@ This declaration is immutable and verifiable on-chain.`;
             {viewingTournament ? (
               <TournamentBracket
                 tournamentData={viewingTournament}
-                onBack={() => setViewingTournament(null)}
+                onBack={handleBackToTournaments}
                 onEnterMatch={handlePlayMatch}
                 onForceEliminate={handleForceEliminateStalledMatch}
                 onClaimReplacement={handleClaimMatchSlotByReplacement}
