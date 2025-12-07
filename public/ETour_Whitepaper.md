@@ -11,7 +11,7 @@
 
 ETour Protocol is game-agnostic tournament infrastructure that enables any deterministic competitive game to run perpetual, stake-based competitions entirely on-chain. Unlike traditional Web3 gaming platforms that sell tokens or promise earnings, ETour focuses on a single value proposition: **players compete in games they already know, and the better player wins real ETH**.
 
-The protocol separates universal tournament mechanics—matchmaking, bracket management, timeout escalation, prize distribution—from game-specific logic. This architectural decision allows multiple games to share battle-tested infrastructure while each maintains its own rules and identity. ETour launches with three flagship games: Eternal Tic-Tac-Toe, ChessOnChain, and Connect Four, chosen specifically because they require no hidden information and can be fully verified on-chain.
+The protocol separates universal tournament mechanics: matchmaking, bracket management, timeout escalation, prize distribution, from game-specific logic. This architectural decision allows multiple games to share battle-tested infrastructure while each maintains its own rules and identity. ETour launches with three flagship games: Eternal Tic-Tac-Toe, ChessOnChain, and Connect Four, chosen specifically because they require no hidden information and can be fully verified on-chain.
 
 This whitepaper explains both the philosophical reasoning behind ETour's design decisions and the technical implementation that makes trustless competition possible. It is intended for those who want to understand not just *what* ETour does, but *why* it was built this way.
 
@@ -88,7 +88,7 @@ This whitepaper explains both the philosophical reasoning behind ETour's design 
 
 ### 1.1 The Problem with Web3 Gaming
 
-Web3 gaming has a credibility problem. The typical pitch—"play games and earn crypto"—has been so thoroughly abused by scams, rugpulls, and unsustainable tokenomics that the phrase itself triggers skepticism. Players have learned that "earn" usually means "lose money slowly while enriching early adopters."
+Web3 gaming has a credibility problem. The typical pitch: "play games and earn crypto" has been so thoroughly abused by scams, rugpulls, and unsustainable tokenomics that the phrase itself triggers skepticism. Players have learned that "earn" usually means "lose money slowly while enriching early adopters."
 
 Most Web3 gaming projects make the same fundamental mistake: they lead with blockchain technology and financial incentives rather than compelling gameplay. They're selling infrastructure, tokens, and economic mechanisms to people who just want to play games.
 
@@ -107,7 +107,7 @@ Competitive players want simple things:
 3. **Skill determines results** — Not luck, not who bought more tokens
 4. **Instant resolution** — Win and get paid, no waiting periods
 
-These desires exist independently of blockchain. Chess players have always wanted fair competition with meaningful stakes. The question is whether blockchain adds value to this experience—and if so, how to present that value without drowning the player in technical jargon.
+These desires exist independently of blockchain. Chess players have always wanted fair competition with meaningful stakes. The question is whether blockchain adds value to this experience - and if so - how to present that value without drowning the player in technical jargon.
 
 ### 1.3 The ETour Approach
 
@@ -146,7 +146,7 @@ Tic-tac-toe serves as the accessible entry point to ETour. Everyone knows the ru
 
 "But tic-tac-toe is solved," critics note. "Perfect play always draws."
 
-Exactly—and that's the point. Tic-tac-toe's high draw rate makes it the perfect demonstration of ETour's draw economics. When a match ends in a draw, both players receive most of their entry fee back. On a $3 entry, approximately $2.50 returns to each player. The draw essentially costs each player $0.50—a token fee for playing a fair, verified game.
+Exactly! And that's the point. Tic-tac-toe's high draw rate makes it the perfect demonstration of ETour's draw economics. When a match ends in a draw, both players receive most of their entry fee back. On a $3 entry, approximately $2.50 returns to each player. The draw essentially costs each player $0.50, a fee for playing a fair, verified game.
 
 This transforms tic-tac-toe's "flaw" into a feature:
 
@@ -154,7 +154,7 @@ This transforms tic-tac-toe's "flaw" into a feature:
 - **Draw mechanics demonstration** — Players see exactly how ETour handles non-decisive outcomes
 - **Economic transparency** — The refund math is simple enough to verify immediately
 
-Tic-tac-toe is the "Hello World" of ETour—not because it's competitive at the highest level, but because it proves the system works. Fair games, instant payouts, sensible draw handling. If you can trust ETour with tic-tac-toe, you can trust it with chess.
+Tic-tac-toe is the "Hello World" of ETour - not because it's competitive at the highest level, but because it proves the system works. Fair games, instant payouts, sensible draw handling. If you can trust ETour with tic-tac-toe, you can trust it with chess.
 
 ### 2.3 ChessOnChain
 
