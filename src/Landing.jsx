@@ -1,5 +1,9 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Shield, Lock, Eye, CheckCircle } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
+import remarkGfm from 'remark-gfm';
 
 // Floating Game Particles
 function FloatingParticles() {
@@ -96,6 +100,126 @@ function TrustSignal({ icon, text }) {
     <div className="flex items-center gap-2 text-slate-500 text-sm">
       <span className="text-cyan-400">{icon}</span>
       <span>{text}</span>
+    </div>
+  );
+}
+
+// Whitepaper Markdown Renderer Component
+function WhitepaperSection() {
+  const [markdown, setMarkdown] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetch('/ETour_Whitepaper.md')
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Failed to load whitepaper');
+        }
+        return response.text();
+      })
+      .then(text => {
+        setMarkdown(text);
+        setLoading(false);
+      })
+      .catch(err => {
+        setError(err.message);
+        setLoading(false);
+      });
+  }, []);
+
+  const generateId = (text) => {
+    if (!text) return '';
+    return text
+      .toString()
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, '-')
+      .replace(/[^\w\-]+/g, '')
+      .replace(/\-\-+/g, '-')
+      .replace(/^-+/, '')
+      .replace(/-+$/, '');
+  };
+
+  if (loading) {
+    return (
+      <div className="bg-slate-900/60 backdrop-blur-lg rounded-2xl p-8 md:p-12 border border-cyan-500/30">
+        <p className="text-slate-300 text-center">Loading whitepaper...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-slate-900/60 backdrop-blur-lg rounded-2xl p-8 md:p-12 border border-cyan-500/30">
+        <p className="text-red-400 text-center">Error loading whitepaper: {error}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-slate-900/60 backdrop-blur-lg rounded-2xl p-8 md:p-12 border border-cyan-500/30">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeRaw]}
+        components={{
+          h1: ({node, children, ...props}) => {
+            const id = generateId(children);
+            return <h1 id={id} className="text-4xl font-bold text-cyan-300 mb-6 mt-8" {...props}>{children}</h1>;
+          },
+          h2: ({node, children, ...props}) => {
+            const id = generateId(children);
+            return <h2 id={id} className="text-3xl font-bold text-cyan-300 mb-4 mt-8" {...props}>{children}</h2>;
+          },
+          h3: ({node, children, ...props}) => {
+            const id = generateId(children);
+            return <h3 id={id} className="text-2xl font-bold text-cyan-300 mb-3 mt-6" {...props}>{children}</h3>;
+          },
+          p: ({node, ...props}) => <p className="text-slate-300 mb-4 leading-relaxed" {...props} />,
+          ul: ({node, ...props}) => <ul className="list-disc pl-6 mb-6 text-slate-300 space-y-2" {...props} />,
+          ol: ({node, ...props}) => <ol className="list-decimal pl-6 mb-6 text-slate-300 space-y-2" {...props} />,
+          li: ({node, ...props}) => <li className="text-slate-300" {...props} />,
+          code: ({node, inline, className, ...props}) => {
+            const isInline = inline || !className?.includes('language-');
+            return isInline
+              ? <code className="bg-cyan-500/20 px-2 py-1 rounded text-cyan-200 text-sm" {...props} />
+              : <code className="block bg-slate-800/50 p-4 rounded-lg text-cyan-200 text-sm overflow-x-auto mb-4" {...props} />;
+          },
+          pre: ({node, ...props}) => <pre className="bg-slate-800/50 p-4 rounded-lg overflow-x-auto mb-4" {...props} />,
+          blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-cyan-400 pl-4 italic text-slate-400 my-4" {...props} />,
+          hr: ({node, ...props}) => <hr className="border-slate-700/50 my-8" {...props} />,
+          a: ({node, href, children, ...props}) => {
+            if (href?.startsWith('#')) {
+              return (
+                <a
+                  href={href}
+                  className="text-cyan-400 hover:text-cyan-300 underline cursor-pointer"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const element = document.getElementById(href.slice(1));
+                    if (element) {
+                      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                  }}
+                  {...props}
+                >
+                  {children}
+                </a>
+              );
+            }
+            return <a href={href} className="text-cyan-400 hover:text-cyan-300 underline" target="_blank" rel="noopener noreferrer" {...props}>{children}</a>;
+          },
+          strong: ({node, ...props}) => <strong className="text-white font-bold" {...props} />,
+          table: ({node, ...props}) => <div className="overflow-x-auto mb-6"><table className="w-full border-collapse" {...props} /></div>,
+          thead: ({node, ...props}) => <thead className="border-b border-cyan-500/30" {...props} />,
+          th: ({node, ...props}) => <th className="text-left p-3 text-cyan-300" {...props} />,
+          td: ({node, ...props}) => <td className="p-3 text-slate-300 border-b border-slate-700/30" {...props} />,
+          details: ({node, ...props}) => <details className="mb-6 border border-cyan-500/30 rounded-lg p-4 bg-slate-800/30" {...props} />,
+          summary: ({node, ...props}) => <summary className="cursor-pointer text-cyan-300 text-xl font-bold mb-2 hover:text-cyan-200 transition-colors" {...props} />,
+        }}
+      >
+        {markdown}
+      </ReactMarkdown>
     </div>
   );
 }
@@ -349,7 +473,18 @@ export default function Landing() {
             </div>
           </div>
         </section>
-        
+
+        {/* ============ WHITEPAPER ============ */}
+        <section id="whitepaper" className="px-6 py-24 border-t border-slate-800/50">
+          <div className="max-w-5xl mx-auto">
+            <div className="text-center mb-16">
+              <h2 className="text-4xl font-bold text-white mb-4">Read the Whitepaper</h2>
+              <p className="text-slate-400 text-lg">Deep dive into ETour protocol architecture and design.</p>
+            </div>
+            <WhitepaperSection />
+          </div>
+        </section>
+
         {/* ============ FINAL CTA ============ */}
         <section className="px-6 py-32 text-center">
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
