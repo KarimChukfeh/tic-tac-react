@@ -664,7 +664,7 @@ export default function Landing() {
         </section>
 
         {/* ============ FINAL CTA ============ */}
-        <section className="px-6 py-32 text-center">
+        <section className="px-6 py-16 text-center">
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
             Ready to Prove Yourself?
           </h2>
