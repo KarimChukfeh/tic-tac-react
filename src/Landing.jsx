@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { Shield, Lock, Eye, CheckCircle } from 'lucide-react';
 
 // Floating Game Particles
 function FloatingParticles() {
@@ -111,7 +112,37 @@ export default function Landing() {
       <FloatingParticles />
       
       <div className="relative z-10">
-        
+
+        {/* Trust Banner */}
+        <div style={{
+          background: 'rgba(0, 100, 200, 0.2)',
+          borderBottom: '1px solid rgba(100, 150, 200, 0.3)',
+          backdropFilter: 'blur(10px)',
+          position: 'relative',
+          zIndex: 10,
+        }}>
+          <div className="max-w-7xl mx-auto px-6 py-3">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 md:gap-6 justify-center text-xs md:text-sm">
+              <div className="flex items-center gap-2">
+                <Shield className="text-blue-400" size={16} />
+                <span className="text-blue-100 font-medium">100% On-Chain</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Lock className="text-blue-400" size={16} />
+                <span className="text-blue-100 font-medium">Immutable Rules</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Eye className="text-blue-400" size={16} />
+                <span className="text-blue-100 font-medium">Every Move Verifiable</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle className="text-blue-400" size={16} />
+                <span className="text-blue-100 font-medium">Zero Trackers</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* ============ HERO SECTION ============ */}
         <section className="min-h-screen flex flex-col justify-center items-center px-6 py-20">
           
@@ -126,21 +157,21 @@ export default function Landing() {
           
           {/* Main Headline */}
           <h1 className="text-5xl md:text-7xl lg:text-8xl font-black text-center leading-[1.1] mb-8 py-2">
-            <span className="block text-white pb-1">Win ETH</span>
+            <span className="block text-white pb-1">Think You're Good?</span>
             <span
               className="block bg-clip-text text-transparent py-1"
               style={{ background: 'linear-gradient(135deg, #06b6d4, #3b82f6, #a855f7)', WebkitBackgroundClip: 'text' }}
             >
-              Playing Games
+              Prove It.
             </span>
-            <span className="block text-white pt-1">You Already Know.</span>
+            <span className="block text-white pt-1">Pure Competition. Real Consequences.</span>
           </h1>
           
           {/* Subheadline */}
           <p className="text-xl md:text-2xl text-slate-400 text-center max-w-2xl mb-12 leading-relaxed">
             Classic strategy games. Real stakes. No tokens, no tricks.
             <br />
-            <span className="text-white font-semibold">Just skill vs. skill.</span>
+            <span className="text-white font-semibold">Just skill vs skill. Real ETH on the line.</span>
           </p>
           
           {/* Trust Signals */}
@@ -164,13 +195,6 @@ export default function Landing() {
               <span className="transition-transform duration-300 group-hover:translate-y-1">↓</span>
             </span>
           </button>
-          
-          {/* Scroll Indicator */}
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
-            <div className="w-6 h-10 border-2 border-slate-600 rounded-full flex justify-center pt-2">
-              <div className="w-1.5 h-3 bg-slate-500 rounded-full animate-pulse" />
-            </div>
-          </div>
         </section>
         
         {/* ============ GAMES SECTION ============ */}
@@ -401,7 +425,7 @@ export default function Landing() {
             {/* Bottom Line */}
             <div className="text-center pt-8 border-t border-slate-800/30">
               <p className="text-slate-600 text-xs">
-                No company. No contacts. No permission needed. Just games.
+                No company needed. No trust required. No servers to shutdown. Pure competition on the blockchain.
               </p>
             </div>
             
