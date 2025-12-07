@@ -113,15 +113,15 @@ These desires exist independently of blockchain. Chess players have always wante
 
 ### 1.3 The ETour Approach
 
-ETour inverts the typical Web3 gaming pitch:
+ETour reinvents the typical Web3 gaming pitch:
 
 **Traditional Web3 Gaming:** "Here's our revolutionary blockchain protocol. It has tokenomics, staking mechanisms, and governance. Oh, and you can play games on it."
 
-**ETour:** "Here are classic games you already know. Play for real ETH stakes. The better player wins. (And yes, it's all verified on-chain so nobody can cheat—but you don't need to understand that to play.)"
+**ETour:** "Here are classic games you already know. Play for real ETH stakes. The better player wins. (And yes, it's all verified on-chain so nobody can cheat. But you don't need to understand that to play.)"
 
-The blockchain infrastructure exists to serve the games, not the other way around. ETour Protocol is the engine under the hood—essential for making trustless competition possible, but not the selling point.
+The blockchain infrastructure exists to serve the games, not the other way around. ETour Protocol is the engine under the hood that makes this competition possible, but not the selling point.
 
-This whitepaper exists for those who want to look under the hood. If you're a player who just wants to compete, the landing page tells you everything you need: pick a game, connect your wallet, prove you're good.
+**This whitepaper exists for those who want to look under the hood.** If you're a player who just wants to compete, the landing page tells you everything you need: pick a game, connect your wallet, prove you're good.
 
 ---
 
