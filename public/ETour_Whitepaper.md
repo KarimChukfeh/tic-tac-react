@@ -109,15 +109,21 @@ Competitive players want simple things:
 3. **Skill determines results** — Not luck, not who bought more tokens
 4. **Instant resolution** — Win and get paid, no waiting periods
 
-These desires exist independently of blockchain. Chess players have always wanted fair competition with meaningful stakes. The question is whether blockchain adds value to this experience - and if so - how to present that value without drowning the player in technical jargon.
+These desires exist independently of blockchain. Chess players have always wanted fair competition with meaningful stakes. The question is whether blockchain adds value to this experience and that value can manifest without drowning the player in technical jargon.
 
 ### 1.3 The ETour Approach
 
 ETour reinvents the typical Web3 gaming pitch:
 
-**Traditional Web3 Gaming:** "Here's our revolutionary blockchain protocol. It has tokenomics, staking mechanisms, and governance. Oh, and you can play games on it."
+#### **Traditional Web3 Gaming** 
 
-**ETour:** "Here are classic games you already know. Play for real ETH stakes. The better player wins. (And yes, it's all verified on-chain so nobody can cheat. But you don't need to understand that to play.)"
+> Here's our "revolutionary blockchain protocol". It has tokenomics, staking mechanisms, and governance.<br>Oh, and you can play games on it.
+
+<br> 
+
+#### **ETour** 
+
+> Here are classic games you already know.<br>Play for real ETH stakes. The better player claims the pot.
 
 The blockchain infrastructure exists to serve the games, not the other way around. ETour Protocol is the engine under the hood that makes this competition possible, but not the selling point.
 
@@ -164,9 +170,9 @@ Tic-tac-toe is the "Hello World" of ETour - not because it's competitive at the 
 
 Chess is ETour's flagship serious competition. 
 
-Full chess rules: castling, en passant, pawn promotion, fifty-move rule, threefold repetition — all verified on-chain. 
+Full chess rules: castling, en passant, pawn promotion, fifty-move rule, threefold repetition. **All verified on-chain.** 
 
-Every move is permanently recorded, creating an immutable record of the game.
+Every move is permanently recorded, creating an immutable record of every game.
 
 Chess was chosen because:
 
@@ -352,7 +358,7 @@ Tournaments follow single-elimination bracket format:
 5. Prizes distribute automatically upon completion
 6. Tournament resets for new enrollment
 
-The protocol handles odd player counts through walkover advancement—one randomly selected player advances without playing, ensuring brackets remain functional.
+The protocol handles odd player counts through walkover advancement. One randomly selected player advances without playing, ensuring brackets remain functional.
 
 ### 4.4 Draw Handling
 
