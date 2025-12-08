@@ -1,5 +1,5 @@
 # ETOUR
-### Perpetual Tournament Infrastructure for Skill-Based Competition
+### Tournament Infrastructure for Skill-Based Competition
 
 ---
 

@@ -165,7 +165,7 @@ function WhitepaperSection() {
         components={{
           h1: ({node, children, ...props}) => {
             const id = generateId(children);
-            return <h1 id={id} className="text-4xl font-bold text-cyan-300 mb-6 mt-8 text-center" {...props}>{children}</h1>;
+            return <h1 id={id} className="text-5xl md:text-5xl font-bold text-cyan-300 mb-6 mt-8 text-center" {...props}>{children}</h1>;
           },
           h2: ({node, children, ...props}) => {
             const id = generateId(children);
@@ -173,7 +173,7 @@ function WhitepaperSection() {
           },
           h3: ({node, children, ...props}) => {
             const id = generateId(children);
-            const isSubtitle = children?.toString().includes('Perpetual Tournament Infrastructure');
+            const isSubtitle = children?.toString().includes('Tournament Infrastructure');
             return <h3 id={id} className={`text-2xl font-bold text-cyan-300 mb-3 mt-6 ${isSubtitle ? 'text-center' : ''}`} {...props}>{children}</h3>;
           },
           p: ({node, ...props}) => <p className="text-slate-300 mb-4 leading-relaxed" {...props} />,
