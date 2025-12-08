@@ -242,11 +242,11 @@ export default function Landing() {
     },
     {
       q: "What if my opponent doesn't move?",
-      a: "Each player has a time limit per move. If a player fails to make a move within the time limit, they automatically forfeit the game. The smart contract enforces all timeouts—no disputes, no moderators needed."
+      a: "Each player has a time limit per move. If a player fails to make a move within the time limit, they automatically forfeit the game. The smart contract enforces all timeouts. No disputes required, no moderators needed."
     },
     {
       q: "Can this really run forever?",
-      a: "Yes. The smart contracts are deployed on Arbitrum (an Ethereum Layer 2) with no off-switch, no admin panel, and no company required to keep them running. Even if this website disappears, anyone can interact with the contracts directly via Arbiscan or build their own interface. The contracts continue executing and game outcomes remain permanent."
+      a: "Yes. The smart contracts are deployed on Arbitrum (an Ethereum Layer 2) with no off-switch. No admin panel, no company required to keep them running. Even if this website disappears, anyone can interact with the contracts directly via Arbiscan or build their own interface. The contracts continue executing and game outcomes remain permanent."
     },
     {
       q: "How do I know the prize pool is safe?",
