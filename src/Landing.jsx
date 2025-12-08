@@ -474,7 +474,7 @@ export default function Landing() {
                 <h3 className="text-xl font-bold text-white mb-3">Fully On-Chain</h3>
                 <p className="text-slate-400 leading-relaxed">
                   Every move, every game, every payout lives on the blockchain. No servers to shut down. 
-                  No company to trust. The code is the only authority.
+                  No company to trust. Code is the only authority.
                 </p>
               </div>
               
