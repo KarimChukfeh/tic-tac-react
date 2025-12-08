@@ -748,7 +748,7 @@ export default function Landing() {
             {/* Bottom Line */}
             <div className="text-center pt-8 border-t border-slate-800/30">
               <p className="text-slate-600 text-xs">
-                No company needed. No trust required. No servers to shutdown. Pure competition on the blockchain.
+                No company needed. No trust required. No servers to shutdown.
               </p>
             </div>
             
