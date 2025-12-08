@@ -234,7 +234,7 @@ export default function Landing() {
   const faqs = [
     {
       q: "How does ETour work?",
-      a: "ETour matches up enrolled players on the blockchain. Players enroll by paying an entry fee, then they take turns making moves on-chain. The winner receives 90% of the total entry fees (with 7.5% to owner and 2.5% to protocol)."
+      a: "ETour matches enrolled players on the blockchain. Players enroll by paying an entry fee, then they take turns making moves on-chain. The winner receives 90% of the total entry fees (with 7.5% to owner and 2.5% to protocol)."
     },
     {
       q: "Why play games on the blockchain?",
@@ -492,7 +492,7 @@ export default function Landing() {
                 <h3 className="text-xl font-bold text-white mb-3">No Token</h3>
                 <p className="text-slate-400 leading-relaxed">
                   We're not selling you anything. No governance token. No "utility" coin. 
-                  Just ETH in, ETH out. The way crypto should work.
+                  ETH in, ETH out. The way crypto should be.
                 </p>
               </div>
               
