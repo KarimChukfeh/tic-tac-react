@@ -332,7 +332,7 @@ export default function Landing() {
           <p className="text-xl md:text-2xl text-slate-400 text-center max-w-2xl mb-12 leading-relaxed">
             Classic strategy games. Real stakes. No tokens, no tricks.
             <br />
-            <span className="text-white font-semibold">Just skill vs skill. Real ETH on the line.</span>
+            <span className="text-white font-semibold">Skill vs skill. Real ETH on the line.</span>
           </p>
           
           {/* Trust Signals */}
