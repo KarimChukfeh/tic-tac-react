@@ -7,7 +7,7 @@
 
 ETour is a game-agnostic tournament protocol that enables any deterministic competitive game to run perpetual, stake-based competitions entirely on-chain. 
 
-Unlike traditional Web3 gaming platforms that sell tokens or promise earnings, ETour focuses on a single value proposition: **players compete in games they already know, and the better player claims real ETH**.
+ETour is different from other Web3 gaming platforms that sell tokens or promise players money. Instead, it focuses on one thing: **players compete in games they already know, and the better player wins real ETH.**
 
 The protocol separates universal tournament mechanics: matchmaking, bracket management, timeout escalation, prize distribution from game-specific logic. Architectural decisions allow multiple games to share battle-tested infrastructure while each maintains its own rules and identity. 
 
@@ -15,7 +15,7 @@ ETour launches with three flagship games: Tic-Tac-Toe, Connect Four, and Chess, 
 
 This whitepaper explains both the philosophical reasoning behind ETour's design decisions and the technical implementation that makes trustless competition possible. 
 
-It is intended for those who want to understand not just *what* ETour does, but *why* it was built this way.
+It is intended for those who want to understand **not just *what* ETour does**, but ***why* it was built this way**.
 
 ---
 
@@ -90,7 +90,7 @@ It is intended for those who want to understand not just *what* ETour does, but 
 
 ### 1.1 The Problem with Web3 Gaming
 
-Web3 gaming has a credibility problem. The typical pitch: "play games and earn crypto" has been so thoroughly abused by scams, rugpulls, and unsustainable tokenomics that the phrase itself triggers skepticism. Players have learned that "earn" usually means "lose money slowly while enriching early adopters."
+Web3 gaming has a credibility problem. The phrase "play games and earn crypto" has been used so many times by scams, rugpulls, and tokenomics that don't work that it makes people doubt it, rightfully so. **Players have learned that "earn" usually means "lose money slowly while enriching early adopters."**
 
 Most Web3 gaming projects make the same fundamental mistake: they lead with blockchain technology and financial incentives rather than compelling gameplay. They're selling infrastructure, tokens, and economic mechanisms to people who just want to play games.
 
@@ -113,7 +113,7 @@ These desires exist independently of blockchain. Chess players have always wante
 
 ### 1.3 The ETour Approach
 
-ETour reinvents the typical Web3 gaming pitch:
+ETour turns the usual Web3 gaming pitch on its head:
 
 #### **Traditional Web3 Gaming** 
 
@@ -174,14 +174,16 @@ Full chess rules: castling, en passant, pawn promotion, fifty-move rule, threefo
 
 Every move is permanently recorded, creating an immutable record of every game.
 
-Chess was chosen because:
+We chose chess because: 
 
-- **Deep strategic complexity** justifies meaningful stakes
-- **Established competitive culture** provides ready audience
-- **Complete information** aligns perfectly with blockchain transparency
+- **Deep strategic complexity** that makes the stakes worth it
+- **Established competitive culture** gives you an audience right away
+- **Full information** is a perfect match for blockchain transparency 
 - **Existing rating systems** give players benchmarks to prove
 
-For serious chess players, ChessOnChain offers something no centralized platform can: guaranteed payout upon victory.
+Chess on chain has something that no other centralized platform can offer serious chess players: 
+
+**They are 100% sure that their opponent isn't using engine assistance (each move is a transaction from their wallet), and they will get paid if they win.** 
 
 ### 2.4 Connect Four
 
@@ -199,9 +201,9 @@ Connect Four was added because:
 
 Battleship was initially considered as the third flagship game. It was rejected because it fundamentally conflicts with blockchain's transparency properties.
 
-Battleship requires **hidden information**—players place ships secretly, then guess opponent positions. Implementing this on-chain requires one of two compromises:
+Battleship requires **hidden information**—players place ships secretly, then guess opponent positions. To make this work on-chain, you have to make one of two compromises: 
 
-1. **Commit-reveal schemes** — Players commit to ship positions cryptographically, revealing after the game. This works but adds complexity, multiple transactions, and potential for abandonment between commit and reveal.
+1. **Commit-reveal schemes** —  Players agree to send their positions cryptographically, and they will be revealed after the game.
 
 2. **Off-chain computation** — Ship positions stored off-chain, only results posted on-chain. This breaks the "fully on-chain" principle entirely.
 
@@ -351,12 +353,13 @@ This design ensures:
 
 Tournaments follow single-elimination bracket format:
 
-1. Players enroll until tier capacity is reached (or timeout forces start)
-2. Round 0 pairs players for initial matches
-3. Winners advance to next round; losers are eliminated
-4. Process continues until finals determine champion
+
+1. Players sign up until the tier is full or the time runs out and the games start
+2. Round 0 puts players together for their first matches
+3. Winners move on to the next round. Losers are kicked out
+4. This goes on until the finals decide the champion
 5. Prizes distribute automatically upon completion
-6. Tournament resets for new enrollment
+6. Tournament automatically resets for new enrollment
 
 The protocol handles odd player counts through walkover advancement. One randomly selected player advances without playing, ensuring brackets remain functional.
 
@@ -553,7 +556,7 @@ ETour is built according to RW3 (Reclaim Web3) principles—a framework for buil
 ### 8.2 How ETour Meets Each Principle
 
 **Real Utility:**
-ETour enables skill-based competition with guaranteed fair outcomes and instant payouts. Players get something they cannot get from centralized platforms: absolute certainty that nobody can cheat, steal funds, or manipulate results.
+ETour enables skill-based competition with guaranteed fair outcomes and instant payouts. Players get something that centralized platforms can't give them: absolute certainty that nobody can cheat, steal funds, or manipulate results.
 
 **Fully On-Chain:**
 All tournament logic, game rules, and financial operations execute via smart contract. The only off-chain component is the frontend interface—which is purely cosmetic. A different frontend, or direct contract interaction, produces identical results.
