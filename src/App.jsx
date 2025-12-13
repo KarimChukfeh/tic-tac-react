@@ -3759,7 +3759,7 @@ This declaration is immutable and verifiable on-chain.`;
                     <p><strong className="text-blue-200">First time on Arbitrum?</strong> You'll need to:</p>
                     <ol className="list-decimal list-inside pl-2 space-y-1">
                       <li>Switch to Arbitrum network in MetaMask (instant and free)</li>
-                      <li>Bridge ETH from Ethereum mainnet to Arbitrum (~15 min, requires L1 gas)</li>
+                      <li>Bridge ETH from Ethereum mainnet to Arbitrum (max 5 min, requires L1 gas)</li>
                     </ol>
                     <p><strong className="text-blue-200">Already have Arbitrum ETH?</strong> Just switch networks and play.</p>
                     <p className="pt-1"><span className="text-blue-200">Lower fees than Ethereum mainnet. Final outcomes secured by Ethereum L1.</span></p>
