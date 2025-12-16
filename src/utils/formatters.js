@@ -49,5 +49,6 @@ export const getTierName = (tierId, tierNames = null) => {
 // TicTacToe-specific tier names (for convenience)
 export const TICTACTOE_TIER_NAMES = {
   0: 'Duel',      // 2-player tournaments
-  1: 'Octa'       // 8-player tournaments
+  1: 'Octa',      // 8-player tournaments
+  2: 'Quad'       // 4-player tournaments
 };
