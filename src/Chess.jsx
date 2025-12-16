@@ -9,7 +9,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Wallet, Grid, Swords, Clock, Shield, Lock, Eye, Code, ExternalLink,
-  Trophy, Play, Users, Zap, Coins, ChevronDown, ChevronUp, Info, ArrowLeft
+  Trophy, Play, Users, Zap, Coins, ChevronDown, Info, ArrowLeft
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import CHESS_ABI from './COCABI.json';
@@ -783,36 +783,9 @@ export default function ChessOnChain() {
   const previousBoardRef = useRef(null);
   const [moveHistory, setMoveHistory] = useState([]); // Array of { from, to, promotion, notation }
 
-  // FAQ State
-  const [expandedFaq, setExpandedFaq] = useState(null);
-
   // Leaderboard State
   const [leaderboard, setLeaderboard] = useState([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
-
-  // FAQ data for chess
-  const faqs = [
-    {
-      q: "How do chess tournaments work?",
-      a: "Chess tournaments are bracket-style competitions on the blockchain. Players enroll by paying an entry fee, then compete in single-elimination matches. Each move is recorded on-chain, and the smart contract validates all moves according to official chess rules. Winners advance until a champion is crowned."
-    },
-    {
-      q: "Why chess on the blockchain?",
-      a: "Chess is the perfect game for blockchain: it's deterministic, skill-based, and has clear rules that can be fully encoded in a smart contract. Every move is recorded on-chain, making cheating impossible. Game outcomes are cryptographically secured and permanent."
-    },
-    {
-      q: "What if my opponent doesn't move?",
-      a: "Each player has a time limit per move (5 minutes). If a player fails to make a move within the time limit, their opponent can claim victory through the timeout mechanism. The smart contract enforces all timeouts automatically—no disputes, no moderators needed."
-    },
-    {
-      q: "Are all chess rules supported?",
-      a: "Yes! The smart contract implements full chess rules including castling (both kingside and queenside), en passant captures, pawn promotion to any piece, check and checkmate detection, and stalemate draws. Every special move is validated on-chain."
-    },
-    {
-      q: "How do I know the prize pool is safe?",
-      a: "All entry fees go directly to the smart contract. The contract holds the funds and distributes them automatically when a winner is determined. No human can access the funds. You can verify this by reading the contract code on the block explorer."
-    }
-  ];
 
   // Theme colors
   const themeColors = {
@@ -2309,136 +2282,8 @@ export default function ChessOnChain() {
 
       </div>
 
-      {/* Zero Trust Architecture */}
-      <div id="zero-trust" className="max-w-7xl mx-auto px-6 pb-12" style={{ position: 'relative', zIndex: 10 }}>
-        <div className="bg-gradient-to-br from-green-900/30 to-emerald-900/30 backdrop-blur-lg rounded-2xl p-8 md:p-12 border border-green-500/30 mb-16">
-          <div className="max-w-4xl mx-auto">
-            <h2 className="text-4xl font-bold mb-6 text-center text-green-300">Zero-Trust Architecture</h2>
-
-            <div className="bg-green-500/10 border-l-4 border-green-400 p-6 rounded-r-xl mb-8">
-              <p className="text-lg leading-relaxed text-green-100">
-                ChessOnChain is a <strong className="text-green-300">fully autonomous protocol</strong> deployed on Arbitrum (Ethereum Layer 2). Every chess move is recorded on-chain. Every rule is enforced by immutable code. No servers can go down. No admins can interfere. No company can shut it down.
-              </p>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-6 mb-8">
-              <div className="bg-white/5 backdrop-blur-sm border border-green-500/20 rounded-xl p-6">
-                <h3 className="text-xl font-bold mb-3 text-green-300 flex items-center gap-2">
-                  <span className="text-2xl">♔</span> The Chess Protocol
-                </h3>
-                <ul className="space-y-2 text-green-100">
-                  <li className="flex items-start gap-2">
-                    <span className="text-green-400 mt-1">✓</span>
-                    <span>Every move recorded on-chain</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-green-400 mt-1">✓</span>
-                    <span>Full chess rules enforced by smart contract</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-green-400 mt-1">✓</span>
-                    <span>Automatic timeout enforcement</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-green-400 mt-1">✓</span>
-                    <span>Checkmate & stalemate detection</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-green-400 mt-1">✓</span>
-                    <span>Game outcomes permanent on L1</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-green-400 mt-1">→</span>
-                    <a
-                      href={`https://arbiscan.io/address/${CONTRACT_ADDRESS}#code`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-green-300 hover:text-green-200 underline decoration-green-400/50 hover:decoration-green-300 transition-colors"
-                    >
-                      Read the immutable source code here.
-                    </a>
-                  </li>
-                </ul>
-              </div>
-
-              <div className="bg-white/5 backdrop-blur-sm border border-blue-500/20 rounded-xl p-6">
-                <h3 className="text-xl font-bold mb-3 text-blue-300 flex items-center gap-2">
-                  <span className="text-2xl">🌐</span> This Interface
-                </h3>
-                <ul className="space-y-2 text-blue-100">
-                  <li className="flex items-start gap-2">
-                    <span className="text-blue-400 mt-1">•</span>
-                    <span>Demo interface by creator</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-blue-400 mt-1">•</span>
-                    <span>Reads 100% public blockchain data</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-blue-400 mt-1">•</span>
-                    <span>Simply calls smart contract functions</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-blue-400 mt-1">•</span>
-                    <span>Can be rebuilt by anyone</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-blue-400 mt-1">•</span>
-                    <span>No special privileges</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-blue-400 mt-1">→</span>
-                    <span className="text-blue-300">
-                      Feel free to fork it and build your own!
-                    </span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-
-            <div className="bg-yellow-500/10 border border-yellow-400/30 rounded-xl p-6">
-              <h3 className="text-xl font-bold mb-3 text-yellow-300 flex items-center gap-2">
-                <span className="text-2xl">💡</span> What This Means
-              </h3>
-              <div className="space-y-3 text-yellow-100">
-                <p>
-                  <strong className="text-yellow-200">Anyone can build their own chess interface</strong> to this protocol. All interfaces connect to the same games, display the same boards, and follow the same rules.
-                </p>
-                <p>
-                  <strong className="text-yellow-200">This website is optional.</strong> You could play via Arbiscan, build your own UI, or use any third-party interface. The outcomes are secured by Arbitrum (and ultimately Ethereum L1), not by this website.
-                </p>
-                <p>
-                  <strong className="text-yellow-200">Game outcomes are permanent.</strong> Even if every website disappears, the game continues forever. Your wins and prizes are secured by smart contracts settling to Ethereum L1.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* FAQ Section */}
-        <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-8 border border-white/10 mb-16">
-          <h2 className="text-3xl font-bold mb-8 text-center">Frequently Asked Questions</h2>
-          <div className="space-y-4 max-w-4xl mx-auto">
-            {faqs.map((faq, idx) => (
-              <div key={idx} className="border border-blue-500/20 rounded-lg overflow-hidden">
-                <button
-                  onClick={() => setExpandedFaq(expandedFaq === idx ? null : idx)}
-                  className="w-full px-6 py-4 flex items-center justify-between bg-white/5 hover:bg-white/10 transition-colors"
-                >
-                  <span className="font-semibold text-left">{faq.q}</span>
-                  {expandedFaq === idx ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                </button>
-                {expandedFaq === idx && (
-                  <div className="px-6 py-4 bg-white/5 border-t border-blue-500/20">
-                    <p className="text-blue-200 leading-relaxed">{faq.a}</p>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Winners Leaderboard Section */}
+      {/* Winners Leaderboard Section */}
+      <div className="max-w-7xl mx-auto px-6 pb-12" style={{ position: 'relative', zIndex: 10 }}>
         <div className="max-w-2xl mx-auto mb-16">
           <WinnersLeaderboard
             leaderboard={leaderboard}
