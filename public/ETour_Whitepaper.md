@@ -457,38 +457,45 @@ Traditional platforms solve this with centralized intervention—admins who adju
 
 When a player enrolls in an unfilled tournament, a countdown begins. If the tournament doesn't fill naturally:
 
-**Escalation 1 — Enroller Claim:**
-After the enrollment window expires, enrolled players can force-start the tournament with whatever players have joined, even if below capacity.
+**Escalation 1 — Enroller Claim (Force Start):**
+After the enrollment window expires, enrolled players can force-start the tournament with whatever players have joined, even if below capacity. If only one player has enrolled, they win immediately and receive the prize pool.
 
-**Escalation 2 — Public Claim:**
-After an additional escalation interval, anyone can claim the forfeit pool. All enrolled players are marked as forfeited, and the claimer receives the entire prize pool.
+**Escalation 2 — Public Claim (Abandoned Pool):**
+After an additional escalation interval, **anyone** (including non-enrolled players) can claim the abandoned enrollment pool. All enrolled players are marked as forfeited, and **the claimer receives the entire prize pool** (90% of all entry fees collected). This is not a small reward—it's the full pot.
 
-This creates economic incentive for resolution. Rather than funds sitting locked forever, someone can always claim them—either by playing a reduced tournament or by cleaning up an abandoned one.
+This creates a strong economic incentive for resolution. Rather than funds sitting locked forever, someone can always claim them—either by playing a reduced tournament or by cleaning up an abandoned one and taking the entire pool.
 
 ### 6.3 Match Timeout Escalation
 
 During active matches, each move must occur within the configured timeout. When a timeout occurs:
 
 **Escalation 1 — Opponent Claim:**
-The opponent can claim victory directly. They waited; they win.
+The opponent can claim victory directly. They waited; they win. The stalling player forfeits and is eliminated.
 
-**Escalation 2 — Advanced Players:**
-Players in the same tournament who have completed their matches can claim the stalled match for a forfeit reward.
+**Escalation 2 — Advanced Players (Force Eliminate):**
+Players in the same tournament who have already won a match (and thus "advanced") can force-eliminate the stalled match. **Both players in the stalled match are eliminated**—neither advances. The advanced player who triggers this receives no direct reward; their incentive is unblocking the tournament so they can continue competing for the prize pool.
 
-**Escalation 3 — External Claim:**
-Anyone can claim the match, receiving a forfeit reward. This ensures maximum availability of resolution.
+**Escalation 3 — External Replacement:**
+Anyone can claim the match slot by **replacing** both stalled players. The claimer does not receive a cash reward—instead, **they become the match winner and advance to the next round** (or win the tournament if it's the finals). Both original players are eliminated and forfeit their entry fees. The replacement player is added to the tournament and can compete for the full prize pool.
 
-Each escalation level expands who can resolve the situation, guaranteeing that no match stalls indefinitely.
+Each escalation level expands who can resolve the situation, guaranteeing that no match stalls indefinitely. The incentives shift from "claim the stalled match" to "become a participant and compete for the prize."
 
 ### 6.4 Economic Incentives for Resolution
 
-The escalation system transforms stalling from a grief vector into an economic opportunity. If someone stalls:
+The escalation system transforms stalling from a grief vector into various opportunities. If someone stalls:
 
-- Their opponent benefits (free win)
-- Other participants benefit (faster tournament completion)
-- External observers benefit (claimable forfeit rewards)
+**During Enrollment:**
+- Enrolled players can force-start with fewer players (competing for the existing prize pool)
+- External observers can claim the **entire abandoned prize pool** for themselves
 
-Everyone except the staller has incentive to resolve the situation. This alignment ensures rapid resolution without requiring centralized intervention.
+**During Matches:**
+- The opponent benefits (free win and tournament advancement)
+- Advanced players benefit (unblocking their path to the finals and prize pool)
+- External observers benefit (**they can join the tournament mid-competition** and potentially win the entire prize)
+
+The incentive structure is designed so that everyone except the staller has reason to resolve the situation. For enrollment timeouts, the reward is direct and substantial (the full pool). For match timeouts, the reward is participation—the chance to compete for prizes in a tournament you didn't have to pay to enter.
+
+This alignment ensures rapid resolution without requiring centralized intervention.
 
 ---
 
