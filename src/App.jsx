@@ -398,14 +398,6 @@ const TournamentCard = ({
         </div>
       )}
 
-      {/* Debug Info - Remove after testing */}
-      {enrollmentTimeout && (escalationState.activeEscalation > 0 || escalationState.timeToEscalation1 > 0) && (
-        <div className="mb-2 bg-gray-800/50 border border-gray-600 rounded p-2 text-xs text-gray-300">
-          <div>Esc1: {escalationState.canStartEscalation1 ? '✅' : '❌'} | Esc2: {escalationState.canStartEscalation2 ? '✅' : '❌'} | isEnrolled: {isEnrolled ? '✅' : '❌'}</div>
-          <div>activeEscalation: {escalationState.activeEscalation} | Button: {((escalationState.canStartEscalation1 && isEnrolled) || escalationState.canStartEscalation2) ? '✅ VISIBLE' : '❌ HIDDEN'}</div>
-        </div>
-      )}
-
       {/* Action Buttons */}
       {/* Escalation 1: Enrolled players can force start */}
       {tournamentStatus === 0 && escalationState.canStartEscalation1 && isEnrolled && (
@@ -468,14 +460,14 @@ const TournamentCard = ({
 
       {/* Abandoned Pool Claim Button - show for completed/abandoned tournaments with claimable funds */}
       {onClaimAbandonedPool && tournamentStatus >= 2 &&
-        timeoutState.forfeitPool && timeoutState.forfeitPool > 0n && (
+        escalationState.forfeitPool && escalationState.forfeitPool > 0n && (
         <button
           onClick={() => onClaimAbandonedPool(tierId, instanceId)}
           disabled={loading || !account}
           className="w-full mt-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
         >
           <Coins size={18} />
-          {loading ? 'Claiming...' : !account ? 'Connect Wallet to Claim' : `claimAbandonedEnrollmentPool (${ethers.formatEther(timeoutState.forfeitPool)} ETH)`}
+          {loading ? 'Claiming...' : !account ? 'Connect Wallet to Claim' : `claimAbandonedEnrollmentPool (${ethers.formatEther(escalationState.forfeitPool)} ETH)`}
         </button>
       )}
     </div>
@@ -1323,10 +1315,8 @@ export default function TicTacBlock() {
 
       // Fetch tournaments during initial load (no wallet required)
       if (isInitialLoad) {
-        console.log('🔄 Fetching tournaments for initial load...');
         try {
-          await fetchAllTournaments(false);
-          console.log('✅ Initial tournament data loaded');
+          await fetchAllTournaments(contractInstance, null, false);
         } catch (err) {
           console.warn('Could not fetch tournaments on initial load:', err);
         }
@@ -1528,23 +1518,23 @@ export default function TicTacBlock() {
   }, [getReadOnlyContract]);
 
   // Fetch all tournaments (tier 0: 64x 2-player, tier 1: 16x 8-player)
-  const fetchAllTournaments = useCallback(async (silent = false) => {
+  // Accepts optional contractInstance and userAccount to avoid closure issues during init
+  const fetchAllTournaments = useCallback(async (contractInstance = null, userAccount = null, silent = false) => {
     if (!silent) {
       setTournamentsLoading(true);
     }
 
-    // Use read-only contract to avoid MetaMask rate limiting
-    const readContract = getReadOnlyContract();
+    // Use provided contract or create read-only contract
+    const readContract = contractInstance || getReadOnlyContract();
+    // Use provided account or fall back to state
+    const currentAccount = userAccount !== undefined ? userAccount : account;
     const allTournaments = [];
 
     // Fetch tournaments from both tiers
     for (let tierId = 0; tierId < 2; tierId++) {
       try {
-        console.log(`🔄 Fetching tier ${tierId}...`);
-
         // Get tier overview which returns arrays of data for all instances
         const tierOverview = await readContract.getTierOverview(tierId);
-        console.log(`Tier ${tierId} overview:`, tierOverview);
 
         const statuses = tierOverview[0];
         const enrolledCounts = tierOverview[1];
@@ -1552,13 +1542,10 @@ export default function TicTacBlock() {
         // Get tier config to get correct player count
         const tierConfig = await readContract.tierConfigs(tierId);
         const maxPlayers = Number(tierConfig.playerCount);
-        console.log(`Tier ${tierId} config: maxPlayers=${maxPlayers}`);
 
         // Get entry fee for this tier
         const fee = await readContract.ENTRY_FEES(tierId);
         const entryFeeFormatted = ethers.formatEther(fee);
-
-        console.log(`✅ Tier ${tierId}: ${statuses?.length || 0} instances, fee=${entryFeeFormatted}`);
 
         // Create tournament objects for each instance
         for (let i = 0; i < statuses.length; i++) {
@@ -1567,8 +1554,10 @@ export default function TicTacBlock() {
 
           // Check if user is enrolled
           let isEnrolled = false;
-          if (account) {
-            isEnrolled = await readContract.isEnrolled(tierId, i, account);
+          if (currentAccount) {
+            try {
+              isEnrolled = await readContract.isEnrolled(tierId, i, currentAccount);
+            } catch (err) {}
           }
 
           // Get enrollment timeout data
@@ -1578,9 +1567,7 @@ export default function TicTacBlock() {
             const tournamentInfo = await readContract.tournaments(tierId, i);
             enrollmentTimeout = tournamentInfo.enrollmentTimeout;
             hasStartedViaTimeout = tournamentInfo.hasStartedViaTimeout;
-          } catch (err) {
-            console.log('Could not fetch tournament timeout data:', err);
-          }
+          } catch (err) {}
 
           allTournaments.push({
             tierId,
@@ -1599,8 +1586,6 @@ export default function TicTacBlock() {
         console.error(`Error fetching tier ${tierId}:`, error);
       }
     }
-
-    console.log(`Total tournaments found: ${allTournaments.length}`);
 
     // Sort by enrolledCount descending (most enrolled first)
     allTournaments.sort((a, b) => b.enrolledCount - a.enrolledCount);
@@ -2340,7 +2325,7 @@ export default function TicTacBlock() {
 
     // Refresh tournaments list and cached stats (with loading indicator)
     if (contract) {
-      await fetchAllTournaments(false);
+      await fetchAllTournaments(null, null, false);
       await fetchCachedStats(false);
     }
   };
@@ -3138,200 +3123,6 @@ export default function TicTacBlock() {
               </div>
             )}
 
-            {/* Dev/Debug Section */}
-            <div className="mt-6 bg-slate-900/80 rounded-xl p-6 border-2 border-yellow-500/50">
-              <h3 className="text-xl font-bold text-yellow-400 mb-4 flex items-center gap-2">
-                <Code size={20} />
-                Dev/Debug Info
-              </h3>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Match Identifiers */}
-                <div className="bg-black/30 rounded-lg p-4 border border-yellow-500/20">
-                  <h4 className="text-sm font-bold text-yellow-300 mb-3 uppercase tracking-wide">Match Identifiers</h4>
-                  <div className="space-y-2 text-sm font-mono">
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Tier ID:</span>
-                      <span className="text-white font-bold">{currentMatch.tierId}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Instance ID:</span>
-                      <span className="text-white font-bold">{currentMatch.instanceId}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Round Number:</span>
-                      <span className="text-white font-bold">{currentMatch.roundNumber}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Match Number:</span>
-                      <span className="text-white font-bold">{currentMatch.matchNumber}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Match Status */}
-                <div className="bg-black/30 rounded-lg p-4 border border-yellow-500/20">
-                  <h4 className="text-sm font-bold text-yellow-300 mb-3 uppercase tracking-wide">Match Status</h4>
-                  <div className="space-y-2 text-sm font-mono">
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Status:</span>
-                      <span className="text-white font-bold">
-                        {currentMatch.matchStatus === 0 ? 'Not Started (0)' :
-                         currentMatch.matchStatus === 1 ? 'In Progress (1)' :
-                         'Completed (2)'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Initialized:</span>
-                      <span className={`font-bold ${currentMatch.isMatchInitialized ? 'text-green-400' : 'text-red-400'}`}>
-                        {currentMatch.isMatchInitialized ? 'YES' : 'NO'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Is Draw:</span>
-                      <span className={`font-bold ${currentMatch.isDraw ? 'text-yellow-400' : 'text-gray-500'}`}>
-                        {currentMatch.isDraw ? 'YES' : 'NO'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Last Moved Cell:</span>
-                      <span className="text-white font-bold">{currentMatch.lastMovedCell}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Players */}
-                <div className="bg-black/30 rounded-lg p-4 border border-yellow-500/20">
-                  <h4 className="text-sm font-bold text-yellow-300 mb-3 uppercase tracking-wide">Players</h4>
-                  <div className="space-y-3 text-sm">
-                    <div>
-                      <div className="text-gray-400 mb-1">Player 1 (X):</div>
-                      <div className="font-mono text-xs text-white bg-blue-500/20 p-2 rounded break-all">
-                        {currentMatch.player1}
-                      </div>
-                      {currentMatch.player1?.toLowerCase() === account?.toLowerCase() && (
-                        <div className="text-yellow-400 text-xs font-bold mt-1">👈 THIS IS YOU</div>
-                      )}
-                    </div>
-                    <div>
-                      <div className="text-gray-400 mb-1">Player 2 (O):</div>
-                      <div className="font-mono text-xs text-white bg-pink-500/20 p-2 rounded break-all">
-                        {currentMatch.player2}
-                      </div>
-                      {currentMatch.player2?.toLowerCase() === account?.toLowerCase() && (
-                        <div className="text-yellow-400 text-xs font-bold mt-1">👈 THIS IS YOU</div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Turn & Winner */}
-                <div className="bg-black/30 rounded-lg p-4 border border-yellow-500/20">
-                  <h4 className="text-sm font-bold text-yellow-300 mb-3 uppercase tracking-wide">Turn & Winner</h4>
-                  <div className="space-y-3 text-sm">
-                    <div>
-                      <div className="text-gray-400 mb-1">Current Turn:</div>
-                      <div className="font-mono text-xs text-white bg-purple-500/20 p-2 rounded break-all">
-                        {currentMatch.currentTurn || 'Not Started'}
-                      </div>
-                      {currentMatch.isYourTurn && (
-                        <div className="text-green-400 text-xs font-bold mt-1">✅ YOUR TURN!</div>
-                      )}
-                    </div>
-                    <div>
-                      <div className="text-gray-400 mb-1">Winner:</div>
-                      <div className="font-mono text-xs text-white bg-green-500/20 p-2 rounded break-all">
-                        {currentMatch.winner && currentMatch.winner !== '0x0000000000000000000000000000000000000000'
-                          ? currentMatch.winner
-                          : 'None'}
-                      </div>
-                      {currentMatch.winner?.toLowerCase() === account?.toLowerCase() && currentMatch.matchStatus === 2 && (
-                        <div className="text-yellow-400 text-xs font-bold mt-1">🏆 YOU WON!</div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Board State */}
-                <div className="bg-black/30 rounded-lg p-4 border border-yellow-500/20 lg:col-span-2">
-                  <h4 className="text-sm font-bold text-yellow-300 mb-3 uppercase tracking-wide">Board State (Array)</h4>
-                  <div className="font-mono text-sm">
-                    <div className="text-gray-400 mb-2">Raw board array (0=empty, 1=X, 2=O):</div>
-                    <div className="bg-black/50 p-3 rounded text-white overflow-x-auto">
-                      [{currentMatch.board.join(', ')}]
-                    </div>
-                    <div className="mt-3 grid grid-cols-3 gap-2">
-                      {currentMatch.board.map((cell, idx) => (
-                        <div
-                          key={idx}
-                          className={`text-center p-2 rounded font-bold ${
-                            cell === 0 ? 'bg-gray-700/30 text-gray-400' :
-                            cell === 1 ? 'bg-blue-500/30 text-blue-300' :
-                            'bg-pink-500/30 text-pink-300'
-                          }`}
-                        >
-                          Cell {idx}: {cell === 0 ? 'Empty' : cell === 1 ? 'X' : 'O'}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* User Context */}
-                <div className="bg-black/30 rounded-lg p-4 border border-yellow-500/20 lg:col-span-2">
-                  <h4 className="text-sm font-bold text-yellow-300 mb-3 uppercase tracking-wide">Your Context</h4>
-                  <div className="space-y-2 text-sm font-mono">
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">You are Player:</span>
-                      <span className="text-white font-bold">
-                        {currentMatch.isPlayer1 ? 'Player 1 (X)' : 'Player 2 (O)'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Your Symbol:</span>
-                      <span className="text-white font-bold text-lg">{currentMatch.userSymbol}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Is Your Turn:</span>
-                      <span className={`font-bold ${currentMatch.isYourTurn ? 'text-green-400' : 'text-red-400'}`}>
-                        {currentMatch.isYourTurn ? 'YES' : 'NO'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Your Moves Made:</span>
-                      <span className="text-white font-bold">
-                        {currentMatch.board.filter(c => c === (currentMatch.isPlayer1 ? 1 : 2)).length}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Opponent Moves:</span>
-                      <span className="text-white font-bold">
-                        {currentMatch.board.filter(c => c === (currentMatch.isPlayer1 ? 2 : 1)).length}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* All Moves from History */}
-                {moveHistory.length > 0 && (
-                  <div className="bg-black/30 rounded-lg p-4 border border-yellow-500/20 lg:col-span-2">
-                    <h4 className="text-sm font-bold text-yellow-300 mb-3 uppercase tracking-wide">Complete Move History</h4>
-                    <div className="space-y-1 max-h-60 overflow-y-auto">
-                      {moveHistory.map((move, idx) => (
-                        <div key={idx} className="flex items-center gap-3 text-xs font-mono bg-purple-500/10 p-2 rounded">
-                          <span className="text-gray-400">#{idx + 1}</span>
-                          <span className="text-white font-bold">{move.player}</span>
-                          <span className="text-purple-400">→ Cell {move.cell}</span>
-                          <span className="text-gray-500 ml-auto">
-                            {new Date(move.timestamp).toLocaleTimeString()}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
           </div>
         )}
 
@@ -3437,557 +3228,66 @@ export default function TicTacBlock() {
         )}
       </div>
 
-      {/* Cached Tournament & Match Stats Section - Always Visible */}
+      {/* Recent Matches Section - Simplified */}
       <div className="max-w-7xl mx-auto px-6 pb-12" style={{ position: 'relative', zIndex: 10 }}>
         <div className="mt-16">
-                  <div className="text-center mb-8">
-                    <div className="inline-flex items-center gap-3 mb-4">
-                      <History className="text-cyan-400" size={48} />
-                      <div className="flex flex-col items-start">
-                        <h2 className="text-4xl font-bold text-white">
-                          Cached Stats
-                        </h2>
-                      </div>
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-3 mb-4">
+              <History className="text-cyan-400" size={48} />
+              <h2 className="text-4xl font-bold text-white">Recent Matches</h2>
+            </div>
+            <p className="text-cyan-200/70 text-lg max-w-2xl mx-auto">
+              Recent game results stored on-chain
+            </p>
+          </div>
+
+          {cachedStatsLoading ? (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-cyan-300">Loading...</p>
+            </div>
+          ) : cachedStats?.matches?.length > 0 ? (
+            <div className="max-w-2xl mx-auto bg-gradient-to-br from-cyan-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-6 border border-cyan-400/30">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <Grid className="text-cyan-400" size={24} />
+                  <span className="text-xl font-bold text-white">Last {Math.min(cachedStats.matches.length, 10)} Matches</span>
+                </div>
+                <div className="text-cyan-300 text-sm">
+                  {cachedStats.matches.filter(m => m?.isDraw).length} draws / {cachedStats.matches.length} total
+                </div>
+              </div>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {[...cachedStats.matches].slice(-10).reverse().map((match, idx) => (
+                  <div key={idx} className={`flex items-center justify-between text-sm p-3 rounded-lg ${
+                    match?.isDraw
+                      ? 'bg-yellow-500/10 border border-yellow-400/20'
+                      : 'bg-cyan-500/10 border border-cyan-400/20'
+                  }`}>
+                    <div className="flex items-center gap-3">
+                      <span className={match?.isDraw ? 'text-yellow-400' : 'text-green-400'}>
+                        {match?.isDraw ? '🟰' : '🏆'}
+                      </span>
+                      <span className="text-white font-mono">
+                        {match?.isDraw
+                          ? 'Draw'
+                          : match?.winner ? `${match.winner.slice(0, 6)}...${match.winner.slice(-4)}` : 'Unknown'}
+                      </span>
                     </div>
-                    <p className="text-cyan-200/70 text-lg max-w-2xl mx-auto">
-                      Historical tournament and match data stored on-chain
-                    </p>
+                    <span className="text-cyan-300/70 text-xs">
+                      Tier {match?.tierId !== undefined ? Number(match.tierId) : '?'}
+                    </span>
                   </div>
-
-                  {cachedStatsLoading ? (
-                    <div className="text-center py-12">
-                      <div className="inline-block">
-                        <div className="w-16 h-16 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin mx-auto mb-4"></div>
-                        <p className="text-cyan-300">Loading cached stats...</p>
-                      </div>
-                    </div>
-                  ) : cachedStats && (cachedStats.matches.length > 0 || cachedStats.tournaments.length > 0) ? (
-                    <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* Cached Tournaments */}
-                      <div className="bg-gradient-to-br from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-6 border border-purple-400/30">
-                        <div className="flex items-center gap-3 mb-4">
-                          <Trophy className="text-purple-400" size={32} />
-                          <h3 className="text-2xl font-bold text-white">Cached Tournaments</h3>
-                        </div>
-                        <div className="space-y-3">
-                          <div className="bg-purple-500/10 rounded-lg p-4 border border-purple-400/20">
-                            <div className="text-purple-300 text-sm mb-1">Total Cached</div>
-                            <div className="text-3xl font-bold text-white">{cachedStats.tournaments?.length || 0}</div>
-                          </div>
-                          {cachedStats.tournaments?.length > 0 && (
-                            <>
-                              {/* Organic Tournaments */}
-                              {cachedStats.organicTournaments?.length > 0 && (
-                                <div className="bg-green-500/10 rounded-lg p-4 border border-green-400/20">
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <Trophy className="text-green-400" size={16} />
-                                    <div className="text-green-300 text-sm font-semibold">Organic ({cachedStats.organicTournaments.length})</div>
-                                  </div>
-                                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                                    {cachedStats.organicTournaments.slice(0, 5).map((tournament, idx) => {
-                                      // Extract all prize recipients with their amounts
-                                      let prizeRecipients = [];
-
-                                      if (tournament.prizeWinners && tournament.prizeWinners.length > 0) {
-                                        // New structure: prizeWinners array with player, prize, and ranking
-                                        prizeRecipients = Array.from(tournament.prizeWinners)
-                                          .filter(r => r && r.player && r.player !== ethers.ZeroAddress && r.prize > 0n)
-                                          .map(r => ({
-                                            player: r.player,
-                                            prize: ethers.formatEther(r.prize),
-                                            ranking: r.ranking ? Number(r.ranking) : null
-                                          }));
-                                      } else if (tournament.prizes && tournament.participants) {
-                                        // Fallback to old structure
-                                        const participantArray = Array.from(tournament.participants);
-                                        const prizesArray = Array.from(tournament.prizes);
-                                        prizeRecipients = participantArray
-                                          .map((player, i) => ({
-                                            player,
-                                            prize: prizesArray[i] ? ethers.formatEther(prizesArray[i]) : '0',
-                                            ranking: i + 1
-                                          }))
-                                          .filter(r => r.player && r.player !== ethers.ZeroAddress && parseFloat(r.prize) > 0);
-                                      }
-
-                                      return (
-                                        <div key={idx} className="bg-green-500/5 p-3 rounded space-y-2">
-                                          <div className="flex items-center justify-between text-xs border-b border-green-400/20 pb-1">
-                                            <span className="text-green-200 font-semibold">Tier {Number(tournament.tierId)}</span>
-                                            <span className="text-green-300/70">{prizeRecipients.length} winner{prizeRecipients.length !== 1 ? 's' : ''}</span>
-                                          </div>
-                                          {prizeRecipients.length > 0 ? (
-                                            <div className="space-y-1.5">
-                                              {prizeRecipients.map((recipient, recipientIdx) => (
-                                                <div key={recipientIdx} className="bg-green-500/5 p-2 rounded border border-green-400/10">
-                                                  <div className="flex items-center justify-between text-xs mb-1">
-                                                    <div className="flex flex-col">
-                                                      <span className={`font-mono ${
-                                                        recipient.player.toLowerCase() === account?.toLowerCase()
-                                                          ? 'text-yellow-300 font-bold'
-                                                          : 'text-white'
-                                                      }`}>
-                                                        #{recipient.ranking} {recipient.player.slice(0, 6)}...{recipient.player.slice(-4)}
-                                                      </span>
-                                                      {recipient.player.toLowerCase() === account?.toLowerCase() && (
-                                                        <span className="text-yellow-400 text-xs font-bold">THIS IS YOU</span>
-                                                      )}
-                                                    </div>
-                                                    <span className="text-green-400 font-bold">{parseFloat(recipient.prize).toFixed(4)} ETH</span>
-                                                  </div>
-                                                </div>
-                                              ))}
-                                            </div>
-                                          ) : (
-                                            <div className="text-xs text-green-300/50 text-center py-2">No prize data available</div>
-                                          )}
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Partial/Force Started Tournaments */}
-                              {cachedStats.partialTournaments?.length > 0 && (
-                                <div className="bg-orange-500/10 rounded-lg p-4 border border-orange-400/20">
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <Zap className="text-orange-400" size={16} />
-                                    <div className="text-orange-300 text-sm font-semibold">Force Started ({cachedStats.partialTournaments.length})</div>
-                                  </div>
-                                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                                    {cachedStats.partialTournaments.slice(0, 5).map((tournament, idx) => {
-                                      // Extract all prize recipients with their amounts
-                                      let prizeRecipients = [];
-
-                                      if (tournament.prizeWinners && tournament.prizeWinners.length > 0) {
-                                        // New structure: prizeWinners array with player, prize, and ranking
-                                        prizeRecipients = Array.from(tournament.prizeWinners)
-                                          .filter(r => r && r.player && r.player !== ethers.ZeroAddress && r.prize > 0n)
-                                          .map(r => ({
-                                            player: r.player,
-                                            prize: ethers.formatEther(r.prize),
-                                            ranking: r.ranking ? Number(r.ranking) : null
-                                          }));
-                                      } else if (tournament.prizes && tournament.participants) {
-                                        // Fallback to old structure
-                                        const participantArray = Array.from(tournament.participants);
-                                        const prizesArray = Array.from(tournament.prizes);
-                                        prizeRecipients = participantArray
-                                          .map((player, i) => ({
-                                            player,
-                                            prize: prizesArray[i] ? ethers.formatEther(prizesArray[i]) : '0',
-                                            ranking: i + 1
-                                          }))
-                                          .filter(r => r.player && r.player !== ethers.ZeroAddress && parseFloat(r.prize) > 0);
-                                      }
-
-                                      return (
-                                        <div key={idx} className="bg-orange-500/5 p-3 rounded space-y-2">
-                                          <div className="flex items-center justify-between text-xs border-b border-orange-400/20 pb-1">
-                                            <span className="text-orange-200 font-semibold">Tier {Number(tournament.tierId)}</span>
-                                            <span className="text-orange-300/70">{prizeRecipients.length} winner{prizeRecipients.length !== 1 ? 's' : ''}</span>
-                                          </div>
-                                          {prizeRecipients.length > 0 ? (
-                                            <div className="space-y-1.5">
-                                              {prizeRecipients.map((recipient, recipientIdx) => (
-                                                <div key={recipientIdx} className="bg-orange-500/5 p-2 rounded border border-orange-400/10">
-                                                  <div className="flex items-center justify-between text-xs mb-1">
-                                                    <div className="flex flex-col">
-                                                      <span className={`font-mono ${
-                                                        recipient.player.toLowerCase() === account?.toLowerCase()
-                                                          ? 'text-yellow-300 font-bold'
-                                                          : 'text-white'
-                                                      }`}>
-                                                        #{recipient.ranking} {recipient.player.slice(0, 6)}...{recipient.player.slice(-4)}
-                                                      </span>
-                                                      {recipient.player.toLowerCase() === account?.toLowerCase() && (
-                                                        <span className="text-yellow-400 text-xs font-bold">THIS IS YOU</span>
-                                                      )}
-                                                    </div>
-                                                    <span className="text-green-400 font-bold">{parseFloat(recipient.prize).toFixed(4)} ETH</span>
-                                                  </div>
-                                                </div>
-                                              ))}
-                                            </div>
-                                          ) : (
-                                            <div className="text-xs text-orange-300/50 text-center py-2">No prize data available</div>
-                                          )}
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Abandoned/Claimed Tournaments */}
-                              {cachedStats.abandonedTournaments?.length > 0 && (
-                                <div className="bg-red-500/10 rounded-lg p-4 border border-red-400/20">
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <Coins className="text-red-400" size={16} />
-                                    <div className="text-red-300 text-sm font-semibold">Abandoned & Claimed ({cachedStats.abandonedTournaments.length})</div>
-                                  </div>
-                                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                                    {cachedStats.abandonedTournaments.slice(0, 5).map((tournament, idx) => {
-                                      const winner = tournament.winner;
-                                      const hasWinner = winner && winner !== ethers.ZeroAddress;
-                                      let claimAmount = null;
-
-                                      // For abandoned tournaments, show the claimed amount
-                                      if (tournament.totalAwarded && tournament.totalAwarded > 0n) {
-                                        claimAmount = ethers.formatEther(tournament.totalAwarded);
-                                      }
-
-                                      return (
-                                        <div key={idx} className="bg-red-500/5 p-2 rounded space-y-1">
-                                          <div className="flex items-center justify-between text-xs">
-                                            <span className="text-red-200">Tier {Number(tournament.tierId)}</span>
-                                            <div className="flex flex-col items-end">
-                                              <span className="text-white font-mono">
-                                                {hasWinner ? `${winner.slice(0, 6)}...${winner.slice(-4)}` : 'Unclaimed'}
-                                              </span>
-                                              {hasWinner && winner.toLowerCase() === account?.toLowerCase() && (
-                                                <span className="text-yellow-400 text-xs font-bold">THIS IS YOU</span>
-                                              )}
-                                            </div>
-                                          </div>
-                                          {claimAmount && (
-                                            <div className="flex items-center justify-between text-xs">
-                                              <span className="text-red-300/70">Pool Claimed</span>
-                                              <span className="text-yellow-400 font-bold">{parseFloat(claimAmount).toFixed(4)} ETH</span>
-                                            </div>
-                                          )}
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Total Awards Distributed */}
-                              <div className="bg-purple-500/10 rounded-lg p-4 border border-purple-400/20">
-                                <div className="text-purple-300 text-sm mb-3 font-bold">Total Awards Distributed</div>
-                                {(() => {
-                                  try {
-                                    // Aggregate awards by address
-                                    const addressAwards = new Map();
-                                    let totalAwarded = 0;
-
-                                    cachedStats.tournaments.forEach(tournament => {
-                                      // Try new prizeWinners structure first
-                                      if (tournament.prizeWinners && tournament.prizeWinners.length > 0) {
-                                        Array.from(tournament.prizeWinners)
-                                          .filter(r => r && r.player && r.player !== ethers.ZeroAddress && r.prize > 0n)
-                                          .forEach(r => {
-                                            const addr = r.player;
-                                            const prizeEth = parseFloat(ethers.formatEther(r.prize));
-                                            if (prizeEth > 0) {
-                                              const current = addressAwards.get(addr.toLowerCase()) || 0;
-                                              addressAwards.set(addr.toLowerCase(), current + prizeEth);
-                                              totalAwarded += prizeEth;
-                                            }
-                                          });
-                                      } else if (tournament.participants && tournament.prizes && tournament.participantCount) {
-                                        // Fallback to old structure
-                                        const participantArray = Array.from(tournament.participants);
-                                        const prizesArray = Array.from(tournament.prizes);
-                                        const count = Number(tournament.participantCount);
-
-                                        for (let i = 0; i < count && i < participantArray.length; i++) {
-                                          const addr = participantArray[i];
-                                          const prize = prizesArray[i];
-
-                                          if (addr && prize && addr !== ethers.ZeroAddress) {
-                                            const prizeEth = parseFloat(ethers.formatEther(prize));
-                                            if (prizeEth > 0) {
-                                              const current = addressAwards.get(addr.toLowerCase()) || 0;
-                                              addressAwards.set(addr.toLowerCase(), current + prizeEth);
-                                              totalAwarded += prizeEth;
-                                            }
-                                          }
-                                        }
-                                      }
-                                    });
-
-                                    // Sort by amount (highest first)
-                                    const sortedAwards = Array.from(addressAwards.entries())
-                                      .sort((a, b) => b[1] - a[1]);
-
-                                    if (sortedAwards.length === 0) {
-                                      return (
-                                        <div className="text-purple-300/70 text-sm text-center py-2">
-                                          No awards distributed yet
-                                        </div>
-                                      );
-                                    }
-
-                                    return (
-                                      <>
-                                        {/* Total Summary */}
-                                        <div className="bg-green-500/20 p-3 rounded-lg border border-green-400/30 mb-3">
-                                          <div className="flex items-center justify-between">
-                                            <span className="text-green-300 text-sm">Grand Total</span>
-                                            <span className="text-2xl font-bold text-green-400">
-                                              {totalAwarded.toFixed(4)} ETH
-                                            </span>
-                                          </div>
-                                          <div className="text-green-300/70 text-xs mt-1">
-                                            to {sortedAwards.length} unique recipient{sortedAwards.length !== 1 ? 's' : ''}
-                                          </div>
-                                        </div>
-
-                                        {/* Address List */}
-                                        <div className="space-y-2 max-h-64 overflow-y-auto">
-                                          {sortedAwards.map(([address, amount]) => (
-                                            <div
-                                              key={address}
-                                              className={`flex items-center justify-between p-2 rounded border ${
-                                                address.toLowerCase() === account?.toLowerCase()
-                                                  ? 'bg-yellow-500/20 border-yellow-400/50'
-                                                  : 'bg-purple-500/10 border-purple-400/20'
-                                              }`}
-                                            >
-                                              <div className="flex flex-col">
-                                                <span className={`font-mono text-xs ${
-                                                  address.toLowerCase() === account?.toLowerCase()
-                                                    ? 'text-yellow-300'
-                                                    : 'text-white'
-                                                }`}>
-                                                  {address.slice(0, 8)}...{address.slice(-6)}
-                                                </span>
-                                                {address.toLowerCase() === account?.toLowerCase() && (
-                                                  <span className="text-yellow-400 text-xs font-bold">THIS IS YOU</span>
-                                                )}
-                                              </div>
-                                              <span className="text-green-400 font-bold text-sm">
-                                                {amount.toFixed(4)} ETH
-                                              </span>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      </>
-                                    );
-                                  } catch (err) {
-                                    console.warn('Error calculating total awards:', err);
-                                    return (
-                                      <div className="text-red-300/70 text-sm text-center py-2">
-                                        Error loading award data
-                                      </div>
-                                    );
-                                  }
-                                })()}
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Cached Matches */}
-                      <div className="bg-gradient-to-br from-cyan-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-6 border border-cyan-400/30">
-                        <div className="flex items-center gap-3 mb-4">
-                          <Grid className="text-cyan-400" size={32} />
-                          <h3 className="text-2xl font-bold text-white">Cached Matches</h3>
-                        </div>
-                        <div className="space-y-3">
-                          <div className="bg-cyan-500/10 rounded-lg p-4 border border-cyan-400/20">
-                            <div className="text-cyan-300 text-sm mb-1">Total Cached</div>
-                            <div className="text-3xl font-bold text-white">{cachedStats.matches?.length || 0}</div>
-                          </div>
-                          {cachedStats.matches?.length > 0 && (
-                            <>
-                              {/* Match Statistics Grid */}
-                              <div className="grid grid-cols-2 gap-3">
-                                <div className="bg-cyan-500/10 rounded-lg p-4 border border-cyan-400/20">
-                                  <div className="text-cyan-300 text-sm mb-1">Wins</div>
-                                  <div className="text-2xl font-bold text-green-400">
-                                    {cachedStats.matches.filter(m => m?.winner && m.winner !== ethers.ZeroAddress && !m?.isDraw).length}
-                                  </div>
-                                </div>
-                                <div className="bg-yellow-500/10 rounded-lg p-4 border border-yellow-400/20">
-                                  <div className="text-yellow-300 text-sm mb-1">Draws</div>
-                                  <div className="text-2xl font-bold text-yellow-400">
-                                    {cachedStats.matches.filter(m => m?.isDraw).length}
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Draw Rate */}
-                              <div className="bg-yellow-500/10 rounded-lg p-4 border border-yellow-400/20">
-                                <div className="text-yellow-300 text-sm mb-1">Draw Rate</div>
-                                <div className="flex items-center justify-between">
-                                  <div className="text-2xl font-bold text-yellow-400">
-                                    {((cachedStats.matches.filter(m => m?.isDraw).length / cachedStats.matches.length) * 100).toFixed(1)}%
-                                  </div>
-                                  <div className="text-xs text-yellow-300/70">
-                                    {cachedStats.matches.filter(m => m?.isDraw).length} of {cachedStats.matches.length} matches
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Draw Scenarios List */}
-                              {cachedStats.matches.filter(m => m?.isDraw).length > 0 && (
-                                <div className="bg-yellow-500/10 rounded-lg p-4 border border-yellow-400/20">
-                                  <div className="flex items-center gap-2 mb-3">
-                                    <AlertCircle className="text-yellow-400" size={16} />
-                                    <div className="text-yellow-300 text-sm font-bold">Draw Scenarios</div>
-                                  </div>
-                                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                                    {[...cachedStats.matches]
-                                      .filter(m => m?.isDraw)
-                                      .slice(-10)
-                                      .reverse()
-                                      .map((match, idx) => (
-                                        <div key={idx} className="bg-yellow-500/10 p-3 rounded border border-yellow-400/20">
-                                          <div className="flex items-center justify-between mb-2">
-                                            <div className="flex items-center gap-2">
-                                              <div className="w-6 h-6 rounded-full bg-yellow-500/30 flex items-center justify-center text-yellow-300 font-bold text-xs border border-yellow-400">
-                                                =
-                                              </div>
-                                              <span className="text-yellow-200 text-xs font-bold">Draw Match</span>
-                                            </div>
-                                            <span className="text-yellow-300/70 text-xs">
-                                              Tier {match?.tierId !== undefined ? Number(match.tierId) : '?'}
-                                            </span>
-                                          </div>
-                                          <div className="grid grid-cols-2 gap-2 text-xs">
-                                            <div className="bg-cyan-500/20 p-2 rounded border border-cyan-400/20">
-                                              <div className="text-cyan-300/70 mb-1">Player 1</div>
-                                              <div className="text-white font-mono">
-                                                {match?.player1 ? `${match.player1.slice(0, 6)}...${match.player1.slice(-4)}` : 'Unknown'}
-                                              </div>
-                                            </div>
-                                            <div className="bg-orange-500/20 p-2 rounded border border-orange-400/20">
-                                              <div className="text-orange-300/70 mb-1">Player 2</div>
-                                              <div className="text-white font-mono">
-                                                {match?.player2 ? `${match.player2.slice(0, 6)}...${match.player2.slice(-4)}` : 'Unknown'}
-                                              </div>
-                                            </div>
-                                          </div>
-                                          {match?.startTime && match?.endTime && (
-                                            <div className="mt-2 text-xs text-yellow-300/70">
-                                              Duration: {Math.floor((Number(match.endTime) - Number(match.startTime)) / 60)} minutes
-                                            </div>
-                                          )}
-                                        </div>
-                                      ))}
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Recent Matches (All) */}
-                              <div className="bg-cyan-500/10 rounded-lg p-4 border border-cyan-400/20">
-                                <div className="text-cyan-300 text-sm mb-2">Recent Matches (All)</div>
-                                <div className="space-y-2 max-h-32 overflow-y-auto">
-                                  {[...cachedStats.matches].slice(-5).reverse().map((match, idx) => (
-                                    <div key={idx} className={`flex items-center justify-between text-xs p-2 rounded ${
-                                      match?.isDraw
-                                        ? 'bg-yellow-500/10 border border-yellow-400/20'
-                                        : 'bg-cyan-500/5 border border-cyan-400/10'
-                                    }`}>
-                                      <span className={match?.isDraw ? 'text-yellow-300 font-bold' : 'text-cyan-200'}>
-                                        {match?.isDraw ? '🟰 Draw' : '🏆 Winner'}
-                                      </span>
-                                      <span className="text-white font-mono">
-                                        {match?.isDraw
-                                          ? 'Tie Game'
-                                          : match?.winner ? `${match.winner.slice(0, 6)}...${match.winner.slice(-4)}` : 'Unknown'}
-                                      </span>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Top Prize Recipients Section */}
-                    {cachedStats.tournaments?.length > 0 && (
-                      <div className="mt-6 bg-gradient-to-br from-green-600/20 to-emerald-600/20 backdrop-blur-lg rounded-2xl p-6 border border-green-400/30">
-                        <div className="flex items-center gap-3 mb-4">
-                          <Coins className="text-green-400" size={32} />
-                          <h3 className="text-2xl font-bold text-white">Top Prize Recipients</h3>
-                        </div>
-                        <div className="space-y-2 max-h-64 overflow-y-auto">
-                          {(() => {
-                            try {
-                              // Collect all prize recipients
-                              const recipients = new Map();
-
-                              cachedStats.tournaments.forEach(tournament => {
-                                if (tournament.participants && tournament.prizes && tournament.participantCount) {
-                                  const participantArray = Array.from(tournament.participants);
-                                  const prizesArray = Array.from(tournament.prizes);
-                                  const count = Number(tournament.participantCount);
-
-                                  for (let i = 0; i < count && i < participantArray.length; i++) {
-                                    const addr = participantArray[i];
-                                    const prize = prizesArray[i];
-
-                                    if (addr && prize && addr !== ethers.ZeroAddress) {
-                                      const prizeEth = parseFloat(ethers.formatEther(prize));
-                                      if (prizeEth > 0) {
-                                        const current = recipients.get(addr.toLowerCase()) || 0;
-                                        recipients.set(addr.toLowerCase(), current + prizeEth);
-                                      }
-                                    }
-                                  }
-                                }
-                              });
-
-                              // Convert to array and sort by total prizes
-                              const sortedRecipients = Array.from(recipients.entries())
-                                .sort((a, b) => b[1] - a[1])
-                                .slice(0, 10);
-
-                              if (sortedRecipients.length === 0) {
-                                return (
-                                  <div className="text-green-300/70 text-sm text-center py-4">
-                                    No prize data available yet
-                                  </div>
-                                );
-                              }
-
-                              return sortedRecipients.map(([address, total], idx) => (
-                                <div
-                                  key={address}
-                                  className="flex items-center justify-between bg-green-500/10 p-3 rounded-lg border border-green-400/20"
-                                >
-                                  <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-green-500/30 flex items-center justify-center text-green-300 font-bold text-sm border-2 border-green-400">
-                                      #{idx + 1}
-                                    </div>
-                                    <span className="text-white font-mono text-sm">
-                                      {address.slice(0, 6)}...{address.slice(-4)}
-                                    </span>
-                                  </div>
-                                  <span className="text-green-400 font-bold text-lg">
-                                    {total.toFixed(4)} ETH
-                                  </span>
-                                </div>
-                              ));
-                            } catch (err) {
-                              console.warn('Error calculating top recipients:', err);
-                              return (
-                                <div className="text-red-300/70 text-sm text-center py-4">
-                                  Error loading prize data
-                                </div>
-                              );
-                            }
-                          })()}
-                        </div>
-                      </div>
-                    )}
-                    </>
-                  ) : (
-                    <div className="bg-gradient-to-r from-cyan-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-12 border border-cyan-400/30 text-center">
-                      <History className="text-cyan-400/50 mx-auto mb-4" size={64} />
-                      <h3 className="text-2xl font-bold text-cyan-300 mb-2">No Cached Data Available</h3>
-                      <p className="text-cyan-200/70">Statistics will appear as tournaments and matches are completed</p>
-                    </div>
-                  )}
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="max-w-2xl mx-auto bg-gradient-to-r from-cyan-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-12 border border-cyan-400/30 text-center">
+              <History className="text-cyan-400/50 mx-auto mb-4" size={64} />
+              <h3 className="text-2xl font-bold text-cyan-300 mb-2">No Match Data Yet</h3>
+              <p className="text-cyan-200/70">Statistics will appear as matches are completed</p>
+            </div>
+          )}
         </div>
       </div>
 
