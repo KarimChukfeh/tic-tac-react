@@ -116,7 +116,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
             <div>
               <div className="flex items-center gap-3">
                 <h2 className="text-4xl font-bold text-white">
-                  Tournament T{tierId}-I{instanceId}
+                  Tournament T{tierId + 1}-I{instanceId + 1}
                 </h2>
                 <span className="text-cyan-400 text-sm font-semibold flex items-center gap-1">
                   <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>

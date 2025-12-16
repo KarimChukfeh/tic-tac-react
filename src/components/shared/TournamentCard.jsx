@@ -136,7 +136,7 @@ const TournamentCard = ({
             <h3 className="text-xl font-bold text-white">
               {tierName || `Tier ${tierId}`}
             </h3>
-            <div className={`text-xs ${colors.textMuted}`}>Instance #{instanceId}</div>
+            <div className={`text-xs ${colors.textMuted}`}>Instance #{instanceId + 1}</div>
           </div>
         </div>
         {isFull && (
