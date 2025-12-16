@@ -10,7 +10,20 @@ import { shortenAddress } from '../../utils/formatters';
 import { getMatchStatusText, getMatchStatusColor } from '../../utils/matchStatus';
 
 // Constants
-const MOVE_TIMEOUT = 60; // 60 seconds
+const MOVE_TIMEOUT = 60; // 60 seconds until timeout
+const ESCALATION_1_DELAY = 60; // 60 seconds after timeout for escalation 1
+const ESCALATION_2_DELAY = 120; // 120 seconds after timeout for escalation 2
+const ESCALATION_3_DELAY = 180; // 180 seconds after timeout for escalation 3
+
+/**
+ * Format seconds into MM:SS display
+ */
+const formatEscalationTime = (seconds) => {
+  if (seconds <= 0) return '0:00';
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
 
 /**
  * Calculate escalation state for a match
@@ -30,12 +43,33 @@ const calculateEscalationState = (match) => {
   let clientEscalation = 0;
   if (!hasEscalation && isTimeout && match.matchStatus === 1) {
     const timeoutDuration = timeSinceLastMove - MOVE_TIMEOUT;
-    if (timeoutDuration >= 180) clientEscalation = 3;
-    else if (timeoutDuration >= 120) clientEscalation = 2;
-    else if (timeoutDuration >= 60) clientEscalation = 1;
+    if (timeoutDuration >= ESCALATION_3_DELAY) clientEscalation = 3;
+    else if (timeoutDuration >= ESCALATION_2_DELAY) clientEscalation = 2;
+    else if (timeoutDuration >= ESCALATION_1_DELAY) clientEscalation = 1;
   }
 
   const effectiveEscalation = hasEscalation ? activeEscalation : clientEscalation;
+
+  // Calculate time until each escalation level (for countdown timers)
+  // These are only relevant when match is in progress and has timed out
+  let timeToEscalation1 = null;
+  let timeToEscalation2 = null;
+  let timeToEscalation3 = null;
+
+  if (match.matchStatus === 1 && timeReference > 0) {
+    if (effectiveEscalation < 1) {
+      // Time until escalation 1 = timeout + escalation 1 delay - time since last move
+      timeToEscalation1 = Math.max(0, MOVE_TIMEOUT + ESCALATION_1_DELAY - timeSinceLastMove);
+    }
+    if (effectiveEscalation < 2) {
+      // Time until escalation 2 (force eliminate available)
+      timeToEscalation2 = Math.max(0, MOVE_TIMEOUT + ESCALATION_2_DELAY - timeSinceLastMove);
+    }
+    if (effectiveEscalation < 3) {
+      // Time until escalation 3 (replace available)
+      timeToEscalation3 = Math.max(0, MOVE_TIMEOUT + ESCALATION_3_DELAY - timeSinceLastMove);
+    }
+  }
 
   return {
     timeRemaining,
@@ -44,6 +78,9 @@ const calculateEscalationState = (match) => {
     effectiveEscalation,
     canForceEliminate: effectiveEscalation >= 2,
     canReplace: effectiveEscalation >= 3,
+    timeToEscalation1,
+    timeToEscalation2,
+    timeToEscalation3,
   };
 };
 
@@ -185,6 +222,30 @@ const MatchCard = ({
           </span>
         </div>
       </div>
+
+      {/* Escalation countdown timers - show when match is stalled and timers are active */}
+      {showEscalation && match.matchStatus === 1 && escalation.isTimeout && !isUserMatch && (
+        <div className="mb-3 space-y-1">
+          {/* Timer until force eliminate (Escalation 2) */}
+          {escalation.timeToEscalation2 !== null && escalation.timeToEscalation2 > 0 && (
+            <div className="flex items-center justify-between text-xs bg-yellow-500/10 rounded px-2 py-1">
+              <span className="text-yellow-300/80">Force eliminate in:</span>
+              <span className="text-yellow-300 font-mono font-bold">
+                {formatEscalationTime(escalation.timeToEscalation2)}
+              </span>
+            </div>
+          )}
+          {/* Timer until replace (Escalation 3) */}
+          {escalation.timeToEscalation3 !== null && escalation.timeToEscalation3 > 0 && (
+            <div className="flex items-center justify-between text-xs bg-red-500/10 rounded px-2 py-1">
+              <span className="text-red-300/80">Replace players in:</span>
+              <span className="text-red-300 font-mono font-bold">
+                {formatEscalationTime(escalation.timeToEscalation3)}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="space-y-2">
         {/* Player 1 */}
