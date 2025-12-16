@@ -135,7 +135,6 @@ const TournamentCard = ({
       const now = Math.floor(Date.now() / 1000);
       const escalation1Start = Number(enrollmentTimeout.escalation1Start);
       const escalation2Start = Number(enrollmentTimeout.escalation2Start);
-      const contractActiveEscalation = Number(enrollmentTimeout.activeEscalation);
       const forfeitPool = enrollmentTimeout.forfeitPool || 0n;
 
       const timeToEscalation1 = escalation1Start > 0 ? Math.max(0, escalation1Start - now) : 0;
@@ -151,22 +150,6 @@ const TournamentCard = ({
         activeEscalation = 2;
       } else if (canStartEscalation1) {
         activeEscalation = 1;
-      }
-
-      // Debug logging
-      if (escalation1Start > 0 || contractActiveEscalation > 0) {
-        console.log(`[${tierId}-${instanceId}] Escalation State Update:`, {
-          now,
-          escalation1Start,
-          escalation2Start,
-          contractActiveEscalation,
-          calculatedActiveEscalation: activeEscalation,
-          canStartEscalation1,
-          canStartEscalation2,
-          timeToEscalation1,
-          timeToEscalation2,
-          forfeitPool: forfeitPool.toString()
-        });
       }
 
       setEscalationState({
@@ -270,40 +253,6 @@ const TournamentCard = ({
           />
         </div>
       </div>
-
-      {/* Enrollment Status Message - Show when in enrollment but escalation not started */}
-      {enrollmentTimeout && currentEnrolled > 0 && currentEnrolled < maxPlayers && !(escalationState.timeToEscalation1 > 0 || escalationState.activeEscalation > 0) && (
-        <div className="mb-4 bg-blue-500/20 border border-blue-400/50 rounded-lg p-3">
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2">
-              <Clock className="text-blue-400" size={16} />
-              <span className="text-blue-300 text-xs font-semibold">
-                Waiting for more players
-              </span>
-            </div>
-            <span className="text-blue-300/70 text-xs">
-              {currentEnrolled} / {maxPlayers} enrolled • Force start will unlock after enrollment window closes or tournament fills
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Tournament Full - Waiting to Start */}
-      {currentEnrolled >= maxPlayers && !(escalationState.timeToEscalation1 > 0 || escalationState.activeEscalation > 0 || escalationState.canStart) && tournamentStatus === 0 && (
-        <div className="mb-4 bg-green-500/20 border border-green-400/50 rounded-lg p-3">
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2">
-              <CheckCircle className="text-green-400" size={16} />
-              <span className="text-green-300 text-xs font-semibold">
-                Tournament Full - Ready to Start
-              </span>
-            </div>
-            <span className="text-green-300/70 text-xs">
-              All {maxPlayers} players enrolled • Force start will be available soon
-            </span>
-          </div>
-        </div>
-      )}
 
       {/* Enrollment Escalation System - Show when escalation system is active or has started */}
       {enrollmentTimeout && (escalationState.timeToEscalation1 > 0 || escalationState.activeEscalation > 0) && (
@@ -519,23 +468,6 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
     const secs = seconds % 60;
     return `${hours}h ${minutes}m ${secs}s`;
   };
-
-  // Find user's current match
-  const userCurrentMatch = rounds
-    .flatMap((round, roundIdx) =>
-      round.matches.map((match, matchIdx) => ({
-        ...match,
-        roundNumber: roundIdx,
-        matchNumber: matchIdx
-      }))
-    )
-    .find(match => {
-      const isUserInMatch =
-        match.player1?.toLowerCase() === account?.toLowerCase() ||
-        match.player2?.toLowerCase() === account?.toLowerCase();
-      const isNotComplete = match.matchStatus !== 2; // 2 = Completed
-      return isUserInMatch && isNotComplete;
-    });
 
   const getMatchStatusText = (matchStatus, winner, isDraw) => {
     if (matchStatus === 0) return 'Not Started';
@@ -796,50 +728,6 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
           );
         })()}
       </div>
-
-      {/* User's Current Match Highlight */}
-      {userCurrentMatch && (
-        <div className="bg-gradient-to-r from-green-600/30 to-emerald-600/30 backdrop-blur-lg rounded-2xl p-6 border-2 border-green-400/50 mb-8 animate-pulse">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-2xl font-bold text-white mb-2">Your Current Match</h3>
-              <div className="flex items-center gap-4 text-lg">
-                <div className="flex flex-col">
-                  <span className="text-green-300 font-semibold">
-                    {shortenAddress(userCurrentMatch.player1)}
-                  </span>
-                  {userCurrentMatch.player1?.toLowerCase() === account?.toLowerCase() && (
-                    <span className="text-yellow-300 text-xs font-bold">← THIS IS YOU</span>
-                  )}
-                </div>
-                <span className="text-white font-bold">VS</span>
-                <div className="flex flex-col">
-                  <span className="text-green-300 font-semibold">
-                    {shortenAddress(userCurrentMatch.player2)}
-                  </span>
-                  {userCurrentMatch.player2?.toLowerCase() === account?.toLowerCase() && (
-                    <span className="text-yellow-300 text-xs font-bold">THIS IS YOU →</span>
-                  )}
-                </div>
-              </div>
-              <p className="text-green-200 mt-2">
-                Round {userCurrentMatch.roundNumber + 1} • Match {userCurrentMatch.matchNumber + 1} •
-                <span className={`ml-2 ${getMatchStatusColor(userCurrentMatch.matchStatus, userCurrentMatch.winner, userCurrentMatch.isDraw)}`}>
-                  {getMatchStatusText(userCurrentMatch.matchStatus, userCurrentMatch.winner, userCurrentMatch.isDraw)}
-                </span>
-              </p>
-            </div>
-            <button
-              onClick={() => onEnterMatch(tierId, instanceId, userCurrentMatch.roundNumber, userCurrentMatch.matchNumber)}
-              disabled={loading}
-              className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold py-4 px-8 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              <Play size={24} />
-              {loading ? 'Loading...' : 'Enter Match'}
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Bracket View */}
       <div className={`bg-gradient-to-br from-slate-900/50 to-purple-900/30 backdrop-blur-lg rounded-2xl p-8 border ${colors.headerBorder}`}>
@@ -1218,8 +1106,6 @@ export default function TicTacBlock() {
 
       setNetworkInfo(networkData);
 
-      console.log('Connected to network:', networkData);
-
       // Check if connected to expected network (chain ID 412346)
       if (network.chainId !== BigInt(EXPECTED_CHAIN_ID)) {
         const shouldSwitch = window.confirm(
@@ -1247,8 +1133,6 @@ export default function TicTacBlock() {
         DUMMY_ABI,
         web3Signer
       );
-
-      console.log('Contract initialized at:', CONTRACT_ADDRESS);
 
       setAccount(accounts[0]);
       setContract(contractInstance);
@@ -1281,171 +1165,23 @@ export default function TicTacBlock() {
     }
   };
 
-  // Verify contract is deployed (simplified for tournament contract)
+  // Load contract data (simplified - matches ConnectFour pattern)
   const loadContractData = async (contractInstance, isInitialLoad = false) => {
-    // Cached stats are fetched by fetchCachedStats() which is the sole source of truth
-    // This avoids overwriting categorized tournament data (organic, partial, abandoned)
-
-    // Verify contract deployment
     try {
-      // Verify contract is deployed by checking bytecode
-      const provider = contractInstance.runner.provider;
-      const contractAddress = await contractInstance.getAddress();
-      const code = await provider.getCode(contractAddress);
+      // Fetch tournaments (no wallet required for read-only)
+      await fetchAllTournaments(contractInstance, null, false);
+      await fetchCachedStats(false);
 
-      console.log('Checking contract at:', contractAddress);
-      console.log('Bytecode length:', code.length);
-
-      if (code === '0x' || code === '0x0') {
-        console.error('❌ No bytecode found at address:', contractAddress);
-        throw new Error(
-          `No contract found at ${contractAddress}\n\n` +
-          `This means either:\n` +
-          `1. The contract hasn't been deployed yet\n` +
-          `2. The CONTRACT_ADDRESS in the code is wrong\n` +
-          `3. You're connected to the wrong network\n\n` +
-          `Steps to fix:\n` +
-          `1. Verify you're connected to the correct network\n` +
-          `2. Check the contract address is correct\n` +
-          `3. Deploy the contract if it doesn't exist`
-        );
-      }
-
-      console.log('✅ Contract found! Bytecode exists.');
-
-      // Fetch tournaments during initial load (no wallet required)
-      if (isInitialLoad) {
-        try {
-          await fetchAllTournaments(contractInstance, null, false);
-        } catch (err) {
-          console.warn('Could not fetch tournaments on initial load:', err);
-        }
-      }
-
-      // Mark initial loading as complete
       if (isInitialLoad) {
         setInitialLoading(false);
       }
     } catch (error) {
-      console.error('Error verifying contract:', error);
-
-      // Mark initial loading as complete even on error
+      console.error('Error loading contract data:', error);
       if (isInitialLoad) {
         setInitialLoading(false);
-      }
-
-      // Only show alerts if user has connected wallet
-      if (account) {
-        alert('Error connecting to contract: ' + error.message);
       }
     }
   };
-
-  // Fetch tournaments for a specific tier
-  const fetchTournaments = useCallback(async (tierId, silent = false) => {
-    if (!contract) return;
-
-    try {
-      if (!silent) {
-        setTournamentsLoading(true);
-      }
-
-      // Get tier overview which returns arrays of data for all instances
-      const tierOverview = await contract.getTierOverview(tierId);
-      const statuses = tierOverview[0];
-      const enrolledCounts = tierOverview[1];
-
-      // Get tier config to get correct player count
-      const tierConfig = await contract.tierConfigs(tierId);
-      const maxPlayers = Number(tierConfig.playerCount);
-
-      // Get entry fee for this tier
-      const fee = await contract.ENTRY_FEES(tierId);
-      const entryFeeFormatted = ethers.formatEther(fee);
-
-      // Get tier escalation and timeout configs
-      let tierTimeoutConfig = null;
-      try {
-        tierTimeoutConfig = await contract.tierTimeoutConfigs(tierId);
-        console.log(`Tier ${tierId} escalation & timeout config:`, {
-          enrollmentWindow: Number(tierTimeoutConfig.enrollmentWindow),
-          matchMoveTimeout: Number(tierTimeoutConfig.matchMoveTimeout),
-          roundCompletionTimeout: Number(tierTimeoutConfig.roundCompletionTimeout),
-          prizeClaimWindow: Number(tierTimeoutConfig.prizeClaimWindow),
-          tierEscalationInterval: Number(tierTimeoutConfig.tierEscalationInterval)
-        });
-      } catch (err) {
-        console.log('Could not fetch tier timeout config:', err);
-      }
-
-      // Build tournament data array
-      const tournamentData = [];
-      for (let i = 0; i < statuses.length; i++) {
-        const instanceId = i;
-        const status = Number(statuses[i]);
-        const enrolledCount = Number(enrolledCounts[i]);
-
-        // Check if user is enrolled (if wallet connected)
-        let isEnrolled = false;
-        if (account) {
-          try {
-            isEnrolled = await contract.isEnrolled(tierId, instanceId, account);
-          } catch (err) {
-            console.log('Could not check enrollment status:', err);
-          }
-        }
-
-        // Get enrollment timeout data with tier information
-        let enrollmentTimeout = null;
-        let hasStartedViaTimeout = false;
-        try {
-          const tournamentInfo = await contract.tournaments(tierId, instanceId);
-          enrollmentTimeout = tournamentInfo.enrollmentTimeout;
-          hasStartedViaTimeout = tournamentInfo.hasStartedViaTimeout;
-
-          // Debug logging
-          if (enrollmentTimeout) {
-            console.log(`Tournament ${tierId}-${instanceId} escalation data:`, {
-              escalation1Start: Number(enrollmentTimeout.escalation1Start),
-              escalation2Start: Number(enrollmentTimeout.escalation2Start),
-              activeEscalation: Number(enrollmentTimeout.activeEscalation),
-              forfeitPool: enrollmentTimeout.forfeitPool?.toString() || '0',
-              hasStartedViaTimeout
-            });
-          }
-        } catch (err) {
-          console.log('Could not fetch tournament timeout data:', err);
-        }
-
-        tournamentData.push({
-          tierId,
-          instanceId,
-          status,
-          enrolledCount,
-          maxPlayers,
-          entryFee: entryFeeFormatted,
-          isEnrolled,
-          enrollmentTimeout,
-          hasStartedViaTimeout,
-          tournamentStatus: status, // Store raw status for conditional rendering
-          tierTimeoutConfig // Include timeout configuration
-        });
-      }
-
-      // Sort by enrolledCount descending (most enrolled first)
-      tournamentData.sort((a, b) => b.enrolledCount - a.enrolledCount);
-
-      setTournaments(tournamentData);
-      if (!silent) {
-        setTournamentsLoading(false);
-      }
-    } catch (error) {
-      console.error('Error fetching tournaments:', error);
-      if (!silent) {
-        setTournamentsLoading(false);
-      }
-    }
-  }, [contract, account]);
 
   // Fetch cached tournament and match stats
   const fetchCachedStats = useCallback(async (silent = false) => {
@@ -1472,9 +1208,7 @@ export default function TicTacBlock() {
       // Fetch all completed tournaments
       try {
         const allCompletedTournaments = await readContract.getAllCompletedTournaments();
-        // Convert to plain array and filter existing tournaments
         tournaments = Array.from(allCompletedTournaments).filter(t => t && t.exists);
-        console.log(`Fetched ${tournaments.length} completed tournaments`);
       } catch (err) {
         console.error('Error fetching completed tournaments:', err);
       }
@@ -1483,13 +1217,6 @@ export default function TicTacBlock() {
       const organicTournaments = tournaments.filter(t => Number(t.completionType) === 0);
       const partialTournaments = tournaments.filter(t => Number(t.completionType) === 1);
       const abandonedTournaments = tournaments.filter(t => Number(t.completionType) === 2);
-
-      console.log('Tournament breakdown:', {
-        total: tournaments.length,
-        organic: organicTournaments.length,
-        partial: partialTournaments.length,
-        abandoned: abandonedTournaments.length
-      });
 
       setCachedStats({
         matches,
@@ -1606,11 +1333,8 @@ export default function TicTacBlock() {
     try {
       setTournamentsLoading(true);
 
-      console.log('Enrolling with:', { tierId, instanceId, entryFee, type: typeof entryFee });
-
       // Convert entry fee to wei
       const feeInWei = ethers.parseEther(entryFee);
-      console.log('Fee in wei:', feeInWei.toString());
 
       // Call enrollInTournament function with entry fee as value
       const tx = await contract.enrollInTournament(tierId, instanceId, { value: feeInWei });
@@ -1647,8 +1371,6 @@ export default function TicTacBlock() {
 
       // First check if this instance exists
       const instanceCount = Number(await contract.INSTANCE_COUNTS(tierId));
-      console.log(`Instance count for tier ${tierId}: ${instanceCount}`);
-
       if (instanceId >= instanceCount) {
         alert(`Invalid instance ID. Tier ${tierId} only has ${instanceCount} instances (0-${instanceCount-1})`);
         setTournamentsLoading(false);
@@ -1670,13 +1392,6 @@ export default function TicTacBlock() {
       const now = Math.floor(Date.now() / 1000);
       const canStartEscalation1 = escalation1Start > 0 && now >= escalation1Start;
       const canStartEscalation2 = escalation2Start > 0 && now >= escalation2Start;
-
-      console.log('Force start attempt:', {
-        tierId, instanceId, enrolledCount, status,
-        escalation1Start, escalation2Start, now,
-        canStartEscalation1, canStartEscalation2,
-        forfeitPool: forfeitPool.toString()
-      });
 
       // Validation checks
       if (status !== 0) {
@@ -1745,21 +1460,8 @@ export default function TicTacBlock() {
         return;
       }
 
-      // Call forceStartTournament function
-      console.log('Calling forceStartTournament with:', {
-        tierId,
-        instanceId,
-        enrolledCount,
-        status,
-        canStartEscalation1,
-        canStartEscalation2,
-        isEnrolled
-      });
-
       const tx = await contract.forceStartTournament(tierId, instanceId);
-      console.log('Transaction sent:', tx.hash);
       await tx.wait();
-      console.log('Transaction confirmed');
 
       alert('Tournament force-started successfully!');
 
@@ -1776,8 +1478,6 @@ export default function TicTacBlock() {
       setTournamentsLoading(false);
     } catch (error) {
       console.error('Error force-starting tournament:', error);
-      console.error('Full error object:', JSON.stringify(error, null, 2));
-
       let errorMessage = error.message;
       if (error.message.includes('ARRAY_RANGE_ERROR')) {
         errorMessage = `Tournament cannot be started. This may be due to:\n- Invalid tier ID (${tierId}) or instance ID (${instanceId})\n- Tournament already started\n- Contract state issue\n\nCheck console for full error details.`;
@@ -1820,12 +1520,6 @@ export default function TicTacBlock() {
       const now = Math.floor(Date.now() / 1000);
       const canStartEscalation2 = escalation2Start > 0 && now >= escalation2Start;
 
-      console.log('Claim abandoned pool attempt:', {
-        tierId, instanceId, status, enrolledCount,
-        canStartEscalation2, escalation2Start, now,
-        forfeitPool: forfeitPool.toString()
-      });
-
       // For ongoing tournaments (status 0), check if we're in Escalation 2
       if (status === 0) {
         if (!canStartEscalation2) {
@@ -1863,13 +1557,8 @@ export default function TicTacBlock() {
         }
       }
 
-      console.log('🔍 CLAIM ATTEMPT:', { tierId, instanceId, type: typeof instanceId });
-      console.log('Calling claimAbandonedEnrollmentPool with:', { tierId, instanceId });
-
       const tx = await contract.claimAbandonedEnrollmentPool(tierId, instanceId);
-      console.log('Transaction sent:', tx.hash);
       await tx.wait();
-      console.log('Transaction confirmed');
 
       alert('Abandoned enrollment pool claimed successfully!');
 
@@ -2385,56 +2074,6 @@ export default function TicTacBlock() {
     fetchCachedStats();
   }, [fetchCachedStats]);
 
-  // Poll match data every 3 seconds when viewing a match (using refs for seamless syncing)
-  const matchRef = useRef(currentMatch);
-  const contractRef = useRef(contract);
-  const accountRef = useRef(account);
-
-  // Keep refs updated
-  useEffect(() => {
-    matchRef.current = currentMatch;
-    contractRef.current = contract;
-    accountRef.current = account;
-  }, [currentMatch, contract, account]);
-
-  useEffect(() => {
-    if (!currentMatch || !contract || !account) return;
-
-    const doSync = async () => {
-      const match = matchRef.current;
-      const contractInstance = contractRef.current;
-      const userAccount = accountRef.current;
-
-      if (!match || !contractInstance || !userAccount) return;
-
-      const updated = await refreshMatchData(contractInstance, userAccount, match);
-      if (updated) setCurrentMatch(updated);
-
-      // Reset dots to 1 after sync completes
-      setSyncDots(1);
-    };
-
-    // Set up polling interval - runs every 3 seconds
-    const pollInterval = setInterval(doSync, 3000);
-
-    return () => clearInterval(pollInterval);
-  }, [currentMatch?.tierId, currentMatch?.instanceId, currentMatch?.roundNumber, currentMatch?.matchNumber, refreshMatchData]);
-
-  // Increment sync dots every second (1 -> 2 -> 3, then resets when sync completes)
-  useEffect(() => {
-    if (!currentMatch) return;
-
-    const dotsInterval = setInterval(() => {
-      setSyncDots(prev => {
-        // Cap at 3 dots
-        if (prev >= 3) return 3;
-        return prev + 1;
-      });
-    }, 1000); // Add one dot every second
-
-    return () => clearInterval(dotsInterval);
-  }, [currentMatch]);
-
   // Poll tournament bracket every 3 seconds (using refs for seamless syncing)
   const tournamentRef = useRef(viewingTournament);
   const contractRefForBracket = useRef(contract);
@@ -2583,7 +2222,16 @@ export default function TicTacBlock() {
     const matchPollInterval = setInterval(doMatchSync, 2000);
 
     return () => clearInterval(matchPollInterval);
-  }, [currentMatch?.tierId, currentMatch?.instanceId, currentMatch?.roundNumber, currentMatch?.matchNumber, account, refreshMatchData, fetchCachedStats, fetchTournaments, fetchAllTournaments, refreshTournamentBracket]);
+  }, [currentMatch?.tierId, currentMatch?.instanceId, currentMatch?.roundNumber, currentMatch?.matchNumber, account, refreshMatchData, fetchCachedStats, fetchAllTournaments, refreshTournamentBracket]);
+
+  // Increment match sync dots every second (1 -> 2 -> 3, resets on sync)
+  useEffect(() => {
+    if (!currentMatch) return;
+    const dotsInterval = setInterval(() => {
+      setSyncDots(prev => prev >= 3 ? 3 : prev + 1);
+    }, 1000);
+    return () => clearInterval(dotsInterval);
+  }, [currentMatch]);
 
   // Increment bracket sync dots every second
   useEffect(() => {
