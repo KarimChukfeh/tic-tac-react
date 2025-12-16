@@ -657,7 +657,7 @@ export default function TicTacBlock() {
           });
         }
       } catch (error) {
-        console.error(`Error fetching tier ${tierId}:`, error);
+        console.log(`Could not fetch tier ${tierId}:`, error.message);
       }
     }
 
