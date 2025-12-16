@@ -572,11 +572,11 @@ export default function TicTacBlock() {
       const readContract = getReadOnlyContract();
 
       const leaderboardData = await readContract.getLeaderboard();
-      // Convert to plain array with player and earnings
+      // Convert to plain array with player and earnings, sorted by earnings descending
       const entries = Array.from(leaderboardData).map(entry => ({
         player: entry.player,
         earnings: entry.earnings
-      }));
+      })).sort((a, b) => (b.earnings > a.earnings ? 1 : b.earnings < a.earnings ? -1 : 0));
 
       setLeaderboard(entries);
       if (!silent) {

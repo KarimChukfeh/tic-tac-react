@@ -381,7 +381,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
 
 // Main Connect Four Component
 export default function ConnectFour() {
-  const CONTRACT_ADDRESS = "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9";
+  const CONTRACT_ADDRESS = "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0";
   const EXPECTED_CHAIN_ID = 412346;
 
   // Wallet & Contract State
@@ -689,10 +689,11 @@ export default function ConnectFour() {
       }
 
       const leaderboardData = await contractInstance.getLeaderboard();
+      // Sort by earnings descending (highest to lowest)
       const entries = Array.from(leaderboardData).map(entry => ({
         player: entry.player,
         earnings: entry.earnings
-      }));
+      })).sort((a, b) => (b.earnings > a.earnings ? 1 : b.earnings < a.earnings ? -1 : 0));
 
       setLeaderboard(entries);
       if (!silent) {
