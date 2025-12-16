@@ -15,7 +15,7 @@
  *    Block Explorer: https://arbiscan.io
  */
 
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Wallet, Grid, Clock, Shield, Lock, Eye, Code, ExternalLink,
@@ -24,68 +24,15 @@ import {
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import DUMMY_ABI from './TourABI.json';
+import { shortenAddress, formatTime as formatTimeHMS, getTierName, TICTACTOE_TIER_NAMES } from './utils/formatters';
+import { getMatchStatusText, getMatchStatusColor } from './utils/matchStatus';
+import ParticleBackground from './components/shared/ParticleBackground';
+import StatsGrid from './components/shared/StatsGrid';
+import EnrolledPlayersList from './components/shared/EnrolledPlayersList';
+import EscalationTimer from './components/shared/EscalationTimer';
 
-// Particle Background Component
-const ParticleBackground = ({ colors }) => {
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth <= 768);
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  const particles = useMemo(() => {
-    const particleCount = isMobile ? 25 : 50;
-    return Array.from({ length: particleCount }, (_, i) => {
-      const useFirstColor = Math.random() > 0.5;
-      return {
-        id: i,
-        left: Math.random() * 100,
-        delay: Math.random() * 15,
-        duration: 20 + Math.random() * 20,
-        colorIndex: useFirstColor ? 0 : 1,
-        symbol: useFirstColor ? 'X' : 'O'
-      };
-    });
-  }, [isMobile]);
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 1, overflow: 'hidden' }}>
-      {/* Particles */}
-      {particles.map((p) => {
-        const color = colors[p.colorIndex];
-        return (
-          <div
-            key={p.id}
-            className="particle"
-            style={{
-              position: 'absolute',
-              left: `${p.left}%`,
-              transform: 'translateY(100vh)',
-              animation: `particle-float ${p.duration}s linear infinite`,
-              animationDelay: `${p.delay}s`,
-              willChange: 'transform, opacity',
-              color: color,
-              fontWeight: 'bold',
-              textShadow: `0 0 8px ${color}`
-            }}
-          >
-            {p.symbol}
-          </div>
-        );
-      })}
-    </div>
-  );
-};
-
-// Helper function
-const shortenAddress = (addr) => {
-  if (!addr || addr === '0x0000000000000000000000000000000000000000') return 'TBD';
-  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-};
+// TicTacToe particle symbols
+const TICTACTOE_SYMBOLS = ['X', 'O'];
 
 // Tournament Card Component
 const TournamentCard = ({
@@ -254,98 +201,11 @@ const TournamentCard = ({
         </div>
       </div>
 
-      {/* Enrollment Escalation System - Show when escalation system is active or has started */}
-      {enrollmentTimeout && (escalationState.timeToEscalation1 > 0 || escalationState.activeEscalation > 0) && (
-        <div className="mb-4 space-y-2">
-          {/* Main Countdown Timer */}
-          {escalationState.timeToEscalation1 > 0 && escalationState.activeEscalation === 0 ? (
-            <div className="bg-gradient-to-r from-orange-500/20 to-red-500/20 border border-orange-400/50 rounded-lg p-4">
-              <div className="text-center">
-                <div className="flex items-center justify-center gap-2 mb-2">
-                  <Clock className="text-orange-400" size={20} />
-                  <span className="text-orange-300 text-sm font-semibold">Force Start Unlocks In</span>
-                </div>
-                <div className="text-orange-300 font-bold text-3xl">
-                  {formatTime(escalationState.timeToEscalation1)}
-                </div>
-                <div className="text-orange-300/70 text-xs mt-1">
-                  Enrolled players will be able to force start the tournament
-                </div>
-              </div>
-            </div>
-          ) : (escalationState.canStartEscalation1 || escalationState.canStartEscalation2) && escalationState.activeEscalation >= 1 ? (
-            <div className={`bg-gradient-to-r ${escalationState.canStartEscalation2 ? 'from-red-500/20 to-red-600/20 border-red-400/50' : 'from-green-500/20 to-emerald-500/20 border-green-400/50'} border rounded-lg p-4`}>
-              <div className="text-center">
-                <div className="flex items-center justify-center gap-2 mb-2">
-                  {escalationState.canStartEscalation2 ? <Coins className="text-red-400" size={20} /> : <Zap className="text-green-400" size={20} />}
-                  <span className={`${escalationState.canStartEscalation2 ? 'text-red-300' : 'text-green-300'} text-sm font-semibold`}>
-                    {escalationState.canStartEscalation2 ? 'Pool Claim Available!' : 'Force Start Available!'}
-                  </span>
-                </div>
-                <div className={`${escalationState.canStartEscalation2 ? 'text-red-300' : 'text-green-300'} text-sm`}>
-                  {escalationState.canStartEscalation2
-                    ? 'Anyone can claim the abandoned enrollment pool'
-                    : 'Any enrolled player can force start this tournament'
-                  }
-                </div>
-                {escalationState.timeToEscalation2 > 0 && escalationState.activeEscalation === 1 && (
-                  <div className="text-green-300/70 text-xs mt-2">
-                    Claim access opens to everyone in {formatTime(escalationState.timeToEscalation2)}
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : null}
-
-          {/* Escalation Level 1 Window */}
-          <div className={`border rounded-lg p-3 ${
-            escalationState.activeEscalation >= 1 ? 'bg-green-500/20 border-green-400/50' : 'bg-gray-500/20 border-gray-400/50'
-          }`}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Clock className={escalationState.activeEscalation >= 1 ? 'text-green-400' : 'text-gray-400'} size={16} />
-                <span className={`text-xs font-semibold ${escalationState.activeEscalation >= 1 ? 'text-green-300' : 'text-gray-400'}`}>
-                  Escalation 1: Any Enrolled Player Can Force Start
-                </span>
-              </div>
-              <span className={`font-bold text-sm ${escalationState.activeEscalation >= 1 ? 'text-green-300' : 'text-gray-400'}`}>
-                {escalationState.activeEscalation >= 1 ? 'ACTIVE' : formatTime(escalationState.timeToEscalation1)}
-              </span>
-            </div>
-          </div>
-
-          {/* Escalation Level 2 Window (if exists) - Show when escalation2 is configured */}
-          {(escalationState.timeToEscalation2 > 0 || escalationState.activeEscalation >= 2) && (
-            <div className={`border rounded-lg p-3 ${
-              escalationState.activeEscalation >= 2 ? 'bg-red-500/20 border-red-400/50' : 'bg-gray-500/20 border-gray-400/50'
-            }`}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Coins className={escalationState.activeEscalation >= 2 ? 'text-red-400' : 'text-gray-400'} size={16} />
-                  <span className={`text-xs font-semibold ${escalationState.activeEscalation >= 2 ? 'text-red-300' : 'text-gray-400'}`}>
-                    Escalation 2: Anyone Can Claim Pool
-                  </span>
-                </div>
-                <span className={`font-bold text-sm ${escalationState.activeEscalation >= 2 ? 'text-red-300' : 'text-gray-400'}`}>
-                  {escalationState.activeEscalation >= 2 ? 'ACTIVE' : formatTime(escalationState.timeToEscalation2)}
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* Forfeit Pool Display */}
-          {escalationState.forfeitPool && escalationState.forfeitPool > 0n && (
-            <div className="bg-purple-500/20 border border-purple-400/50 rounded-lg p-2">
-              <div className="flex items-center justify-between">
-                <span className="text-purple-300 text-xs font-semibold">Forfeit Pool</span>
-                <span className="text-purple-300 font-bold text-sm">
-                  {ethers.formatEther(escalationState.forfeitPool)} ETH
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+      {/* Enrollment Escalation System */}
+      <EscalationTimer
+        escalationState={escalationState}
+        enrollmentTimeout={enrollmentTimeout}
+      />
 
       {/* Action Buttons */}
       {/* Escalation 1: Enrolled players can force start */}
@@ -469,33 +329,8 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
     return `${hours}h ${minutes}m ${secs}s`;
   };
 
-  const getMatchStatusText = (matchStatus, winner, isDraw) => {
-    if (matchStatus === 0) return 'Not Started';
-    if (matchStatus === 1) return 'In Progress';
-    if (matchStatus === 2) {
-      const zeroAddress = '0x0000000000000000000000000000000000000000';
-      // Check for double forfeit: completed, zero address winner, not a draw
-      if (winner && winner.toLowerCase() === zeroAddress && !isDraw) {
-        return 'Eliminated - Double Forfeit';
-      }
-      return 'Completed';
-    }
-    return 'Unknown';
-  };
-
-  const getMatchStatusColor = (matchStatus, winner, isDraw) => {
-    if (matchStatus === 0) return 'text-gray-400';
-    if (matchStatus === 1) return 'text-yellow-400';
-    if (matchStatus === 2) {
-      const zeroAddress = '0x0000000000000000000000000000000000000000';
-      // Check for double forfeit: completed, zero address winner, not a draw
-      if (winner && winner.toLowerCase() === zeroAddress && !isDraw) {
-        return 'text-red-400';
-      }
-      return 'text-green-400';
-    }
-    return 'text-gray-400';
-  };
+  // TicTacToe-specific options for match status display
+  const matchStatusOptions = { doubleForfeitText: 'Eliminated - Double Forfeit' };
 
   // Bracket colors
   const colors = {
@@ -547,22 +382,14 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4">
-          <div className="bg-black/20 rounded-lg p-4">
-            <div className={`${colors.text} text-sm mb-1`}>Players</div>
-            <div className="text-white font-bold text-xl">{enrolledCount} / {playerCount}</div>
-          </div>
-          <div className="bg-black/20 rounded-lg p-4">
-            <div className={`${colors.text} text-sm mb-1`}>Status</div>
-            <div className="text-white font-bold text-xl">
-              {status === 0 ? 'Enrolling' : status === 1 ? 'In Progress' : status === 2 ? 'Completed' : 'Unknown'}
-            </div>
-          </div>
-          <div className="bg-black/20 rounded-lg p-4">
-            <div className={`${colors.text} text-sm mb-1`}>Current Round</div>
-            <div className="text-white font-bold text-xl">Round {currentRound + 1}</div>
-          </div>
-        </div>
+        <StatsGrid
+          enrolledCount={enrolledCount}
+          playerCount={playerCount}
+          status={status}
+          currentRound={currentRound}
+          totalRounds={totalRounds}
+          colors={colors}
+        />
 
         {/* Enroll Button for Unenrolled Players */}
         {status === 0 && account && !isEnrolled && !isFull && (
@@ -605,36 +432,11 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
 
 
         {/* Enrolled Players List */}
-        {enrolledPlayers && enrolledPlayers.length > 0 && (
-          <div className="mt-4 bg-black/20 rounded-lg p-4 border border-purple-400/30">
-            <div className="flex items-center gap-2 mb-3">
-              <Users className={colors.icon} size={20} />
-              <h4 className={`${colors.text} font-semibold`}>
-                Enrolled Players ({enrolledPlayers.length})
-              </h4>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-48 overflow-y-auto">
-              {enrolledPlayers.map((address, idx) => (
-                <div
-                  key={idx}
-                  className={`font-mono text-sm p-2 rounded ${
-                    address.toLowerCase() === account?.toLowerCase()
-                      ? 'bg-yellow-500/20 border border-yellow-400/50 text-yellow-300 font-bold'
-                      : 'bg-purple-500/10 text-purple-300'
-                  }`}
-                >
-                  {address.toLowerCase() === account?.toLowerCase() && (
-                    <span className="text-yellow-400 text-xs mr-1">→</span>
-                  )}
-                  {shortenAddress(address)}
-                  {address.toLowerCase() === account?.toLowerCase() && (
-                    <span className="text-yellow-400 text-xs ml-1">←</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        <EnrolledPlayersList
+          enrolledPlayers={enrolledPlayers}
+          account={account}
+          colors={colors}
+        />
 
         {/* Enrollment Escalation Timers */}
         {status === 0 && enrollmentTimeout && (() => {
@@ -825,8 +627,8 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
                               ⏱️ {Math.floor(timeRemaining / 60)}:{(timeRemaining % 60).toString().padStart(2, '0')}
                             </span>
                           )}
-                          <span className={`text-xs font-bold ${getMatchStatusColor(match.matchStatus, match.winner, match.isDraw)}`}>
-                            {getMatchStatusText(match.matchStatus, match.winner, match.isDraw)}
+                          <span className={`text-xs font-bold ${getMatchStatusColor(match.matchStatus, match.winner, match.isDraw, matchStatusOptions)}`}>
+                            {getMatchStatusText(match.matchStatus, match.winner, match.isDraw, matchStatusOptions)}
                           </span>
                         </div>
                       </div>
@@ -1004,14 +806,8 @@ export default function TicTacBlock() {
     }
   }, []);
 
-  // Helper to get tier name
-  const getTierName = (tierId) => {
-    const tierNames = {
-      0: 'Duel',      // 2-player tournaments (64 instances)
-      1: 'Octa'       // 8-player tournaments (16 instances)
-    };
-    return tierNames[tierId] || `Tier ${tierId}`;
-  };
+  // Helper to get tier name (uses imported function with TicTacToe-specific names)
+  const getTierNameLocal = (tierId) => getTierName(tierId, TICTACTOE_TIER_NAMES);
 
   // Theme colors (single theme - classic blue/cyan)
   const currentTheme = {
@@ -2285,7 +2081,7 @@ export default function TicTacBlock() {
       transition: 'background 0.8s ease-in-out'
     }}>
       {/* Particle Background */}
-      <ParticleBackground colors={currentTheme.particleColors} />
+      <ParticleBackground colors={currentTheme.particleColors} symbols={TICTACTOE_SYMBOLS} />
 
       {/* Back to ETour Button */}
       <Link
@@ -2836,7 +2632,7 @@ export default function TicTacBlock() {
                         onEnroll={() => handleEnroll(tournament.tierId, tournament.instanceId, tournament.entryFee)}
                         onEnter={() => handleEnterTournament(tournament.tierId, tournament.instanceId)}
                         loading={tournamentsLoading}
-                        tierName={getTierName(tournament.tierId)}
+                        tierName={getTierNameLocal(tournament.tierId)}
                         enrollmentTimeout={tournament.enrollmentTimeout}
                         hasStartedViaTimeout={tournament.hasStartedViaTimeout}
                         tournamentStatus={tournament.tournamentStatus}

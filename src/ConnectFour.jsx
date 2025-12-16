@@ -5,7 +5,7 @@
  * Uses the same design language as the Chess and TicTacToe frontends
  */
 
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Wallet, Grid, Clock, Shield, Lock, Eye, Code, ExternalLink,
@@ -14,85 +14,14 @@ import {
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import C4_ABI from './CFOCABI.json';
+import { shortenAddress, formatTime as formatTimeHMS, getTierName } from './utils/formatters';
+import { getMatchStatusText, getMatchStatusColor } from './utils/matchStatus';
+import ParticleBackground from './components/shared/ParticleBackground';
+import StatsGrid from './components/shared/StatsGrid';
+import EnrolledPlayersList from './components/shared/EnrolledPlayersList';
 
 // Connect Four disc particles for background
 const C4_PARTICLES = ['🔴', '🔵'];
-
-// Particle Background Component (Dream/Daring Themes)
-const ParticleBackground = ({ colors }) => {
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth <= 768);
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  const particles = useMemo(() => {
-    const particleCount = isMobile ? 25 : 50;
-    return Array.from({ length: particleCount }, (_, i) => {
-      const useFirstColor = Math.random() > 0.5;
-      return {
-        id: i,
-        left: Math.random() * 100,
-        delay: Math.random() * 15,
-        duration: 20 + Math.random() * 20,
-        colorIndex: useFirstColor ? 0 : 1,
-        symbol: C4_PARTICLES[Math.floor(Math.random() * C4_PARTICLES.length)]
-      };
-    });
-  }, [isMobile]);
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 1, overflow: 'hidden' }}>
-      {particles.map((p) => {
-        const color = colors[p.colorIndex];
-        return (
-          <div
-            key={p.id}
-            className="particle"
-            style={{
-              position: 'absolute',
-              left: `${p.left}%`,
-              transform: 'translateY(100vh)',
-              animation: `particle-float ${p.duration}s linear infinite`,
-              animationDelay: `${p.delay}s`,
-              willChange: 'transform, opacity',
-              color: color,
-              fontWeight: 'bold',
-              textShadow: `0 0 8px ${color}`,
-              fontSize: '24px'
-            }}
-          >
-            {p.symbol}
-          </div>
-        );
-      })}
-    </div>
-  );
-};
-
-// Helper function
-const shortenAddress = (addr) => {
-  if (!addr || addr === '0x0000000000000000000000000000000000000000') return 'TBD';
-  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-};
-
-// Get tier name
-const getTierName = (tierId) => {
-  const tierNames = {
-    0: 'Classic',
-    1: 'Minor',
-    2: 'Standard',
-    3: 'Major',
-    4: 'Mega',
-    5: 'Ultimate',
-    6: 'Rapid'
-  };
-  return tierNames[tierId] || `Tier ${tierId}`;
-};
 
 // Convert flat board array to 2D grid for rendering
 // Contract stores board as row-major: index = row * 7 + col
@@ -519,29 +448,8 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
 
   const totalRounds = Math.ceil(Math.log2(playerCount));
 
-  const getMatchStatusText = (matchStatus, winner, isDraw) => {
-    if (matchStatus === 0) return 'Not Started';
-    if (matchStatus === 1) return 'In Progress';
-    if (matchStatus === 2) {
-      const zeroAddress = '0x0000000000000000000000000000000000000000';
-      if (winner && winner.toLowerCase() === zeroAddress && !isDraw) {
-        return 'Double Forfeit';
-      }
-      return 'Completed';
-    }
-    return 'Unknown';
-  };
-
-  const getMatchStatusColor = (matchStatus, winner, isDraw) => {
-    if (matchStatus === 0) return 'text-gray-400';
-    if (matchStatus === 1) return 'text-yellow-400';
-    if (matchStatus === 2) {
-      const zeroAddress = '0x0000000000000000000000000000000000000000';
-      if (winner && winner.toLowerCase() === zeroAddress && !isDraw) return 'text-purple-400';
-      return 'text-green-400';
-    }
-    return 'text-gray-400';
-  };
+  // ConnectFour-specific options for match status display (purple for double forfeit)
+  const matchStatusOptions = { doubleForfeitColor: 'text-purple-400' };
 
   const colors = { headerBg: 'from-purple-600/30 to-blue-600/30', headerBorder: 'border-purple-400/30', text: 'text-purple-300', icon: 'text-purple-400' };
 
@@ -575,47 +483,21 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4">
-          <div className="bg-black/20 rounded-lg p-4">
-            <div className={`${colors.text} text-sm mb-1`}>Players</div>
-            <div className="text-white font-bold text-xl">{enrolledCount} / {playerCount}</div>
-          </div>
-          <div className="bg-black/20 rounded-lg p-4">
-            <div className={`${colors.text} text-sm mb-1`}>Status</div>
-            <div className="text-white font-bold text-xl">
-              {status === 0 ? 'Enrolling' : status === 1 ? 'In Progress' : status === 2 ? 'Completed' : 'Unknown'}
-            </div>
-          </div>
-          <div className="bg-black/20 rounded-lg p-4">
-            <div className={`${colors.text} text-sm mb-1`}>Current Round</div>
-            <div className="text-white font-bold text-xl">Round {currentRound + 1}</div>
-          </div>
-        </div>
+        <StatsGrid
+          enrolledCount={enrolledCount}
+          playerCount={playerCount}
+          status={status}
+          currentRound={currentRound}
+          totalRounds={totalRounds}
+          colors={colors}
+        />
 
         {/* Enrolled Players */}
-        {enrolledPlayers && enrolledPlayers.length > 0 && (
-          <div className="mt-4 bg-black/20 rounded-lg p-4 border border-purple-400/30">
-            <div className="flex items-center gap-2 mb-3">
-              <Users className={colors.icon} size={20} />
-              <h4 className={`${colors.text} font-semibold`}>Enrolled Players ({enrolledPlayers.length})</h4>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-48 overflow-y-auto">
-              {enrolledPlayers.map((address, idx) => (
-                <div
-                  key={idx}
-                  className={`font-mono text-sm p-2 rounded ${
-                    address.toLowerCase() === account?.toLowerCase()
-                      ? 'bg-cyan-500/20 border border-cyan-400/50 text-cyan-300 font-bold'
-                      : 'bg-purple-500/10 text-purple-300'
-                  }`}
-                >
-                  {shortenAddress(address)}
-                  {address.toLowerCase() === account?.toLowerCase() && ' (YOU)'}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        <EnrolledPlayersList
+          enrolledPlayers={enrolledPlayers}
+          account={account}
+          colors={colors}
+        />
       </div>
 
       {/* Bracket */}
@@ -689,8 +571,8 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
                       >
                         <div className="flex items-center justify-between mb-3">
                           <span className="text-purple-300 text-sm font-semibold">Match {matchIdx + 1}</span>
-                          <span className={`text-xs font-bold ${getMatchStatusColor(match.matchStatus, match.winner, match.isDraw)}`}>
-                            {getMatchStatusText(match.matchStatus, match.winner, match.isDraw)}
+                          <span className={`text-xs font-bold ${getMatchStatusColor(match.matchStatus, match.winner, match.isDraw, matchStatusOptions)}`}>
+                            {getMatchStatusText(match.matchStatus, match.winner, match.isDraw, matchStatusOptions)}
                           </span>
                         </div>
 
@@ -1524,7 +1406,7 @@ export default function ConnectFour() {
 
     return (
       <div style={{ minHeight: '100vh', background: currentTheme.gradient, color: '#fff', position: 'relative', overflow: 'hidden' }}>
-        <ParticleBackground colors={currentTheme.particleColors} />
+        <ParticleBackground colors={currentTheme.particleColors} symbols={C4_PARTICLES} fontSize="24px" />
 
         <div className="max-w-4xl mx-auto px-6 py-8" style={{ position: 'relative', zIndex: 10 }}>
           {/* Header */}
@@ -1780,7 +1662,7 @@ export default function ConnectFour() {
   if (viewingTournament) {
     return (
       <div style={{ minHeight: '100vh', background: currentTheme.gradient, color: '#fff', position: 'relative', overflow: 'hidden' }}>
-        <ParticleBackground colors={currentTheme.particleColors} />
+        <ParticleBackground colors={currentTheme.particleColors} symbols={C4_PARTICLES} fontSize="24px" />
 
         <div className="max-w-7xl mx-auto px-6 py-12" style={{ position: 'relative', zIndex: 10 }}>
           <TournamentBracket
@@ -1801,7 +1683,7 @@ export default function ConnectFour() {
   // Main landing view
   return (
     <div style={{ minHeight: '100vh', background: currentTheme.gradient, color: '#fff', position: 'relative', overflow: 'hidden', transition: 'background 0.8s ease-in-out' }}>
-      <ParticleBackground colors={currentTheme.particleColors} />
+      <ParticleBackground colors={currentTheme.particleColors} symbols={C4_PARTICLES} fontSize="24px" />
 
       {/* Back to ETour */}
       <Link

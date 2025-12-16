@@ -5,7 +5,7 @@
  * Uses the same design language as the TicTacToe frontend
  */
 
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Wallet, Grid, Swords, Clock, Shield, Lock, Eye, Code, ExternalLink,
@@ -14,6 +14,11 @@ import {
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import CHESS_ABI from './COCABI.json';
+import { shortenAddress, formatTime as formatTimeHMS, getTierName } from './utils/formatters';
+import { getMatchStatusText, getMatchStatusColor } from './utils/matchStatus';
+import ParticleBackground from './components/shared/ParticleBackground';
+import StatsGrid from './components/shared/StatsGrid';
+import EnrolledPlayersList from './components/shared/EnrolledPlayersList';
 
 // Chess piece symbols
 const PIECE_SYMBOLS = {
@@ -36,68 +41,6 @@ const getPieceSymbol = (piece) => {
 // Chess piece particles for background
 const CHESS_PARTICLES = ['♔', '♕', '♖', '♗', '♘', '♙', '♚', '♛', '♜', '♝', '♞', '♟'];
 
-// Particle Background Component (Dream/Daring Themes)
-const ParticleBackground = ({ colors }) => {
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth <= 768);
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  const particles = useMemo(() => {
-    const particleCount = isMobile ? 25 : 50;
-    return Array.from({ length: particleCount }, (_, i) => {
-      const useFirstColor = Math.random() > 0.5;
-      return {
-        id: i,
-        left: Math.random() * 100,
-        delay: Math.random() * 15,
-        duration: 20 + Math.random() * 20,
-        colorIndex: useFirstColor ? 0 : 1,
-        symbol: CHESS_PARTICLES[Math.floor(Math.random() * CHESS_PARTICLES.length)]
-      };
-    });
-  }, [isMobile]);
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 1, overflow: 'hidden' }}>
-      {particles.map((p) => {
-        const color = colors[p.colorIndex];
-        return (
-          <div
-            key={p.id}
-            className="particle"
-            style={{
-              position: 'absolute',
-              left: `${p.left}%`,
-              transform: 'translateY(100vh)',
-              animation: `particle-float ${p.duration}s linear infinite`,
-              animationDelay: `${p.delay}s`,
-              willChange: 'transform, opacity',
-              color: color,
-              fontWeight: 'bold',
-              textShadow: `0 0 8px ${color}`,
-              fontSize: '20px'
-            }}
-          >
-            {p.symbol}
-          </div>
-        );
-      })}
-    </div>
-  );
-};
-
-// Helper function
-const shortenAddress = (addr) => {
-  if (!addr || addr === '0x0000000000000000000000000000000000000000') return 'TBD';
-  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-};
-
 // Game status labels
 const getStatusLabel = (status) => {
   switch(status) {
@@ -117,20 +60,6 @@ const getStatusEmoji = (status) => {
     case 3: return '🏆';
     default: return '❓';
   }
-};
-
-// Get tier name
-const getTierName = (tierId) => {
-  const tierNames = {
-    0: 'Classic',
-    1: 'Minor',
-    2: 'Standard',
-    3: 'Major',
-    4: 'Mega',
-    5: 'Ultimate',
-    6: 'Rapid'
-  };
-  return tierNames[tierId] || `Tier ${tierId}`;
 };
 
 // Chess Board Component
@@ -941,31 +870,6 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onManualStart
 
   const totalRounds = Math.ceil(Math.log2(playerCount));
 
-  const getMatchStatusText = (matchStatus, winner, isDraw) => {
-    if (matchStatus === 0) return 'Not Started';
-    if (matchStatus === 1) return 'In Progress';
-    if (matchStatus === 2) {
-      const zeroAddress = '0x0000000000000000000000000000000000000000';
-      if (winner && winner.toLowerCase() === zeroAddress && !isDraw) {
-        return 'Double Forfeit';
-      }
-      return 'Completed';
-    }
-    return 'Unknown';
-  };
-
-  const getMatchStatusColor = (matchStatus, winner, isDraw) => {
-    if (matchStatus === 0) return 'text-gray-400';
-    if (matchStatus === 1) return 'text-yellow-400';
-    if (matchStatus === 2) {
-      const zeroAddress = '0x0000000000000000000000000000000000000000';
-      if (winner && winner.toLowerCase() === zeroAddress && !isDraw) {
-        return 'text-red-400';
-      }
-      return 'text-green-400';
-    }
-    return 'text-gray-400';
-  };
 
   const colors = theme === 'dream'
     ? {
@@ -1022,49 +926,21 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onManualStart
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4">
-          <div className="bg-black/20 rounded-lg p-4">
-            <div className={`${colors.text} text-sm mb-1`}>Players</div>
-            <div className="text-white font-bold text-xl">{enrolledCount} / {playerCount}</div>
-          </div>
-          <div className="bg-black/20 rounded-lg p-4">
-            <div className={`${colors.text} text-sm mb-1`}>Status</div>
-            <div className="text-white font-bold text-xl">
-              {status === 0 ? 'Enrolling' : status === 1 ? 'In Progress' : status === 2 ? 'Completed' : 'Unknown'}
-            </div>
-          </div>
-          <div className="bg-black/20 rounded-lg p-4">
-            <div className={`${colors.text} text-sm mb-1`}>Current Round</div>
-            <div className="text-white font-bold text-xl">Round {currentRound + 1}</div>
-          </div>
-        </div>
+        <StatsGrid
+          enrolledCount={enrolledCount}
+          playerCount={playerCount}
+          status={status}
+          currentRound={currentRound}
+          totalRounds={totalRounds}
+          colors={colors}
+        />
 
         {/* Enrolled Players List */}
-        {enrolledPlayers && enrolledPlayers.length > 0 && (
-          <div className="mt-4 bg-black/20 rounded-lg p-4 border border-purple-400/30">
-            <div className="flex items-center gap-2 mb-3">
-              <Users className={colors.icon} size={20} />
-              <h4 className={`${colors.text} font-semibold`}>
-                Enrolled Players ({enrolledPlayers.length})
-              </h4>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-48 overflow-y-auto">
-              {enrolledPlayers.map((address, idx) => (
-                <div
-                  key={idx}
-                  className={`font-mono text-sm p-2 rounded ${
-                    address.toLowerCase() === account?.toLowerCase()
-                      ? 'bg-yellow-500/20 border border-yellow-400/50 text-yellow-300 font-bold'
-                      : 'bg-purple-500/10 text-purple-300'
-                  }`}
-                >
-                  {shortenAddress(address)}
-                  {address.toLowerCase() === account?.toLowerCase() && ' (YOU)'}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        <EnrolledPlayersList
+          enrolledPlayers={enrolledPlayers}
+          account={account}
+          colors={colors}
+        />
       </div>
 
       {/* Bracket View */}
@@ -2047,7 +1923,7 @@ export default function ChessOnChain() {
       transition: 'background 0.8s ease-in-out'
     }}>
       {/* Particle Background */}
-      <ParticleBackground colors={currentTheme.particleColors} />
+      <ParticleBackground colors={currentTheme.particleColors} symbols={CHESS_PARTICLES} fontSize="20px" />
 
       {/* Back to ETour Button */}
       <Link
