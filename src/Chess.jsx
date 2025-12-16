@@ -22,6 +22,7 @@ import TournamentCard from './components/shared/TournamentCard';
 import TurnTimer from './components/shared/TurnTimer';
 import MatchTimeoutEscalation from './components/shared/MatchTimeoutEscalation';
 import WinnersLeaderboard from './components/shared/WinnersLeaderboard';
+import MatchEndModal from './components/shared/MatchEndModal';
 
 // Chess piece symbols
 const PIECE_SYMBOLS = {
@@ -782,6 +783,8 @@ export default function ChessOnChain() {
   const [lastMove, setLastMove] = useState(null); // { from: actualIdx, to: actualIdx }
   const previousBoardRef = useRef(null);
   const [moveHistory, setMoveHistory] = useState([]); // Array of { from, to, promotion, notation }
+  const [matchEndResult, setMatchEndResult] = useState(null); // 'win' | 'lose' | 'draw' | 'forfeit_win' | 'forfeit_lose' | 'double_forfeit'
+  const [matchEndWinnerLabel, setMatchEndWinnerLabel] = useState('');
 
   // Leaderboard State
   const [leaderboard, setLeaderboard] = useState([]);
@@ -1560,6 +1563,37 @@ export default function ChessOnChain() {
     setCurrentMatch(null);
   };
 
+  // Handle closing the match end modal
+  const handleMatchEndModalClose = async () => {
+    const tournamentInfo = currentMatch ? {
+      tierId: currentMatch.tierId,
+      instanceId: currentMatch.instanceId
+    } : null;
+    const wasWinner = matchEndResult === 'win' || matchEndResult === 'forfeit_win';
+
+    // Clear the modal state
+    setMatchEndResult(null);
+    setMatchEndWinnerLabel('');
+    setCurrentMatch(null);
+    setMoveHistory([]);
+    setLastMove(null);
+
+    // Refresh data
+    if (contract) {
+      await fetchAllTiers(true);
+
+      // Show tournament bracket for winners, go back to list for losers
+      if (tournamentInfo && wasWinner) {
+        const bracketData = await refreshTournamentBracket(contract, tournamentInfo.tierId, tournamentInfo.instanceId);
+        if (bracketData) {
+          setViewingTournament(bracketData);
+        }
+      } else {
+        setViewingTournament(null);
+      }
+    }
+  };
+
   // Initialize contract in read-only mode
   useEffect(() => {
     const initReadOnlyContract = async () => {
@@ -1668,6 +1702,37 @@ export default function ChessOnChain() {
 
       const updated = await refreshMatchData(contractInstance, userAccount, match);
       if (updated) {
+        const zeroAddress = '0x0000000000000000000000000000000000000000';
+        const matchWasCompleted = updated.matchStatus === 2 && match.matchStatus !== 2;
+        const wasParticipant =
+          updated.player1?.toLowerCase() === userAccount.toLowerCase() ||
+          updated.player2?.toLowerCase() === userAccount.toLowerCase();
+
+        // Detect match completion and show modal
+        if (matchWasCompleted && wasParticipant) {
+          const userWon = updated.winner?.toLowerCase() === userAccount.toLowerCase();
+          const isDoubleForfeited = updated.winner?.toLowerCase() === zeroAddress && !updated.isDraw;
+          const winnerIsWhite = updated.winner?.toLowerCase() === updated.player1?.toLowerCase();
+
+          if (updated.isDraw) {
+            setMatchEndResult('draw');
+            setMatchEndWinnerLabel('');
+          } else if (isDoubleForfeited) {
+            setMatchEndResult('double_forfeit');
+            setMatchEndWinnerLabel('');
+          } else if (updated.isTimedOut) {
+            setMatchEndResult(userWon ? 'forfeit_win' : 'forfeit_lose');
+            setMatchEndWinnerLabel(winnerIsWhite ? 'White' : 'Black');
+          } else {
+            setMatchEndResult(userWon ? 'win' : 'lose');
+            setMatchEndWinnerLabel(winnerIsWhite ? 'White' : 'Black');
+          }
+
+          setCurrentMatch(updated);
+          setSyncDots(1);
+          return;
+        }
+
         // Detect opponent's move by comparing boards
         if (previousBoardRef.current && updated.board) {
           const detectedMove = detectMoveFromBoards(previousBoardRef.current, updated.board);
@@ -2322,6 +2387,15 @@ export default function ChessOnChain() {
           }
         }
       `}</style>
+
+      {/* Match End Modal */}
+      <MatchEndModal
+        result={matchEndResult}
+        onClose={handleMatchEndModalClose}
+        winnerLabel={matchEndWinnerLabel}
+        gameType="chess"
+        isVisible={!!matchEndResult}
+      />
     </div>
   );
 }

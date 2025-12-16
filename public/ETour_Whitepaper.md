@@ -225,7 +225,7 @@ ETour's architecture separates **universal tournament mechanics** from **game-sp
 - Timeout detection and escalation
 - Prize pool calculation and distribution
 - Player statistics tracking
-- Tournament caching and history
+- Permanent earnings history and leaderboard
 
 **Game Contracts (Specific):**
 - Move validation rules
@@ -308,7 +308,7 @@ Games built on ETour inherit:
 - **Economic sustainability** — Fee splitting, prize distribution, forfeit handling
 - **Anti-griefing protection** — Timeout escalation across enrollment and matches
 - **Player statistics** — Cross-game win/loss tracking
-- **Historical data** — Tournament caching and replay capability
+- **Permanent earnings history** — Per-player prize records (`playerPrizes`) and net earnings (`playerEarnings`) stored permanently on-chain, enabling lifetime leaderboards
 - **Security patterns** — ReentrancyGuard, access controls, prize isolation
 
 This shared foundation means game developers focus purely on game rules, confident that the competitive infrastructure handles edge cases correctly.
@@ -533,7 +533,7 @@ Given identical inputs, ETour always produces identical outputs. There is no:
 - External calls to other contracts that could fail
 - Admin discretion in any decision
 
-This determinism enables complete verification. Anyone can replay a tournament from transaction logs and confirm the outcome matches.
+This determinism enables complete verification. Anyone can reconstruct a tournament's history from emitted events and transaction logs to confirm the outcome matches.
 
 ### 7.4 Open Source Verification
 
@@ -658,6 +658,26 @@ struct PlayerStats {
 }
 ```
 
+**Permanent Earnings Tracking:**
+```solidity
+// Prize amount each player received per tournament (permanent, never deleted)
+mapping(uint8 => mapping(uint8 => mapping(address => uint256))) public playerPrizes;
+
+// Net earnings per player across ALL tournaments (prizes minus entry fees)
+mapping(address => int256) public playerEarnings;
+
+// All players who have ever participated (for leaderboard)
+address[] internal _leaderboardPlayers;
+```
+
+**LeaderboardEntry:**
+```solidity
+struct LeaderboardEntry {
+    address player;
+    int256 earnings;  // Net profit/loss across all tournaments
+}
+```
+
 ### 9.3 Core Functions
 
 **Enrollment:**
@@ -702,6 +722,14 @@ event RoundCompleted(uint8 indexed tierId, uint8 indexed instanceId, uint8 round
 event TournamentCompleted(uint8 indexed tierId, uint8 indexed instanceId, address winner, uint256 prizeAmount, bool finalsWasDraw, address coWinner);
 event PrizeDistributed(uint8 indexed tierId, uint8 indexed instanceId, address indexed player, uint8 rank, uint256 amount);
 event TimeoutVictoryClaimed(uint8 indexed tierId, uint8 indexed instanceId, uint8 roundNum, uint8 matchNum, address indexed winner, address loser);
+event TournamentCached(uint8 indexed tierId, uint8 indexed instanceId, address winner);  // Emitted when earnings are recorded
+event PlayerForfeited(uint8 indexed tierId, uint8 indexed instanceId, address indexed player, uint256 amount, string reason);
+```
+
+**Leaderboard View Functions:**
+```solidity
+function getLeaderboard() external view returns (LeaderboardEntry[] memory);
+function getLeaderboardCount() external view returns (uint256);
 ```
 
 ### 9.5 Gas Optimization
@@ -712,7 +740,7 @@ ETour employs several gas optimization strategies:
 - **Minimal storage writes** — Derived values computed rather than stored
 - **Efficient mappings** — Direct lookups rather than array iteration
 - **Bounded loops** — All iterations have known maximum bounds
-- **Event-heavy logging** — Historical data in events rather than storage
+- **Selective permanent storage** — Only essential historical data (`playerPrizes`, `playerEarnings`) is stored permanently; detailed match history is reconstructable from events
 
 Typical gas costs on Arbitrum:
 

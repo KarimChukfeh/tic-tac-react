@@ -33,6 +33,7 @@ import TournamentCard from './components/shared/TournamentCard';
 import TurnTimer from './components/shared/TurnTimer';
 import MatchTimeoutEscalation from './components/shared/MatchTimeoutEscalation';
 import WinnersLeaderboard from './components/shared/WinnersLeaderboard';
+import MatchEndModal from './components/shared/MatchEndModal';
 
 // TicTacToe particle symbols
 const TICTACTOE_SYMBOLS = ['X', 'O'];
@@ -370,6 +371,8 @@ export default function TicTacBlock() {
   const [matchLoading, setMatchLoading] = useState(false);
   const [moveHistory, setMoveHistory] = useState([]);
   const [syncDots, setSyncDots] = useState(1);
+  const [matchEndResult, setMatchEndResult] = useState(null); // 'win' | 'lose' | 'draw' | 'forfeit_win' | 'forfeit_lose' | 'double_forfeit'
+  const [matchEndWinnerLabel, setMatchEndWinnerLabel] = useState('');
 
   // Leaderboard State
   const [leaderboard, setLeaderboard] = useState([]);
@@ -1189,17 +1192,9 @@ export default function TicTacBlock() {
       const tx = await contract.claimTimeoutWin(tierId, instanceId, roundNumber, matchNumber);
       await tx.wait();
 
-      alert('Timeout victory claimed! You win by opponent forfeit.');
-
-      // Exit match view and go back to tournaments list
-      setCurrentMatch(null);
-      setViewingTournament(null);
-
-      // Refresh cached stats
-      await fetchLeaderboard(true);
-
-      // Refresh tournament data
-      await fetchAllTournaments();
+      // Show victory modal
+      setMatchEndResult('forfeit_win');
+      setMatchEndWinnerLabel('You');
 
       setMatchLoading(false);
     } catch (error) {
@@ -1350,6 +1345,36 @@ export default function TicTacBlock() {
     }
   };
 
+  // Handle closing the match end modal
+  const handleMatchEndModalClose = async () => {
+    const tournamentInfo = currentMatch ? {
+      tierId: currentMatch.tierId,
+      instanceId: currentMatch.instanceId
+    } : null;
+
+    // Clear the modal state
+    setMatchEndResult(null);
+    setMatchEndWinnerLabel('');
+    setCurrentMatch(null);
+    setMoveHistory([]);
+
+    // Refresh data
+    if (contract) {
+      await fetchLeaderboard(true);
+      await fetchAllTournaments();
+
+      // Show tournament bracket for winners, go back to list for losers
+      if (tournamentInfo && (matchEndResult === 'win' || matchEndResult === 'forfeit_win')) {
+        const bracketData = await refreshTournamentBracket(contract, tournamentInfo.tierId, tournamentInfo.instanceId);
+        if (bracketData) {
+          setViewingTournament(bracketData);
+        }
+      } else {
+        setViewingTournament(null);
+      }
+    }
+  };
+
   // Go back from tournament bracket to tournaments list
   const handleBackToTournaments = async () => {
     setViewingTournament(null);
@@ -1486,73 +1511,47 @@ export default function TicTacBlock() {
             updatedMatch.player1.toLowerCase() === userAccount.toLowerCase() ||
             updatedMatch.player2.toLowerCase() === userAccount.toLowerCase();
 
-          // Case 1: Single Match Forfeit (Escalation 1 - opponent claims victory)
-          if (matchWasCompleted &&
-              updatedMatch.isTimedOut &&
-              updatedMatch.winner.toLowerCase() !== zeroAddress &&
-              !updatedMatch.isDraw &&
-              wasParticipant) {
-            const userWon = updatedMatch.winner.toLowerCase() === userAccount.toLowerCase();
-            if (userWon) {
-              alert('You won by forfeit! Your opponent failed to move in time.');
+          if (matchWasCompleted && wasParticipant) {
+            // Determine the result type for the modal
+            const userWon = updatedMatch.winner?.toLowerCase() === userAccount.toLowerCase();
+            const isDoubleForfeited = updatedMatch.winner?.toLowerCase() === zeroAddress && !updatedMatch.isDraw;
+            const winnerIsPlayer1 = updatedMatch.winner?.toLowerCase() === updatedMatch.player1?.toLowerCase();
 
-              // Stay in match view to see final board
-              setCurrentMatch(null);
-
-              // Refresh and show tournament bracket
-              await fetchLeaderboard(true);
-              await fetchAllTournaments();
-
-              const bracketData = await refreshTournamentBracket(contractInstance, updatedMatch.tierId, updatedMatch.instanceId);
-              if (bracketData) setViewingTournament(bracketData);
-            } else {
-              alert('You lost by forfeit. You failed to move in time and your opponent claimed victory.');
-
-              setCurrentMatch(null);
-              setViewingTournament(null);
-
-              await fetchLeaderboard(true);
-              await fetchAllTournaments();
+            // Case 1: Draw
+            if (updatedMatch.isDraw) {
+              setMatchEndResult('draw');
+              setMatchEndWinnerLabel('');
             }
+            // Case 2: Double forfeit (both players eliminated)
+            else if (isDoubleForfeited) {
+              setMatchEndResult('double_forfeit');
+              setMatchEndWinnerLabel('');
+            }
+            // Case 3: Timeout/Forfeit scenarios
+            else if (updatedMatch.isTimedOut) {
+              if (userWon) {
+                setMatchEndResult('forfeit_win');
+              } else {
+                setMatchEndResult('forfeit_lose');
+              }
+              setMatchEndWinnerLabel(winnerIsPlayer1 ? 'Player 1 (X)' : 'Player 2 (O)');
+            }
+            // Case 4: Normal win/loss (by gameplay)
+            else {
+              if (userWon) {
+                setMatchEndResult('win');
+              } else {
+                setMatchEndResult('lose');
+              }
+              setMatchEndWinnerLabel(winnerIsPlayer1 ? 'Player 1 (X)' : 'Player 2 (O)');
+            }
+
+            // Update match to show final state, modal will handle the rest
+            setCurrentMatch(updatedMatch);
             return;
           }
 
-          // Case 2: Higher-Round Intervention (Escalation 2 - both players eliminated)
-          const isDoubleForfeited = updatedMatch.winner.toLowerCase() === zeroAddress && !updatedMatch.isDraw;
-          if (matchWasCompleted && isDoubleForfeited && wasParticipant) {
-            alert('You were eliminated from the tournament. Both you and your opponent were removed due to inactivity by an advanced player.');
-
-            setCurrentMatch(null);
-            setViewingTournament(null);
-
-            await fetchLeaderboard(true);
-            await fetchAllTournaments();
-            return;
-          }
-
-          // Case 3: Final Outsider Claim (Escalation 3 - external outsider claims prize pool)
-          // This is detected when timeoutClaimant is set and user is a participant
-          if (matchWasCompleted &&
-              updatedMatch.timeoutClaimant &&
-              updatedMatch.timeoutClaimant.toLowerCase() !== zeroAddress &&
-              wasParticipant) {
-            const claimerIsExternal =
-              updatedMatch.timeoutClaimant.toLowerCase() !== updatedMatch.player1.toLowerCase() &&
-              updatedMatch.timeoutClaimant.toLowerCase() !== updatedMatch.player2.toLowerCase();
-
-            if (claimerIsExternal) {
-              alert('An external outsider claimed the prize pool for this match due to prolonged inactivity. You have been eliminated from the tournament.');
-
-              setCurrentMatch(null);
-              setViewingTournament(null);
-
-              await fetchLeaderboard(true);
-              await fetchAllTournaments();
-              return;
-            }
-          }
-
-          // Normal match update
+          // Normal match update (game still in progress)
           setCurrentMatch(updatedMatch);
         }
       } catch (error) {
@@ -2300,6 +2299,15 @@ export default function TicTacBlock() {
           }
         }
       `}</style>
+
+      {/* Match End Modal */}
+      <MatchEndModal
+        result={matchEndResult}
+        onClose={handleMatchEndModalClose}
+        winnerLabel={matchEndWinnerLabel}
+        gameType="tictactoe"
+        isVisible={!!matchEndResult}
+      />
     </div>
   );
 }

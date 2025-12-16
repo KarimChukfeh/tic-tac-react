@@ -22,6 +22,7 @@ import TournamentCard from './components/shared/TournamentCard';
 import TurnTimer from './components/shared/TurnTimer';
 import MatchTimeoutEscalation from './components/shared/MatchTimeoutEscalation';
 import WinnersLeaderboard from './components/shared/WinnersLeaderboard';
+import MatchEndModal from './components/shared/MatchEndModal';
 
 // Connect Four disc particles for background
 const C4_PARTICLES = ['🔴', '🔵'];
@@ -402,6 +403,8 @@ export default function ConnectFour() {
   const [currentMatch, setCurrentMatch] = useState(null);
   const [matchLoading, setMatchLoading] = useState(false);
   const [syncDots, setSyncDots] = useState(1);
+  const [matchEndResult, setMatchEndResult] = useState(null); // 'win' | 'lose' | 'draw' | 'forfeit_win' | 'forfeit_lose' | 'double_forfeit'
+  const [matchEndWinnerLabel, setMatchEndWinnerLabel] = useState('');
 
   // Leaderboard State
   const [leaderboard, setLeaderboard] = useState([]);
@@ -911,6 +914,36 @@ export default function ConnectFour() {
   // Close match
   const closeMatch = () => setCurrentMatch(null);
 
+  // Handle closing the match end modal
+  const handleMatchEndModalClose = async () => {
+    const tournamentInfo = currentMatch ? {
+      tierId: currentMatch.tierId,
+      instanceId: currentMatch.instanceId
+    } : null;
+    const wasWinner = matchEndResult === 'win' || matchEndResult === 'forfeit_win';
+
+    // Clear the modal state
+    setMatchEndResult(null);
+    setMatchEndWinnerLabel('');
+    setCurrentMatch(null);
+
+    // Refresh data
+    if (contract) {
+      await fetchAllTiers(contract, account, true);
+      await fetchLeaderboard(contract, true);
+
+      // Show tournament bracket for winners, go back to list for losers
+      if (tournamentInfo && wasWinner) {
+        const bracketData = await refreshTournamentBracket(contract, tournamentInfo.tierId, tournamentInfo.instanceId);
+        if (bracketData) {
+          setViewingTournament(bracketData);
+        }
+      } else {
+        setViewingTournament(null);
+      }
+    }
+  };
+
   // Handle Escalation 1: Opponent claims timeout win
   const handleClaimTimeoutWin = async () => {
     if (!currentMatch || !contract) return;
@@ -922,18 +955,9 @@ export default function ConnectFour() {
       const tx = await contract.claimTimeoutWin(tierId, instanceId, roundNumber, matchNumber);
       await tx.wait();
 
-      alert('Timeout victory claimed! You win by opponent forfeit.');
-
-      // Exit match view and go back to tournaments list
-      setCurrentMatch(null);
-      setViewingTournament(null);
-
-      // Refresh cached stats
-      await fetchLeaderboard(contract, true);
-
-      // Refresh tournament data
-      await fetchAllTiers(contract, account, true);
-
+      // Show victory modal
+      setMatchEndResult('forfeit_win');
+      setMatchEndWinnerLabel('You');
       setMatchLoading(false);
     } catch (error) {
       console.error('Error claiming timeout win:', error);
@@ -1057,7 +1081,40 @@ export default function ConnectFour() {
 
     const doSync = async () => {
       const updated = await refreshMatchData(contract, account, currentMatch);
-      if (updated) setCurrentMatch(updated);
+      if (updated) {
+        const zeroAddress = '0x0000000000000000000000000000000000000000';
+        const matchWasCompleted = updated.matchStatus === 2 && currentMatch.matchStatus !== 2;
+        const wasParticipant =
+          updated.player1?.toLowerCase() === account.toLowerCase() ||
+          updated.player2?.toLowerCase() === account.toLowerCase();
+
+        // Detect match completion and show modal
+        if (matchWasCompleted && wasParticipant) {
+          const userWon = updated.winner?.toLowerCase() === account.toLowerCase();
+          const isDoubleForfeited = updated.winner?.toLowerCase() === zeroAddress && !updated.isDraw;
+          const winnerIsPlayer1 = updated.winner?.toLowerCase() === updated.player1?.toLowerCase();
+
+          if (updated.isDraw) {
+            setMatchEndResult('draw');
+            setMatchEndWinnerLabel('');
+          } else if (isDoubleForfeited) {
+            setMatchEndResult('double_forfeit');
+            setMatchEndWinnerLabel('');
+          } else if (updated.isTimedOut) {
+            setMatchEndResult(userWon ? 'forfeit_win' : 'forfeit_lose');
+            setMatchEndWinnerLabel(winnerIsPlayer1 ? 'Red' : 'Yellow');
+          } else {
+            setMatchEndResult(userWon ? 'win' : 'lose');
+            setMatchEndWinnerLabel(winnerIsPlayer1 ? 'Red' : 'Yellow');
+          }
+
+          setCurrentMatch(updated);
+          setSyncDots(1);
+          return;
+        }
+
+        setCurrentMatch(updated);
+      }
       setSyncDots(1);
     };
 
@@ -1475,6 +1532,15 @@ export default function ConnectFour() {
           }
         }
       `}</style>
+
+      {/* Match End Modal */}
+      <MatchEndModal
+        result={matchEndResult}
+        onClose={handleMatchEndModalClose}
+        winnerLabel={matchEndWinnerLabel}
+        gameType="connectfour"
+        isVisible={!!matchEndResult}
+      />
     </div>
   );
 }

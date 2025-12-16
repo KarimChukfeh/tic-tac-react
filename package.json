@@ -12,6 +12,7 @@
     "test:run": "vitest run"
   },
   "dependencies": {
+    "canvas-confetti": "^1.9.4",
     "ethers": "^6.9.0",
     "lucide-react": "^0.294.0",
     "react": "^18.2.0",

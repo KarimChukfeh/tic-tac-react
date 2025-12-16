@@ -1,0 +1,240 @@
+import { useEffect, useCallback } from 'react';
+import { Trophy, Frown, Equal, X } from 'lucide-react';
+import confetti from 'canvas-confetti';
+
+/**
+ * MatchEndModal - Shared component for displaying match end feedback
+ *
+ * @param {Object} props
+ * @param {'win' | 'lose' | 'draw' | 'forfeit_win' | 'forfeit_lose' | 'double_forfeit'} props.result - The match result
+ * @param {Function} props.onClose - Callback when modal is closed
+ * @param {string} props.winnerLabel - Custom label for winner (e.g., "White", "Player 1", or address)
+ * @param {string} props.gameType - The game type for customized messages (e.g., "chess", "tictactoe", "connectfour")
+ * @param {boolean} props.isVisible - Whether the modal is visible
+ */
+const MatchEndModal = ({
+  result,
+  onClose,
+  winnerLabel = 'Winner',
+  gameType = 'game',
+  isVisible = true
+}) => {
+  // Fire confetti for wins
+  const fireConfetti = useCallback(() => {
+    const duration = 3000;
+    const end = Date.now() + duration;
+
+    const colors = ['#ffd700', '#ffb347', '#ff6961', '#77dd77', '#84b6f4', '#fdfd96'];
+
+    (function frame() {
+      confetti({
+        particleCount: 3,
+        angle: 60,
+        spread: 55,
+        origin: { x: 0, y: 0.8 },
+        colors: colors
+      });
+      confetti({
+        particleCount: 3,
+        angle: 120,
+        spread: 55,
+        origin: { x: 1, y: 0.8 },
+        colors: colors
+      });
+
+      if (Date.now() < end) {
+        requestAnimationFrame(frame);
+      }
+    }());
+
+    // Big burst in the middle
+    setTimeout(() => {
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: colors
+      });
+    }, 300);
+  }, []);
+
+  useEffect(() => {
+    if (isVisible && (result === 'win' || result === 'forfeit_win')) {
+      fireConfetti();
+    }
+  }, [isVisible, result, fireConfetti]);
+
+  // Handle escape key
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape' && isVisible) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [isVisible, onClose]);
+
+  if (!isVisible) return null;
+
+  // Game-specific victory text
+  const getVictoryText = () => {
+    switch (gameType) {
+      case 'chess':
+        return 'Checkmate!';
+      case 'connectfour':
+        return 'Four in a Row!';
+      case 'tictactoe':
+        return 'Three in a Row!';
+      default:
+        return 'Victory!';
+    }
+  };
+
+  const config = {
+    win: {
+      icon: Trophy,
+      title: getVictoryText(),
+      subtitle: 'You Won!',
+      description: 'Congratulations! You advance to the next round.',
+      bgGradient: 'from-yellow-500/20 via-amber-500/20 to-orange-500/20',
+      borderColor: 'border-yellow-400/50',
+      iconColor: 'text-yellow-400',
+      titleColor: 'text-yellow-300',
+      glowColor: 'shadow-yellow-500/30',
+      animation: 'animate-bounce'
+    },
+    forfeit_win: {
+      icon: Trophy,
+      title: 'Victory by Forfeit!',
+      subtitle: 'You Won!',
+      description: 'Your opponent failed to move in time. You advance!',
+      bgGradient: 'from-yellow-500/20 via-amber-500/20 to-orange-500/20',
+      borderColor: 'border-yellow-400/50',
+      iconColor: 'text-yellow-400',
+      titleColor: 'text-yellow-300',
+      glowColor: 'shadow-yellow-500/30',
+      animation: 'animate-bounce'
+    },
+    lose: {
+      icon: Frown,
+      title: 'Defeated',
+      subtitle: 'Better luck next time!',
+      description: `${winnerLabel} wins this match.`,
+      bgGradient: 'from-red-500/20 via-rose-500/20 to-pink-500/20',
+      borderColor: 'border-red-400/50',
+      iconColor: 'text-red-400',
+      titleColor: 'text-red-300',
+      glowColor: 'shadow-red-500/30',
+      animation: ''
+    },
+    forfeit_lose: {
+      icon: Frown,
+      title: 'Timeout!',
+      subtitle: 'You ran out of time',
+      description: 'You failed to make a move in time and forfeit the match.',
+      bgGradient: 'from-red-500/20 via-rose-500/20 to-pink-500/20',
+      borderColor: 'border-red-400/50',
+      iconColor: 'text-red-400',
+      titleColor: 'text-red-300',
+      glowColor: 'shadow-red-500/30',
+      animation: ''
+    },
+    draw: {
+      icon: Equal,
+      title: "It's a Draw!",
+      subtitle: 'Evenly matched',
+      description: 'Neither player could secure a victory.',
+      bgGradient: 'from-blue-500/20 via-cyan-500/20 to-teal-500/20',
+      borderColor: 'border-blue-400/50',
+      iconColor: 'text-blue-400',
+      titleColor: 'text-blue-300',
+      glowColor: 'shadow-blue-500/30',
+      animation: ''
+    },
+    double_forfeit: {
+      icon: Frown,
+      title: 'Double Forfeit',
+      subtitle: 'Both players eliminated',
+      description: 'Neither player made a move in time. Both are eliminated from the tournament.',
+      bgGradient: 'from-gray-500/20 via-slate-500/20 to-zinc-500/20',
+      borderColor: 'border-gray-400/50',
+      iconColor: 'text-gray-400',
+      titleColor: 'text-gray-300',
+      glowColor: 'shadow-gray-500/30',
+      animation: ''
+    }
+  };
+
+  const currentConfig = config[result] || config.lose;
+  const IconComponent = currentConfig.icon;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        onClick={onClose}
+      />
+
+      {/* Modal */}
+      <div
+        className={`
+          relative max-w-md w-full
+          bg-gradient-to-br ${currentConfig.bgGradient}
+          backdrop-blur-xl rounded-2xl
+          border ${currentConfig.borderColor}
+          shadow-2xl ${currentConfig.glowColor}
+          p-8 transform transition-all duration-300
+          animate-in fade-in zoom-in-95
+        `}
+      >
+        {/* Close button */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+        >
+          <X size={20} className="text-white/70" />
+        </button>
+
+        {/* Icon */}
+        <div className={`flex justify-center mb-6 ${currentConfig.animation}`}>
+          <div className={`p-4 rounded-full bg-white/10 ${currentConfig.iconColor}`}>
+            <IconComponent size={64} />
+          </div>
+        </div>
+
+        {/* Title */}
+        <h2 className={`text-4xl font-bold text-center mb-2 ${currentConfig.titleColor}`}>
+          {currentConfig.title}
+        </h2>
+
+        {/* Subtitle */}
+        <p className="text-xl text-center text-white/90 mb-4">
+          {currentConfig.subtitle}
+        </p>
+
+        {/* Description */}
+        <p className="text-center text-white/70 mb-8">
+          {currentConfig.description}
+        </p>
+
+        {/* Action button */}
+        <button
+          onClick={onClose}
+          className={`
+            w-full py-3 px-6 rounded-xl font-bold text-lg
+            bg-white/10 hover:bg-white/20
+            border border-white/20 hover:border-white/30
+            transition-all duration-200
+            text-white
+          `}
+        >
+          Continue
+        </button>
+      </div>
+    </div>
+  );
+};
+
+export default MatchEndModal;
