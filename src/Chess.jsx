@@ -981,7 +981,7 @@ export default function ChessOnChain() {
 
       const contractInstance = new ethers.Contract(
         CONTRACT_ADDRESS,
-        CHESS_ABI.abi,
+        CHESS_ABI,
         web3Signer
       );
 
@@ -1620,7 +1620,7 @@ export default function ChessOnChain() {
 
         const readOnlyContract = new ethers.Contract(
           CONTRACT_ADDRESS,
-          CHESS_ABI.abi,
+          CHESS_ABI,
           provider
         );
 
