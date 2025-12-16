@@ -32,6 +32,7 @@ import MatchCard from './components/shared/MatchCard';
 import TournamentCard from './components/shared/TournamentCard';
 import TurnTimer from './components/shared/TurnTimer';
 import MatchTimeoutEscalation from './components/shared/MatchTimeoutEscalation';
+import WinnersLeaderboard from './components/shared/WinnersLeaderboard';
 
 // TicTacToe particle symbols
 const TICTACTOE_SYMBOLS = ['X', 'O'];
@@ -370,9 +371,9 @@ export default function TicTacBlock() {
   const [moveHistory, setMoveHistory] = useState([]);
   const [syncDots, setSyncDots] = useState(1);
 
-  // Cached Stats State
-  const [cachedStats, setCachedStats] = useState(null);
-  const [cachedStatsLoading, setCachedStatsLoading] = useState(false);
+  // Leaderboard State
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
 
   // Add mobile debugging console (Eruda) on mobile devices
   useEffect(() => {
@@ -547,7 +548,7 @@ export default function TicTacBlock() {
     try {
       // Fetch tournaments (no wallet required for read-only)
       await fetchAllTournaments(contractInstance, null, false);
-      await fetchCachedStats(false);
+      await fetchLeaderboard(false);
 
       if (isInitialLoad) {
         setInitialLoading(false);
@@ -560,63 +561,32 @@ export default function TicTacBlock() {
     }
   };
 
-  // Fetch cached tournament and match stats
-  const fetchCachedStats = useCallback(async (silent = false) => {
+  // Fetch leaderboard data
+  const fetchLeaderboard = useCallback(async (silent = false) => {
     try {
       if (!silent) {
-        setCachedStatsLoading(true);
+        setLeaderboardLoading(true);
       }
 
       // Use read-only contract to avoid MetaMask rate limiting
       const readContract = getReadOnlyContract();
 
-      let matches = [];
-      let tournaments = [];
+      const leaderboardData = await readContract.getLeaderboard();
+      // Convert to plain array with player and earnings
+      const entries = Array.from(leaderboardData).map(entry => ({
+        player: entry.player,
+        earnings: entry.earnings
+      }));
 
-      // Fetch all cached matches with error handling
-      try {
-        const allCachedMatches = await readContract.getAllCachedMatches();
-        // Convert to plain array and filter existing matches
-        matches = Array.from(allCachedMatches).filter(m => m && m.exists);
-      } catch (err) {
-        console.warn('Error fetching cached matches:', err.message || err);
-      }
-
-      // Fetch all completed tournaments
-      try {
-        const allCompletedTournaments = await readContract.getAllCompletedTournaments();
-        tournaments = Array.from(allCompletedTournaments).filter(t => t && t.exists);
-      } catch (err) {
-        console.error('Error fetching completed tournaments:', err);
-      }
-
-      // Group tournaments by completion type
-      const organicTournaments = tournaments.filter(t => Number(t.completionType) === 0);
-      const partialTournaments = tournaments.filter(t => Number(t.completionType) === 1);
-      const abandonedTournaments = tournaments.filter(t => Number(t.completionType) === 2);
-
-      setCachedStats({
-        matches,
-        tournaments,
-        organicTournaments,
-        partialTournaments,
-        abandonedTournaments
-      });
+      setLeaderboard(entries);
       if (!silent) {
-        setCachedStatsLoading(false);
+        setLeaderboardLoading(false);
       }
     } catch (error) {
-      console.error('Error fetching cached stats:', error.message || error);
-      // Set empty stats on error so UI doesn't break
-      setCachedStats({
-        matches: [],
-        tournaments: [],
-        organicTournaments: [],
-        partialTournaments: [],
-        abandonedTournaments: []
-      });
+      console.error('Error fetching leaderboard:', error.message || error);
+      setLeaderboard([]);
       if (!silent) {
-        setCachedStatsLoading(false);
+        setLeaderboardLoading(false);
       }
     }
   }, [getReadOnlyContract]);
@@ -847,7 +817,7 @@ export default function TicTacBlock() {
       setCurrentMatch(null);
 
       // Refresh cached stats
-      await fetchCachedStats(true);
+      await fetchLeaderboard(true);
 
       // Refresh tournament data
       await fetchAllTournaments();
@@ -944,7 +914,7 @@ export default function TicTacBlock() {
       setCurrentMatch(null);
 
       // Refresh cached stats
-      await fetchCachedStats(true);
+      await fetchLeaderboard(true);
 
       // Refresh tournament data
       await fetchAllTournaments();
@@ -1231,7 +1201,7 @@ export default function TicTacBlock() {
       setViewingTournament(null);
 
       // Refresh cached stats
-      await fetchCachedStats(true);
+      await fetchLeaderboard(true);
 
       // Refresh tournament data
       await fetchAllTournaments();
@@ -1262,7 +1232,7 @@ export default function TicTacBlock() {
       setCurrentMatch(null);
 
       // Refresh cached stats
-      await fetchCachedStats(true);
+      await fetchLeaderboard(true);
 
       // Refresh tournament data
       await fetchAllTournaments();
@@ -1302,7 +1272,7 @@ export default function TicTacBlock() {
       setViewingTournament(null);
 
       // Refresh cached stats
-      await fetchCachedStats(true);
+      await fetchLeaderboard(true);
 
       // Refresh tournament data
       await fetchAllTournaments();
@@ -1380,7 +1350,7 @@ export default function TicTacBlock() {
       if (bracketData) {
         setViewingTournament(bracketData);
       }
-      await fetchCachedStats(false);
+      await fetchLeaderboard(false);
       setTournamentsLoading(false);
     }
   };
@@ -1392,7 +1362,7 @@ export default function TicTacBlock() {
     // Refresh tournaments list and cached stats (with loading indicator)
     if (contract) {
       await fetchAllTournaments(null, null, false);
-      await fetchCachedStats(false);
+      await fetchLeaderboard(false);
     }
   };
 
@@ -1448,8 +1418,8 @@ export default function TicTacBlock() {
 
   // Fetch cached stats when contract is available
   useEffect(() => {
-    fetchCachedStats();
-  }, [fetchCachedStats]);
+    fetchLeaderboard();
+  }, [fetchLeaderboard]);
 
   // Poll tournament bracket every 3 seconds (using refs for seamless syncing)
   const tournamentRef = useRef(viewingTournament);
@@ -1532,7 +1502,7 @@ export default function TicTacBlock() {
               setCurrentMatch(null);
 
               // Refresh and show tournament bracket
-              await fetchCachedStats(true);
+              await fetchLeaderboard(true);
               await fetchAllTournaments();
 
               const bracketData = await refreshTournamentBracket(contractInstance, updatedMatch.tierId, updatedMatch.instanceId);
@@ -1543,7 +1513,7 @@ export default function TicTacBlock() {
               setCurrentMatch(null);
               setViewingTournament(null);
 
-              await fetchCachedStats(true);
+              await fetchLeaderboard(true);
               await fetchAllTournaments();
             }
             return;
@@ -1557,7 +1527,7 @@ export default function TicTacBlock() {
             setCurrentMatch(null);
             setViewingTournament(null);
 
-            await fetchCachedStats(true);
+            await fetchLeaderboard(true);
             await fetchAllTournaments();
             return;
           }
@@ -1578,7 +1548,7 @@ export default function TicTacBlock() {
               setCurrentMatch(null);
               setViewingTournament(null);
 
-              await fetchCachedStats(true);
+              await fetchLeaderboard(true);
               await fetchAllTournaments();
               return;
             }
@@ -1599,7 +1569,7 @@ export default function TicTacBlock() {
     const matchPollInterval = setInterval(doMatchSync, 2000);
 
     return () => clearInterval(matchPollInterval);
-  }, [currentMatch?.tierId, currentMatch?.instanceId, currentMatch?.roundNumber, currentMatch?.matchNumber, account, refreshMatchData, fetchCachedStats, fetchAllTournaments, refreshTournamentBracket]);
+  }, [currentMatch?.tierId, currentMatch?.instanceId, currentMatch?.roundNumber, currentMatch?.matchNumber, account, refreshMatchData, fetchLeaderboard, fetchAllTournaments, refreshTournamentBracket]);
 
   // Increment match sync dots every second (1 -> 2 -> 3, resets on sync)
   useEffect(() => {
@@ -2142,66 +2112,14 @@ export default function TicTacBlock() {
         )}
       </div>
 
-      {/* Recent Matches Section - Simplified */}
+      {/* Winners Leaderboard Section */}
       <div className="max-w-7xl mx-auto px-6 pb-12" style={{ position: 'relative', zIndex: 10 }}>
-        <div className="mt-16">
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center gap-3 mb-4">
-              <History className="text-cyan-400" size={48} />
-              <h2 className="text-4xl font-bold text-white">Recent Matches</h2>
-            </div>
-            <p className="text-cyan-200/70 text-lg max-w-2xl mx-auto">
-              Recent game results stored on-chain
-            </p>
-          </div>
-
-          {cachedStatsLoading ? (
-            <div className="text-center py-12">
-              <div className="w-16 h-16 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-cyan-300">Loading...</p>
-            </div>
-          ) : cachedStats?.matches?.length > 0 ? (
-            <div className="max-w-2xl mx-auto bg-gradient-to-br from-cyan-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-6 border border-cyan-400/30">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <Grid className="text-cyan-400" size={24} />
-                  <span className="text-xl font-bold text-white">Last {Math.min(cachedStats.matches.length, 10)} Matches</span>
-                </div>
-                <div className="text-cyan-300 text-sm">
-                  {cachedStats.matches.filter(m => m?.isDraw).length} draws / {cachedStats.matches.length} total
-                </div>
-              </div>
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {[...cachedStats.matches].slice(-10).reverse().map((match, idx) => (
-                  <div key={idx} className={`flex items-center justify-between text-sm p-3 rounded-lg ${
-                    match?.isDraw
-                      ? 'bg-yellow-500/10 border border-yellow-400/20'
-                      : 'bg-cyan-500/10 border border-cyan-400/20'
-                  }`}>
-                    <div className="flex items-center gap-3">
-                      <span className={match?.isDraw ? 'text-yellow-400' : 'text-green-400'}>
-                        {match?.isDraw ? '🟰' : '🏆'}
-                      </span>
-                      <span className="text-white font-mono">
-                        {match?.isDraw
-                          ? 'Draw'
-                          : match?.winner ? `${match.winner.slice(0, 6)}...${match.winner.slice(-4)}` : 'Unknown'}
-                      </span>
-                    </div>
-                    <span className="text-cyan-300/70 text-xs">
-                      Tier {match?.tierId !== undefined ? Number(match.tierId) : '?'}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="max-w-2xl mx-auto bg-gradient-to-r from-cyan-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-12 border border-cyan-400/30 text-center">
-              <History className="text-cyan-400/50 mx-auto mb-4" size={64} />
-              <h3 className="text-2xl font-bold text-cyan-300 mb-2">No Match Data Yet</h3>
-              <p className="text-cyan-200/70">Statistics will appear as matches are completed</p>
-            </div>
-          )}
+        <div className="mt-16 max-w-2xl mx-auto">
+          <WinnersLeaderboard
+            leaderboard={leaderboard}
+            loading={leaderboardLoading}
+            currentAccount={account}
+          />
         </div>
       </div>
 

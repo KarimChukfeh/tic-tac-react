@@ -9,8 +9,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Wallet, Grid, Clock, Shield, Lock, Eye, Code, ExternalLink,
-  Trophy, Zap, Coins, ChevronDown,
-  ArrowLeft, History
+  Trophy, Zap, Coins, ChevronDown, ArrowLeft
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import C4_ABI from './CFOCABI.json';
@@ -22,6 +21,7 @@ import MatchCard from './components/shared/MatchCard';
 import TournamentCard from './components/shared/TournamentCard';
 import TurnTimer from './components/shared/TurnTimer';
 import MatchTimeoutEscalation from './components/shared/MatchTimeoutEscalation';
+import WinnersLeaderboard from './components/shared/WinnersLeaderboard';
 
 // Connect Four disc particles for background
 const C4_PARTICLES = ['🔴', '🔵'];
@@ -381,7 +381,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
 
 // Main Connect Four Component
 export default function ConnectFour() {
-  const CONTRACT_ADDRESS = "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0";
+  const CONTRACT_ADDRESS = "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9";
   const EXPECTED_CHAIN_ID = 412346;
 
   // Wallet & Contract State
@@ -403,9 +403,9 @@ export default function ConnectFour() {
   const [matchLoading, setMatchLoading] = useState(false);
   const [syncDots, setSyncDots] = useState(1);
 
-  // Cached Stats State
-  const [cachedStats, setCachedStats] = useState(null);
-  const [cachedStatsLoading, setCachedStatsLoading] = useState(false);
+  // Leaderboard State
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
 
   // Theme colors (dream theme - matches TicTacToe and Chess)
   const currentTheme = {
@@ -679,60 +679,30 @@ export default function ConnectFour() {
     }
   }, []);
 
-  // Fetch cached tournament and match stats
-  const fetchCachedStats = useCallback(async (contractInstance, silent = false) => {
+  // Fetch leaderboard data
+  const fetchLeaderboard = useCallback(async (contractInstance, silent = false) => {
     if (!contractInstance) return;
 
     try {
       if (!silent) {
-        setCachedStatsLoading(true);
+        setLeaderboardLoading(true);
       }
 
-      let matches = [];
-      let tournaments = [];
+      const leaderboardData = await contractInstance.getLeaderboard();
+      const entries = Array.from(leaderboardData).map(entry => ({
+        player: entry.player,
+        earnings: entry.earnings
+      }));
 
-      // Fetch all cached matches
-      try {
-        const allCachedMatches = await contractInstance.getAllCachedMatches();
-        matches = Array.from(allCachedMatches).filter(m => m && m.exists);
-      } catch (err) {
-        console.warn('Error fetching cached matches:', err.message || err);
-      }
-
-      // Fetch all completed tournaments
-      try {
-        const allCompletedTournaments = await contractInstance.getAllCompletedTournaments();
-        tournaments = Array.from(allCompletedTournaments).filter(t => t && t.exists);
-      } catch (err) {
-        console.error('Error fetching completed tournaments:', err);
-      }
-
-      // Group tournaments by completion type
-      const organicTournaments = tournaments.filter(t => Number(t.completionType) === 0);
-      const partialTournaments = tournaments.filter(t => Number(t.completionType) === 1);
-      const abandonedTournaments = tournaments.filter(t => Number(t.completionType) === 2);
-
-      setCachedStats({
-        matches,
-        tournaments,
-        organicTournaments,
-        partialTournaments,
-        abandonedTournaments
-      });
+      setLeaderboard(entries);
       if (!silent) {
-        setCachedStatsLoading(false);
+        setLeaderboardLoading(false);
       }
     } catch (error) {
-      console.error('Error fetching cached stats:', error.message || error);
-      setCachedStats({
-        matches: [],
-        tournaments: [],
-        organicTournaments: [],
-        partialTournaments: [],
-        abandonedTournaments: []
-      });
+      console.error('Error fetching leaderboard:', error.message || error);
+      setLeaderboard([]);
       if (!silent) {
-        setCachedStatsLoading(false);
+        setLeaderboardLoading(false);
       }
     }
   }, []);
@@ -958,7 +928,7 @@ export default function ConnectFour() {
       setViewingTournament(null);
 
       // Refresh cached stats
-      await fetchCachedStats(contract, true);
+      await fetchLeaderboard(contract, true);
 
       // Refresh tournament data
       await fetchAllTiers(contract, account, true);
@@ -989,7 +959,7 @@ export default function ConnectFour() {
       setCurrentMatch(null);
 
       // Refresh cached stats
-      await fetchCachedStats(contract, true);
+      await fetchLeaderboard(contract, true);
 
       // Refresh tournament data
       await fetchAllTiers(contract, account, true);
@@ -1027,7 +997,7 @@ export default function ConnectFour() {
       setViewingTournament(null);
 
       // Refresh cached stats
-      await fetchCachedStats(contract, true);
+      await fetchLeaderboard(contract, true);
 
       // Refresh tournament data
       await fetchAllTiers(contract, account, true);
@@ -1052,7 +1022,7 @@ export default function ConnectFour() {
 
         setContract(readOnlyContract);
         await fetchAllTiers(readOnlyContract, null, false);
-        await fetchCachedStats(readOnlyContract, false);
+        await fetchLeaderboard(readOnlyContract, false);
         setInitialLoading(false);
       } catch (error) {
         console.error('Error initializing contract:', error);
@@ -1061,7 +1031,7 @@ export default function ConnectFour() {
     };
 
     initReadOnlyContract();
-  }, [fetchAllTiers, fetchCachedStats, account]);
+  }, [fetchAllTiers, fetchLeaderboard, account]);
 
   // Listen for account changes
   useEffect(() => {
@@ -1475,198 +1445,13 @@ export default function ConnectFour() {
           )}
         </div>
 
-        {/* Cached Stats Section */}
-        <div className="mt-16">
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center gap-3 mb-4">
-              <History className="text-cyan-400" size={48} />
-              <div className="flex flex-col items-start">
-                <h2 className="text-4xl font-bold text-white">
-                  Cached Stats
-                </h2>
-              </div>
-            </div>
-            <p className="text-cyan-200/70 text-lg max-w-2xl mx-auto">
-              Historical tournament and match data stored on-chain
-            </p>
-          </div>
-
-          {cachedStatsLoading ? (
-            <div className="text-center py-12">
-              <div className="inline-block">
-                <div className="w-16 h-16 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin mx-auto mb-4"></div>
-                <p className="text-cyan-300">Loading cached stats...</p>
-              </div>
-            </div>
-          ) : cachedStats && (cachedStats.matches?.length > 0 || cachedStats.tournaments?.length > 0) ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Cached Tournaments */}
-              <div className="bg-gradient-to-br from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-6 border border-purple-400/30">
-                <div className="flex items-center gap-3 mb-4">
-                  <Trophy className="text-purple-400" size={32} />
-                  <h3 className="text-2xl font-bold text-white">Cached Tournaments</h3>
-                </div>
-                <div className="space-y-3">
-                  <div className="bg-purple-500/10 rounded-lg p-4 border border-purple-400/20">
-                    <div className="text-purple-300 text-sm mb-1">Total Cached</div>
-                    <div className="text-3xl font-bold text-white">{cachedStats.tournaments?.length || 0}</div>
-                  </div>
-                  {cachedStats.tournaments?.length > 0 && (
-                    <>
-                      {/* Organic Tournaments */}
-                      {cachedStats.organicTournaments?.length > 0 && (
-                        <div className="bg-green-500/10 rounded-lg p-4 border border-green-400/20">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Trophy className="text-green-400" size={16} />
-                            <div className="text-green-300 text-sm font-semibold">Organic ({cachedStats.organicTournaments.length})</div>
-                          </div>
-                          <div className="space-y-2 max-h-48 overflow-y-auto">
-                            {cachedStats.organicTournaments.slice(0, 5).map((tournament, idx) => (
-                              <div key={idx} className="bg-green-500/5 p-3 rounded space-y-2">
-                                <div className="flex items-center justify-between text-xs border-b border-green-400/20 pb-1">
-                                  <span className="text-green-200 font-semibold">Tier {Number(tournament.tierId)}</span>
-                                  <span className="text-green-300/70">
-                                    {tournament.winner && tournament.winner !== ethers.ZeroAddress
-                                      ? `Winner: ${tournament.winner.slice(0, 6)}...${tournament.winner.slice(-4)}`
-                                      : 'Completed'}
-                                  </span>
-                                </div>
-                                {tournament.totalAwarded && tournament.totalAwarded > 0n && (
-                                  <div className="text-xs text-green-400">
-                                    Prize: {parseFloat(ethers.formatEther(tournament.totalAwarded)).toFixed(4)} ETH
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Force Started Tournaments */}
-                      {cachedStats.partialTournaments?.length > 0 && (
-                        <div className="bg-orange-500/10 rounded-lg p-4 border border-orange-400/20">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Zap className="text-orange-400" size={16} />
-                            <div className="text-orange-300 text-sm font-semibold">Force Started ({cachedStats.partialTournaments.length})</div>
-                          </div>
-                          <div className="space-y-2 max-h-48 overflow-y-auto">
-                            {cachedStats.partialTournaments.slice(0, 5).map((tournament, idx) => (
-                              <div key={idx} className="bg-orange-500/5 p-3 rounded space-y-2">
-                                <div className="flex items-center justify-between text-xs">
-                                  <span className="text-orange-200 font-semibold">Tier {Number(tournament.tierId)}</span>
-                                  <span className="text-orange-300/70">
-                                    {tournament.winner && tournament.winner !== ethers.ZeroAddress
-                                      ? `${tournament.winner.slice(0, 6)}...${tournament.winner.slice(-4)}`
-                                      : 'Completed'}
-                                  </span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Abandoned Tournaments */}
-                      {cachedStats.abandonedTournaments?.length > 0 && (
-                        <div className="bg-red-500/10 rounded-lg p-4 border border-red-400/20">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Coins className="text-red-400" size={16} />
-                            <div className="text-red-300 text-sm font-semibold">Abandoned ({cachedStats.abandonedTournaments.length})</div>
-                          </div>
-                          <div className="space-y-2 max-h-48 overflow-y-auto">
-                            {cachedStats.abandonedTournaments.slice(0, 5).map((tournament, idx) => (
-                              <div key={idx} className="bg-red-500/5 p-2 rounded">
-                                <div className="flex items-center justify-between text-xs">
-                                  <span className="text-red-200">Tier {Number(tournament.tierId)}</span>
-                                  <span className="text-white font-mono">
-                                    {tournament.winner && tournament.winner !== ethers.ZeroAddress
-                                      ? `${tournament.winner.slice(0, 6)}...${tournament.winner.slice(-4)}`
-                                      : 'Unclaimed'}
-                                  </span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Cached Matches */}
-              <div className="bg-gradient-to-br from-cyan-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-6 border border-cyan-400/30">
-                <div className="flex items-center gap-3 mb-4">
-                  <Grid className="text-cyan-400" size={32} />
-                  <h3 className="text-2xl font-bold text-white">Cached Matches</h3>
-                </div>
-                <div className="space-y-3">
-                  <div className="bg-cyan-500/10 rounded-lg p-4 border border-cyan-400/20">
-                    <div className="text-cyan-300 text-sm mb-1">Total Cached</div>
-                    <div className="text-3xl font-bold text-white">{cachedStats.matches?.length || 0}</div>
-                  </div>
-                  {cachedStats.matches?.length > 0 && (
-                    <>
-                      {/* Match Statistics */}
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-cyan-500/10 rounded-lg p-4 border border-cyan-400/20">
-                          <div className="text-cyan-300 text-sm mb-1">Wins</div>
-                          <div className="text-2xl font-bold text-green-400">
-                            {cachedStats.matches.filter(m => m?.winner && m.winner !== ethers.ZeroAddress && !m?.isDraw).length}
-                          </div>
-                        </div>
-                        <div className="bg-yellow-500/10 rounded-lg p-4 border border-yellow-400/20">
-                          <div className="text-yellow-300 text-sm mb-1">Draws</div>
-                          <div className="text-2xl font-bold text-yellow-400">
-                            {cachedStats.matches.filter(m => m?.isDraw).length}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Recent Matches */}
-                      <div className="bg-cyan-500/10 rounded-lg p-4 border border-cyan-400/20">
-                        <div className="text-cyan-300 text-sm mb-2">Recent Matches</div>
-                        <div className="space-y-2 max-h-32 overflow-y-auto">
-                          {[...cachedStats.matches].slice(-5).reverse().map((match, idx) => (
-                            <div key={idx} className={`flex items-center justify-between text-xs p-2 rounded ${
-                              match?.isDraw
-                                ? 'bg-yellow-500/10 border border-yellow-400/20'
-                                : 'bg-cyan-500/5 border border-cyan-400/10'
-                            }`}>
-                              <span className={match?.isDraw ? 'text-yellow-300 font-bold' : 'text-cyan-200'}>
-                                {match?.isDraw ? '🟰 Draw' : '🏆 Winner'}
-                              </span>
-                              <span className="text-white font-mono">
-                                {match?.isDraw
-                                  ? 'Tie Game'
-                                  : match?.winner ? `${match.winner.slice(0, 6)}...${match.winner.slice(-4)}` : 'Unknown'}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Average Move Count */}
-                      <div className="bg-purple-500/10 rounded-lg p-4 border border-purple-400/20">
-                        <div className="text-purple-300 text-sm mb-1">Average Moves per Match</div>
-                        <div className="text-2xl font-bold text-purple-400">
-                          {(cachedStats.matches.reduce((sum, m) => sum + (Number(m?.moveCount) || 0), 0) / cachedStats.matches.length).toFixed(1)}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <div className="bg-purple-500/10 rounded-2xl p-8 border border-purple-400/20 max-w-md mx-auto">
-                <History className="text-purple-400 mx-auto mb-4" size={48} />
-                <p className="text-purple-300">No cached stats available yet.</p>
-                <p className="text-purple-300/70 text-sm mt-2">Play some matches to see statistics here!</p>
-              </div>
-            </div>
-          )}
+        {/* Winners Leaderboard Section */}
+        <div className="mt-16 max-w-2xl mx-auto">
+          <WinnersLeaderboard
+            leaderboard={leaderboard}
+            loading={leaderboardLoading}
+            currentAccount={account}
+          />
         </div>
       </div>
 

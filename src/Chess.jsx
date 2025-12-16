@@ -9,8 +9,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Wallet, Grid, Swords, Clock, Shield, Lock, Eye, Code, ExternalLink,
-  Trophy, Play, Users, Zap, Coins, ChevronDown, ChevronUp, Info,
-  History, AlertCircle, ArrowLeft
+  Trophy, Play, Users, Zap, Coins, ChevronDown, ChevronUp, Info, ArrowLeft
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import CHESS_ABI from './COCABI.json';
@@ -22,6 +21,7 @@ import MatchCard from './components/shared/MatchCard';
 import TournamentCard from './components/shared/TournamentCard';
 import TurnTimer from './components/shared/TurnTimer';
 import MatchTimeoutEscalation from './components/shared/MatchTimeoutEscalation';
+import WinnersLeaderboard from './components/shared/WinnersLeaderboard';
 
 // Chess piece symbols
 const PIECE_SYMBOLS = {
@@ -752,7 +752,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onManualStart
 
 // Main Chess Component
 export default function ChessOnChain() {
-  const CONTRACT_ADDRESS = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
+  const CONTRACT_ADDRESS = "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9";
   const EXPECTED_CHAIN_ID = 412346;
 
   // Wallet & Contract State
@@ -786,9 +786,9 @@ export default function ChessOnChain() {
   // FAQ State
   const [expandedFaq, setExpandedFaq] = useState(null);
 
-  // Cached Stats State
-  const [cachedStats, setCachedStats] = useState(null);
-  const [cachedStatsLoading, setCachedStatsLoading] = useState(false);
+  // Leaderboard State
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
 
   // FAQ data for chess
   const faqs = [
@@ -999,50 +999,24 @@ export default function ChessOnChain() {
 
   // Load contract data
   const loadContractData = async (contractInstance, isInitialLoad = false) => {
-    // Always try to fetch cached stats first
+    // Fetch leaderboard
     try {
-      console.log('🔄 Fetching cached stats...');
-      setCachedStatsLoading(true);
+      console.log('🔄 Fetching leaderboard...');
+      setLeaderboardLoading(true);
 
-      let matches = [];
-      let tournaments = [];
+      const leaderboardData = await contractInstance.getLeaderboard();
+      const entries = Array.from(leaderboardData).map(entry => ({
+        player: entry.player,
+        earnings: entry.earnings
+      }));
+      console.log('✅ Fetched', entries.length, 'leaderboard entries');
 
-      // Fetch recent cached matches
-      try {
-        const recentMatches = await contractInstance.getRecentCachedMatches(100);
-        matches = Array.from(recentMatches).filter(m => m && m.exists);
-        console.log('✅ Fetched', matches.length, 'cached matches');
-      } catch (err) {
-        console.warn('Error fetching cached matches:', err.message || err);
-      }
-
-      // Fetch all completed tournaments
-      try {
-        const allTournaments = await contractInstance.getAllCompletedTournaments();
-        tournaments = Array.from(allTournaments).filter(t => t && t.exists);
-        console.log('✅ Fetched', tournaments.length, 'cached tournaments');
-      } catch (err) {
-        console.warn('Error fetching cached tournaments:', err.message || err);
-      }
-
-      // Categorize tournaments by completion type
-      // CompletionType: 0=NotCompleted, 1=Organic, 2=Partial, 3=Abandoned
-      const organicTournaments = tournaments.filter(t => Number(t.completionType) === 1);
-      const partialTournaments = tournaments.filter(t => Number(t.completionType) === 2);
-      const abandonedTournaments = tournaments.filter(t => Number(t.completionType) === 3);
-
-      setCachedStats({
-        matches,
-        tournaments,
-        organicTournaments,
-        partialTournaments,
-        abandonedTournaments
-      });
-      setCachedStatsLoading(false);
+      setLeaderboard(entries);
+      setLeaderboardLoading(false);
     } catch (err) {
-      console.error('Could not fetch cached stats:', err);
-      setCachedStats({ matches: [], tournaments: [], organicTournaments: [], partialTournaments: [], abandonedTournaments: [] });
-      setCachedStatsLoading(false);
+      console.error('Could not fetch leaderboard:', err);
+      setLeaderboard([]);
+      setLeaderboardLoading(false);
     }
 
     // Verify contract deployment
@@ -2463,500 +2437,13 @@ export default function ChessOnChain() {
           </div>
         </div>
 
-        {/* Cached Stats Section */}
-        <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-8 border border-white/10 mb-16">
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center gap-3 mb-4">
-              <History className="text-cyan-400" size={40} />
-              <h2 className="text-4xl font-bold">
-                <span className="bg-gradient-to-r from-cyan-400 to-purple-400 text-transparent bg-clip-text">
-                  Cached Stats
-                </span>
-              </h2>
-            </div>
-            <p className="text-cyan-200/70 text-lg max-w-2xl mx-auto">
-              Historical tournament and match data stored on-chain
-            </p>
-          </div>
-
-          {cachedStatsLoading ? (
-            <div className="text-center py-12">
-              <div className="inline-block">
-                <div className="w-16 h-16 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin mx-auto mb-4"></div>
-                <p className="text-cyan-300">Loading cached stats...</p>
-              </div>
-            </div>
-          ) : cachedStats && (cachedStats.matches.length > 0 || cachedStats.tournaments.length > 0) ? (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Cached Tournaments */}
-                <div className="bg-gradient-to-br from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-6 border border-purple-400/30">
-                  <div className="flex items-center gap-3 mb-4">
-                    <Trophy className="text-purple-400" size={32} />
-                    <h3 className="text-2xl font-bold text-white">Cached Tournaments</h3>
-                  </div>
-                  <div className="space-y-3">
-                    <div className="bg-purple-500/10 rounded-lg p-4 border border-purple-400/20">
-                      <div className="text-purple-300 text-sm mb-1">Total Cached</div>
-                      <div className="text-3xl font-bold text-white">{cachedStats.tournaments?.length || 0}</div>
-                    </div>
-                    {cachedStats.tournaments?.length > 0 && (
-                      <>
-                        {/* Organic Tournaments */}
-                        {cachedStats.organicTournaments?.length > 0 && (
-                          <div className="bg-green-500/10 rounded-lg p-4 border border-green-400/20">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Trophy className="text-green-400" size={16} />
-                              <div className="text-green-300 text-sm font-semibold">Organic ({cachedStats.organicTournaments.length})</div>
-                            </div>
-                            <div className="space-y-2 max-h-48 overflow-y-auto">
-                              {cachedStats.organicTournaments.slice(0, 5).map((tournament, idx) => {
-                                let prizeRecipients = [];
-                                if (tournament.prizeWinners && tournament.prizeWinners.length > 0) {
-                                  prizeRecipients = Array.from(tournament.prizeWinners)
-                                    .filter(r => r && r.player && r.player !== ethers.ZeroAddress && r.prize > 0n)
-                                    .map(r => ({
-                                      player: r.player,
-                                      prize: ethers.formatEther(r.prize),
-                                      ranking: r.ranking ? Number(r.ranking) : null
-                                    }));
-                                }
-                                return (
-                                  <div key={idx} className="bg-green-500/5 p-3 rounded space-y-2">
-                                    <div className="flex items-center justify-between text-xs border-b border-green-400/20 pb-1">
-                                      <span className="text-green-200 font-semibold">Tier {Number(tournament.tierId)}</span>
-                                      <span className="text-green-300/70">{prizeRecipients.length} winner{prizeRecipients.length !== 1 ? 's' : ''}</span>
-                                    </div>
-                                    {prizeRecipients.length > 0 ? (
-                                      <div className="space-y-1.5">
-                                        {prizeRecipients.map((recipient, recipientIdx) => (
-                                          <div key={recipientIdx} className="bg-green-500/5 p-2 rounded border border-green-400/10">
-                                            <div className="flex items-center justify-between text-xs mb-1">
-                                              <div className="flex flex-col">
-                                                <span className={`font-mono ${
-                                                  recipient.player.toLowerCase() === account?.toLowerCase()
-                                                    ? 'text-yellow-300 font-bold'
-                                                    : 'text-white'
-                                                }`}>
-                                                  #{recipient.ranking} {recipient.player.slice(0, 6)}...{recipient.player.slice(-4)}
-                                                </span>
-                                                {recipient.player.toLowerCase() === account?.toLowerCase() && (
-                                                  <span className="text-yellow-400 text-xs font-bold">THIS IS YOU</span>
-                                                )}
-                                              </div>
-                                              <span className="text-green-400 font-bold">{parseFloat(recipient.prize).toFixed(4)} ETH</span>
-                                            </div>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    ) : (
-                                      <div className="text-xs text-green-300/50 text-center py-2">No prize data available</div>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Partial/Force Started Tournaments */}
-                        {cachedStats.partialTournaments?.length > 0 && (
-                          <div className="bg-orange-500/10 rounded-lg p-4 border border-orange-400/20">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Zap className="text-orange-400" size={16} />
-                              <div className="text-orange-300 text-sm font-semibold">Force Started ({cachedStats.partialTournaments.length})</div>
-                            </div>
-                            <div className="space-y-2 max-h-48 overflow-y-auto">
-                              {cachedStats.partialTournaments.slice(0, 5).map((tournament, idx) => {
-                                let prizeRecipients = [];
-                                if (tournament.prizeWinners && tournament.prizeWinners.length > 0) {
-                                  prizeRecipients = Array.from(tournament.prizeWinners)
-                                    .filter(r => r && r.player && r.player !== ethers.ZeroAddress && r.prize > 0n)
-                                    .map(r => ({
-                                      player: r.player,
-                                      prize: ethers.formatEther(r.prize),
-                                      ranking: r.ranking ? Number(r.ranking) : null
-                                    }));
-                                }
-                                return (
-                                  <div key={idx} className="bg-orange-500/5 p-3 rounded space-y-2">
-                                    <div className="flex items-center justify-between text-xs border-b border-orange-400/20 pb-1">
-                                      <span className="text-orange-200 font-semibold">Tier {Number(tournament.tierId)}</span>
-                                      <span className="text-orange-300/70">{prizeRecipients.length} winner{prizeRecipients.length !== 1 ? 's' : ''}</span>
-                                    </div>
-                                    {prizeRecipients.length > 0 ? (
-                                      <div className="space-y-1.5">
-                                        {prizeRecipients.map((recipient, recipientIdx) => (
-                                          <div key={recipientIdx} className="bg-orange-500/5 p-2 rounded border border-orange-400/10">
-                                            <div className="flex items-center justify-between text-xs mb-1">
-                                              <div className="flex flex-col">
-                                                <span className={`font-mono ${
-                                                  recipient.player.toLowerCase() === account?.toLowerCase()
-                                                    ? 'text-yellow-300 font-bold'
-                                                    : 'text-white'
-                                                }`}>
-                                                  #{recipient.ranking} {recipient.player.slice(0, 6)}...{recipient.player.slice(-4)}
-                                                </span>
-                                                {recipient.player.toLowerCase() === account?.toLowerCase() && (
-                                                  <span className="text-yellow-400 text-xs font-bold">THIS IS YOU</span>
-                                                )}
-                                              </div>
-                                              <span className="text-green-400 font-bold">{parseFloat(recipient.prize).toFixed(4)} ETH</span>
-                                            </div>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    ) : (
-                                      <div className="text-xs text-orange-300/50 text-center py-2">No prize data available</div>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Abandoned/Claimed Tournaments */}
-                        {cachedStats.abandonedTournaments?.length > 0 && (
-                          <div className="bg-red-500/10 rounded-lg p-4 border border-red-400/20">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Coins className="text-red-400" size={16} />
-                              <div className="text-red-300 text-sm font-semibold">Abandoned & Claimed ({cachedStats.abandonedTournaments.length})</div>
-                            </div>
-                            <div className="space-y-2 max-h-48 overflow-y-auto">
-                              {cachedStats.abandonedTournaments.slice(0, 5).map((tournament, idx) => {
-                                const winner = tournament.winner;
-                                const hasWinner = winner && winner !== ethers.ZeroAddress;
-                                let claimAmount = null;
-                                if (tournament.totalAwarded && tournament.totalAwarded > 0n) {
-                                  claimAmount = ethers.formatEther(tournament.totalAwarded);
-                                }
-                                return (
-                                  <div key={idx} className="bg-red-500/5 p-2 rounded space-y-1">
-                                    <div className="flex items-center justify-between text-xs">
-                                      <span className="text-red-200">Tier {Number(tournament.tierId)}</span>
-                                      <div className="flex flex-col items-end">
-                                        <span className="text-white font-mono">
-                                          {hasWinner ? `${winner.slice(0, 6)}...${winner.slice(-4)}` : 'Unclaimed'}
-                                        </span>
-                                        {hasWinner && winner.toLowerCase() === account?.toLowerCase() && (
-                                          <span className="text-yellow-400 text-xs font-bold">THIS IS YOU</span>
-                                        )}
-                                      </div>
-                                    </div>
-                                    {claimAmount && (
-                                      <div className="flex items-center justify-between text-xs">
-                                        <span className="text-red-300/70">Pool Claimed</span>
-                                        <span className="text-yellow-400 font-bold">{parseFloat(claimAmount).toFixed(4)} ETH</span>
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Total Awards Distributed */}
-                        <div className="bg-purple-500/10 rounded-lg p-4 border border-purple-400/20">
-                          <div className="text-purple-300 text-sm mb-3 font-bold">Total Awards Distributed</div>
-                          {(() => {
-                            try {
-                              const addressAwards = new Map();
-                              let totalAwarded = 0;
-
-                              cachedStats.tournaments.forEach(tournament => {
-                                if (tournament.prizeWinners && tournament.prizeWinners.length > 0) {
-                                  Array.from(tournament.prizeWinners)
-                                    .filter(r => r && r.player && r.player !== ethers.ZeroAddress && r.prize > 0n)
-                                    .forEach(r => {
-                                      const addr = r.player;
-                                      const prizeEth = parseFloat(ethers.formatEther(r.prize));
-                                      if (prizeEth > 0) {
-                                        const current = addressAwards.get(addr.toLowerCase()) || 0;
-                                        addressAwards.set(addr.toLowerCase(), current + prizeEth);
-                                        totalAwarded += prizeEth;
-                                      }
-                                    });
-                                }
-                              });
-
-                              const sortedAwards = Array.from(addressAwards.entries())
-                                .sort((a, b) => b[1] - a[1]);
-
-                              if (sortedAwards.length === 0) {
-                                return (
-                                  <div className="text-purple-300/70 text-sm text-center py-2">
-                                    No awards distributed yet
-                                  </div>
-                                );
-                              }
-
-                              return (
-                                <>
-                                  <div className="bg-green-500/20 p-3 rounded-lg border border-green-400/30 mb-3">
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-green-300 text-sm">Grand Total</span>
-                                      <span className="text-2xl font-bold text-green-400">
-                                        {totalAwarded.toFixed(4)} ETH
-                                      </span>
-                                    </div>
-                                    <div className="text-green-300/70 text-xs mt-1">
-                                      to {sortedAwards.length} unique recipient{sortedAwards.length !== 1 ? 's' : ''}
-                                    </div>
-                                  </div>
-                                  <div className="space-y-2 max-h-64 overflow-y-auto">
-                                    {sortedAwards.map(([address, amount]) => (
-                                      <div
-                                        key={address}
-                                        className={`flex items-center justify-between p-2 rounded border ${
-                                          address.toLowerCase() === account?.toLowerCase()
-                                            ? 'bg-yellow-500/20 border-yellow-400/50'
-                                            : 'bg-purple-500/10 border-purple-400/20'
-                                        }`}
-                                      >
-                                        <div className="flex flex-col">
-                                          <span className={`font-mono text-xs ${
-                                            address.toLowerCase() === account?.toLowerCase()
-                                              ? 'text-yellow-300'
-                                              : 'text-white'
-                                          }`}>
-                                            {address.slice(0, 8)}...{address.slice(-6)}
-                                          </span>
-                                          {address.toLowerCase() === account?.toLowerCase() && (
-                                            <span className="text-yellow-400 text-xs font-bold">THIS IS YOU</span>
-                                          )}
-                                        </div>
-                                        <span className="text-green-400 font-bold text-sm">
-                                          {amount.toFixed(4)} ETH
-                                        </span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </>
-                              );
-                            } catch (err) {
-                              console.warn('Error calculating total awards:', err);
-                              return (
-                                <div className="text-red-300/70 text-sm text-center py-2">
-                                  Error loading award data
-                                </div>
-                              );
-                            }
-                          })()}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                {/* Cached Matches */}
-                <div className="bg-gradient-to-br from-cyan-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-6 border border-cyan-400/30">
-                  <div className="flex items-center gap-3 mb-4">
-                    <Swords className="text-cyan-400" size={32} />
-                    <h3 className="text-2xl font-bold text-white">Cached Matches</h3>
-                  </div>
-                  <div className="space-y-3">
-                    <div className="bg-cyan-500/10 rounded-lg p-4 border border-cyan-400/20">
-                      <div className="text-cyan-300 text-sm mb-1">Total Cached</div>
-                      <div className="text-3xl font-bold text-white">{cachedStats.matches?.length || 0}</div>
-                    </div>
-                    {cachedStats.matches?.length > 0 && (
-                      <>
-                        {/* Match Statistics Grid */}
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="bg-cyan-500/10 rounded-lg p-4 border border-cyan-400/20">
-                            <div className="text-cyan-300 text-sm mb-1">Decisive</div>
-                            <div className="text-2xl font-bold text-green-400">
-                              {cachedStats.matches.filter(m => m?.winner && m.winner !== ethers.ZeroAddress && !m?.isDraw).length}
-                            </div>
-                          </div>
-                          <div className="bg-yellow-500/10 rounded-lg p-4 border border-yellow-400/20">
-                            <div className="text-yellow-300 text-sm mb-1">Draws</div>
-                            <div className="text-2xl font-bold text-yellow-400">
-                              {cachedStats.matches.filter(m => m?.isDraw).length}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Draw Rate */}
-                        <div className="bg-yellow-500/10 rounded-lg p-4 border border-yellow-400/20">
-                          <div className="text-yellow-300 text-sm mb-1">Draw Rate</div>
-                          <div className="flex items-center justify-between">
-                            <div className="text-2xl font-bold text-yellow-400">
-                              {((cachedStats.matches.filter(m => m?.isDraw).length / cachedStats.matches.length) * 100).toFixed(1)}%
-                            </div>
-                            <div className="text-xs text-yellow-300/70">
-                              {cachedStats.matches.filter(m => m?.isDraw).length} of {cachedStats.matches.length} matches
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Average Move Count */}
-                        <div className="bg-cyan-500/10 rounded-lg p-4 border border-cyan-400/20">
-                          <div className="text-cyan-300 text-sm mb-1">Average Moves per Game</div>
-                          <div className="text-2xl font-bold text-cyan-400">
-                            {(cachedStats.matches.reduce((sum, m) => sum + Number(m?.totalMoves || 0), 0) / cachedStats.matches.length).toFixed(1)}
-                          </div>
-                        </div>
-
-                        {/* Draw Scenarios List */}
-                        {cachedStats.matches.filter(m => m?.isDraw).length > 0 && (
-                          <div className="bg-yellow-500/10 rounded-lg p-4 border border-yellow-400/20">
-                            <div className="flex items-center gap-2 mb-3">
-                              <AlertCircle className="text-yellow-400" size={16} />
-                              <div className="text-yellow-300 text-sm font-bold">Draw Scenarios</div>
-                            </div>
-                            <div className="space-y-2 max-h-48 overflow-y-auto">
-                              {[...cachedStats.matches]
-                                .filter(m => m?.isDraw)
-                                .slice(-10)
-                                .reverse()
-                                .map((match, idx) => (
-                                  <div key={idx} className="bg-yellow-500/10 p-3 rounded border border-yellow-400/20">
-                                    <div className="flex items-center justify-between mb-2">
-                                      <div className="flex items-center gap-2">
-                                        <div className="w-6 h-6 rounded-full bg-yellow-500/30 flex items-center justify-center text-yellow-300 font-bold text-xs border border-yellow-400">
-                                          =
-                                        </div>
-                                        <span className="text-yellow-200 text-xs font-bold">Draw Match</span>
-                                      </div>
-                                      <span className="text-yellow-300/70 text-xs">
-                                        Tier {match?.tierId !== undefined ? Number(match.tierId) : '?'} • {Number(match?.totalMoves || 0)} moves
-                                      </span>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2 text-xs">
-                                      <div className="bg-cyan-500/20 p-2 rounded border border-cyan-400/20">
-                                        <div className="text-cyan-300/70 mb-1">White</div>
-                                        <div className="text-white font-mono">
-                                          {match?.player1 ? `${match.player1.slice(0, 6)}...${match.player1.slice(-4)}` : 'Unknown'}
-                                        </div>
-                                      </div>
-                                      <div className="bg-orange-500/20 p-2 rounded border border-orange-400/20">
-                                        <div className="text-orange-300/70 mb-1">Black</div>
-                                        <div className="text-white font-mono">
-                                          {match?.player2 ? `${match.player2.slice(0, 6)}...${match.player2.slice(-4)}` : 'Unknown'}
-                                        </div>
-                                      </div>
-                                    </div>
-                                    {match?.startTime && match?.endTime && (
-                                      <div className="mt-2 text-xs text-yellow-300/70">
-                                        Duration: {Math.floor((Number(match.endTime) - Number(match.startTime)) / 60)} minutes
-                                      </div>
-                                    )}
-                                  </div>
-                                ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Recent Matches (All) */}
-                        <div className="bg-cyan-500/10 rounded-lg p-4 border border-cyan-400/20">
-                          <div className="text-cyan-300 text-sm mb-2">Recent Matches (All)</div>
-                          <div className="space-y-2 max-h-32 overflow-y-auto">
-                            {[...cachedStats.matches].slice(-5).reverse().map((match, idx) => (
-                              <div key={idx} className={`flex items-center justify-between text-xs p-2 rounded ${
-                                match?.isDraw
-                                  ? 'bg-yellow-500/10 border border-yellow-400/20'
-                                  : 'bg-cyan-500/5 border border-cyan-400/10'
-                              }`}>
-                                <span className={match?.isDraw ? 'text-yellow-300 font-bold' : 'text-cyan-200'}>
-                                  {match?.isDraw ? '🟰 Draw' : '🏆 Winner'}
-                                </span>
-                                <span className="text-white font-mono">
-                                  {match?.isDraw
-                                    ? `${Number(match?.totalMoves || 0)} moves`
-                                    : match?.winner ? `${match.winner.slice(0, 6)}...${match.winner.slice(-4)}` : 'Unknown'}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Top Prize Recipients Section */}
-              {cachedStats.tournaments?.length > 0 && (
-                <div className="mt-6 bg-gradient-to-br from-green-600/20 to-emerald-600/20 backdrop-blur-lg rounded-2xl p-6 border border-green-400/30">
-                  <div className="flex items-center gap-3 mb-4">
-                    <Coins className="text-green-400" size={32} />
-                    <h3 className="text-2xl font-bold text-white">Top Prize Recipients</h3>
-                  </div>
-                  <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {(() => {
-                      try {
-                        const recipients = new Map();
-
-                        cachedStats.tournaments.forEach(tournament => {
-                          if (tournament.prizeWinners && tournament.prizeWinners.length > 0) {
-                            Array.from(tournament.prizeWinners)
-                              .filter(r => r && r.player && r.player !== ethers.ZeroAddress && r.prize > 0n)
-                              .forEach(r => {
-                                const addr = r.player;
-                                const prizeEth = parseFloat(ethers.formatEther(r.prize));
-                                if (prizeEth > 0) {
-                                  const current = recipients.get(addr.toLowerCase()) || 0;
-                                  recipients.set(addr.toLowerCase(), current + prizeEth);
-                                }
-                              });
-                          }
-                        });
-
-                        const sortedRecipients = Array.from(recipients.entries())
-                          .sort((a, b) => b[1] - a[1])
-                          .slice(0, 10);
-
-                        if (sortedRecipients.length === 0) {
-                          return (
-                            <div className="text-green-300/70 text-sm text-center py-4">
-                              No prize data available yet
-                            </div>
-                          );
-                        }
-
-                        return sortedRecipients.map(([address, total], idx) => (
-                          <div
-                            key={address}
-                            className="flex items-center justify-between bg-green-500/10 p-3 rounded-lg border border-green-400/20"
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-green-500/30 flex items-center justify-center text-green-300 font-bold text-sm border-2 border-green-400">
-                                #{idx + 1}
-                              </div>
-                              <span className="text-white font-mono text-sm">
-                                {address.slice(0, 6)}...{address.slice(-4)}
-                              </span>
-                            </div>
-                            <span className="text-green-400 font-bold text-lg">
-                              {total.toFixed(4)} ETH
-                            </span>
-                          </div>
-                        ));
-                      } catch (err) {
-                        console.warn('Error calculating top recipients:', err);
-                        return (
-                          <div className="text-red-300/70 text-sm text-center py-4">
-                            Error loading prize data
-                          </div>
-                        );
-                      }
-                    })()}
-                  </div>
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="bg-gradient-to-r from-cyan-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-12 border border-cyan-400/30 text-center">
-              <History className="text-cyan-400/50 mx-auto mb-4" size={64} />
-              <h3 className="text-2xl font-bold text-cyan-300 mb-2">No Cached Data Available</h3>
-              <p className="text-cyan-200/70">
-                Historical data will appear here once tournaments complete and matches are played.
-              </p>
-            </div>
-          )}
+        {/* Winners Leaderboard Section */}
+        <div className="max-w-2xl mx-auto mb-16">
+          <WinnersLeaderboard
+            leaderboard={leaderboard}
+            loading={leaderboardLoading}
+            currentAccount={account}
+          />
         </div>
       </div>
 

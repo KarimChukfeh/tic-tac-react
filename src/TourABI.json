@@ -583,12 +583,6 @@
           "type": "uint8"
         },
         {
-          "indexed": true,
-          "internalType": "uint256",
-          "name": "tournamentId",
-          "type": "uint256"
-        },
-        {
           "indexed": false,
           "internalType": "address",
           "name": "winner",
@@ -814,6 +808,45 @@
     {
       "inputs": [],
       "name": "DEFAULT_MATCH_MOVE_TIMEOUT",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "DEMO_ENROLLMENT_WINDOW",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "DEMO_ESCALATION_INTERVAL",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "DEMO_MATCH_MOVE_TIMEOUT",
       "outputs": [
         {
           "internalType": "uint256",
@@ -1053,90 +1086,6 @@
       "type": "function"
     },
     {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "name": "completedTournaments",
-      "outputs": [
-        {
-          "internalType": "bool",
-          "name": "exists",
-          "type": "bool"
-        },
-        {
-          "internalType": "uint8",
-          "name": "tierId",
-          "type": "uint8"
-        },
-        {
-          "internalType": "uint8",
-          "name": "instanceId",
-          "type": "uint8"
-        },
-        {
-          "internalType": "uint256",
-          "name": "tournamentId",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "timestamp",
-          "type": "uint256"
-        },
-        {
-          "internalType": "enum ETour.Mode",
-          "name": "mode",
-          "type": "uint8"
-        },
-        {
-          "internalType": "enum ETour.TournamentCompletionType",
-          "name": "completionType",
-          "type": "uint8"
-        },
-        {
-          "internalType": "uint256",
-          "name": "totalPrizePool",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "totalAwarded",
-          "type": "uint256"
-        },
-        {
-          "internalType": "address",
-          "name": "winner",
-          "type": "address"
-        },
-        {
-          "internalType": "uint8",
-          "name": "participantCount",
-          "type": "uint8"
-        },
-        {
-          "internalType": "uint256",
-          "name": "startTime",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "duration",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint8",
-          "name": "matchCount",
-          "type": "uint8"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
       "inputs": [],
       "name": "declareRW3",
       "outputs": [
@@ -1372,113 +1321,6 @@
       "type": "function"
     },
     {
-      "inputs": [],
-      "name": "getAllCompletedTournaments",
-      "outputs": [
-        {
-          "components": [
-            {
-              "internalType": "bool",
-              "name": "exists",
-              "type": "bool"
-            },
-            {
-              "internalType": "uint8",
-              "name": "tierId",
-              "type": "uint8"
-            },
-            {
-              "internalType": "uint8",
-              "name": "instanceId",
-              "type": "uint8"
-            },
-            {
-              "internalType": "uint256",
-              "name": "tournamentId",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "timestamp",
-              "type": "uint256"
-            },
-            {
-              "internalType": "enum ETour.Mode",
-              "name": "mode",
-              "type": "uint8"
-            },
-            {
-              "internalType": "enum ETour.TournamentCompletionType",
-              "name": "completionType",
-              "type": "uint8"
-            },
-            {
-              "internalType": "uint256",
-              "name": "totalPrizePool",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "totalAwarded",
-              "type": "uint256"
-            },
-            {
-              "internalType": "address",
-              "name": "winner",
-              "type": "address"
-            },
-            {
-              "internalType": "uint8",
-              "name": "participantCount",
-              "type": "uint8"
-            },
-            {
-              "internalType": "uint256",
-              "name": "startTime",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "duration",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint8",
-              "name": "matchCount",
-              "type": "uint8"
-            },
-            {
-              "components": [
-                {
-                  "internalType": "address",
-                  "name": "player",
-                  "type": "address"
-                },
-                {
-                  "internalType": "uint8",
-                  "name": "ranking",
-                  "type": "uint8"
-                },
-                {
-                  "internalType": "uint256",
-                  "name": "prize",
-                  "type": "uint256"
-                }
-              ],
-              "internalType": "struct ETour.PrizeWinner[]",
-              "name": "prizeWinners",
-              "type": "tuple[]"
-            }
-          ],
-          "internalType": "struct ETour.CachedTournamentData[]",
-          "name": "",
-          "type": "tuple[]"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
       "inputs": [
         {
           "internalType": "address",
@@ -1678,132 +1520,6 @@
     {
       "inputs": [
         {
-          "internalType": "uint256",
-          "name": "index",
-          "type": "uint256"
-        }
-      ],
-      "name": "getCompletedTournament",
-      "outputs": [
-        {
-          "components": [
-            {
-              "internalType": "bool",
-              "name": "exists",
-              "type": "bool"
-            },
-            {
-              "internalType": "uint8",
-              "name": "tierId",
-              "type": "uint8"
-            },
-            {
-              "internalType": "uint8",
-              "name": "instanceId",
-              "type": "uint8"
-            },
-            {
-              "internalType": "uint256",
-              "name": "tournamentId",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "timestamp",
-              "type": "uint256"
-            },
-            {
-              "internalType": "enum ETour.Mode",
-              "name": "mode",
-              "type": "uint8"
-            },
-            {
-              "internalType": "enum ETour.TournamentCompletionType",
-              "name": "completionType",
-              "type": "uint8"
-            },
-            {
-              "internalType": "uint256",
-              "name": "totalPrizePool",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "totalAwarded",
-              "type": "uint256"
-            },
-            {
-              "internalType": "address",
-              "name": "winner",
-              "type": "address"
-            },
-            {
-              "internalType": "uint8",
-              "name": "participantCount",
-              "type": "uint8"
-            },
-            {
-              "internalType": "uint256",
-              "name": "startTime",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "duration",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint8",
-              "name": "matchCount",
-              "type": "uint8"
-            },
-            {
-              "components": [
-                {
-                  "internalType": "address",
-                  "name": "player",
-                  "type": "address"
-                },
-                {
-                  "internalType": "uint8",
-                  "name": "ranking",
-                  "type": "uint8"
-                },
-                {
-                  "internalType": "uint256",
-                  "name": "prize",
-                  "type": "uint256"
-                }
-              ],
-              "internalType": "struct ETour.PrizeWinner[]",
-              "name": "prizeWinners",
-              "type": "tuple[]"
-            }
-          ],
-          "internalType": "struct ETour.CachedTournamentData",
-          "name": "",
-          "type": "tuple"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "getCompletedTournamentCount",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
           "internalType": "uint8",
           "name": "tierId",
           "type": "uint8"
@@ -1820,6 +1536,44 @@
           "internalType": "address[]",
           "name": "",
           "type": "address[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getLeaderboard",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "address",
+              "name": "player",
+              "type": "address"
+            },
+            {
+              "internalType": "int256",
+              "name": "earnings",
+              "type": "int256"
+            }
+          ],
+          "internalType": "struct ETour.LeaderboardEntry[]",
+          "name": "",
+          "type": "tuple[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getLeaderboardCount",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
         }
       ],
       "stateMutability": "view",
@@ -2239,19 +1993,6 @@
       "type": "function"
     },
     {
-      "inputs": [],
-      "name": "globalTournamentIdCounter",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
       "inputs": [
         {
           "internalType": "uint8",
@@ -2610,6 +2351,25 @@
     {
       "inputs": [
         {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "playerEarnings",
+      "outputs": [
+        {
+          "internalType": "int256",
+          "name": "",
+          "type": "int256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
           "internalType": "uint8",
           "name": "",
           "type": "uint8"
@@ -2843,25 +2603,6 @@
           "internalType": "uint8",
           "name": "",
           "type": "uint8"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "name": "tournamentCompletionBlocks",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
         }
       ],
       "stateMutability": "view",
