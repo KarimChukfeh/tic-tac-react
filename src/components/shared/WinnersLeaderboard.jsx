@@ -20,7 +20,7 @@ const WinnersLeaderboard = ({
   leaderboard = [],
   loading = false,
   currentAccount = null,
-  title = 'Winners Leaderboard'
+  title = 'Top Earners'
 }) => {
   // Show top 10 entries
   const displayEntries = leaderboard.slice(0, 10);
