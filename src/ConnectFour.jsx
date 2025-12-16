@@ -9,16 +9,17 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Wallet, Grid, Clock, Shield, Lock, Eye, Code, ExternalLink,
-  Trophy, Play, Users, Zap, Award, Coins, ChevronDown,
+  Trophy, Zap, Coins, ChevronDown,
   ArrowLeft, History
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import C4_ABI from './CFOCABI.json';
 import { shortenAddress, formatTime as formatTimeHMS, getTierName } from './utils/formatters';
-import { getMatchStatusText, getMatchStatusColor } from './utils/matchStatus';
 import ParticleBackground from './components/shared/ParticleBackground';
 import StatsGrid from './components/shared/StatsGrid';
 import EnrolledPlayersList from './components/shared/EnrolledPlayersList';
+import MatchCard from './components/shared/MatchCard';
+import TournamentCard from './components/shared/TournamentCard';
 
 // Connect Four disc particles for background
 const C4_PARTICLES = ['🔴', '🔵'];
@@ -264,184 +265,6 @@ const ConnectFourBoard = ({
 };
 
 // Tournament Card Component
-const TournamentCard = ({
-  tierId,
-  instanceId,
-  maxPlayers,
-  currentEnrolled,
-  entryFee,
-  isEnrolled,
-  onEnroll,
-  onEnter,
-  loading,
-  tierName,
-  enrollmentTimeout,
-  onManualStart,
-  tournamentStatus,
-  account
-}) => {
-  const isFull = currentEnrolled >= maxPlayers;
-  const enrollmentPercentage = (currentEnrolled / maxPlayers) * 100;
-
-  // Escalation state
-  const [escalationState, setEscalationState] = useState({
-    canStartEscalation1: false,
-    timeToEscalation1: 0,
-  });
-
-  useEffect(() => {
-    if (!enrollmentTimeout) {
-      setEscalationState({ canStartEscalation1: false, timeToEscalation1: 0 });
-      return;
-    }
-
-    const updateEscalationState = () => {
-      const now = Math.floor(Date.now() / 1000);
-      const escalation1Start = Number(enrollmentTimeout.escalation1Start);
-      const timeToEscalation1 = escalation1Start > 0 ? Math.max(0, escalation1Start - now) : 0;
-      const canStartEscalation1 = escalation1Start > 0 && now >= escalation1Start;
-
-      setEscalationState({ canStartEscalation1, timeToEscalation1 });
-    };
-
-    updateEscalationState();
-    const interval = setInterval(updateEscalationState, 1000);
-    return () => clearInterval(interval);
-  }, [enrollmentTimeout]);
-
-  const formatTime = (seconds) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    return `${hours}h ${minutes}m ${secs}s`;
-  };
-
-  const colors = {
-    cardBg: 'from-purple-600/20 to-blue-600/20',
-    cardBorder: 'border-purple-400/40 hover:border-purple-400/70',
-    icon: 'text-purple-400',
-    text: 'text-purple-300',
-    progress: 'from-purple-500 to-blue-500',
-    buttonEnter: 'from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600'
-  };
-
-  return (
-    <div className={`bg-gradient-to-br ${colors.cardBg} backdrop-blur-lg rounded-2xl p-6 border-2 ${colors.cardBorder} transition-all hover:shadow-xl`}>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <Trophy className={colors.icon} size={24} />
-          <div>
-            <h3 className="text-xl font-bold text-white">{tierName || `Tier ${tierId}`}</h3>
-            <div className={`text-xs ${colors.text}`}>Instance #{instanceId}</div>
-          </div>
-        </div>
-        {isFull && (
-          <div className="bg-purple-500/20 border border-purple-400 px-3 py-1 rounded-full">
-            <span className="text-purple-300 text-xs font-bold">FULL</span>
-          </div>
-        )}
-        {!isFull && !isEnrolled && (
-          <div className="bg-green-500/20 border border-green-400 px-3 py-1 rounded-full">
-            <span className="text-green-300 text-xs font-bold">OPEN</span>
-          </div>
-        )}
-        {isEnrolled && (
-          <div className="bg-blue-500/20 border border-blue-400 px-3 py-1 rounded-full">
-            <span className="text-blue-300 text-xs font-bold">ENROLLED</span>
-          </div>
-        )}
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        <div className="bg-black/20 rounded-lg p-3">
-          <div className="flex items-center gap-2 mb-1">
-            <Users className={colors.text} size={16} />
-            <span className={`${colors.text} text-xs font-semibold`}>Players</span>
-          </div>
-          <div className="text-white font-bold text-lg">{currentEnrolled} / {maxPlayers}</div>
-        </div>
-        <div className="bg-black/20 rounded-lg p-3">
-          <div className="flex items-center gap-2 mb-1">
-            <Coins className="text-yellow-300" size={16} />
-            <span className="text-yellow-300 text-xs font-semibold">Entry Fee</span>
-          </div>
-          <div className="text-white font-bold text-lg">{entryFee} ETH</div>
-        </div>
-      </div>
-
-      {/* Progress Bar */}
-      <div className="mb-4">
-        <div className={`flex justify-between text-xs ${colors.text} mb-1`}>
-          <span>Enrollment</span>
-          <span>{enrollmentPercentage.toFixed(0)}%</span>
-        </div>
-        <div className="w-full bg-black/30 rounded-full h-2 overflow-hidden">
-          <div
-            className={`h-full bg-gradient-to-r ${colors.progress} transition-all duration-500 rounded-full`}
-            style={{ width: `${enrollmentPercentage}%` }}
-          />
-        </div>
-      </div>
-
-      {/* Escalation Timer */}
-      {enrollmentTimeout && escalationState.timeToEscalation1 > 0 && (
-        <div className="mb-4">
-          <div className="bg-gradient-to-r from-orange-500/20 to-yellow-500/20 border border-orange-400/50 rounded-lg p-3 text-center">
-            <Clock className="inline-block text-orange-400 mr-2" size={16} />
-            <span className="text-orange-300 text-sm">Force Start in: {formatTime(escalationState.timeToEscalation1)}</span>
-          </div>
-        </div>
-      )}
-
-      {/* Action Buttons */}
-      {tournamentStatus === 0 && escalationState.canStartEscalation1 && isEnrolled && (
-        <button
-          onClick={() => onManualStart(tierId, instanceId)}
-          disabled={loading || !account}
-          className="w-full bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed mb-2 flex items-center justify-center gap-2"
-        >
-          <Zap size={18} />
-          {loading ? 'Starting...' : 'Force Start Tournament'}
-        </button>
-      )}
-
-      {isEnrolled ? (
-        <button
-          onClick={onEnter}
-          disabled={loading || !account}
-          className={`w-full bg-gradient-to-r ${colors.buttonEnter} text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 flex items-center justify-center gap-2`}
-        >
-          <Play size={18} />
-          {loading ? 'Loading...' : 'Enter Tournament'}
-        </button>
-      ) : (
-        <>
-          {tournamentStatus === 0 && !isFull && (
-            <button
-              onClick={onEnroll}
-              disabled={loading || !account}
-              className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              <Trophy size={18} />
-              {loading ? 'Enrolling...' : !account ? 'Connect Wallet' : 'Enroll Now'}
-            </button>
-          )}
-          <button
-            onClick={onEnter}
-            disabled={loading}
-            className={`w-full ${tournamentStatus === 0 && !isFull ? 'mt-2' : ''} bg-gradient-to-r ${colors.buttonEnter} text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 flex items-center justify-center gap-2 border ${colors.cardBorder}`}
-          >
-            <Eye size={18} />
-            {loading ? 'Loading...' : 'View Tournament'}
-          </button>
-        </>
-      )}
-    </div>
-  );
-};
-
 // Tournament Bracket Component
 const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceEliminate, onClaimReplacement, account, loading, syncDots }) => {
   const { tierId, instanceId, status, currentRound, enrolledCount, prizePool, rounds, playerCount, enrolledPlayers } = tournamentData;
@@ -516,176 +339,30 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
                   {roundIdx === totalRounds - 1 && ' - Finals'}
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {round.matches.map((match, matchIdx) => {
-                    const isUserMatch =
-                      match.player1?.toLowerCase() === account?.toLowerCase() ||
-                      match.player2?.toLowerCase() === account?.toLowerCase();
-
-                    // Calculate move timeout
-                    const MOVE_TIMEOUT = 60; // 60 seconds
-                    const now = Math.floor(Date.now() / 1000);
-                    const timeReference = match.lastMoveTime > 0 ? match.lastMoveTime : match.startTime;
-                    const timeSinceLastMove = timeReference > 0 ? now - timeReference : 0;
-                    const timeRemaining = timeReference > 0 ? Math.max(0, MOVE_TIMEOUT - timeSinceLastMove) : null;
-                    const isTimeout = timeRemaining !== null && timeRemaining === 0;
-
-                    // Check escalation status
-                    const hasEscalation = match.timeoutState && match.timeoutState.timeoutActive;
-                    const activeEscalation = match.timeoutState?.activeEscalation || 0;
-
-                    // If contract hasn't activated yet, calculate client-side escalation based on time
-                    let clientEscalation = 0;
-                    if (!hasEscalation && isTimeout && match.matchStatus === 1) {
-                      const timeoutDuration = timeSinceLastMove - MOVE_TIMEOUT;
-                      if (timeoutDuration >= 180) { // 3 minutes for Esc 3
-                        clientEscalation = 3;
-                      } else if (timeoutDuration >= 120) { // 2 minutes for Esc 2
-                        clientEscalation = 2;
-                      } else if (timeoutDuration >= 60) { // 1 minute for Esc 1
-                        clientEscalation = 1;
-                      }
-                    }
-
-                    const effectiveEscalation = hasEscalation ? activeEscalation : clientEscalation;
-                    const canForceEliminate = effectiveEscalation >= 2;
-                    const canReplace = effectiveEscalation >= 3;
-
-                    // Calculate border color based on escalation and timeout
-                    let borderClass = 'border-purple-400/30 hover:border-purple-400/50';
-                    if (isUserMatch) {
-                      borderClass = 'border-green-400/70 bg-green-900/20';
-                    } else if (canReplace) {
-                      borderClass = 'border-red-400 bg-red-900/20 animate-pulse';
-                    } else if (canForceEliminate) {
-                      borderClass = 'border-yellow-400 bg-yellow-900/20';
-                    } else if (hasEscalation) {
-                      borderClass = 'border-orange-400 bg-orange-900/20';
-                    } else if (isTimeout && match.matchStatus === 1) {
-                      borderClass = 'border-orange-400/60 bg-orange-900/10';
-                    }
-
-                    return (
-                      <div
-                        key={matchIdx}
-                        className={`bg-black/30 rounded-xl p-4 border-2 transition-all ${borderClass}`}
-                      >
-                        <div className="flex items-center justify-between mb-3">
-                          <span className="text-purple-300 text-sm font-semibold">Match {matchIdx + 1}</span>
-                          <span className={`text-xs font-bold ${getMatchStatusColor(match.matchStatus, match.winner, match.isDraw, matchStatusOptions)}`}>
-                            {getMatchStatusText(match.matchStatus, match.winner, match.isDraw, matchStatusOptions)}
-                          </span>
-                        </div>
-
-                        <div className="space-y-2">
-                          {/* Player 1 - Red */}
-                          <div className={`flex items-center justify-between p-2 rounded ${
-                            match.winner?.toLowerCase() === match.player1?.toLowerCase()
-                              ? 'bg-green-500/20 border border-green-400/50'
-                              : match.player1?.toLowerCase() === account?.toLowerCase()
-                              ? 'bg-cyan-500/20 border border-cyan-400/50'
-                              : 'bg-purple-500/10'
-                          }`}>
-                            <div className="flex items-center gap-2">
-                              <span className="text-xl">🔴</span>
-                              <span className="text-white font-mono text-sm">{shortenAddress(match.player1)}</span>
-                            </div>
-                            {match.winner?.toLowerCase() === match.player1?.toLowerCase() && (
-                              <Award className="text-green-400" size={16} />
-                            )}
-                          </div>
-
-                          <div className="text-center text-purple-400 font-bold">VS</div>
-
-                          {/* Player 2 - Blue */}
-                          <div className={`flex items-center justify-between p-2 rounded ${
-                            match.winner?.toLowerCase() === match.player2?.toLowerCase()
-                              ? 'bg-green-500/20 border border-green-400/50'
-                              : match.player2?.toLowerCase() === account?.toLowerCase()
-                              ? 'bg-blue-500/20 border border-blue-400/50'
-                              : 'bg-blue-500/10'
-                          }`}>
-                            <div className="flex items-center gap-2">
-                              <span className="text-xl">🔵</span>
-                              <span className="text-white font-mono text-sm">{shortenAddress(match.player2)}</span>
-                            </div>
-                            {match.winner?.toLowerCase() === match.player2?.toLowerCase() && (
-                              <Award className="text-green-400" size={16} />
-                            )}
-                          </div>
-
-                          {/* Enter Match Button */}
-                          {isUserMatch && match.matchStatus !== 2 && (
-                            <button
-                              onClick={() => onEnterMatch(tierId, instanceId, roundIdx, matchIdx)}
-                              disabled={loading || match.matchStatus === 0}
-                              className="w-full mt-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 disabled:from-gray-500 disabled:to-gray-600 text-white font-bold py-2 px-4 rounded-lg transition-all transform hover:scale-105 disabled:opacity-50 flex items-center justify-center gap-2"
-                            >
-                              <Play size={16} />
-                              {match.matchStatus === 0 ? 'Waiting to Start' : 'Enter Match'}
-                            </button>
-                          )}
-
-                          {/* Escalation status indicator */}
-                          {effectiveEscalation > 0 && match.matchStatus !== 2 && (
-                            <div className={`mt-2 text-xs font-bold px-2 py-1 rounded text-center ${
-                              canReplace ? 'bg-red-500/30 text-red-300' :
-                              canForceEliminate ? 'bg-yellow-500/30 text-yellow-300' :
-                              'bg-orange-500/30 text-orange-300'
-                            }`}>
-                              Escalation {effectiveEscalation} Active
-                            </div>
-                          )}
-
-                          {/* Escalation CTAs for outsiders (enrolled players not in this match) */}
-                          {!isUserMatch && match.matchStatus !== 2 && (
-                            <>
-                              {/* Escalation 2: Force Eliminate */}
-                              {canForceEliminate && (
-                                <div className="mt-2">
-                                  <button
-                                    onClick={() => onForceEliminate({
-                                      tierId,
-                                      instanceId,
-                                      roundNumber: roundIdx,
-                                      matchNumber: matchIdx
-                                    })}
-                                    disabled={loading}
-                                    className="w-full bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-all transform hover:scale-105 disabled:opacity-50 flex items-center justify-center gap-2"
-                                  >
-                                    ⚡ Force Eliminate (Higher Rank)
-                                  </button>
-                                  <p className="text-xs text-yellow-300 mt-1 text-center">
-                                    Escalation 2: Eliminate both stalled players
-                                  </p>
-                                </div>
-                              )}
-
-                              {/* Escalation 3: Replace Both Players */}
-                              {canReplace && (
-                                <div className="mt-2">
-                                  <button
-                                    onClick={() => onClaimReplacement({
-                                      tierId,
-                                      instanceId,
-                                      roundNumber: roundIdx,
-                                      matchNumber: matchIdx
-                                    })}
-                                    disabled={loading}
-                                    className="w-full bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white font-bold py-2 px-4 rounded-lg transition-all transform hover:scale-105 disabled:opacity-50 animate-pulse flex items-center justify-center gap-2"
-                                  >
-                                    🎯 Claim Match & Replace Both
-                                  </button>
-                                  <p className="text-xs text-red-300 mt-1 text-center">
-                                    Escalation 3: Take this match slot and advance!
-                                  </p>
-                                </div>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+                  {round.matches.map((match, matchIdx) => (
+                    <MatchCard
+                      key={matchIdx}
+                      match={match}
+                      matchIdx={matchIdx}
+                      roundIdx={roundIdx}
+                      tierId={tierId}
+                      instanceId={instanceId}
+                      account={account}
+                      loading={loading}
+                      onEnterMatch={onEnterMatch}
+                      onForceEliminate={onForceEliminate}
+                      onClaimReplacement={onClaimReplacement}
+                      playerIcons={{ player1: '🔴', player2: '🔵' }}
+                      matchStatusOptions={matchStatusOptions}
+                      showEscalation={true}
+                      showThisIsYou={false}
+                      colors={{
+                        player1CurrentUser: 'bg-cyan-500/20 border border-cyan-400/50',
+                        player2CurrentUser: 'bg-blue-500/20 border border-blue-400/50',
+                        player2Default: 'bg-blue-500/10',
+                      }}
+                    />
+                  ))}
                 </div>
               </div>
             ))}
@@ -1176,6 +853,84 @@ export default function ConnectFour() {
     } catch (error) {
       console.error('Force start error:', error);
       alert('Force start failed: ' + error.message);
+      setLoading(false);
+    }
+  };
+
+  // Handle claim abandoned pool (Escalation 2)
+  const handleClaimAbandonedPool = async (tierId, instanceId) => {
+    if (!contract || !account) {
+      alert('Please connect your wallet first');
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      // Get tournament info to validate
+      const tournamentInfo = await contract.tournaments(tierId, instanceId);
+      const status = Number(tournamentInfo.status);
+      const enrolledCount = Number(tournamentInfo.enrolledCount);
+      const enrollmentTimeout = tournamentInfo.enrollmentTimeout;
+      const forfeitPool = enrollmentTimeout.forfeitPool || 0n;
+
+      // Calculate escalation availability
+      const escalation2Start = Number(enrollmentTimeout.escalation2Start);
+      const now = Math.floor(Date.now() / 1000);
+      const canStartEscalation2 = escalation2Start > 0 && now >= escalation2Start;
+
+      // For ongoing tournaments (status 0), check if we're in Escalation 2
+      if (status === 0) {
+        if (!canStartEscalation2) {
+          alert('Escalation 2 has not opened yet. Wait for the escalation period to complete.');
+          setLoading(false);
+          return;
+        }
+
+        const confirmClaim = window.confirm(
+          `Claim the entire tournament pool (Escalation 2 - Abandoned Tournament)?\n\n` +
+          `This tournament has ${enrolledCount} enrolled player${enrolledCount !== 1 ? 's' : ''} but failed to start in time.\n` +
+          `You will receive the entire enrollment pool${forfeitPool > 0n ? ` plus ${ethers.formatEther(forfeitPool)} ETH in forfeited fees` : ''}.\n\n` +
+          `The tournament will be reset after claiming.`
+        );
+
+        if (!confirmClaim) {
+          setLoading(false);
+          return;
+        }
+      } else {
+        // For completed tournaments (status >= 2)
+        if (forfeitPool <= 0n) {
+          alert('No forfeited funds to claim');
+          setLoading(false);
+          return;
+        }
+
+        const confirmClaim = window.confirm(
+          `Claim ${ethers.formatEther(forfeitPool)} ETH from abandoned enrollment pool?\n\nThis pool consists of forfeited entry fees from players who did not start the tournament.`
+        );
+
+        if (!confirmClaim) {
+          setLoading(false);
+          return;
+        }
+      }
+
+      const tx = await contract.claimAbandonedEnrollmentPool(tierId, instanceId);
+      await tx.wait();
+
+      alert('Abandoned enrollment pool claimed successfully!');
+
+      // Exit tournament view and go back to tournaments list
+      setViewingTournament(null);
+      setCurrentMatch(null);
+
+      // Refresh tournaments
+      await fetchAllTiers(contract, account, true);
+    } catch (error) {
+      console.error('Claim abandoned pool error:', error);
+      alert('Claim failed: ' + (error.reason || error.message));
+    } finally {
       setLoading(false);
     }
   };
@@ -1816,6 +1571,7 @@ export default function ConnectFour() {
                   onEnroll={() => handleEnroll(t.tierId, t.instanceId, t.entryFee)}
                   onEnter={() => handleEnterTournament(t.tierId, t.instanceId)}
                   onManualStart={handleManualStart}
+                  onClaimAbandonedPool={handleClaimAbandonedPool}
                   loading={loading}
                   account={account}
                 />
