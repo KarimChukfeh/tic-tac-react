@@ -1411,9 +1411,12 @@ export default function TicTacBlock() {
     }
   }, []);
 
-  // Fetch tournaments on mount and when account changes
+  // Fetch tournaments when account changes (initial load handled by initReadOnlyContract)
   useEffect(() => {
-    fetchAllTournaments();
+    // Skip initial mount - initReadOnlyContract handles that via loadContractData
+    if (account) {
+      fetchAllTournaments();
+    }
   }, [account, fetchAllTournaments]);
 
   // Fetch cached stats when contract is available
