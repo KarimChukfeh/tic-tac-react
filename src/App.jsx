@@ -601,7 +601,7 @@ export default function TicTacBlock() {
     // Use provided contract or create read-only contract
     const readContract = contractInstance || getReadOnlyContract();
     // Use provided account or fall back to state
-    const currentAccount = userAccount !== undefined ? userAccount : account;
+    const currentAccount = userAccount ?? account;
     const allTournaments = [];
 
     // Fetch tournaments from both tiers
