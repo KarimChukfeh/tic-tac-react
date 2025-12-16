@@ -18,9 +18,9 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Wallet, Grid, Swords, Clock, Shield, Lock, Eye, Code, ExternalLink,
-  Trophy, Play, Users, DollarSign, Zap, TrendingUp, History,
-  Award, Target, CheckCircle, Info, Coins, AlertCircle, ChevronDown, ArrowLeft
+  Wallet, Grid, Clock, Shield, Lock, Eye, Code, ExternalLink,
+  Trophy, Play, Users, DollarSign, Zap, History,
+  Award, CheckCircle, Coins, AlertCircle, ChevronDown, ArrowLeft
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import DUMMY_ABI from './TourABI.json';
@@ -81,206 +81,10 @@ const ParticleBackground = ({ colors }) => {
   );
 };
 
-// Glass Panel Component (Dream Theme)
-const GlassPanel = ({ children, style, className = '' }) => (
-  <div
-    className={className}
-    style={{
-      background: 'rgba(255, 255, 255, 0.05)',
-      backdropFilter: 'blur(10px)',
-      border: '1px solid rgba(0, 255, 255, 0.3)',
-      borderRadius: '15px',
-      padding: '20px',
-      boxShadow: '0 8px 32px 0 rgba(0, 255, 255, 0.2)',
-      animation: 'float 3s ease-in-out infinite',
-      ...style
-    }}
-  >
-    {children}
-  </div>
-);
-
 // Helper function
 const shortenAddress = (addr) => {
+  if (!addr || addr === '0x0000000000000000000000000000000000000000') return 'TBD';
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-};
-
-// Game status labels with emojis
-const getStatusLabel = (status) => {
-  switch(status) {
-    case 0: return 'Waiting for Players';
-    case 1: return 'Ready to Start';
-    case 2: return 'Battle in Progress';
-    case 3: return 'Game Complete';
-    default: return 'Unknown';
-  }
-};
-
-const getStatusEmoji = (status) => {
-  switch(status) {
-    case 0: return '⏳';
-    case 1: return '✅';
-    case 2: return '⚔️';
-    case 3: return '🏆';
-    default: return '❓';
-  }
-};
-
-// Cell symbol
-const getCellSymbol = (cell) => {
-  switch(cell) {
-    case 0: return '';
-    case 1: return 'X';
-    case 2: return 'O';
-    default: return '';
-  }
-};
-
-// Check for winner and winning line
-const checkWinner = (board) => {
-  const lines = [
-    [0, 1, 2], [3, 4, 5], [6, 7, 8], // rows
-    [0, 3, 6], [1, 4, 7], [2, 5, 8], // columns
-    [0, 4, 8], [2, 4, 6] // diagonals
-  ];
-
-  for (const [a, b, c] of lines) {
-    if (board[a] && board[a] === board[b] && board[a] === board[c]) {
-      return { winner: board[a], line: [a, b, c] }; // Returns 1 for X, 2 for O
-    }
-  }
-
-  if (board.every(cell => cell !== 0)) return { winner: 'draw', line: [] };
-  return null;
-};
-
-// Calculate prize distribution
-const calculatePrizes = (pot, isDraw) => {
-  const potValue = parseFloat(pot);
-  if (isDraw) {
-    return {
-      player1Refund: (potValue * 0.45).toFixed(6),
-      player2Refund: (potValue * 0.45).toFixed(6),
-      houseFee: (potValue * 0.10).toFixed(6)
-    };
-  } else {
-    return {
-      winnerPayout: (potValue * 0.90).toFixed(6),
-      houseFee: (potValue * 0.10).toFixed(6)
-    };
-  }
-};
-
-// Prize Distribution Component
-const PrizeDistribution = ({ pot, winner, winnerAddress }) => {
-  const isDraw = winner === 'draw';
-  const prizes = calculatePrizes(pot, isDraw);
-
-  // Colors for total pot
-  const potColors = {
-    bg: 'bg-purple-500/20',
-    border: 'border-purple-400/50',
-    text: 'text-purple-200',
-    textBold: 'text-purple-300'
-  };
-
-  return (
-    <div className="bg-gradient-to-br from-yellow-500/20 to-amber-500/20 border-2 border-yellow-400/50 rounded-xl p-6">
-      <div className="flex items-center gap-2 mb-4">
-        <Trophy className="text-yellow-400" size={24} />
-        <h3 className="text-xl font-bold text-yellow-400">Prize Distribution</h3>
-      </div>
-
-      <div className="space-y-3">
-        {isDraw ? (
-          <>
-            <div className="flex justify-between items-center bg-blue-500/20 rounded-lg p-3">
-              <span className="text-blue-200">Each Player Refund (45%)</span>
-              <span className="text-blue-300 font-bold text-lg">{prizes.player1Refund} ETH</span>
-            </div>
-            <div className="flex justify-between items-center bg-slate-700/30 rounded-lg p-3">
-              <span className="text-slate-300">House Fee (10%)</span>
-              <span className="text-slate-200 font-bold">{prizes.houseFee} ETH</span>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="bg-green-500/20 rounded-lg p-3 border-2 border-green-400/50">
-              <div className="flex justify-between items-center mb-2">
-          <span className="text-green-200">Winner Payout (90%)</span>
-          <span className="text-green-300 font-bold text-xl">{prizes.winnerPayout} ETH</span>
-              </div>
-              {winnerAddress && winnerAddress !== ethers.ZeroAddress && (
-          <div className="flex items-center gap-2 mt-2 pt-2 border-t border-green-400/30">
-            <Award size={14} className="text-green-400" />
-            <span className="text-xs text-green-300">Winner:</span>
-            <span className="text-xs text-green-200 font-mono bg-green-900/30 px-2 py-1 rounded">
-              {shortenAddress(winnerAddress)}
-            </span>
-          </div>
-              )}
-            </div>
-            <div className="flex justify-between items-center bg-slate-700/30 rounded-lg p-3">
-              <span className="text-slate-300">House Fee (5%)</span>
-              <span className="text-slate-200 font-bold">{prizes.houseFee} ETH</span>
-            </div>
-          </>
-        )}
-        <div className={`flex justify-between items-center ${potColors.bg} rounded-lg p-3 border-2 ${potColors.border}`}>
-          <span className={`${potColors.text} font-bold`}>Total Pot</span>
-          <span className={`${potColors.textBold} font-bold text-xl`}>{pot} ETH</span>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Game Progress Indicator
-const GameProgress = ({ status, player1, player2, moveCount }) => {
-  const steps = [
-    { id: 0, label: 'Player 1 Joins', done: player1 !== ethers.ZeroAddress },
-    { id: 1, label: 'Player 2 Joins', done: player2 !== ethers.ZeroAddress },
-    { id: 2, label: 'Game Starts', done: status >= 2 },
-    { id: 3, label: 'Players Battle', done: status === 2, active: status === 2 },
-    { id: 4, label: 'Winner Declared', done: status === 3 }
-  ];
-
-  return (
-    <div className="bg-slate-900/50 rounded-xl p-6 border border-cyan-500/30">
-      <div className="flex items-center gap-2 mb-4">
-        <Target className="text-cyan-400" size={20} />
-        <h3 className="text-lg font-bold text-cyan-300">Game Progress</h3>
-      </div>
-
-      <div className="space-y-3">
-        {steps.map((step, index) => (
-          <div key={step.id} className="flex items-center gap-3">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-              step.done ? 'bg-green-500 text-white' :
-              step.active ? 'bg-yellow-500 text-black animate-pulse' :
-              'bg-slate-700 text-slate-400'
-            }`}>
-              {step.done ? '✓' : index + 1}
-            </div>
-            <div className="flex-1">
-              <div className={`font-medium ${
-          step.done ? 'text-green-300' :
-          step.active ? 'text-yellow-300' :
-          'text-slate-400'
-              }`}>
-          {step.label}
-              </div>
-              {step.active && (
-          <div className="text-xs text-yellow-400 mt-1">
-            {moveCount}/9 moves played
-          </div>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
 };
 
 // Tournament Card Component
@@ -740,11 +544,6 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
       const isNotComplete = match.matchStatus !== 2; // 2 = Completed
       return isUserInMatch && isNotComplete;
     });
-
-  const shortenAddress = (addr) => {
-    if (!addr || addr === '0x0000000000000000000000000000000000000000') return 'TBD';
-    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-  };
 
   const getMatchStatusText = (matchStatus, winner, isDraw) => {
     if (matchStatus === 0) return 'Not Started';
@@ -1275,568 +1074,6 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
   );
 };
 
-// Last Game Result Component
-const LastGameResult = ({ lastGame, account }) => {
-  if (!lastGame) return null;
-
-  const isDraw = lastGame.result === 1; // GameResult.Draw = 1
-  const isWin = lastGame.result === 0; // GameResult.Win = 0
-  const timestamp = new Date(lastGame.timestamp * 1000).toLocaleString();
-
-  // Check if connected account won or participated
-  const userWon = isWin && account && lastGame.winner.toLowerCase() === account.toLowerCase();
-  const userLost = isWin && account && (
-    (lastGame.player1.toLowerCase() === account.toLowerCase() && lastGame.winner.toLowerCase() !== account.toLowerCase()) ||
-    (lastGame.player2.toLowerCase() === account.toLowerCase() && lastGame.winner.toLowerCase() !== account.toLowerCase())
-  );
-  const userDrew = isDraw && account && (
-    lastGame.player1.toLowerCase() === account.toLowerCase() ||
-    lastGame.player2.toLowerCase() === account.toLowerCase()
-  );
-
-  return (
-    <div className={`bg-gradient-to-br border-2 rounded-2xl p-8 shadow-2xl mb-8 ${
-      userWon
-        ? 'from-green-500/20 to-emerald-500/20 border-green-400 animate-pulse'
-        : userLost
-        ? 'from-red-500/10 to-pink-500/10 border-red-400'
-        : userDrew
-        ? 'from-yellow-500/10 to-amber-500/10 border-yellow-400'
-        : 'from-indigo-500/10 to-purple-500/10 border-indigo-400'
-    }`}>
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <History className={userWon ? 'text-green-400' : userLost ? 'text-red-400' : 'text-indigo-400'} size={28} />
-          <div>
-            <h2 className="text-3xl font-bold text-white">Last Game Result</h2>
-            {userWon && <span className="text-green-400 text-sm font-bold">🎉 YOU WON!</span>}
-            {userLost && <span className="text-red-400 text-sm font-bold">💔 You Lost</span>}
-            {userDrew && <span className="text-yellow-400 text-sm font-bold">🤝 You Drew</span>}
-          </div>
-        </div>
-        <div className="bg-indigo-500/20 border border-indigo-400/50 px-4 py-2 rounded-full">
-          <span className="text-indigo-300 text-sm font-bold">Game #{lastGame.gameId}</span>
-        </div>
-      </div>
-
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* Game Outcome */}
-        <div className={`rounded-xl p-6 border-2 ${
-          userWon
-            ? 'bg-green-500/30 border-green-400 shadow-lg shadow-green-500/20'
-            : isDraw
-            ? 'bg-yellow-500/20 border-yellow-400'
-            : 'bg-green-500/20 border-green-400'
-        }`}>
-          <div className="text-center space-y-4">
-            <div className="text-6xl">
-              {isDraw ? '🤝' : userWon ? '🎉' : '🏆'}
-            </div>
-            <div className={`text-3xl font-bold ${
-              isDraw ? 'text-yellow-300' : 'text-green-300'
-            }`}>
-              {isDraw ? 'DRAW' : userWon ? 'YOU WON!' : 'WINNER'}
-            </div>
-            {isWin && (
-              <div className="bg-slate-900/50 rounded-lg p-3">
-          <div className="text-sm text-slate-300 mb-1">Winner Address</div>
-          <div className="font-mono text-lg text-white">
-            {shortenAddress(lastGame.winner)}
-          </div>
-          {userWon && (
-            <div className="mt-2 text-xs bg-green-500/20 text-green-300 px-2 py-1 rounded inline-flex items-center gap-1 font-bold border border-green-400/30">
-              <CheckCircle size={12} />
-              This is you!
-            </div>
-          )}
-              </div>
-            )}
-            {userWon && (
-              <div className="bg-green-900/30 rounded-lg p-3 border border-green-400/30">
-          <div className="text-green-300 font-bold text-lg">Prize Won: 90% of pot</div>
-              </div>
-            )}
-            <div className="text-sm text-slate-300">
-              {timestamp}
-            </div>
-          </div>
-        </div>
-
-        {/* Players */}
-        <div className="space-y-3">
-          <div className="text-lg font-bold text-indigo-300 mb-3">Players</div>
-
-          {/* Player 1 */}
-          <div className={`p-4 rounded-lg border-2 ${
-            isWin && lastGame.winner.toLowerCase() === lastGame.player1.toLowerCase()
-              ? 'bg-green-500/20 border-green-400 shadow-lg'
-              : account && lastGame.player1.toLowerCase() === account.toLowerCase()
-              ? 'bg-cyan-500/20 border-cyan-400'
-              : 'bg-cyan-500/10 border-cyan-400/50'
-          }`}>
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-cyan-500/30 flex items-center justify-center text-cyan-400 font-bold border-2 border-cyan-400">
-            X
-          </div>
-          <span className="text-sm font-bold text-cyan-400">Player 1</span>
-              </div>
-              {isWin && lastGame.winner.toLowerCase() === lastGame.player1.toLowerCase() && (
-          <Trophy className="text-green-400" size={20} />
-              )}
-            </div>
-            <div className="font-mono text-xs text-white bg-slate-900/50 p-2 rounded">
-              {shortenAddress(lastGame.player1)}
-            </div>
-            {account && lastGame.player1.toLowerCase() === account.toLowerCase() && (
-              <div className="mt-2 text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded inline-flex items-center gap-1 font-bold border border-blue-400/30">
-          <CheckCircle size={12} />
-          This is you!
-              </div>
-            )}
-          </div>
-
-          {/* Player 2 */}
-          <div className={`p-4 rounded-lg border-2 ${
-            isWin && lastGame.winner.toLowerCase() === lastGame.player2.toLowerCase()
-              ? 'bg-green-500/20 border-green-400 shadow-lg'
-              : account && lastGame.player2.toLowerCase() === account.toLowerCase()
-              ? 'bg-orange-500/20 border-orange-400'
-              : 'bg-orange-500/10 border-orange-400/50'
-          }`}>
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-orange-500/30 flex items-center justify-center text-orange-400 font-bold border-2 border-orange-400">
-            O
-          </div>
-          <span className="text-sm font-bold text-orange-400">Player 2</span>
-              </div>
-              {isWin && lastGame.winner.toLowerCase() === lastGame.player2.toLowerCase() && (
-          <Trophy className="text-green-400" size={20} />
-              )}
-            </div>
-            <div className="font-mono text-xs text-white bg-slate-900/50 p-2 rounded">
-              {shortenAddress(lastGame.player2)}
-            </div>
-            {account && lastGame.player2.toLowerCase() === account.toLowerCase() && (
-              <div className="mt-2 text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded inline-flex items-center gap-1 font-bold border border-blue-400/30">
-          <CheckCircle size={12} />
-          This is you!
-              </div>
-            )}
-          </div>
-
-          {/* Game Stats */}
-          <div className="bg-indigo-500/10 rounded-lg p-4 border border-indigo-400/30 mt-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-          <TrendingUp className="text-indigo-400" size={16} />
-          <span className="text-sm text-indigo-300">Outcome</span>
-              </div>
-              <span className="text-white font-bold">
-          {isDraw ? 'Draw - Both Refunded 45%' : 'Winner Takes 90%'}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Active Game Display Component
-const ActiveGameDisplay = ({ game, account, onMove, onStartGame, loading, refreshProgress, gameLog }) => {
-  const isPlayer1 = account && game.player1.toLowerCase() === account.toLowerCase();
-  const isPlayer2 = account && game.player2.toLowerCase() === account.toLowerCase();
-  const isParticipant = isPlayer1 || isPlayer2;
-  const isMyTurn = account && game.currentTurn?.toLowerCase() === account.toLowerCase();
-
-  // Use local checkWinner ONLY for highlighting winning cells
-  const winnerResult = checkWinner(game.board);
-  const winningLine = winnerResult?.line || [];
-
-  // Use CONTRACT data as the source of truth for game over and winner
-  const gameOver = game.status === 3;
-  const contractWinner = game.winner;
-  const isDraw = gameOver && contractWinner === ethers.ZeroAddress;
-  const hasWinner = gameOver && contractWinner !== ethers.ZeroAddress;
-  const isWinner = hasWinner && account && contractWinner.toLowerCase() === account.toLowerCase();
-  const isLoser = hasWinner && isParticipant && contractWinner.toLowerCase() !== account.toLowerCase();
-
-  const player1Symbol = 'X';
-  const player2Symbol = 'O';
-  const mySymbol = isPlayer1 ? player1Symbol : isPlayer2 ? player2Symbol : null;
-  const moveCount = game.board.filter(c => c !== 0).length;
-
-  return (
-    <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border-2 border-purple-400 rounded-2xl p-8 shadow-2xl">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <Swords className="text-purple-400" size={28} />
-          <h2 className="text-3xl font-bold text-white">
-            {getStatusEmoji(game.status)} Battle Arena - Game #{game.id}
-          </h2>
-        </div>
-        <div className={`px-5 py-2 rounded-full text-sm font-bold flex items-center gap-2 ${
-          gameOver ? 'bg-green-500/20 text-green-400 border-2 border-green-400' :
-          game.status === 2 ? 'bg-yellow-500/20 text-yellow-400 animate-pulse border-2 border-yellow-400' :
-          game.status === 1 ? 'bg-cyan-500/20 text-cyan-400 border-2 border-cyan-400' :
-          'bg-blue-500/20 text-blue-400 border-2 border-blue-400'
-        }`}>
-          <div className={`w-2 h-2 rounded-full ${
-            game.status === 2 ? 'bg-yellow-400 animate-pulse' : 'bg-current'
-          }`} />
-          {getStatusLabel(game.status)}
-        </div>
-      </div>
-
-      {/* Main Game Area */}
-      <div className="grid lg:grid-cols-3 gap-6">
-        {/* Left: Game Progress & Info */}
-        <div className="space-y-6">
-          <GameProgress
-            status={game.status}
-            player1={game.player1}
-            player2={game.player2}
-            moveCount={moveCount}
-          />
-
-          {gameOver && <PrizeDistribution pot={game.pot} winner={isDraw ? 'draw' : 'winner'} winnerAddress={contractWinner} />}
-        </div>
-
-        {/* Center: Board Section */}
-        <div>
-          <div className="bg-slate-900/50 rounded-xl p-6 border border-purple-500/30">
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <Grid className="text-purple-300" size={24} />
-              <h3 className="text-xl font-bold text-purple-300 text-center">Game Board</h3>
-            </div>
-            <div className="aspect-square max-w-md mx-auto">
-              <div className="grid grid-cols-3 gap-3 h-full">
-          {game.board.map((cell, idx) => {
-            const isWinningCell = winningLine.includes(idx);
-            return (
-              <button
-                key={idx}
-                onClick={() => isMyTurn && game.status === 2 && cell === 0 ? onMove(idx) : null}
-                disabled={loading || !isMyTurn || game.status !== 2 || cell !== 0}
-                className={`aspect-square flex items-center justify-center text-6xl font-bold rounded-xl border-2 transition-all duration-300
-                  ${isWinningCell
-                    ? 'bg-gradient-to-br from-yellow-500/40 to-amber-500/40 border-yellow-400 animate-pulse shadow-xl shadow-yellow-500/50'
-                    : isMyTurn && game.status === 2 && cell === 0
-                    ? 'bg-purple-500/20 border-purple-400 hover:bg-purple-500/40 cursor-pointer hover:scale-105 shadow-lg hover:shadow-purple-500/50'
-                    : cell === 1
-                    ? 'bg-cyan-500/20 border-cyan-400 text-cyan-400 shadow-cyan-500/30'
-                    : cell === 2
-                    ? 'bg-orange-500/20 border-orange-400 text-orange-400 shadow-orange-500/30'
-                    : 'bg-slate-800/50 border-slate-600 opacity-50'
-                  }
-                  disabled:cursor-not-allowed disabled:opacity-30`}
-              >
-                {getCellSymbol(cell)}
-              </button>
-            );
-          })}
-              </div>
-            </div>
-
-            {/* Start Game Button */}
-            {game.status === 1 && isParticipant && (
-              <div className="mt-6">
-          <button
-            onClick={onStartGame}
-            disabled={loading}
-            className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 px-6 py-4 rounded-xl font-bold text-lg shadow-lg transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            <Zap size={20} />
-            {loading ? 'Initiating Coin Flip...' : 'Start Game (Coin Flip)'}
-          </button>
-          <div className="mt-3 bg-blue-500/10 rounded-lg p-3 border border-blue-400/30">
-            <div className="flex items-start gap-2">
-              <Info size={16} className="text-blue-400 mt-0.5 flex-shrink-0" />
-              <p className="text-xs text-blue-300">
-                A provably random coin flip on-chain will determine who makes the first move!
-              </p>
-            </div>
-          </div>
-              </div>
-            )}
-
-            {/* Turn Indicator */}
-            {!gameOver && game.status === 2 && (
-              <div className={`mt-6 text-center py-4 px-4 rounded-xl font-bold text-lg border-2 ${
-          isMyTurn
-            ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-green-400 text-green-300 animate-pulse shadow-lg'
-            : isParticipant
-            ? 'bg-blue-500/10 border-blue-400/50 text-blue-300'
-            : 'bg-slate-700/30 border-slate-600 text-slate-300'
-              }`}>
-          {isMyTurn ? (
-            <div className="space-y-1">
-              <div className="text-2xl">🎯 YOUR TURN</div>
-              <div className="text-sm opacity-80">You are playing as {mySymbol}</div>
-            </div>
-          ) : isParticipant ? (
-            <div className="space-y-1">
-              <div>⏳ Opponent's Turn</div>
-              <div className="text-sm opacity-80">Waiting for their move...</div>
-            </div>
-          ) : (
-            <div>👁️ Spectating</div>
-          )}
-              </div>
-            )}
-
-            {/* Winner Display */}
-            {gameOver && (
-              <div className={`mt-6 text-center py-6 px-4 rounded-xl font-bold text-2xl border-2 ${
-          isDraw
-            ? 'bg-gray-500/20 border-gray-400 text-gray-300'
-            : isWinner
-            ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-green-400 text-green-300 animate-pulse'
-            : isLoser
-            ? 'bg-red-500/20 border-red-400 text-red-300'
-            : 'bg-yellow-500/20 border-yellow-400 text-yellow-300'
-              }`}>
-          <div className="space-y-2">
-            {isDraw ? (
-              <>
-                <div className="text-4xl">🤝</div>
-                <div>DRAW GAME!</div>
-                <div className="text-sm opacity-80">Both players receive 45% refund</div>
-              </>
-            ) : isWinner ? (
-              <>
-                <div className="text-4xl">🎉</div>
-                <div>VICTORY!</div>
-                <div className="text-sm opacity-80">You won 90% of the pot!</div>
-                <div className="text-xs mt-2 font-mono bg-green-900/30 px-3 py-1 rounded inline-block">
-                  {shortenAddress(contractWinner)}
-                </div>
-              </>
-            ) : isLoser ? (
-              <>
-                <div className="text-4xl">💔</div>
-                <div>DEFEAT</div>
-                <div className="text-sm opacity-80">Better luck next time</div>
-                <div className="text-xs mt-2 opacity-70">Winner: {shortenAddress(contractWinner)}</div>
-              </>
-            ) : (
-              <>
-                <div className="text-4xl">🏆</div>
-                <div>GAME OVER!</div>
-                <div className="text-sm opacity-80">
-                  Winner: {contractWinner.toLowerCase() === game.player1.toLowerCase() ? `${player1Symbol}` : `${player2Symbol}`}
-                </div>
-                <div className="text-xs mt-2 font-mono bg-yellow-900/30 px-3 py-1 rounded inline-block">
-                  {shortenAddress(contractWinner)}
-                </div>
-              </>
-            )}
-          </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Right: Players & Stats */}
-        <div className="space-y-4">
-          {/* Players */}
-          <div className="bg-slate-900/50 rounded-xl p-6 border border-purple-500/30">
-            <div className="flex items-center gap-2 mb-4">
-              <Users className="text-purple-300" size={20} />
-              <h3 className="text-xl font-bold text-purple-300">Players</h3>
-            </div>
-            <div className="space-y-3">
-              {/* Player 1 (X) */}
-              <div className={`p-4 rounded-lg border-2 transition-all ${
-          game.status === 2 && game.currentTurn?.toLowerCase() === game.player1.toLowerCase()
-            ? 'bg-cyan-500/20 border-cyan-400 shadow-lg shadow-cyan-500/30 animate-pulse'
-            : isPlayer1
-            ? 'bg-cyan-500/10 border-cyan-400/50'
-            : 'bg-slate-800/30 border-slate-600'
-              }`}>
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-cyan-500/30 flex items-center justify-center text-cyan-400 font-bold border-2 border-cyan-400">
-                X
-              </div>
-              <span className="text-sm font-bold text-cyan-400">Player 1</span>
-            </div>
-            {game.status === 2 && game.currentTurn?.toLowerCase() === game.player1.toLowerCase() && (
-              <span className="text-xs bg-cyan-400/30 px-2 py-1 rounded text-cyan-300 font-bold flex items-center gap-1">
-                <Zap size={12} />
-                Active
-              </span>
-            )}
-          </div>
-          <div className="font-mono text-xs text-white break-all bg-slate-900/50 p-2 rounded">
-            {shortenAddress(game.player1)}
-          </div>
-          {isPlayer1 && (
-            <div className="mt-2 text-xs bg-green-500/20 text-green-300 px-2 py-1 rounded inline-flex items-center gap-1 font-bold border border-green-400/30">
-              <CheckCircle size={12} />
-              This is you!
-            </div>
-          )}
-              </div>
-
-              {/* Player 2 (O) */}
-              {game.player2 === '0x0000000000000000000000000000000000000000' ? (
-          <div className="p-4 rounded-lg border-2 border-dashed border-orange-400/30 bg-orange-500/5 animate-pulse">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 rounded-full bg-orange-500/30 flex items-center justify-center text-orange-400 font-bold border-2 border-dashed border-orange-400">
-                O
-              </div>
-              <div className="text-sm font-bold text-orange-400">Player 2</div>
-            </div>
-            <div className="text-sm text-orange-300 italic flex items-center gap-2">
-              <Clock size={14} />
-              Waiting for opponent...
-            </div>
-            <div className="text-xs text-orange-400 mt-2 bg-orange-500/10 px-2 py-1 rounded inline-block">
-              1/2 Players Joined
-            </div>
-          </div>
-              ) : (
-          <div className={`p-4 rounded-lg border-2 transition-all ${
-            game.status === 2 && game.currentTurn?.toLowerCase() === game.player2.toLowerCase()
-              ? 'bg-orange-500/20 border-orange-400 shadow-lg shadow-orange-500/30 animate-pulse'
-              : isPlayer2
-              ? 'bg-orange-500/10 border-orange-400/50'
-              : 'bg-slate-800/30 border-slate-600'
-          }`}>
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-orange-500/30 flex items-center justify-center text-orange-400 font-bold border-2 border-orange-400">
-                  O
-                </div>
-                <span className="text-sm font-bold text-orange-400">Player 2</span>
-              </div>
-              {game.status === 2 && game.currentTurn?.toLowerCase() === game.player2.toLowerCase() && (
-                <span className="text-xs bg-orange-400/30 px-2 py-1 rounded text-orange-300 font-bold flex items-center gap-1">
-                  <Zap size={12} />
-                  Active
-                </span>
-              )}
-            </div>
-            <div className="font-mono text-xs text-white break-all bg-slate-900/50 p-2 rounded">
-              {shortenAddress(game.player2)}
-            </div>
-            {isPlayer2 && (
-              <div className="mt-2 text-xs bg-green-500/20 text-green-300 px-2 py-1 rounded inline-flex items-center gap-1 font-bold border border-green-400/30">
-                <CheckCircle size={12} />
-                This is you!
-              </div>
-            )}
-          </div>
-              )}
-            </div>
-          </div>
-
-          {/* Game Stats */}
-          <div className="bg-slate-900/50 rounded-xl p-6 border border-purple-500/30">
-            <div className="flex items-center gap-2 mb-4">
-              <TrendingUp className="text-purple-300" size={20} />
-              <h3 className="text-xl font-bold text-purple-300">Game Stats</h3>
-            </div>
-            <div className="space-y-3 text-sm">
-              <div className="flex justify-between items-center bg-yellow-500/10 rounded-lg p-3">
-          <div className="flex items-center gap-2">
-            <Coins size={16} className="text-yellow-400" />
-            <span className="text-slate-200 font-medium">Prize Pot</span>
-          </div>
-          <span className="text-yellow-400 font-bold text-lg">{game.pot} ETH</span>
-              </div>
-              <div className="flex justify-between items-center bg-blue-500/10 rounded-lg p-3">
-          <div className="flex items-center gap-2">
-            <Target size={16} className="text-blue-400" />
-            <span className="text-slate-200 font-medium">Moves</span>
-          </div>
-          <span className="text-white font-bold">{moveCount}/9</span>
-              </div>
-              <div className="flex justify-between items-center bg-purple-500/10 rounded-lg p-3">
-          <div className="flex items-center gap-2">
-            <Grid size={16} className="text-purple-400" />
-            <span className="text-slate-200 font-medium">Game ID</span>
-          </div>
-          <span className="text-white font-mono">#{game.id}</span>
-              </div>
-              {game.winner !== '0x0000000000000000000000000000000000000000' && (
-          <div className="flex justify-between items-center bg-green-500/10 rounded-lg p-3 border border-green-400/30">
-            <div className="flex items-center gap-2">
-              <Award size={16} className="text-green-400" />
-              <span className="text-slate-200 font-medium">Winner</span>
-            </div>
-            <span className="text-green-400 font-mono font-bold">
-              {shortenAddress(game.winner)}
-            </span>
-          </div>
-              )}
-            </div>
-          </div>
-
-          {/* Game Log */}
-          {gameLog && gameLog.length > 0 && (
-            <div className="bg-slate-900/50 rounded-xl p-6 border border-purple-500/30 max-h-64 overflow-hidden">
-              <div className="flex items-center gap-2 mb-4">
-          <History className="text-purple-300" size={20} />
-          <h3 className="text-xl font-bold text-purple-300">Activity Log</h3>
-              </div>
-              <div className="space-y-2 text-xs overflow-y-auto max-h-48 pr-2 custom-scrollbar">
-          {gameLog.slice().reverse().map((log, idx) => (
-            <div key={idx} className={`p-2 rounded border-l-2 ${
-              log.type === 'win' ? 'bg-green-500/10 border-green-400' :
-              log.type === 'move' ? 'bg-blue-500/10 border-blue-400' :
-              log.type === 'join' ? 'bg-purple-500/10 border-purple-400' :
-              'bg-slate-800/50 border-slate-600'
-            }`}>
-              <div className="flex items-start gap-2">
-                <span className="text-slate-400 min-w-fit">{log.timestamp}</span>
-                <span className="text-slate-200">{log.message}</span>
-              </div>
-            </div>
-          ))}
-              </div>
-            </div>
-          )}
-
-          {/* Auto-refresh indicator */}
-          <div className="bg-blue-500/10 border border-blue-400/30 rounded-xl p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-          <Clock size={16} className="text-blue-400" />
-          <div>
-            <div className="text-sm text-blue-300 font-medium">Auto-Sync</div>
-            <div className="text-xs text-blue-400/70">Polling blockchain</div>
-          </div>
-              </div>
-              <div className="relative w-12 h-12">
-          <svg className="transform -rotate-90 w-12 h-12">
-            <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="3" fill="none" className="text-blue-500/30" />
-            <circle
-              cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="3" fill="none"
-              strokeDasharray={`${2 * Math.PI * 20}`}
-              strokeDashoffset={`${2 * Math.PI * 20 * (1 - refreshProgress / 100)}`}
-              className="text-blue-400 transition-all duration-75 ease-linear"
-              strokeLinecap="round"
-            />
-          </svg>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-sm font-bold text-blue-400">
-              {Math.ceil(5 - (refreshProgress / 100) * 5)}
-            </span>
-          </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 export default function TicTacBlock() {
   const CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
   const EXPECTED_CHAIN_ID = 412346;
@@ -1853,20 +1090,10 @@ export default function TicTacBlock() {
   const [account, setAccount] = useState(null);
   const [contract, setContract] = useState(null); // This contract has signer for write ops
 
-  // Game State
-  const [game, setGame] = useState(null);
+  // Loading State
   const [loading, setLoading] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true); // Track initial data load
-  const [entryFee, setEntryFee] = useState('0');
-  const [refreshProgress, setRefreshProgress] = useState(0);
-  const [gameLog, setGameLog] = useState([]);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [networkInfo, setNetworkInfo] = useState(null);
-  const [contractStatus, setContractStatus] = useState('not_checked'); // not_checked, checking, deployed, not_deployed
-  const [lastGame, setLastGame] = useState(null);
-  const [totalGamesPlayed, setTotalGamesPlayed] = useState(0);
-
-  // Theme is now fixed (single tier, no theme switching)
-  const theme = 'dream';
 
   // Tournament State
   const [tournaments, setTournaments] = useState([]);
@@ -1884,52 +1111,6 @@ export default function TicTacBlock() {
   const [cachedStats, setCachedStats] = useState(null);
   const [cachedStatsLoading, setCachedStatsLoading] = useState(false);
 
-  // RW3 Declaration State
-  const [rw3Declaration, setRw3Declaration] = useState(null);
-  const [showRw3Popup, setShowRw3Popup] = useState(false);
-  const [rw3BadgeRect, setRw3BadgeRect] = useState(null);
-
-  // Fetch RW3 Declaration
-  const fetchRw3Declaration = useCallback(async (contractInstance) => {
-    try {
-      console.log('Fetching RW3 declaration from contract...', contractInstance);
-      const declaration = await contractInstance.declareRW3();
-      console.log('RW3 Declaration fetched successfully:', declaration);
-      setRw3Declaration(declaration);
-    } catch (error) {
-      console.error('Error fetching RW3 declaration:', error);
-      console.error('Error details:', error.message, error.code);
-    }
-  }, []);
-
-  // Set placeholder RW3 declaration (TODO: fetch from contract when needed)
-  useEffect(() => {
-    const placeholderDeclaration = `=== RW3 COMPLIANCE DECLARATION ===
-
-PROJECT: Eternal Tic Tac Toe Protocol
-VERSION: 1.0
-NETWORK: Arbitrum One
-
-RULE 1 - REAL UTILITY:
-Skill-based tournament gaming with ETH stakes. Players compete in strategic matches. Winners determined by skill, not chance.
-
-RULE 2 - FULLY ON-CHAIN:
-All game logic, tournament mechanics, and prize distribution executed via smart contract. No backend servers.
-
-RULE 3 - SELF-SUSTAINING:
-Protocol fee structure covers operational costs. Contract functions autonomously.
-
-RULE 4 - FAIR DISTRIBUTION:
-No pre-mine, no insider allocations. All ETH in prize pools comes from player entry fees.
-
-RULE 5 - NO ALTCOINS:
-Uses only ETH for entry fees and prizes. No governance tokens or protocol tokens.
-
-This declaration is immutable and verifiable on-chain.`;
-
-    setRw3Declaration(placeholderDeclaration);
-  }, []);
-
   // Add mobile debugging console (Eruda) on mobile devices
   useEffect(() => {
     if ('ontouchstart' in window) {
@@ -1942,39 +1123,6 @@ This declaration is immutable and verifiable on-chain.`;
       document.body.appendChild(script);
     }
   }, []);
-
-  // Handle clicks/touches outside popup to close it
-  useEffect(() => {
-    if (!showRw3Popup) return;
-
-    const handleClickOutside = (event) => {
-      console.log('Outside click detected:', event.target);
-      const badge = document.getElementById('rw3-badge');
-      const popup = event.target.closest('.rw3-popup');
-
-      console.log('Badge contains target?', badge?.contains(event.target));
-      console.log('Is popup?', !!popup);
-
-      if (!badge?.contains(event.target) && !popup) {
-        console.log('Closing popup via outside click');
-        setShowRw3Popup(false);
-      }
-    };
-
-    // Small delay to prevent immediate closing after opening
-    const timerId = setTimeout(() => {
-      console.log('Attaching outside click handlers');
-      document.addEventListener('mousedown', handleClickOutside);
-      document.addEventListener('touchend', handleClickOutside);
-    }, 200);
-
-    return () => {
-      console.log('Removing outside click handlers');
-      clearTimeout(timerId);
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('touchend', handleClickOutside);
-    };
-  }, [showRw3Popup]);
 
   // Helper to get tier name
   const getTierName = (tierId) => {
@@ -2007,9 +1155,6 @@ This declaration is immutable and verifiable on-chain.`;
     infoTitle: 'text-blue-300',
     infoText: 'text-blue-200'
   };
-
-  // Previous game state for change detection
-  const prevGameState = useRef(null);
 
   // Switch to Local Network (Chain ID 412346)
   const switchToArbitrum = async () => {
@@ -2144,12 +1289,6 @@ This declaration is immutable and verifiable on-chain.`;
     }
   };
 
-  // Add log entry
-  const addLogEntry = (type, message) => {
-    const timestamp = new Date().toLocaleTimeString();
-    setGameLog(prev => [...prev, { type, message, timestamp }]);
-  };
-
   // Verify contract is deployed (simplified for tournament contract)
   const loadContractData = async (contractInstance, isInitialLoad = false) => {
     // Cached stats are fetched by fetchCachedStats() which is the sole source of truth
@@ -2157,8 +1296,6 @@ This declaration is immutable and verifiable on-chain.`;
 
     // Verify contract deployment
     try {
-      setContractStatus('checking');
-
       // Verify contract is deployed by checking bytecode
       const provider = contractInstance.runner.provider;
       const contractAddress = await contractInstance.getAddress();
@@ -2168,7 +1305,6 @@ This declaration is immutable and verifiable on-chain.`;
       console.log('Bytecode length:', code.length);
 
       if (code === '0x' || code === '0x0') {
-        setContractStatus('not_deployed');
         console.error('❌ No bytecode found at address:', contractAddress);
         throw new Error(
           `No contract found at ${contractAddress}\n\n` +
@@ -2184,16 +1320,6 @@ This declaration is immutable and verifiable on-chain.`;
       }
 
       console.log('✅ Contract found! Bytecode exists.');
-      setContractStatus('deployed');
-
-      // Try to fetch entry fee for tier 0 (optional, may not be set yet)
-      try {
-        const fee = await contractInstance.ENTRY_FEES(0);
-        setEntryFee(ethers.formatEther(fee));
-      } catch (err) {
-        console.log('Note: Could not fetch entry fee, using default');
-        setEntryFee('0.01');
-      }
 
       // Fetch tournaments during initial load (no wallet required)
       if (isInitialLoad) {
@@ -2238,7 +1364,6 @@ This declaration is immutable and verifiable on-chain.`;
       const tierOverview = await contract.getTierOverview(tierId);
       const statuses = tierOverview[0];
       const enrolledCounts = tierOverview[1];
-      const prizePools = tierOverview[2];
 
       // Get tier config to get correct player count
       const tierConfig = await contract.tierConfigs(tierId);
@@ -2706,7 +1831,6 @@ This declaration is immutable and verifiable on-chain.`;
       const forfeitPool = enrollmentTimeout.forfeitPool || 0n;
 
       // Calculate escalation availability
-      const escalation1Start = Number(enrollmentTimeout.escalation1Start);
       const escalation2Start = Number(enrollmentTimeout.escalation2Start);
       const now = Math.floor(Date.now() / 1000);
       const canStartEscalation2 = escalation2Start > 0 && now >= escalation2Start;
@@ -2935,7 +2059,6 @@ This declaration is immutable and verifiable on-chain.`;
       const isDraw = matchData[6];
       const startTime = Number(matchData[7]);
       const lastMoveTime = Number(matchData[8]);
-      const firstPlayer = matchData[9];
       const lastMovedCell = Number(matchData[10]);
 
       const zeroAddress = '0x0000000000000000000000000000000000000000';
@@ -3491,24 +2614,6 @@ This declaration is immutable and verifiable on-chain.`;
     return () => clearInterval(dotsInterval);
   }, [viewingTournament]);
 
-  // Auto-refresh tournament cards (refs for seamless syncing)
-  const contractRefForTournaments = useRef(contract);
-
-  // Keep refs updated
-  useEffect(() => {
-    contractRefForTournaments.current = contract;
-  }, [contract]);
-
-  // Tournament auto-sync removed - tournaments will only refresh on manual actions
-
-  // Cached stats auto-sync removed - stats will only refresh on manual actions
-  const contractRefForCachedStats = useRef(contract);
-
-  // Keep ref updated
-  useEffect(() => {
-    contractRefForCachedStats.current = contract;
-  }, [contract]);
-
   // Loading animation component
   if (initialLoading) {
     return (
@@ -3610,53 +2715,6 @@ This declaration is immutable and verifiable on-chain.`;
           <CheckCircle className="text-blue-400" size={16} />
           <span className="text-blue-100 font-medium">Zero Trackers</span>
               </div>
-              <div
-                className="flex items-center gap-2 cursor-pointer hover:bg-blue-900/30 px-2 py-1 rounded transition-colors"
-                onMouseEnter={() => {
-                  // Only enable hover on non-touch devices
-                  if (!('ontouchstart' in window) && rw3Declaration) {
-                    const badge = document.getElementById('rw3-badge');
-                    if (badge) {
-                      setRw3BadgeRect(badge.getBoundingClientRect());
-                    }
-                    setShowRw3Popup(true);
-                  }
-                }}
-                onMouseLeave={() => {
-                  // Only enable hover on non-touch devices
-                  if (!('ontouchstart' in window)) {
-                    setShowRw3Popup(false);
-                  }
-                }}
-                onClick={(e) => {
-                  console.log('RW3 Badge clicked!', { rw3Declaration, showRw3Popup });
-                  e.stopPropagation();
-                  if (rw3Declaration) {
-                    const badge = document.getElementById('rw3-badge');
-                    if (badge) {
-                      const rect = badge.getBoundingClientRect();
-                      console.log('Badge rect:', rect);
-                      setRw3BadgeRect(rect);
-                    }
-                    setShowRw3Popup(prev => {
-                      console.log('Toggling popup from', prev, 'to', !prev);
-                      return !prev;
-                    });
-                  } else {
-                    console.log('No RW3 declaration available yet');
-                  }
-                }}
-                id="rw3-badge"
-                style={{
-                  WebkitTapHighlightColor: 'transparent',
-                  userSelect: 'none',
-                  WebkitUserSelect: 'none',
-                  touchAction: 'manipulation'
-                }}
-              >
-          <Shield className="text-blue-400" size={16} />
-          <span className="text-blue-100 font-medium underline decoration-blue-400/50 underline-offset-2" style={{ textDecorationThickness: '0.5px' }}>RW3 Compliant</span>
-              </div>
             </div>
             <a
               href={ETHERSCAN_URL}
@@ -3745,157 +2803,6 @@ This declaration is immutable and verifiable on-chain.`;
             </div>
           )}
 
-          {/* Why Arbitrum Info - Always Visible */}
-          <div className="mt-6 max-w-2xl mx-auto">
-            <div className="bg-blue-500/10 border border-blue-400/30 rounded-lg p-4">
-              <div className="flex items-start gap-3">
-                <Info size={18} className="text-blue-400 mt-0.5 flex-shrink-0" />
-                <div className="text-sm w-full">
-                  <p className="text-blue-200 font-medium mb-2">Why Arbitrum?</p>
-                  <p className="text-blue-300/80 leading-relaxed mb-3">
-                    This game runs on <a href="https://arbitrum.io" target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-200 hover:text-blue-100 underline decoration-blue-400/50 hover:decoration-blue-300 transition-colors">Arbitrum One</a>, an Ethereum Layer 2 network.
-                  </p>
-                  <div className="text-blue-300/80 leading-relaxed space-y-2 text-sm">
-                    <p><strong className="text-blue-200">First time on Arbitrum?</strong> You'll need to:</p>
-                    <ol className="list-decimal list-inside pl-2 space-y-1">
-                      <li>Switch to Arbitrum network in MetaMask (instant and free)</li>
-                      <li>Bridge ETH from Ethereum mainnet to Arbitrum (~5 min, requires L1 gas)</li>
-                    </ol>
-                    <p><strong className="text-blue-200">Already have Arbitrum ETH?</strong> Just switch networks and play.</p>
-                    <p className="pt-1"><span className="text-blue-200">Lower fees than Ethereum mainnet. Final outcomes secured by Ethereum L1.</span></p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-
-          {/* Connection Status Panel (for debugging) */}
-          {account && (networkInfo || contractStatus !== 'not_checked') && (
-            <div className="mt-8 max-w-2xl mx-auto">
-              <div className="bg-slate-900/70 border border-slate-600 rounded-xl p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Info size={20} className="text-blue-400" />
-            <h3 className="text-lg font-bold text-white">Connection Status</h3>
-          </div>
-
-          <div className="space-y-3 text-sm">
-            {/* Network Status */}
-            {networkInfo && (
-              <div className="flex items-center justify-between bg-slate-800/50 rounded-lg p-3">
-                <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${networkInfo.isArbitrum ? 'bg-green-400' : 'bg-yellow-400'}`} />
-                  <span className="text-slate-300">Network:</span>
-                </div>
-                <div className="text-right">
-                  <div className={`font-bold ${networkInfo.isArbitrum ? 'text-green-400' : 'text-yellow-400'}`}>
-                    {networkInfo.name}
-                  </div>
-                  <div className="text-xs text-slate-400">Chain ID: {networkInfo.chainId}</div>
-                </div>
-              </div>
-            )}
-
-            {/* Contract Status */}
-            <div className="flex items-center justify-between bg-slate-800/50 rounded-lg p-3">
-              <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${
-                  contractStatus === 'deployed' ? 'bg-green-400' :
-                  contractStatus === 'checking' ? 'bg-yellow-400 animate-pulse' :
-                  contractStatus === 'not_deployed' ? 'bg-red-400' :
-                  'bg-slate-400'
-                }`} />
-                <span className="text-slate-300">Contract:</span>
-              </div>
-              <div className="text-right">
-                <div className={`font-bold ${
-                  contractStatus === 'deployed' ? 'text-green-400' :
-                  contractStatus === 'checking' ? 'text-yellow-400' :
-                  contractStatus === 'not_deployed' ? 'text-red-400' :
-                  'text-slate-400'
-                }`}>
-                  {contractStatus === 'deployed' ? 'Deployed ✓' :
-                   contractStatus === 'checking' ? 'Checking...' :
-                   contractStatus === 'not_deployed' ? 'Not Deployed ✗' :
-                   'Not Checked'}
-                </div>
-                <div className="text-xs text-slate-400 font-mono">{shortenAddress(CONTRACT_ADDRESS)}</div>
-              </div>
-            </div>
-
-            {/* Deployment Instructions */}
-            {contractStatus === 'not_deployed' && (
-              <div className="bg-red-500/10 border border-red-400/30 rounded-lg p-4">
-                <div className="text-red-300 font-bold mb-3 flex items-center gap-2">
-                  <AlertCircle size={16} />
-                  Contract Not Found at This Address
-                </div>
-
-                <div className="text-xs text-red-200 space-y-3 mb-3">
-                  <div className="bg-red-900/30 p-2 rounded font-mono text-[11px]">
-                    Checking: {CONTRACT_ADDRESS}
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="font-bold text-red-100">🔍 Troubleshooting Steps:</div>
-
-                    <div>
-                      <div className="font-bold mb-1">1️⃣ Check Your Deployment Output</div>
-                      <div className="ml-4 text-[11px] opacity-90">
-                        When you ran the deploy command, it should have printed:<br/>
-                        <code className="bg-slate-900 px-1 py-0.5 rounded">
-                          "Contract deployed to: 0x..."
-                        </code>
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="font-bold mb-1">2️⃣ Update the Address</div>
-                      <div className="ml-4 text-[11px] opacity-90">
-                        Copy that address and paste it in:<br/>
-                        <code className="bg-slate-900 px-1 py-0.5 rounded text-yellow-300">
-                          src/App.jsx line 767
-                        </code>
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="font-bold mb-1">3️⃣ Verify on Arbiscan</div>
-                      <div className="ml-4 text-[11px] opacity-90">
-                        <code className="bg-slate-900 px-1 py-0.5 rounded block mb-1">
-                          https://arbiscan.io/address/{CONTRACT_ADDRESS}
-                        </code>
-                        Check if the contract exists on Arbitrum One.
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="text-[10px] text-red-300/70 bg-red-900/20 p-2 rounded">
-                  💡 Tip: Check the browser console (F12) for more details about what address was checked.
-                </div>
-              </div>
-            )}
-
-            {!networkInfo?.isArbitrum && (
-              <div className="bg-yellow-500/10 border border-yellow-400/30 rounded-lg p-4">
-                <div className="text-yellow-300 font-bold mb-2">⚠️ Wrong Network</div>
-                <div className="text-xs text-yellow-200 mb-3">
-                  You're on <span className="font-bold">{networkInfo.name}</span>. Switch to Local Network (Chain ID: {EXPECTED_CHAIN_ID}).
-                </div>
-                <button
-                  onClick={switchToArbitrum}
-                  className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-2 px-4 rounded-lg text-sm transition-all flex items-center justify-center gap-2"
-                >
-                  <Zap size={16} />
-                  Switch to Arbitrum One
-                </button>
-              </div>
-            )}
-          </div>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Match View - Shows when player enters a match */}
@@ -5263,72 +4170,6 @@ This declaration is immutable and verifiable on-chain.`;
           }
         }
       `}</style>
-
-      {/* RW3 Declaration Popup - Rendered at root level with highest z-index */}
-      {showRw3Popup && rw3Declaration && rw3BadgeRect && (
-        <div
-          className="rw3-popup fixed bg-gray-900 border border-blue-500 rounded-lg shadow-xl p-4"
-          style={{
-            boxShadow: '0 0 20px rgba(59, 130, 246, 0.3)',
-            zIndex: 999999,
-            width: (() => {
-              const viewportWidth = window.innerWidth;
-              if (viewportWidth <= 768) {
-                return 'auto';
-              } else {
-                // Fixed width on desktop for proper centering
-                return '500px';
-              }
-            })(),
-            left: (() => {
-              const viewportWidth = window.innerWidth;
-              const popupWidth = viewportWidth <= 768 ? Math.min(500, viewportWidth - 32) : 500;
-
-              // On mobile, align with badge. On desktop, center horizontally
-              if (viewportWidth <= 768) {
-                const idealLeft = rw3BadgeRect.left;
-                const maxLeft = viewportWidth - popupWidth - 16;
-                return `${Math.max(16, Math.min(idealLeft, maxLeft))}px`;
-              } else {
-                // Center on desktop
-                return `${(viewportWidth - popupWidth) / 2}px`;
-              }
-            })(),
-            top: (() => {
-              const viewportHeight = window.innerHeight;
-              const idealTop = rw3BadgeRect.bottom + 8;
-              const estimatedPopupHeight = 300; // Rough estimate
-
-              // If popup would go off bottom, position it above the badge instead
-              if (idealTop + estimatedPopupHeight > viewportHeight - 16) {
-                return `${Math.max(16, rw3BadgeRect.top - estimatedPopupHeight - 8)}px`;
-              }
-              return `${idealTop}px`;
-            })(),
-            maxWidth: `calc(100vw - 32px)`,
-            maxHeight: `calc(100vh - ${rw3BadgeRect.bottom + 24}px)`,
-            overflowY: 'auto',
-            pointerEvents: 'auto',
-          }}
-          onMouseEnter={() => {
-            // Keep popup open when hovering over it (desktop only)
-            if (!('ontouchstart' in window)) {
-              setShowRw3Popup(true);
-            }
-          }}
-          onMouseLeave={() => {
-            // Close popup when mouse leaves (desktop only)
-            if (!('ontouchstart' in window)) {
-              setShowRw3Popup(false);
-            }
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="text-blue-100 text-xs whitespace-pre-wrap break-words font-mono">
-            {rw3Declaration}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
