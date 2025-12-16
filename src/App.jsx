@@ -472,9 +472,9 @@ export default function TicTacBlock() {
         throw new Error('No accounts returned. Please unlock MetaMask and try again.');
       }
 
-      // Use direct RPC for network check (avoid MetaMask rate limiting)
-      const readProvider = new ethers.JsonRpcProvider(RPC_URL);
-      const network = await readProvider.getNetwork();
+      // Use MetaMask's provider for network check (works on deployed domains)
+      const web3Provider = new ethers.BrowserProvider(window.ethereum);
+      const network = await web3Provider.getNetwork();
 
       const networkData = {
         name: network.name || 'Unknown',
@@ -502,7 +502,6 @@ export default function TicTacBlock() {
       }
 
       // Get signer from MetaMask for write operations
-      const web3Provider = new ethers.BrowserProvider(window.ethereum);
       const web3Signer = await web3Provider.getSigner();
 
       // Create contract with signer for write operations
@@ -515,13 +514,9 @@ export default function TicTacBlock() {
       setAccount(accounts[0]);
       setContract(contractInstance);
 
-      // Use read-only provider for loading data (avoids MetaMask rate limiting)
-      const readOnlyContract = new ethers.Contract(
-        CONTRACT_ADDRESS,
-        DUMMY_ABI,
-        readProvider
-      );
-      await loadContractData(readOnlyContract, false);
+      // Load contract data using the contract instance
+      await fetchAllTournaments(contractInstance, accounts[0], false);
+      await fetchLeaderboard(false);
       setLoading(false);
     } catch (error) {
       console.error('Error connecting wallet:', error);
