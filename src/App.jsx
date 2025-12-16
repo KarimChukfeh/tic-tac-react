@@ -30,6 +30,8 @@ import StatsGrid from './components/shared/StatsGrid';
 import EnrolledPlayersList from './components/shared/EnrolledPlayersList';
 import MatchCard from './components/shared/MatchCard';
 import TournamentCard from './components/shared/TournamentCard';
+import TurnTimer from './components/shared/TurnTimer';
+import MatchTimeoutEscalation from './components/shared/MatchTimeoutEscalation';
 
 // TicTacToe particle symbols
 const TICTACTOE_SYMBOLS = ['X', 'O'];
@@ -1929,150 +1931,39 @@ export default function TicTacBlock() {
 
                 {/* Game Controls */}
                 <div className="space-y-3">
-                  {/* Move Timeout Timer - Shows before escalation */}
+                  {/* Turn Timer */}
                   {currentMatch.matchStatus === 1 && (currentMatch.lastMoveTime !== undefined || currentMatch.startTime !== undefined) && (() => {
-                    const now = Math.floor(Date.now() / 1000);
                     const MOVE_TIMEOUT = 60; // 1 minute in seconds
-                    // Use lastMoveTime if available, otherwise use startTime for first move
+                    const now = Math.floor(Date.now() / 1000);
                     const timeReference = currentMatch.lastMoveTime > 0 ? currentMatch.lastMoveTime : currentMatch.startTime;
                     const timeSinceLastMove = now - timeReference;
                     const timeRemaining = Math.max(0, MOVE_TIMEOUT - timeSinceLastMove);
 
-                    const formatTime = (secs) => {
-                      const mins = Math.floor(secs / 60);
-                      const seconds = secs % 60;
-                      return `${mins}:${seconds.toString().padStart(2, '0')}`;
-                    };
-
-                    // Show timer if we have a valid time reference
                     if (timeReference > 0) {
-                      const isYourTurn = currentMatch.isYourTurn;
-                      const isLowTime = timeRemaining <= 10;
-
                       return (
-                        <div className={`border rounded-xl p-3 ${
-                          isLowTime ? 'bg-red-500/20 border-red-400 animate-pulse' : 'bg-blue-500/20 border-blue-400'
-                        }`}>
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <Clock className={isLowTime ? 'text-red-400' : 'text-blue-400'} size={18} />
-                              <span className={`text-sm font-bold ${isLowTime ? 'text-red-300' : 'text-blue-300'}`}>
-                                {isYourTurn ? 'Your Turn' : 'Opponent\'s Turn'}
-                              </span>
-                            </div>
-                            <div className={`text-lg font-mono font-bold ${
-                              isLowTime ? 'text-red-300' : timeRemaining <= 30 ? 'text-yellow-300' : 'text-blue-300'
-                            }`}>
-                              {timeRemaining > 0 ? formatTime(timeRemaining) : '⚠️ TIMEOUT'}
-                            </div>
-                          </div>
-                          {isYourTurn && timeRemaining > 0 && (
-                            <div className="text-xs text-blue-300/70 mt-1">
-                              Make your move before time runs out!
-                            </div>
-                          )}
-                          {timeRemaining === 0 && !isYourTurn && (
-                            <div className="mt-2">
-                              <button
-                                onClick={handleClaimTimeoutWin}
-                                disabled={matchLoading}
-                                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-2 px-4 rounded-lg transition-all disabled:opacity-50"
-                              >
-                                ⏰ Claim Timeout Victory
-                              </button>
-                              <div className="text-xs text-green-300 mt-1 text-center">
-                                Your opponent ran out of time!
-                              </div>
-                            </div>
-                          )}
-                          {timeRemaining === 0 && isYourTurn && (
-                            <div className="text-xs text-red-300 mt-1">
-                              ⚡ Time's up! Your opponent can claim victory...
-                            </div>
-                          )}
-                        </div>
+                        <TurnTimer
+                          isYourTurn={currentMatch.isYourTurn}
+                          timeRemaining={timeRemaining}
+                          onClaimTimeoutWin={handleClaimTimeoutWin}
+                          loading={matchLoading}
+                        />
                       );
                     }
                     return null;
                   })()}
 
                   {/* Match Timeout Escalation UI */}
-                  {currentMatch.timeoutState && currentMatch.timeoutState.timeoutActive && currentMatch.matchStatus === 1 && (() => {
-                    const now = Math.floor(Date.now() / 1000);
-                    const { escalation1Start, escalation2Start, escalation3Start, activeEscalation } = currentMatch.timeoutState;
-
-                    const timeToEsc1 = escalation1Start > 0 ? Math.max(0, escalation1Start - now) : 0;
-                    const timeToEsc2 = escalation2Start > 0 ? Math.max(0, escalation2Start - now) : 0;
-                    const timeToEsc3 = escalation3Start > 0 ? Math.max(0, escalation3Start - now) : 0;
-
-                    const canClaimTimeout = activeEscalation >= 1 && !currentMatch.isYourTurn;
-                    const canForceEliminate = activeEscalation >= 2;
-                    const canReplace = activeEscalation >= 3;
-
-                    const formatTime = (secs) => {
-                      const mins = Math.floor(secs / 60);
-                      const seconds = secs % 60;
-                      return `${mins}:${seconds.toString().padStart(2, '0')}`;
-                    };
-
-                    return (
-                      <div className="bg-orange-500/20 border border-orange-400 rounded-xl p-4">
-                        <div className="flex items-center gap-2 mb-3">
-                          <Clock className="text-orange-400" size={20} />
-                          <span className="text-orange-300 font-bold text-sm">Match Timeout Active</span>
-                        </div>
-
-                        {/* Escalation 1 */}
-                        {activeEscalation >= 1 && canClaimTimeout && (
-                          <button
-                            onClick={handleClaimTimeoutWin}
-                            disabled={matchLoading}
-                            className="w-full mb-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-2 px-4 rounded-lg transition-all disabled:opacity-50"
-                          >
-                            ⏰ Claim Timeout Victory
-                          </button>
-                        )}
-
-                        {/* Countdown timers */}
-                        <div className="space-y-1 text-xs">
-                          {timeToEsc1 > 0 && activeEscalation < 1 && (
-                            <div className="text-orange-300">Esc 1 in: {formatTime(timeToEsc1)}</div>
-                          )}
-                          {timeToEsc2 > 0 && activeEscalation < 2 && (
-                            <div className="text-orange-300">Esc 2 in: {formatTime(timeToEsc2)}</div>
-                          )}
-                          {timeToEsc3 > 0 && activeEscalation < 3 && (
-                            <div className="text-orange-300">Esc 3 in: {formatTime(timeToEsc3)}</div>
-                          )}
-                          {activeEscalation >= 1 && <div className="text-green-400 font-bold">✓ Escalation 1 Active</div>}
-                          {activeEscalation >= 2 && <div className="text-yellow-400 font-bold">✓ Escalation 2 Active</div>}
-                          {activeEscalation >= 3 && <div className="text-red-400 font-bold">✓ Escalation 3 Active</div>}
-                        </div>
-
-                        {/* Escalation 2 */}
-                        {canForceEliminate && (
-                          <button
-                            onClick={handleForceEliminateStalledMatch}
-                            disabled={matchLoading}
-                            className="w-full mt-2 bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-all disabled:opacity-50"
-                          >
-                            ⚡ Force Eliminate Both (Higher Rank)
-                          </button>
-                        )}
-
-                        {/* Escalation 3 */}
-                        {canReplace && (
-                          <button
-                            onClick={handleClaimMatchSlotByReplacement}
-                            disabled={matchLoading}
-                            className="w-full mt-2 bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white font-bold py-2 px-4 rounded-lg transition-all disabled:opacity-50"
-                          >
-                            🎯 Replace Both Players & Advance
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })()}
+                  {currentMatch.timeoutState && (
+                    <MatchTimeoutEscalation
+                      timeoutState={currentMatch.timeoutState}
+                      matchStatus={currentMatch.matchStatus}
+                      isYourTurn={currentMatch.isYourTurn}
+                      onClaimTimeoutWin={handleClaimTimeoutWin}
+                      onForceEliminate={handleForceEliminateStalledMatch}
+                      onClaimReplacement={handleClaimMatchSlotByReplacement}
+                      loading={matchLoading}
+                    />
+                  )}
 
                   {currentMatch.matchStatus === 2 && (
                     <div className="bg-green-500/20 border border-green-400 rounded-xl p-4 text-center">

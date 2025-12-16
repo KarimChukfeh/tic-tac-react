@@ -20,6 +20,8 @@ import StatsGrid from './components/shared/StatsGrid';
 import EnrolledPlayersList from './components/shared/EnrolledPlayersList';
 import MatchCard from './components/shared/MatchCard';
 import TournamentCard from './components/shared/TournamentCard';
+import TurnTimer from './components/shared/TurnTimer';
+import MatchTimeoutEscalation from './components/shared/MatchTimeoutEscalation';
 
 // Chess piece symbols
 const PIECE_SYMBOLS = {
@@ -1207,6 +1209,22 @@ export default function ChessOnChain() {
         match.tierId, match.instanceId, match.roundNumber, match.matchNumber
       );
 
+      // Fetch timeoutState from chessMatches mapping
+      const matchKey = ethers.solidityPackedKeccak256(
+        ['uint8', 'uint8', 'uint8', 'uint8'],
+        [match.tierId, match.instanceId, match.roundNumber, match.matchNumber]
+      );
+      const chessMatchData = await contractInstance.chessMatches(matchKey);
+
+      const timeoutState = {
+        escalation1Start: Number(chessMatchData.timeoutState.escalation1Start),
+        escalation2Start: Number(chessMatchData.timeoutState.escalation2Start),
+        escalation3Start: Number(chessMatchData.timeoutState.escalation3Start),
+        activeEscalation: Number(chessMatchData.timeoutState.activeEscalation),
+        timeoutActive: chessMatchData.timeoutState.timeoutActive,
+        forfeitAmount: chessMatchData.timeoutState.forfeitAmount
+      };
+
       const isPlayer1 = matchData[0].toLowerCase() === userAccount.toLowerCase();
 
       return {
@@ -1224,7 +1242,8 @@ export default function ChessOnChain() {
         blackInCheck: matchData[10],
         board: Array.from(board),
         isPlayer1,
-        isYourTurn: matchData[2].toLowerCase() === userAccount.toLowerCase()
+        isYourTurn: matchData[2].toLowerCase() === userAccount.toLowerCase(),
+        timeoutState
       };
     } catch (error) {
       console.error('Error refreshing match:', error);
@@ -1282,6 +1301,22 @@ export default function ChessOnChain() {
       const matchData = await contract.getChessMatch(tierId, instanceId, roundNumber, matchNumber);
       const board = await contract.getBoard(tierId, instanceId, roundNumber, matchNumber);
 
+      // Fetch timeoutState from chessMatches mapping
+      const matchKey = ethers.solidityPackedKeccak256(
+        ['uint8', 'uint8', 'uint8', 'uint8'],
+        [tierId, instanceId, roundNumber, matchNumber]
+      );
+      const chessMatchData = await contract.chessMatches(matchKey);
+
+      const timeoutState = {
+        escalation1Start: Number(chessMatchData.timeoutState.escalation1Start),
+        escalation2Start: Number(chessMatchData.timeoutState.escalation2Start),
+        escalation3Start: Number(chessMatchData.timeoutState.escalation3Start),
+        activeEscalation: Number(chessMatchData.timeoutState.activeEscalation),
+        timeoutActive: chessMatchData.timeoutState.timeoutActive,
+        forfeitAmount: chessMatchData.timeoutState.forfeitAmount
+      };
+
       const isPlayer1 = matchData[0].toLowerCase() === account.toLowerCase();
 
       const boardArray = Array.from(board);
@@ -1312,7 +1347,8 @@ export default function ChessOnChain() {
         blackInCheck: matchData[10],
         board: boardArray,
         isPlayer1,
-        isYourTurn: matchData[2].toLowerCase() === account.toLowerCase()
+        isYourTurn: matchData[2].toLowerCase() === account.toLowerCase(),
+        timeoutState
       });
 
       setMatchLoading(false);
@@ -1388,6 +1424,90 @@ export default function ChessOnChain() {
     } catch (error) {
       console.error('Resign error:', error);
       alert('Resign failed: ' + error.message);
+      setMatchLoading(false);
+    }
+  };
+
+  // Handle Escalation 1: Opponent claims timeout win
+  const handleClaimTimeoutWin = async () => {
+    if (!currentMatch || !contract) return;
+
+    try {
+      setMatchLoading(true);
+      const { tierId, instanceId, roundNumber, matchNumber } = currentMatch;
+
+      const tx = await contract.claimTimeoutWin(tierId, instanceId, roundNumber, matchNumber);
+      await tx.wait();
+
+      alert('Timeout victory claimed! You win by opponent forfeit.');
+
+      setCurrentMatch(null);
+      setViewingTournament(null);
+
+      await fetchAllTiers(true);
+
+      setMatchLoading(false);
+    } catch (error) {
+      console.error('Error claiming timeout win:', error);
+      alert(`Error claiming timeout win: ${error.message}`);
+      setMatchLoading(false);
+    }
+  };
+
+  // Handle Escalation 2: Higher-ranked player force eliminates stalled match
+  const handleForceEliminateStalledMatch = async (matchData = null) => {
+    const match = matchData || currentMatch;
+    if (!match || !contract) return;
+
+    try {
+      setMatchLoading(true);
+      const { tierId, instanceId, roundNumber, matchNumber } = match;
+
+      const tx = await contract.forceEliminateStalledMatch(tierId, instanceId, roundNumber, matchNumber);
+      await tx.wait();
+
+      alert('Stalled match eliminated! Tournament can now continue.');
+
+      setCurrentMatch(null);
+
+      await fetchAllTiers(true);
+
+      const bracketData = await refreshTournamentBracket(contract, tierId, instanceId);
+      if (bracketData) {
+        setViewingTournament(bracketData);
+      }
+
+      setMatchLoading(false);
+    } catch (error) {
+      console.error('Error force eliminating match:', error);
+      alert(`Error force eliminating match: ${error.message}`);
+      setMatchLoading(false);
+    }
+  };
+
+  // Handle Escalation 3: Outsider claims match slot by replacement
+  const handleClaimMatchSlotByReplacement = async (matchData = null) => {
+    const match = matchData || currentMatch;
+    if (!match || !contract) return;
+
+    try {
+      setMatchLoading(true);
+      const { tierId, instanceId, roundNumber, matchNumber } = match;
+
+      const tx = await contract.claimMatchSlotByReplacement(tierId, instanceId, roundNumber, matchNumber);
+      await tx.wait();
+
+      alert('Match slot claimed! You have replaced both players and advanced.');
+
+      setCurrentMatch(null);
+      setViewingTournament(null);
+
+      await fetchAllTiers(true);
+
+      setMatchLoading(false);
+    } catch (error) {
+      console.error('Error claiming replacement:', error);
+      alert(`Error claiming replacement: ${error.message}`);
       setMatchLoading(false);
     }
   };
@@ -1970,6 +2090,44 @@ export default function ChessOnChain() {
                     startTime={currentMatch.startTime}
                     lastMove={lastMove}
                   />
+
+                  {/* Turn Timer */}
+                  {currentMatch.matchStatus === 1 && (() => {
+                    const MOVE_TIMEOUT = 60; // 1 minute in seconds
+                    const now = Math.floor(Date.now() / 1000);
+                    const timeReference = currentMatch.lastMoveTime > 0 ? currentMatch.lastMoveTime : currentMatch.startTime;
+                    const timeSinceLastMove = now - timeReference;
+                    const timeRemaining = Math.max(0, MOVE_TIMEOUT - timeSinceLastMove);
+
+                    if (timeReference > 0) {
+                      return (
+                        <div className="w-full max-w-md mt-4">
+                          <TurnTimer
+                            isYourTurn={currentMatch.isYourTurn}
+                            timeRemaining={timeRemaining}
+                            onClaimTimeoutWin={handleClaimTimeoutWin}
+                            loading={matchLoading}
+                          />
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+
+                  {/* Match Timeout Escalation UI */}
+                  {currentMatch.timeoutState && (
+                    <div className="w-full max-w-md mt-4">
+                      <MatchTimeoutEscalation
+                        timeoutState={currentMatch.timeoutState}
+                        matchStatus={currentMatch.matchStatus}
+                        isYourTurn={currentMatch.isYourTurn}
+                        onClaimTimeoutWin={handleClaimTimeoutWin}
+                        onForceEliminate={handleForceEliminateStalledMatch}
+                        onClaimReplacement={handleClaimMatchSlotByReplacement}
+                        loading={matchLoading}
+                      />
+                    </div>
+                  )}
 
                   {/* Resign Button */}
                   {currentMatch.matchStatus === 1 && (
