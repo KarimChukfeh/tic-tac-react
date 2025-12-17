@@ -28,6 +28,35 @@ import WhyArbitrum from './components/shared/WhyArbitrum';
 // Connect Four disc particles for background
 const C4_PARTICLES = ['🔴', '🔵'];
 
+// Animated disc that fades between red and blue
+const AnimatedDisc = () => {
+  const [showRed, setShowRed] = useState(true);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setShowRed(prev => !prev);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="relative text-8xl">
+      <span
+        className="absolute inset-0 transition-opacity duration-1000 ease-in-out"
+        style={{ opacity: showRed ? 1 : 0 }}
+      >
+        🔴
+      </span>
+      <span
+        className="transition-opacity duration-1000 ease-in-out"
+        style={{ opacity: showRed ? 0 : 1 }}
+      >
+        🔵
+      </span>
+    </div>
+  );
+};
+
 // Convert flat board array to 2D grid for rendering
 // Contract stores board as row-major: index = row * 7 + col
 // Row 0 is top in contract, row 5 is bottom (where pieces land)
@@ -1482,7 +1511,9 @@ export default function ConnectFour() {
           <div className="inline-block mb-6">
             <div className="relative">
               <div className={`absolute -inset-4 bg-gradient-to-r ${currentTheme.heroGlow} rounded-full blur-xl opacity-50 animate-pulse`}></div>
-              <span className="relative text-8xl">🔴</span>
+              <div className="relative">
+                <AnimatedDisc />
+              </div>
             </div>
           </div>
 
