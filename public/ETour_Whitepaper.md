@@ -13,7 +13,7 @@ The protocol separates universal tournament mechanics from game-specific logic. 
 
 ETour launches with three classic games: Tic-Tac-Toe, Connect Four, and Chess, chosen specifically because they require no hidden information and can be fully verified on-chain.
 
-This whitepaper explains the philosophical reasoning behind ETour's design decisions and the technical implementation that makes trustless competition possible. It's intended for those who want to understand*not just what ETour does;
+This whitepaper explains the philosophical reasoning behind ETour's design decisions and the technical implementation that makes trustless competition possible. It's intended for those who want to understand not just what ETour does;
 
 ### **But why it was built this way.**
 
