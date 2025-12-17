@@ -756,6 +756,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onManualStart
 export default function ChessOnChain() {
   const CONTRACT_ADDRESS = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
   const EXPECTED_CHAIN_ID = 412346;
+  const RPC_URL = import.meta.env.VITE_RPC_URL || 'http://127.0.0.1:8545';
 
   // Wallet & Contract State
   const [account, setAccount] = useState(null);
@@ -917,7 +918,7 @@ export default function ChessOnChain() {
               chainId: '0x64aba',
               chainName: 'Local Network',
               nativeCurrency: { name: 'Ethereum', symbol: 'ETH', decimals: 18 },
-              rpcUrls: ['http://127.0.0.1:8545'],
+              rpcUrls: [RPC_URL],
             }],
           });
         } catch (addError) {
@@ -1697,7 +1698,7 @@ export default function ChessOnChain() {
   useEffect(() => {
     const initReadOnlyContract = async () => {
       try {
-        const provider = new ethers.JsonRpcProvider('http://127.0.0.1:8545');
+        const provider = new ethers.JsonRpcProvider(RPC_URL);
 
         const readOnlyContract = new ethers.Contract(
           CONTRACT_ADDRESS,

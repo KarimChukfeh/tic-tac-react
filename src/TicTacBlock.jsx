@@ -343,7 +343,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
 export default function TicTacBlock() {
   const CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
   const EXPECTED_CHAIN_ID = 412346;
-  const RPC_URL = 'http://127.0.0.1:8545';
+  const RPC_URL = import.meta.env.VITE_RPC_URL || 'http://127.0.0.1:8545';
   const ETHERSCAN_URL = `https://arbiscan.io/address/${CONTRACT_ADDRESS}`;
 
   // Helper to get read-only contract (bypasses MetaMask for read operations)
@@ -449,8 +449,8 @@ export default function TicTacBlock() {
             symbol: 'ETH',
             decimals: 18,
           },
-          rpcUrls: ['http://127.0.0.1:8545'],
-          blockExplorerUrls: ['http://localhost:8545'],
+          rpcUrls: [RPC_URL],
+          blockExplorerUrls: [],
               },
             ],
           });

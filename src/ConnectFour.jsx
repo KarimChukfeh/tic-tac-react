@@ -428,6 +428,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
 export default function ConnectFour() {
   const CONTRACT_ADDRESS = "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0";
   const EXPECTED_CHAIN_ID = 412346;
+  const RPC_URL = import.meta.env.VITE_RPC_URL || 'http://127.0.0.1:8545';
 
   // Wallet & Contract State
   const [account, setAccount] = useState(null);
@@ -497,7 +498,7 @@ export default function ConnectFour() {
               chainId: '0x64aba',
               chainName: 'Local Network',
               nativeCurrency: { name: 'Ethereum', symbol: 'ETH', decimals: 18 },
-              rpcUrls: ['http://127.0.0.1:8545'],
+              rpcUrls: [RPC_URL],
             }],
           });
         } catch (addError) {
@@ -1162,7 +1163,7 @@ export default function ConnectFour() {
 
     const initReadOnlyContract = async () => {
       try {
-        const provider = new ethers.JsonRpcProvider('http://127.0.0.1:8545');
+        const provider = new ethers.JsonRpcProvider(RPC_URL);
         const readOnlyContract = new ethers.Contract(CONTRACT_ADDRESS, C4_ABI, provider);
 
         setContract(readOnlyContract);
