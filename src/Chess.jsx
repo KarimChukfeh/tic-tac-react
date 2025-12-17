@@ -840,6 +840,11 @@ export default function ChessOnChain() {
     themeRef.current = theme;
   }, [theme]);
 
+  // Set page title
+  useEffect(() => {
+    document.title = 'ETour - Chess';
+  }, []);
+
   // Cycle theme
   const cycleTheme = () => {
     setTheme(prev => prev === 'dream' ? 'daring' : 'dream');

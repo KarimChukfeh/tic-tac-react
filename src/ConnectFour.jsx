@@ -454,6 +454,11 @@ export default function ConnectFour() {
   useEffect(() => { expandedTiersRef.current = expandedTiers; }, [expandedTiers]);
   useEffect(() => { tierInstancesRef.current = tierInstances; }, [tierInstances]);
 
+  // Set page title
+  useEffect(() => {
+    document.title = 'ETour - Connect Four';
+  }, []);
+
   // Match State
   const [currentMatch, setCurrentMatch] = useState(null);
   const [matchLoading, setMatchLoading] = useState(false);

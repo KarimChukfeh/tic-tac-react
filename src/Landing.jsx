@@ -230,6 +230,11 @@ export default function Landing() {
   const [whitepaperExpanded, setWhitepaperExpanded] = useState(false);
   const [expandedFaq, setExpandedFaq] = useState(null);
 
+  // Set page title
+  useEffect(() => {
+    document.title = 'ETour - Pure Competition. No Nonsense.';
+  }, []);
+
   // FAQ data
   const faqs = [
     {

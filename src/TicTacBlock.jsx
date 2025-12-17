@@ -385,6 +385,11 @@ export default function TicTacBlock() {
   const [leaderboard, setLeaderboard] = useState([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
 
+  // Set page title
+  useEffect(() => {
+    document.title = 'ETour - Tic-Tac-Toe';
+  }, []);
+
   // Add mobile debugging console (Eruda) on mobile devices
   useEffect(() => {
     if ('ontouchstart' in window) {
