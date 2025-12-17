@@ -9,13 +9,13 @@ ETour is a game-agnostic tournament protocol that enables any deterministic comp
 
 ETour is different from other Web3 gaming platforms that sell tokens or promise players money. Instead, it focuses on one thing: **players compete in games they already know, and the better player wins real ETH.**
 
-The protocol separates universal tournament mechanics: matchmaking, bracket management, timeout escalation, prize distribution from game-specific logic. Architectural decisions allow multiple games to share battle-tested infrastructure while each maintains its own rules and identity. 
+The protocol separates universal tournament mechanics from game-specific logic. (e.g matchmaking, bracket management, timeout escalation, prize distribution). Architectural decisions allow multiple games to share battle-tested infrastructure while each maintains its own rules and identity. 
 
-ETour launches with three flagship games: Tic-Tac-Toe, Connect Four, and Chess, chosen specifically because they require no hidden information and can be fully verified on-chain.
+ETour launches with three classic games: Tic-Tac-Toe, Connect Four, and Chess, chosen specifically because they require no hidden information and can be fully verified on-chain.
 
-This whitepaper explains both the philosophical reasoning behind ETour's design decisions and the technical implementation that makes trustless competition possible. 
+This whitepaper explains the philosophical reasoning behind ETour's design decisions and the technical implementation that makes trustless competition possible. It's intended for those who want to understand*not just what ETour does;
 
-It is intended for those who want to understand **not just *what* ETour does**, but ***why* it was built this way**.
+### **But why it was built this way.**
 
 ---
 
@@ -400,7 +400,7 @@ Entry fees are split at enrollment time:
 | Owner | 7.5% | Operational sustainability |
 | Protocol | 2.5% | Future development fund |
 
-This split is hardcoded in the contract—no admin function can modify it. Players always know exactly where their entry fee goes.
+This split is hardcoded in the contract. No admin function can modify it once deployed and players know exactly where their entry fee goes.
 
 ### 5.2 Prize Distribution
 
@@ -451,7 +451,7 @@ Competitive systems with real stakes face a fundamental griefing vector: players
 - Tournaments could stall at enrollment, never reaching required player counts
 - Funds could be locked indefinitely in unresolvable states
 
-Traditional platforms solve this with centralized intervention—admins who adjudicate disputes. ETour requires autonomous solutions.
+Traditional platforms solve this with centralized intervention. Admins who adjudicate disputes. **ETour brings forth autonomous solutions.**
 
 ### 6.2 Enrollment Timeout Escalation
 
@@ -461,9 +461,9 @@ When a player enrolls in an unfilled tournament, a countdown begins. If the tour
 After the enrollment window expires, enrolled players can force-start the tournament with whatever players have joined, even if below capacity. If only one player has enrolled, they win immediately and receive the prize pool.
 
 **Escalation 2 — Public Claim (Abandoned Pool):**
-After an additional escalation interval, **anyone** (including non-enrolled players) can claim the abandoned enrollment pool. All enrolled players are marked as forfeited, and **the claimer receives the entire prize pool** (90% of all entry fees collected). This is not a small reward—it's the full pot.
+After an additional escalation interval, **anyone** (including non-enrolled players) can claim the abandoned enrollment pool. All enrolled players are marked as forfeited, and **the claimer receives the entire prize pool** (90% of all entry fees collected). This is not a small reward, **it's the full pot!**.
 
-This creates a strong economic incentive for resolution. Rather than funds sitting locked forever, someone can always claim them—either by playing a reduced tournament or by cleaning up an abandoned one and taking the entire pool.
+This creates a strong economic incentive for resolution. Rather than funds sitting locked forever, someone can always claim the either by playing a reduced tournament or by cleaning up an abandoned one and taking the entire pool.
 
 ### 6.3 Match Timeout Escalation
 
@@ -473,10 +473,10 @@ During active matches, each move must occur within the configured timeout. When 
 The opponent can claim victory directly. They waited; they win. The stalling player forfeits and is eliminated.
 
 **Escalation 2 — Advanced Players (Force Eliminate):**
-Players in the same tournament who have already won a match (and thus "advanced") can force-eliminate the stalled match. **Both players in the stalled match are eliminated**—neither advances. The advanced player who triggers this receives no direct reward; their incentive is unblocking the tournament so they can continue competing for the prize pool.
+Players in the same tournament who have already won a match (and thus "advanced") can force-eliminate the stalled match. **Both players in the stalled match are eliminated** and neither advances. The advanced player who triggers this receives no direct reward; their incentive is unblocking the tournament so they can continue competing for the prize pool.
 
 **Escalation 3 — External Replacement:**
-Anyone can claim the match slot by **replacing** both stalled players. The claimer does not receive a cash reward—instead, **they become the match winner and advance to the next round** (or win the tournament if it's the finals). Both original players are eliminated and forfeit their entry fees. The replacement player is added to the tournament and can compete for the full prize pool.
+Anyone can claim the match slot by **replacing** both stalled players. The claimer does not receive a cash reward. Instead, **they become the match winner and advance to the next round** (or win the tournament if it's the finals). Both original players are eliminated and forfeit their entry fees. The replacement player is added to the tournament and can compete for the full prize pool.
 
 Each escalation level expands who can resolve the situation, guaranteeing that no match stalls indefinitely. The incentives shift from "claim the stalled match" to "become a participant and compete for the prize."
 
@@ -493,7 +493,7 @@ The escalation system transforms stalling from a grief vector into various oppor
 - Advanced players benefit (unblocking their path to the finals and prize pool)
 - External observers benefit (**they can join the tournament mid-competition** and potentially win the entire prize)
 
-The incentive structure is designed so that everyone except the staller has reason to resolve the situation. For enrollment timeouts, the reward is direct and substantial (the full pool). For match timeouts, the reward is participation—the chance to compete for prizes in a tournament you didn't have to pay to enter.
+The incentive structure is designed so that everyone except the staller has reason to resolve the situation. For enrollment timeouts, the reward is direct and substantial (the full pool). For match timeouts, the reward is participation. The chance to compete for prizes in a tournament you didn't have to pay to enter.
 
 This alignment ensures rapid resolution without requiring centralized intervention.
 
@@ -544,7 +544,7 @@ All contract code is verified on Arbiscan. Players can:
 - Confirm no hidden admin functions exist
 - Audit game rules for fairness
 
-No trust required—verification is available to anyone willing to read Solidity.
+No trust required. Verification is available to anyone willing to read Solidity.
 
 ---
 
@@ -552,7 +552,7 @@ No trust required—verification is available to anyone willing to read Solidity
 
 ### 8.1 The Five Principles
 
-ETour is built according to RW3 (Reclaim Web3) principles—a framework for building blockchain applications that deliver genuine utility without compromising decentralization:
+ETour is built according to RW3 (Reclaim Web3) principles. A movement committed to rebuilding blockchain applications that deliver genuine utility without compromising decentralization:
 
 1. **Real Utility** — Solve an actual problem, not a manufactured one
 2. **Fully On-Chain** — Execute core logic on blockchain, not centralized servers
@@ -566,7 +566,7 @@ ETour is built according to RW3 (Reclaim Web3) principles—a framework for buil
 ETour enables skill-based competition with guaranteed fair outcomes and instant payouts. Players get something that centralized platforms can't give them: absolute certainty that nobody can cheat, steal funds, or manipulate results.
 
 **Fully On-Chain:**
-All tournament logic, game rules, and financial operations execute via smart contract. The only off-chain component is the frontend interface—which is purely cosmetic. A different frontend, or direct contract interaction, produces identical results.
+All tournament logic, game rules, and financial operations execute via smart contract. The only off-chain component is this interface which is purely cosmetic. A different frontend, or direct contract interaction, produces exactly the same results.
 
 **Self-Sustaining:**
 The 10% operational fee funds ongoing development and hosting costs. No external funding required. No token sales. No investor extraction.
@@ -756,7 +756,7 @@ These costs are negligible relative to entry fees, ensuring game economics aren'
 
 ## 10. Conclusion
 
-ETour Protocol demonstrates that blockchain gaming can focus on games rather than financial mechanisms. By accepting blockchain's constraints—transparency, determinism, discrete transactions—and building games that naturally fit within them, we've created infrastructure for genuine skill-based competition.
+ETour Protocol demonstrates that blockchain gaming can focus on games rather than financial mechanisms. By accepting blockchain's constraints: transparency, determinism, discrete transactions, and building games that naturally fit within them. We've created infrastructure for genuine skill-based competition.
 
 The three flagship games serve different audiences and skill levels:
 
@@ -770,7 +770,7 @@ For players, the message is simple: **Think you're good? Prove it.**
 
 For developers, ETour offers battle-tested tournament infrastructure. Build your game's rules; we handle the rest.
 
-For skeptics, all code is open source and verified. Trust nothing—verify everything.
+For skeptics, all code is open source and verified. **Trust nothing. Verify everything.**
 
 This is what Web3 gaming should have been from the start: technology enabling experiences that weren't possible before, rather than technology demanding attention for its own sake.
 
@@ -835,7 +835,7 @@ Conservative scenario (1,000 daily active players):
 | Prize Pools | 2.7 ETH | 81 ETH | 972 ETH |
 | Operational Revenue | 0.3 ETH | 9 ETH | 108 ETH |
 
-At ETH = $2,000, this yields ~$216,000/year operational revenue—more than sufficient for hosting, development, and maintenance.
+At ETH = $2,000, this yields ~$216,000/year operational revenue. It's more than sufficient for hosting, development, and maintenance.
 
 Growth scenario (10,000 daily active players):
 
