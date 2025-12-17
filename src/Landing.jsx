@@ -336,7 +336,7 @@ export default function Landing() {
           </p>
           
           {/* Trust Signals */}
-          <div className="flex flex-wrap justify-center gap-6 mb-12">
+          <div className="flex flex-wrap justify-center gap-6 mb-12 py-8">
             <TrustSignal icon="🔒" text="Every move verified on-chain" />
             <TrustSignal icon="⚡" text="Instant ETH payouts to your wallet" />
             <TrustSignal icon="🎯" text="No RNG, pure skill" />
@@ -359,7 +359,7 @@ export default function Landing() {
         </section>
         
         {/* ============ GAMES SECTION ============ */}
-        <section id="games" className="px-6 py-24 max-w-7xl mx-auto">
+        <section id="games" className="px-6 py-0 max-w-7xl mx-auto">
           
           {/* Section Header */}
           <div className="text-center mb-16">
