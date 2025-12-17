@@ -9,7 +9,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Wallet, Grid, Swords, Clock, Shield, Lock, Eye, Code, ExternalLink,
-  Trophy, Play, Users, Zap, Coins, ChevronDown, ArrowLeft
+  Trophy, Play, Users, Zap, ChevronDown, ArrowLeft
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import CHESS_ABI from './COCABI.json';
@@ -2031,19 +2031,20 @@ export default function ChessOnChain() {
             <div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Trophy className="text-green-400" size={20} />
-                <span className="font-bold text-green-300">Winner Takes 90%</span>
+                <span className="font-bold text-green-300">Prize Distribution</span>
               </div>
               <p className="text-sm text-green-200">
-                Champion walks away with 90% of the tournament pot
+                <strong>Duels:</strong> Winner takes all the ETH.<br/>
+                <strong>Tournaments:</strong> Champion takes 75%, 2nd place takes 25%.
               </p>
             </div>
             <div className="bg-gradient-to-br from-yellow-500/20 to-amber-500/20 border border-yellow-400/30 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
-                <Coins className="text-yellow-400" size={20} />
-                <span className="font-bold text-yellow-300">ETH Entry Fees</span>
+                <Clock className="text-yellow-400" size={20} />
+                <span className="font-bold text-yellow-300">3min Moves</span>
               </div>
               <p className="text-sm text-yellow-200">
-                Multiple tiers from casual to high stakes
+                Players have 3 minutes per move before their opponent can claim victory.
               </p>
             </div>
             <div className="bg-gradient-to-br from-purple-500/20 to-blue-500/20 border border-purple-400/30 rounded-xl p-4">
@@ -2052,7 +2053,7 @@ export default function ChessOnChain() {
                 <span className="font-bold text-purple-300">Full Chess Rules</span>
               </div>
               <p className="text-sm text-purple-200">
-                Castling, en passant, promotion - all verified on-chain
+                Castling, en passant, pawn promotion. Every rule verified on-chain. No shortcuts, no cheating possible.
               </p>
             </div>
           </div>
@@ -2349,7 +2350,7 @@ export default function ChessOnChain() {
                     </h2>
                   </div>
                   <p className={`text-xl ${theme === 'dream' ? 'text-blue-200' : 'text-red-200'}`}>
-                    Compete in on-chain chess tournaments with real stakes
+                    Compete in on-chain with real ETH stakes
                   </p>
                 </div>
 

@@ -9,7 +9,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Wallet, Grid, Clock, Shield, Lock, Eye, Code, ExternalLink,
-  Trophy, Zap, Coins, ChevronDown, ArrowLeft
+  Trophy, Zap, ChevronDown, ArrowLeft
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import C4_ABI from './CFOCABI.json';
@@ -426,7 +426,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
 
 // Main Connect Four Component
 export default function ConnectFour() {
-  const CONTRACT_ADDRESS = "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9";
+  const CONTRACT_ADDRESS = "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0";
   const EXPECTED_CHAIN_ID = 412346;
 
   // Wallet & Contract State
@@ -1538,8 +1538,6 @@ export default function ConnectFour() {
             Drop • Connect • Win
           </p>
           <p className={`text-lg ${currentTheme.heroText} max-w-3xl mx-auto mb-8`}>
-            The classic vertical strategy game on the blockchain.
-            <br/>
             Drop your discs, connect four in a row, win real ETH.
             <br/>
             Every move is verified on-chain. No cheating possible.
@@ -1550,23 +1548,25 @@ export default function ConnectFour() {
             <div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Trophy className="text-green-400" size={20} />
-                <span className="font-bold text-green-300">Winner Takes 90%</span>
+                <span className="font-bold text-green-300">Prize Distribution</span>
               </div>
-              <p className="text-sm text-green-200">Champion walks away with 90% of the pot</p>
+              <p className="text-sm text-green-200">
+                1st place takes the majority, with 2nd and 3rd place also rewarded in larger tournaments.
+              </p>
             </div>
             <div className="bg-gradient-to-br from-yellow-500/20 to-amber-500/20 border border-yellow-400/30 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
-                <Coins className="text-yellow-400" size={20} />
-                <span className="font-bold text-yellow-300">ETH Entry Fees</span>
+                <Clock className="text-yellow-400" size={20} />
+                <span className="font-bold text-yellow-300">2min Moves</span>
               </div>
-              <p className="text-sm text-yellow-200">Multiple tiers from casual to high stakes</p>
+              <p className="text-sm text-yellow-200">Players have 2 minute per move before their opponent can claim victory.</p>
             </div>
             <div className="bg-gradient-to-br from-purple-500/20 to-blue-500/20 border border-purple-400/30 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
-                <Zap className="text-purple-400" size={20} />
-                <span className="font-bold text-purple-300">Simple Rules</span>
+                <Grid className="text-purple-400" size={20} />
+                <span className="font-bold text-purple-300">7x6 Grid</span>
               </div>
-              <p className="text-sm text-purple-200">Drop discs, connect 4 in any direction to win</p>
+              <p className="text-sm text-purple-200">Classic 7 columns, 6 rows. First to connect 4 in any direction wins.</p>
             </div>
           </div>
 

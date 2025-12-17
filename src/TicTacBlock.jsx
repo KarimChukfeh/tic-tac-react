@@ -1826,28 +1826,28 @@ export default function TicTacBlock() {
             <div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Trophy className="text-green-400" size={20} />
-                <span className="font-bold text-green-300">Winner Takes 90%</span>
+                <span className="font-bold text-green-300">Prize Distribution</span>
               </div>
               <p className="text-sm text-green-200">
-                Champion walks away with 90% of the pot
+                Winner takes the ETH prizepool.<br/>Draws share the prize 50/50.
               </p>
             </div>
             <div className="bg-gradient-to-br from-yellow-500/20 to-amber-500/20 border border-yellow-400/30 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
-                <DollarSign className="text-yellow-400" size={20} />
-                <span className="font-bold text-yellow-300">Low Entry Fees</span>
+                <Clock className="text-yellow-400" size={20} />
+                <span className="font-bold text-yellow-300">1min Moves</span>
               </div>
               <p className="text-sm text-yellow-200">
-                Accessible stakes for all skill levels
+                Players have 1 minute per move before their opponent can claim victory.
               </p>
             </div>
             <div className="bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-blue-400/30 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Zap className="text-blue-400" size={20} />
-                <span className="font-bold text-blue-300">Random First Move</span>
+                <span className="font-bold text-blue-300">On-Chain Randomness</span>
               </div>
               <p className="text-sm text-blue-200">
-                On-chain coin flip decides who starts
+                First move determined by verifiable on-chain randomness. Fair play.
               </p>
             </div>
           </div>
@@ -2132,7 +2132,7 @@ export default function TicTacBlock() {
                     </div>
                   </div>
                   <p className="text-xl text-blue-200">
-                    Competitive play for all skill levels
+                    Compete in on-chain with real ETH stakes
                   </p>
                 </div>
 
