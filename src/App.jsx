@@ -340,7 +340,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
 };
 
 export default function TicTacBlock() {
-  const CONTRACT_ADDRESS = "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9";
+  const CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
   const EXPECTED_CHAIN_ID = 412346;
   const RPC_URL = 'http://127.0.0.1:8545';
   const ETHERSCAN_URL = `https://arbiscan.io/address/${CONTRACT_ADDRESS}`;
