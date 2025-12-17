@@ -1632,7 +1632,7 @@ export default function ConnectFour() {
                         <AnimatedDisc delay={tierId * 500} size="small" /> {getTierName(metadata.maxPlayers)}s
                         <span className="text-sm font-normal text-purple-300">• {metadata.maxPlayers} players total</span>
                         <span className="text-sm font-normal text-purple-300">• {metadata.entryFee} ETH entry</span>
-                        <span className="text-sm font-normal text-purple-300">• <span className="text-cyan-400">{metadata.instanceCount} lobbies</span> • <span className="font-bold text-green-400">{statusCounts.enrolling} enrolling</span> • <span className="font-bold text-yellow-400">{statusCounts.inProgress} in progress</span></span>
+                        <span className="text-sm font-normal text-purple-300">• <span className="text-cyan-400 font-bold">{metadata.instanceCount} lobbies</span> • <span className="font-bold text-yellow-400">{statusCounts.enrolling} enrolling</span> • <span className="font-bold text-green-400">{statusCounts.inProgress} in progress</span></span>
                         <span className="text-sm font-normal text-purple-300">• {getEstimatedDuration('connectfour', metadata.maxPlayers)}</span>
                         <ChevronDown
                           size={24}

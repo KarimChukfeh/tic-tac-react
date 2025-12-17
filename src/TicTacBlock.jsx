@@ -2172,7 +2172,7 @@ export default function TicTacBlock() {
                               <Grid size={24} /> {getTierName(metadata.playerCount)}s
                               <span className="text-sm font-normal text-purple-300">• {metadata.playerCount} players total</span>
                               <span className="text-sm font-normal text-purple-300">• {metadata.entryFee} ETH entry</span>
-                              <span className="text-sm font-normal text-purple-300">• <span className="text-cyan-400">{metadata.instanceCount} lobbies</span> • <span className="font-bold text-green-400">{statusCounts.enrolling} enrolling</span> • <span className="font-bold text-yellow-400">{statusCounts.inProgress} in progress</span></span>
+                              <span className="text-sm font-normal text-purple-300">• <span className="font-bold text-cyan-400">{metadata.instanceCount} lobbies</span> • <span className="font-bold text-green-400">{statusCounts.enrolling} enrolling</span> • <span className="font-bold text-yellow-400">{statusCounts.inProgress} in progress</span></span>
                               <span className="text-sm font-normal text-purple-300">• {getEstimatedDuration('tictactoe', metadata.playerCount)}</span>
                               <ChevronDown
                                 size={24}
