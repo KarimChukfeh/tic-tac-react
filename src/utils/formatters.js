@@ -37,3 +37,50 @@ export const getTierName = (playerCount) => {
   if (playerCount > 16) return 'Mega Tournament';
   return `${playerCount}-Player Tournament`;
 };
+
+/**
+ * Get estimated duration for a tournament based on game type and player count
+ * @param {string} gameType - 'tictactoe', 'chess', or 'connectfour'
+ * @param {number} playerCount - Number of players in the tournament
+ * @returns {string} - Human-readable duration estimate
+ */
+export const getEstimatedDuration = (gameType, playerCount) => {
+  // Base time per match in minutes for each game
+  const baseMatchTime = {
+    tictactoe: 2,    // Very fast - simple game
+    chess: 15,       // Slower - complex strategy
+    connectfour: 5   // Medium - tactical but quicker
+  };
+
+  const base = baseMatchTime[gameType] || 5;
+  const rounds = Math.ceil(Math.log2(playerCount));
+  const estimatedMinutes = base * rounds;
+
+  if (estimatedMinutes < 5) return '~2-5 min';
+  if (estimatedMinutes < 15) return '~5-15 min';
+  if (estimatedMinutes < 30) return '~15-30 min';
+  if (estimatedMinutes < 60) return '~30-60 min';
+  if (estimatedMinutes < 120) return '~1-2 hours';
+  return '~2+ hours';
+};
+
+/**
+ * Count instances by status from status array
+ * @param {number[]} statuses - Array of status values for each instance
+ * @param {number[]} enrolledCounts - Array of enrolled player counts for each instance
+ * @returns {Object} - { enrolling: number, inProgress: number, completed: number }
+ */
+export const countInstancesByStatus = (statuses, enrolledCounts = []) => {
+  if (!statuses || !Array.isArray(statuses)) {
+    return { enrolling: 0, inProgress: 0, completed: 0 };
+  }
+
+  return statuses.reduce((acc, status, index) => {
+    const enrolled = enrolledCounts[index] || 0;
+    // Only count as "enrolling" if status is 0 AND has at least 1 enrolled player
+    if (status === 0 && enrolled > 0) acc.enrolling++;
+    else if (status === 1) acc.inProgress++;
+    else if (status >= 2) acc.completed++;
+    return acc;
+  }, { enrolling: 0, inProgress: 0, completed: 0 });
+};

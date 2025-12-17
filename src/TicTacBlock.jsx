@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import DUMMY_ABI from './TourABI.json';
-import { shortenAddress, formatTime as formatTimeHMS, getTierName } from './utils/formatters';
+import { shortenAddress, formatTime as formatTimeHMS, getTierName, getEstimatedDuration, countInstancesByStatus } from './utils/formatters';
 import ParticleBackground from './components/shared/ParticleBackground';
 import StatsGrid from './components/shared/StatsGrid';
 import EnrolledPlayersList from './components/shared/EnrolledPlayersList';
@@ -2155,7 +2155,7 @@ export default function TicTacBlock() {
 
                       const instances = tierInstances[tierId] || [];
                       const isLoading = tierLoading[tierId];
-                      const totalEnrolled = metadata.enrolledCounts.reduce((a, b) => a + b, 0);
+                      const statusCounts = countInstancesByStatus(metadata.statuses, metadata.enrolledCounts);
 
                       return (
                         <div key={tierId} className="mb-6">
@@ -2163,11 +2163,14 @@ export default function TicTacBlock() {
                             onClick={() => toggleTier(tierId)}
                             className="w-full bg-gradient-to-r from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-xl p-4 border border-purple-400/40 hover:border-purple-400/60 transition-all cursor-pointer"
                           >
-                            <h3 className="text-2xl font-bold text-purple-400 flex items-center gap-2">
+                            <h3 className="text-2xl font-bold text-purple-400 flex items-center gap-2 flex-wrap">
                               <Grid size={24} /> {getTierName(metadata.playerCount)}s
                               <span className="text-sm opacity-70 ml-2">({metadata.playerCount} players)</span>
-                              <span className="text-sm opacity-70">• {metadata.instanceCount} instance{metadata.instanceCount !== 1 ? 's' : ''}</span>
-                              <span className="text-sm opacity-70">• {totalEnrolled} enrolled</span>
+                              <span className="text-sm opacity-70">• {metadata.instanceCount} lobbies</span>
+                              <span className="text-sm text-yellow-400 font-medium">• {metadata.entryFee} ETH entry</span>
+                              <span className="text-sm text-green-400">• {statusCounts.enrolling}/{metadata.instanceCount} enrolling</span>
+                              <span className="text-sm text-orange-400">• {statusCounts.inProgress}/{metadata.instanceCount} in progress</span>
+                              <span className="text-sm text-blue-300">• {getEstimatedDuration('tictactoe', metadata.playerCount)}</span>
                               <ChevronDown
                                 size={24}
                                 className={`ml-auto transition-transform duration-200 ${expandedTiers[tierId] ? 'rotate-180' : ''}`}
