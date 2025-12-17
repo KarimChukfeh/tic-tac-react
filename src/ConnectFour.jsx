@@ -29,18 +29,32 @@ import WhyArbitrum from './components/shared/WhyArbitrum';
 const C4_PARTICLES = ['🔴', '🔵'];
 
 // Animated disc that fades between red and blue
-const AnimatedDisc = () => {
+// delay: initial delay in ms before starting animation (for staggered effect)
+// size: 'large' for hero, 'small' for headers
+const AnimatedDisc = ({ delay = 0, size = 'large' }) => {
   const [showRed, setShowRed] = useState(true);
+  const [started, setStarted] = useState(delay === 0);
 
   useEffect(() => {
+    // Initial delay for staggered animations
+    if (delay > 0) {
+      const timeout = setTimeout(() => setStarted(true), delay);
+      return () => clearTimeout(timeout);
+    }
+  }, [delay]);
+
+  useEffect(() => {
+    if (!started) return;
     const interval = setInterval(() => {
       setShowRed(prev => !prev);
     }, 2000);
     return () => clearInterval(interval);
-  }, []);
+  }, [started]);
+
+  const sizeClass = size === 'large' ? 'text-8xl' : 'text-2xl';
 
   return (
-    <div className="relative text-8xl">
+    <span className={`relative inline-block ${sizeClass}`}>
       <span
         className="absolute inset-0 transition-opacity duration-1000 ease-in-out"
         style={{ opacity: showRed ? 1 : 0 }}
@@ -53,7 +67,7 @@ const AnimatedDisc = () => {
       >
         🔵
       </span>
-    </div>
+    </span>
   );
 };
 
@@ -1610,7 +1624,7 @@ export default function ConnectFour() {
                       className="w-full bg-gradient-to-r from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-xl p-4 border border-purple-400/40 hover:border-purple-400/60 transition-all cursor-pointer"
                     >
                       <h3 className="text-2xl font-bold text-purple-400 flex items-center gap-2 flex-wrap">
-                        🔴 {getTierName(metadata.maxPlayers)}s
+                        <AnimatedDisc delay={tierId * 500} size="small" /> {getTierName(metadata.maxPlayers)}s
                         <span className="text-sm font-normal text-purple-300">• {metadata.maxPlayers} players total</span>
                         <span className="text-sm font-normal text-purple-300">• {metadata.entryFee} ETH entry</span>
                         <span className="text-sm font-normal text-purple-300">• <span className="text-cyan-400">{metadata.instanceCount} lobbies</span> • <span className="font-bold text-green-400">{statusCounts.enrolling} enrolling</span> • <span className="font-bold text-yellow-400">{statusCounts.inProgress} in progress</span></span>
