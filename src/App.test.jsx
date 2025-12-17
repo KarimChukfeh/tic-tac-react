@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import TicTacBlock from './App';
+import TicTacBlock from './TicTacBlock';
 import { createMockEnvironment, TEST_SCENARIOS } from './test/mocks';
 import * as ethersModule from 'ethers';
 
