@@ -1017,7 +1017,7 @@ export default function ChessOnChain() {
       setContractStatus('deployed');
 
       if (isInitialLoad) {
-        await fetchTierMetadata();
+        await fetchTierMetadata(contractInstance);
         setInitialLoading(false);
       }
     } catch (error) {
