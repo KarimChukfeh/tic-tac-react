@@ -2127,7 +2127,7 @@ export default function TicTacBlock() {
                     <Trophy className="text-blue-400" size={48} />
                     <div className="flex flex-col items-start">
                       <h2 className="text-5xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-                        Available Duels
+                        Live Instances
                       </h2>
                     </div>
                   </div>

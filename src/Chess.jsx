@@ -2345,7 +2345,7 @@ export default function ChessOnChain() {
                   <div className="inline-flex items-center gap-3 mb-4">
                     <Trophy className={theme === 'dream' ? 'text-blue-400' : 'text-red-400'} size={48} />
                     <h2 className={`text-5xl font-bold bg-gradient-to-r ${theme === 'dream' ? 'from-blue-400 to-cyan-400' : 'from-red-400 to-orange-400'} bg-clip-text text-transparent`}>
-                      Available Tournaments
+                      Live Instances
                     </h2>
                   </div>
                   <p className={`text-xl ${theme === 'dream' ? 'text-blue-200' : 'text-red-200'}`}>

@@ -1548,7 +1548,10 @@ export default function ConnectFour() {
 
         {/* Tournament Cards - Lazy Loading */}
         <div className="mb-16">
-          <h2 className="text-3xl font-bold text-center mb-8 text-cyan-300">Available Tournaments</h2>
+          <h2 className="text-3xl font-bold text-center mb-8 text-cyan-300 flex items-center justify-center gap-3">
+            <Trophy className="text-cyan-400" size={32} />
+            Live Instances
+          </h2>
 
           {metadataLoading ? (
             <div className="text-center py-12">
