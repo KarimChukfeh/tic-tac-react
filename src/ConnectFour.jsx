@@ -1577,12 +1577,10 @@ export default function ConnectFour() {
                     >
                       <h3 className="text-2xl font-bold text-purple-400 flex items-center gap-2 flex-wrap">
                         🔴 {getTierName(metadata.maxPlayers)}s
-                        <span className="text-sm opacity-70 ml-2">({metadata.maxPlayers} players)</span>
-                        <span className="text-sm opacity-70">• {metadata.instanceCount} lobbies</span>
-                        <span className="text-sm text-yellow-400 font-medium">• {metadata.entryFee} ETH entry</span>
-                        <span className="text-sm text-green-400">• {statusCounts.enrolling}/{metadata.instanceCount} enrolling</span>
-                        <span className="text-sm text-orange-400">• {statusCounts.inProgress}/{metadata.instanceCount} in progress</span>
-                        <span className="text-sm text-blue-300">• {getEstimatedDuration('connectfour', metadata.maxPlayers)}</span>
+                        <span className="text-sm font-normal text-purple-300">• {metadata.maxPlayers} players total</span>
+                        <span className="text-sm font-normal text-purple-300">• {metadata.entryFee} ETH entry</span>
+                        <span className="text-sm font-normal text-purple-300">• <span className="text-cyan-400">{metadata.instanceCount} lobbies</span> • <span className="font-bold text-green-400">{statusCounts.enrolling} enrolling</span> • <span className="font-bold text-yellow-400">{statusCounts.inProgress} in progress</span></span>
+                        <span className="text-sm font-normal text-purple-300">• {getEstimatedDuration('connectfour', metadata.maxPlayers)}</span>
                         <ChevronDown
                           size={24}
                           className={`ml-auto transition-transform duration-200 ${expandedTiers[tierId] ? 'rotate-180' : ''}`}
