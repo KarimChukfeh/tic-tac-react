@@ -1932,7 +1932,7 @@ export default function ChessOnChain() {
       transition: 'background 0.8s ease-in-out'
     }}>
       {/* Particle Background */}
-      <ParticleBackground colors={currentTheme.particleColors} symbols={CHESS_PARTICLES} fontSize="20px" />
+      <ParticleBackground colors={currentTheme.particleColors} symbols={CHESS_PARTICLES} fontSize="32px" />
 
       {/* Back to ETour Button */}
       <Link
