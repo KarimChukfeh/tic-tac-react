@@ -34,6 +34,7 @@ import TurnTimer from './components/shared/TurnTimer';
 import MatchTimeoutEscalation from './components/shared/MatchTimeoutEscalation';
 import WinnersLeaderboard from './components/shared/WinnersLeaderboard';
 import MatchEndModal from './components/shared/MatchEndModal';
+import WhyArbitrum from './components/shared/WhyArbitrum';
 
 // TicTacToe particle symbols
 const TICTACTOE_SYMBOLS = ['X', 'O'];
@@ -1780,6 +1781,8 @@ export default function TicTacBlock() {
             </div>
           )}
 
+          {/* Why Arbitrum Info */}
+          <WhyArbitrum variant="blue" />
         </div>
 
         {/* Match View - Shows when player enters a match */}
@@ -2054,31 +2057,49 @@ export default function TicTacBlock() {
                   </div>
                 )}
 
-                {/* Tournament Cards Grid */}
+                {/* Tournament Cards Grid - Grouped by Tier */}
                 {!tournamentsLoading && tournaments.length > 0 && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {tournaments.map((tournament) => (
-                      <TournamentCard
-                        key={`${tournament.tierId}-${tournament.instanceId}`}
-                        tierId={tournament.tierId}
-                        instanceId={tournament.instanceId}
-                        maxPlayers={tournament.maxPlayers}
-                        currentEnrolled={tournament.enrolledCount}
-                        entryFee={tournament.entryFee}
-                        isEnrolled={tournament.isEnrolled}
-                        onEnroll={() => handleEnroll(tournament.tierId, tournament.instanceId, tournament.entryFee)}
-                        onEnter={() => handleEnterTournament(tournament.tierId, tournament.instanceId)}
-                        loading={tournamentsLoading}
-                        tierName={getTierNameLocal(tournament.tierId)}
-                        enrollmentTimeout={tournament.enrollmentTimeout}
-                        hasStartedViaTimeout={tournament.hasStartedViaTimeout}
-                        tournamentStatus={tournament.tournamentStatus}
-                        onManualStart={handleManualStart}
-                        onClaimAbandonedPool={handleClaimAbandonedPool}
-                        account={account}
-                      />
-                    ))}
-                  </div>
+                  <>
+                    {[0, 6, 1, 2, 3, 4, 5].map((tierId) => {
+                      const tierTournaments = tournaments.filter(t => t.tierId === tierId);
+                      if (tierTournaments.length === 0) return null;
+
+                      return (
+                        <div key={tierId} className="mb-12">
+                          <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-xl p-4 border border-purple-400/40 mb-6">
+                            <h3 className="text-2xl font-bold text-purple-400 flex items-center gap-2">
+                              <Grid size={24} /> {getTierNameLocal(tierId)} Tier
+                              <span className="text-sm opacity-70 ml-2">({tierTournaments[0]?.maxPlayers} players)</span>
+                            </h3>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                            {tierTournaments.map((tournament) => (
+                              <TournamentCard
+                                key={`${tournament.tierId}-${tournament.instanceId}`}
+                                tierId={tournament.tierId}
+                                instanceId={tournament.instanceId}
+                                maxPlayers={tournament.maxPlayers}
+                                currentEnrolled={tournament.enrolledCount}
+                                entryFee={tournament.entryFee}
+                                isEnrolled={tournament.isEnrolled}
+                                onEnroll={() => handleEnroll(tournament.tierId, tournament.instanceId, tournament.entryFee)}
+                                onEnter={() => handleEnterTournament(tournament.tierId, tournament.instanceId)}
+                                loading={tournamentsLoading}
+                                tierName={getTierNameLocal(tournament.tierId)}
+                                enrollmentTimeout={tournament.enrollmentTimeout}
+                                hasStartedViaTimeout={tournament.hasStartedViaTimeout}
+                                tournamentStatus={tournament.tournamentStatus}
+                                onManualStart={handleManualStart}
+                                onClaimAbandonedPool={handleClaimAbandonedPool}
+                                account={account}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </>
                 )}
 
                 {/* Empty State */}

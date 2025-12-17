@@ -23,6 +23,7 @@ import TurnTimer from './components/shared/TurnTimer';
 import MatchTimeoutEscalation from './components/shared/MatchTimeoutEscalation';
 import WinnersLeaderboard from './components/shared/WinnersLeaderboard';
 import MatchEndModal from './components/shared/MatchEndModal';
+import WhyArbitrum from './components/shared/WhyArbitrum';
 
 // Connect Four disc particles for background
 const C4_PARTICLES = ['🔴', '🔵'];
@@ -1469,9 +1470,12 @@ export default function ConnectFour() {
               <span className="font-mono text-lg">{shortenAddress(account)}</span>
             </div>
           )}
+
+          {/* Why Arbitrum Info */}
+          <WhyArbitrum variant="purple" />
         </div>
 
-        {/* Tournament Cards */}
+        {/* Tournament Cards - Grouped by Tier */}
         <div className="mb-16">
           <h2 className="text-3xl font-bold text-center mb-8 text-cyan-300">Available Tournaments</h2>
 
@@ -1485,21 +1489,39 @@ export default function ConnectFour() {
               <p>No tournaments available yet.</p>
             </div>
           ) : (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {tournaments.map((t, idx) => (
-                <TournamentCard
-                  key={idx}
-                  {...t}
-                  tierName={getTierName(t.tierId)}
-                  onEnroll={() => handleEnroll(t.tierId, t.instanceId, t.entryFee)}
-                  onEnter={() => handleEnterTournament(t.tierId, t.instanceId)}
-                  onManualStart={handleManualStart}
-                  onClaimAbandonedPool={handleClaimAbandonedPool}
-                  loading={loading}
-                  account={account}
-                />
-              ))}
-            </div>
+            <>
+              {[0, 6, 1, 2, 3, 4, 5].map((tierId) => {
+                const tierTournaments = tournaments.filter(t => t.tierId === tierId);
+                if (tierTournaments.length === 0) return null;
+
+                return (
+                  <div key={tierId} className="mb-12">
+                    <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-xl p-4 border border-purple-400/40 mb-6">
+                      <h3 className="text-2xl font-bold text-purple-400 flex items-center gap-2">
+                        🔴 {getTierName(tierId)} Tier
+                        <span className="text-sm opacity-70 ml-2">({tierTournaments[0]?.maxPlayers} players)</span>
+                      </h3>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                      {tierTournaments.map((t) => (
+                        <TournamentCard
+                          key={`${t.tierId}-${t.instanceId}`}
+                          {...t}
+                          tierName={getTierName(t.tierId)}
+                          onEnroll={() => handleEnroll(t.tierId, t.instanceId, t.entryFee)}
+                          onEnter={() => handleEnterTournament(t.tierId, t.instanceId)}
+                          onManualStart={handleManualStart}
+                          onClaimAbandonedPool={handleClaimAbandonedPool}
+                          loading={loading}
+                          account={account}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </>
           )}
         </div>
 

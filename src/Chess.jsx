@@ -9,7 +9,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Wallet, Grid, Swords, Clock, Shield, Lock, Eye, Code, ExternalLink,
-  Trophy, Play, Users, Zap, Coins, ChevronDown, Info, ArrowLeft
+  Trophy, Play, Users, Zap, Coins, ChevronDown, ArrowLeft
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import CHESS_ABI from './COCABI.json';
@@ -23,6 +23,7 @@ import TurnTimer from './components/shared/TurnTimer';
 import MatchTimeoutEscalation from './components/shared/MatchTimeoutEscalation';
 import WinnersLeaderboard from './components/shared/WinnersLeaderboard';
 import MatchEndModal from './components/shared/MatchEndModal';
+import WhyArbitrum from './components/shared/WhyArbitrum';
 
 // Chess piece symbols
 const PIECE_SYMBOLS = {
@@ -1980,28 +1981,7 @@ export default function ChessOnChain() {
           )}
 
           {/* Why Arbitrum Info */}
-          <div className="mt-6 max-w-2xl mx-auto">
-            <div className={`bg-${theme === 'daring' ? 'red' : 'blue'}-500/10 border border-${theme === 'daring' ? 'red' : 'blue'}-400/30 rounded-lg p-4`}>
-              <div className="flex items-start gap-3">
-                <Info size={18} className={`${currentTheme.heroIcon} mt-0.5 flex-shrink-0`} />
-                <div className="text-sm w-full">
-                  <p className={`${currentTheme.heroText} font-medium mb-2`}>Why Arbitrum?</p>
-                  <p className={`${currentTheme.heroSubtext} opacity-80 leading-relaxed mb-3`}>
-                    This game runs on <a href="https://arbitrum.io" target="_blank" rel="noopener noreferrer" className={`font-semibold ${currentTheme.heroText} hover:text-green-300 underline decoration-current/50 hover:decoration-green-300 transition-colors`}>Arbitrum One</a>, an Ethereum Layer 2 network.
-                  </p>
-                  <div className={`${currentTheme.heroSubtext} opacity-80 leading-relaxed space-y-2 text-sm`}>
-                    <p><strong className={currentTheme.heroText}>First time on Arbitrum?</strong> You'll need to:</p>
-                    <ol className="list-decimal list-inside pl-2 space-y-1">
-                      <li>Switch to Arbitrum network in MetaMask (instant and free)</li>
-                      <li>Bridge ETH from Ethereum mainnet to Arbitrum (max 5 min, requires L1 gas)</li>
-                    </ol>
-                    <p><strong className={currentTheme.heroText}>Already have Arbitrum ETH?</strong> Just switch networks and play.</p>
-                    <p className="pt-1"><span className={currentTheme.heroText}>Lower fees than Ethereum mainnet. Final outcomes secured by Ethereum L1.</span></p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <WhyArbitrum variant={theme === 'daring' ? 'red' : 'blue'} />
         </div>
 
         {/* Match View */}
