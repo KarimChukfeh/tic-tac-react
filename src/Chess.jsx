@@ -1338,8 +1338,12 @@ export default function ChessOnChain() {
     try {
       setMatchLoading(true);
 
-      const matchData = await contract.getChessMatch(tierId, instanceId, roundNumber, matchNumber);
-      const board = await contract.getBoard(tierId, instanceId, roundNumber, matchNumber);
+      const [matchData, board, tierConfig] = await Promise.all([
+        contract.getChessMatch(tierId, instanceId, roundNumber, matchNumber),
+        contract.getBoard(tierId, instanceId, roundNumber, matchNumber),
+        contract.tierConfigs(tierId)
+      ]);
+      const playerCount = Number(tierConfig.playerCount);
 
       // Fetch timeoutState from chessMatches mapping
       const matchKey = ethers.solidityPackedKeccak256(
@@ -1374,6 +1378,7 @@ export default function ChessOnChain() {
         instanceId,
         roundNumber,
         matchNumber,
+        playerCount,
         player1: matchData[0],
         player2: matchData[1],
         currentTurn: matchData[2],
@@ -2257,7 +2262,7 @@ export default function ChessOnChain() {
                 </div>
                 <div className="bg-black/20 rounded-lg p-3 text-center">
                   <div className="text-purple-300 text-sm">Tier</div>
-                  <div className="text-white font-bold text-xl">{getTierName(currentMatch.tierId)}</div>
+                  <div className="text-white font-bold text-xl">{getTierName(currentMatch.playerCount)}</div>
                 </div>
                 <div className="bg-black/20 rounded-lg p-3 text-center">
                   <div className="text-purple-300 text-sm">Round</div>
@@ -2374,7 +2379,7 @@ export default function ChessOnChain() {
                             className="w-full bg-gradient-to-r from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-xl p-4 border border-purple-400/40 hover:border-purple-400/60 transition-all cursor-pointer"
                           >
                             <h3 className="text-2xl font-bold text-purple-400 flex items-center gap-2">
-                              ♔ {getTierName(tierId)} Tier
+                              ♔ {getTierName(metadata.playerCount)}s
                               <span className="text-sm opacity-70 ml-2">({metadata.playerCount} players)</span>
                               <span className="text-sm opacity-70">• {metadata.instanceCount} instance{metadata.instanceCount !== 1 ? 's' : ''}</span>
                               <span className="text-sm opacity-70">• {totalEnrolled} enrolled</span>
@@ -2390,7 +2395,7 @@ export default function ChessOnChain() {
                               {isLoading ? (
                                 <div className="text-center py-8">
                                   <div className="w-10 h-10 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-3"></div>
-                                  <p className="text-purple-300 text-sm">Loading {getTierName(tierId)} instances...</p>
+                                  <p className="text-purple-300 text-sm">Loading {getTierName(metadata.playerCount)} instances...</p>
                                 </div>
                               ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -2406,7 +2411,7 @@ export default function ChessOnChain() {
                                       onEnroll={() => handleEnroll(tournament.tierId, tournament.instanceId, tournament.entryFee)}
                                       onEnter={() => handleEnterTournament(tournament.tierId, tournament.instanceId)}
                                       loading={tournamentsLoading}
-                                      tierName={getTierName(tournament.tierId)}
+                                      tierName={getTierName(tournament.maxPlayers)}
                                       theme={theme}
                                       enrollmentTimeout={tournament.enrollmentTimeout}
                                       tournamentStatus={tournament.tournamentStatus}

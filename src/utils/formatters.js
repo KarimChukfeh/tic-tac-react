@@ -25,30 +25,15 @@ export const formatTime = (seconds) => {
 };
 
 /**
- * Get tier name from tier ID
- * @param {number} tierId - The tier ID
- * @param {Object} tierNames - Optional custom tier names map
- * @returns {string} - The tier name
+ * Get tier name based on player count
+ * @param {number} playerCount - Number of players in the tournament tier
+ * @returns {string} - The tier name (without "Tier" suffix)
  */
-export const getTierName = (tierId, tierNames = null) => {
-  // Default tier names (used by Chess and ConnectFour)
-  const defaultTierNames = {
-    0: 'Classic',
-    1: 'Minor',
-    2: 'Standard',
-    3: 'Major',
-    4: 'Mega',
-    5: 'Ultimate',
-    6: 'Rapid'
-  };
-
-  const names = tierNames || defaultTierNames;
-  return names[tierId] || `Tier ${tierId}`;
-};
-
-// TicTacToe-specific tier names (for convenience)
-export const TICTACTOE_TIER_NAMES = {
-  0: 'Duel',      // 2-player tournaments
-  1: 'Octa',      // 8-player tournaments
-  2: 'Quad'       // 4-player tournaments
+export const getTierName = (playerCount) => {
+  if (playerCount === 2) return '1v1 Duel';
+  if (playerCount === 4) return 'Small Tournament';
+  if (playerCount === 8) return 'Medium Tournament';
+  if (playerCount === 16) return 'Large Tournament';
+  if (playerCount > 16) return 'Mega Tournament';
+  return `${playerCount}-Player Tournament`;
 };

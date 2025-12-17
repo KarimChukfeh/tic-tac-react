@@ -1575,7 +1575,7 @@ export default function ConnectFour() {
                       className="w-full bg-gradient-to-r from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-xl p-4 border border-purple-400/40 hover:border-purple-400/60 transition-all cursor-pointer"
                     >
                       <h3 className="text-2xl font-bold text-purple-400 flex items-center gap-2">
-                        🔴 {getTierName(tierId)} Tier
+                        🔴 {getTierName(metadata.maxPlayers)}s
                         <span className="text-sm opacity-70 ml-2">({metadata.maxPlayers} players)</span>
                         <span className="text-sm opacity-70">• {metadata.instanceCount} instance{metadata.instanceCount !== 1 ? 's' : ''}</span>
                         <ChevronDown
@@ -1598,7 +1598,7 @@ export default function ConnectFour() {
                               <TournamentCard
                                 key={`${t.tierId}-${t.instanceId}`}
                                 {...t}
-                                tierName={getTierName(t.tierId)}
+                                tierName={getTierName(t.maxPlayers)}
                                 onEnroll={() => handleEnroll(t.tierId, t.instanceId, t.entryFee)}
                                 onEnter={() => handleEnterTournament(t.tierId, t.instanceId)}
                                 onManualStart={handleManualStart}
