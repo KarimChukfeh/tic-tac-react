@@ -387,7 +387,7 @@ export default function TicTacBlock() {
 
   // Set page title
   useEffect(() => {
-    document.title = 'ETour - Tic-Tac-Toe';
+    document.title = 'ETour - TicTacToe';
   }, []);
 
   // Add mobile debugging console (Eruda) on mobile devices
