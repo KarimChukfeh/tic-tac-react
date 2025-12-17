@@ -383,7 +383,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
 
 // Main Connect Four Component
 export default function ConnectFour() {
-  const CONTRACT_ADDRESS = "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0";
+  const CONTRACT_ADDRESS = "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9";
   const EXPECTED_CHAIN_ID = 412346;
 
   // Wallet & Contract State
@@ -503,7 +503,7 @@ export default function ConnectFour() {
     setMetadataLoading(true);
     const metadata = {};
 
-    for (let tierId = 0; tierId <= 6; tierId++) {
+    for (let tierId = 0; tierId <= 3; tierId++) {
       try {
         const tierOverview = await contractInstance.getTierOverview(tierId);
         const statuses = tierOverview[0];
@@ -1561,7 +1561,7 @@ export default function ConnectFour() {
             </div>
           ) : (
             <>
-              {[0, 6, 1, 2, 3, 4, 5].map((tierId) => {
+              {[0, 1, 2, 3].map((tierId) => {
                 const metadata = tierMetadata[tierId];
                 if (!metadata) return null;
 
