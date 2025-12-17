@@ -1918,7 +1918,7 @@ export default function ChessOnChain() {
           </div>
 
           <h1 className={`text-6xl md:text-7xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r ${currentTheme.heroTitle}`}>
-            ChessOnChain
+            ETour Chess
           </h1>
           <p className={`text-2xl ${currentTheme.heroText} mb-6`}>
             Provably Fair • Zero Trust • 100% On-Chain

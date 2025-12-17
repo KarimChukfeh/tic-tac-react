@@ -1718,7 +1718,7 @@ export default function TicTacBlock() {
           </div>
 
           <h1 className={`text-6xl md:text-7xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r ${currentTheme.heroTitle}`}>
-            Eternal TicTacToe
+            ETour TicTacToe
           </h1>
           <p className="text-2xl text-blue-200 mb-6">
             Provably Fair • <a href="/#zero-trust" className="text-blue-200 hover:text-green-300 transition-colors underline decoration-blue-400/50 hover:decoration-green-400 underline-offset-4">Zero Trust</a> • 100% On-Chain
