@@ -310,7 +310,7 @@ export default function Landing() {
                 e.preventDefault();
                 document.getElementById('whitepaper')?.scrollIntoView({ behavior: 'smooth' });
               }}
-              className="text-cyan-400 text-base md:text-lg font-semibold tracking-widest uppercase hover:text-cyan-300 transition-colors cursor-pointer"
+              className="text-cyan-400 text-base md:text-xl font-semibold tracking-widest uppercase hover:text-cyan-300 transition-colors cursor-pointer"
             >
               ETour Games
             </a>
@@ -763,13 +763,13 @@ export default function Landing() {
       {/* Keyframe Animations */}
       <style>{`
         @keyframes float {
-          0%, 100% { transform: translate(0, 0) rotate(0deg); opacity: 0.2; }
-          25% { transform: translate(30px, -40px) rotate(90deg); opacity: 0.15; }
-          50% { transform: translate(-20px, -80px) rotate(180deg); opacity: 0.25; }
-          75% { transform: translate(-50px, -40px) rotate(270deg); opacity: 0.15; }
+          0%, 100% { transform: translate(0, 0) rotate(0deg); opacity: 0.25; }
+          25% { transform: translate(45px, -55px) rotate(90deg); opacity: 0.18; }
+          50% { transform: translate(-30px, -110px) rotate(180deg); opacity: 0.32; }
+          75% { transform: translate(-70px, -55px) rotate(270deg); opacity: 0.18; }
         }
         .animate-float {
-          animation: float 25s infinite ease-in-out;
+          animation: float 18s infinite ease-in-out;
         }
       `}</style>
     </div>
