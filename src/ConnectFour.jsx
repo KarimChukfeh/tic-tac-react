@@ -399,6 +399,12 @@ export default function ConnectFour() {
   const [tournamentsLoading, setTournamentsLoading] = useState(false);
   const [viewingTournament, setViewingTournament] = useState(null);
   const [bracketSyncDots, setBracketSyncDots] = useState(1);
+  const [expandedTiers, setExpandedTiers] = useState({});
+
+  // Toggle tier expansion
+  const toggleTier = (tierId) => {
+    setExpandedTiers(prev => ({ ...prev, [tierId]: !prev[tierId] }));
+  };
 
   // Match State
   const [currentMatch, setCurrentMatch] = useState(null);
@@ -1495,29 +1501,39 @@ export default function ConnectFour() {
                 if (tierTournaments.length === 0) return null;
 
                 return (
-                  <div key={tierId} className="mb-12">
-                    <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-xl p-4 border border-purple-400/40 mb-6">
+                  <div key={tierId} className="mb-6">
+                    <button
+                      onClick={() => toggleTier(tierId)}
+                      className="w-full bg-gradient-to-r from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-xl p-4 border border-purple-400/40 hover:border-purple-400/60 transition-all cursor-pointer"
+                    >
                       <h3 className="text-2xl font-bold text-purple-400 flex items-center gap-2">
                         🔴 {getTierName(tierId)} Tier
                         <span className="text-sm opacity-70 ml-2">({tierTournaments[0]?.maxPlayers} players)</span>
-                      </h3>
-                    </div>
-
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                      {tierTournaments.map((t) => (
-                        <TournamentCard
-                          key={`${t.tierId}-${t.instanceId}`}
-                          {...t}
-                          tierName={getTierName(t.tierId)}
-                          onEnroll={() => handleEnroll(t.tierId, t.instanceId, t.entryFee)}
-                          onEnter={() => handleEnterTournament(t.tierId, t.instanceId)}
-                          onManualStart={handleManualStart}
-                          onClaimAbandonedPool={handleClaimAbandonedPool}
-                          loading={loading}
-                          account={account}
+                        <span className="text-sm opacity-70">• {tierTournaments.length} instance{tierTournaments.length !== 1 ? 's' : ''}</span>
+                        <ChevronDown
+                          size={24}
+                          className={`ml-auto transition-transform duration-200 ${expandedTiers[tierId] ? 'rotate-180' : ''}`}
                         />
-                      ))}
-                    </div>
+                      </h3>
+                    </button>
+
+                    {expandedTiers[tierId] && (
+                      <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mt-6">
+                        {tierTournaments.map((t) => (
+                          <TournamentCard
+                            key={`${t.tierId}-${t.instanceId}`}
+                            {...t}
+                            tierName={getTierName(t.tierId)}
+                            onEnroll={() => handleEnroll(t.tierId, t.instanceId, t.entryFee)}
+                            onEnter={() => handleEnterTournament(t.tierId, t.instanceId)}
+                            onManualStart={handleManualStart}
+                            onClaimAbandonedPool={handleClaimAbandonedPool}
+                            loading={loading}
+                            account={account}
+                          />
+                        ))}
+                      </div>
+                    )}
                   </div>
                 );
               })}
