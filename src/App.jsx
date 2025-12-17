@@ -361,17 +361,17 @@ export default function TicTacBlock() {
   const [initialLoading, setInitialLoading] = useState(true);
   const [networkInfo, setNetworkInfo] = useState(null);
 
-  // Tournament State
-  const [tournaments, setTournaments] = useState([]);
+  // Tournament State - Lazy Loading Architecture
+  // tierMetadata: Basic tier info loaded on initial page load (fast)
+  // tierInstances: Detailed tournament instances loaded on tier expand (lazy)
+  const [tierMetadata, setTierMetadata] = useState({}); // { [tierId]: { playerCount, instanceCount, entryFee, statuses, enrolledCounts } }
+  const [tierInstances, setTierInstances] = useState({}); // { [tierId]: [tournament instances] }
+  const [tierLoading, setTierLoading] = useState({}); // { [tierId]: boolean }
+  const [metadataLoading, setMetadataLoading] = useState(true);
   const [tournamentsLoading, setTournamentsLoading] = useState(false);
   const [viewingTournament, setViewingTournament] = useState(null); // { tierId, instanceId, tournamentData, bracketData }
   const [bracketSyncDots, setBracketSyncDots] = useState(1);
   const [expandedTiers, setExpandedTiers] = useState({});
-
-  // Toggle tier expansion
-  const toggleTier = (tierId) => {
-    setExpandedTiers(prev => ({ ...prev, [tierId]: !prev[tierId] }));
-  };
 
   // Match State
   const [currentMatch, setCurrentMatch] = useState(null);
@@ -524,8 +524,8 @@ export default function TicTacBlock() {
       setAccount(accounts[0]);
       setContract(contractInstance);
 
-      // Load contract data using the contract instance
-      await fetchAllTournaments(contractInstance, accounts[0], false);
+      // Refresh tier data with new account (lazy loading)
+      await refreshAfterAction(null, contractInstance, accounts[0]);
       await fetchLeaderboard(false);
       setLoading(false);
     } catch (error) {
@@ -549,10 +549,11 @@ export default function TicTacBlock() {
   };
 
   // Load contract data (simplified - matches ConnectFour pattern)
+  // Uses lazy loading: only fetch tier metadata initially, instances load on expand
   const loadContractData = async (contractInstance, isInitialLoad = false) => {
     try {
-      // Fetch tournaments (no wallet required for read-only)
-      await fetchAllTournaments(contractInstance, null, false);
+      // Fetch tier metadata only (fast) - instances load on tier expand
+      await fetchTierMetadata(contractInstance);
       await fetchLeaderboard(false);
 
       if (isInitialLoad) {
@@ -596,84 +597,166 @@ export default function TicTacBlock() {
     }
   }, [getReadOnlyContract]);
 
-  // Fetch all tournaments (tier 0: 64x 2-player, tier 1: 16x 8-player)
-  // Accepts optional contractInstance and userAccount to avoid closure issues during init
-  const fetchAllTournaments = useCallback(async (contractInstance = null, userAccount = null, silent = false) => {
-    if (!silent) {
-      setTournamentsLoading(true);
-    }
-
-    // Use provided contract or create read-only contract
+  // LAZY LOADING: Fetch tier metadata only (fast initial load)
+  // This gets basic tier info without detailed instance data
+  const fetchTierMetadata = useCallback(async (contractInstance = null) => {
     const readContract = contractInstance || getReadOnlyContract();
-    // Use provided account or fall back to state
-    const currentAccount = userAccount ?? account;
-    const allTournaments = [];
+    if (!readContract) return;
 
-    // Fetch tournaments from all tiers
-    for (let tierId = 0; tierId < 3; tierId++) {
+    setMetadataLoading(true);
+    const metadata = {};
+
+    // Fetch metadata for tiers 0-6
+    for (let tierId = 0; tierId <= 6; tierId++) {
       try {
-        // Get tier overview which returns arrays of data for all instances
-        const tierOverview = await readContract.getTierOverview(tierId);
+        // Parallel fetch tier config, entry fee, and overview
+        const [tierConfig, fee, tierOverview] = await Promise.all([
+          readContract.tierConfigs(tierId),
+          readContract.ENTRY_FEES(tierId),
+          readContract.getTierOverview(tierId)
+        ]);
 
-        const statuses = tierOverview[0];
-        const enrolledCounts = tierOverview[1];
+        const instanceCount = tierOverview[0].length;
+        if (instanceCount === 0) continue;
 
-        // Get tier config to get correct player count
-        const tierConfig = await readContract.tierConfigs(tierId);
-        const maxPlayers = Number(tierConfig.playerCount);
-
-        // Get entry fee for this tier
-        const fee = await readContract.ENTRY_FEES(tierId);
-        const entryFeeFormatted = ethers.formatEther(fee);
-
-        // Create tournament objects for each instance
-        for (let i = 0; i < statuses.length; i++) {
-          const status = Number(statuses[i]);
-          const enrolledCount = Number(enrolledCounts[i]);
-
-          // Check if user is enrolled
-          let isEnrolled = false;
-          if (currentAccount) {
-            try {
-              isEnrolled = await readContract.isEnrolled(tierId, i, currentAccount);
-            } catch (err) {}
-          }
-
-          // Get enrollment timeout data
-          let enrollmentTimeout = null;
-          let hasStartedViaTimeout = false;
-          try {
-            const tournamentInfo = await readContract.tournaments(tierId, i);
-            enrollmentTimeout = tournamentInfo.enrollmentTimeout;
-            hasStartedViaTimeout = tournamentInfo.hasStartedViaTimeout;
-          } catch (err) {}
-
-          allTournaments.push({
-            tierId,
-            instanceId: i,
-            status,
-            enrolledCount,
-            maxPlayers,
-            entryFee: entryFeeFormatted,
-            isEnrolled,
-            enrollmentTimeout,
-            hasStartedViaTimeout,
-            tournamentStatus: status
-          });
-        }
+        metadata[tierId] = {
+          playerCount: Number(tierConfig.playerCount),
+          instanceCount,
+          entryFee: ethers.formatEther(fee),
+          statuses: tierOverview[0].map(s => Number(s)),
+          enrolledCounts: tierOverview[1].map(c => Number(c)),
+          prizePools: tierOverview[2]
+        };
       } catch (error) {
-        console.log(`Could not fetch tier ${tierId}:`, error.message);
+        console.log(`Could not fetch tier ${tierId} metadata:`, error.message);
       }
     }
 
-    // Sort by enrolledCount descending (most enrolled first)
-    allTournaments.sort((a, b) => b.enrolledCount - a.enrolledCount);
+    setTierMetadata(metadata);
+    setMetadataLoading(false);
+  }, [getReadOnlyContract]);
 
-    setTournaments(allTournaments);
-    if (!silent) {
-      setTournamentsLoading(false);
+  // LAZY LOADING: Fetch detailed instances for a specific tier (called on expand)
+  // Note: Uses functional state updates to avoid dependency on tierInstances/tierMetadata
+  const fetchTierInstances = useCallback(async (tierId, contractInstance = null, userAccount = null, metadataOverride = null) => {
+    const readContract = contractInstance || getReadOnlyContract();
+    const currentAccount = userAccount ?? account;
+    if (!readContract) return;
+
+    setTierLoading(prev => ({ ...prev, [tierId]: true }));
+
+    try {
+      // Get metadata from override or fetch fresh
+      let metadata = metadataOverride;
+      if (!metadata) {
+        const [tierConfig, fee, tierOverview] = await Promise.all([
+          readContract.tierConfigs(tierId),
+          readContract.ENTRY_FEES(tierId),
+          readContract.getTierOverview(tierId)
+        ]);
+        metadata = {
+          playerCount: Number(tierConfig.playerCount),
+          instanceCount: tierOverview[0].length,
+          entryFee: ethers.formatEther(fee),
+          statuses: tierOverview[0].map(s => Number(s)),
+          enrolledCounts: tierOverview[1].map(c => Number(c))
+        };
+      }
+
+      if (!metadata || metadata.instanceCount === 0) {
+        setTierLoading(prev => ({ ...prev, [tierId]: false }));
+        return;
+      }
+
+      const instances = [];
+
+      // Fetch detailed data for each instance in this tier
+      for (let i = 0; i < metadata.instanceCount; i++) {
+        try {
+          // Parallel fetch tournament data and enrollment status
+          const [tournamentInfo, isUserEnrolled] = await Promise.all([
+            readContract.tournaments(tierId, i),
+            currentAccount ? readContract.isEnrolled(tierId, i, currentAccount).catch(() => false) : Promise.resolve(false)
+          ]);
+
+          instances.push({
+            tierId,
+            instanceId: i,
+            status: metadata.statuses[i],
+            enrolledCount: metadata.enrolledCounts[i],
+            maxPlayers: metadata.playerCount,
+            entryFee: metadata.entryFee,
+            isEnrolled: isUserEnrolled,
+            enrollmentTimeout: tournamentInfo.enrollmentTimeout,
+            hasStartedViaTimeout: tournamentInfo.hasStartedViaTimeout,
+            tournamentStatus: metadata.statuses[i]
+          });
+        } catch (err) {
+          console.log(`Could not fetch instance ${i} for tier ${tierId}:`, err.message);
+        }
+      }
+
+      setTierInstances(prev => ({ ...prev, [tierId]: instances }));
+    } catch (error) {
+      console.error(`Error fetching tier ${tierId} instances:`, error);
     }
+
+    setTierLoading(prev => ({ ...prev, [tierId]: false }));
   }, [getReadOnlyContract, account]);
+
+  // Refs to access current state without causing dependency loops
+  const expandedTiersRef = useRef(expandedTiers);
+  const tierInstancesRef = useRef(tierInstances);
+  useEffect(() => { expandedTiersRef.current = expandedTiers; }, [expandedTiers]);
+  useEffect(() => { tierInstancesRef.current = tierInstances; }, [tierInstances]);
+
+  // Toggle tier expansion with lazy loading
+  const toggleTier = useCallback(async (tierId) => {
+    const isCurrentlyExpanded = expandedTiersRef.current[tierId];
+    const alreadyLoaded = tierInstancesRef.current[tierId];
+
+    // If expanding and not yet loaded, fetch instances
+    if (!isCurrentlyExpanded && !alreadyLoaded) {
+      setExpandedTiers(prev => ({ ...prev, [tierId]: true }));
+      await fetchTierInstances(tierId);
+    } else {
+      setExpandedTiers(prev => ({ ...prev, [tierId]: !prev[tierId] }));
+    }
+  }, [fetchTierInstances]);
+
+  // LAZY LOADING: Refresh data after an action (enroll, claim, etc.)
+  // Refreshes metadata and re-fetches instances for expanded/affected tiers
+  const refreshAfterAction = useCallback(async (affectedTierId = null, contractInstance = null, userAccount = null) => {
+    const readContract = contractInstance || getReadOnlyContract();
+    const currentAccount = userAccount ?? account;
+
+    // Refresh tier metadata
+    await fetchTierMetadata(readContract);
+
+    // Clear and re-fetch instances for affected/expanded tiers
+    const tiersToRefresh = new Set();
+    if (affectedTierId !== null) tiersToRefresh.add(affectedTierId);
+    const currentExpanded = expandedTiersRef.current;
+    Object.keys(currentExpanded).forEach(tid => {
+      if (currentExpanded[tid]) tiersToRefresh.add(Number(tid));
+    });
+
+    // Clear cached instances for tiers that need refresh
+    if (tiersToRefresh.size > 0) {
+      setTierInstances(prev => {
+        const updated = { ...prev };
+        tiersToRefresh.forEach(tid => delete updated[tid]);
+        return updated;
+      });
+
+      // Re-fetch instances for expanded tiers
+      for (const tid of tiersToRefresh) {
+        if (currentExpanded[tid]) {
+          await fetchTierInstances(tid, readContract, currentAccount);
+        }
+      }
+    }
+  }, [getReadOnlyContract, account, fetchTierMetadata, fetchTierInstances]);
 
   // Handle tournament enrollment
   const handleEnroll = async (tierId, instanceId, entryFee) => {
@@ -700,8 +783,8 @@ export default function TicTacBlock() {
         setViewingTournament(bracketData);
       }
 
-      // Refresh tournament data in background
-      await fetchAllTournaments();
+      // Refresh tier data (lazy loading)
+      await refreshAfterAction(tierId);
 
       setTournamentsLoading(false);
     } catch (error) {
@@ -824,8 +907,8 @@ export default function TicTacBlock() {
       // Refresh cached stats
       await fetchLeaderboard(true);
 
-      // Refresh tournament data
-      await fetchAllTournaments();
+      // Refresh tier data (lazy loading)
+      await refreshAfterAction(tierId);
 
       setTournamentsLoading(false);
     } catch (error) {
@@ -921,8 +1004,8 @@ export default function TicTacBlock() {
       // Refresh cached stats
       await fetchLeaderboard(true);
 
-      // Refresh tournament data
-      await fetchAllTournaments();
+      // Refresh tier data (lazy loading)
+      await refreshAfterAction(tierId);
 
       setTournamentsLoading(false);
     } catch (error) {
@@ -1231,8 +1314,8 @@ export default function TicTacBlock() {
       // Refresh cached stats
       await fetchLeaderboard(true);
 
-      // Refresh tournament data
-      await fetchAllTournaments();
+      // Refresh tier data (lazy loading)
+      await refreshAfterAction(tierId);
 
       // Refresh and show tournament bracket
       const bracketData = await refreshTournamentBracket(contract, tierId, instanceId);
@@ -1271,8 +1354,8 @@ export default function TicTacBlock() {
       // Refresh cached stats
       await fetchLeaderboard(true);
 
-      // Refresh tournament data
-      await fetchAllTournaments();
+      // Refresh tier data (lazy loading)
+      await refreshAfterAction(tierId);
 
       setMatchLoading(false);
     } catch (error) {
@@ -1368,7 +1451,7 @@ export default function TicTacBlock() {
     // Refresh data
     if (contract) {
       await fetchLeaderboard(true);
-      await fetchAllTournaments();
+      await refreshAfterAction(tournamentInfo?.tierId ?? null);
 
       // Show tournament bracket for winners, go back to list for losers
       if (tournamentInfo && (matchEndResult === 'win' || matchEndResult === 'forfeit_win')) {
@@ -1386,9 +1469,9 @@ export default function TicTacBlock() {
   const handleBackToTournaments = async () => {
     setViewingTournament(null);
 
-    // Refresh tournaments list and cached stats (with loading indicator)
+    // Refresh tier metadata and cached stats (lazy loading)
     if (contract) {
-      await fetchAllTournaments(null, null, false);
+      await refreshAfterAction();
       await fetchLeaderboard(false);
     }
   };
@@ -1438,13 +1521,15 @@ export default function TicTacBlock() {
     }
   }, []);
 
-  // Fetch tournaments when account changes (initial load handled by initReadOnlyContract)
+  // Refresh tier data when account changes (initial load handled by initReadOnlyContract)
   useEffect(() => {
     // Skip initial mount - initReadOnlyContract handles that via loadContractData
     if (account) {
-      fetchAllTournaments();
+      // Clear cached instances so they re-fetch with new account's enrollment status
+      setTierInstances({});
+      refreshAfterAction();
     }
-  }, [account, fetchAllTournaments]);
+  }, [account, refreshAfterAction]);
 
   // Fetch cached stats when contract is available
   useEffect(() => {
@@ -1573,7 +1658,7 @@ export default function TicTacBlock() {
     const matchPollInterval = setInterval(doMatchSync, 2000);
 
     return () => clearInterval(matchPollInterval);
-  }, [currentMatch?.tierId, currentMatch?.instanceId, currentMatch?.roundNumber, currentMatch?.matchNumber, account, refreshMatchData, fetchLeaderboard, fetchAllTournaments, refreshTournamentBracket]);
+  }, [currentMatch?.tierId, currentMatch?.instanceId, currentMatch?.roundNumber, currentMatch?.matchNumber, account, refreshMatchData, fetchLeaderboard, refreshTournamentBracket]);
 
   // Increment match sync dots every second (1 -> 2 -> 3, resets on sync)
   useEffect(() => {
@@ -2054,7 +2139,7 @@ export default function TicTacBlock() {
                 </div>
 
                 {/* Loading State */}
-                {tournamentsLoading && (
+                {metadataLoading && (
                   <div className="text-center py-12">
                     <div className="inline-block">
                       <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
@@ -2063,12 +2148,16 @@ export default function TicTacBlock() {
                   </div>
                 )}
 
-                {/* Tournament Cards Grid - Grouped by Tier */}
-                {!tournamentsLoading && tournaments.length > 0 && (
+                {/* Tournament Cards Grid - Grouped by Tier (Lazy Loading) */}
+                {!metadataLoading && Object.keys(tierMetadata).length > 0 && (
                   <>
                     {[0, 6, 1, 2, 3, 4, 5].map((tierId) => {
-                      const tierTournaments = tournaments.filter(t => t.tierId === tierId);
-                      if (tierTournaments.length === 0) return null;
+                      const metadata = tierMetadata[tierId];
+                      if (!metadata) return null;
+
+                      const instances = tierInstances[tierId] || [];
+                      const isLoading = tierLoading[tierId];
+                      const totalEnrolled = metadata.enrolledCounts.reduce((a, b) => a + b, 0);
 
                       return (
                         <div key={tierId} className="mb-6">
@@ -2078,8 +2167,9 @@ export default function TicTacBlock() {
                           >
                             <h3 className="text-2xl font-bold text-purple-400 flex items-center gap-2">
                               <Grid size={24} /> {getTierNameLocal(tierId)} Tier
-                              <span className="text-sm opacity-70 ml-2">({tierTournaments[0]?.maxPlayers} players)</span>
-                              <span className="text-sm opacity-70">• {tierTournaments.length} instance{tierTournaments.length !== 1 ? 's' : ''}</span>
+                              <span className="text-sm opacity-70 ml-2">({metadata.playerCount} players)</span>
+                              <span className="text-sm opacity-70">• {metadata.instanceCount} instance{metadata.instanceCount !== 1 ? 's' : ''}</span>
+                              <span className="text-sm opacity-70">• {totalEnrolled} enrolled</span>
                               <ChevronDown
                                 size={24}
                                 className={`ml-auto transition-transform duration-200 ${expandedTiers[tierId] ? 'rotate-180' : ''}`}
@@ -2088,28 +2178,37 @@ export default function TicTacBlock() {
                           </button>
 
                           {expandedTiers[tierId] && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mt-6">
-                              {tierTournaments.map((tournament) => (
-                                <TournamentCard
-                                  key={`${tournament.tierId}-${tournament.instanceId}`}
-                                  tierId={tournament.tierId}
-                                  instanceId={tournament.instanceId}
-                                  maxPlayers={tournament.maxPlayers}
-                                  currentEnrolled={tournament.enrolledCount}
-                                  entryFee={tournament.entryFee}
-                                  isEnrolled={tournament.isEnrolled}
-                                  onEnroll={() => handleEnroll(tournament.tierId, tournament.instanceId, tournament.entryFee)}
-                                  onEnter={() => handleEnterTournament(tournament.tierId, tournament.instanceId)}
-                                  loading={tournamentsLoading}
-                                  tierName={getTierNameLocal(tournament.tierId)}
-                                  enrollmentTimeout={tournament.enrollmentTimeout}
-                                  hasStartedViaTimeout={tournament.hasStartedViaTimeout}
-                                  tournamentStatus={tournament.tournamentStatus}
-                                  onManualStart={handleManualStart}
-                                  onClaimAbandonedPool={handleClaimAbandonedPool}
-                                  account={account}
-                                />
-                              ))}
+                            <div className="mt-6">
+                              {isLoading ? (
+                                <div className="text-center py-8">
+                                  <div className="w-10 h-10 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-3"></div>
+                                  <p className="text-purple-300 text-sm">Loading {getTierNameLocal(tierId)} instances...</p>
+                                </div>
+                              ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                  {instances.map((tournament) => (
+                                    <TournamentCard
+                                      key={`${tournament.tierId}-${tournament.instanceId}`}
+                                      tierId={tournament.tierId}
+                                      instanceId={tournament.instanceId}
+                                      maxPlayers={tournament.maxPlayers}
+                                      currentEnrolled={tournament.enrolledCount}
+                                      entryFee={tournament.entryFee}
+                                      isEnrolled={tournament.isEnrolled}
+                                      onEnroll={() => handleEnroll(tournament.tierId, tournament.instanceId, tournament.entryFee)}
+                                      onEnter={() => handleEnterTournament(tournament.tierId, tournament.instanceId)}
+                                      loading={tournamentsLoading}
+                                      tierName={getTierNameLocal(tournament.tierId)}
+                                      enrollmentTimeout={tournament.enrollmentTimeout}
+                                      hasStartedViaTimeout={tournament.hasStartedViaTimeout}
+                                      tournamentStatus={tournament.tournamentStatus}
+                                      onManualStart={handleManualStart}
+                                      onClaimAbandonedPool={handleClaimAbandonedPool}
+                                      account={account}
+                                    />
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
@@ -2119,7 +2218,7 @@ export default function TicTacBlock() {
                 )}
 
                 {/* Empty State */}
-                {!tournamentsLoading && tournaments.length === 0 && (
+                {!metadataLoading && Object.keys(tierMetadata).length === 0 && (
                   <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-12 border border-purple-400/30 text-center">
                     <Trophy className="text-purple-400/50 mx-auto mb-4" size={64} />
                     <h3 className="text-2xl font-bold text-purple-300 mb-2">No Tournaments Available</h3>

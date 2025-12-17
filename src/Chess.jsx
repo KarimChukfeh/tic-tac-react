@@ -771,17 +771,15 @@ export default function ChessOnChain() {
   const [theme, setTheme] = useState('dream');
   const [showThemeToggle, setShowThemeToggle] = useState(true);
 
-  // Tournament State
-  const [tournaments, setTournaments] = useState([]);
+  // Tournament State - Lazy Loading Architecture
+  const [tierMetadata, setTierMetadata] = useState({});
+  const [tierInstances, setTierInstances] = useState({});
+  const [tierLoading, setTierLoading] = useState({});
+  const [metadataLoading, setMetadataLoading] = useState(true);
   const [tournamentsLoading, setTournamentsLoading] = useState(false);
   const [viewingTournament, setViewingTournament] = useState(null);
   const [bracketSyncDots, setBracketSyncDots] = useState(1);
   const [expandedTiers, setExpandedTiers] = useState({});
-
-  // Toggle tier expansion
-  const toggleTier = (tierId) => {
-    setExpandedTiers(prev => ({ ...prev, [tierId]: !prev[tierId] }));
-  };
 
   // Match State
   const [currentMatch, setCurrentMatch] = useState(null);
@@ -1019,7 +1017,7 @@ export default function ChessOnChain() {
       setContractStatus('deployed');
 
       if (isInitialLoad) {
-        await fetchAllTiers(false);
+        await fetchTierMetadata();
         setInitialLoading(false);
       }
     } catch (error) {
@@ -1030,68 +1028,152 @@ export default function ChessOnChain() {
     }
   };
 
-  // Fetch all tournament tiers
-  const fetchAllTiers = useCallback(async (silent = false) => {
-    if (!contract) return;
+  // LAZY LOADING: Fetch tier metadata only (fast initial load)
+  const fetchTierMetadata = useCallback(async (contractInstance = null) => {
+    const readContract = contractInstance || contract;
+    if (!readContract) return;
 
-    if (!silent) {
-      setTournamentsLoading(true);
-    }
-
-    const allTournaments = [];
+    setMetadataLoading(true);
+    const metadata = {};
 
     for (let tierId = 0; tierId <= 6; tierId++) {
       try {
-        const tierOverview = await contract.getTierOverview(tierId);
-        const statuses = tierOverview[0];
-        const enrolledCounts = tierOverview[1];
-        const prizePools = tierOverview[2];
+        const [tierConfig, fee, tierOverview] = await Promise.all([
+          readContract.tierConfigs(tierId),
+          readContract.ENTRY_FEES(tierId),
+          readContract.getTierOverview(tierId)
+        ]);
 
-        const tierConfig = await contract.tierConfigs(tierId);
-        const maxPlayers = Number(tierConfig.playerCount);
+        const instanceCount = tierOverview[0].length;
+        if (instanceCount === 0) continue;
 
-        const fee = await contract.ENTRY_FEES(tierId);
-        const entryFeeFormatted = ethers.formatEther(fee);
-
-        for (let i = 0; i < statuses.length; i++) {
-          let isEnrolled = false;
-          let enrollmentTimeout = null;
-
-          if (account) {
-            try {
-              isEnrolled = await contract.isEnrolled(tierId, i, account);
-            } catch (err) {}
-          }
-
-          try {
-            const tournamentInfo = await contract.tournaments(tierId, i);
-            enrollmentTimeout = tournamentInfo.enrollmentTimeout;
-          } catch (err) {}
-
-          allTournaments.push({
-            tierId,
-            instanceId: i,
-            status: Number(statuses[i]),
-            enrolledCount: Number(enrolledCounts[i]),
-            maxPlayers,
-            entryFee: entryFeeFormatted,
-            isEnrolled,
-            enrollmentTimeout,
-            tournamentStatus: Number(statuses[i])
-          });
-        }
+        metadata[tierId] = {
+          playerCount: Number(tierConfig.playerCount),
+          instanceCount,
+          entryFee: ethers.formatEther(fee),
+          statuses: tierOverview[0].map(s => Number(s)),
+          enrolledCounts: tierOverview[1].map(c => Number(c)),
+          prizePools: tierOverview[2]
+        };
       } catch (error) {
-        console.log(`Could not fetch tier ${tierId}:`, error.message);
+        console.log(`Could not fetch tier ${tierId} metadata:`, error.message);
       }
     }
 
-    allTournaments.sort((a, b) => b.enrolledCount - a.enrolledCount);
-    setTournaments(allTournaments);
+    setTierMetadata(metadata);
+    setMetadataLoading(false);
+  }, [contract]);
 
-    if (!silent) {
-      setTournamentsLoading(false);
+  // LAZY LOADING: Fetch detailed instances for a specific tier
+  const fetchTierInstances = useCallback(async (tierId, contractInstance = null, userAccount = null, metadataOverride = null) => {
+    const readContract = contractInstance || contract;
+    const currentAccount = userAccount ?? account;
+    if (!readContract) return;
+
+    setTierLoading(prev => ({ ...prev, [tierId]: true }));
+
+    try {
+      let metadata = metadataOverride;
+      if (!metadata) {
+        const [tierConfig, fee, tierOverview] = await Promise.all([
+          readContract.tierConfigs(tierId),
+          readContract.ENTRY_FEES(tierId),
+          readContract.getTierOverview(tierId)
+        ]);
+        metadata = {
+          playerCount: Number(tierConfig.playerCount),
+          instanceCount: tierOverview[0].length,
+          entryFee: ethers.formatEther(fee),
+          statuses: tierOverview[0].map(s => Number(s)),
+          enrolledCounts: tierOverview[1].map(c => Number(c))
+        };
+      }
+
+      if (!metadata || metadata.instanceCount === 0) {
+        setTierLoading(prev => ({ ...prev, [tierId]: false }));
+        return;
+      }
+
+      const instances = [];
+
+      for (let i = 0; i < metadata.instanceCount; i++) {
+        try {
+          const [tournamentInfo, isUserEnrolled] = await Promise.all([
+            readContract.tournaments(tierId, i),
+            currentAccount ? readContract.isEnrolled(tierId, i, currentAccount).catch(() => false) : Promise.resolve(false)
+          ]);
+
+          instances.push({
+            tierId,
+            instanceId: i,
+            status: metadata.statuses[i],
+            enrolledCount: metadata.enrolledCounts[i],
+            maxPlayers: metadata.playerCount,
+            entryFee: metadata.entryFee,
+            isEnrolled: isUserEnrolled,
+            enrollmentTimeout: tournamentInfo.enrollmentTimeout,
+            tournamentStatus: metadata.statuses[i]
+          });
+        } catch (err) {
+          console.log(`Could not fetch instance ${i} for tier ${tierId}:`, err.message);
+        }
+      }
+
+      setTierInstances(prev => ({ ...prev, [tierId]: instances }));
+    } catch (error) {
+      console.error(`Error fetching tier ${tierId} instances:`, error);
     }
+
+    setTierLoading(prev => ({ ...prev, [tierId]: false }));
   }, [contract, account]);
+
+  // Refs to access current state without causing dependency loops
+  const expandedTiersRef = useRef(expandedTiers);
+  const tierInstancesRef = useRef(tierInstances);
+  useEffect(() => { expandedTiersRef.current = expandedTiers; }, [expandedTiers]);
+  useEffect(() => { tierInstancesRef.current = tierInstances; }, [tierInstances]);
+
+  // Toggle tier expansion with lazy loading
+  const toggleTier = useCallback(async (tierId) => {
+    const isCurrentlyExpanded = expandedTiersRef.current[tierId];
+    const alreadyLoaded = tierInstancesRef.current[tierId];
+
+    if (!isCurrentlyExpanded && !alreadyLoaded) {
+      setExpandedTiers(prev => ({ ...prev, [tierId]: true }));
+      await fetchTierInstances(tierId);
+    } else {
+      setExpandedTiers(prev => ({ ...prev, [tierId]: !prev[tierId] }));
+    }
+  }, [fetchTierInstances]);
+
+  // LAZY LOADING: Refresh data after an action
+  const refreshAfterAction = useCallback(async (affectedTierId = null, contractInstance = null, userAccount = null) => {
+    const readContract = contractInstance || contract;
+    const currentAccount = userAccount ?? account;
+
+    await fetchTierMetadata(readContract);
+
+    const tiersToRefresh = new Set();
+    if (affectedTierId !== null) tiersToRefresh.add(affectedTierId);
+    const currentExpanded = expandedTiersRef.current;
+    Object.keys(currentExpanded).forEach(tid => {
+      if (currentExpanded[tid]) tiersToRefresh.add(Number(tid));
+    });
+
+    if (tiersToRefresh.size > 0) {
+      setTierInstances(prev => {
+        const updated = { ...prev };
+        tiersToRefresh.forEach(tid => delete updated[tid]);
+        return updated;
+      });
+
+      for (const tid of tiersToRefresh) {
+        if (currentExpanded[tid]) {
+          await fetchTierInstances(tid, readContract, currentAccount);
+        }
+      }
+    }
+  }, [contract, account, fetchTierMetadata, fetchTierInstances]);
 
   // Refresh tournament bracket data
   const refreshTournamentBracket = useCallback(async (contractInstance, tierId, instanceId) => {
@@ -1222,7 +1304,7 @@ export default function ChessOnChain() {
         value: ethers.parseEther(entryFee)
       });
       await tx.wait();
-      await fetchAllTiers(true);
+      await refreshAfterAction(tierId);
       setLoading(false);
     } catch (error) {
       console.error('Enrollment error:', error);
@@ -1402,7 +1484,7 @@ export default function ChessOnChain() {
       setCurrentMatch(null);
       setViewingTournament(null);
 
-      await fetchAllTiers(true);
+      await refreshAfterAction();
 
       setMatchLoading(false);
     } catch (error) {
@@ -1428,7 +1510,7 @@ export default function ChessOnChain() {
 
       setCurrentMatch(null);
 
-      await fetchAllTiers(true);
+      await refreshAfterAction(tierId);
 
       const bracketData = await refreshTournamentBracket(contract, tierId, instanceId);
       if (bracketData) {
@@ -1460,7 +1542,7 @@ export default function ChessOnChain() {
       setCurrentMatch(null);
       setViewingTournament(null);
 
-      await fetchAllTiers(true);
+      await refreshAfterAction(tierId);
 
       setMatchLoading(false);
     } catch (error) {
@@ -1478,7 +1560,7 @@ export default function ChessOnChain() {
       setLoading(true);
       const tx = await contract.forceStartTournament(tierId, instanceId);
       await tx.wait();
-      await fetchAllTiers(true);
+      await refreshAfterAction(tierId);
       setLoading(false);
     } catch (error) {
       console.error('Force start error:', error);
@@ -1555,8 +1637,8 @@ export default function ChessOnChain() {
       setViewingTournament(null);
       setCurrentMatch(null);
 
-      // Refresh tournaments
-      await fetchAllTiers(true);
+      // Refresh tier data
+      await refreshAfterAction(tierId);
     } catch (error) {
       console.error('Claim abandoned pool error:', error);
       alert('Claim failed: ' + (error.reason || error.message));
@@ -1587,7 +1669,7 @@ export default function ChessOnChain() {
 
     // Refresh data
     if (contract) {
-      await fetchAllTiers(true);
+      await refreshAfterAction(tournamentInfo?.tierId ?? null);
 
       // Show tournament bracket for winners, go back to list for losers
       if (tournamentInfo && wasWinner) {
@@ -1643,12 +1725,13 @@ export default function ChessOnChain() {
     }
   }, []);
 
-  // Fetch tournaments when contract changes
+  // Refresh tier data when account changes
   useEffect(() => {
-    if (contract) {
-      fetchAllTiers();
+    if (contract && account) {
+      setTierInstances({});
+      refreshAfterAction();
     }
-  }, [contract, account, fetchAllTiers]);
+  }, [contract, account, refreshAfterAction]);
 
   // Helper to detect move by comparing two boards
   const detectMoveFromBoards = useCallback((oldBoard, newBoard) => {
@@ -2266,19 +2349,23 @@ export default function ChessOnChain() {
                 </div>
 
                 {/* Loading State */}
-                {tournamentsLoading && (
+                {metadataLoading && (
                   <div className="text-center py-12">
                     <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
                     <p className="text-purple-300">Loading tournaments...</p>
                   </div>
                 )}
 
-                {/* Tournament Cards */}
-                {!tournamentsLoading && tournaments.length > 0 && (
+                {/* Tournament Cards - Lazy Loading */}
+                {!metadataLoading && Object.keys(tierMetadata).length > 0 && (
                   <>
                     {[0, 6, 1, 2, 3, 4, 5].map((tierId) => {
-                      const tierTournaments = tournaments.filter(t => t.tierId === tierId);
-                      if (tierTournaments.length === 0) return null;
+                      const metadata = tierMetadata[tierId];
+                      if (!metadata) return null;
+
+                      const instances = tierInstances[tierId] || [];
+                      const isLoading = tierLoading[tierId];
+                      const totalEnrolled = metadata.enrolledCounts.reduce((a, b) => a + b, 0);
 
                       return (
                         <div key={tierId} className="mb-6">
@@ -2288,8 +2375,9 @@ export default function ChessOnChain() {
                           >
                             <h3 className="text-2xl font-bold text-purple-400 flex items-center gap-2">
                               ♔ {getTierName(tierId)} Tier
-                              <span className="text-sm opacity-70 ml-2">({tierTournaments[0]?.maxPlayers} players)</span>
-                              <span className="text-sm opacity-70">• {tierTournaments.length} instance{tierTournaments.length !== 1 ? 's' : ''}</span>
+                              <span className="text-sm opacity-70 ml-2">({metadata.playerCount} players)</span>
+                              <span className="text-sm opacity-70">• {metadata.instanceCount} instance{metadata.instanceCount !== 1 ? 's' : ''}</span>
+                              <span className="text-sm opacity-70">• {totalEnrolled} enrolled</span>
                               <ChevronDown
                                 size={24}
                                 className={`ml-auto transition-transform duration-200 ${expandedTiers[tierId] ? 'rotate-180' : ''}`}
@@ -2298,28 +2386,37 @@ export default function ChessOnChain() {
                           </button>
 
                           {expandedTiers[tierId] && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mt-6">
-                              {tierTournaments.map((tournament) => (
-                                <TournamentCard
-                                  key={`${tournament.tierId}-${tournament.instanceId}`}
-                                  tierId={tournament.tierId}
-                                  instanceId={tournament.instanceId}
-                                  maxPlayers={tournament.maxPlayers}
-                                  currentEnrolled={tournament.enrolledCount}
-                                  entryFee={tournament.entryFee}
-                                  isEnrolled={tournament.isEnrolled}
-                                  onEnroll={() => handleEnroll(tournament.tierId, tournament.instanceId, tournament.entryFee)}
-                                  onEnter={() => handleEnterTournament(tournament.tierId, tournament.instanceId)}
-                                  loading={tournamentsLoading}
-                                  tierName={getTierName(tournament.tierId)}
-                                  theme={theme}
-                                  enrollmentTimeout={tournament.enrollmentTimeout}
-                                  tournamentStatus={tournament.tournamentStatus}
-                                  onManualStart={handleManualStart}
-                                  onClaimAbandonedPool={handleClaimAbandonedPool}
-                                  account={account}
-                                />
-                              ))}
+                            <div className="mt-6">
+                              {isLoading ? (
+                                <div className="text-center py-8">
+                                  <div className="w-10 h-10 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-3"></div>
+                                  <p className="text-purple-300 text-sm">Loading {getTierName(tierId)} instances...</p>
+                                </div>
+                              ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                  {instances.map((tournament) => (
+                                    <TournamentCard
+                                      key={`${tournament.tierId}-${tournament.instanceId}`}
+                                      tierId={tournament.tierId}
+                                      instanceId={tournament.instanceId}
+                                      maxPlayers={tournament.maxPlayers}
+                                      currentEnrolled={tournament.enrolledCount}
+                                      entryFee={tournament.entryFee}
+                                      isEnrolled={tournament.isEnrolled}
+                                      onEnroll={() => handleEnroll(tournament.tierId, tournament.instanceId, tournament.entryFee)}
+                                      onEnter={() => handleEnterTournament(tournament.tierId, tournament.instanceId)}
+                                      loading={tournamentsLoading}
+                                      tierName={getTierName(tournament.tierId)}
+                                      theme={theme}
+                                      enrollmentTimeout={tournament.enrollmentTimeout}
+                                      tournamentStatus={tournament.tournamentStatus}
+                                      onManualStart={handleManualStart}
+                                      onClaimAbandonedPool={handleClaimAbandonedPool}
+                                      account={account}
+                                    />
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
@@ -2329,7 +2426,7 @@ export default function ChessOnChain() {
                 )}
 
                 {/* Empty State */}
-                {!tournamentsLoading && tournaments.length === 0 && (
+                {!metadataLoading && Object.keys(tierMetadata).length === 0 && (
                   <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-12 border border-purple-400/30 text-center">
                     <span className="text-6xl mb-4 block">♟️</span>
                     <h3 className="text-2xl font-bold text-purple-300 mb-2">No Tournaments Available</h3>
