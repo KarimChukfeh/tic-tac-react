@@ -5,17 +5,15 @@
 
 ## Abstract
 
-ETour is a game-agnostic tournament protocol that enables any deterministic competitive game to run perpetual, stake-based competitions entirely on-chain. 
+Etour separates game-specific logic from universal tournament mechanics such as matchmaking, bracket management, timeout escalation, prize distribution, etc. 
 
-ETour is different from other Web3 gaming platforms that sell tokens or promise players money. Instead, it focuses on one thing: **players compete in games they already know, and the better player wins real ETH.**
+It doesn't sell a new token and doesn't promise anybody money. 
 
-The protocol separates universal tournament mechanics from game-specific logic. (e.g matchmaking, bracket management, timeout escalation, prize distribution). Architectural decisions allow multiple games to share battle-tested infrastructure while each maintains its own rules and identity. 
+Instead, it focuses on one thing: **players compete in games they already know, and the better player wins real ETH.**
 
-ETour launches with three classic games: Tic-Tac-Toe, Connect Four, and Chess, chosen specifically because they require no hidden information and can be fully verified on-chain.
+This whitepaper explains the philosophical reasoning behind ETour's design decisions and the technical implementation that makes trustless competition possible. 
 
-This whitepaper explains the philosophical reasoning behind ETour's design decisions and the technical implementation that makes trustless competition possible. It's intended for those who want to understand not just what ETour does;
-
-### **But why it was built this way.**
+It's intended for those who want to understand not just what ETour does **but why we built it this way.**
 
 ---
 
