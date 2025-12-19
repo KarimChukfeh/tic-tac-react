@@ -1,32 +1,118 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Shield, Lock, Eye, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
 
-// Floating Game Particles
+// Floating Game Particles with cursor attraction
 function FloatingParticles() {
   const particles = [
-    { symbol: '✕', color: '#06b6d4', style: { top: '8%', left: '5%' } },
-    { symbol: '○', color: '#a855f7', style: { top: '12%', right: '8%' } },
-    { symbol: '♔', color: '#fbbf24', style: { top: '25%', left: '12%' } },
-    { symbol: '🔴', color: '#ef4444', style: { top: '18%', right: '20%' } },
-    { symbol: '♟', color: '#fbbf24', style: { top: '45%', right: '5%' } },
-    { symbol: '○', color: '#a855f7', style: { top: '55%', left: '8%' } },
-    { symbol: '🔵', color: '#3b82f6', style: { top: '65%', right: '12%' } },
-    { symbol: '✕', color: '#06b6d4', style: { top: '75%', left: '15%' } },
-    { symbol: '♔', color: '#fbbf24', style: { bottom: '15%', right: '8%' } },
-    { symbol: '🔴', color: '#ef4444', style: { bottom: '8%', left: '25%' } },
+    { symbol: '✕', color: '#06b6d4', baseX: 5, baseY: 8 },
+    { symbol: '○', color: '#a855f7', baseX: 92, baseY: 12 },
+    { symbol: '♔', color: '#fbbf24', baseX: 12, baseY: 25 },
+    { symbol: '🔴', color: '#ef4444', baseX: 80, baseY: 18 },
+    { symbol: '♟', color: '#fbbf24', baseX: 95, baseY: 45 },
+    { symbol: '○', color: '#a855f7', baseX: 8, baseY: 55 },
+    { symbol: '🔵', color: '#3b82f6', baseX: 88, baseY: 65 },
+    { symbol: '✕', color: '#06b6d4', baseX: 15, baseY: 75 },
+    { symbol: '♔', color: '#fbbf24', baseX: 92, baseY: 85 },
+    { symbol: '🔴', color: '#ef4444', baseX: 25, baseY: 92 },
   ];
+
+  const mousePos = useRef({ x: null, y: null });
+  const particleOffsets = useRef(particles.map(() => ({ x: 0, y: 0 })));
+  const particleRefs = useRef([]);
+  const animationRef = useRef(null);
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      mousePos.current = {
+        x: (e.clientX / window.innerWidth) * 100,
+        y: (e.clientY / window.innerHeight) * 100
+      };
+    };
+
+    const handleMouseLeave = () => {
+      mousePos.current = { x: null, y: null };
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseleave', handleMouseLeave);
+
+    // Animation loop for smooth attraction
+    const animate = () => {
+      const mouse = mousePos.current;
+
+      particles.forEach((p, i) => {
+        const offset = particleOffsets.current[i];
+        const el = particleRefs.current[i];
+        if (!el) return;
+
+        if (mouse.x !== null && mouse.y !== null) {
+          // Calculate direction to cursor (in percentage units)
+          const targetX = mouse.x - p.baseX;
+          const targetY = mouse.y - p.baseY;
+
+          // Convert 100px radius to viewport units (approximate)
+          const forceFieldRadius = 100 / window.innerWidth * 100; // ~100px in vw
+
+          // Calculate current distance from particle to cursor target
+          const currentDistX = targetX - offset.x;
+          const currentDistY = targetY - offset.y;
+          const distance = Math.sqrt(currentDistX * currentDistX + currentDistY * currentDistY);
+
+          // Only attract if outside the force field radius
+          if (distance > forceFieldRadius) {
+            // Attract toward the edge of the force field, not the cursor itself
+            const scale = (distance - forceFieldRadius) / distance;
+            const edgeTargetX = offset.x + currentDistX * scale;
+            const edgeTargetY = offset.y + currentDistY * scale;
+
+            // Extremely slow attraction - barely perceptible drift
+            offset.x += (edgeTargetX - offset.x) * 0.0006;
+            offset.y += (edgeTargetY - offset.y) * 0.0006;
+          }
+        } else {
+          // Very slowly return to base position when cursor leaves
+          offset.x *= 0.999;
+          offset.y *= 0.999;
+        }
+
+        // Apply the attraction offset as a CSS variable
+        el.style.setProperty('--attract-x', `${offset.x}vw`);
+        el.style.setProperty('--attract-y', `${offset.y}vh`);
+      });
+
+      animationRef.current = requestAnimationFrame(animate);
+    };
+
+    animationRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseleave', handleMouseLeave);
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
       {particles.map((p, i) => (
         <div
           key={i}
-          className="absolute text-3xl opacity-20 animate-float"
-          style={{ ...p.style, color: p.color, animationDelay: `${i * -2.5}s` }}
+          ref={el => particleRefs.current[i] = el}
+          className="absolute text-3xl opacity-20 animate-float-attract"
+          style={{
+            left: `${p.baseX}%`,
+            top: `${p.baseY}%`,
+            color: p.color,
+            animationDelay: `${i * -2.5}s`,
+            '--attract-x': '0vw',
+            '--attract-y': '0vh',
+          }}
         >
           {p.symbol}
         </div>
@@ -767,14 +853,14 @@ export default function Landing() {
       
       {/* Keyframe Animations */}
       <style>{`
-        @keyframes float {
-          0%, 100% { transform: translate(0, 0) rotate(0deg); opacity: 0.25; }
-          25% { transform: translate(45px, -55px) rotate(90deg); opacity: 0.18; }
-          50% { transform: translate(-30px, -110px) rotate(180deg); opacity: 0.32; }
-          75% { transform: translate(-70px, -55px) rotate(270deg); opacity: 0.18; }
+        @keyframes float-attract {
+          0%, 100% { transform: translate(calc(var(--attract-x, 0vw)), calc(var(--attract-y, 0vh))) rotate(0deg); opacity: 0.25; }
+          25% { transform: translate(calc(45px + var(--attract-x, 0vw)), calc(-55px + var(--attract-y, 0vh))) rotate(90deg); opacity: 0.18; }
+          50% { transform: translate(calc(-30px + var(--attract-x, 0vw)), calc(-110px + var(--attract-y, 0vh))) rotate(180deg); opacity: 0.32; }
+          75% { transform: translate(calc(-70px + var(--attract-x, 0vw)), calc(-55px + var(--attract-y, 0vh))) rotate(270deg); opacity: 0.18; }
         }
-        .animate-float {
-          animation: float 18s infinite ease-in-out;
+        .animate-float-attract {
+          animation: float-attract 18s infinite ease-in-out;
         }
       `}</style>
     </div>
