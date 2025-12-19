@@ -5,19 +5,17 @@
 
 ## Abstract
 
-**Play games. Win ETH. No new tokens. No promises. No trust required.**
-
-ETour is EVM freeware for competitive tournaments on the blockchain. 
+ETour is EVM freeware for on-chain competitive play. 
 
 Every move is a transaction. Every outcome is immutable. The smart contract handles matchmaking, brackets, timeouts, and prize distribution. 
 
 Developers inherit this infrastructure by implementing a simple abstract contract. Players just connect and compete.
 
-<strong> ETH in ETH out. No servers, no admins, no way to cheat.</strong>
+<strong> ETH in ETH out. No servers, no admins to trust, no way to cheat.</strong>
 
 ---
 
-This whitepaper explains the philosophical reasoning behind ETour's design decisions and the technical implementation that makes trustless competition possible. 
+This whitepaper explains ETour's philosophy and how it makes trustless competition possible. 
 
 **It's intended for those who want to understand not just what ETour does but why it was built this way.**
 
