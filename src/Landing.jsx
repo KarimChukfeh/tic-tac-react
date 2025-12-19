@@ -8,16 +8,16 @@ import remarkGfm from 'remark-gfm';
 // Floating Game Particles with cursor attraction
 function FloatingParticles() {
   const particles = [
-    { symbol: '✕', color: '#06b6d4', baseX: 5, baseY: 8 },
-    { symbol: '○', color: '#a855f7', baseX: 92, baseY: 12 },
-    { symbol: '♔', color: '#fbbf24', baseX: 12, baseY: 25 },
-    { symbol: '🔴', color: '#ef4444', baseX: 80, baseY: 18 },
-    { symbol: '♟', color: '#fbbf24', baseX: 95, baseY: 45 },
-    { symbol: '○', color: '#a855f7', baseX: 8, baseY: 55 },
-    { symbol: '🔵', color: '#3b82f6', baseX: 88, baseY: 65 },
-    { symbol: '✕', color: '#06b6d4', baseX: 15, baseY: 75 },
-    { symbol: '♔', color: '#fbbf24', baseX: 92, baseY: 85 },
-    { symbol: '🔴', color: '#ef4444', baseX: 25, baseY: 92 },
+    { symbol: '✕', color: '#06b6d4', baseX: 5, baseY: 8, size: 'text-3xl' },
+    { symbol: '○', color: '#a855f7', baseX: 92, baseY: 12, size: 'text-3xl' },
+    { symbol: '♔', color: '#fbbf24', baseX: 12, baseY: 25, size: 'text-4xl' },
+    { symbol: '🔴', color: '#ef4444', baseX: 80, baseY: 18, size: 'text-2xl' },
+    { symbol: '♟', color: '#fbbf24', baseX: 95, baseY: 45, size: 'text-4xl' },
+    { symbol: '○', color: '#a855f7', baseX: 8, baseY: 55, size: 'text-3xl' },
+    { symbol: '🔵', color: '#3b82f6', baseX: 88, baseY: 65, size: 'text-2xl' },
+    { symbol: '✕', color: '#06b6d4', baseX: 15, baseY: 75, size: 'text-3xl' },
+    { symbol: '♔', color: '#fbbf24', baseX: 92, baseY: 85, size: 'text-4xl' },
+    { symbol: '🔴', color: '#ef4444', baseX: 25, baseY: 92, size: 'text-2xl' },
   ];
 
   const mousePos = useRef({ x: null, y: null });
@@ -104,7 +104,7 @@ function FloatingParticles() {
         <div
           key={i}
           ref={el => particleRefs.current[i] = el}
-          className="absolute text-3xl opacity-20 animate-float-attract"
+          className={`absolute ${p.size} opacity-20 animate-float-attract`}
           style={{
             left: `${p.baseX}%`,
             top: `${p.baseY}%`,
