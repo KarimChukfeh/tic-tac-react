@@ -1794,38 +1794,33 @@ export default function TicTacChain() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-4 text-xs md:text-sm">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 md:gap-6 justify-center md:justify-start">
               <div className="flex items-center gap-2">
-          <Shield className="text-blue-400" size={16} />
-          <span className="text-blue-100 font-medium">100% On-Chain</span>
+                <Shield className="text-blue-400" size={16} />
+                <span className="text-blue-100 font-medium">100% On-Chain</span>
               </div>
               <div className="flex items-center gap-2">
-          <Lock className="text-blue-400" size={16} />
-          <span className="text-blue-100 font-medium">Immutable Rules</span>
+                <Lock className="text-blue-400" size={16} />
+                <span className="text-blue-100 font-medium">Immutable Rules</span>
               </div>
               <div className="flex items-center gap-2">
-          <Eye className="text-blue-400" size={16} />
-          <span className="text-blue-100 font-medium">Every Move Verifiable</span>
+                <Eye className="text-blue-400" size={16} />
+                <span className="text-blue-100 font-medium">Every Move Verifiable</span>
               </div>
               <div className="flex items-center gap-2">
-          <CheckCircle className="text-blue-400" size={16} />
-          <span className="text-blue-100 font-medium">Zero Trackers</span>
+                <CheckCircle className="text-blue-400" size={16} />
+                <span className="text-blue-100 font-medium">Zero Trackers</span>
               </div>
             </div>
-            {EXPLORER_URL ? (
+            {EXPLORER_URL && (
               <a
                 href={EXPLORER_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 text-blue-300 hover:text-blue-200 transition-colors justify-center md:justify-start"
+                className="flex items-center gap-2 text-blue-300 hover:text-blue-200 transition-colors justify-center md:justify-end"
               >
                 <Code size={16} />
                 <span className="font-mono text-xs">{shortenAddress(CONTRACT_ADDRESS)}</span>
                 <ExternalLink size={14} />
               </a>
-            ) : (
-              <div className="flex items-center gap-2 text-blue-300 justify-center md:justify-start">
-                <Code size={16} />
-                <span className="font-mono text-xs">{shortenAddress(CONTRACT_ADDRESS)}</span>
-              </div>
             )}
           </div>
         </div>

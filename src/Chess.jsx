@@ -9,7 +9,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Wallet, Grid, Swords, Clock, Shield, Lock, Eye, Code, ExternalLink,
-  Trophy, Play, Users, Zap, ChevronDown, ArrowLeft, AlertCircle
+  Trophy, Play, Users, Zap, ChevronDown, ArrowLeft, AlertCircle, CheckCircle
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import CHESS_ABI from './COCABI.json';
@@ -2016,8 +2016,12 @@ export default function ChessOnChain() {
                 <Eye className="text-blue-400" size={16} />
                 <span className="text-blue-100 font-medium">Every Move Verifiable</span>
               </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle className="text-blue-400" size={16} />
+                <span className="text-blue-100 font-medium">Zero Trackers</span>
+              </div>
             </div>
-            {EXPLORER_URL ? (
+            {EXPLORER_URL && (
               <a
                 href={EXPLORER_URL}
                 target="_blank"
@@ -2025,14 +2029,9 @@ export default function ChessOnChain() {
                 className="flex items-center gap-2 text-blue-300 hover:text-blue-200 transition-colors justify-center md:justify-end"
               >
                 <Code size={16} />
-                <span className="font-mono">{CONTRACT_ADDRESS.slice(0, 10)}...{CONTRACT_ADDRESS.slice(-8)}</span>
+                <span className="font-mono">{shortenAddress(CONTRACT_ADDRESS)}</span>
                 <ExternalLink size={14} />
               </a>
-            ) : (
-              <div className="flex items-center gap-2 text-blue-300 justify-center md:justify-end">
-                <Code size={16} />
-                <span className="font-mono">{CONTRACT_ADDRESS.slice(0, 10)}...{CONTRACT_ADDRESS.slice(-8)}</span>
-              </div>
             )}
           </div>
         </div>
