@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import CHESS_ABI from './COCABI.json';
+import { CURRENT_NETWORK, CONTRACT_ADDRESSES, getAddressUrl, getExplorerHomeUrl } from './config/networks';
 import { shortenAddress, formatTime as formatTimeHMS, getTierName, getEstimatedDuration, countInstancesByStatus } from './utils/formatters';
 import ParticleBackground from './components/shared/ParticleBackground';
 import StatsGrid from './components/shared/StatsGrid';
@@ -754,9 +755,11 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onManualStart
 
 // Main Chess Component
 export default function ChessOnChain() {
-  const CONTRACT_ADDRESS = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
-  const EXPECTED_CHAIN_ID = 412346;
-  const RPC_URL = import.meta.env.VITE_RPC_URL || 'http://127.0.0.1:8545';
+  // Use network config instead of hardcoded values
+  const CONTRACT_ADDRESS = CONTRACT_ADDRESSES.ChessOnChain;
+  const EXPECTED_CHAIN_ID = CURRENT_NETWORK.chainId;
+  const RPC_URL = import.meta.env.VITE_RPC_URL || CURRENT_NETWORK.rpcUrl;
+  const EXPLORER_URL = getAddressUrl(CONTRACT_ADDRESS);
 
   // Wallet & Contract State
   const [account, setAccount] = useState(null);
@@ -2014,16 +2017,23 @@ export default function ChessOnChain() {
                 <span className="text-blue-100 font-medium">Every Move Verifiable</span>
               </div>
             </div>
-            <a
-              href={`https://arbiscan.io/address/${CONTRACT_ADDRESS}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 text-blue-300 hover:text-blue-200 transition-colors justify-center md:justify-end"
-            >
-              <Code size={16} />
-              <span className="font-mono">{CONTRACT_ADDRESS.slice(0, 10)}...{CONTRACT_ADDRESS.slice(-8)}</span>
-              <ExternalLink size={14} />
-            </a>
+            {EXPLORER_URL ? (
+              <a
+                href={EXPLORER_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-blue-300 hover:text-blue-200 transition-colors justify-center md:justify-end"
+              >
+                <Code size={16} />
+                <span className="font-mono">{CONTRACT_ADDRESS.slice(0, 10)}...{CONTRACT_ADDRESS.slice(-8)}</span>
+                <ExternalLink size={14} />
+              </a>
+            ) : (
+              <div className="flex items-center gap-2 text-blue-300 justify-center md:justify-end">
+                <Code size={16} />
+                <span className="font-mono">{CONTRACT_ADDRESS.slice(0, 10)}...{CONTRACT_ADDRESS.slice(-8)}</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -2539,14 +2549,16 @@ export default function ChessOnChain() {
               >
                 GitHub
               </a>
-              <a
-                href="https://arbiscan.io"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-slate-500 hover:text-white transition-colors text-sm"
-              >
-                Contracts
-              </a>
+              {getExplorerHomeUrl() && (
+                <a
+                  href={getExplorerHomeUrl()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-slate-500 hover:text-white transition-colors text-sm"
+                >
+                  Contracts
+                </a>
+              )}
               <a
                 href="https://reclaimweb3.com"
                 target="_blank"

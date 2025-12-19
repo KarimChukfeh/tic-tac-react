@@ -1,18 +1,17 @@
 /**
- * TicTacBlock - Dummy TicTacToe Protocol Frontend
+ * TicTacChain - On-Chain TicTacToe Tournament Frontend
  *
  * SETUP INSTRUCTIONS:
  *
- * 1. Deploy the contract to Arbitrum One:
- *    npx hardhat run scripts/deploy.js --network arbitrumOne
+ * 1. Deploy the contract:
+ *    cd ../e-tour && npm run deploy:all
  *
- * 2. Update CONTRACT_ADDRESS below with the deployed address (line 767)
+ * 2. Sync ABIs to frontend:
+ *    npm run sync:abis
  *
- * 3. Make sure MetaMask is connected to Arbitrum One:
- *    Network: Arbitrum One
- *    Chain ID: 42161
- *    RPC: https://arb1.arbitrum.io/rpc
- *    Block Explorer: https://arbiscan.io
+ * 3. Configure network in .env:
+ *    VITE_NETWORK=localhost (or arbitrumOne)
+ *    VITE_TICTACCHAIN_ADDRESS=0x...
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -23,7 +22,8 @@ import {
   CheckCircle, AlertCircle, ChevronDown, ArrowLeft
 } from 'lucide-react';
 import { ethers } from 'ethers';
-import DUMMY_ABI from './TourABI.json';
+import DUMMY_ABI from './TicTacChainABI.json';
+import { CURRENT_NETWORK, CONTRACT_ADDRESSES, getAddressUrl, getExplorerHomeUrl } from './config/networks';
 import { shortenAddress, formatTime as formatTimeHMS, getTierName, getEstimatedDuration, countInstancesByStatus } from './utils/formatters';
 import ParticleBackground from './components/shared/ParticleBackground';
 import StatsGrid from './components/shared/StatsGrid';
@@ -340,17 +340,18 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
   );
 };
 
-export default function TicTacBlock() {
-  const CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
-  const EXPECTED_CHAIN_ID = 412346;
-  const RPC_URL = import.meta.env.VITE_RPC_URL || 'http://127.0.0.1:8545';
-  const ETHERSCAN_URL = `https://arbiscan.io/address/${CONTRACT_ADDRESS}`;
+export default function TicTacChain() {
+  // Use network config instead of hardcoded values
+  const CONTRACT_ADDRESS = CONTRACT_ADDRESSES.TicTacChain;
+  const EXPECTED_CHAIN_ID = CURRENT_NETWORK.chainId;
+  const RPC_URL = import.meta.env.VITE_RPC_URL || CURRENT_NETWORK.rpcUrl;
+  const EXPLORER_URL = getAddressUrl(CONTRACT_ADDRESS);
 
   // Helper to get read-only contract (bypasses MetaMask for read operations)
   const getReadOnlyContract = useCallback(() => {
     const provider = new ethers.JsonRpcProvider(RPC_URL);
     return new ethers.Contract(CONTRACT_ADDRESS, DUMMY_ABI, provider);
-  }, []);
+  }, [CONTRACT_ADDRESS, RPC_URL]);
 
   // Wallet & Contract State
   const [account, setAccount] = useState(null);
@@ -1809,16 +1810,23 @@ export default function TicTacBlock() {
           <span className="text-blue-100 font-medium">Zero Trackers</span>
               </div>
             </div>
-            <a
-              href={ETHERSCAN_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 text-blue-300 hover:text-blue-200 transition-colors justify-center md:justify-start"
-            >
-              <Code size={16} />
-              <span className="font-mono text-xs">{shortenAddress(CONTRACT_ADDRESS)}</span>
-              <ExternalLink size={14} />
-            </a>
+            {EXPLORER_URL ? (
+              <a
+                href={EXPLORER_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-blue-300 hover:text-blue-200 transition-colors justify-center md:justify-start"
+              >
+                <Code size={16} />
+                <span className="font-mono text-xs">{shortenAddress(CONTRACT_ADDRESS)}</span>
+                <ExternalLink size={14} />
+              </a>
+            ) : (
+              <div className="flex items-center gap-2 text-blue-300 justify-center md:justify-start">
+                <Code size={16} />
+                <span className="font-mono text-xs">{shortenAddress(CONTRACT_ADDRESS)}</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -2336,14 +2344,16 @@ export default function TicTacBlock() {
               >
                 GitHub
               </a>
-              <a
-                href="https://arbiscan.io"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-slate-500 hover:text-white transition-colors text-sm"
-              >
-                Contracts
-              </a>
+              {getExplorerHomeUrl() && (
+                <a
+                  href={getExplorerHomeUrl()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-slate-500 hover:text-white transition-colors text-sm"
+                >
+                  Contracts
+                </a>
+              )}
               <a
                 href="https://reclaimweb3.com"
                 target="_blank"
