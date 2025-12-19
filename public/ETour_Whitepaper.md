@@ -5,15 +5,21 @@
 
 ## Abstract
 
-Etour separates game-specific logic from universal tournament mechanics such as matchmaking, bracket management, timeout escalation, prize distribution, etc. 
+**Play games. Win ETH. No new tokens. No promises. No trust required.**
 
-It doesn't sell a new token and doesn't promise anybody money. 
+ETour is EVM freeware for competitive tournaments on the blockchain. 
 
-Instead, it focuses on one thing: **players compete in games they already know, and the better player wins real ETH.**
+Every move is a transaction. Every outcome is immutable. The smart contract handles matchmaking, brackets, timeouts, and prize distribution. 
+
+Developers inherit this infrastructure by implementing a simple abstract contract. Players just connect and compete.
+
+<strong> ETH in ETH out. No servers, no admins, no way to cheat.</strong>
+
+---
 
 This whitepaper explains the philosophical reasoning behind ETour's design decisions and the technical implementation that makes trustless competition possible. 
 
-It's intended for those who want to understand not just what ETour does **but why we built it this way.**
+**It's intended for those who want to understand not just what ETour does but why it was built this way.**
 
 ---
 
