@@ -36,8 +36,8 @@ import WinnersLeaderboard from './components/shared/WinnersLeaderboard';
 import MatchEndModal from './components/shared/MatchEndModal';
 import WhyArbitrum from './components/shared/WhyArbitrum';
 
-// TicTacToe particle symbols
-const TICTACTOE_SYMBOLS = ['X', 'O'];
+// TicTacToe particle symbols (matching landing page style)
+const TICTACTOE_SYMBOLS = ['✕', '○'];
 
 // Tournament Bracket Component
 const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceEliminate, onClaimReplacement, onManualStart, onEnroll, account, loading, syncDots, isEnrolled, entryFee, isFull }) => {
@@ -1724,7 +1724,7 @@ export default function TicTacBlock() {
       transition: 'background 0.8s ease-in-out'
     }}>
       {/* Particle Background */}
-      <ParticleBackground colors={currentTheme.particleColors} symbols={TICTACTOE_SYMBOLS} />
+      <ParticleBackground colors={currentTheme.particleColors} symbols={TICTACTOE_SYMBOLS} fontSize="24px" count={38} />
 
       {/* Back to ETour Button */}
       <Link
