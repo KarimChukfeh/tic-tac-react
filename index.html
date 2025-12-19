@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#030712" />
+    <meta name="theme-color" id="theme-color-meta" content="#0a1a2e" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>ETour - Pure Competition. No Nonsense.</title>
     <meta name="description" content="Competitive gaming infrastructure that runs forever, needs no servers, and doesn't try to sell you a token. Just skill vs skill, ETH on the line." />
@@ -28,5 +28,33 @@
   <body style="background-color: #030712;">
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    <script>
+      // Smoothly transition theme-color from Trust Banner blue to dark background on scroll
+      (function() {
+        const bannerColor = { r: 10, g: 26, b: 46 };  // #0a1a2e - Trust Banner blue tint
+        const bgColor = { r: 3, g: 7, b: 18 };        // #030712 - Main background
+        const themeColorMeta = document.getElementById('theme-color-meta');
+        const scrollThreshold = 100; // pixels to scroll before fully transitioning
+
+        function lerp(start, end, t) {
+          return Math.round(start + (end - start) * t);
+        }
+
+        function updateThemeColor() {
+          const scrollY = window.scrollY || window.pageYOffset;
+          const t = Math.min(scrollY / scrollThreshold, 1);
+
+          const r = lerp(bannerColor.r, bgColor.r, t);
+          const g = lerp(bannerColor.g, bgColor.g, t);
+          const b = lerp(bannerColor.b, bgColor.b, t);
+
+          const hex = '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+          themeColorMeta.setAttribute('content', hex);
+        }
+
+        window.addEventListener('scroll', updateThemeColor, { passive: true });
+        updateThemeColor(); // Initial call
+      })();
+    </script>
   </body>
 </html>
