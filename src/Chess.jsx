@@ -2464,16 +2464,6 @@ export default function ChessOnChain() {
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="border-t border-white/10" style={{ position: 'relative', zIndex: 10 }}>
-        <div className="max-w-7xl mx-auto px-6 py-8 text-center text-sm text-blue-300">
-          <p className="font-semibold text-lg mb-2">ChessOnChain Protocol</p>
-          <p>Built on Arbitrum (Ethereum L2). Runs forever. No servers required.</p>
-          <p className="mt-2">Contract code is immutable. Game outcomes are permanent and verifiable. Always verify before interacting.</p>
-          <p className="mt-4 font-mono text-xs text-blue-400/50">{CONTRACT_ADDRESS}</p>
-        </div>
-      </div>
-
       {/* CSS for particle animation */}
       <style>{`
         @keyframes particle-float {

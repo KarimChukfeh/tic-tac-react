@@ -1599,10 +1599,18 @@ export default function ConnectFour() {
 
         {/* Tournament Cards - Lazy Loading */}
         <div className="mb-16">
-          <h2 className="text-3xl font-bold text-center mb-8 text-cyan-300 flex items-center justify-center gap-3">
-            <Trophy className="text-cyan-400" size={32} />
-            Live Instances
-          </h2>
+          {/* Section Header */}
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-3 mb-4">
+              <Trophy className="text-blue-400" size={48} />
+              <h2 className="text-5xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+                Live Instances
+              </h2>
+            </div>
+            <p className="text-xl text-blue-200">
+              Compete in on-chain with real ETH stakes
+            </p>
+          </div>
 
           {metadataLoading ? (
             <div className="text-center py-12">
@@ -1675,8 +1683,11 @@ export default function ConnectFour() {
           )}
         </div>
 
-        {/* Winners Leaderboard Section */}
-        <div className="mt-16 max-w-2xl mx-auto">
+      </div>
+
+      {/* Winners Leaderboard Section */}
+      <div className="max-w-7xl mx-auto px-6 pb-12" style={{ position: 'relative', zIndex: 10 }}>
+        <div className="max-w-2xl mx-auto mb-16">
           <WinnersLeaderboard
             leaderboard={leaderboard}
             loading={leaderboardLoading}

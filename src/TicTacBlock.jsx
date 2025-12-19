@@ -2251,7 +2251,7 @@ export default function TicTacBlock() {
 
       {/* Winners Leaderboard Section */}
       <div className="max-w-7xl mx-auto px-6 pb-12" style={{ position: 'relative', zIndex: 10 }}>
-        <div className="mt-16 max-w-2xl mx-auto">
+        <div className="max-w-2xl mx-auto mb-16">
           <WinnersLeaderboard
             leaderboard={leaderboard}
             loading={leaderboardLoading}
