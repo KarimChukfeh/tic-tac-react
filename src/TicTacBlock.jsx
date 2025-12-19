@@ -2260,6 +2260,69 @@ export default function TicTacBlock() {
         </div>
       </div>
 
+      {/* ============ FOOTER ============ */}
+      <footer className="border-t border-slate-800/50 px-6 py-12" style={{ position: 'relative', zIndex: 10 }}>
+        <div className="max-w-6xl mx-auto">
+
+          {/* Main Footer Content */}
+          <div className="flex flex-col md:flex-row justify-between items-center gap-8 mb-8">
+
+            {/* Left: Tech Credit */}
+            <div className="text-center md:text-left">
+              <p className="text-slate-500 text-sm mb-2">
+                Powered by{' '}
+                <span
+                  className="font-semibold bg-clip-text text-transparent"
+                  style={{ background: 'linear-gradient(135deg, #06b6d4, #3b82f6)', WebkitBackgroundClip: 'text' }}
+                >
+                  ETour Protocol
+                </span>
+              </p>
+              <p className="text-slate-600 text-xs">
+                Open-source perpetual tournament infrastructure on Arbitrum
+              </p>
+            </div>
+
+            {/* Right: Links */}
+            <div className="flex items-center gap-6">
+              <a
+                href="https://github.com/aspect-building/etour"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-slate-500 hover:text-white transition-colors text-sm"
+              >
+                GitHub
+              </a>
+              <a
+                href="https://arbiscan.io"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-slate-500 hover:text-white transition-colors text-sm"
+              >
+                Contracts
+              </a>
+              <a
+                href="https://reclaimweb3.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-slate-500 hover:text-white transition-colors text-sm"
+              >
+                RW3 Manifesto
+              </a>
+            </div>
+
+          </div>
+
+          {/* Bottom Line */}
+          <div className="text-center pt-8 border-t border-slate-800/30">
+            <p className="text-slate-600 text-xs">
+              No company needed. No trust required. No servers to shutdown.
+            </p>
+          </div>
+
+        </div>
+      </footer>
+
       {/* CSS Animations & Custom Styles */}
       <style>{`
         /* Smooth scrolling for anchor links */
