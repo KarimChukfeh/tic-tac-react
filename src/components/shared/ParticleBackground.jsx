@@ -25,7 +25,7 @@ const ParticleBackground = ({ colors, symbols, fontSize }) => {
   }, []);
 
   const particles = useMemo(() => {
-    const particleCount = isMobile ? 25 : 50;
+    const particleCount = isMobile ? 15 : 35;
     return Array.from({ length: particleCount }, (_, i) => {
       const useFirstColor = Math.random() > 0.5;
       const symbolIndex = Math.floor(Math.random() * symbols.length);

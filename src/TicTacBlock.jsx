@@ -2260,15 +2260,6 @@ export default function TicTacBlock() {
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="border-t border-white/10" style={{ position: 'relative', zIndex: 10 }}>
-        <div className="max-w-7xl mx-auto px-6 py-8 text-center text-sm text-blue-300">
-          <p className="font-semibold text-lg mb-2">Dummy TicTacToe Protocol</p>
-          <p>Built on Arbitrum (Ethereum L2). Runs forever. No servers required.</p>
-          <p className="mt-2">Contract code is immutable. Game outcomes are permanent and verifiable. Always verify before interacting.</p>
-        </div>
-      </div>
-
       {/* CSS Animations & Custom Styles */}
       <style>{`
         /* Smooth scrolling for anchor links */
