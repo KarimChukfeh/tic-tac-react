@@ -54,8 +54,8 @@ function FloatingParticles() {
           const targetX = mouse.x - p.baseX;
           const targetY = mouse.y - p.baseY;
 
-          // Convert 100px radius to viewport units (approximate)
-          const forceFieldRadius = 100 / window.innerWidth * 100; // ~100px in vw
+          // Convert 50px radius to viewport units (approximate)
+          const forceFieldRadius = 50 / window.innerWidth * 100; // ~50px in vw
 
           // Calculate current distance from particle to cursor target
           const currentDistX = targetX - offset.x;
