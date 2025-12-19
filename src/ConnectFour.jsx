@@ -9,7 +9,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Wallet, Grid, Clock, Shield, Lock, Eye, Code, ExternalLink,
-  Trophy, Zap, ChevronDown, ArrowLeft
+  Trophy, Zap, ChevronDown, ArrowLeft, AlertCircle
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import C4_ABI from './CFOCABI.json';
@@ -471,6 +471,10 @@ export default function ConnectFour() {
   const [leaderboard, setLeaderboard] = useState([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
 
+  // Connection Error State
+  const [connectionError, setConnectionError] = useState(null); // null = no error, string = error message
+  const [leaderboardError, setLeaderboardError] = useState(false);
+
   // Theme colors (dream theme - matches TicTacToe and Chess)
   const currentTheme = {
     gradient: 'linear-gradient(135deg, #0a0020 0%, #1a0050 50%, #0a0030 100%)',
@@ -547,12 +551,20 @@ export default function ConnectFour() {
 
   // Fetch tier metadata (fast - for initial load)
   const fetchTierMetadata = useCallback(async (contractInstance) => {
-    if (!contractInstance) return;
+    if (!contractInstance) {
+      setConnectionError('Unable to connect to blockchain. Please check your network connection.');
+      setMetadataLoading(false);
+      return;
+    }
 
     setMetadataLoading(true);
+    setConnectionError(null); // Clear any previous error
     const metadata = {};
+    let successfulFetches = 0;
+    let totalAttempts = 0;
 
     for (let tierId = 0; tierId <= 3; tierId++) {
+      totalAttempts++;
       try {
         const tierOverview = await contractInstance.getTierOverview(tierId);
         const statuses = tierOverview[0];
@@ -564,6 +576,7 @@ export default function ConnectFour() {
         const fee = await contractInstance.ENTRY_FEES(tierId);
         const entryFeeFormatted = ethers.formatEther(fee);
 
+        successfulFetches++;
         metadata[tierId] = {
           tierId,
           instanceCount: statuses.length,
@@ -575,6 +588,11 @@ export default function ConnectFour() {
       } catch (error) {
         console.log(`Could not fetch tier ${tierId} metadata:`, error.message);
       }
+    }
+
+    // If no fetches succeeded, we have a connection problem
+    if (successfulFetches === 0 && totalAttempts > 0) {
+      setConnectionError('Unable to load tournament data. Please check your connection and try again.');
     }
 
     setTierMetadata(metadata);
@@ -810,6 +828,7 @@ export default function ConnectFour() {
     try {
       if (!silent) {
         setLeaderboardLoading(true);
+        setLeaderboardError(false);
       }
 
       const leaderboardData = await contractInstance.getLeaderboard();
@@ -820,12 +839,14 @@ export default function ConnectFour() {
       })).sort((a, b) => (b.earnings > a.earnings ? 1 : b.earnings < a.earnings ? -1 : 0));
 
       setLeaderboard(entries);
+      setLeaderboardError(false);
       if (!silent) {
         setLeaderboardLoading(false);
       }
     } catch (error) {
       console.error('Error fetching leaderboard:', error.message || error);
       setLeaderboard([]);
+      setLeaderboardError(true);
       if (!silent) {
         setLeaderboardLoading(false);
       }
@@ -1617,6 +1638,23 @@ export default function ConnectFour() {
               <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
               <p className="text-cyan-300">Loading tournaments...</p>
             </div>
+          ) : connectionError ? (
+            <div className="bg-gradient-to-r from-red-600/20 to-orange-600/20 backdrop-blur-lg rounded-2xl p-12 border border-red-400/30 text-center">
+              <AlertCircle className="text-red-400 mx-auto mb-4" size={64} />
+              <h3 className="text-2xl font-bold text-red-300 mb-2">Connection Error</h3>
+              <p className="text-red-200/70 mb-4">{connectionError}</p>
+              <button
+                onClick={() => {
+                  setMetadataLoading(true);
+                  setConnectionError(null);
+                  fetchTierMetadata(contract);
+                  fetchLeaderboard(contract);
+                }}
+                className="bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white font-bold py-2 px-6 rounded-xl transition-all"
+              >
+                Retry Connection
+              </button>
+            </div>
           ) : Object.keys(tierMetadata).length === 0 ? (
             <div className="text-center py-12 text-purple-300">
               <p>No tournaments available yet.</p>
@@ -1691,7 +1729,9 @@ export default function ConnectFour() {
           <WinnersLeaderboard
             leaderboard={leaderboard}
             loading={leaderboardLoading}
+            error={leaderboardError}
             currentAccount={account}
+            onRetry={() => fetchLeaderboard(contract)}
           />
         </div>
       </div>

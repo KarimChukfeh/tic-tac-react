@@ -385,6 +385,10 @@ export default function TicTacBlock() {
   const [leaderboard, setLeaderboard] = useState([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
 
+  // Connection Error State
+  const [connectionError, setConnectionError] = useState(null); // null = no error, string = error message
+  const [leaderboardError, setLeaderboardError] = useState(false);
+
   // Set page title
   useEffect(() => {
     document.title = 'ETour - TicTacToe';
@@ -575,6 +579,7 @@ export default function TicTacBlock() {
     try {
       if (!silent) {
         setLeaderboardLoading(true);
+        setLeaderboardError(false);
       }
 
       // Use read-only contract to avoid MetaMask rate limiting
@@ -588,12 +593,14 @@ export default function TicTacBlock() {
       })).sort((a, b) => (b.earnings > a.earnings ? 1 : b.earnings < a.earnings ? -1 : 0));
 
       setLeaderboard(entries);
+      setLeaderboardError(false);
       if (!silent) {
         setLeaderboardLoading(false);
       }
     } catch (error) {
       console.error('Error fetching leaderboard:', error.message || error);
       setLeaderboard([]);
+      setLeaderboardError(true);
       if (!silent) {
         setLeaderboardLoading(false);
       }
@@ -604,13 +611,21 @@ export default function TicTacBlock() {
   // This gets basic tier info without detailed instance data
   const fetchTierMetadata = useCallback(async (contractInstance = null) => {
     const readContract = contractInstance || getReadOnlyContract();
-    if (!readContract) return;
+    if (!readContract) {
+      setConnectionError('Unable to connect to blockchain. Please check your network connection.');
+      setMetadataLoading(false);
+      return;
+    }
 
     setMetadataLoading(true);
+    setConnectionError(null); // Clear any previous error
     const metadata = {};
+    let successfulFetches = 0;
+    let totalAttempts = 0;
 
     // Fetch metadata for tiers 0-6
     for (let tierId = 0; tierId <= 6; tierId++) {
+      totalAttempts++;
       try {
         // Parallel fetch tier config, entry fee, and overview
         const [tierConfig, fee, tierOverview] = await Promise.all([
@@ -619,6 +634,7 @@ export default function TicTacBlock() {
           readContract.getTierOverview(tierId)
         ]);
 
+        successfulFetches++;
         const instanceCount = tierOverview[0].length;
         if (instanceCount === 0) continue;
 
@@ -633,6 +649,11 @@ export default function TicTacBlock() {
       } catch (error) {
         console.log(`Could not fetch tier ${tierId} metadata:`, error.message);
       }
+    }
+
+    // If no fetches succeeded, we have a connection problem
+    if (successfulFetches === 0 && totalAttempts > 0) {
+      setConnectionError('Unable to load tournament data. Please check your connection and try again.');
     }
 
     setTierMetadata(metadata);
@@ -2221,8 +2242,28 @@ export default function TicTacBlock() {
                   </>
                 )}
 
-                {/* Empty State */}
-                {!metadataLoading && Object.keys(tierMetadata).length === 0 && (
+                {/* Connection Error State */}
+                {!metadataLoading && connectionError && (
+                  <div className="bg-gradient-to-r from-red-600/20 to-orange-600/20 backdrop-blur-lg rounded-2xl p-12 border border-red-400/30 text-center">
+                    <AlertCircle className="text-red-400 mx-auto mb-4" size={64} />
+                    <h3 className="text-2xl font-bold text-red-300 mb-2">Connection Error</h3>
+                    <p className="text-red-200/70 mb-4">{connectionError}</p>
+                    <button
+                      onClick={() => {
+                        setMetadataLoading(true);
+                        setConnectionError(null);
+                        fetchTierMetadata();
+                        fetchLeaderboard();
+                      }}
+                      className="bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white font-bold py-2 px-6 rounded-xl transition-all"
+                    >
+                      Retry Connection
+                    </button>
+                  </div>
+                )}
+
+                {/* Empty State - only show when no connection error */}
+                {!metadataLoading && !connectionError && Object.keys(tierMetadata).length === 0 && (
                   <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-12 border border-purple-400/30 text-center">
                     <Trophy className="text-purple-400/50 mx-auto mb-4" size={64} />
                     <h3 className="text-2xl font-bold text-purple-300 mb-2">No Tournaments Available</h3>
@@ -2255,7 +2296,9 @@ export default function TicTacBlock() {
           <WinnersLeaderboard
             leaderboard={leaderboard}
             loading={leaderboardLoading}
+            error={leaderboardError}
             currentAccount={account}
+            onRetry={() => fetchLeaderboard()}
           />
         </div>
       </div>

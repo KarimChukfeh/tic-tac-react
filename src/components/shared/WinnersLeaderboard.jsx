@@ -19,8 +19,10 @@ const getRankDisplay = (rank) => {
 const WinnersLeaderboard = ({
   leaderboard = [],
   loading = false,
+  error = false,
   currentAccount = null,
-  title = 'Top Earners'
+  title = 'Top Earners',
+  onRetry = null
 }) => {
   // Show top 10 entries
   const displayEntries = leaderboard.slice(0, 10);
@@ -31,7 +33,7 @@ const WinnersLeaderboard = ({
       <div className="flex items-center gap-3 mb-4">
         <Trophy className="text-yellow-400" size={24} />
         <h3 className="text-xl font-bold text-yellow-300">{title}</h3>
-        {leaderboard.length > 0 && (
+        {!error && leaderboard.length > 0 && (
           <span className="text-sm text-yellow-400/70">
             ({leaderboard.length} player{leaderboard.length !== 1 ? 's' : ''})
           </span>
@@ -45,15 +47,30 @@ const WinnersLeaderboard = ({
         </div>
       )}
 
-      {/* Empty State */}
-      {!loading && displayEntries.length === 0 && (
+      {/* Error State */}
+      {!loading && error && (
+        <div className="text-center py-6">
+          <p className="text-red-400 mb-3">Unable to load leaderboard</p>
+          {onRetry && (
+            <button
+              onClick={onRetry}
+              className="text-sm bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 px-4 py-2 rounded-lg transition-colors"
+            >
+              Retry
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Empty State - only show when no error */}
+      {!loading && !error && displayEntries.length === 0 && (
         <div className="text-center py-8 text-gray-400">
           No winners yet
         </div>
       )}
 
       {/* Leaderboard List */}
-      {!loading && displayEntries.length > 0 && (
+      {!loading && !error && displayEntries.length > 0 && (
         <div className="space-y-2">
           {displayEntries.map((entry, index) => {
             const rank = index + 1;
