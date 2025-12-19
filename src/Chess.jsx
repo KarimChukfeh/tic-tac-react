@@ -9,7 +9,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Wallet, Grid, Swords, Clock, Shield, Lock, Eye, Code, ExternalLink,
-  Trophy, Play, Users, Zap, ChevronDown, ArrowLeft, AlertCircle, CheckCircle
+  Trophy, Play, Users, Zap, ChevronDown, ArrowLeft, AlertCircle, CheckCircle,
+  History
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import CHESS_ABI from './COCABI.json';
