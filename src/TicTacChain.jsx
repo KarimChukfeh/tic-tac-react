@@ -26,14 +26,13 @@ import DUMMY_ABI from './TicTacChainABI.json';
 import { CURRENT_NETWORK, CONTRACT_ADDRESSES, getAddressUrl, getExplorerHomeUrl } from './config/networks';
 import { shortenAddress, formatTime as formatTimeHMS, getTierName, getEstimatedDuration, countInstancesByStatus } from './utils/formatters';
 import ParticleBackground from './components/shared/ParticleBackground';
-import StatsGrid from './components/shared/StatsGrid';
-import EnrolledPlayersList from './components/shared/EnrolledPlayersList';
 import MatchCard from './components/shared/MatchCard';
 import TournamentCard from './components/shared/TournamentCard';
 import WinnersLeaderboard from './components/shared/WinnersLeaderboard';
 import MatchEndModal from './components/shared/MatchEndModal';
 import WhyArbitrum from './components/shared/WhyArbitrum';
 import GameMatchLayout from './components/shared/GameMatchLayout';
+import TournamentHeader from './components/shared/TournamentHeader';
 
 // TicTacToe particle symbols (matching landing page style)
 const TICTACTOE_SYMBOLS = ['✕', '○'];
@@ -87,84 +86,35 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
   // TicTacToe-specific options for match status display
   const matchStatusOptions = { doubleForfeitText: 'Eliminated - Double Forfeit' };
 
-  // Bracket colors
+  // Bracket colors (used for bracket section below)
   const colors = {
-    headerBg: 'from-purple-600/30 to-blue-600/30',
     headerBorder: 'border-purple-400/30',
     text: 'text-purple-300',
-    textHover: 'hover:text-purple-200',
-    icon: 'text-purple-400',
-    buttonEnter: 'from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600',
-    textMuted: 'text-purple-300/70'
+    icon: 'text-purple-400'
   };
 
   return (
     <div className="mb-16">
       {/* Header */}
-      <div className={`bg-gradient-to-r ${colors.headerBg} backdrop-blur-lg rounded-2xl p-8 border ${colors.headerBorder} mb-8`}>
-        <button
-          onClick={onBack}
-          className={`mb-4 flex items-center gap-2 ${colors.text} ${colors.textHover} transition-colors`}
-        >
-          <ChevronDown className="rotate-90" size={20} />
-          Back to Tournaments
-        </button>
-
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <Trophy className={colors.icon} size={48} />
-            <div>
-              <div className="flex items-center gap-3">
-                <h2 className="text-4xl font-bold text-white">
-                  Tournament T{tierId + 1}-I{instanceId + 1}
-                </h2>
-                <span className="text-cyan-400 text-sm font-semibold flex items-center gap-1">
-                  <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
-                  Syncing{'.'.repeat(syncDots)}
-                </span>
-              </div>
-              <p className={colors.text}>
-                Round {currentRound + 1} of {totalRounds}
-              </p>
-            </div>
-          </div>
-          <div className="text-right">
-            <div className={`${colors.text} text-sm`}>Prize Pool</div>
-            <div className="text-3xl font-bold text-yellow-400">
-              {ethers.formatEther(prizePool)} ETH
-            </div>
-          </div>
-        </div>
-
-        {/* Stats */}
-        <StatsGrid
-          enrolledCount={enrolledCount}
-          playerCount={playerCount}
-          status={status}
-          currentRound={currentRound}
-          totalRounds={totalRounds}
-          colors={colors}
-        />
-
-        {/* Enroll Button for Unenrolled Players */}
-        {status === 0 && account && !isEnrolled && !isFull && (
-          <div className="mt-4">
-            <button
-              onClick={() => onEnroll(tierId, instanceId, entryFee)}
-              disabled={loading}
-              className={`w-full bg-gradient-to-r ${colors.buttonEnter} text-white font-bold py-4 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2`}
-            >
-              <Trophy size={20} />
-              {loading ? 'Enrolling...' : `Enroll in Tournament (${entryFee} ETH)`}
-            </button>
-            <p className={`${colors.textMuted} text-xs text-center mt-2`}>
-              Join this tournament and compete for the prize pool
-            </p>
-          </div>
-        )}
-
-        {/* Countdown Timer (only show during enrollment) */}
-        {countdownActive && status === 0 && (
+      <TournamentHeader
+        gameType="tictactoe"
+        tierId={tierId}
+        instanceId={instanceId}
+        status={status}
+        currentRound={currentRound}
+        playerCount={playerCount}
+        enrolledCount={enrolledCount}
+        prizePool={prizePool}
+        enrolledPlayers={enrolledPlayers}
+        syncDots={syncDots}
+        account={account}
+        onBack={onBack}
+        isEnrolled={isEnrolled}
+        isFull={isFull}
+        entryFee={entryFee}
+        onEnroll={onEnroll}
+        loading={loading}
+        renderCountdown={countdownActive && status === 0 ? () => (
           <div className="mt-4 bg-orange-500/20 border border-orange-400/50 rounded-lg p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -183,18 +133,8 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
               </p>
             )}
           </div>
-        )}
-
-
-        {/* Enrolled Players List */}
-        <EnrolledPlayersList
-          enrolledPlayers={enrolledPlayers}
-          account={account}
-          colors={colors}
-        />
-
-        {/* Enrollment Escalation Timers */}
-        {status === 0 && enrollmentTimeout && (() => {
+        ) : null}
+        renderEscalation={status === 0 && enrollmentTimeout ? () => {
           const now = Math.floor(Date.now() / 1000);
           const escalation1Start = Number(enrollmentTimeout.escalation1Start);
           const escalation2Start = Number(enrollmentTimeout.escalation2Start);
@@ -205,51 +145,47 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
           const canForceStart = escalation1Start > 0 && now >= escalation1Start;
           const canAnyoneStart = escalation2Start > 0 && now >= escalation2Start;
 
+          if (!(timeToEsc1 > 0 || timeToEsc2 > 0 || canForceStart || canAnyoneStart)) return null;
+
           return (
             <>
-              {/* Show escalation timers if they're active */}
-              {(timeToEsc1 > 0 || timeToEsc2 > 0 || canForceStart || canAnyoneStart) && (
-                <div className="mt-4 bg-gradient-to-r from-orange-500/20 to-red-500/20 border border-orange-400/50 rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <AlertCircle className="text-orange-400" size={20} />
-                    <h4 className="text-orange-300 font-semibold">Enrollment Escalation Status</h4>
+              <div className="mt-4 bg-gradient-to-r from-orange-500/20 to-red-500/20 border border-orange-400/50 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <AlertCircle className="text-orange-400" size={20} />
+                  <h4 className="text-orange-300 font-semibold">Enrollment Escalation Status</h4>
+                </div>
+
+                <div className="space-y-2">
+                  <div className={`p-3 rounded-lg ${canForceStart ? 'bg-orange-500/30 border border-orange-400' : 'bg-black/20'}`}>
+                    <div className="flex items-center justify-between">
+                      <span className={`text-sm font-semibold ${canForceStart ? 'text-orange-200' : 'text-orange-300/70'}`}>
+                        Escalation 1: Enrolled Players Can Force Start
+                      </span>
+                      {timeToEsc1 > 0 ? (
+                        <span className="text-orange-300 font-mono text-sm">{formatTime(timeToEsc1)}</span>
+                      ) : (
+                        <span className="text-orange-200 font-bold text-xs">ACTIVE</span>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="space-y-2">
-                    {/* Escalation 1 */}
-                    <div className={`p-3 rounded-lg ${canForceStart ? 'bg-orange-500/30 border border-orange-400' : 'bg-black/20'}`}>
-                      <div className="flex items-center justify-between">
-                        <span className={`text-sm font-semibold ${canForceStart ? 'text-orange-200' : 'text-orange-300/70'}`}>
-                          Escalation 1: Enrolled Players Can Force Start
-                        </span>
-                        {timeToEsc1 > 0 ? (
-                          <span className="text-orange-300 font-mono text-sm">{formatTime(timeToEsc1)}</span>
-                        ) : (
-                          <span className="text-orange-200 font-bold text-xs">ACTIVE</span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Escalation 2 */}
-                    <div className={`p-3 rounded-lg ${canAnyoneStart ? 'bg-red-500/30 border border-red-400' : 'bg-black/20'}`}>
-                      <div className="flex items-center justify-between">
-                        <span className={`text-sm font-semibold ${canAnyoneStart ? 'text-red-200' : 'text-red-300/70'}`}>
-                          Escalation 2: Anyone Can Terminate & Claim Pool
-                        </span>
-                        {timeToEsc2 > 0 ? (
-                          <span className="text-red-300 font-mono text-sm">{formatTime(timeToEsc2)}</span>
-                        ) : canAnyoneStart ? (
-                          <span className="text-red-200 font-bold text-xs">ACTIVE</span>
-                        ) : (
-                          <span className="text-red-300/50 font-mono text-xs">Pending</span>
-                        )}
-                      </div>
+                  <div className={`p-3 rounded-lg ${canAnyoneStart ? 'bg-red-500/30 border border-red-400' : 'bg-black/20'}`}>
+                    <div className="flex items-center justify-between">
+                      <span className={`text-sm font-semibold ${canAnyoneStart ? 'text-red-200' : 'text-red-300/70'}`}>
+                        Escalation 2: Anyone Can Terminate & Claim Pool
+                      </span>
+                      {timeToEsc2 > 0 ? (
+                        <span className="text-red-300 font-mono text-sm">{formatTime(timeToEsc2)}</span>
+                      ) : canAnyoneStart ? (
+                        <span className="text-red-200 font-bold text-xs">ACTIVE</span>
+                      ) : (
+                        <span className="text-red-300/50 font-mono text-xs">Pending</span>
+                      )}
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
 
-              {/* Force Start Button */}
               {canForceStart && isEnrolledUser && (
                 <div className="mt-4">
                   <button
@@ -283,8 +219,8 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
               )}
             </>
           );
-        })()}
-      </div>
+        } : null}
+      />
 
       {/* Bracket View */}
       <div className={`bg-gradient-to-br from-slate-900/50 to-purple-900/30 backdrop-blur-lg rounded-2xl p-8 border ${colors.headerBorder}`}>

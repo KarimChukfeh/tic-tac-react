@@ -16,14 +16,13 @@ import C4_ABI from './CFOCABI.json';
 import { CURRENT_NETWORK, CONTRACT_ADDRESSES, getAddressUrl, getExplorerHomeUrl } from './config/networks';
 import { shortenAddress, getTierName, getEstimatedDuration, countInstancesByStatus } from './utils/formatters';
 import ParticleBackground from './components/shared/ParticleBackground';
-import StatsGrid from './components/shared/StatsGrid';
-import EnrolledPlayersList from './components/shared/EnrolledPlayersList';
 import MatchCard from './components/shared/MatchCard';
 import TournamentCard from './components/shared/TournamentCard';
 import WinnersLeaderboard from './components/shared/WinnersLeaderboard';
 import MatchEndModal from './components/shared/MatchEndModal';
 import WhyArbitrum from './components/shared/WhyArbitrum';
 import GameMatchLayout from './components/shared/GameMatchLayout';
+import TournamentHeader from './components/shared/TournamentHeader';
 
 // Connect Four disc particles for background
 const C4_PARTICLES = ['🔴', '🔵'];
@@ -321,54 +320,27 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
   // ConnectFour-specific options for match status display (purple for double forfeit)
   const matchStatusOptions = { doubleForfeitColor: 'text-purple-400' };
 
-  const colors = { headerBg: 'from-purple-600/30 to-blue-600/30', headerBorder: 'border-purple-400/30', text: 'text-purple-300', icon: 'text-purple-400' };
+  // Colors for bracket section
+  const colors = { headerBorder: 'border-purple-400/30', text: 'text-purple-300', icon: 'text-purple-400' };
 
   return (
     <div className="mb-16">
       {/* Header */}
-      <div className={`bg-gradient-to-r ${colors.headerBg} backdrop-blur-lg rounded-2xl p-8 border ${colors.headerBorder} mb-8`}>
-        <button onClick={onBack} className={`mb-4 flex items-center gap-2 ${colors.text} hover:text-white transition-colors`}>
-          <ChevronDown className="rotate-90" size={20} />
-          Back to Tournaments
-        </button>
-
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <span className="text-5xl">🔴</span>
-            <div>
-              <div className="flex items-center gap-3">
-                <h2 className="text-4xl font-bold text-white">Connect Four T{tierId + 1}-I{instanceId + 1}</h2>
-                <span className="text-cyan-400 text-sm font-semibold flex items-center gap-1">
-                  <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
-                  Syncing{'.'.repeat(syncDots)}
-                </span>
-              </div>
-              <p className={colors.text}>Round {currentRound + 1} of {totalRounds}</p>
-            </div>
-          </div>
-          <div className="text-right">
-            <div className={`${colors.text} text-sm`}>Prize Pool</div>
-            <div className="text-3xl font-bold text-yellow-400">{ethers.formatEther(prizePool)} ETH</div>
-          </div>
-        </div>
-
-        {/* Stats */}
-        <StatsGrid
-          enrolledCount={enrolledCount}
-          playerCount={playerCount}
-          status={status}
-          currentRound={currentRound}
-          totalRounds={totalRounds}
-          colors={colors}
-        />
-
-        {/* Enrolled Players */}
-        <EnrolledPlayersList
-          enrolledPlayers={enrolledPlayers}
-          account={account}
-          colors={colors}
-        />
-      </div>
+      <TournamentHeader
+        gameType="connectfour"
+        tierId={tierId}
+        instanceId={instanceId}
+        status={status}
+        currentRound={currentRound}
+        playerCount={playerCount}
+        enrolledCount={enrolledCount}
+        prizePool={prizePool}
+        enrolledPlayers={enrolledPlayers}
+        syncDots={syncDots}
+        account={account}
+        onBack={onBack}
+        loading={loading}
+      />
 
       {/* Bracket */}
       <div className={`bg-gradient-to-br from-slate-900/50 to-purple-900/30 backdrop-blur-lg rounded-2xl p-8 border ${colors.headerBorder}`}>

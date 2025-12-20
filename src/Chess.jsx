@@ -17,14 +17,14 @@ import CHESS_ABI from './COCABI.json';
 import { CURRENT_NETWORK, CONTRACT_ADDRESSES, getAddressUrl, getExplorerHomeUrl } from './config/networks';
 import { shortenAddress, formatTime as formatTimeHMS, getTierName, getEstimatedDuration, countInstancesByStatus } from './utils/formatters';
 import ParticleBackground from './components/shared/ParticleBackground';
-import StatsGrid from './components/shared/StatsGrid';
-import EnrolledPlayersList from './components/shared/EnrolledPlayersList';
+// StatsGrid and EnrolledPlayersList now used via TournamentHeader
 import MatchCard from './components/shared/MatchCard';
 import TournamentCard from './components/shared/TournamentCard';
 import WinnersLeaderboard from './components/shared/WinnersLeaderboard';
 import MatchEndModal from './components/shared/MatchEndModal';
 import WhyArbitrum from './components/shared/WhyArbitrum';
 import GameMatchLayout from './components/shared/GameMatchLayout';
+import TournamentHeader from './components/shared/TournamentHeader';
 
 // Chess piece symbols
 const PIECE_SYMBOLS = {
@@ -629,86 +629,43 @@ const ChessBoard = ({
 
 // Tournament Card Component
 // Tournament Bracket Component
-const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onManualStart, onEnroll, account, loading, syncDots, theme, isEnrolled, entryFee, isFull }) => {
+const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onManualStart, onEnroll, account, loading, syncDots, theme: _theme, isEnrolled, entryFee, isFull }) => {
   const { tierId, instanceId, status, currentRound, enrolledCount, prizePool, rounds, playerCount, enrolledPlayers, enrollmentTimeout } = tournamentData;
 
   const totalRounds = Math.ceil(Math.log2(playerCount));
 
-
-  const colors = theme === 'dream'
-    ? {
-        headerBg: 'from-purple-600/30 to-blue-600/30',
-        headerBorder: 'border-purple-400/30',
-        text: 'text-purple-300',
-        textHover: 'hover:text-purple-200',
-        icon: 'text-purple-400'
-      }
-    : {
-        headerBg: 'from-blue-600/30 to-cyan-600/30',
-        headerBorder: 'border-blue-400/30',
-        text: 'text-blue-300',
-        textHover: 'hover:text-blue-200',
-        icon: 'text-blue-400'
-      };
+  // Colors for bracket section (header colors derived from gameType in TournamentHeader)
+  const colors = {
+    headerBorder: 'border-purple-400/30',
+    text: 'text-purple-300',
+    icon: 'text-purple-400'
+  };
 
   return (
     <div className="mb-16">
       {/* Header */}
-      <div className={`bg-gradient-to-r ${colors.headerBg} backdrop-blur-lg rounded-2xl p-8 border ${colors.headerBorder} mb-8`}>
-        <button
-          onClick={onBack}
-          className={`mb-4 flex items-center gap-2 ${colors.text} ${colors.textHover} transition-colors`}
-        >
-          <ChevronDown className="rotate-90" size={20} />
-          Back to Tournaments
-        </button>
-
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <Trophy className={colors.icon} size={48} />
-            <div>
-              <div className="flex items-center gap-3">
-                <h2 className="text-4xl font-bold text-white">
-                  Chess Tournament T{tierId + 1}-I{instanceId + 1}
-                </h2>
-                <span className="text-cyan-400 text-sm font-semibold flex items-center gap-1">
-                  <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
-                  Syncing{'.'.repeat(syncDots)}
-                </span>
-              </div>
-              <p className={colors.text}>
-                Round {currentRound + 1} of {totalRounds}
-              </p>
-            </div>
-          </div>
-          <div className="text-right">
-            <div className={`${colors.text} text-sm`}>Prize Pool</div>
-            <div className="text-3xl font-bold text-yellow-400">
-              {ethers.formatEther(prizePool)} ETH
-            </div>
-          </div>
-        </div>
-
-        {/* Stats */}
-        <StatsGrid
-          enrolledCount={enrolledCount}
-          playerCount={playerCount}
-          status={status}
-          currentRound={currentRound}
-          totalRounds={totalRounds}
-          colors={colors}
-        />
-
-        {/* Enrolled Players List */}
-        <EnrolledPlayersList
-          enrolledPlayers={enrolledPlayers}
-          account={account}
-          colors={colors}
-        />
-      </div>
+      <TournamentHeader
+        gameType="chess"
+        tierId={tierId}
+        instanceId={instanceId}
+        status={status}
+        currentRound={currentRound}
+        playerCount={playerCount}
+        enrolledCount={enrolledCount}
+        prizePool={prizePool}
+        enrolledPlayers={enrolledPlayers}
+        syncDots={syncDots}
+        account={account}
+        onBack={onBack}
+        isEnrolled={isEnrolled}
+        isFull={isFull}
+        entryFee={entryFee}
+        onEnroll={onEnroll}
+        loading={loading}
+      />
 
       {/* Bracket View */}
-      <div className={`bg-gradient-to-br from-slate-900/50 to-${theme === 'dream' ? 'purple' : 'blue'}-900/30 backdrop-blur-lg rounded-2xl p-8 border ${colors.headerBorder}`}>
+      <div className={`bg-gradient-to-br from-slate-900/50 to-purple-900/30 backdrop-blur-lg rounded-2xl p-8 border ${colors.headerBorder}`}>
         <h3 className={`text-2xl font-bold ${colors.text} mb-6 flex items-center gap-2`}>
           <Grid size={24} />
           Tournament Bracket
