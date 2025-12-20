@@ -21,11 +21,10 @@ import StatsGrid from './components/shared/StatsGrid';
 import EnrolledPlayersList from './components/shared/EnrolledPlayersList';
 import MatchCard from './components/shared/MatchCard';
 import TournamentCard from './components/shared/TournamentCard';
-import TurnTimer from './components/shared/TurnTimer';
-import MatchTimeoutEscalation from './components/shared/MatchTimeoutEscalation';
 import WinnersLeaderboard from './components/shared/WinnersLeaderboard';
 import MatchEndModal from './components/shared/MatchEndModal';
 import WhyArbitrum from './components/shared/WhyArbitrum';
+import GameMatchLayout from './components/shared/GameMatchLayout';
 
 // Chess piece symbols
 const PIECE_SYMBOLS = {
@@ -2118,182 +2117,50 @@ export default function ChessOnChain() {
 
         {/* Match View */}
         {currentMatch && (
-          <div className="mb-16">
-            <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border-2 border-purple-400 rounded-2xl p-8 shadow-2xl">
-              {/* Header */}
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
+          <GameMatchLayout
+            gameType="chess"
+            match={currentMatch}
+            account={account}
+            loading={matchLoading}
+            syncDots={syncDots}
+            onClose={closeMatch}
+            onClaimTimeoutWin={handleClaimTimeoutWin}
+            onForceEliminate={handleForceEliminateStalledMatch}
+            onClaimReplacement={handleClaimMatchSlotByReplacement}
+            playerConfig={{
+              player1: { icon: '♔', label: 'White' },
+              player2: { icon: '♚', label: 'Black' }
+            }}
+            layout="sidebar"
+            renderPlayer1Extra={currentMatch.whiteInCheck ? () => (
+              <div className="bg-red-500/20 border border-red-400 rounded-lg p-2 text-center mt-2">
+                <span className="text-red-300 text-xs font-bold">⚠️ CHECK</span>
+              </div>
+            ) : undefined}
+            renderPlayer2Extra={currentMatch.blackInCheck ? () => (
+              <div className="bg-red-500/20 border border-red-400 rounded-lg p-2 text-center mt-2">
+                <span className="text-red-300 text-xs font-bold">⚠️ CHECK</span>
+              </div>
+            ) : undefined}
+            renderGameControls={() => (
+              <>
+                {/* Resign Button */}
+                {currentMatch.matchStatus === 1 && (
+                  currentMatch.player1?.toLowerCase() === account?.toLowerCase() ||
+                  currentMatch.player2?.toLowerCase() === account?.toLowerCase()
+                ) && (
                   <button
-                    onClick={closeMatch}
-                    className="text-purple-300 hover:text-purple-200 transition-colors"
+                    onClick={handleResign}
+                    disabled={matchLoading}
+                    className="mt-4 bg-red-500/20 hover:bg-red-500/30 text-red-300 font-semibold py-2 px-6 rounded-full transition-all disabled:opacity-50 border border-red-500/40"
                   >
-                    <ChevronDown className="rotate-90" size={24} />
+                    🏳️ Resign
                   </button>
-                  <Swords className="text-purple-400" size={28} />
-                  <h2 className="text-3xl font-bold text-white">
-                    {getStatusEmoji(currentMatch.matchStatus + 1)} Chess Match
-                  </h2>
-                  <span className="text-cyan-400 text-sm font-semibold flex items-center gap-1">
-                    <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
-                    Syncing{'.'.repeat(syncDots)}
-                  </span>
-                </div>
-                <div className={`px-5 py-2 rounded-full text-sm font-bold ${
-                  currentMatch.matchStatus === 2 ? 'bg-green-500/20 text-green-400 border-2 border-green-400' :
-                  currentMatch.matchStatus === 1 ? 'bg-yellow-500/20 text-yellow-400 animate-pulse border-2 border-yellow-400' :
-                  'bg-blue-500/20 text-blue-400 border-2 border-blue-400'
-                }`}>
-                  {getStatusLabel(currentMatch.matchStatus + 1)}
-                </div>
-              </div>
-
-              {/* Game Layout */}
-              <div className="flex flex-col xl:flex-row gap-6">
-                {/* Player Cards - Side by side on mobile/tablet, stacked on left for desktop */}
-                <div className="flex flex-row xl:flex-col gap-4 xl:w-56 shrink-0">
-                  {/* Player 1 (White) */}
-                  <div className="flex-1 bg-slate-900/50 rounded-xl p-4 border border-blue-500/30">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-xl font-bold text-black border-2 border-blue-400 shrink-0">
-                        ♔
-                      </div>
-                      <div className="min-w-0">
-                        <h3 className="text-lg font-bold text-white">White</h3>
-                        <p className="text-blue-300 font-mono text-xs truncate">
-                          {shortenAddress(currentMatch.player1)}
-                        </p>
-                        {currentMatch.player1?.toLowerCase() === account?.toLowerCase() && (
-                          <span className="text-yellow-300 text-xs font-bold">YOU</span>
-                        )}
-                      </div>
-                    </div>
-                    {currentMatch.whiteInCheck && (
-                      <div className="bg-red-500/20 border border-red-400 rounded-lg p-2 text-center">
-                        <span className="text-red-300 text-xs font-bold">⚠️ CHECK</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Player 2 (Black) */}
-                  <div className="flex-1 bg-slate-900/50 rounded-xl p-4 border border-pink-500/30">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-10 h-10 bg-gray-900 rounded-full flex items-center justify-center text-xl font-bold text-white border-2 border-pink-400 shrink-0">
-                        ♚
-                      </div>
-                      <div className="min-w-0">
-                        <h3 className="text-lg font-bold text-white">Black</h3>
-                        <p className="text-pink-300 font-mono text-xs truncate">
-                          {shortenAddress(currentMatch.player2)}
-                        </p>
-                        {currentMatch.player2?.toLowerCase() === account?.toLowerCase() && (
-                          <span className="text-yellow-300 text-xs font-bold">YOU</span>
-                        )}
-                      </div>
-                    </div>
-                    {currentMatch.blackInCheck && (
-                      <div className="bg-red-500/20 border border-red-400 rounded-lg p-2 text-center">
-                        <span className="text-red-300 text-xs font-bold">⚠️ CHECK</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Center: Board */}
-                <div className="flex-1 flex flex-col items-center min-w-0">
-                  <ChessBoard
-                    board={currentMatch.board}
-                    onMove={handleMakeMove}
-                    currentTurn={currentMatch.currentTurn}
-                    account={account}
-                    player1={currentMatch.player1}
-                    player2={currentMatch.player2}
-                    matchStatus={currentMatch.matchStatus}
-                    loading={matchLoading}
-                    whiteInCheck={currentMatch.whiteInCheck}
-                    blackInCheck={currentMatch.blackInCheck}
-                    lastMoveTime={currentMatch.lastMoveTime}
-                    startTime={currentMatch.startTime}
-                    lastMove={lastMove}
-                  />
-
-                  {/* Turn Timer */}
-                  {currentMatch.matchStatus === 1 && (() => {
-                    const MOVE_TIMEOUT = 60; // 1 minute in seconds
-                    const now = Math.floor(Date.now() / 1000);
-                    const timeReference = currentMatch.lastMoveTime > 0 ? currentMatch.lastMoveTime : currentMatch.startTime;
-                    const timeSinceLastMove = now - timeReference;
-                    const timeRemaining = Math.max(0, MOVE_TIMEOUT - timeSinceLastMove);
-
-                    if (timeReference > 0) {
-                      return (
-                        <div className="w-full max-w-md mt-4">
-                          <TurnTimer
-                            isYourTurn={currentMatch.isYourTurn}
-                            timeRemaining={timeRemaining}
-                            onClaimTimeoutWin={handleClaimTimeoutWin}
-                            loading={matchLoading}
-                          />
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
-
-                  {/* Match Timeout Escalation UI */}
-                  {currentMatch.timeoutState && (
-                    <div className="w-full max-w-md mt-4">
-                      <MatchTimeoutEscalation
-                        timeoutState={currentMatch.timeoutState}
-                        matchStatus={currentMatch.matchStatus}
-                        isYourTurn={currentMatch.isYourTurn}
-                        onClaimTimeoutWin={handleClaimTimeoutWin}
-                        onForceEliminate={handleForceEliminateStalledMatch}
-                        onClaimReplacement={handleClaimMatchSlotByReplacement}
-                        loading={matchLoading}
-                      />
-                    </div>
-                  )}
-
-                  {/* Resign Button */}
-                  {currentMatch.matchStatus === 1 && (
-                    currentMatch.player1?.toLowerCase() === account?.toLowerCase() ||
-                    currentMatch.player2?.toLowerCase() === account?.toLowerCase()
-                  ) && (
-                    <button
-                      onClick={handleResign}
-                      disabled={matchLoading}
-                      className="mt-4 bg-red-500/20 hover:bg-red-500/30 text-red-300 font-semibold py-2 px-6 rounded-full transition-all disabled:opacity-50 border border-red-500/40"
-                    >
-                      🏳️ Resign
-                    </button>
-                  )}
-
-                  {/* Match Complete */}
-                  {currentMatch.matchStatus === 2 && (
-                    <div
-                      className="mt-4 rounded-xl p-4 text-center w-full max-w-md"
-                      style={{
-                        background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(16, 185, 129, 0.15))',
-                        border: '1px solid rgba(34, 197, 94, 0.4)',
-                        boxShadow: '0 0 20px rgba(34, 197, 94, 0.15)'
-                      }}
-                    >
-                      <p className="text-white font-bold text-xl mb-2">
-                        {currentMatch.isDraw ? "It's a Draw!" : 'Checkmate!'}
-                      </p>
-                      {!currentMatch.isDraw && (
-                        <p className="text-green-300">
-                          Winner: {currentMatch.winner?.toLowerCase() === currentMatch.player1?.toLowerCase() ? 'White' : 'Black'}
-                          {currentMatch.winner?.toLowerCase() === account?.toLowerCase() && ' (YOU!)'}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Match Info */}
-              <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+                )}
+              </>
+            )}
+            renderMatchInfo={() => (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="bg-black/20 rounded-lg p-3 text-center">
                   <div className="text-purple-300 text-sm">Move #</div>
                   <div className="text-white font-bold text-xl">{currentMatch.fullMoveNumber}</div>
@@ -2311,51 +2178,65 @@ export default function ChessOnChain() {
                   <div className="text-white font-bold text-xl">{currentMatch.matchNumber + 1}</div>
                 </div>
               </div>
-
-              {/* Move History */}
-              {moveHistory.length > 0 && (
-                <div className="mt-6">
-                  <div className="flex items-center gap-2 mb-3">
-                    <History size={18} className="text-cyan-400" />
-                    <h3 className="text-white font-bold">Move History</h3>
-                    <span className="text-slate-400 text-sm">({moveHistory.length} moves)</span>
-                  </div>
-                  <div
-                    className="rounded-xl p-4 max-h-48 overflow-y-auto"
-                    style={{
-                      background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.8), rgba(30, 41, 59, 0.8))',
-                      border: '1px solid rgba(148, 163, 184, 0.2)',
-                    }}
-                  >
-                    <div className="grid grid-cols-2 gap-x-6 gap-y-1 font-mono text-sm">
-                      {/* Group moves into pairs (white + black) */}
-                      {Array.from({ length: Math.ceil(moveHistory.length / 2) }, (_, i) => {
-                        const whiteMove = moveHistory[i * 2];
-                        const blackMove = moveHistory[i * 2 + 1];
-                        const moveNum = i + 1;
-                        return (
-                          <div key={moveNum} className="contents">
-                            <div className="flex items-center gap-2">
-                              <span className="text-slate-500 w-6 text-right">{moveNum}.</span>
-                              <span className="text-slate-100">{whiteMove?.notation || ''}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {blackMove && (
-                                <>
-                                  <span className="text-slate-500 w-6 text-right">{moveNum}...</span>
-                                  <span className="text-purple-300">{blackMove.notation}</span>
-                                </>
-                              )}
-                            </div>
+            )}
+            renderMoveHistory={moveHistory.length > 0 ? () => (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <History size={18} className="text-cyan-400" />
+                  <h3 className="text-white font-bold">Move History</h3>
+                  <span className="text-slate-400 text-sm">({moveHistory.length} moves)</span>
+                </div>
+                <div
+                  className="rounded-xl p-4 max-h-48 overflow-y-auto"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.8), rgba(30, 41, 59, 0.8))',
+                    border: '1px solid rgba(148, 163, 184, 0.2)',
+                  }}
+                >
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-1 font-mono text-sm">
+                    {Array.from({ length: Math.ceil(moveHistory.length / 2) }, (_, i) => {
+                      const whiteMove = moveHistory[i * 2];
+                      const blackMove = moveHistory[i * 2 + 1];
+                      const moveNum = i + 1;
+                      return (
+                        <div key={moveNum} className="contents">
+                          <div className="flex items-center gap-2">
+                            <span className="text-slate-500 w-6 text-right">{moveNum}.</span>
+                            <span className="text-slate-100">{whiteMove?.notation || ''}</span>
                           </div>
-                        );
-                      })}
-                    </div>
+                          <div className="flex items-center gap-2">
+                            {blackMove && (
+                              <>
+                                <span className="text-slate-500 w-6 text-right">{moveNum}...</span>
+                                <span className="text-purple-300">{blackMove.notation}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
-              )}
-            </div>
-          </div>
+              </div>
+            ) : undefined}
+          >
+            {/* Chess Board */}
+            <ChessBoard
+              board={currentMatch.board}
+              onMove={handleMakeMove}
+              currentTurn={currentMatch.currentTurn}
+              account={account}
+              player1={currentMatch.player1}
+              player2={currentMatch.player2}
+              matchStatus={currentMatch.matchStatus}
+              loading={matchLoading}
+              whiteInCheck={currentMatch.whiteInCheck}
+              blackInCheck={currentMatch.blackInCheck}
+              lastMoveTime={currentMatch.lastMoveTime}
+              startTime={currentMatch.startTime}
+              lastMove={lastMove}
+            />
+          </GameMatchLayout>
         )}
 
         {/* Tournaments Section */}

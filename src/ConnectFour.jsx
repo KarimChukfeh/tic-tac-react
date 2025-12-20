@@ -9,22 +9,21 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Wallet, Grid, Clock, Shield, Lock, Eye, Code, ExternalLink,
-  Trophy, Zap, ChevronDown, ArrowLeft, AlertCircle, CheckCircle
+  Trophy, ChevronDown, ArrowLeft, AlertCircle, CheckCircle, History
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import C4_ABI from './CFOCABI.json';
 import { CURRENT_NETWORK, CONTRACT_ADDRESSES, getAddressUrl, getExplorerHomeUrl } from './config/networks';
-import { shortenAddress, formatTime as formatTimeHMS, getTierName, getEstimatedDuration, countInstancesByStatus } from './utils/formatters';
+import { shortenAddress, getTierName, getEstimatedDuration, countInstancesByStatus } from './utils/formatters';
 import ParticleBackground from './components/shared/ParticleBackground';
 import StatsGrid from './components/shared/StatsGrid';
 import EnrolledPlayersList from './components/shared/EnrolledPlayersList';
 import MatchCard from './components/shared/MatchCard';
 import TournamentCard from './components/shared/TournamentCard';
-import TurnTimer from './components/shared/TurnTimer';
-import MatchTimeoutEscalation from './components/shared/MatchTimeoutEscalation';
 import WinnersLeaderboard from './components/shared/WinnersLeaderboard';
 import MatchEndModal from './components/shared/MatchEndModal';
 import WhyArbitrum from './components/shared/WhyArbitrum';
+import GameMatchLayout from './components/shared/GameMatchLayout';
 
 // Connect Four disc particles for background
 const C4_PARTICLES = ['🔴', '🔵'];
@@ -469,6 +468,8 @@ export default function ConnectFour() {
   const [syncDots, setSyncDots] = useState(1);
   const [matchEndResult, setMatchEndResult] = useState(null); // 'win' | 'lose' | 'draw' | 'forfeit_win' | 'forfeit_lose' | 'double_forfeit'
   const [matchEndWinnerLabel, setMatchEndWinnerLabel] = useState('');
+  const [moveHistory, setMoveHistory] = useState([]);
+  const previousBoardRef = useRef(null);
 
   // Leaderboard State
   const [leaderboard, setLeaderboard] = useState([]);
@@ -824,6 +825,78 @@ export default function ConnectFour() {
     }
   }, []);
 
+  // Fetch move history from blockchain events with fallback to board state reconstruction
+  const fetchMoveHistory = useCallback(async (contractInstance, tierId, instanceId, roundNumber, matchNumber) => {
+    try {
+      // Get match data first (needed for both approaches)
+      const matchData = await contractInstance.getMatch(tierId, instanceId, roundNumber, matchNumber);
+      const player1 = matchData[0];
+      const board = matchData[4];
+
+      // Try to query MoveMade events for this match
+      try {
+        const matchKey = ethers.keccak256(
+          ethers.AbiCoder.defaultAbiCoder().encode(
+            ['uint8', 'uint8', 'uint8', 'uint8'],
+            [tierId, instanceId, roundNumber, matchNumber]
+          )
+        );
+
+        const filter = contractInstance.filters.MoveMade(matchKey);
+        const events = await contractInstance.queryFilter(filter);
+
+        if (events.length > 0) {
+          // Convert events to move history
+          const history = events.map(event => {
+            const player = event.args.player;
+            const column = Number(event.args.column);
+            const row = Number(event.args.row);
+            const isPlayer1 = player.toLowerCase() === player1.toLowerCase();
+            return {
+              player: isPlayer1 ? '🔴' : '🔵',
+              column,
+              row,
+              address: player,
+              blockNumber: event.blockNumber
+            };
+          });
+
+          // Sort by block number to ensure correct order
+          history.sort((a, b) => a.blockNumber - b.blockNumber);
+          return history;
+        }
+      } catch (eventError) {
+        console.warn('Event query failed, falling back to board reconstruction:', eventError);
+      }
+
+      // Fallback: Reconstruct from board state (less accurate - no order info)
+      // Connect Four board: row-major, index = row * 7 + col
+      // We scan column by column, bottom-up, to infer move order per column
+      const boardArray = Array.from(board);
+      const history = [];
+
+      // For each column, find filled cells from bottom to top
+      for (let col = 0; col < 7; col++) {
+        for (let row = 5; row >= 0; row--) {
+          const idx = row * 7 + col;
+          const cell = Number(boardArray[idx]);
+          if (cell !== 0) {
+            history.push({
+              player: cell === 1 ? '🔴' : '🔵',
+              column: col,
+              row
+            });
+          }
+        }
+      }
+
+      return history;
+    } catch (error) {
+      console.error('Error fetching move history:', error);
+      return [];
+    }
+  }, []);
+
   // Fetch leaderboard data
   const fetchLeaderboard = useCallback(async (contractInstance, silent = false) => {
     if (!contractInstance) return;
@@ -903,6 +976,7 @@ export default function ConnectFour() {
 
       const matchData = await contract.getMatch(tierId, instanceId, roundNumber, matchNumber);
       const isPlayer1 = matchData[0].toLowerCase() === account.toLowerCase();
+      const board = Array.from(matchData[4]);
 
       setCurrentMatch({
         tierId,
@@ -913,7 +987,7 @@ export default function ConnectFour() {
         player2: matchData[1],
         currentTurn: matchData[2],
         winner: matchData[3],
-        board: Array.from(matchData[4]),
+        board,
         matchStatus: Number(matchData[5]),
         isDraw: matchData[6],
         startTime: Number(matchData[7]),
@@ -924,6 +998,13 @@ export default function ConnectFour() {
         isPlayer1,
         isYourTurn: matchData[2].toLowerCase() === account.toLowerCase()
       });
+
+      // Initialize board ref for move detection
+      previousBoardRef.current = [...board];
+
+      // Fetch move history from blockchain events
+      const history = await fetchMoveHistory(contract, tierId, instanceId, roundNumber, matchNumber);
+      setMoveHistory(history);
 
       setMatchLoading(false);
     } catch (error) {
@@ -951,7 +1032,14 @@ export default function ConnectFour() {
       await tx.wait();
 
       const updated = await refreshMatchData(contract, account, currentMatch);
-      if (updated) setCurrentMatch(updated);
+      if (updated) {
+        setCurrentMatch(updated);
+        // Update board ref to prevent sync from detecting this move again
+        previousBoardRef.current = [...updated.board];
+        // Refresh move history from blockchain
+        const history = await fetchMoveHistory(contract, currentMatch.tierId, currentMatch.instanceId, currentMatch.roundNumber, currentMatch.matchNumber);
+        setMoveHistory(history);
+      }
 
       setMatchLoading(false);
     } catch (error) {
@@ -1057,7 +1145,11 @@ export default function ConnectFour() {
   };
 
   // Close match
-  const closeMatch = () => setCurrentMatch(null);
+  const closeMatch = () => {
+    setCurrentMatch(null);
+    setMoveHistory([]);
+    previousBoardRef.current = null;
+  };
 
   // Handle closing the match end modal
   const handleMatchEndModalClose = async () => {
@@ -1247,16 +1339,37 @@ export default function ConnectFour() {
             setMatchEndWinnerLabel('');
           } else if (updated.isTimedOut) {
             setMatchEndResult(userWon ? 'forfeit_win' : 'forfeit_lose');
-            setMatchEndWinnerLabel(winnerIsPlayer1 ? 'Red' : 'Yellow');
+            setMatchEndWinnerLabel(winnerIsPlayer1 ? 'Red' : 'Blue');
           } else {
             setMatchEndResult(userWon ? 'win' : 'lose');
-            setMatchEndWinnerLabel(winnerIsPlayer1 ? 'Red' : 'Yellow');
+            setMatchEndWinnerLabel(winnerIsPlayer1 ? 'Red' : 'Blue');
           }
 
           setCurrentMatch(updated);
           setSyncDots(1);
           return;
         }
+
+        // Detect new moves by comparing board states
+        const prevBoard = previousBoardRef.current;
+        let moveDetected = false;
+        if (prevBoard && updated.board) {
+          for (let i = 0; i < updated.board.length; i++) {
+            if (prevBoard[i] === 0 && updated.board[i] !== 0) {
+              moveDetected = true;
+              break;
+            }
+          }
+        }
+
+        // If a new move was detected, refresh history from blockchain
+        if (moveDetected) {
+          const history = await fetchMoveHistory(contract, currentMatch.tierId, currentMatch.instanceId, currentMatch.roundNumber, currentMatch.matchNumber);
+          setMoveHistory(history);
+        }
+
+        // Update board ref for next comparison
+        previousBoardRef.current = [...updated.board];
 
         setCurrentMatch(updated);
       }
@@ -1265,7 +1378,7 @@ export default function ConnectFour() {
 
     const pollInterval = setInterval(doSync, 3000);
     return () => clearInterval(pollInterval);
-  }, [currentMatch?.tierId, currentMatch?.instanceId, currentMatch?.roundNumber, currentMatch?.matchNumber, contract, account, refreshMatchData]);
+  }, [currentMatch?.tierId, currentMatch?.instanceId, currentMatch?.roundNumber, currentMatch?.matchNumber, contract, account, refreshMatchData, fetchMoveHistory]);
 
   // Sync dots animation
   useEffect(() => {
@@ -1328,154 +1441,64 @@ export default function ConnectFour() {
 
   // Match view
   if (currentMatch) {
-    const isPlayer1 = currentMatch.player1?.toLowerCase() === account?.toLowerCase();
-    const isPlayer2 = currentMatch.player2?.toLowerCase() === account?.toLowerCase();
-    const myColor = isPlayer1 ? 'Red' : isPlayer2 ? 'Blue' : 'Spectator';
-    const isGameOver = currentMatch.matchStatus === 2;
-    const hasWinner = currentMatch.winner && currentMatch.winner !== '0x0000000000000000000000000000000000000000';
-
     return (
       <div style={{ minHeight: '100vh', background: currentTheme.gradient, color: '#fff', position: 'relative', overflow: 'hidden' }}>
         <ParticleBackground colors={currentTheme.particleColors} symbols={C4_PARTICLES} fontSize="24px" />
 
         <div className="max-w-4xl mx-auto px-6 py-8" style={{ position: 'relative', zIndex: 10 }}>
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <button
-              onClick={closeMatch}
-              className="flex items-center gap-2 text-purple-300 hover:text-white transition-colors"
-            >
-              <ArrowLeft size={20} />
-              Back to Bracket
-            </button>
-            <div className="flex items-center gap-2 text-cyan-400 text-sm">
-              <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
-              Syncing{'.'.repeat(syncDots)}
-            </div>
-          </div>
-
-          {/* Game Status */}
-          <div className="text-center mb-6">
-            <h2 className="text-3xl font-bold text-white mb-2">Connect Four Match</h2>
-            <p className="text-purple-300">You are playing as {myColor} {myColor === 'Red' ? '🔴' : myColor === 'Blue' ? '🔵' : ''}</p>
-          </div>
-
-          {/* Turn Indicator */}
-          <div className="flex justify-center mb-6">
-            {isGameOver ? (
-              <div className={`px-6 py-3 rounded-xl font-bold text-lg ${
-                hasWinner
-                  ? currentMatch.winner.toLowerCase() === account?.toLowerCase()
-                    ? 'bg-green-500/20 border-2 border-green-400 text-green-300'
-                    : 'bg-purple-500/20 border-2 border-purple-400 text-purple-300'
-                  : 'bg-yellow-500/20 border-2 border-yellow-400 text-yellow-300'
-              }`}>
-                {hasWinner
-                  ? currentMatch.winner.toLowerCase() === account?.toLowerCase()
-                    ? '🎉 You Won!'
-                    : '😢 You Lost'
-                  : "🤝 It's a Draw!"
-                }
-              </div>
-            ) : (
-              <div className={`px-6 py-3 rounded-xl font-bold text-lg ${
-                currentMatch.isYourTurn
-                  ? 'bg-green-500/20 border-2 border-green-400 text-green-300 animate-pulse'
-                  : 'bg-gray-500/20 border-2 border-gray-400 text-gray-300'
-              }`}>
-                {currentMatch.isYourTurn ? "🎯 Your Turn!" : "⏳ Opponent's Turn"}
-              </div>
-            )}
-          </div>
-
-          {/* Player Info */}
-          <div className="flex justify-between items-center mb-6 max-w-md mx-auto">
-            <div className={`flex items-center gap-2 p-3 rounded-lg ${
-              currentMatch.currentTurn?.toLowerCase() === currentMatch.player1?.toLowerCase() && !isGameOver
-                ? 'bg-cyan-500/30 border border-cyan-400'
-                : 'bg-black/30'
-            }`}>
-              <span className="text-2xl">🔴</span>
-              <div>
-                <div className="text-xs text-gray-400">Red</div>
-                <div className="font-mono text-sm">{shortenAddress(currentMatch.player1)}</div>
-              </div>
-            </div>
-            <div className="text-xl font-bold text-gray-500">VS</div>
-            <div className={`flex items-center gap-2 p-3 rounded-lg ${
-              currentMatch.currentTurn?.toLowerCase() === currentMatch.player2?.toLowerCase() && !isGameOver
-                ? 'bg-blue-500/30 border border-blue-400'
-                : 'bg-black/30'
-            }`}>
-              <span className="text-2xl">🔵</span>
-              <div>
-                <div className="text-xs text-gray-400">Blue</div>
-                <div className="font-mono text-sm">{shortenAddress(currentMatch.player2)}</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Board */}
-          <ConnectFourBoard
-            board={currentMatch.board}
-            onColumnClick={handleMakeMove}
-            currentTurn={currentMatch.currentTurn}
+          <GameMatchLayout
+            gameType="connectfour"
+            match={currentMatch}
             account={account}
-            player1={currentMatch.player1}
-            player2={currentMatch.player2}
-            matchStatus={currentMatch.matchStatus}
             loading={matchLoading}
-            winner={currentMatch.winner}
-            lastColumn={currentMatch.lastColumn}
-          />
-
-          {/* Turn Timer */}
-          {currentMatch.matchStatus === 1 && (currentMatch.lastMoveTime !== undefined || currentMatch.startTime !== undefined) && (() => {
-            const MOVE_TIMEOUT = 60; // 1 minute in seconds
-            const now = Math.floor(Date.now() / 1000);
-            const timeReference = currentMatch.lastMoveTime > 0 ? currentMatch.lastMoveTime : currentMatch.startTime;
-            const timeSinceLastMove = now - timeReference;
-            const timeRemaining = Math.max(0, MOVE_TIMEOUT - timeSinceLastMove);
-
-            if (timeReference > 0) {
-              return (
-                <div className="max-w-md mx-auto mt-6">
-                  <TurnTimer
-                    isYourTurn={currentMatch.isYourTurn}
-                    timeRemaining={timeRemaining}
-                    onClaimTimeoutWin={handleClaimTimeoutWin}
-                    loading={matchLoading}
-                  />
+            syncDots={syncDots}
+            onClose={closeMatch}
+            onClaimTimeoutWin={handleClaimTimeoutWin}
+            onForceEliminate={handleForceEliminateStalledMatch}
+            onClaimReplacement={handleClaimMatchSlotByReplacement}
+            playerConfig={{
+              player1: { icon: '🔴', label: 'Red' },
+              player2: { icon: '🔵', label: 'Blue' }
+            }}
+            layout="centered"
+            renderMoveHistory={moveHistory.length > 0 ? () => (
+              <div className="bg-slate-900/50 rounded-xl p-6 border border-cyan-500/30">
+                <h3 className="text-xl font-bold text-cyan-300 mb-4 flex items-center gap-2">
+                  <History size={20} />
+                  Move History
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                  {moveHistory.map((move, idx) => (
+                    <div
+                      key={idx}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium ${
+                        move.player === '🔴'
+                          ? 'bg-red-500/20 text-red-300 border border-red-500/30'
+                          : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                      }`}
+                    >
+                      <span className="mr-1">{idx + 1}.</span>
+                      {move.player} → {String.fromCharCode(65 + move.column)}
+                    </div>
+                  ))}
                 </div>
-              );
-            }
-            return null;
-          })()}
-
-          {/* Match Timeout Escalation UI */}
-          {currentMatch.timeoutState && (
-            <div className="max-w-md mx-auto mt-6">
-              <MatchTimeoutEscalation
-                timeoutState={currentMatch.timeoutState}
-                matchStatus={currentMatch.matchStatus}
-                isYourTurn={currentMatch.isYourTurn}
-                onClaimTimeoutWin={handleClaimTimeoutWin}
-                onForceEliminate={handleForceEliminateStalledMatch}
-                onClaimReplacement={handleClaimMatchSlotByReplacement}
-                loading={matchLoading}
-              />
-            </div>
-          )}
-
-          {/* Loading Overlay */}
-          {matchLoading && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-              <div className="bg-slate-800 rounded-xl p-6 text-center">
-                <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                <p className="text-white">Processing move...</p>
               </div>
-            </div>
-          )}
+            ) : null}
+          >
+            {/* Connect Four Board */}
+            <ConnectFourBoard
+              board={currentMatch.board}
+              onColumnClick={handleMakeMove}
+              currentTurn={currentMatch.currentTurn}
+              account={account}
+              player1={currentMatch.player1}
+              player2={currentMatch.player2}
+              matchStatus={currentMatch.matchStatus}
+              loading={matchLoading}
+              winner={currentMatch.winner}
+              lastColumn={currentMatch.lastColumn}
+            />
+          </GameMatchLayout>
         </div>
       </div>
     );

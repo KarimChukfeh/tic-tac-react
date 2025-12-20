@@ -30,11 +30,10 @@ import StatsGrid from './components/shared/StatsGrid';
 import EnrolledPlayersList from './components/shared/EnrolledPlayersList';
 import MatchCard from './components/shared/MatchCard';
 import TournamentCard from './components/shared/TournamentCard';
-import TurnTimer from './components/shared/TurnTimer';
-import MatchTimeoutEscalation from './components/shared/MatchTimeoutEscalation';
 import WinnersLeaderboard from './components/shared/WinnersLeaderboard';
 import MatchEndModal from './components/shared/MatchEndModal';
 import WhyArbitrum from './components/shared/WhyArbitrum';
+import GameMatchLayout from './components/shared/GameMatchLayout';
 
 // TicTacToe particle symbols (matching landing page style)
 const TICTACTOE_SYMBOLS = ['✕', '○'];
@@ -381,6 +380,7 @@ export default function TicTacChain() {
   const [syncDots, setSyncDots] = useState(1);
   const [matchEndResult, setMatchEndResult] = useState(null); // 'win' | 'lose' | 'draw' | 'forfeit_win' | 'forfeit_lose' | 'double_forfeit'
   const [matchEndWinnerLabel, setMatchEndWinnerLabel] = useState('');
+  const previousBoardRef = useRef(null); // Track previous board state for move history sync
 
   // Leaderboard State
   const [leaderboard, setLeaderboard] = useState([]);
@@ -1178,6 +1178,67 @@ export default function TicTacChain() {
     }
   };
 
+  // Fetch move history from blockchain events with fallback to board state reconstruction
+  const fetchMoveHistory = useCallback(async (contractInstance, tierId, instanceId, roundNumber, matchNumber) => {
+    try {
+      // Get match data first (needed for both approaches)
+      const matchData = await contractInstance.getMatch(tierId, instanceId, roundNumber, matchNumber);
+      const player1 = matchData[0];
+      const board = matchData[4];
+
+      // Try to query MoveMade events for this match
+      try {
+        const matchKey = ethers.keccak256(
+          ethers.AbiCoder.defaultAbiCoder().encode(
+            ['uint8', 'uint8', 'uint8', 'uint8'],
+            [tierId, instanceId, roundNumber, matchNumber]
+          )
+        );
+
+        const filter = contractInstance.filters.MoveMade(matchKey);
+        const events = await contractInstance.queryFilter(filter);
+
+        if (events.length > 0) {
+          // Convert events to move history
+          const history = events.map(event => {
+            const player = event.args.player;
+            const cellIndex = Number(event.args.cellIndex);
+            const isPlayer1 = player.toLowerCase() === player1.toLowerCase();
+            return {
+              player: isPlayer1 ? 'X' : 'O',
+              cell: cellIndex,
+              address: player,
+              blockNumber: event.blockNumber
+            };
+          });
+
+          // Sort by block number to ensure correct order
+          history.sort((a, b) => a.blockNumber - b.blockNumber);
+          return history;
+        }
+      } catch (eventError) {
+        console.warn('Event query failed, falling back to board reconstruction:', eventError);
+      }
+
+      // Fallback: Reconstruct from board state (loses move order but shows current state)
+      const history = [];
+      const boardArray = Array.from(board);
+      for (let i = 0; i < boardArray.length; i++) {
+        const cell = Number(boardArray[i]);
+        if (cell !== 0) {
+          history.push({
+            player: cell === 1 ? 'X' : 'O',
+            cell: i
+          });
+        }
+      }
+      return history;
+    } catch (error) {
+      console.error('Error fetching move history:', error);
+      return [];
+    }
+  }, []);
+
   // Refresh match data from contract
   const refreshMatchData = useCallback(async (contractInstance, userAccount, matchInfo) => {
     try {
@@ -1286,7 +1347,11 @@ export default function TicTacChain() {
       const updated = await refreshMatchData(contract, account, currentMatch);
       if (updated) {
         setCurrentMatch(updated);
-        setMoveHistory(prev => [...prev, { player: currentMatch.userSymbol, cell: cellIndex, timestamp: Date.now() }]);
+        // Update board ref to prevent sync from detecting this move again
+        previousBoardRef.current = [...updated.board];
+        // Refresh move history from blockchain
+        const history = await fetchMoveHistory(contract, currentMatch.tierId, currentMatch.instanceId, currentMatch.roundNumber, currentMatch.matchNumber);
+        setMoveHistory(history);
       }
       setMatchLoading(false);
     } catch (error) {
@@ -1424,7 +1489,11 @@ export default function TicTacChain() {
 
       if (updated) {
         setCurrentMatch(updated);
-        setMoveHistory([]);
+        // Initialize board ref for move detection
+        previousBoardRef.current = [...updated.board];
+        // Fetch move history from blockchain events
+        const history = await fetchMoveHistory(contract, tierId, instanceId, roundNumber, matchNumber);
+        setMoveHistory(history);
       }
 
       setMatchLoading(false);
@@ -1447,6 +1516,7 @@ export default function TicTacChain() {
 
     setCurrentMatch(null);
     setMoveHistory([]);
+    previousBoardRef.current = null;
 
     // Refresh tournament bracket and cached stats (with loading indicator)
     if (tournamentInfo && contract) {
@@ -1668,6 +1738,27 @@ export default function TicTacChain() {
             return;
           }
 
+          // Detect new moves by comparing board states
+          const prevBoard = previousBoardRef.current;
+          let moveDetected = false;
+          if (prevBoard && updatedMatch.board) {
+            for (let i = 0; i < updatedMatch.board.length; i++) {
+              if (prevBoard[i] === 0 && updatedMatch.board[i] !== 0) {
+                moveDetected = true;
+                break;
+              }
+            }
+          }
+
+          // If a new move was detected, refresh history from blockchain
+          if (moveDetected) {
+            const history = await fetchMoveHistory(contractInstance, match.tierId, match.instanceId, match.roundNumber, match.matchNumber);
+            setMoveHistory(history);
+          }
+
+          // Update board ref for next comparison
+          previousBoardRef.current = [...updatedMatch.board];
+
           // Normal match update (game still in progress)
           setCurrentMatch(updatedMatch);
         }
@@ -1683,7 +1774,7 @@ export default function TicTacChain() {
     const matchPollInterval = setInterval(doMatchSync, 2000);
 
     return () => clearInterval(matchPollInterval);
-  }, [currentMatch?.tierId, currentMatch?.instanceId, currentMatch?.roundNumber, currentMatch?.matchNumber, account, refreshMatchData, fetchLeaderboard, refreshTournamentBracket]);
+  }, [currentMatch?.tierId, currentMatch?.instanceId, currentMatch?.roundNumber, currentMatch?.matchNumber, account, refreshMatchData, fetchMoveHistory, fetchLeaderboard, refreshTournamentBracket]);
 
   // Increment match sync dots every second (1 -> 2 -> 3, resets on sync)
   useEffect(() => {
@@ -1905,210 +1996,51 @@ export default function TicTacChain() {
 
         {/* Match View - Shows when player enters a match */}
         {account && contract && currentMatch && (
-          <div className="mb-16">
-            {/* Match Header */}
-            <div className="bg-gradient-to-r from-purple-600/30 to-blue-600/30 backdrop-blur-lg rounded-2xl p-6 border border-purple-400/30 mb-8">
-              <button
-                onClick={closeMatch}
-                className="mb-4 flex items-center gap-2 text-purple-300 hover:text-purple-200 transition-colors"
-              >
-                <ChevronDown className="rotate-90" size={20} />
-                Back to Tournament
-              </button>
-
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <div className="flex items-center gap-3">
-                    <h2 className="text-3xl font-bold text-white">
-                      Tournament Match
-                    </h2>
-                    <span className="text-cyan-400 text-sm font-semibold flex items-center gap-1">
-                      <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
-                      Syncing{'.'.repeat(syncDots)}
-                    </span>
-                  </div>
-                  <p className="text-purple-300 mt-2">
-                    T{currentMatch.tierId}-I{currentMatch.instanceId} • Round {currentMatch.roundNumber + 1} • Match {currentMatch.matchNumber + 1}
-                  </p>
+          <GameMatchLayout
+            gameType="tictactoe"
+            match={currentMatch}
+            account={account}
+            loading={matchLoading}
+            syncDots={syncDots}
+            onClose={closeMatch}
+            onClaimTimeoutWin={handleClaimTimeoutWin}
+            onForceEliminate={handleForceEliminateStalledMatch}
+            onClaimReplacement={handleClaimMatchSlotByReplacement}
+            playerConfig={{
+              player1: { icon: 'X', label: 'Player 1' },
+              player2: { icon: 'O', label: 'Player 2' }
+            }}
+            layout="three-column"
+            renderPlayer1Stats={() => (
+              <>
+                <div className="bg-black/20 rounded-lg p-3">
+                  <div className="text-blue-300 text-sm mb-1">Symbol</div>
+                  <div className="text-white font-bold text-2xl">X</div>
                 </div>
-                <div className={`px-4 py-2 rounded-xl font-bold ${
-                  currentMatch.matchStatus === 0 ? 'bg-gray-500/20 text-gray-300' :
-                  currentMatch.matchStatus === 1 ? 'bg-yellow-500/20 text-yellow-300' :
-                  'bg-green-500/20 text-green-300'
-                }`}>
-                  {currentMatch.matchStatus === 0 ? 'Not Started' :
-                   currentMatch.matchStatus === 1 ? 'In Progress' :
-                   currentMatch.isDraw ? 'Draw' : 'Complete'}
-                </div>
-              </div>
-
-              {!currentMatch.isMatchInitialized && (
-                <div className="bg-yellow-500/20 border border-yellow-400/50 rounded-xl p-4 mb-4">
-                  <p className="text-yellow-200 text-sm">
-                    ⚠️ Match not started yet. Waiting for a player to make the first move...
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* 3-Column Layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Left Panel - Player 1 Info */}
-              <div className="bg-gradient-to-br from-blue-600/20 to-cyan-600/20 backdrop-blur-lg rounded-2xl p-6 border border-blue-400/30">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-2xl font-bold">
-                    X
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-white">Player 1</h3>
-                    <p className="text-blue-300 font-mono text-sm">
-                      {currentMatch.player1.slice(0, 6)}...{currentMatch.player1.slice(-4)}
-                    </p>
-                    {currentMatch.player1?.toLowerCase() === account?.toLowerCase() && (
-                      <span className="text-yellow-300 text-xs font-bold">THIS IS YOU</span>
-                    )}
+                <div className="bg-black/20 rounded-lg p-3">
+                  <div className="text-blue-300 text-sm mb-1">Moves Made</div>
+                  <div className="text-white font-bold text-xl">
+                    {currentMatch.board.filter(c => c === 1).length}
                   </div>
                 </div>
-
-                <div className="space-y-2">
-                  <div className="bg-black/20 rounded-lg p-3">
-                    <div className="text-blue-300 text-sm mb-1">Symbol</div>
-                    <div className="text-white font-bold text-2xl">X</div>
-                  </div>
-                  <div className="bg-black/20 rounded-lg p-3">
-                    <div className="text-blue-300 text-sm mb-1">Moves Made</div>
-                    <div className="text-white font-bold text-xl">
-                      {currentMatch.board.filter(c => c === 1).length}
-                    </div>
-                  </div>
-                  {currentMatch.isPlayer1 && currentMatch.isYourTurn && (
-                    <div className="bg-green-500/20 border border-green-400 rounded-lg p-3 text-center">
-                      <span className="text-green-300 font-bold">Your Turn!</span>
-                    </div>
-                  )}
+              </>
+            )}
+            renderPlayer2Stats={() => (
+              <>
+                <div className="bg-black/20 rounded-lg p-3">
+                  <div className="text-pink-300 text-sm mb-1">Symbol</div>
+                  <div className="text-white font-bold text-2xl">O</div>
                 </div>
-              </div>
-
-              {/* Center Panel - Game Board */}
-              <div className="bg-gradient-to-br from-purple-600/20 to-pink-600/20 backdrop-blur-lg rounded-2xl p-6 border border-purple-400/30">
-                <h3 className="text-2xl font-bold text-center text-white mb-6">Game Board</h3>
-
-                {/* Tic Tac Toe Grid */}
-                <div className="grid grid-cols-3 gap-3 mb-6">
-                  {currentMatch.board.map((cell, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => handleCellClick(idx)}
-                      disabled={matchLoading || currentMatch.matchStatus === 2 || !currentMatch.isYourTurn}
-                      className={`aspect-square rounded-xl flex items-center justify-center text-4xl font-bold transition-all transform hover:scale-105 disabled:cursor-not-allowed ${
-                        cell === 0
-                          ? 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-200'
-                          : cell === 1
-                          ? 'bg-blue-500/40 text-blue-200'
-                          : 'bg-pink-500/40 text-pink-200'
-                      } ${
-                        currentMatch.lastMovedCell === idx && currentMatch.matchStatus === 1
-                          ? 'ring-2 ring-yellow-400 animate-pulse'
-                          : ''
-                      }`}
-                    >
-                      {cell === 1 ? 'X' : cell === 2 ? 'O' : ''}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Game Controls */}
-                <div className="space-y-3">
-                  {/* Turn Timer */}
-                  {currentMatch.matchStatus === 1 && (currentMatch.lastMoveTime !== undefined || currentMatch.startTime !== undefined) && (() => {
-                    const MOVE_TIMEOUT = 60; // 1 minute in seconds
-                    const now = Math.floor(Date.now() / 1000);
-                    const timeReference = currentMatch.lastMoveTime > 0 ? currentMatch.lastMoveTime : currentMatch.startTime;
-                    const timeSinceLastMove = now - timeReference;
-                    const timeRemaining = Math.max(0, MOVE_TIMEOUT - timeSinceLastMove);
-
-                    if (timeReference > 0) {
-                      return (
-                        <TurnTimer
-                          isYourTurn={currentMatch.isYourTurn}
-                          timeRemaining={timeRemaining}
-                          onClaimTimeoutWin={handleClaimTimeoutWin}
-                          loading={matchLoading}
-                        />
-                      );
-                    }
-                    return null;
-                  })()}
-
-                  {/* Match Timeout Escalation UI */}
-                  {currentMatch.timeoutState && (
-                    <MatchTimeoutEscalation
-                      timeoutState={currentMatch.timeoutState}
-                      matchStatus={currentMatch.matchStatus}
-                      isYourTurn={currentMatch.isYourTurn}
-                      onClaimTimeoutWin={handleClaimTimeoutWin}
-                      onForceEliminate={handleForceEliminateStalledMatch}
-                      onClaimReplacement={handleClaimMatchSlotByReplacement}
-                      loading={matchLoading}
-                    />
-                  )}
-
-                  {currentMatch.matchStatus === 2 && (
-                    <div className="bg-green-500/20 border border-green-400 rounded-xl p-4 text-center">
-                      <p className="text-white font-bold text-xl mb-2">
-                        {currentMatch.isDraw ? "It's a Draw!" : 'Match Complete!'}
-                      </p>
-                      {!currentMatch.isDraw && (
-                        <p className="text-green-300">
-                          Winner: {currentMatch.winner.slice(0, 6)}...{currentMatch.winner.slice(-4)}
-                          {currentMatch.winner?.toLowerCase() === account?.toLowerCase() && ' (YOU!)'}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Right Panel - Player 2 Info */}
-              <div className="bg-gradient-to-br from-pink-600/20 to-purple-600/20 backdrop-blur-lg rounded-2xl p-6 border border-pink-400/30">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 bg-pink-500 rounded-full flex items-center justify-center text-2xl font-bold">
-                    O
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-white">Player 2</h3>
-                    <p className="text-pink-300 font-mono text-sm">
-                      {currentMatch.player2.slice(0, 6)}...{currentMatch.player2.slice(-4)}
-                    </p>
-                    {currentMatch.player2?.toLowerCase() === account?.toLowerCase() && (
-                      <span className="text-yellow-300 text-xs font-bold">THIS IS YOU</span>
-                    )}
+                <div className="bg-black/20 rounded-lg p-3">
+                  <div className="text-pink-300 text-sm mb-1">Moves Made</div>
+                  <div className="text-white font-bold text-xl">
+                    {currentMatch.board.filter(c => c === 2).length}
                   </div>
                 </div>
-
-                <div className="space-y-2">
-                  <div className="bg-black/20 rounded-lg p-3">
-                    <div className="text-pink-300 text-sm mb-1">Symbol</div>
-                    <div className="text-white font-bold text-2xl">O</div>
-                  </div>
-                  <div className="bg-black/20 rounded-lg p-3">
-                    <div className="text-pink-300 text-sm mb-1">Moves Made</div>
-                    <div className="text-white font-bold text-xl">
-                      {currentMatch.board.filter(c => c === 2).length}
-                    </div>
-                  </div>
-                  {!currentMatch.isPlayer1 && currentMatch.isYourTurn && (
-                    <div className="bg-green-500/20 border border-green-400 rounded-lg p-3 text-center">
-                      <span className="text-green-300 font-bold">Your Turn!</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Move History */}
-            {moveHistory.length > 0 && (
-              <div className="mt-6 bg-slate-900/50 rounded-xl p-6 border border-purple-500/30">
+              </>
+            )}
+            renderMoveHistory={moveHistory.length > 0 ? () => (
+              <div className="bg-slate-900/50 rounded-xl p-6 border border-purple-500/30">
                 <h3 className="text-xl font-bold text-purple-300 mb-4 flex items-center gap-2">
                   <History size={20} />
                   Move History
@@ -2123,9 +2055,32 @@ export default function TicTacChain() {
                   ))}
                 </div>
               </div>
-            )}
-
-          </div>
+            ) : undefined}
+          >
+            {/* TicTacToe Board Grid */}
+            <div className="grid grid-cols-3 gap-3">
+              {currentMatch.board.map((cell, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => handleCellClick(idx)}
+                  disabled={matchLoading || currentMatch.matchStatus === 2 || !currentMatch.isYourTurn}
+                  className={`aspect-square rounded-xl flex items-center justify-center text-4xl font-bold transition-all transform hover:scale-105 disabled:cursor-not-allowed ${
+                    cell === 0
+                      ? 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-200'
+                      : cell === 1
+                      ? 'bg-blue-500/40 text-blue-200'
+                      : 'bg-pink-500/40 text-pink-200'
+                  } ${
+                    currentMatch.lastMovedCell === idx && currentMatch.matchStatus === 1
+                      ? 'ring-2 ring-yellow-400 animate-pulse'
+                      : ''
+                  }`}
+                >
+                  {cell === 1 ? 'X' : cell === 2 ? 'O' : ''}
+                </button>
+              ))}
+            </div>
+          </GameMatchLayout>
         )}
 
         {/* Tournaments Section */}
