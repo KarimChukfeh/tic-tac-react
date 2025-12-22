@@ -1710,7 +1710,7 @@ export default function TicTacChain() {
     const matchPollInterval = setInterval(doMatchSync, 2000);
 
     return () => clearInterval(matchPollInterval);
-  }, [currentMatch?.tierId, currentMatch?.instanceId, currentMatch?.roundNumber, currentMatch?.matchNumber, account, refreshMatchData, fetchMoveHistory, fetchLeaderboard, refreshTournamentBracket]);
+  }, [currentMatch?.tierId, currentMatch?.instanceId, currentMatch?.roundNumber, currentMatch?.matchNumber, account, refreshMatchData, fetchMoveHistory]);
 
   // Increment match sync dots every second (1 -> 2 -> 3, resets on sync)
   useEffect(() => {
