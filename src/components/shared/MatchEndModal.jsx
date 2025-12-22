@@ -286,9 +286,9 @@ const MatchEndModal = ({
         </p>
 
         {/* Description */}
-        <p className="text-center text-white/70 mb-8">
+        <div className="text-center text-white/70 mb-8">
           {currentConfig.description}
-        </p>
+        </div>
 
         {/* Action button */}
         <button
