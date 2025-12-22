@@ -313,7 +313,7 @@ function WhitepaperSection() {
 
 // Main Landing Component
 export default function Landing() {
-  const [whitepaperExpanded, setWhitepaperExpanded] = useState(true);
+  const [whitepaperExpanded, setWhitepaperExpanded] = useState(false);
   const [expandedFaq, setExpandedFaq] = useState(null);
 
   // Set page title
