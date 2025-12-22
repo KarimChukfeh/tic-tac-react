@@ -25,6 +25,8 @@ import { ethers } from 'ethers';
 import DUMMY_ABI from './TicTacChainABI.json';
 import { CURRENT_NETWORK, CONTRACT_ADDRESSES, getAddressUrl, getExplorerHomeUrl } from './config/networks';
 import { shortenAddress, formatTime as formatTimeHMS, getTierName, getEstimatedDuration, countInstancesByStatus } from './utils/formatters';
+import { parseTicTacToeMatch } from './utils/matchDataParser';
+import { determineMatchResult } from './utils/matchCompletionHandler';
 import ParticleBackground from './components/shared/ParticleBackground';
 import MatchCard from './components/shared/MatchCard';
 import TournamentCard from './components/shared/TournamentCard';
@@ -316,6 +318,8 @@ export default function TicTacChain() {
   const [syncDots, setSyncDots] = useState(1);
   const [matchEndResult, setMatchEndResult] = useState(null); // 'win' | 'lose' | 'draw' | 'forfeit_win' | 'forfeit_lose' | 'double_forfeit'
   const [matchEndWinnerLabel, setMatchEndWinnerLabel] = useState('');
+  const [matchEndWinner, setMatchEndWinner] = useState(null); // Winner address for modal display
+  const [matchEndLoser, setMatchEndLoser] = useState(null); // Loser address for modal display
   const previousBoardRef = useRef(null); // Track previous board state for move history sync
 
   // Leaderboard State
@@ -1030,6 +1034,7 @@ export default function TicTacChain() {
         for (let matchNum = 0; matchNum < totalMatches; matchNum++) {
           try {
             const matchData = await contractInstance.getMatch(tierId, instanceId, roundNum, matchNum);
+            const parsedMatch = parseTicTacToeMatch(matchData);
 
             // Fetch escalation state from matches mapping
             const matchKey = ethers.keccak256(ethers.AbiCoder.defaultAbiCoder().encode(
@@ -1048,23 +1053,23 @@ export default function TicTacChain() {
             };
 
             matches.push({
-              player1: matchData[0],
-              player2: matchData[1],
-              currentTurn: matchData[2],
-              winner: matchData[3],
-              board: matchData[4],
-              matchStatus: Number(matchData[5]),
-              isDraw: matchData[6],
-              startTime: Number(matchData[7]),
-              lastMoveTime: Number(matchData[8]),
+              ...parsedMatch,
               timeoutState
             });
           } catch (err) {
-            // Match might not exist yet
+            // Match might not exist yet - create placeholder with all required fields
+            const zeroAddress = '0x0000000000000000000000000000000000000000';
             matches.push({
-              player1: '0x0000000000000000000000000000000000000000',
-              player2: '0x0000000000000000000000000000000000000000',
+              player1: zeroAddress,
+              player2: zeroAddress,
+              currentTurn: zeroAddress,
+              winner: zeroAddress,
+              loser: zeroAddress,
+              board: [0, 0, 0, 0, 0, 0, 0, 0, 0],
               matchStatus: 0,
+              isDraw: false,
+              startTime: 0,
+              lastMoveTime: 0,
               timeoutState: null
             });
           }
@@ -1119,8 +1124,9 @@ export default function TicTacChain() {
     try {
       // Get match data first (needed for both approaches)
       const matchData = await contractInstance.getMatch(tierId, instanceId, roundNumber, matchNumber);
-      const player1 = matchData[0];
-      const board = matchData[4];
+      const parsedMatch = parseTicTacToeMatch(matchData);
+      const player1 = parsedMatch.player1;
+      const board = parsedMatch.board;
 
       // Try to query MoveMade events for this match
       try {
@@ -1180,17 +1186,9 @@ export default function TicTacChain() {
     try {
       const { tierId, instanceId, roundNumber, matchNumber } = matchInfo;
       const matchData = await contractInstance.getMatch(tierId, instanceId, roundNumber, matchNumber);
+      const parsedMatch = parseTicTacToeMatch(matchData);
 
-      const player1 = matchData[0];
-      const player2 = matchData[1];
-      const currentTurn = matchData[2];
-      const winner = matchData[3];
-      const board = matchData[4];
-      const matchStatus = Number(matchData[5]);
-      const isDraw = matchData[6];
-      const startTime = Number(matchData[7]);
-      const lastMoveTime = Number(matchData[8]);
-      const lastMovedCell = Number(matchData[10]);
+      const { player1, player2, currentTurn, winner, loser, board, matchStatus, isDraw, startTime, lastMoveTime, lastMovedCell } = parsedMatch;
 
       const zeroAddress = '0x0000000000000000000000000000000000000000';
       const isMatchInitialized =
@@ -1235,6 +1233,7 @@ export default function TicTacChain() {
         player2: actualPlayer2,
         currentTurn,
         winner,
+        loser,
         board: boardState,
         matchStatus,
         isDraw,
@@ -1402,8 +1401,9 @@ export default function TicTacChain() {
       setMatchLoading(true);
 
       const matchData = await contract.getMatch(tierId, instanceId, roundNumber, matchNumber);
-      const player1 = matchData[0];
-      const player2 = matchData[1];
+      const parsedMatch = parseTicTacToeMatch(matchData);
+      const player1 = parsedMatch.player1;
+      const player2 = parsedMatch.player2;
 
       const zeroAddress = '0x0000000000000000000000000000000000000000';
       let actualPlayer1 = player1;
@@ -1628,46 +1628,20 @@ export default function TicTacChain() {
           match
         );
         if (updatedMatch) {
-          const zeroAddress = '0x0000000000000000000000000000000000000000';
-          const matchWasCompleted = updatedMatch.matchStatus === 2 && match.matchStatus !== 2;
-          const wasParticipant =
-            updatedMatch.player1.toLowerCase() === userAccount.toLowerCase() ||
-            updatedMatch.player2.toLowerCase() === userAccount.toLowerCase();
+          // Use standardized match completion handler
+          const matchResult = determineMatchResult({
+            updatedMatch,
+            previousMatch: match,
+            userAccount,
+            gameType: 'tictactoe'
+          });
 
-          if (matchWasCompleted && wasParticipant) {
-            // Determine the result type for the modal
-            const userWon = updatedMatch.winner?.toLowerCase() === userAccount.toLowerCase();
-            const isDoubleForfeited = updatedMatch.winner?.toLowerCase() === zeroAddress && !updatedMatch.isDraw;
-            const winnerIsPlayer1 = updatedMatch.winner?.toLowerCase() === updatedMatch.player1?.toLowerCase();
-
-            // Case 1: Draw
-            if (updatedMatch.isDraw) {
-              setMatchEndResult('draw');
-              setMatchEndWinnerLabel('');
-            }
-            // Case 2: Double forfeit (both players eliminated)
-            else if (isDoubleForfeited) {
-              setMatchEndResult('double_forfeit');
-              setMatchEndWinnerLabel('');
-            }
-            // Case 3: Timeout/Forfeit scenarios
-            else if (updatedMatch.isTimedOut) {
-              if (userWon) {
-                setMatchEndResult('forfeit_win');
-              } else {
-                setMatchEndResult('forfeit_lose');
-              }
-              setMatchEndWinnerLabel(winnerIsPlayer1 ? 'Player 1 (X)' : 'Player 2 (O)');
-            }
-            // Case 4: Normal win/loss (by gameplay)
-            else {
-              if (userWon) {
-                setMatchEndResult('win');
-              } else {
-                setMatchEndResult('lose');
-              }
-              setMatchEndWinnerLabel(winnerIsPlayer1 ? 'Player 1 (X)' : 'Player 2 (O)');
-            }
+          if (matchResult) {
+            // Match just completed - set result state for modal
+            setMatchEndResult(matchResult.type);
+            setMatchEndWinnerLabel(matchResult.winnerLabel);
+            setMatchEndWinner(matchResult.winnerAddress);
+            setMatchEndLoser(matchResult.loserAddress);
 
             // Update match to show final state, modal will handle the rest
             setCurrentMatch(updatedMatch);
@@ -2438,6 +2412,9 @@ export default function TicTacChain() {
         result={matchEndResult}
         onClose={handleMatchEndModalClose}
         winnerLabel={matchEndWinnerLabel}
+        winnerAddress={matchEndWinner}
+        loserAddress={matchEndLoser}
+        currentAccount={account}
         gameType="tictactoe"
         isVisible={!!matchEndResult}
       />

@@ -103,6 +103,7 @@ const GameMatchLayout = ({
     matchStatus,
     isDraw,
     winner,
+    loser,
     lastMoveTime,
     startTime,
     isYourTurn,
@@ -177,6 +178,7 @@ const GameMatchLayout = ({
             <MatchComplete
               isDraw={isDraw}
               winner={winner}
+              loser={loser}
               currentAccount={account}
               gameSpecificText={!isDraw ? theme.completeText : undefined}
             />
@@ -265,6 +267,7 @@ const GameMatchLayout = ({
             <MatchComplete
               isDraw={isDraw}
               winner={winner}
+              loser={loser}
               currentAccount={account}
               gameSpecificText={!isDraw ? theme.completeText : undefined}
             />

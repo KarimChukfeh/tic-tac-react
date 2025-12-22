@@ -1,6 +1,7 @@
 import { useEffect, useCallback } from 'react';
 import { Trophy, Frown, Equal, X } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { shortenAddress } from '../../utils/formatters';
 
 /**
  * MatchEndModal - Shared component for displaying match end feedback
@@ -9,6 +10,9 @@ import confetti from 'canvas-confetti';
  * @param {'win' | 'lose' | 'draw' | 'forfeit_win' | 'forfeit_lose' | 'double_forfeit'} props.result - The match result
  * @param {Function} props.onClose - Callback when modal is closed
  * @param {string} props.winnerLabel - Custom label for winner (e.g., "White", "Player 1", or address)
+ * @param {string} props.winnerAddress - Winner's wallet address
+ * @param {string} props.loserAddress - Loser's wallet address
+ * @param {string} props.currentAccount - Current user's wallet address
  * @param {string} props.gameType - The game type for customized messages (e.g., "chess", "tictactoe", "connectfour")
  * @param {boolean} props.isVisible - Whether the modal is visible
  */
@@ -16,6 +20,9 @@ const MatchEndModal = ({
   result,
   onClose,
   winnerLabel = 'Winner',
+  winnerAddress,
+  loserAddress,
+  currentAccount,
   gameType = 'game',
   isVisible = true
 }) => {
@@ -96,7 +103,23 @@ const MatchEndModal = ({
       icon: Trophy,
       title: getVictoryText(),
       subtitle: 'You Won!',
-      description: 'Congratulations! You advance to the next round.',
+      description: winnerAddress && loserAddress ? (
+        <div className="space-y-2">
+          <div className="flex items-center justify-center gap-2">
+            <span className="text-green-400 font-bold">Winner (You):</span>
+            <span className="text-white/90 font-mono text-sm">
+              {shortenAddress(winnerAddress)}
+            </span>
+          </div>
+          <div className="flex items-center justify-center gap-2">
+            <span className="text-red-400">Opponent:</span>
+            <span className="text-white/70 font-mono text-sm">
+              {shortenAddress(loserAddress)}
+            </span>
+          </div>
+          <p className="text-white/70 mt-4">Congratulations! You advance to the next round.</p>
+        </div>
+      ) : 'Congratulations! You advance to the next round.',
       bgGradient: 'from-yellow-500/20 via-amber-500/20 to-orange-500/20',
       borderColor: 'border-yellow-400/50',
       iconColor: 'text-yellow-400',
@@ -108,7 +131,23 @@ const MatchEndModal = ({
       icon: Trophy,
       title: 'Victory by Forfeit!',
       subtitle: 'You Won!',
-      description: 'Your opponent failed to move in time. You advance!',
+      description: winnerAddress && loserAddress ? (
+        <div className="space-y-2">
+          <div className="flex items-center justify-center gap-2">
+            <span className="text-green-400 font-bold">Winner (You):</span>
+            <span className="text-white/90 font-mono text-sm">
+              {shortenAddress(winnerAddress)}
+            </span>
+          </div>
+          <div className="flex items-center justify-center gap-2">
+            <span className="text-red-400">Opponent (Timed Out):</span>
+            <span className="text-white/70 font-mono text-sm">
+              {shortenAddress(loserAddress)}
+            </span>
+          </div>
+          <p className="text-white/70 mt-4">Your opponent failed to move in time. You advance!</p>
+        </div>
+      ) : 'Your opponent failed to move in time. You advance!',
       bgGradient: 'from-yellow-500/20 via-amber-500/20 to-orange-500/20',
       borderColor: 'border-yellow-400/50',
       iconColor: 'text-yellow-400',
@@ -120,7 +159,23 @@ const MatchEndModal = ({
       icon: Frown,
       title: 'Defeated',
       subtitle: 'Better luck next time!',
-      description: `${winnerLabel} wins this match.`,
+      description: winnerAddress && loserAddress ? (
+        <div className="space-y-2">
+          <div className="flex items-center justify-center gap-2">
+            <span className="text-green-400">Winner:</span>
+            <span className="text-white/90 font-mono text-sm">
+              {shortenAddress(winnerAddress)}
+            </span>
+          </div>
+          <div className="flex items-center justify-center gap-2">
+            <span className="text-red-400 font-bold">Loser (You):</span>
+            <span className="text-white/70 font-mono text-sm">
+              {shortenAddress(loserAddress)}
+            </span>
+          </div>
+          <p className="text-white/70 mt-4">{winnerLabel} wins this match.</p>
+        </div>
+      ) : `${winnerLabel} wins this match.`,
       bgGradient: 'from-red-500/20 via-rose-500/20 to-pink-500/20',
       borderColor: 'border-red-400/50',
       iconColor: 'text-red-400',
@@ -132,7 +187,23 @@ const MatchEndModal = ({
       icon: Frown,
       title: 'Timeout!',
       subtitle: 'You ran out of time',
-      description: 'You failed to make a move in time and forfeit the match.',
+      description: winnerAddress && loserAddress ? (
+        <div className="space-y-2">
+          <div className="flex items-center justify-center gap-2">
+            <span className="text-green-400">Winner:</span>
+            <span className="text-white/90 font-mono text-sm">
+              {shortenAddress(winnerAddress)}
+            </span>
+          </div>
+          <div className="flex items-center justify-center gap-2">
+            <span className="text-red-400 font-bold">Loser (You):</span>
+            <span className="text-white/70 font-mono text-sm">
+              {shortenAddress(loserAddress)}
+            </span>
+          </div>
+          <p className="text-white/70 mt-4">You failed to make a move in time and forfeit the match.</p>
+        </div>
+      ) : 'You failed to make a move in time and forfeit the match.',
       bgGradient: 'from-red-500/20 via-rose-500/20 to-pink-500/20',
       borderColor: 'border-red-400/50',
       iconColor: 'text-red-400',
