@@ -66,12 +66,17 @@ const PlayerPanel = ({
       <div className={`flex items-center gap-2 p-3 rounded-lg ${
         isCurrentTurn && !isGameOver
           ? `${colors.activeHighlight} border`
+          : isYou
+          ? 'bg-yellow-500/20 border border-yellow-400/50'
           : 'bg-black/30'
-      }`}>
+      } ${isYou ? 'ring-2 ring-yellow-400/30' : ''}`}>
         <span className="text-2xl">{icon}</span>
         <div>
           <div className="text-xs text-gray-400">{label}</div>
           <div className="font-mono text-sm">{shortenAddress(playerAddress)}</div>
+          {isYou && (
+            <div className="text-yellow-300 text-xs font-bold mt-1">YOU</div>
+          )}
         </div>
       </div>
     );
@@ -79,9 +84,16 @@ const PlayerPanel = ({
 
   // Full variant for sidebar/column layouts
   return (
-    <div className={`${colors.bg} backdrop-blur-lg rounded-2xl p-6 border ${colors.border}`}>
+    <div className={`${colors.bg} backdrop-blur-lg rounded-2xl p-6 border ${isYou ? 'border-yellow-400 shadow-lg shadow-yellow-400/50 ring-2 ring-yellow-400/30' : colors.border} ${isYou ? 'animate-pulse-slow' : ''}`}>
+      {isYou && (
+        <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-black px-4 py-2 rounded-lg mb-4 text-center font-bold text-lg shadow-md flex items-center justify-center gap-2">
+          <span className="text-xl">👤</span>
+          THIS IS YOU
+          <span className="text-xl">👤</span>
+        </div>
+      )}
       <div className="flex items-center gap-3 mb-4">
-        <div className={`w-12 h-12 ${colors.iconBg} rounded-full flex items-center justify-center text-2xl font-bold border-2 ${colors.border}`}>
+        <div className={`w-12 h-12 ${colors.iconBg} rounded-full flex items-center justify-center text-2xl font-bold border-2 ${isYou ? 'border-yellow-400 shadow-lg shadow-yellow-400/50' : colors.border}`}>
           {icon}
         </div>
         <div>
@@ -89,9 +101,6 @@ const PlayerPanel = ({
           <p className={`${colors.text} font-mono text-sm`}>
             {shortenAddress(playerAddress)}
           </p>
-          {isYou && (
-            <span className="text-yellow-300 text-xs font-bold">THIS IS YOU</span>
-          )}
         </div>
       </div>
 
