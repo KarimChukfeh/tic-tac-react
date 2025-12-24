@@ -1,6 +1,7 @@
 import { useEffect, useCallback } from 'react';
 import { Trophy, Frown, Equal, X } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { ethers } from 'ethers';
 import { shortenAddress } from '../../utils/formatters';
 
 /**
@@ -15,6 +16,9 @@ import { shortenAddress } from '../../utils/formatters';
  * @param {string} props.currentAccount - Current user's wallet address
  * @param {string} props.gameType - The game type for customized messages (e.g., "chess", "tictactoe", "connectfour")
  * @param {boolean} props.isVisible - Whether the modal is visible
+ * @param {number} props.roundNumber - Current round number (0-indexed)
+ * @param {number} props.totalRounds - Total number of rounds in tournament
+ * @param {string} props.prizePool - Prize pool amount (in wei as BigInt string)
  */
 const MatchEndModal = ({
   result,
@@ -24,7 +28,10 @@ const MatchEndModal = ({
   loserAddress,
   currentAccount,
   gameType = 'game',
-  isVisible = true
+  isVisible = true,
+  roundNumber,
+  totalRounds,
+  prizePool
 }) => {
   // Fire confetti for wins
   const fireConfetti = useCallback(() => {
@@ -84,8 +91,35 @@ const MatchEndModal = ({
 
   if (!isVisible) return null;
 
+  // Determine if this is the final round
+  const isFinalRound = totalRounds !== undefined && roundNumber !== undefined && roundNumber === totalRounds - 1;
+
+  // Format prize pool if available
+  const formattedPrizePool = prizePool ? ethers.formatEther(prizePool) : null;
+
+  // Get next round name
+  const getNextRoundName = () => {
+    if (!totalRounds || roundNumber === undefined) return 'the next round';
+
+    const nextRound = roundNumber + 2; // +1 for 0-index, +1 for next round
+
+    if (nextRound === totalRounds) {
+      return 'the Finals';
+    } else if (nextRound === totalRounds - 1) {
+      return 'the Semi-Finals';
+    } else if (nextRound === totalRounds - 2) {
+      return 'the Quarter-Finals';
+    } else {
+      return `Round ${nextRound}`;
+    }
+  };
+
   // Game-specific victory text
   const getVictoryText = () => {
+    if (isFinalRound) {
+      return 'Tournament Champion!';
+    }
+
     switch (gameType) {
       case 'chess':
         return 'Checkmate!';
@@ -117,9 +151,26 @@ const MatchEndModal = ({
               {shortenAddress(loserAddress)}
             </span>
           </div>
-          <p className="text-white/70 mt-4">Congratulations! You advance to the next round.</p>
+          {isFinalRound ? (
+            <p className="text-white/70 mt-4">
+              Congratulations! You have won the tournament!
+              {formattedPrizePool && (
+                <span className="block text-green-400 font-bold mt-2">
+                  Prize: {formattedPrizePool} ETH
+                </span>
+              )}
+            </p>
+          ) : (
+            <p className="text-white/70 mt-4">
+              Congratulations! You advance to {getNextRoundName()}.
+            </p>
+          )}
         </div>
-      ) : 'Congratulations! You advance to the next round.',
+      ) : (
+        isFinalRound
+          ? `Congratulations! You have won the tournament!${formattedPrizePool ? ` Prize: ${formattedPrizePool} ETH` : ''}`
+          : `Congratulations! You advance to ${getNextRoundName()}.`
+      ),
       bgGradient: 'from-yellow-500/20 via-amber-500/20 to-orange-500/20',
       borderColor: 'border-yellow-400/50',
       iconColor: 'text-yellow-400',
@@ -129,7 +180,7 @@ const MatchEndModal = ({
     },
     forfeit_win: {
       icon: Trophy,
-      title: 'Victory by Forfeit!',
+      title: isFinalRound ? 'Tournament Champion!' : 'Victory by Forfeit!',
       subtitle: 'You Won!',
       description: winnerAddress && loserAddress ? (
         <div className="space-y-2">
@@ -145,9 +196,26 @@ const MatchEndModal = ({
               {shortenAddress(loserAddress)}
             </span>
           </div>
-          <p className="text-white/70 mt-4">Your opponent failed to move in time. You advance!</p>
+          {isFinalRound ? (
+            <p className="text-white/70 mt-4">
+              Your opponent failed to move in time. You have won the tournament!
+              {formattedPrizePool && (
+                <span className="block text-green-400 font-bold mt-2">
+                  Prize: {formattedPrizePool} ETH
+                </span>
+              )}
+            </p>
+          ) : (
+            <p className="text-white/70 mt-4">
+              Your opponent failed to move in time. You advance to {getNextRoundName()}!
+            </p>
+          )}
         </div>
-      ) : 'Your opponent failed to move in time. You advance!',
+      ) : (
+        isFinalRound
+          ? `Your opponent failed to move in time. You have won the tournament!${formattedPrizePool ? ` Prize: ${formattedPrizePool} ETH` : ''}`
+          : `Your opponent failed to move in time. You advance to ${getNextRoundName()}!`
+      ),
       bgGradient: 'from-yellow-500/20 via-amber-500/20 to-orange-500/20',
       borderColor: 'border-yellow-400/50',
       iconColor: 'text-yellow-400',
@@ -173,9 +241,11 @@ const MatchEndModal = ({
               {shortenAddress(loserAddress)}
             </span>
           </div>
-          <p className="text-white/70 mt-4">{winnerLabel} wins this match.</p>
+          <p className="text-white/70 mt-4">
+            {winnerLabel} wins this match. You have been eliminated from the tournament.
+          </p>
         </div>
-      ) : `${winnerLabel} wins this match.`,
+      ) : `${winnerLabel} wins this match. You have been eliminated from the tournament.`,
       bgGradient: 'from-red-500/20 via-rose-500/20 to-pink-500/20',
       borderColor: 'border-red-400/50',
       iconColor: 'text-red-400',
@@ -201,9 +271,11 @@ const MatchEndModal = ({
               {shortenAddress(loserAddress)}
             </span>
           </div>
-          <p className="text-white/70 mt-4">You failed to make a move in time and forfeit the match.</p>
+          <p className="text-white/70 mt-4">
+            You failed to make a move in time and forfeit the match. You have been eliminated from the tournament.
+          </p>
         </div>
-      ) : 'You failed to make a move in time and forfeit the match.',
+      ) : 'You failed to make a move in time and forfeit the match. You have been eliminated from the tournament.',
       bgGradient: 'from-red-500/20 via-rose-500/20 to-pink-500/20',
       borderColor: 'border-red-400/50',
       iconColor: 'text-red-400',

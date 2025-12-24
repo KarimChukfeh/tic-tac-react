@@ -1307,9 +1307,17 @@ export default function TicTacChain() {
       const tx = await contract.claimTimeoutWin(tierId, instanceId, roundNumber, matchNumber);
       await tx.wait();
 
-      // Show victory modal
-      setMatchEndResult('forfeit_win');
-      setMatchEndWinnerLabel('You');
+      // Refresh match data to get updated winner/loser
+      const updatedMatch = await refreshMatchData(contract, account, currentMatch);
+      if (updatedMatch) {
+        setCurrentMatch(updatedMatch);
+
+        // Show victory modal with proper winner/loser info
+        setMatchEndResult('forfeit_win');
+        setMatchEndWinnerLabel('You');
+        setMatchEndWinner(updatedMatch.winner);
+        setMatchEndLoser(updatedMatch.loser);
+      }
 
       setMatchLoading(false);
     } catch (error) {
@@ -1400,6 +1408,12 @@ export default function TicTacChain() {
     try {
       setMatchLoading(true);
 
+      // Fetch tournament info to get playerCount and prizePool
+      const tournamentInfo = await contract.getTournamentInfo(tierId, instanceId);
+      const tierConfig = await contract.tierConfigs(tierId);
+      const playerCount = Number(tierConfig.playerCount);
+      const prizePool = tournamentInfo[4]; // prizePool is at index 4
+
       const matchData = await contract.getMatch(tierId, instanceId, roundNumber, matchNumber);
       const parsedMatch = parseTicTacToeMatch(matchData);
       const player1 = parsedMatch.player1;
@@ -1420,7 +1434,9 @@ export default function TicTacChain() {
       const updated = await refreshMatchData(contract, account, {
         tierId, instanceId, roundNumber, matchNumber,
         player1: actualPlayer1,
-        player2: actualPlayer2
+        player2: actualPlayer2,
+        playerCount, // Add tournament context
+        prizePool    // Add tournament context
       });
 
       if (updated) {
@@ -2417,6 +2433,9 @@ export default function TicTacChain() {
         currentAccount={account}
         gameType="tictactoe"
         isVisible={!!matchEndResult}
+        roundNumber={currentMatch?.roundNumber}
+        totalRounds={currentMatch?.playerCount ? Math.ceil(Math.log2(currentMatch.playerCount)) : undefined}
+        prizePool={currentMatch?.prizePool}
       />
     </div>
   );
