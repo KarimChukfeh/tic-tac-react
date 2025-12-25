@@ -149,41 +149,73 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
 
           if (!(timeToEsc1 > 0 || timeToEsc2 > 0 || canForceStart || canAnyoneStart)) return null;
 
+          const prizePoolETH = ethers.formatEther(prizePool);
+
           return (
             <>
-              <div className="mt-4 bg-gradient-to-r from-orange-500/20 to-red-500/20 border border-orange-400/50 rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <AlertCircle className="text-orange-400" size={20} />
-                  <h4 className="text-orange-300 font-semibold">Enrollment Escalation Status</h4>
+              <div className="mt-4 bg-gradient-to-r from-orange-500/20 to-red-500/20 border border-orange-400/50 rounded-lg p-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <AlertCircle className="text-orange-400" size={22} />
+                  <h4 className="text-orange-300 font-bold text-lg">Tournament Waiting Period</h4>
                 </div>
 
-                <div className="space-y-2">
-                  <div className={`p-3 rounded-lg ${canForceStart ? 'bg-orange-500/30 border border-orange-400' : 'bg-black/20'}`}>
-                    <div className="flex items-center justify-between">
-                      <span className={`text-sm font-semibold ${canForceStart ? 'text-orange-200' : 'text-orange-300/70'}`}>
-                        Escalation 1: Enrolled Players Can Force Start
-                      </span>
+                <div className="space-y-3">
+                  {/* Level 1: Early Start Option */}
+                  <div className={`p-4 rounded-lg ${canForceStart ? 'bg-orange-500/30 border-2 border-orange-400' : 'bg-black/30 border border-orange-400/30'}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Trophy className="text-orange-400" size={18} />
+                        <span className={`font-bold ${canForceStart ? 'text-orange-200' : 'text-orange-300/70'}`}>
+                          Start Tournament Early
+                        </span>
+                      </div>
                       {timeToEsc1 > 0 ? (
-                        <span className="text-orange-300 font-mono text-sm">{formatTime(timeToEsc1)}</span>
+                        <span className="text-orange-300 font-mono text-sm bg-black/30 px-2 py-1 rounded">{formatTime(timeToEsc1)}</span>
                       ) : (
-                        <span className="text-orange-200 font-bold text-xs">ACTIVE</span>
+                        <span className="text-orange-200 font-bold text-xs bg-orange-500/50 px-3 py-1 rounded-full">AVAILABLE NOW</span>
                       )}
                     </div>
+                    <p className={`text-sm ${canForceStart ? 'text-orange-100' : 'text-orange-200/70'} leading-relaxed`}>
+                      {canForceStart ? (
+                        <>
+                          <span className="font-semibold">You can start now!</span> Any enrolled player can begin the tournament with the current {enrolledCount} player{enrolledCount !== 1 ? 's' : ''} and prize pool of {prizePoolETH} ETH.
+                        </>
+                      ) : (
+                        <>
+                          In {formatTime(timeToEsc1)}, enrolled players can start the tournament early with the current {enrolledCount} player{enrolledCount !== 1 ? 's' : ''} instead of waiting for more.
+                        </>
+                      )}
+                    </p>
                   </div>
 
-                  <div className={`p-3 rounded-lg ${canAnyoneStart ? 'bg-red-500/30 border border-red-400' : 'bg-black/20'}`}>
-                    <div className="flex items-center justify-between">
-                      <span className={`text-sm font-semibold ${canAnyoneStart ? 'text-red-200' : 'text-red-300/70'}`}>
-                        Escalation 2: Anyone Can Terminate & Claim Pool
-                      </span>
+                  {/* Level 2: Abandonment Warning */}
+                  <div className={`p-4 rounded-lg ${canAnyoneStart ? 'bg-red-500/30 border-2 border-red-400' : 'bg-black/30 border border-red-400/30'}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="text-red-400" size={18} />
+                        <span className={`font-bold ${canAnyoneStart ? 'text-red-200' : 'text-red-300/70'}`}>
+                          Abandonment Risk
+                        </span>
+                      </div>
                       {timeToEsc2 > 0 ? (
-                        <span className="text-red-300 font-mono text-sm">{formatTime(timeToEsc2)}</span>
+                        <span className="text-red-300 font-mono text-sm bg-black/30 px-2 py-1 rounded">{formatTime(timeToEsc2)}</span>
                       ) : canAnyoneStart ? (
-                        <span className="text-red-200 font-bold text-xs">ACTIVE</span>
+                        <span className="text-red-200 font-bold text-xs bg-red-500/50 px-3 py-1 rounded-full">CRITICAL</span>
                       ) : (
-                        <span className="text-red-300/50 font-mono text-xs">Pending</span>
+                        <span className="text-red-300/50 text-xs">After Level 1</span>
                       )}
                     </div>
+                    <p className={`text-sm ${canAnyoneStart ? 'text-red-100' : 'text-red-200/70'} leading-relaxed`}>
+                      {canAnyoneStart ? (
+                        <>
+                          <span className="font-semibold">⚠️ Critical:</span> Anyone (even non-enrolled players) can now terminate this tournament and claim the entire {prizePoolETH} ETH prize pool. <span className="font-semibold text-red-200">All enrolled players will lose their entry fees!</span>
+                        </>
+                      ) : (
+                        <>
+                          If the tournament remains inactive for too long, anyone can terminate it and claim the entire {prizePoolETH} ETH pool. Enrolled players would lose their entry fees.
+                        </>
+                      )}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -193,13 +225,13 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
                   <button
                     onClick={() => onManualStart(tierId, instanceId)}
                     disabled={loading}
-                    className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
+                    className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-4 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 shadow-lg"
                   >
-                    <Zap size={18} />
-                    {loading ? 'Starting...' : 'Force Start Tournament'}
+                    <Trophy size={20} />
+                    {loading ? 'Starting Tournament...' : `Start Tournament Now with ${enrolledCount} Players`}
                   </button>
-                  <p className="text-orange-300 text-xs text-center mt-2">
-                    You can force start this tournament as an enrolled player
+                  <p className="text-orange-200 text-sm text-center mt-2 font-medium">
+                    Begin playing immediately with current participants
                   </p>
                 </div>
               )}
@@ -209,13 +241,13 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
                   <button
                     onClick={() => onManualStart(tierId, instanceId)}
                     disabled={loading}
-                    className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
+                    className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold py-4 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 shadow-lg"
                   >
-                    <Zap size={18} />
-                    {loading ? 'Terminating...' : 'Terminate & Claim Abandoned Pool'}
+                    <DollarSign size={20} />
+                    {loading ? 'Claiming Pool...' : `Claim Abandoned Pool (${prizePoolETH} ETH)`}
                   </button>
-                  <p className="text-red-300 text-xs text-center mt-2">
-                    Anyone can terminate this tournament and claim the abandoned pool at Escalation 2
+                  <p className="text-red-200 text-sm text-center mt-2 font-medium">
+                    Terminate the inactive tournament and receive the prize pool
                   </p>
                 </div>
               )}
