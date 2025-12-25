@@ -46,6 +46,9 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
   // Calculate total rounds based on player count
   const totalRounds = Math.ceil(Math.log2(playerCount));
 
+  // Ref for active match scrolling
+  const activeMatchRef = useRef(null);
+
   // Countdown timer logic for enrollment
   const ENROLLMENT_DURATION = 1 * 60; // 1 minute in seconds (matches contract)
   const [timeRemaining, setTimeRemaining] = useState(0);
@@ -84,6 +87,41 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
     const secs = seconds % 60;
     return `${hours}h ${minutes}m ${secs}s`;
   };
+
+  // Auto-scroll to user's active match after every sync
+  useEffect(() => {
+    if (!account || !rounds || status !== 1) return;
+
+    // Find the user's active match that needs their attention
+    let userActiveMatch = null;
+
+    for (const round of rounds) {
+      for (const match of round.matches) {
+        const isUserPlayer =
+          match.player1?.toLowerCase() === account.toLowerCase() ||
+          match.player2?.toLowerCase() === account.toLowerCase();
+
+        const isMatchInProgress = match.matchStatus === 1;
+        const isUserTurn = match.currentTurn?.toLowerCase() === account.toLowerCase();
+
+        if (isUserPlayer && isMatchInProgress && isUserTurn) {
+          userActiveMatch = match;
+          break;
+        }
+      }
+      if (userActiveMatch) break;
+    }
+
+    // Scroll to the active match if found (happens after every sync)
+    if (userActiveMatch && activeMatchRef.current) {
+      setTimeout(() => {
+        activeMatchRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center'
+        });
+      }, 300); // Small delay to ensure render is complete
+    }
+  }, [account, rounds, status, syncDots]); // Include syncDots to trigger on every sync
 
   // TicTacToe-specific options for match status display
   const matchStatusOptions = { doubleForfeitText: 'Eliminated - Double Forfeit' };
@@ -273,24 +311,38 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
                 {roundIdx === totalRounds - 2 && rounds.length > 1 && ' - Semi-Finals'}
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {round.matches.map((match, matchIdx) => (
-                  <MatchCard
-                    key={matchIdx}
-                    match={match}
-                    matchIdx={matchIdx}
-                    roundIdx={roundIdx}
-                    tierId={tierId}
-                    instanceId={instanceId}
-                    account={account}
-                    loading={loading}
-                    onEnterMatch={onEnterMatch}
-                    onForceEliminate={onForceEliminate}
-                    onClaimReplacement={onClaimReplacement}
-                    matchStatusOptions={matchStatusOptions}
-                    showEscalation={true}
-                    showThisIsYou={true}
-                  />
-                ))}
+                {round.matches.map((match, matchIdx) => {
+                  // Check if this is the user's active match that needs their turn
+                  const isUserPlayer =
+                    match.player1?.toLowerCase() === account?.toLowerCase() ||
+                    match.player2?.toLowerCase() === account?.toLowerCase();
+                  const isMatchInProgress = match.matchStatus === 1;
+                  const isUserTurn = match.currentTurn?.toLowerCase() === account?.toLowerCase();
+                  const shouldHighlight = isUserPlayer && isMatchInProgress && isUserTurn;
+
+                  return (
+                    <div
+                      key={matchIdx}
+                      ref={shouldHighlight ? activeMatchRef : null}
+                    >
+                      <MatchCard
+                        match={match}
+                        matchIdx={matchIdx}
+                        roundIdx={roundIdx}
+                        tierId={tierId}
+                        instanceId={instanceId}
+                        account={account}
+                        loading={loading}
+                        onEnterMatch={onEnterMatch}
+                        onForceEliminate={onForceEliminate}
+                        onClaimReplacement={onClaimReplacement}
+                        matchStatusOptions={matchStatusOptions}
+                        showEscalation={true}
+                        showThisIsYou={true}
+                      />
+                    </div>
+                  );
+                })}
               </div>
             </div>
             ))}
