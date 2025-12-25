@@ -156,6 +156,30 @@ const TournamentCard = ({
         )}
       </div>
 
+      {/* Tournament Status Badge */}
+      {(tournamentStatus === 0 && currentEnrolled > 0) || tournamentStatus >= 1 ? (
+        <div className="mb-4">
+          {tournamentStatus === 0 && currentEnrolled > 0 && (
+            <div className="bg-yellow-500/20 border border-yellow-400 rounded-lg p-3 flex items-center justify-center gap-2">
+              <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
+              <span className="text-yellow-300 font-bold text-sm">Waiting for more players</span>
+            </div>
+          )}
+          {tournamentStatus === 1 && (
+            <div className="bg-green-500/20 border border-green-400 rounded-lg p-3 flex items-center justify-center gap-2">
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+              <span className="text-green-300 font-bold text-sm">In Progress</span>
+            </div>
+          )}
+          {tournamentStatus >= 2 && (
+            <div className="bg-gray-500/20 border border-gray-400 rounded-lg p-3 flex items-center justify-center gap-2">
+              <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+              <span className="text-gray-300 font-bold text-sm">Completed</span>
+            </div>
+          )}
+        </div>
+      ) : null}
+
       {/* Stats Grid */}
       <div className="grid grid-cols-2 gap-4 mb-4">
         <div className="bg-black/20 rounded-lg p-3">

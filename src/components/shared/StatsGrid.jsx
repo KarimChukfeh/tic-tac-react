@@ -6,16 +6,44 @@
  */
 
 /**
- * Get status display text from status code
+ * Get status display text and styling from status code
  * @param {number} status - 0: Enrolling, 1: In Progress, 2: Completed
- * @returns {string}
+ * @returns {Object} { text, color, bgColor, borderColor }
  */
-const getStatusText = (status) => {
+const getStatusDisplay = (status) => {
   switch (status) {
-    case 0: return 'Enrolling';
-    case 1: return 'In Progress';
-    case 2: return 'Completed';
-    default: return 'Unknown';
+    case 0:
+      return {
+        text: 'Waiting for more players',
+        color: 'text-yellow-300',
+        bgColor: 'bg-yellow-500/20',
+        borderColor: 'border-yellow-400',
+        dotColor: 'bg-yellow-400'
+      };
+    case 1:
+      return {
+        text: 'In Progress',
+        color: 'text-green-300',
+        bgColor: 'bg-green-500/20',
+        borderColor: 'border-green-400',
+        dotColor: 'bg-green-400'
+      };
+    case 2:
+      return {
+        text: 'Completed',
+        color: 'text-gray-300',
+        bgColor: 'bg-gray-500/20',
+        borderColor: 'border-gray-400',
+        dotColor: 'bg-gray-400'
+      };
+    default:
+      return {
+        text: 'Unknown',
+        color: 'text-white',
+        bgColor: 'bg-black/20',
+        borderColor: 'border-gray-400',
+        dotColor: 'bg-gray-400'
+      };
   }
 };
 
@@ -29,17 +57,27 @@ const getStatusText = (status) => {
  * @param {Object} props.colors - Color theme object with 'text' property
  */
 const StatsGrid = ({ enrolledCount, playerCount, status, currentRound, totalRounds, colors }) => {
+  const statusDisplay = getStatusDisplay(status);
+
+  // Don't show status message if tournament is enrolling with 0 players
+  const showStatus = !(status === 0 && enrolledCount === 0);
+
   return (
     <div className="grid grid-cols-3 gap-4">
       <div className="bg-black/20 rounded-lg p-4">
         <div className={`${colors.text} text-sm mb-1`}>Players</div>
         <div className="text-white font-bold text-xl">{enrolledCount} / {playerCount}</div>
       </div>
-      <div className="bg-black/20 rounded-lg p-4">
+      <div className={`${showStatus ? `${statusDisplay.bgColor} border ${statusDisplay.borderColor}` : 'bg-black/20'} rounded-lg p-4`}>
         <div className={`${colors.text} text-sm mb-1`}>Status</div>
-        <div className="text-white font-bold text-xl">
-          {getStatusText(status)}
-        </div>
+        {showStatus ? (
+          <div className={`${statusDisplay.color} font-bold text-base flex items-center gap-2`}>
+            <div className={`w-2 h-2 ${statusDisplay.dotColor} rounded-full ${status < 2 ? 'animate-pulse' : ''}`}></div>
+            {statusDisplay.text}
+          </div>
+        ) : (
+          <div className="text-white/50 font-bold text-base">-</div>
+        )}
       </div>
       <div className="bg-black/20 rounded-lg p-4">
         <div className={`${colors.text} text-sm mb-1`}>Current Round</div>
