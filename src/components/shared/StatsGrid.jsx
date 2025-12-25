@@ -55,8 +55,9 @@ const getStatusDisplay = (status) => {
  * @param {number} props.currentRound - Current round (0-indexed)
  * @param {number} props.totalRounds - Total number of rounds
  * @param {Object} props.colors - Color theme object with 'text' property
+ * @param {number} props.syncDots - Number of dots for syncing indicator (1-3)
  */
-const StatsGrid = ({ enrolledCount, playerCount, status, currentRound, totalRounds, colors }) => {
+const StatsGrid = ({ enrolledCount, playerCount, status, currentRound, totalRounds, colors, syncDots = 1 }) => {
   const statusDisplay = getStatusDisplay(status);
 
   // Don't show status message if tournament is enrolling with 0 players
@@ -71,9 +72,19 @@ const StatsGrid = ({ enrolledCount, playerCount, status, currentRound, totalRoun
       <div className={`${showStatus ? `${statusDisplay.bgColor} border ${statusDisplay.borderColor}` : 'bg-black/20'} rounded-lg p-4`}>
         <div className={`${colors.text} text-sm mb-1`}>Status</div>
         {showStatus ? (
-          <div className={`${statusDisplay.color} font-bold text-base flex items-center gap-2`}>
-            <div className={`w-2 h-2 ${statusDisplay.dotColor} rounded-full ${status < 2 ? 'animate-pulse' : ''}`}></div>
-            {statusDisplay.text}
+          <div className="flex flex-col gap-1">
+            <div className={`${statusDisplay.color} font-bold text-base flex items-center gap-2`}>
+              <div className={`w-2 h-2 ${statusDisplay.dotColor} rounded-full ${status < 2 ? 'animate-pulse' : ''}`}></div>
+              {statusDisplay.text}
+            </div>
+            {status < 2 && (
+              <div className="flex items-center gap-1.5 mt-1">
+                <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse"></div>
+                <span className="text-cyan-400 text-sm font-semibold">
+                  Syncing{'.'.repeat(syncDots)}
+                </span>
+              </div>
+            )}
           </div>
         ) : (
           <div className="text-white/50 font-bold text-base">-</div>

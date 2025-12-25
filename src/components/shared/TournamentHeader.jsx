@@ -114,15 +114,9 @@ const TournamentHeader = ({
             <h2 className="text-2xl md:text-4xl font-bold text-white truncate">
               {config.name} T{tierId + 1}-I{instanceId + 1}
             </h2>
-            <div className="flex items-center gap-3 flex-wrap">
-              <p className={colors.text}>
-                Round {currentRound + 1} of {totalRounds}
-              </p>
-              <span className="text-cyan-400 text-sm font-semibold flex items-center gap-1">
-                <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
-                Syncing{'.'.repeat(syncDots)}
-              </span>
-            </div>
+            <p className={colors.text}>
+              Round {currentRound + 1} of {totalRounds}
+            </p>
           </div>
         </div>
 
@@ -142,6 +136,7 @@ const TournamentHeader = ({
         currentRound={currentRound}
         totalRounds={totalRounds}
         colors={colors}
+        syncDots={syncDots}
       />
 
       {/* Enroll Button */}
