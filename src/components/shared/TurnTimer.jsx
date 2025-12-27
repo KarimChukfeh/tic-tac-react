@@ -47,6 +47,22 @@ const TurnTimer = ({
   );
   const opponentTimedOut = isExpired && !youTimedOut;
 
+  // Debug logging for timeout button
+  if (isExpired) {
+    console.log('[TurnTimer Debug]', {
+      isExpired,
+      expiredPlayer,
+      isYourTurn,
+      opponentTimedOut,
+      youTimedOut,
+      player1Remaining: player1.remaining,
+      player2Remaining: player2.remaining,
+      currentTurn: match.currentTurn,
+      yourAddress: match.player1?.toLowerCase() === times.isPlayer1You ? match.player1 : match.player2,
+      showButton: opponentTimedOut && !isYourTurn
+    });
+  }
+
   // Get color schemes based on remaining time
   const yourColors = getTimeColorScheme(yourTime.remaining);
   const opponentColors = getTimeColorScheme(opponentTime.remaining);
@@ -168,7 +184,7 @@ const TurnTimer = ({
         </div>
       )}
 
-      {/* Claim Timeout Victory Button - only show when opponent timed out on their turn */}
+      {/* Claim Timeout Victory Button - only show when opponent timed out while it's their turn */}
       {opponentTimedOut && !isYourTurn && (
         <div>
           <button
