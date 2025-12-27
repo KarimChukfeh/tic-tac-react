@@ -24,7 +24,7 @@ const formatEscalationTime = (seconds) => {
 /**
  * Calculate escalation state using contract data (NO client-side calculations)
  */
-const calculateEscalationState = (match, account, timeoutConfig) => {
+const calculateEscalationState = (match, account, timeoutConfig, isUserAdvancedPlayer) => {
   // Use contract-provided time data (no calculations)
   const times = calculatePlayerTimes(match, account, match.matchTimePerPlayer);
 
@@ -69,7 +69,8 @@ const calculateEscalationState = (match, account, timeoutConfig) => {
     canForceEliminate = esc1Start > 0 && now >= esc1Start;
 
     // Level 3: Active from esc2Start onwards (never expires)
-    canReplace = esc2Start > 0 && now >= esc2Start;
+    // RESTRICTION: Not available to advanced players (they can only use Level 2)
+    canReplace = esc2Start > 0 && now >= esc2Start && !isUserAdvancedPlayer;
   }
   // Otherwise, calculate client-side if player has timed out
   else if (match.matchStatus === 1 && match.lastMoveTime > 0) {
@@ -112,7 +113,8 @@ const calculateEscalationState = (match, account, timeoutConfig) => {
       canForceEliminate = now >= esc1Start;
 
       // Level 3: Active from esc2Start onwards (never expires)
-      canReplace = now >= esc2Start;
+      // RESTRICTION: Not available to advanced players (they can only use Level 2)
+      canReplace = now >= esc2Start && !isUserAdvancedPlayer;
     }
   }
 
@@ -199,8 +201,13 @@ const MatchCard = ({
   const isPlayer1 = match.player1?.toLowerCase() === account?.toLowerCase();
   const isPlayer2 = match.player2?.toLowerCase() === account?.toLowerCase();
 
+  // Check if current user is an advanced player (for Level 2 escalation, Level 3 restriction)
+  const isUserAdvancedPlayer = tournamentRounds && account
+    ? isAdvancedPlayer(tournamentRounds, account, roundIdx)
+    : false;
+
   // Calculate escalation state (pass account for player-specific time and timeoutConfig for tier delays)
-  const escalation = showEscalation ? calculateEscalationState(match, account, match.timeoutConfig) : {
+  const escalation = showEscalation ? calculateEscalationState(match, account, match.timeoutConfig, isUserAdvancedPlayer) : {
     timeRemaining: null,
     isTimeout: false,
     hasEscalation: false,
@@ -208,11 +215,6 @@ const MatchCard = ({
     canForceEliminate: false,
     canReplace: false,
   };
-
-  // Check if current user is an advanced player (for Level 2 escalation)
-  const isUserAdvancedPlayer = tournamentRounds && account
-    ? isAdvancedPlayer(tournamentRounds, account, roundIdx)
-    : false;
 
   // Get border class
   const borderClass = showEscalation

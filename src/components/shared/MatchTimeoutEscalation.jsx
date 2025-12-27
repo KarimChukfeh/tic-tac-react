@@ -50,13 +50,14 @@ const MatchTimeoutEscalation = ({
   // Level 2 (Force Eliminate): Active from escalation1Start onwards (never expires)
   const canForceEliminate = escalation1Start > 0 && now >= escalation1Start;
 
-  // Level 3 (Replace Players): Active from escalation2Start onwards (never expires)
-  const canReplace = escalation2Start > 0 && now >= escalation2Start;
-
   // Check if current user is an advanced player (for Level 2 escalation)
   const isUserAdvancedPlayer = tournamentRounds && currentAccount
     ? isAdvancedPlayer(tournamentRounds, currentAccount, currentRoundNumber)
     : false;
+
+  // Level 3 (Replace Players): Active from escalation2Start onwards (never expires)
+  // RESTRICTION: Not available to advanced players (they can only use Level 2)
+  const canReplace = escalation2Start > 0 && now >= escalation2Start && !isUserAdvancedPlayer;
 
   // Debug logging for escalation timing
   console.log('MatchTimeoutEscalation Debug:', {
