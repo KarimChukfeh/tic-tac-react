@@ -64,13 +64,24 @@ const calculateEscalationState = (match, account, timeoutConfig, isUserAdvancedP
       timeToEscalation2 = esc2Start - now;
     }
 
-    // Check if escalation levels are AVAILABLE based on time windows
-    // Level 2: Active from esc1Start onwards (never expires)
-    canForceEliminate = esc1Start > 0 && now >= esc1Start;
+      // Use contract-provided escalation availability flags (more reliable than time calculations)
+    // If contract provides the flags, use them; otherwise fall back to time-based logic
+    if (match.escL2Available !== undefined) {
+      canForceEliminate = match.escL2Available;
+    } else {
+      // Fallback: Level 2 active from esc1Start onwards (never expires)
+      canForceEliminate = esc1Start > 0 && now >= esc1Start;
+    }
 
-    // Level 3: Active from esc2Start onwards (never expires)
-    // RESTRICTION: Not available to advanced players (they can only use Level 2)
-    canReplace = esc2Start > 0 && now >= esc2Start && !isUserAdvancedPlayer;
+    if (match.escL3Available !== undefined) {
+      // Level 3: Use contract flag, but still respect advanced player restriction
+      // RESTRICTION: Not available to advanced players (they can only use Level 2)
+      canReplace = match.escL3Available && !isUserAdvancedPlayer;
+    } else {
+      // Fallback: Level 3 active from esc2Start onwards (never expires)
+      // RESTRICTION: Not available to advanced players (they can only use Level 2)
+      canReplace = esc2Start > 0 && now >= esc2Start && !isUserAdvancedPlayer;
+    }
   }
   // Otherwise, calculate client-side if player has timed out
   else if (match.matchStatus === 1 && match.lastMoveTime > 0) {
@@ -108,13 +119,23 @@ const calculateEscalationState = (match, account, timeoutConfig, isUserAdvancedP
         timeToEscalation2 = esc2Start - now;
       }
 
-      // Check availability based on time windows
-      // Level 2: Active from esc1Start onwards (never expires)
-      canForceEliminate = now >= esc1Start;
+      // Use contract-provided escalation availability flags if available
+      if (match.escL2Available !== undefined) {
+        canForceEliminate = match.escL2Available;
+      } else {
+        // Fallback: Level 2 active from esc1Start onwards (never expires)
+        canForceEliminate = now >= esc1Start;
+      }
 
-      // Level 3: Active from esc2Start onwards (never expires)
-      // RESTRICTION: Not available to advanced players (they can only use Level 2)
-      canReplace = now >= esc2Start && !isUserAdvancedPlayer;
+      if (match.escL3Available !== undefined) {
+        // Level 3: Use contract flag, but still respect advanced player restriction
+        // RESTRICTION: Not available to advanced players (they can only use Level 2)
+        canReplace = match.escL3Available && !isUserAdvancedPlayer;
+      } else {
+        // Fallback: Level 3 active from esc2Start onwards (never expires)
+        // RESTRICTION: Not available to advanced players (they can only use Level 2)
+        canReplace = now >= esc2Start && !isUserAdvancedPlayer;
+      }
     }
   }
 

@@ -1217,6 +1217,16 @@ export default function TicTacChain() {
               console.debug('No escalation state for match (normal for non-stalled matches):', escalationErr.message);
             }
 
+            // Check escalation availability using contract functions (more reliable than client calculation)
+            let escL2Available = false;
+            let escL3Available = false;
+            try {
+              escL2Available = await contractInstance.isMatchEscL2Available(tierId, instanceId, roundNum, matchNum);
+              escL3Available = await contractInstance.isMatchEscL3Available(tierId, instanceId, roundNum, matchNum);
+            } catch (escCheckErr) {
+              console.debug('Could not check escalation availability:', escCheckErr.message);
+            }
+
             matches.push({
               ...parsedMatch,
               timeoutState,
@@ -1224,7 +1234,9 @@ export default function TicTacChain() {
               player1TimeRemaining,
               player2TimeRemaining,
               matchTimePerPlayer: totalMatchTime, // Pass through for UI
-              timeoutConfig // Add tier timeout config for escalation calculations
+              timeoutConfig, // Add tier timeout config for escalation calculations
+              escL2Available, // Contract says Level 2 is available
+              escL3Available  // Contract says Level 3 is available
             });
           } catch (err) {
             // Match might not exist yet - create placeholder with all required fields
@@ -1245,7 +1257,9 @@ export default function TicTacChain() {
               player1TimeRemaining: totalMatchTime,
               player2TimeRemaining: totalMatchTime,
               matchTimePerPlayer: totalMatchTime,
-              timeoutConfig // Add tier timeout config for placeholder matches too
+              timeoutConfig, // Add tier timeout config for placeholder matches too
+              escL2Available: false, // Placeholder: no escalations available
+              escL3Available: false  // Placeholder: no escalations available
             });
           }
         }
