@@ -58,6 +58,11 @@ export const parseTicTacToeMatch = (matchData) => ({
   blockedCell: Number(matchData.blockedCell),
   player1UsedBlock: matchData.player1UsedBlock,
   player2UsedBlock: matchData.player2UsedBlock,
+
+  // Total match time tracking fields (with defaults for backward compatibility)
+  player1TimeRemaining: matchData.player1TimeRemaining !== undefined ? Number(matchData.player1TimeRemaining) : 300,
+  player2TimeRemaining: matchData.player2TimeRemaining !== undefined ? Number(matchData.player2TimeRemaining) : 300,
+  lastMoveTimestamp: matchData.lastMoveTimestamp !== undefined ? Number(matchData.lastMoveTimestamp) : 0,
 });
 
 /**

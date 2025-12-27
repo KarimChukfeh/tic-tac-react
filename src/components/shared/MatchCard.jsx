@@ -8,9 +8,10 @@
 import { Play, Award } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
 import { getMatchStatusText, getMatchStatusColor } from '../../utils/matchStatus';
+import { calculatePlayerTimes } from '../../utils/timeCalculations';
 
 // Constants
-const MOVE_TIMEOUT = 60; // 60 seconds until timeout
+const TOTAL_MATCH_TIME = 300; // 5 minutes total per player
 const ESCALATION_1_DELAY = 60; // 60 seconds after timeout for escalation 1
 const ESCALATION_2_DELAY = 120; // 120 seconds after timeout for escalation 2
 const ESCALATION_3_DELAY = 180; // 180 seconds after timeout for escalation 3
@@ -26,50 +27,28 @@ const formatEscalationTime = (seconds) => {
 };
 
 /**
- * Calculate escalation state for a match
+ * Calculate escalation state using contract data (NO client-side calculations)
  */
-const calculateEscalationState = (match) => {
-  const now = Math.floor(Date.now() / 1000);
-  const timeReference = match.lastMoveTime > 0 ? match.lastMoveTime : match.startTime;
-  const timeSinceLastMove = timeReference > 0 ? now - timeReference : 0;
-  const timeRemaining = timeReference > 0 ? Math.max(0, MOVE_TIMEOUT - timeSinceLastMove) : null;
-  const isTimeout = timeRemaining !== null && timeRemaining === 0;
+const calculateEscalationState = (match, account) => {
+  // Use contract-provided time data (no calculations)
+  const times = calculatePlayerTimes(match, account);
 
-  // Check escalation status from contract
+  // Determine if either player has timed out (contract says <= 0)
+  const isTimeout = times.isExpired;
+
+  // Determine which player's turn it is and show their time
+  const isPlayer1Turn = match.currentTurn?.toLowerCase() === match.player1?.toLowerCase();
+  const activePlayerTime = isPlayer1Turn ? times.player1.remaining : times.player2.remaining;
+
+  // For compact display, show the active player's remaining time
+  const timeRemaining = match.matchStatus === 1 ? activePlayerTime : null;
+
+  // Use escalation status from contract (authoritative source)
   const hasEscalation = match.timeoutState && match.timeoutState.timeoutActive;
-  const activeEscalation = match.timeoutState?.activeEscalation || 0;
+  const effectiveEscalation = match.timeoutState?.activeEscalation || 0;
 
-  // Calculate client-side escalation based on time
-  let clientEscalation = 0;
-  if (!hasEscalation && isTimeout && match.matchStatus === 1) {
-    const timeoutDuration = timeSinceLastMove - MOVE_TIMEOUT;
-    if (timeoutDuration >= ESCALATION_3_DELAY) clientEscalation = 3;
-    else if (timeoutDuration >= ESCALATION_2_DELAY) clientEscalation = 2;
-    else if (timeoutDuration >= ESCALATION_1_DELAY) clientEscalation = 1;
-  }
-
-  const effectiveEscalation = hasEscalation ? activeEscalation : clientEscalation;
-
-  // Calculate time until each escalation level (for countdown timers)
-  // These are only relevant when match is in progress and has timed out
-  let timeToEscalation1 = null;
-  let timeToEscalation2 = null;
-  let timeToEscalation3 = null;
-
-  if (match.matchStatus === 1 && timeReference > 0) {
-    if (effectiveEscalation < 1) {
-      // Time until escalation 1 = timeout + escalation 1 delay - time since last move
-      timeToEscalation1 = Math.max(0, MOVE_TIMEOUT + ESCALATION_1_DELAY - timeSinceLastMove);
-    }
-    if (effectiveEscalation < 2) {
-      // Time until escalation 2 (force eliminate available)
-      timeToEscalation2 = Math.max(0, MOVE_TIMEOUT + ESCALATION_2_DELAY - timeSinceLastMove);
-    }
-    if (effectiveEscalation < 3) {
-      // Time until escalation 3 (replace available)
-      timeToEscalation3 = Math.max(0, MOVE_TIMEOUT + ESCALATION_3_DELAY - timeSinceLastMove);
-    }
-  }
+  // Escalation is entirely managed by the contract now
+  // We just display what the contract tells us
 
   return {
     timeRemaining,
@@ -78,9 +57,9 @@ const calculateEscalationState = (match) => {
     effectiveEscalation,
     canForceEliminate: effectiveEscalation >= 2,
     canReplace: effectiveEscalation >= 3,
-    timeToEscalation1,
-    timeToEscalation2,
-    timeToEscalation3,
+    timeToEscalation1: null, // Contract manages this
+    timeToEscalation2: null, // Contract manages this
+    timeToEscalation3: null, // Contract manages this
   };
 };
 
@@ -148,8 +127,8 @@ const MatchCard = ({
   const isPlayer1 = match.player1?.toLowerCase() === account?.toLowerCase();
   const isPlayer2 = match.player2?.toLowerCase() === account?.toLowerCase();
 
-  // Calculate escalation state
-  const escalation = showEscalation ? calculateEscalationState(match) : {
+  // Calculate escalation state (pass account for player-specific time)
+  const escalation = showEscalation ? calculateEscalationState(match, account) : {
     timeRemaining: null,
     isTimeout: false,
     hasEscalation: false,

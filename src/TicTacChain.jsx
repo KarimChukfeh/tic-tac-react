@@ -1120,28 +1120,52 @@ export default function TicTacChain() {
             const matchData = await contractInstance.getMatch(tierId, instanceId, roundNum, matchNum);
             const parsedMatch = parseTicTacToeMatch(matchData);
 
-            // Fetch escalation state from matches mapping
-            const matchKey = ethers.keccak256(ethers.AbiCoder.defaultAbiCoder().encode(
-              ['uint8', 'uint8', 'uint8', 'uint8'],
-              [tierId, instanceId, roundNum, matchNum]
-            ));
-            const matchesData = await contractInstance.matches(matchKey);
+            // Fetch real-time remaining time from contract (authoritative source)
+            let player1TimeRemaining = 300; // Default 5 minutes
+            let player2TimeRemaining = 300; // Default 5 minutes
 
-            const timeoutState = {
-              escalation1Start: Number(matchesData.timeoutState.escalation1Start),
-              escalation2Start: Number(matchesData.timeoutState.escalation2Start),
-              escalation3Start: Number(matchesData.timeoutState.escalation3Start),
-              activeEscalation: Number(matchesData.timeoutState.activeEscalation),
-              timeoutActive: matchesData.timeoutState.timeoutActive,
-              forfeitAmount: matchesData.timeoutState.forfeitAmount
-            };
+            try {
+              const timeData = await contractInstance.getCurrentTimeRemaining(tierId, instanceId, roundNum, matchNum);
+              player1TimeRemaining = Number(timeData[0]);
+              player2TimeRemaining = Number(timeData[1]);
+            } catch (timeErr) {
+              console.warn(`Could not fetch time for match ${matchNum}:`, timeErr);
+            }
+
+            // Fetch escalation state from matches mapping (optional - may not exist for all matches)
+            let timeoutState = null;
+            try {
+              const matchKey = ethers.keccak256(ethers.AbiCoder.defaultAbiCoder().encode(
+                ['uint8', 'uint8', 'uint8', 'uint8'],
+                [tierId, instanceId, roundNum, matchNum]
+              ));
+              const matchesData = await contractInstance.matches(matchKey);
+
+              // Check if timeoutState exists (might be undefined for new contract structure)
+              if (matchesData.timeoutState) {
+                timeoutState = {
+                  escalation1Start: Number(matchesData.timeoutState.escalation1Start),
+                  escalation2Start: Number(matchesData.timeoutState.escalation2Start),
+                  escalation3Start: Number(matchesData.timeoutState.escalation3Start),
+                  activeEscalation: Number(matchesData.timeoutState.activeEscalation),
+                  timeoutActive: matchesData.timeoutState.timeoutActive,
+                  forfeitAmount: matchesData.timeoutState.forfeitAmount
+                };
+              }
+            } catch (escalationErr) {
+              console.warn('Could not fetch escalation state (may not exist yet):', escalationErr);
+            }
 
             matches.push({
               ...parsedMatch,
-              timeoutState
+              timeoutState,
+              // Override with contract's real-time values
+              player1TimeRemaining,
+              player2TimeRemaining
             });
           } catch (err) {
             // Match might not exist yet - create placeholder with all required fields
+            console.warn(`Match ${matchNum} not yet initialized`);
             const zeroAddress = '0x0000000000000000000000000000000000000000';
             matches.push({
               player1: zeroAddress,
@@ -1272,7 +1296,10 @@ export default function TicTacChain() {
       const matchData = await contractInstance.getMatch(tierId, instanceId, roundNumber, matchNumber);
       const parsedMatch = parseTicTacToeMatch(matchData);
 
-      const { player1, player2, currentTurn, winner, loser, board, matchStatus, isDraw, startTime, lastMoveTime, lastMovedCell } = parsedMatch;
+      const {
+        player1, player2, currentTurn, winner, loser, board, matchStatus, isDraw,
+        startTime, lastMoveTime, lastMovedCell, lastMoveTimestamp
+      } = parsedMatch;
 
       const zeroAddress = '0x0000000000000000000000000000000000000000';
       const isMatchInitialized =
@@ -1287,25 +1314,49 @@ export default function TicTacChain() {
         actualPlayer2 = matchInfo.player2;
       }
 
-      // Fetch timeout state from matches mapping
-      const matchKey = ethers.keccak256(ethers.AbiCoder.defaultAbiCoder().encode(
-        ['uint8', 'uint8', 'uint8', 'uint8'],
-        [tierId, instanceId, roundNumber, matchNumber]
-      ));
-      const matchesData = await contractInstance.matches(matchKey);
+      // Fetch real-time remaining time from contract (authoritative source)
+      let player1TimeRemaining = 300; // Default 5 minutes
+      let player2TimeRemaining = 300; // Default 5 minutes
 
-      const timeoutState = {
-        escalation1Start: Number(matchesData.timeoutState.escalation1Start),
-        escalation2Start: Number(matchesData.timeoutState.escalation2Start),
-        escalation3Start: Number(matchesData.timeoutState.escalation3Start),
-        activeEscalation: Number(matchesData.timeoutState.activeEscalation),
-        timeoutActive: matchesData.timeoutState.timeoutActive,
-        forfeitAmount: matchesData.timeoutState.forfeitAmount
-      };
+      try {
+        const timeData = await contractInstance.getCurrentTimeRemaining(tierId, instanceId, roundNumber, matchNumber);
+        player1TimeRemaining = Number(timeData[0]); // player1Time from contract
+        player2TimeRemaining = Number(timeData[1]); // player2Time from contract
+      } catch (timeErr) {
+        // Using default values (match may not be initialized)
+      }
 
-      const isTimedOut = matchesData.isTimedOut;
-      const timeoutClaimant = matchesData.timeoutClaimant;
-      const timeoutClaimReward = matchesData.timeoutClaimReward;
+      // Fetch timeout state from matches mapping (optional - may not exist for all matches)
+      let timeoutState = null;
+      let isTimedOut = false;
+      let timeoutClaimant = null;
+      let timeoutClaimReward = 0;
+
+      try {
+        const matchKey = ethers.keccak256(ethers.AbiCoder.defaultAbiCoder().encode(
+          ['uint8', 'uint8', 'uint8', 'uint8'],
+          [tierId, instanceId, roundNumber, matchNumber]
+        ));
+        const matchesData = await contractInstance.matches(matchKey);
+
+        // Check if timeoutState exists (might be undefined for new contract structure)
+        if (matchesData.timeoutState) {
+          timeoutState = {
+            escalation1Start: Number(matchesData.timeoutState.escalation1Start),
+            escalation2Start: Number(matchesData.timeoutState.escalation2Start),
+            escalation3Start: Number(matchesData.timeoutState.escalation3Start),
+            activeEscalation: Number(matchesData.timeoutState.activeEscalation),
+            timeoutActive: matchesData.timeoutState.timeoutActive,
+            forfeitAmount: matchesData.timeoutState.forfeitAmount
+          };
+        }
+
+        isTimedOut = matchesData.isTimedOut || false;
+        timeoutClaimant = matchesData.timeoutClaimant || null;
+        timeoutClaimReward = matchesData.timeoutClaimReward || 0;
+      } catch (escalationErr) {
+        console.warn('Could not fetch escalation/timeout state in refreshMatchData:', escalationErr);
+      }
 
       const boardState = Array.from(board).map(cell => Number(cell));
       const isPlayer1 = actualPlayer1.toLowerCase() === userAccount.toLowerCase();
@@ -1331,7 +1382,11 @@ export default function TicTacChain() {
         timeoutClaimant,
         timeoutClaimReward,
         lastMoveTime,
-        startTime
+        startTime,
+        // New total match time fields
+        player1TimeRemaining,
+        player2TimeRemaining,
+        lastMoveTimestamp
       };
     } catch (error) {
       console.error('Error refreshing match:', error);
@@ -1500,6 +1555,7 @@ export default function TicTacChain() {
 
       const matchData = await contract.getMatch(tierId, instanceId, roundNumber, matchNumber);
       const parsedMatch = parseTicTacToeMatch(matchData);
+
       const player1 = parsedMatch.player1;
       const player2 = parsedMatch.player2;
 

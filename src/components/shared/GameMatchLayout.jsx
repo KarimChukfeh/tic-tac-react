@@ -35,7 +35,7 @@ const GAME_THEMES = {
     textMuted: 'text-purple-300',
     player1Color: 'blue',
     player2Color: 'pink',
-    moveTimeout: 60, // 1 minute
+    moveTimeout: 60, // Legacy: Now uses total match time (300s per player)
     completeText: 'Match Complete!'
   },
   chess: {
@@ -46,7 +46,7 @@ const GAME_THEMES = {
     textMuted: 'text-purple-300',
     player1Color: 'white',
     player2Color: 'black',
-    moveTimeout: 60, // 1 minute
+    moveTimeout: 60, // Legacy: Now uses total match time (300s per player)
     completeText: 'Checkmate!'
   },
   connectfour: {
@@ -57,7 +57,7 @@ const GAME_THEMES = {
     textMuted: 'text-purple-300',
     player1Color: 'red',
     player2Color: 'blue',
-    moveTimeout: 60, // 1 minute
+    moveTimeout: 60, // Legacy: Now uses total match time (300s per player)
     completeText: 'Match Complete!'
   }
 };
@@ -115,12 +115,8 @@ const GameMatchLayout = ({
   const hasWinner = winner && winner !== zeroAddress;
   const userWon = hasWinner && account && winner.toLowerCase() === account.toLowerCase();
 
-  // Calculate time remaining for turn timer
-  const now = Math.floor(Date.now() / 1000);
-  const timeReference = lastMoveTime > 0 ? lastMoveTime : startTime;
-  const timeSinceLastMove = now - timeReference;
-  const timeRemaining = Math.max(0, theme.moveTimeout - timeSinceLastMove);
-  const showTurnTimer = matchStatus === 1 && timeReference > 0;
+  // Show turn timer when match is in progress
+  const showTurnTimer = matchStatus === 1;
 
   // Determine if players are current user
   const isPlayer1You = account && player1?.toLowerCase() === account.toLowerCase();
@@ -153,8 +149,8 @@ const GameMatchLayout = ({
         <div className="space-y-3 mt-6">
           {showTurnTimer && (
             <TurnTimer
-              isYourTurn={isYourTurn}
-              timeRemaining={timeRemaining}
+              match={match}
+              account={account}
               onClaimTimeoutWin={onClaimTimeoutWin}
               loading={loading}
             />
@@ -238,8 +234,8 @@ const GameMatchLayout = ({
         {showTurnTimer && (
           <div className="w-full max-w-md mt-4">
             <TurnTimer
-              isYourTurn={isYourTurn}
-              timeRemaining={timeRemaining}
+              match={match}
+              account={account}
               onClaimTimeoutWin={onClaimTimeoutWin}
               loading={loading}
             />
@@ -323,8 +319,8 @@ const GameMatchLayout = ({
       {showTurnTimer && (
         <div className="max-w-md mx-auto mt-6 w-full">
           <TurnTimer
-            isYourTurn={isYourTurn}
-            timeRemaining={timeRemaining}
+            match={match}
+            account={account}
             onClaimTimeoutWin={onClaimTimeoutWin}
             loading={loading}
           />
