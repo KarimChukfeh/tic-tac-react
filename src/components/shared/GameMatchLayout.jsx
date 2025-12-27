@@ -153,6 +153,7 @@ const GameMatchLayout = ({
               account={account}
               onClaimTimeoutWin={onClaimTimeoutWin}
               loading={loading}
+              syncDots={syncDots}
             />
           )}
 
@@ -238,6 +239,7 @@ const GameMatchLayout = ({
               account={account}
               onClaimTimeoutWin={onClaimTimeoutWin}
               loading={loading}
+              syncDots={syncDots}
             />
           </div>
         )}
@@ -323,6 +325,7 @@ const GameMatchLayout = ({
             account={account}
             onClaimTimeoutWin={onClaimTimeoutWin}
             loading={loading}
+            syncDots={syncDots}
           />
         </div>
       )}
@@ -366,7 +369,6 @@ const GameMatchLayout = ({
         gameType={gameType}
         title={theme.title}
         icon={theme.icon}
-        syncDots={syncDots}
         matchStatus={matchStatus}
         isDraw={isDraw}
         onClose={onClose}

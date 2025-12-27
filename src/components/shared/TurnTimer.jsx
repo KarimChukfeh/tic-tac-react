@@ -16,7 +16,8 @@ const TurnTimer = ({
   match,
   account,
   onClaimTimeoutWin,
-  loading
+  loading,
+  syncDots = 1
 }) => {
   // Calculate time breakdown for both players (using dynamic time from contract)
   const times = calculatePlayerTimes(match, account, match.matchTimePerPlayer);
@@ -60,6 +61,10 @@ const TurnTimer = ({
       <div className="flex items-center gap-2 mb-4">
         <Clock className="text-purple-400" size={20} />
         <span className="text-lg font-bold text-white">Match Time</span>
+        <span className="text-cyan-400 text-sm font-semibold flex items-center gap-1">
+          <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
+          Syncing{'.'.repeat(syncDots)}
+        </span>
       </div>
 
       {/* Dual Clock Display */}
@@ -163,8 +168,8 @@ const TurnTimer = ({
         </div>
       )}
 
-      {/* Claim Timeout Victory Button */}
-      {opponentTimedOut && (
+      {/* Claim Timeout Victory Button - only show when opponent timed out on their turn */}
+      {opponentTimedOut && !isYourTurn && (
         <div>
           <button
             onClick={onClaimTimeoutWin}

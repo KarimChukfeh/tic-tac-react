@@ -853,7 +853,7 @@ export default function TicTacChain() {
       alert('Successfully enrolled in tournament!');
 
       // Navigate to tournament bracket view
-      const bracketData = await refreshTournamentBracket(contract, tierId, instanceId);
+      const bracketData = await refreshTournamentBracket(contract, tierId, instanceId, matchTimePerPlayer);
       if (bracketData) {
         setViewingTournament(bracketData);
       }
@@ -1101,7 +1101,7 @@ export default function TicTacChain() {
   };
 
   // Refresh tournament bracket data
-  const refreshTournamentBracket = useCallback(async (contractInstance, tierId, instanceId) => {
+  const refreshTournamentBracket = useCallback(async (contractInstance, tierId, instanceId, totalMatchTime) => {
     try {
       // Get tournament info
       const tournamentInfo = await contractInstance.getTournamentInfo(tierId, instanceId);
@@ -1146,8 +1146,7 @@ export default function TicTacChain() {
             const matchData = await contractInstance.getMatch(tierId, instanceId, roundNum, matchNum);
             const parsedMatch = parseTicTacToeMatch(matchData);
 
-            // Fetch real-time remaining time from contract (authoritative source)
-            const totalMatchTime = matchTimePerPlayer;
+            // Use totalMatchTime passed as parameter (fetched from contract once on init)
             let player1TimeRemaining = totalMatchTime;
             let player2TimeRemaining = totalMatchTime;
 
@@ -1207,9 +1206,9 @@ export default function TicTacChain() {
               startTime: 0,
               lastMoveTime: 0,
               timeoutState: null,
-              player1TimeRemaining: matchTimePerPlayer,
-              player2TimeRemaining: matchTimePerPlayer,
-              matchTimePerPlayer: matchTimePerPlayer
+              player1TimeRemaining: totalMatchTime,
+              player2TimeRemaining: totalMatchTime,
+              matchTimePerPlayer: totalMatchTime
             });
           }
         }
@@ -1245,7 +1244,7 @@ export default function TicTacChain() {
     try {
       setTournamentsLoading(true);
 
-      const bracketData = await refreshTournamentBracket(contract, tierId, instanceId);
+      const bracketData = await refreshTournamentBracket(contract, tierId, instanceId, matchTimePerPlayer);
       if (bracketData) {
         setViewingTournament(bracketData);
       }
@@ -1321,7 +1320,7 @@ export default function TicTacChain() {
   }, []);
 
   // Refresh match data from contract
-  const refreshMatchData = useCallback(async (contractInstance, userAccount, matchInfo) => {
+  const refreshMatchData = useCallback(async (contractInstance, userAccount, matchInfo, totalMatchTime) => {
     try {
       const { tierId, instanceId, roundNumber, matchNumber } = matchInfo;
       const matchData = await contractInstance.getMatch(tierId, instanceId, roundNumber, matchNumber);
@@ -1345,8 +1344,7 @@ export default function TicTacChain() {
         actualPlayer2 = matchInfo.player2;
       }
 
-      // Fetch real-time remaining time from contract (authoritative source)
-      const totalMatchTime = matchInfo.matchTimePerPlayer || matchTimePerPlayer;
+      // Use totalMatchTime passed as parameter (fetched from contract once on init)
       let player1TimeRemaining = totalMatchTime;
       let player2TimeRemaining = totalMatchTime;
 
@@ -1451,7 +1449,7 @@ export default function TicTacChain() {
       const tx = await contract.makeMove(tierId, instanceId, roundNumber, matchNumber, cellIndex);
       await tx.wait();
 
-      const updated = await refreshMatchData(contract, account, currentMatch);
+      const updated = await refreshMatchData(contract, account, currentMatch, matchTimePerPlayer);
       if (updated) {
         setCurrentMatch(updated);
         // Update board ref to prevent sync from detecting this move again
@@ -1480,7 +1478,7 @@ export default function TicTacChain() {
       await tx.wait();
 
       // Refresh match data to get updated winner/loser
-      const updatedMatch = await refreshMatchData(contract, account, currentMatch);
+      const updatedMatch = await refreshMatchData(contract, account, currentMatch, matchTimePerPlayer);
       if (updatedMatch) {
         setCurrentMatch(updatedMatch);
 
@@ -1523,7 +1521,7 @@ export default function TicTacChain() {
       await refreshAfterAction(tierId);
 
       // Refresh and show tournament bracket
-      const bracketData = await refreshTournamentBracket(contract, tierId, instanceId);
+      const bracketData = await refreshTournamentBracket(contract, tierId, instanceId, matchTimePerPlayer);
       if (bracketData) {
         setViewingTournament(bracketData);
       }
@@ -1610,7 +1608,7 @@ export default function TicTacChain() {
         player2: actualPlayer2,
         playerCount, // Add tournament context
         prizePool    // Add tournament context
-      });
+      }, matchTimePerPlayer);
 
       if (updated) {
         setCurrentMatch(updated);
@@ -1646,7 +1644,7 @@ export default function TicTacChain() {
     // Refresh tournament bracket and cached stats (with loading indicator)
     if (tournamentInfo && contract) {
       setTournamentsLoading(true);
-      const bracketData = await refreshTournamentBracket(contract, tournamentInfo.tierId, tournamentInfo.instanceId);
+      const bracketData = await refreshTournamentBracket(contract, tournamentInfo.tierId, tournamentInfo.instanceId, matchTimePerPlayer);
       if (bracketData) {
         setViewingTournament(bracketData);
       }
@@ -1675,7 +1673,7 @@ export default function TicTacChain() {
 
       // Show tournament bracket for winners, go back to list for losers
       if (tournamentInfo && (matchEndResult === 'win' || matchEndResult === 'forfeit_win')) {
-        const bracketData = await refreshTournamentBracket(contract, tournamentInfo.tierId, tournamentInfo.instanceId);
+        const bracketData = await refreshTournamentBracket(contract, tournamentInfo.tierId, tournamentInfo.instanceId, matchTimePerPlayer);
         if (bracketData) {
           setViewingTournament(bracketData);
         }
@@ -1775,7 +1773,7 @@ export default function TicTacChain() {
 
       if (!tournament || !contractInstance) return;
 
-      const updated = await refreshTournamentBracket(contractInstance, tournament.tierId, tournament.instanceId);
+      const updated = await refreshTournamentBracket(contractInstance, tournament.tierId, tournament.instanceId, matchTimePerPlayer);
       if (updated) setViewingTournament(updated);
 
       // Reset dots to 1 after sync completes
@@ -1814,7 +1812,8 @@ export default function TicTacChain() {
         const updatedMatch = await refreshMatchData(
           contractInstance,
           userAccount,
-          match
+          match,
+          matchTimePerPlayer
         );
         if (updatedMatch) {
           // Use standardized match completion handler
