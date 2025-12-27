@@ -381,6 +381,7 @@ export default function TicTacChain() {
   // Time Configuration from Contract
   const [matchTimePerPlayer, setMatchTimePerPlayer] = useState(300); // Default 5 minutes
   const [timeIncrement, setTimeIncrement] = useState(0); // Default no increment
+  const [escalationInterval, setEscalationInterval] = useState(60); // Default 60 seconds between escalations
 
   // Loading State
   const [loading, setLoading] = useState(false);
@@ -589,19 +590,23 @@ export default function TicTacChain() {
     try {
       const matchTime = await contractInstance.getMatchTimePerPlayer();
       const increment = await contractInstance.getTimeIncrement();
+      const escalationInt = await contractInstance.DEFAULT_ESCALATION_INTERVAL();
 
       setMatchTimePerPlayer(Number(matchTime));
       setTimeIncrement(Number(increment));
+      setEscalationInterval(Number(escalationInt));
 
       console.log('Time configuration fetched:', {
         matchTimePerPlayer: Number(matchTime),
-        timeIncrement: Number(increment)
+        timeIncrement: Number(increment),
+        escalationInterval: Number(escalationInt)
       });
     } catch (error) {
       console.error('Error fetching time configuration (using defaults):', error);
       // Use defaults if contract doesn't support these functions yet
       setMatchTimePerPlayer(300);
       setTimeIncrement(0);
+      setEscalationInterval(60);
     }
   }, []);
 
@@ -1158,28 +1163,33 @@ export default function TicTacChain() {
               console.warn(`Could not fetch time for match ${matchNum}:`, timeErr);
             }
 
-            // Fetch escalation state from matches mapping (optional - may not exist for all matches)
+            // Fetch escalation state using matchTimeouts function
             let timeoutState = null;
             try {
               const matchKey = ethers.keccak256(ethers.AbiCoder.defaultAbiCoder().encode(
                 ['uint8', 'uint8', 'uint8', 'uint8'],
                 [tierId, instanceId, roundNum, matchNum]
               ));
-              const matchesData = await contractInstance.matches(matchKey);
+              const timeoutData = await contractInstance.matchTimeouts(matchKey);
 
-              // Check if timeoutState exists (might be undefined for new contract structure)
-              if (matchesData.timeoutState) {
+              // Only set timeoutState if there's actual escalation data
+              // (contract returns all 0s for matches without timeouts)
+              const esc1Start = Number(timeoutData.escalation1Start);
+              const esc2Start = Number(timeoutData.escalation2Start);
+              const hasTimeoutData = esc1Start > 0 || esc2Start > 0 || timeoutData.isStalled;
+
+              if (hasTimeoutData) {
                 timeoutState = {
-                  escalation1Start: Number(matchesData.timeoutState.escalation1Start),
-                  escalation2Start: Number(matchesData.timeoutState.escalation2Start),
-                  escalation3Start: Number(matchesData.timeoutState.escalation3Start),
-                  activeEscalation: Number(matchesData.timeoutState.activeEscalation),
-                  timeoutActive: matchesData.timeoutState.timeoutActive,
-                  forfeitAmount: matchesData.timeoutState.forfeitAmount
+                  escalation1Start: esc1Start,
+                  escalation2Start: esc2Start,
+                  activeEscalation: Number(timeoutData.activeEscalation),
+                  timeoutActive: timeoutData.isStalled,
+                  forfeitAmount: 0 // Not provided by matchTimeouts
                 };
               }
             } catch (escalationErr) {
-              console.warn('Could not fetch escalation state (may not exist yet):', escalationErr);
+              // Match may not have timeout state yet - this is normal for active matches
+              console.debug('No escalation state for match (normal for non-stalled matches):', escalationErr.message);
             }
 
             matches.push({
@@ -1235,7 +1245,7 @@ export default function TicTacChain() {
       console.error('Error refreshing tournament bracket:', error);
       return null;
     }
-  }, []);
+  }, [escalationInterval]);
 
   // Handle entering tournament (fetch and display bracket)
   const handleEnterTournament = async (tierId, instanceId) => {
@@ -1356,36 +1366,34 @@ export default function TicTacChain() {
         // Using default values (match may not be initialized)
       }
 
-      // Fetch timeout state from matches mapping (optional - may not exist for all matches)
+      // Fetch escalation state using matchTimeouts function
       let timeoutState = null;
-      let isTimedOut = false;
-      let timeoutClaimant = null;
-      let timeoutClaimReward = 0;
 
       try {
         const matchKey = ethers.keccak256(ethers.AbiCoder.defaultAbiCoder().encode(
           ['uint8', 'uint8', 'uint8', 'uint8'],
           [tierId, instanceId, roundNumber, matchNumber]
         ));
-        const matchesData = await contractInstance.matches(matchKey);
+        const timeoutData = await contractInstance.matchTimeouts(matchKey);
 
-        // Check if timeoutState exists (might be undefined for new contract structure)
-        if (matchesData.timeoutState) {
+        // Only set timeoutState if there's actual escalation data
+        // (contract returns all 0s for matches without timeouts)
+        const esc1Start = Number(timeoutData.escalation1Start);
+        const esc2Start = Number(timeoutData.escalation2Start);
+        const hasTimeoutData = esc1Start > 0 || esc2Start > 0 || timeoutData.isStalled;
+
+        if (hasTimeoutData) {
           timeoutState = {
-            escalation1Start: Number(matchesData.timeoutState.escalation1Start),
-            escalation2Start: Number(matchesData.timeoutState.escalation2Start),
-            escalation3Start: Number(matchesData.timeoutState.escalation3Start),
-            activeEscalation: Number(matchesData.timeoutState.activeEscalation),
-            timeoutActive: matchesData.timeoutState.timeoutActive,
-            forfeitAmount: matchesData.timeoutState.forfeitAmount
+            escalation1Start: esc1Start,
+            escalation2Start: esc2Start,
+            activeEscalation: Number(timeoutData.activeEscalation),
+            timeoutActive: timeoutData.isStalled,
+            forfeitAmount: 0 // Not provided by matchTimeouts
           };
         }
-
-        isTimedOut = matchesData.isTimedOut || false;
-        timeoutClaimant = matchesData.timeoutClaimant || null;
-        timeoutClaimReward = matchesData.timeoutClaimReward || 0;
       } catch (escalationErr) {
-        console.warn('Could not fetch escalation/timeout state in refreshMatchData:', escalationErr);
+        // Match may not have timeout state yet - this is normal for active matches
+        console.debug('No escalation state for match (normal for non-stalled matches):', escalationErr.message);
       }
 
       const boardState = Array.from(board).map(cell => Number(cell));
@@ -1408,9 +1416,6 @@ export default function TicTacChain() {
         lastMovedCell,
         isMatchInitialized,
         timeoutState,
-        isTimedOut,
-        timeoutClaimant,
-        timeoutClaimReward,
         lastMoveTime,
         startTime,
         // New total match time fields
@@ -1423,7 +1428,7 @@ export default function TicTacChain() {
       console.error('Error refreshing match:', error);
       return null;
     }
-  }, []); // No dependencies - pure function
+  }, [escalationInterval]);
 
   // Handle cell click for making moves
   const handleCellClick = async (cellIndex) => {

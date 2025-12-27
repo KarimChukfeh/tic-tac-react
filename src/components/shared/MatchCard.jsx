@@ -10,11 +10,6 @@ import { shortenAddress } from '../../utils/formatters';
 import { getMatchStatusText, getMatchStatusColor } from '../../utils/matchStatus';
 import { calculatePlayerTimes } from '../../utils/timeCalculations';
 
-// Constants (for escalation timing - not used for match time, which comes from contract)
-const ESCALATION_1_DELAY = 60; // 60 seconds after timeout for escalation 1
-const ESCALATION_2_DELAY = 120; // 120 seconds after timeout for escalation 2
-const ESCALATION_3_DELAY = 180; // 180 seconds after timeout for escalation 3
-
 /**
  * Format seconds into MM:SS display
  */
@@ -43,22 +38,88 @@ const calculateEscalationState = (match, account) => {
   const timeRemaining = match.matchStatus === 1 ? activePlayerTime : null;
 
   // Use escalation status from contract (authoritative source)
-  const hasEscalation = match.timeoutState && match.timeoutState.timeoutActive;
-  const effectiveEscalation = match.timeoutState?.activeEscalation || 0;
+  const contractIsStalled = match.timeoutState && match.timeoutState.timeoutActive;
+  const effectiveEscalation = match.timeoutState?.activeEscalation || 0; // Result field (history), not status
 
-  // Escalation is entirely managed by the contract now
-  // We just display what the contract tells us
+  const now = Math.floor(Date.now() / 1000);
+  let timeToEscalation1 = null;
+  let timeToEscalation2 = null;
+  let timeToEscalation3 = null;
+  let canForceEliminate = false;
+  let canReplace = false;
+  let isStalled = contractIsStalled;
+  let clientCalculated = false;
+
+  // If contract has escalation data, use it
+  if (match.timeoutState && contractIsStalled) {
+    const esc1Start = match.timeoutState.escalation1Start || 0;
+    const esc2Start = match.timeoutState.escalation2Start || 0;
+
+    // Calculate countdown timers
+    if (esc1Start > 0 && now < esc1Start) {
+      timeToEscalation1 = esc1Start - now;
+    }
+    if (esc2Start > 0 && now < esc2Start) {
+      timeToEscalation2 = esc2Start - now;
+    }
+
+    // Check if escalation levels are AVAILABLE (not which was used)
+    canForceEliminate = esc2Start > 0 && now >= esc2Start;
+    canReplace = esc2Start > 0 && now >= esc2Start;
+  }
+  // Otherwise, calculate client-side if player has timed out
+  else if (match.matchStatus === 1 && match.lastMoveTime > 0) {
+    clientCalculated = true;
+    const timeSinceLastMove = now - match.lastMoveTime;
+
+    // Determine whose turn it is and their remaining time
+    const isPlayer1Turn = match.currentTurn?.toLowerCase() === match.player1?.toLowerCase();
+    const currentPlayerTime = isPlayer1Turn ? match.player1TimeRemaining : match.player2TimeRemaining;
+
+    // Check if current player has timed out
+    const hasTimedOut = currentPlayerTime <= 0 || timeSinceLastMove >= currentPlayerTime;
+
+    if (hasTimedOut) {
+      isStalled = true;
+
+      // Calculate when timeout occurred
+      const timeoutOccurred = match.lastMoveTime + currentPlayerTime;
+
+      // Use escalation interval from match config (default 60s for demo)
+      const escalationInterval = 60; // Should match contract's interval
+
+      // Calculate escalation start times
+      const esc1Start = timeoutOccurred;
+      const esc2Start = timeoutOccurred + escalationInterval;
+
+      // Calculate countdowns
+      if (now < esc1Start) {
+        timeToEscalation1 = esc1Start - now;
+      }
+      if (now < esc2Start) {
+        timeToEscalation2 = esc2Start - now;
+      }
+
+      // Check availability
+      canForceEliminate = now >= esc2Start;
+      canReplace = now >= esc2Start;
+    }
+  }
+
+  const hasEscalation = isStalled;
 
   return {
     timeRemaining,
     isTimeout,
     hasEscalation,
-    effectiveEscalation,
-    canForceEliminate: effectiveEscalation >= 2,
-    canReplace: effectiveEscalation >= 3,
-    timeToEscalation1: null, // Contract manages this
-    timeToEscalation2: null, // Contract manages this
-    timeToEscalation3: null, // Contract manages this
+    effectiveEscalation, // Keep for debug display
+    isStalled,
+    clientCalculated,
+    canForceEliminate,
+    canReplace,
+    timeToEscalation1,
+    timeToEscalation2,
+    timeToEscalation3,
   };
 };
 
@@ -201,22 +262,126 @@ const MatchCard = ({
         </div>
       </div>
 
-      {/* Escalation countdown timers - show when match is stalled and timers are active */}
-      {showEscalation && match.matchStatus === 1 && escalation.isTimeout && !isUserMatch && (
+      {/* Debug panel - comprehensive */}
+      {showEscalation && !isUserMatch && match.matchStatus === 1 && (
+        <div className="mb-3 text-xs bg-blue-500/10 border border-blue-400/30 rounded p-2 space-y-1">
+          <div className="text-blue-300 font-bold">🔍 Debug: Escalation State</div>
+
+          {/* Match Status */}
+          <div className="text-blue-100 font-semibold mt-2">Match Status:</div>
+          <div className="text-blue-200">Match Status: {match.matchStatus} (1=InProgress)</div>
+          <div className="text-blue-200">Current Turn: {match.currentTurn?.slice(0, 10)}...</div>
+
+          {/* Time Information */}
+          <div className="text-blue-100 font-semibold mt-2">Time Info:</div>
+          <div className="text-blue-200">Player 1 Time: {match.player1TimeRemaining}s</div>
+          <div className="text-blue-200">Player 2 Time: {match.player2TimeRemaining}s</div>
+          <div className="text-blue-200">Match Time Per Player: {match.matchTimePerPlayer}s</div>
+          <div className="text-blue-200">Is Expired (client calc): {escalation.isTimeout ? 'Yes' : 'No'}</div>
+
+          <div className="text-blue-100 font-semibold mt-2">Match Timeline:</div>
+          <div className="text-blue-200">
+            Match Started: {match.startTime > 0 ? (
+              <>
+                {match.startTime} ({new Date(match.startTime * 1000).toLocaleString()})
+              </>
+            ) : 'Not started'}
+          </div>
+          <div className="text-blue-200">
+            Last Move: {match.lastMoveTime > 0 ? (
+              <>
+                {match.lastMoveTime} ({new Date(match.lastMoveTime * 1000).toLocaleString()})
+              </>
+            ) : 'No moves yet - using start time'}
+          </div>
+          <div className="text-blue-200">
+            Reference Time (last activity): {(() => {
+              const refTime = match.lastMoveTime > 0 ? match.lastMoveTime : match.startTime;
+              return refTime > 0 ? `${refTime} (${new Date(refTime * 1000).toLocaleString()})` : 'N/A';
+            })()}
+          </div>
+          <div className="text-blue-200">
+            Time Since Last Activity: {(() => {
+              const refTime = match.lastMoveTime > 0 ? match.lastMoveTime : match.startTime;
+              if (refTime > 0) {
+                const now = Math.floor(Date.now() / 1000);
+                const elapsed = now - refTime;
+                return `${elapsed}s (${Math.floor(elapsed / 60)}m ${elapsed % 60}s)`;
+              }
+              return 'N/A';
+            })()}
+          </div>
+
+          {/* Escalation State */}
+          <div className="text-blue-100 font-semibold mt-2">Escalation State:</div>
+          <div className="text-blue-200">Has Timeout State (from contract): {match.timeoutState ? 'Yes' : 'No'}</div>
+          <div className="text-blue-200">Client-Side Calculation: {escalation.clientCalculated ? '✅ YES (contract data missing)' : 'No (using contract data)'}</div>
+          <div className="text-blue-200">Is Stalled (final): {escalation.isStalled ? 'Yes' : 'No'}</div>
+
+          {match.timeoutState && (
+            <>
+              <div className="text-blue-200">Contract Is Stalled: {match.timeoutState.timeoutActive ? 'Yes' : 'No'}</div>
+              <div className="text-blue-200">Active Escalation (result field): {escalation.effectiveEscalation} (history only)</div>
+
+              <div className="text-blue-100 font-semibold mt-2">Escalation Timestamps (from contract):</div>
+              <div className="text-blue-200">
+                Esc1 Start: {match.timeoutState.escalation1Start > 0 ? (
+                  <>{match.timeoutState.escalation1Start} ({new Date(match.timeoutState.escalation1Start * 1000).toLocaleString()})</>
+                ) : '0 (not set)'}
+              </div>
+              <div className="text-blue-200">
+                Esc2 Start: {match.timeoutState.escalation2Start > 0 ? (
+                  <>{match.timeoutState.escalation2Start} ({new Date(match.timeoutState.escalation2Start * 1000).toLocaleString()})</>
+                ) : '0 (not set)'}
+              </div>
+            </>
+          )}
+
+          {escalation.clientCalculated && (
+            <>
+              <div className="text-blue-100 font-semibold mt-2">Client-Side Calculation:</div>
+              <div className="text-blue-200">Current player timed out - calculating escalations locally</div>
+            </>
+          )}
+
+          <div className="text-blue-100 font-semibold mt-2">Countdown Timers:</div>
+          <div className="text-blue-200">Time to Esc1: {escalation.timeToEscalation1 !== null && escalation.timeToEscalation1 > 0 ? `${escalation.timeToEscalation1}s` : 'Available or N/A'}</div>
+          <div className="text-blue-200">Time to Esc2/3: {escalation.timeToEscalation2 !== null && escalation.timeToEscalation2 > 0 ? `${escalation.timeToEscalation2}s` : 'Available or N/A'}</div>
+
+          <div className="text-blue-100 font-semibold mt-2">Availability Check (isStalled &amp;&amp; now &gt;= timestamp):</div>
+          <div className="text-blue-200">Can Force Eliminate (Level 2): {escalation.canForceEliminate ? '✅ YES' : '❌ NO'}</div>
+          <div className="text-blue-200">Can Replace Both (Level 3): {escalation.canReplace ? '✅ YES' : '❌ NO'}</div>
+
+          <div className="text-blue-100 font-semibold mt-2">Current Time:</div>
+          <div className="text-blue-200">{new Date().toLocaleString()}</div>
+        </div>
+      )}
+
+      {/* Escalation countdown timers - show when escalations are active */}
+      {showEscalation && match.matchStatus === 1 && escalation.hasEscalation && !isUserMatch && (
         <div className="mb-3 space-y-1">
-          {/* Timer until force eliminate (Escalation 2) */}
+          {/* Timer until Escalation 1: Claim timeout win */}
+          {escalation.timeToEscalation1 !== null && escalation.timeToEscalation1 > 0 && (
+            <div className="flex items-center justify-between text-xs bg-orange-500/10 rounded px-2 py-1 border border-orange-400/20">
+              <span className="text-orange-300/80">Esc 1: Timeout claim in:</span>
+              <span className="text-orange-300 font-mono font-bold">
+                {formatEscalationTime(escalation.timeToEscalation1)}
+              </span>
+            </div>
+          )}
+          {/* Timer until Escalation 2: Force eliminate */}
           {escalation.timeToEscalation2 !== null && escalation.timeToEscalation2 > 0 && (
-            <div className="flex items-center justify-between text-xs bg-yellow-500/10 rounded px-2 py-1">
-              <span className="text-yellow-300/80">Force eliminate in:</span>
+            <div className="flex items-center justify-between text-xs bg-yellow-500/10 rounded px-2 py-1 border border-yellow-400/20">
+              <span className="text-yellow-300/80">Esc 2: Force eliminate in:</span>
               <span className="text-yellow-300 font-mono font-bold">
                 {formatEscalationTime(escalation.timeToEscalation2)}
               </span>
             </div>
           )}
-          {/* Timer until replace (Escalation 3) */}
+          {/* Timer until Escalation 3: Replace both players */}
           {escalation.timeToEscalation3 !== null && escalation.timeToEscalation3 > 0 && (
-            <div className="flex items-center justify-between text-xs bg-red-500/10 rounded px-2 py-1">
-              <span className="text-red-300/80">Replace players in:</span>
+            <div className="flex items-center justify-between text-xs bg-red-500/10 rounded px-2 py-1 border border-red-400/20">
+              <span className="text-red-300/80">Esc 3: Replace both in:</span>
               <span className="text-red-300 font-mono font-bold">
                 {formatEscalationTime(escalation.timeToEscalation3)}
               </span>
