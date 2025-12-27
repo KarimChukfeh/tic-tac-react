@@ -47,9 +47,8 @@ const MatchTimeoutEscalation = ({
   // Level 1 (Claim Timeout Victory): Available immediately when timeout occurs (before escalation1Start)
   const canClaimTimeout = !isYourTurn;
 
-  // Level 2 (Force Eliminate): Active from escalation1Start to escalation2Start (then expires)
-  const canForceEliminate = escalation1Start > 0 && now >= escalation1Start &&
-                            escalation2Start > 0 && now < escalation2Start;
+  // Level 2 (Force Eliminate): Active from escalation1Start onwards (never expires)
+  const canForceEliminate = escalation1Start > 0 && now >= escalation1Start;
 
   // Level 3 (Replace Players): Active from escalation2Start onwards (never expires)
   const canReplace = escalation2Start > 0 && now >= escalation2Start;

@@ -65,8 +65,8 @@ const calculateEscalationState = (match, account, timeoutConfig) => {
     }
 
     // Check if escalation levels are AVAILABLE based on time windows
-    // Level 2: Active from esc1Start to esc2Start (then expires)
-    canForceEliminate = esc1Start > 0 && now >= esc1Start && now < esc2Start;
+    // Level 2: Active from esc1Start onwards (never expires)
+    canForceEliminate = esc1Start > 0 && now >= esc1Start;
 
     // Level 3: Active from esc2Start onwards (never expires)
     canReplace = esc2Start > 0 && now >= esc2Start;
@@ -108,8 +108,8 @@ const calculateEscalationState = (match, account, timeoutConfig) => {
       }
 
       // Check availability based on time windows
-      // Level 2: Active from esc1Start to esc2Start (then expires)
-      canForceEliminate = now >= esc1Start && now < esc2Start;
+      // Level 2: Active from esc1Start onwards (never expires)
+      canForceEliminate = now >= esc1Start;
 
       // Level 3: Active from esc2Start onwards (never expires)
       canReplace = now >= esc2Start;

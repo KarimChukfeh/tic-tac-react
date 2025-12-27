@@ -40,7 +40,7 @@ import TournamentHeader from './components/shared/TournamentHeader';
 const TICTACTOE_SYMBOLS = ['✕', '○'];
 
 // Tournament Bracket Component
-const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceEliminate, onClaimReplacement, onManualStart, onEnroll, account, loading, syncDots, isEnrolled, entryFee, isFull }) => {
+const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceEliminate, onClaimReplacement, onManualStart, onClaimAbandonedPool, onEnroll, account, loading, syncDots, isEnrolled, entryFee, isFull }) => {
   const { tierId, instanceId, status, currentRound, enrolledCount, prizePool, rounds, playerCount, enrolledPlayers, firstEnrollmentTime, countdownActive, enrollmentTimeout } = tournamentData;
 
   // Calculate total rounds based on player count
@@ -277,7 +277,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
               {canAnyoneStart && !isEnrolledUser && (
                 <div className="mt-4">
                   <button
-                    onClick={() => onManualStart(tierId, instanceId)}
+                    onClick={() => onClaimAbandonedPool(tierId, instanceId)}
                     disabled={loading}
                     className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold py-4 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 shadow-lg"
                   >
@@ -1045,10 +1045,10 @@ export default function TicTacChain() {
         }
 
         const confirmClaim = window.confirm(
-          `Claim the entire tournament pool (Escalation 2 - Abandoned Tournament)?\n\n` +
+          `Claim the abandoned enrollment pool (Escalation 2)?\n\n` +
           `This tournament has ${enrolledCount} enrolled player${enrolledCount !== 1 ? 's' : ''} but failed to start in time.\n` +
           `You will receive the entire enrollment pool${forfeitPool > 0n ? ` plus ${ethers.formatEther(forfeitPool)} ETH in forfeited fees` : ''}.\n\n` +
-          `The tournament will be reset after claiming.`
+          `The tournament will be terminated and reset.`
         );
 
         if (!confirmClaim) {
@@ -2229,6 +2229,7 @@ export default function TicTacChain() {
                 onForceEliminate={handleForceEliminateStalledMatch}
                 onClaimReplacement={handleClaimMatchSlotByReplacement}
                 onManualStart={handleManualStart}
+                onClaimAbandonedPool={handleClaimAbandonedPool}
                 onEnroll={handleEnroll}
                 account={account}
                 loading={tournamentsLoading}
