@@ -339,6 +339,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
                         matchStatusOptions={matchStatusOptions}
                         showEscalation={true}
                         showThisIsYou={true}
+                        tournamentRounds={rounds}
                       />
                     </div>
                   );
@@ -2109,6 +2110,8 @@ export default function TicTacChain() {
             onClaimTimeoutWin={handleClaimTimeoutWin}
             onForceEliminate={handleForceEliminateStalledMatch}
             onClaimReplacement={handleClaimMatchSlotByReplacement}
+            tournamentRounds={viewingTournament?.rounds || null}
+            currentRoundNumber={currentMatch.roundNumber}
             playerConfig={{
               player1: { icon: 'X', label: 'Player 1' },
               player2: { icon: 'O', label: 'Player 2' }

@@ -236,8 +236,8 @@ const TournamentCard = ({
         </button>
       )}
 
-      {/* Escalation 2: Anyone can claim abandoned pool */}
-      {tournamentStatus === 0 && escalationState.canStartEscalation2 && onClaimAbandonedPool && (
+      {/* Escalation 2: Non-enrolled players can claim abandoned pool */}
+      {tournamentStatus === 0 && escalationState.canStartEscalation2 && !isEnrolled && onClaimAbandonedPool && (
         <button
           onClick={() => onClaimAbandonedPool(tierId, instanceId)}
           disabled={loading || !account}

@@ -76,6 +76,10 @@ const GameMatchLayout = ({
   onForceEliminate,
   onClaimReplacement,
 
+  // Tournament data for advanced player checks
+  tournamentRounds = null,
+  currentRoundNumber = 0,
+
   // Player configuration
   playerConfig, // { player1: { icon, label }, player2: { icon, label } }
 
@@ -166,6 +170,9 @@ const GameMatchLayout = ({
               onForceEliminate={onForceEliminate}
               onClaimReplacement={onClaimReplacement}
               loading={loading}
+              tournamentRounds={tournamentRounds}
+              currentAccount={account}
+              currentRoundNumber={currentRoundNumber}
             />
           )}
 
@@ -254,6 +261,9 @@ const GameMatchLayout = ({
               onForceEliminate={onForceEliminate}
               onClaimReplacement={onClaimReplacement}
               loading={loading}
+              tournamentRounds={tournamentRounds}
+              currentAccount={account}
+              currentRoundNumber={currentRoundNumber}
             />
           </div>
         )}
@@ -341,6 +351,9 @@ const GameMatchLayout = ({
             onForceEliminate={onForceEliminate}
             onClaimReplacement={onClaimReplacement}
             loading={loading}
+            tournamentRounds={tournamentRounds}
+            currentAccount={account}
+            currentRoundNumber={currentRoundNumber}
           />
         </div>
       )}

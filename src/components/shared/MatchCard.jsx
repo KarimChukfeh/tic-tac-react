@@ -9,6 +9,7 @@ import { Play, Award } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
 import { getMatchStatusText, getMatchStatusColor } from '../../utils/matchStatus';
 import { calculatePlayerTimes } from '../../utils/timeCalculations';
+import { isAdvancedPlayer } from '../../utils/tournamentHelpers';
 
 /**
  * Format seconds into MM:SS display
@@ -170,6 +171,7 @@ const getBorderClass = (isUserMatch, escalation, defaultBorder = 'border-purple-
  * @param {boolean} [props.showEscalation=true] - Whether to show escalation features
  * @param {boolean} [props.showThisIsYou=false] - Whether to show "THIS IS YOU" label
  * @param {Object} [props.colors] - Color theme overrides
+ * @param {Array} [props.tournamentRounds] - Tournament rounds data for advanced player check
  */
 const MatchCard = ({
   match,
@@ -187,6 +189,7 @@ const MatchCard = ({
   showEscalation = true,
   showThisIsYou = false,
   colors = {},
+  tournamentRounds = null,
 }) => {
   const isUserMatch =
     match.player1?.toLowerCase() === account?.toLowerCase() ||
@@ -204,6 +207,11 @@ const MatchCard = ({
     canForceEliminate: false,
     canReplace: false,
   };
+
+  // Check if current user is an advanced player (for Level 2 escalation)
+  const isUserAdvancedPlayer = tournamentRounds && account
+    ? isAdvancedPlayer(tournamentRounds, account, roundIdx)
+    : false;
 
   // Get border class
   const borderClass = showEscalation
@@ -452,8 +460,8 @@ const MatchCard = ({
         {/* Escalation CTAs for outsiders */}
         {showEscalation && !isUserMatch && match.matchStatus !== 2 && (
           <>
-            {/* Escalation 2: Force Eliminate */}
-            {escalation.canForceEliminate && onForceEliminate && (
+            {/* Escalation 2: Force Eliminate (Advanced Players Only) */}
+            {escalation.canForceEliminate && isUserAdvancedPlayer && onForceEliminate && (
               <div className="mt-2">
                 <button
                   onClick={() => onForceEliminate({

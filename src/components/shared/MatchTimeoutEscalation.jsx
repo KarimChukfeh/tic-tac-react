@@ -8,6 +8,7 @@
  */
 
 import { Clock } from 'lucide-react';
+import { isAdvancedPlayer } from '../../utils/tournamentHelpers';
 
 const formatEscalationTime = (secs) => {
   const mins = Math.floor(secs / 60);
@@ -22,7 +23,10 @@ const MatchTimeoutEscalation = ({
   onClaimTimeoutWin,
   onForceEliminate,
   onClaimReplacement,
-  loading
+  loading,
+  tournamentRounds = null,
+  currentAccount = null,
+  currentRoundNumber = 0,
 }) => {
   // Only render when timeout is active and match is in progress
   if (!timeoutState || !timeoutState.timeoutActive || matchStatus !== 1) {
@@ -30,15 +34,30 @@ const MatchTimeoutEscalation = ({
   }
 
   const now = Math.floor(Date.now() / 1000);
-  const { escalation1Start, escalation2Start, escalation3Start, activeEscalation } = timeoutState;
+  const { escalation1Start, escalation2Start } = timeoutState;
 
   const timeToEsc1 = escalation1Start > 0 ? Math.max(0, escalation1Start - now) : 0;
   const timeToEsc2 = escalation2Start > 0 ? Math.max(0, escalation2Start - now) : 0;
-  const timeToEsc3 = escalation3Start > 0 ? Math.max(0, escalation3Start - now) : 0;
 
-  const canClaimTimeout = activeEscalation >= 1 && !isYourTurn;
-  const canForceEliminate = activeEscalation >= 2;
-  const canReplace = activeEscalation >= 3;
+  // Check escalation availability based on time windows (not history)
+  // IMPORTANT: Contract naming is offset by one!
+  //   escalation1Start = when Level 2 becomes available
+  //   escalation2Start = when Level 3 becomes available
+
+  // Level 1 (Claim Timeout Victory): Available immediately when timeout occurs (before escalation1Start)
+  const canClaimTimeout = !isYourTurn;
+
+  // Level 2 (Force Eliminate): Active from escalation1Start to escalation2Start (then expires)
+  const canForceEliminate = escalation1Start > 0 && now >= escalation1Start &&
+                            escalation2Start > 0 && now < escalation2Start;
+
+  // Level 3 (Replace Players): Active from escalation2Start onwards (never expires)
+  const canReplace = escalation2Start > 0 && now >= escalation2Start;
+
+  // Check if current user is an advanced player (for Level 2 escalation)
+  const isUserAdvancedPlayer = tournamentRounds && currentAccount
+    ? isAdvancedPlayer(tournamentRounds, currentAccount, currentRoundNumber)
+    : false;
 
   return (
     <div className="bg-orange-500/20 border border-orange-400 rounded-xl p-4">
@@ -60,22 +79,19 @@ const MatchTimeoutEscalation = ({
 
       {/* Countdown timers */}
       <div className="space-y-1 text-xs">
-        {timeToEsc1 > 0 && activeEscalation < 1 && (
-          <div className="text-orange-300">Esc 1 in: {formatEscalationTime(timeToEsc1)}</div>
+        {timeToEsc1 > 0 && now < escalation1Start && (
+          <div className="text-orange-300">Level 2 in: {formatEscalationTime(timeToEsc1)}</div>
         )}
-        {timeToEsc2 > 0 && activeEscalation < 2 && (
-          <div className="text-orange-300">Esc 2 in: {formatEscalationTime(timeToEsc2)}</div>
+        {timeToEsc2 > 0 && now < escalation2Start && (
+          <div className="text-orange-300">Level 3 in: {formatEscalationTime(timeToEsc2)}</div>
         )}
-        {timeToEsc3 > 0 && activeEscalation < 3 && (
-          <div className="text-orange-300">Esc 3 in: {formatEscalationTime(timeToEsc3)}</div>
-        )}
-        {activeEscalation >= 1 && <div className="text-green-400 font-bold">Escalation 1 Active</div>}
-        {activeEscalation >= 2 && <div className="text-yellow-400 font-bold">Escalation 2 Active</div>}
-        {activeEscalation >= 3 && <div className="text-red-400 font-bold">Escalation 3 Active</div>}
+        {canClaimTimeout && <div className="text-green-400 font-bold">Level 1 Active - Opponent Can Claim</div>}
+        {canForceEliminate && <div className="text-yellow-400 font-bold">Level 2 Active - Advanced Players Can Eliminate</div>}
+        {canReplace && <div className="text-red-400 font-bold">Level 3 Active - Anyone Can Replace</div>}
       </div>
 
-      {/* Escalation 2 */}
-      {canForceEliminate && (
+      {/* Escalation 2: Advanced Players Only */}
+      {canForceEliminate && isUserAdvancedPlayer && (
         <button
           onClick={onForceEliminate}
           disabled={loading}
