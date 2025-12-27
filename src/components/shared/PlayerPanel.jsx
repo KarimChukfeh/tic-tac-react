@@ -87,9 +87,7 @@ const PlayerPanel = ({
     <div className={`${colors.bg} backdrop-blur-lg rounded-2xl p-6 border ${isYou ? 'border-yellow-400 shadow-lg shadow-yellow-400/50 ring-2 ring-yellow-400/30' : colors.border} ${isYou ? 'animate-pulse-slow' : ''}`}>
       {isYou && (
         <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-black px-4 py-2 rounded-lg mb-4 text-center font-bold text-lg shadow-md flex items-center justify-center gap-2">
-          <span className="text-xl">👤</span>
-          THIS IS YOU
-          <span className="text-xl">👤</span>
+          YOU
         </div>
       )}
       <div className="flex items-center gap-3 mb-4">
