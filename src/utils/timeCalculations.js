@@ -2,10 +2,8 @@
  * Time Calculations Utility
  *
  * Centralized logic for calculating per-player time in total match time system.
- * Each player has 5 minutes (300 seconds) total to make all their moves.
+ * Total match time per player is fetched from the contract.
  */
-
-const TOTAL_MATCH_TIME = 300; // 5 minutes per player
 
 /**
  * Format time breakdown for both players using contract data
@@ -13,9 +11,10 @@ const TOTAL_MATCH_TIME = 300; // 5 minutes per player
  *
  * @param {Object} match - Match data with time fields FROM CONTRACT
  * @param {string} account - Current user's wallet address
+ * @param {number} totalMatchTime - Total time per player from contract (default 300)
  * @returns {Object} Time breakdown for both players
  */
-export const calculatePlayerTimes = (match, account) => {
+export const calculatePlayerTimes = (match, account, totalMatchTime = 300) => {
   const {
     player1,
     player2,
@@ -27,12 +26,12 @@ export const calculatePlayerTimes = (match, account) => {
 
   // Use contract values directly (no calculation)
   // These come from getCurrentTimeRemaining() which is called during sync
-  const p1Remaining = player1TimeRemaining ?? TOTAL_MATCH_TIME;
-  const p2Remaining = player2TimeRemaining ?? TOTAL_MATCH_TIME;
+  const p1Remaining = player1TimeRemaining ?? totalMatchTime;
+  const p2Remaining = player2TimeRemaining ?? totalMatchTime;
 
   // Calculate used time (simple subtraction)
-  const p1Used = TOTAL_MATCH_TIME - p1Remaining;
-  const p2Used = TOTAL_MATCH_TIME - p2Remaining;
+  const p1Used = totalMatchTime - p1Remaining;
+  const p2Used = totalMatchTime - p2Remaining;
 
   // Determine if anyone has timed out (contract says <= 0)
   const isExpired = p1Remaining <= 0 || p2Remaining <= 0;
@@ -49,12 +48,12 @@ export const calculatePlayerTimes = (match, account) => {
 
   return {
     player1: {
-      total: TOTAL_MATCH_TIME,
+      total: totalMatchTime,
       used: p1Used,
       remaining: Math.max(0, p1Remaining) // Ensure non-negative for display
     },
     player2: {
-      total: TOTAL_MATCH_TIME,
+      total: totalMatchTime,
       used: p2Used,
       remaining: Math.max(0, p2Remaining) // Ensure non-negative for display
     },

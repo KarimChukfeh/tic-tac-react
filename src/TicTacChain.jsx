@@ -378,6 +378,10 @@ export default function TicTacChain() {
   const [account, setAccount] = useState(null);
   const [contract, setContract] = useState(null); // This contract has signer for write ops
 
+  // Time Configuration from Contract
+  const [matchTimePerPlayer, setMatchTimePerPlayer] = useState(300); // Default 5 minutes
+  const [timeIncrement, setTimeIncrement] = useState(0); // Default no increment
+
   // Loading State
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -580,12 +584,34 @@ export default function TicTacChain() {
     }
   };
 
+  // Fetch time configuration from contract
+  const fetchTimeConfiguration = useCallback(async (contractInstance) => {
+    try {
+      const matchTime = await contractInstance.getMatchTimePerPlayer();
+      const increment = await contractInstance.getTimeIncrement();
+
+      setMatchTimePerPlayer(Number(matchTime));
+      setTimeIncrement(Number(increment));
+
+      console.log('Time configuration fetched:', {
+        matchTimePerPlayer: Number(matchTime),
+        timeIncrement: Number(increment)
+      });
+    } catch (error) {
+      console.error('Error fetching time configuration (using defaults):', error);
+      // Use defaults if contract doesn't support these functions yet
+      setMatchTimePerPlayer(300);
+      setTimeIncrement(0);
+    }
+  }, []);
+
   // Load contract data (simplified - matches ConnectFour pattern)
   // Uses lazy loading: only fetch tier metadata initially, instances load on expand
   const loadContractData = async (contractInstance, isInitialLoad = false) => {
     try {
       // Fetch tier metadata only (fast) - instances load on tier expand
       await fetchTierMetadata(contractInstance);
+      await fetchTimeConfiguration(contractInstance);
       await fetchLeaderboard(false);
 
       if (isInitialLoad) {
@@ -1121,8 +1147,9 @@ export default function TicTacChain() {
             const parsedMatch = parseTicTacToeMatch(matchData);
 
             // Fetch real-time remaining time from contract (authoritative source)
-            let player1TimeRemaining = 300; // Default 5 minutes
-            let player2TimeRemaining = 300; // Default 5 minutes
+            const totalMatchTime = matchTimePerPlayer;
+            let player1TimeRemaining = totalMatchTime;
+            let player2TimeRemaining = totalMatchTime;
 
             try {
               const timeData = await contractInstance.getCurrentTimeRemaining(tierId, instanceId, roundNum, matchNum);
@@ -1161,7 +1188,8 @@ export default function TicTacChain() {
               timeoutState,
               // Override with contract's real-time values
               player1TimeRemaining,
-              player2TimeRemaining
+              player2TimeRemaining,
+              matchTimePerPlayer: totalMatchTime // Pass through for UI
             });
           } catch (err) {
             // Match might not exist yet - create placeholder with all required fields
@@ -1178,7 +1206,10 @@ export default function TicTacChain() {
               isDraw: false,
               startTime: 0,
               lastMoveTime: 0,
-              timeoutState: null
+              timeoutState: null,
+              player1TimeRemaining: matchTimePerPlayer,
+              player2TimeRemaining: matchTimePerPlayer,
+              matchTimePerPlayer: matchTimePerPlayer
             });
           }
         }
@@ -1315,8 +1346,9 @@ export default function TicTacChain() {
       }
 
       // Fetch real-time remaining time from contract (authoritative source)
-      let player1TimeRemaining = 300; // Default 5 minutes
-      let player2TimeRemaining = 300; // Default 5 minutes
+      const totalMatchTime = matchInfo.matchTimePerPlayer || matchTimePerPlayer;
+      let player1TimeRemaining = totalMatchTime;
+      let player2TimeRemaining = totalMatchTime;
 
       try {
         const timeData = await contractInstance.getCurrentTimeRemaining(tierId, instanceId, roundNumber, matchNumber);
@@ -1386,7 +1418,8 @@ export default function TicTacChain() {
         // New total match time fields
         player1TimeRemaining,
         player2TimeRemaining,
-        lastMoveTimestamp
+        lastMoveTimestamp,
+        matchTimePerPlayer: totalMatchTime // Pass through for UI components
       };
     } catch (error) {
       console.error('Error refreshing match:', error);

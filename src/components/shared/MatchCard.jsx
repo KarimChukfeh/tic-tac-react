@@ -10,8 +10,7 @@ import { shortenAddress } from '../../utils/formatters';
 import { getMatchStatusText, getMatchStatusColor } from '../../utils/matchStatus';
 import { calculatePlayerTimes } from '../../utils/timeCalculations';
 
-// Constants
-const TOTAL_MATCH_TIME = 300; // 5 minutes total per player
+// Constants (for escalation timing - not used for match time, which comes from contract)
 const ESCALATION_1_DELAY = 60; // 60 seconds after timeout for escalation 1
 const ESCALATION_2_DELAY = 120; // 120 seconds after timeout for escalation 2
 const ESCALATION_3_DELAY = 180; // 180 seconds after timeout for escalation 3
@@ -31,7 +30,7 @@ const formatEscalationTime = (seconds) => {
  */
 const calculateEscalationState = (match, account) => {
   // Use contract-provided time data (no calculations)
-  const times = calculatePlayerTimes(match, account);
+  const times = calculatePlayerTimes(match, account, match.matchTimePerPlayer);
 
   // Determine if either player has timed out (contract says <= 0)
   const isTimeout = times.isExpired;

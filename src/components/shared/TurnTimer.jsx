@@ -18,8 +18,8 @@ const TurnTimer = ({
   onClaimTimeoutWin,
   loading
 }) => {
-  // Calculate time breakdown for both players
-  const times = calculatePlayerTimes(match, account);
+  // Calculate time breakdown for both players (using dynamic time from contract)
+  const times = calculatePlayerTimes(match, account, match.matchTimePerPlayer);
 
   const {
     player1,
