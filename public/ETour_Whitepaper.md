@@ -463,51 +463,152 @@ Competitive systems with real stakes face a fundamental griefing vector: players
 - Tournaments could stall at enrollment, never reaching required player counts
 - Funds could be locked indefinitely in unresolvable states
 
-Traditional platforms solve this with centralized intervention. Admins who adjudicate disputes. **ETour brings forth autonomous solutions.**
+Traditional platforms solve this with centralized intervention—admins who adjudicate disputes. **ETour brings forth autonomous solutions.**
+
+The protocol implements a progressive escalation system that transforms every stalling scenario into an economic opportunity for resolution. Each escalation level expands who can act and what rewards they receive, guaranteeing that no tournament or match remains stuck indefinitely.
 
 ### 6.2 Enrollment Timeout Escalation
 
-When a player enrolls in an unfilled tournament, a countdown begins. If the tournament doesn't fill naturally:
+When a player enrolls in an unfilled tournament, a countdown begins. If the tournament doesn't fill naturally, two escalation levels activate sequentially:
 
-**Escalation 1 — Enroller Claim (Force Start):**
-After the enrollment window expires, enrolled players can force-start the tournament with whatever players have joined, even if below capacity. If only one player has enrolled, they win immediately and receive the prize pool.
+**Escalation Level 1 — Force Start Tournament**
 
-**Escalation 2 — Public Claim (Abandoned Pool):**
-After an additional escalation interval, **anyone** (including non-enrolled players) can claim the abandoned enrollment pool. All enrolled players are marked as forfeited, and **the claimer receives the entire prize pool** (90% of all entry fees collected). This is not a small reward, **it's the full pot!**.
+*Trigger:* Enrollment window expires with fewer than maximum players enrolled.
 
-This creates a strong economic incentive for resolution. Rather than funds sitting locked forever, someone can always claim the either by playing a reduced tournament or by cleaning up an abandoned one and taking the entire pool.
+*Who can act:* Any enrolled player.
+
+*Action:* Force-start the tournament with current enrollment, regardless of count.
+
+*Outcome:* Tournament begins immediately with available players. If only one player enrolled, they win and receive the prize pool.
+
+*Who cannot act:* Non-enrolled players cannot trigger this level.
+
+---
+
+**Escalation Level 2 — Claim Abandoned Pool**
+
+*Trigger:* Additional timeout period elapses after Level 1 becomes available, with no player having force-started.
+
+*Who can act:* Anyone—enrolled players, non-enrolled observers, any wallet.
+
+*Action:* Claim the entire abandoned prize pool.
+
+*Outcome:* Tournament ends. All enrolled players forfeit. Claimer receives the full prize pool (90% of all entry fees collected).
+
+*Critical detail:* Level 1 remains active when Level 2 unlocks. Both options exist simultaneously, creating a race condition where enrolled players can still force-start while external observers can claim the pool.
+
+---
+
+This creates a strong economic incentive for resolution. Rather than funds sitting locked forever, someone can always claim them—either by playing a reduced tournament or by cleaning up an abandoned one and taking the entire pool.
 
 ### 6.3 Match Timeout Escalation
 
-During active matches, each move must occur within the configured timeout. When a timeout occurs:
+During active matches, each player receives a total time allocation for all their moves (e.g., 5 minutes). When a player exhausts their time, three escalation levels activate progressively:
 
-**Escalation 1 — Opponent Claim:**
-The opponent can claim victory directly. They waited; they win. The stalling player forfeits and is eliminated.
+**Escalation Level 1 — Claim Victory by Forfeit**
 
-**Escalation 2 — Advanced Players (Force Eliminate):**
-Players in the same tournament who have already won a match (and thus "advanced") can force-eliminate the stalled match. **Both players in the stalled match are eliminated** and neither advances. The advanced player who triggers this receives no direct reward; their incentive is unblocking the tournament so they can continue competing for the prize pool.
+*Trigger:* Opponent exhausts their total match time.
 
-**Escalation 3 — External Replacement:**
-Anyone can claim the match slot by **replacing** both stalled players. The claimer does not receive a cash reward. Instead, **they become the match winner and advance to the next round** (or win the tournament if it's the finals). Both original players are eliminated and forfeit their entry fees. The replacement player is added to the tournament and can compete for the full prize pool.
+*Who can act:* The specific opponent in that match only.
+
+*Action:* Claim victory by opponent timeout.
+
+*Outcome:* Match ends. Claimer wins and advances to the next round. Timed-out player is eliminated.
+
+*Who cannot act:* Advanced players, other tournament participants, and external observers cannot trigger this level.
+
+*Time window:* Opponent has a defined period (e.g., 2 minutes) to claim.
+
+---
+
+**Escalation Level 2 — Eliminate Stalled Players**
+
+*Trigger:* Opponent fails to claim victory within their time window.
+
+*Who can act:* Advanced players only—players who have already progressed to higher tournament rounds. In a quarterfinal stall, only semifinal players can act.
+
+*Action:* Eliminate both players from the stalled match.
+
+*Outcome:* Both players are removed from the tournament. Neither advances. The advanced player who triggers elimination advances in place of the eliminated players' would-be opponent slot.
+
+*Who cannot act:* The original match opponent, players in the same or earlier rounds, eliminated players, and non-enrolled observers.
+
+*Time window:* Advanced players have a defined period (e.g., 2 minutes) to act.
+
+---
+
+**Escalation Level 3 — Replace Stalled Players**
+
+*Trigger:* Advanced players fail to act within their time window.
+
+*Who can act:* Anyone—eliminated players, non-enrolled observers, players from other tournaments, any wallet.
+
+*Action:* Replace both stalled players and take their tournament position.
+
+*Outcome:* Both original players are eliminated. Replacer becomes the match winner, advances to the next round, and can compete for the full prize pool without having paid entry.
+
+*Who cannot act:* No restrictions.
+
+---
 
 Each escalation level expands who can resolve the situation, guaranteeing that no match stalls indefinitely. The incentives shift from "claim the stalled match" to "become a participant and compete for the prize."
 
-### 6.4 Economic Incentives for Resolution
+### 6.4 Escalation System Summary
 
-The escalation system transforms stalling from a grief vector into various opportunities. If someone stalls:
+| Category | Level | Trigger | Who Can Act | Outcome |
+|----------|-------|---------|-------------|---------|
+| Enrollment | 1 | Enrollment window expires | Enrolled players only | Tournament force-starts |
+| Enrollment | 2 | Level 1 + additional timeout | Anyone | Claimer takes entire pool |
+| Match | 1 | Player exhausts match time | Opponent only | Opponent claims victory |
+| Match | 2 | Opponent fails to claim | Advanced players only | Both players eliminated |
+| Match | 3 | Advanced players don't act | Anyone | Replacer takes tournament spot |
+
+### 6.5 Economic Incentives for Resolution
+
+The escalation system transforms stalling from a grief vector into an opportunity matrix:
 
 **During Enrollment:**
-- Enrolled players can force-start with fewer players (competing for the existing prize pool)
-- External observers can claim the **entire abandoned prize pool** for themselves
+- Enrolled players can force-start with fewer players, competing for the existing prize pool
+- External observers can claim the entire abandoned prize pool for themselves
 
 **During Matches:**
-- The opponent benefits (free win and tournament advancement)
-- Advanced players benefit (unblocking their path to the finals and prize pool)
-- External observers benefit (**they can join the tournament mid-competition** and potentially win the entire prize)
+- The opponent benefits with a free win and tournament advancement
+- Advanced players benefit by unblocking their path to the finals and the prize pool
+- External observers benefit by joining the tournament mid-competition and potentially winning the entire prize without paying entry
 
-The incentive structure is designed so that everyone except the staller has reason to resolve the situation. For enrollment timeouts, the reward is direct and substantial (the full pool). For match timeouts, the reward is participation. The chance to compete for prizes in a tournament you didn't have to pay to enter.
+The incentive structure ensures everyone except the staller has reason to resolve the situation. For enrollment timeouts, the reward is direct and substantial—the full pool. For match timeouts, the reward is participation: the chance to compete for prizes in a tournament you didn't have to pay to enter.
 
-This alignment ensures rapid resolution without requiring centralized intervention.
+### 6.6 Design Principles
+
+The escalation system embodies several core principles:
+
+**Progressive Access:** Each level expands who can take action, from specific participants to universal access.
+
+**Economic Alignment:** Every escalation level provides clear financial or competitive incentives for resolution.
+
+**Punishment Asymmetry:** Stallers face severe consequences (elimination, forfeiture) while resolvers receive rewards (prizes, tournament spots).
+
+**Guaranteed Resolution:** The combination of expanding access and increasing rewards ensures someone will always resolve any stuck state.
+
+**No Admin Required:** The entire system operates autonomously through smart contract logic. No human intervention needed.
+
+This alignment ensures rapid resolution without requiring centralized adjudication.
+
+---
+
+## CLIENT CTA REFERENCE
+
+For frontend implementation, each escalation level maps to a specific call-to-action:
+
+1. **Enrollment Level 1** — **"Force Start Tournament"** — Available to any enrolled player when the tournament has not filled all slots within the enrollment window. Only enrolled players see this button. Unenrolled players cannot trigger it.
+
+2. **Enrollment Level 2** — **"Claim Abandoned Pool"** — Available to anyone when an unfilled tournament has not been force-started within the Level 1 timeout period. Any wallet can trigger it. No restrictions.
+
+3. **Match Level 1** — **"Claim Victory by Forfeit"** — Available to the opponent only when a player exhausts their match time. Only the specific opponent in that match sees this button. Advanced players, other participants, and external observers cannot trigger it.
+
+4. **Match Level 2** — **"Eliminate Stalled Players"** — Available to advanced players only when an opponent fails to claim victory within their timeout window. Only players in higher rounds see this button. The match opponent, same-round players, eliminated players, and external observers cannot trigger it.
+
+5. **Match Level 3** — **"Replace Stalled Players"** — Available to anyone when advanced players fail to eliminate stalled players within their timeout window. Any wallet can trigger it, including eliminated players and non-enrolled observers.
 
 ---
 

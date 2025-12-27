@@ -24,7 +24,7 @@ const formatEscalationTime = (seconds) => {
 /**
  * Calculate escalation state using contract data (NO client-side calculations)
  */
-const calculateEscalationState = (match, account) => {
+const calculateEscalationState = (match, account, timeoutConfig) => {
   // Use contract-provided time data (no calculations)
   const times = calculatePlayerTimes(match, account, match.matchTimePerPlayer);
 
@@ -89,14 +89,15 @@ const calculateEscalationState = (match, account) => {
       // Calculate when timeout occurred
       const timeoutOccurred = match.lastMoveTime + currentPlayerTime;
 
-      // Use escalation interval from match config (default 60s for demo)
-      const escalationInterval = 60; // Should match contract's interval
+      // Use tier-specific delays with fallbacks for backwards compatibility
+      const matchLevel2Delay = timeoutConfig?.matchLevel2Delay || 60;
+      const matchLevel3Delay = timeoutConfig?.matchLevel3Delay || 120;
 
-      // Calculate escalation start times
+      // Calculate escalation start times using tier-specific delays
       // escalation1Start = when Level 2 (Force Eliminate) becomes available
       // escalation2Start = when Level 3 (Replace Players) becomes available
-      const esc1Start = timeoutOccurred + escalationInterval;
-      const esc2Start = timeoutOccurred + (2 * escalationInterval);
+      const esc1Start = timeoutOccurred + matchLevel2Delay;
+      const esc2Start = timeoutOccurred + matchLevel3Delay;
 
       // Calculate countdowns
       if (now < esc1Start) {
@@ -198,8 +199,8 @@ const MatchCard = ({
   const isPlayer1 = match.player1?.toLowerCase() === account?.toLowerCase();
   const isPlayer2 = match.player2?.toLowerCase() === account?.toLowerCase();
 
-  // Calculate escalation state (pass account for player-specific time)
-  const escalation = showEscalation ? calculateEscalationState(match, account) : {
+  // Calculate escalation state (pass account for player-specific time and timeoutConfig for tier delays)
+  const escalation = showEscalation ? calculateEscalationState(match, account, match.timeoutConfig) : {
     timeRemaining: null,
     isTimeout: false,
     hasEscalation: false,

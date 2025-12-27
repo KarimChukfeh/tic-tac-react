@@ -1121,6 +1121,30 @@ export default function TicTacChain() {
       const playerCount = Number(tierConfig.playerCount);
       const entryFee = tierConfig.entryFee;
 
+      // Extract timeout config using dedicated function (better than nested struct access)
+      let timeoutConfig = null;
+      try {
+        const rawTimeoutConfig = await contractInstance.getTimeoutConfig(tierId);
+        timeoutConfig = {
+          matchTimePerPlayer: Number(rawTimeoutConfig.matchTimePerPlayer),
+          matchLevel2Delay: Number(rawTimeoutConfig.matchLevel2Delay),
+          matchLevel3Delay: Number(rawTimeoutConfig.matchLevel3Delay),
+          enrollmentWindow: Number(rawTimeoutConfig.enrollmentWindow),
+          enrollmentLevel2Delay: Number(rawTimeoutConfig.enrollmentLevel2Delay)
+        };
+        console.log(`Loaded timeout config for tier ${tierId}:`, timeoutConfig);
+      } catch (error) {
+        // Older contract version - use fallback values
+        console.warn('getTimeoutConfig() not available, using fallback values:', error.message);
+        timeoutConfig = {
+          matchTimePerPlayer: 300, // Default 5 minutes per player
+          matchLevel2Delay: 60,    // Default 60s to Level 2
+          matchLevel3Delay: 120,   // Default 120s to Level 3
+          enrollmentWindow: 60,    // Default 60s enrollment window
+          enrollmentLevel2Delay: 60 // Default 60s enrollment escalation
+        };
+      }
+
       // Get enrolled players
       const enrolledPlayers = await contractInstance.getEnrolledPlayers(tierId, instanceId);
 
@@ -1199,7 +1223,8 @@ export default function TicTacChain() {
               // Override with contract's real-time values
               player1TimeRemaining,
               player2TimeRemaining,
-              matchTimePerPlayer: totalMatchTime // Pass through for UI
+              matchTimePerPlayer: totalMatchTime, // Pass through for UI
+              timeoutConfig // Add tier timeout config for escalation calculations
             });
           } catch (err) {
             // Match might not exist yet - create placeholder with all required fields
@@ -1219,7 +1244,8 @@ export default function TicTacChain() {
               timeoutState: null,
               player1TimeRemaining: totalMatchTime,
               player2TimeRemaining: totalMatchTime,
-              matchTimePerPlayer: totalMatchTime
+              matchTimePerPlayer: totalMatchTime,
+              timeoutConfig // Add tier timeout config for placeholder matches too
             });
           }
         }
@@ -1240,7 +1266,8 @@ export default function TicTacChain() {
         rounds,
         firstEnrollmentTime,
         countdownActive,
-        enrollmentTimeout
+        enrollmentTimeout,
+        timeoutConfig // Add tier timeout configuration
       };
     } catch (error) {
       console.error('Error refreshing tournament bracket:', error);
@@ -1423,7 +1450,9 @@ export default function TicTacChain() {
         player1TimeRemaining,
         player2TimeRemaining,
         lastMoveTimestamp,
-        matchTimePerPlayer: totalMatchTime // Pass through for UI components
+        matchTimePerPlayer: totalMatchTime, // Pass through for UI components
+        // Preserve timeoutConfig if it exists in matchInfo (from bracket load)
+        ...(matchInfo.timeoutConfig && { timeoutConfig: matchInfo.timeoutConfig })
       };
     } catch (error) {
       console.error('Error refreshing match:', error);

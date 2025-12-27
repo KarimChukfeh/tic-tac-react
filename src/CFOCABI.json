@@ -1779,7 +1779,13 @@
       "type": "function"
     },
     {
-      "inputs": [],
+      "inputs": [
+        {
+          "internalType": "uint8",
+          "name": "tierId",
+          "type": "uint8"
+        }
+      ],
       "name": "getMatchTimePerPlayer",
       "outputs": [
         {
@@ -2054,6 +2060,52 @@
           "internalType": "uint256",
           "name": "",
           "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint8",
+          "name": "tierId",
+          "type": "uint8"
+        }
+      ],
+      "name": "getTimeoutConfig",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "matchTimePerPlayer",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "matchLevel2Delay",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "matchLevel3Delay",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "enrollmentWindow",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "enrollmentLevel2Delay",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct ETour.TimeoutConfig",
+          "name": "",
+          "type": "tuple"
         }
       ],
       "stateMutability": "view",
@@ -2693,6 +2745,38 @@
           "internalType": "uint8",
           "name": "totalRounds",
           "type": "uint8"
+        },
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "matchTimePerPlayer",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "matchLevel2Delay",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "matchLevel3Delay",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "enrollmentWindow",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "enrollmentLevel2Delay",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct ETour.TimeoutConfig",
+          "name": "timeouts",
+          "type": "tuple"
         }
       ],
       "stateMutability": "view",

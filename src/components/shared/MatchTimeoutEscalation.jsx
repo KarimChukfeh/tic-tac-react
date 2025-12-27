@@ -59,6 +59,22 @@ const MatchTimeoutEscalation = ({
     ? isAdvancedPlayer(tournamentRounds, currentAccount, currentRoundNumber)
     : false;
 
+  // Debug logging for escalation timing
+  console.log('MatchTimeoutEscalation Debug:', {
+    now: now,
+    nowDate: new Date(now * 1000).toLocaleString(),
+    escalation1Start: escalation1Start,
+    esc1Date: escalation1Start > 0 ? new Date(escalation1Start * 1000).toLocaleString() : 'N/A',
+    escalation2Start: escalation2Start,
+    esc2Date: escalation2Start > 0 ? new Date(escalation2Start * 1000).toLocaleString() : 'N/A',
+    timeToEsc1: timeToEsc1,
+    timeToEsc2: timeToEsc2,
+    canClaimTimeout: canClaimTimeout,
+    canForceEliminate: canForceEliminate,
+    canReplace: canReplace,
+    isUserAdvancedPlayer: isUserAdvancedPlayer
+  });
+
   return (
     <div className="bg-orange-500/20 border border-orange-400 rounded-xl p-4">
       <div className="flex items-center gap-2 mb-3">
@@ -66,8 +82,22 @@ const MatchTimeoutEscalation = ({
         <span className="text-orange-300 font-bold text-sm">Match Timeout Active</span>
       </div>
 
+      {/* Debug Panel */}
+      <div className="mb-3 text-xs bg-blue-500/10 border border-blue-400/30 rounded p-2 space-y-1">
+        <div className="text-blue-300 font-bold">🔍 Escalation Timing Debug</div>
+        <div className="text-blue-200">Now: {now} ({new Date(now * 1000).toLocaleString()})</div>
+        <div className="text-blue-200">Esc1Start (Level 2): {escalation1Start > 0 ? `${escalation1Start} (${new Date(escalation1Start * 1000).toLocaleString()})` : 'Not set'}</div>
+        <div className="text-blue-200">Esc2Start (Level 3): {escalation2Start > 0 ? `${escalation2Start} (${new Date(escalation2Start * 1000).toLocaleString()})` : 'Not set'}</div>
+        <div className="text-blue-200">Time to Level 2: {timeToEsc1 > 0 ? `${timeToEsc1}s` : 'Available or N/A'}</div>
+        <div className="text-blue-200">Time to Level 3: {timeToEsc2 > 0 ? `${timeToEsc2}s` : 'Available or N/A'}</div>
+        <div className="text-blue-100 font-semibold mt-1">Active Levels:</div>
+        <div className="text-blue-200">Level 1 (Claim): {canClaimTimeout ? '✅ YES' : '❌ NO'}</div>
+        <div className="text-blue-200">Level 2 (Force Eliminate): {canForceEliminate ? '✅ YES' : '❌ NO'}</div>
+        <div className="text-blue-200">Level 3 (Replace): {canReplace ? '✅ YES' : '❌ NO'}</div>
+      </div>
+
       {/* Escalation 1 */}
-      {activeEscalation >= 1 && canClaimTimeout && (
+      {canClaimTimeout && (
         <button
           onClick={onClaimTimeoutWin}
           disabled={loading}
