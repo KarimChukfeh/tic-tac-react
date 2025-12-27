@@ -63,8 +63,11 @@ const calculateEscalationState = (match, account) => {
       timeToEscalation2 = esc2Start - now;
     }
 
-    // Check if escalation levels are AVAILABLE (not which was used)
-    canForceEliminate = esc2Start > 0 && now >= esc2Start;
+    // Check if escalation levels are AVAILABLE based on time windows
+    // Level 2: Active from esc1Start to esc2Start (then expires)
+    canForceEliminate = esc1Start > 0 && now >= esc1Start && now < esc2Start;
+
+    // Level 3: Active from esc2Start onwards (never expires)
     canReplace = esc2Start > 0 && now >= esc2Start;
   }
   // Otherwise, calculate client-side if player has timed out
@@ -89,8 +92,10 @@ const calculateEscalationState = (match, account) => {
       const escalationInterval = 60; // Should match contract's interval
 
       // Calculate escalation start times
-      const esc1Start = timeoutOccurred;
-      const esc2Start = timeoutOccurred + escalationInterval;
+      // escalation1Start = when Level 2 (Force Eliminate) becomes available
+      // escalation2Start = when Level 3 (Replace Players) becomes available
+      const esc1Start = timeoutOccurred + escalationInterval;
+      const esc2Start = timeoutOccurred + (2 * escalationInterval);
 
       // Calculate countdowns
       if (now < esc1Start) {
@@ -100,8 +105,11 @@ const calculateEscalationState = (match, account) => {
         timeToEscalation2 = esc2Start - now;
       }
 
-      // Check availability
-      canForceEliminate = now >= esc2Start;
+      // Check availability based on time windows
+      // Level 2: Active from esc1Start to esc2Start (then expires)
+      canForceEliminate = now >= esc1Start && now < esc2Start;
+
+      // Level 3: Active from esc2Start onwards (never expires)
       canReplace = now >= esc2Start;
     }
   }
