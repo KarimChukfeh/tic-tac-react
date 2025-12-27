@@ -1,16 +1,16 @@
 /**
- * TurnTimer - Dual clock display for total match time system
+ * TurnTimer - Dual clock display with client-side ticking countdown
  *
- * Shows both players' time with full breakdown:
- * - Total allocation (5:00)
- * - Time used
- * - Time remaining
+ * Shows both players' time with:
+ * - Total allocation (fixed, e.g., "1:00")
+ * - Time remaining (client-side countdown that syncs with contract)
  * - Progress bar visualization
  * - Timeout claim button when opponent's time expires
  */
 
+import { useState, useEffect, useRef } from 'react';
 import { Clock } from 'lucide-react';
-import { calculatePlayerTimes, formatTime, getTimeColorScheme } from '../../utils/timeCalculations';
+import { formatTime, getTimeColorScheme } from '../../utils/timeCalculations';
 
 const TurnTimer = ({
   match,
@@ -19,26 +19,69 @@ const TurnTimer = ({
   loading,
   syncDots = 1
 }) => {
-  // Calculate time breakdown for both players (using dynamic time from contract)
-  const times = calculatePlayerTimes(match, account, match.matchTimePerPlayer);
+  // Client-side ticking state
+  const [player1TimeLeft, setPlayer1TimeLeft] = useState(match.player1TimeRemaining ?? match.matchTimePerPlayer ?? 300);
+  const [player2TimeLeft, setPlayer2TimeLeft] = useState(match.player2TimeRemaining ?? match.matchTimePerPlayer ?? 300);
+  const lastSyncRef = useRef(Date.now());
+  const lastContractP1TimeRef = useRef(match.player1TimeRemaining);
+  const lastContractP2TimeRef = useRef(match.player2TimeRemaining);
 
-  const {
-    player1,
-    player2,
-    isExpired,
-    expiredPlayer,
-    isPlayer1You,
-    isPlayer2You,
-    activePlayer
-  } = times;
+  // Determine which player is the current user
+  const isPlayer1You = account && match.player1?.toLowerCase() === account.toLowerCase();
+  const isPlayer2You = account && match.player2?.toLowerCase() === account.toLowerCase();
+
+  // Determine whose turn it is
+  const isPlayer1Turn = match.currentTurn?.toLowerCase() === match.player1?.toLowerCase();
+  const isPlayer2Turn = match.currentTurn?.toLowerCase() === match.player2?.toLowerCase();
+
+  // Update client-side time when contract data changes (on sync)
+  useEffect(() => {
+    const contractP1Time = match.player1TimeRemaining ?? match.matchTimePerPlayer ?? 300;
+    const contractP2Time = match.player2TimeRemaining ?? match.matchTimePerPlayer ?? 300;
+
+    // Only update if contract values actually changed (real sync occurred)
+    if (contractP1Time !== lastContractP1TimeRef.current || contractP2Time !== lastContractP2TimeRef.current) {
+      setPlayer1TimeLeft(contractP1Time);
+      setPlayer2TimeLeft(contractP2Time);
+      lastSyncRef.current = Date.now();
+      lastContractP1TimeRef.current = contractP1Time;
+      lastContractP2TimeRef.current = contractP2Time;
+    }
+  }, [match.player1TimeRemaining, match.player2TimeRemaining, match.matchTimePerPlayer]);
+
+  // Client-side countdown ticker
+  useEffect(() => {
+    if (match.matchStatus !== 1) return; // Only tick during active match
+
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const elapsedSinceSync = Math.floor((now - lastSyncRef.current) / 1000);
+
+      // Decrement the time for the player whose turn it is
+      if (isPlayer1Turn) {
+        const newP1Time = Math.max(0, lastContractP1TimeRef.current - elapsedSinceSync);
+        setPlayer1TimeLeft(newP1Time);
+      } else if (isPlayer2Turn) {
+        const newP2Time = Math.max(0, lastContractP2TimeRef.current - elapsedSinceSync);
+        setPlayer2TimeLeft(newP2Time);
+      }
+    }, 100); // Update every 100ms for smooth countdown
+
+    return () => clearInterval(interval);
+  }, [match.matchStatus, isPlayer1Turn, isPlayer2Turn]);
+
+  // Determine if anyone has timed out
+  const isExpired = player1TimeLeft <= 0 || player2TimeLeft <= 0;
+  const expiredPlayer = player1TimeLeft <= 0 ? match.player1 : (player2TimeLeft <= 0 ? match.player2 : null);
 
   // Determine whose turn it is
   const isYourTurn = (isPlayer1You && match.currentTurn?.toLowerCase() === match.player1?.toLowerCase()) ||
                      (isPlayer2You && match.currentTurn?.toLowerCase() === match.player2?.toLowerCase());
 
-  // Get your time and opponent's time
-  const yourTime = isPlayer1You ? player1 : player2;
-  const opponentTime = isPlayer1You ? player2 : player1;
+  // Get your time and opponent's time (using client-side ticking values)
+  const totalTime = match.matchTimePerPlayer ?? 300;
+  const yourTimeLeft = isPlayer1You ? player1TimeLeft : player2TimeLeft;
+  const opponentTimeLeft = isPlayer1You ? player2TimeLeft : player1TimeLeft;
 
   // Determine if you or opponent has timed out
   const youTimedOut = isExpired && (
@@ -48,12 +91,12 @@ const TurnTimer = ({
   const opponentTimedOut = isExpired && !youTimedOut;
 
   // Get color schemes based on remaining time
-  const yourColors = getTimeColorScheme(yourTime.remaining);
-  const opponentColors = getTimeColorScheme(opponentTime.remaining);
+  const yourColors = getTimeColorScheme(yourTimeLeft);
+  const opponentColors = getTimeColorScheme(opponentTimeLeft);
 
   // Calculate progress percentages (how much time has been used)
-  const yourProgress = (yourTime.used / yourTime.total) * 100;
-  const opponentProgress = (opponentTime.used / opponentTime.total) * 100;
+  const yourProgress = ((totalTime - yourTimeLeft) / totalTime) * 100;
+  const opponentProgress = ((totalTime - opponentTimeLeft) / totalTime) * 100;
 
   return (
     <div className="border border-purple-400/30 rounded-xl p-4 bg-gradient-to-br from-purple-600/10 to-blue-600/10 backdrop-blur-lg">
@@ -75,19 +118,15 @@ const TurnTimer = ({
         } ${yourColors.pulse && isYourTurn ? 'animate-pulse' : ''}`}>
           <div className="text-sm font-bold text-purple-300 mb-2">YOU</div>
 
-          <div className="space-y-1 text-xs">
-            <div className="flex justify-between text-gray-400">
-              <span>Total:</span>
-              <span className="font-mono">{formatTime(yourTime.total)}</span>
-            </div>
-            <div className="flex justify-between text-gray-300">
-              <span>Used:</span>
-              <span className="font-mono">{formatTime(yourTime.used)}</span>
+          <div className="space-y-2">
+            <div className="flex justify-between text-xs text-gray-400">
+              <span>Total Time:</span>
+              <span className="font-mono">{formatTime(totalTime)}</span>
             </div>
             <div className={`flex justify-between font-bold ${yourColors.text}`}>
-              <span>Left:</span>
-              <span className="font-mono text-lg">
-                {yourTime.remaining > 0 ? formatTime(yourTime.remaining) : 'TIMEOUT'}
+              <span className="text-sm">Time Left:</span>
+              <span className={`font-mono ${yourTimeLeft > 0 ? 'text-2xl' : 'text-sm'}`}>
+                {yourTimeLeft > 0 ? formatTime(yourTimeLeft) : 'TIMEOUT'}
               </span>
             </div>
           </div>
@@ -100,7 +139,7 @@ const TurnTimer = ({
             />
           </div>
 
-          {isYourTurn && yourTime.remaining > 0 && (
+          {isYourTurn && yourTimeLeft > 0 && (
             <div className="text-xs text-purple-300/70 mt-2 text-center">
               ⚡ Your turn
             </div>
@@ -113,19 +152,15 @@ const TurnTimer = ({
         } ${opponentColors.pulse && !isYourTurn ? 'animate-pulse' : ''}`}>
           <div className="text-sm font-bold text-pink-300 mb-2">OPPONENT</div>
 
-          <div className="space-y-1 text-xs">
-            <div className="flex justify-between text-gray-400">
-              <span>Total:</span>
-              <span className="font-mono">{formatTime(opponentTime.total)}</span>
-            </div>
-            <div className="flex justify-between text-gray-300">
-              <span>Used:</span>
-              <span className="font-mono">{formatTime(opponentTime.used)}</span>
+          <div className="space-y-2">
+            <div className="flex justify-between text-xs text-gray-400">
+              <span>Total Time:</span>
+              <span className="font-mono">{formatTime(totalTime)}</span>
             </div>
             <div className={`flex justify-between font-bold ${opponentColors.text}`}>
-              <span>Left:</span>
-              <span className="font-mono text-lg">
-                {opponentTime.remaining > 0 ? formatTime(opponentTime.remaining) : 'TIMEOUT'}
+              <span className="text-sm">Time Left:</span>
+              <span className={`font-mono ${opponentTimeLeft > 0 ? 'text-2xl' : 'text-sm'}`}>
+                {opponentTimeLeft > 0 ? formatTime(opponentTimeLeft) : 'TIMEOUT'}
               </span>
             </div>
           </div>
@@ -138,7 +173,7 @@ const TurnTimer = ({
             />
           </div>
 
-          {!isYourTurn && match.currentTurn && opponentTime.remaining > 0 && (
+          {!isYourTurn && match.currentTurn && opponentTimeLeft > 0 && (
             <div className="text-xs text-pink-300/70 mt-2 text-center">
               ⏳ Thinking...
             </div>

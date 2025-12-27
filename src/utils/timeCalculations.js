@@ -6,6 +6,40 @@
  */
 
 /**
+ * Fetch per-tier timeout configuration from contract
+ * This ensures each tier uses its own configured match time, not a hardcoded default
+ *
+ * @param {Object} contractInstance - Ethers contract instance
+ * @param {number} tierId - Tournament tier ID
+ * @param {number} fallbackMatchTime - Default match time if config unavailable (default 300s)
+ * @returns {Promise<Object>} Timeout configuration with matchTimePerPlayer and escalation delays
+ */
+export const fetchTierTimeoutConfig = async (contractInstance, tierId, fallbackMatchTime = 300) => {
+  try {
+    const rawTimeoutConfig = await contractInstance.getTimeoutConfig(tierId);
+    const config = {
+      matchTimePerPlayer: Number(rawTimeoutConfig.matchTimePerPlayer),
+      matchLevel2Delay: Number(rawTimeoutConfig.matchLevel2Delay),
+      matchLevel3Delay: Number(rawTimeoutConfig.matchLevel3Delay),
+      enrollmentWindow: Number(rawTimeoutConfig.enrollmentWindow),
+      enrollmentLevel2Delay: Number(rawTimeoutConfig.enrollmentLevel2Delay)
+    };
+    console.log(`Loaded timeout config for tier ${tierId}:`, config);
+    return config;
+  } catch (error) {
+    // Older contract version or function unavailable - use fallback values
+    console.warn('getTimeoutConfig() not available, using fallback values:', error.message);
+    return {
+      matchTimePerPlayer: fallbackMatchTime, // Use provided fallback
+      matchLevel2Delay: 60,    // Default 60s to Level 2
+      matchLevel3Delay: 120,   // Default 120s to Level 3
+      enrollmentWindow: 60,    // Default 60s enrollment window
+      enrollmentLevel2Delay: 60 // Default 60s enrollment escalation
+    };
+  }
+};
+
+/**
  * Format time breakdown for both players using contract data
  * NO CLIENT-SIDE CALCULATIONS - uses authoritative contract values
  *

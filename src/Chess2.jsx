@@ -29,6 +29,7 @@ import CHESS_ABI from './COCABI.json';
 import { CURRENT_NETWORK, CONTRACT_ADDRESSES, getAddressUrl, getExplorerHomeUrl } from './config/networks';
 import { shortenAddress, formatTime as formatTimeHMS, getTierName, getEstimatedDuration, countInstancesByStatus } from './utils/formatters';
 import { determineMatchResult } from './utils/matchCompletionHandler';
+import { fetchTierTimeoutConfig } from './utils/timeCalculations';
 import ParticleBackground from './components/shared/ParticleBackground';
 import MatchCard from './components/shared/MatchCard';
 import TournamentCard from './components/shared/TournamentCard';
@@ -1337,29 +1338,8 @@ export default function Chess2() {
       const playerCount = Number(tierConfig.playerCount);
       const entryFee = tierConfig.entryFee;
 
-      // Extract timeout config using dedicated function (better than nested struct access)
-      let timeoutConfig = null;
-      try {
-        const rawTimeoutConfig = await contractInstance.getTimeoutConfig(tierId);
-        timeoutConfig = {
-          matchTimePerPlayer: Number(rawTimeoutConfig.matchTimePerPlayer),
-          matchLevel2Delay: Number(rawTimeoutConfig.matchLevel2Delay),
-          matchLevel3Delay: Number(rawTimeoutConfig.matchLevel3Delay),
-          enrollmentWindow: Number(rawTimeoutConfig.enrollmentWindow),
-          enrollmentLevel2Delay: Number(rawTimeoutConfig.enrollmentLevel2Delay)
-        };
-        console.log(`Loaded timeout config for tier ${tierId}:`, timeoutConfig);
-      } catch (error) {
-        // Older contract version - use fallback values
-        console.warn('getTimeoutConfig() not available, using fallback values:', error.message);
-        timeoutConfig = {
-          matchTimePerPlayer: 300, // Default 5 minutes per player
-          matchLevel2Delay: 60,    // Default 60s to Level 2
-          matchLevel3Delay: 120,   // Default 120s to Level 3
-          enrollmentWindow: 60,    // Default 60s enrollment window
-          enrollmentLevel2Delay: 60 // Default 60s enrollment escalation
-        };
-      }
+      // Extract timeout config using shared utility function
+      const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, tierId, totalMatchTime);
 
       // Get enrolled players
       const enrolledPlayers = await contractInstance.getEnrolledPlayers(tierId, instanceId);
@@ -1376,6 +1356,9 @@ export default function Chess2() {
       } catch (err) {
         console.log('Could not fetch countdown data:', err);
       }
+
+      // Use per-tier timeout config (fetched above), fallback to parameter if not available
+      const tierMatchTime = timeoutConfig?.matchTimePerPlayer ?? totalMatchTime;
 
       // Calculate total rounds
       const totalRounds = Math.ceil(Math.log2(playerCount));
@@ -1407,9 +1390,9 @@ export default function Chess2() {
               blackInCheck: matchData[10]
             };
 
-            // Use totalMatchTime passed as parameter (fetched from contract once on init)
-            let player1TimeRemaining = totalMatchTime;
-            let player2TimeRemaining = totalMatchTime;
+            // Use per-tier match time from contract tier configuration
+            let player1TimeRemaining = tierMatchTime;
+            let player2TimeRemaining = tierMatchTime;
 
             try {
               const timeData = await contractInstance.getCurrentTimeRemaining(tierId, instanceId, roundNum, matchNum);
@@ -1465,7 +1448,7 @@ export default function Chess2() {
               // Override with contract's real-time values
               player1TimeRemaining,
               player2TimeRemaining,
-              matchTimePerPlayer: totalMatchTime, // Pass through for UI
+              matchTimePerPlayer: tierMatchTime, // Pass through per-tier value for UI
               timeoutConfig, // Add tier timeout config for escalation calculations
               escL2Available, // Contract says Level 2 is available
               escL3Available  // Contract says Level 3 is available
@@ -1486,9 +1469,9 @@ export default function Chess2() {
               startTime: 0,
               lastMoveTime: 0,
               timeoutState: null,
-              player1TimeRemaining: totalMatchTime,
-              player2TimeRemaining: totalMatchTime,
-              matchTimePerPlayer: totalMatchTime,
+              player1TimeRemaining: tierMatchTime,
+              player2TimeRemaining: tierMatchTime,
+              matchTimePerPlayer: tierMatchTime,
               timeoutConfig, // Add tier timeout config for placeholder matches too
               escL2Available: false, // Placeholder: no escalations available
               escL3Available: false  // Placeholder: no escalations available
@@ -1612,6 +1595,10 @@ export default function Chess2() {
       // Chess requires separate getBoard call
       const board = await contractInstance.getBoard(tierId, instanceId, roundNumber, matchNumber);
 
+      // Fetch per-tier timeout config to get correct match time
+      const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, tierId, totalMatchTime);
+      const tierMatchTime = timeoutConfig?.matchTimePerPlayer ?? totalMatchTime;
+
       // Fetch escalation state using chessMatches mapping (not matchTimeouts)
       let timeoutState = null;
       try {
@@ -1663,9 +1650,9 @@ export default function Chess2() {
         actualPlayer2 = matchInfo.player2;
       }
 
-      // Use totalMatchTime passed as parameter (fetched from contract once on init)
-      let player1TimeRemaining = totalMatchTime;
-      let player2TimeRemaining = totalMatchTime;
+      // Use per-tier match time from contract config
+      let player1TimeRemaining = tierMatchTime;
+      let player2TimeRemaining = tierMatchTime;
 
       try {
         const timeData = await contractInstance.getCurrentTimeRemaining(tierId, instanceId, roundNumber, matchNumber);
@@ -1701,9 +1688,8 @@ export default function Chess2() {
         player1TimeRemaining,
         player2TimeRemaining,
         lastMoveTimestamp: lastMoveTime, // Use lastMoveTime as timestamp
-        matchTimePerPlayer: totalMatchTime, // Pass through for UI components
-        // Preserve timeoutConfig if it exists in matchInfo (from bracket load)
-        ...(matchInfo.timeoutConfig && { timeoutConfig: matchInfo.timeoutConfig })
+        matchTimePerPlayer: tierMatchTime, // Pass through per-tier value for UI components
+        timeoutConfig // Pass timeout config to UI components
       };
     } catch (error) {
       console.error('Error refreshing match:', error);
