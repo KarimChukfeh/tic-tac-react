@@ -356,6 +356,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
                         onEnterMatch={onEnterMatch}
                         onForceEliminate={onForceEliminate}
                         onClaimReplacement={onClaimReplacement}
+                        playerIcons={{ player1: '♔', player2: '♚' }}
                         matchStatusOptions={matchStatusOptions}
                         showEscalation={true}
                         showThisIsYou={true}
@@ -2407,38 +2408,20 @@ export default function Chess2() {
             tournamentRounds={viewingTournament?.rounds || null}
             currentRoundNumber={currentMatch.roundNumber}
             playerConfig={{
-              player1: { icon: 'X', label: 'Player 1' },
-              player2: { icon: 'O', label: 'Player 2' }
+              player1: { icon: '♔', label: 'White' },
+              player2: { icon: '♚', label: 'Black' }
             }}
-            layout="three-column"
-            renderPlayer1Stats={() => (
-              <>
-                <div className="bg-black/20 rounded-lg p-3">
-                  <div className="text-blue-300 text-sm mb-1">Symbol</div>
-                  <div className="text-white font-bold text-2xl">X</div>
-                </div>
-                <div className="bg-black/20 rounded-lg p-3">
-                  <div className="text-blue-300 text-sm mb-1">Moves Made</div>
-                  <div className="text-white font-bold text-xl">
-                    {currentMatch.board.filter(c => c === 1).length}
-                  </div>
-                </div>
-              </>
-            )}
-            renderPlayer2Stats={() => (
-              <>
-                <div className="bg-black/20 rounded-lg p-3">
-                  <div className="text-pink-300 text-sm mb-1">Symbol</div>
-                  <div className="text-white font-bold text-2xl">O</div>
-                </div>
-                <div className="bg-black/20 rounded-lg p-3">
-                  <div className="text-pink-300 text-sm mb-1">Moves Made</div>
-                  <div className="text-white font-bold text-xl">
-                    {currentMatch.board.filter(c => c === 2).length}
-                  </div>
-                </div>
-              </>
-            )}
+            layout="sidebar"
+            renderPlayer1Extra={currentMatch.whiteInCheck ? () => (
+              <div className="bg-red-500/20 border border-red-400 rounded-lg p-2 text-center mt-2">
+                <span className="text-red-300 text-xs font-bold">⚠️ CHECK</span>
+              </div>
+            ) : undefined}
+            renderPlayer2Extra={currentMatch.blackInCheck ? () => (
+              <div className="bg-red-500/20 border border-red-400 rounded-lg p-2 text-center mt-2">
+                <span className="text-red-300 text-xs font-bold">⚠️ CHECK</span>
+              </div>
+            ) : undefined}
             renderMoveHistory={moveHistory.length > 0 ? () => (
               <div className="bg-slate-900/50 rounded-xl p-6 border border-purple-500/30">
                 <h3 className="text-xl font-bold text-purple-300 mb-4 flex items-center gap-2">
@@ -2546,7 +2529,7 @@ export default function Chess2() {
                             className="w-full bg-gradient-to-r from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-xl p-4 border border-purple-400/40 hover:border-purple-400/60 transition-all cursor-pointer"
                           >
                             <h3 className="text-2xl font-bold text-purple-400 flex items-center gap-2 flex-wrap">
-                              <Grid size={24} /> {getTierName(metadata.playerCount)}s
+                              ♔ {getTierName(metadata.playerCount)}s
                               <span className="text-sm font-normal text-purple-300">• {metadata.playerCount} players total</span>
                               <span className="text-sm font-normal text-purple-300">• {metadata.entryFee} ETH entry</span>
                               <span className="text-sm font-normal text-purple-300">• <span className="font-bold text-cyan-400">{metadata.instanceCount} lobbies</span> • <span className="font-bold text-green-400">{statusCounts.enrolling} enrolling</span> • <span className="font-bold text-yellow-400">{statusCounts.inProgress} in progress</span></span>
