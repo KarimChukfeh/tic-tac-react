@@ -2367,7 +2367,7 @@ export default function ConnectFour() {
             <div className="bg-gradient-to-br from-purple-500/20 to-violet-500/20 border border-purple-400/30 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Shield className="text-purple-400" size={20} />
-                <span className="font-bold text-purple-300">Impossible to Grief</span>
+                <span className="font-bold text-purple-300">Impossible to grief</span>
               </div>
               <p className="text-sm text-purple-200">
                 Anti-stalling mechanisms ensure every match completes. No admin required.
