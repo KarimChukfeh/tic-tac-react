@@ -9,7 +9,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Wallet, Grid, Swords, Clock, Shield, Lock, Eye, Code, ExternalLink,
-  Trophy, Play, Users, Zap, ChevronDown, ArrowLeft, AlertCircle, CheckCircle,
+  Trophy, Play, Users, ChevronDown, ArrowLeft, AlertCircle, CheckCircle,
   History
 } from 'lucide-react';
 import { ethers } from 'ethers';
@@ -2021,32 +2021,38 @@ export default function ChessOnChain() {
 
           {/* Game Info Cards */}
           <div className="grid md:grid-cols-3 gap-4 max-w-4xl mx-auto mb-8">
-            <div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Trophy className="text-green-400" size={20} />
-                <span className="font-bold text-green-300">Prize Distribution</span>
-              </div>
-              <p className="text-sm text-green-200">
-                <strong>Duels:</strong> Winner takes all the ETH.<br/>
-                <strong>Tournaments:</strong> Champion takes 75%, 2nd place takes 25%.
-              </p>
-            </div>
             <div className="bg-gradient-to-br from-yellow-500/20 to-amber-500/20 border border-yellow-400/30 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Clock className="text-yellow-400" size={20} />
-                <span className="font-bold text-yellow-300">3min Moves</span>
+                <span className="font-bold text-yellow-300">5 minutes per match</span>
               </div>
               <p className="text-sm text-yellow-200">
-                Players have 3 minutes per move before their opponent can claim victory.
+                Each player gets five minutes total for all their moves in the match.
               </p>
             </div>
-            <div className="bg-gradient-to-br from-purple-500/20 to-blue-500/20 border border-purple-400/30 rounded-xl p-4">
+            <div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
-                <Zap className="text-purple-400" size={20} />
-                <span className="font-bold text-purple-300">Full Chess Rules</span>
+                <svg width="20" height="20" viewBox="0 0 256 417" xmlns="http://www.w3.org/2000/svg" className="text-green-400" fill="currentColor">
+                  <path d="M127.961 0l-2.795 9.5v275.668l2.795 2.79 127.962-75.638z" fillOpacity="0.6"/>
+                  <path d="M127.962 0L0 212.32l127.962 75.639V154.158z"/>
+                  <path d="M127.961 312.187l-1.575 1.92v98.199l1.575 4.6L256 236.587z" fillOpacity="0.6"/>
+                  <path d="M127.962 416.905v-104.72L0 236.585z"/>
+                  <path d="M127.961 287.958l127.96-75.637-127.96-58.162z" fillOpacity="0.2"/>
+                  <path d="M0 212.32l127.96 75.638v-133.8z" fillOpacity="0.6"/>
+                </svg>
+                <span className="font-bold text-green-300">Instant ETH Payouts</span>
+              </div>
+              <p className="text-sm text-green-200">
+                Winners paid automatically on-chain. No delays, no middlemen, no way to stop payment.
+              </p>
+            </div>
+            <div className="bg-gradient-to-br from-purple-500/20 to-violet-500/20 border border-purple-400/30 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Shield className="text-purple-400" size={20} />
+                <span className="font-bold text-purple-300">Impossible to Grief</span>
               </div>
               <p className="text-sm text-purple-200">
-                Castling, en passant, pawn promotion. Every rule verified on-chain. No shortcuts, no cheating possible.
+                Anti-stalling mechanisms ensure every match completes. No admin required.
               </p>
             </div>
           </div>

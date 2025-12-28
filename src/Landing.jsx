@@ -471,7 +471,7 @@ export default function Landing() {
               stakes="0.001 ETH"
               tagline="The game everyone knows. Now with real stakes and zero mercy."
               features={[
-                "1 minute per move",
+                "5 minutes per match",
                 "Perfect for your first match",
                 "Quick games, instant results",
                 "Classic rules, pure strategy"
