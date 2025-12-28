@@ -13,7 +13,7 @@ const UserManual = () => {
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <BookOpen className="text-blue-400" size={24} />
-        <h3 className="text-xl font-bold text-blue-300">How Anti-Stalling/Griefing Works</h3>
+        <h3 className="text-xl font-bold text-blue-300">How Anti-Stalling Works</h3>
       </div>
 
       {/* Introduction */}
