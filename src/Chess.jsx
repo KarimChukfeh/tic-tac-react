@@ -1,23 +1,33 @@
 /**
- * ChessOnChain - On-Chain Chess Protocol Frontend
+ * Chess 
  *
- * Chess tournaments on the blockchain with full game verification
- * Uses the same design language as the TicTacToe frontend
+ * SETUP INSTRUCTIONS:
+ *
+ * 1. Deploy the contract:
+ *    cd ../e-tour && npm run deploy:all
+ *
+ * 2. Sync ABIs to frontend:
+ *    npm run sync:abis
+ *
+ * 3. Configure network in .env:
+ *    VITE_NETWORK=localhost (or arbitrumOne)
+ *    VITE_CHESS_ADDRESS=0x...
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Wallet, Grid, Swords, Clock, Shield, Lock, Eye, Code, ExternalLink,
-  Trophy, Play, Users, ChevronDown, ArrowLeft, AlertCircle, CheckCircle,
-  History
+  Wallet, Grid, Clock, Shield, Lock, Eye, Code, ExternalLink,
+  Trophy, DollarSign, History,
+  CheckCircle, AlertCircle, ChevronDown, ArrowLeft
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import CHESS_ABI from './COCABI.json';
 import { CURRENT_NETWORK, CONTRACT_ADDRESSES, getAddressUrl, getExplorerHomeUrl } from './config/networks';
 import { shortenAddress, formatTime as formatTimeHMS, getTierName, getEstimatedDuration, countInstancesByStatus } from './utils/formatters';
+import { determineMatchResult } from './utils/matchCompletionHandler';
+import { fetchTierTimeoutConfig } from './utils/timeCalculations';
 import ParticleBackground from './components/shared/ParticleBackground';
-// StatsGrid and EnrolledPlayersList now used via TournamentHeader
 import MatchCard from './components/shared/MatchCard';
 import TournamentCard from './components/shared/TournamentCard';
 import WinnersLeaderboard from './components/shared/WinnersLeaderboard';
@@ -26,7 +36,10 @@ import WhyArbitrum from './components/shared/WhyArbitrum';
 import GameMatchLayout from './components/shared/GameMatchLayout';
 import TournamentHeader from './components/shared/TournamentHeader';
 
-// Chess piece symbols
+// Chess piece symbols for particles
+const CHESS_PIECES = ['♔', '♕', '♖', '♗', '♘', '♙', '♚', '♛', '♜', '♝', '♞', '♟'];
+
+// Chess piece symbols for board display
 const PIECE_SYMBOLS = {
   white: { pawn: '♙', knight: '♘', bishop: '♗', rook: '♖', queen: '♕', king: '♔' },
   black: { pawn: '♟', knight: '♞', bishop: '♝', rook: '♜', queen: '♛', king: '♚' }
@@ -44,597 +57,94 @@ const getPieceSymbol = (piece) => {
   return PIECE_SYMBOLS[color][PIECE_TYPES[pieceType]] || '';
 };
 
-// Chess piece particles for background
-const CHESS_PARTICLES = ['♔', '♕', '♖', '♗', '♘', '♙', '♚', '♛', '♜', '♝', '♞', '♟'];
+// Tournament Bracket Component
+const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceEliminate, onClaimReplacement, onManualStart, onClaimAbandonedPool, onEnroll, account, loading, syncDots, isEnrolled, entryFee, isFull }) => {
+  const { tierId, instanceId, status, currentRound, enrolledCount, prizePool, rounds, playerCount, enrolledPlayers, firstEnrollmentTime, countdownActive, enrollmentTimeout } = tournamentData;
 
-// Game status labels
-const getStatusLabel = (status) => {
-  switch(status) {
-    case 0: return 'Waiting for Players';
-    case 1: return 'Ready to Start';
-    case 2: return 'Game in Progress';
-    case 3: return 'Game Complete';
-    default: return 'Unknown';
-  }
-};
+  // Calculate total rounds based on player count
+  const totalRounds = Math.ceil(Math.log2(playerCount));
 
-const getStatusEmoji = (status) => {
-  switch(status) {
-    case 0: return '⏳';
-    case 1: return '✅';
-    case 2: return '♟️';
-    case 3: return '🏆';
-    default: return '❓';
-  }
-};
+  // Ref for active match scrolling
+  const activeMatchRef = useRef(null);
 
-// Chess Board Component
-const ChessBoard = ({
-  board,
-  onMove,
-  currentTurn,
-  account,
-  player1,
-  player2,
-  matchStatus,
-  loading,
-  whiteInCheck,
-  blackInCheck,
-  lastMoveTime,
-  startTime,
-  lastMove // { from: actualIdx, to: actualIdx }
-}) => {
-  const [selectedSquare, setSelectedSquare] = useState(null);
-  const [promotionSquare, setPromotionSquare] = useState(null);
-  const [pendingMove, setPendingMove] = useState(null);
-  const [boardSize, setBoardSize] = useState(null);
-  const containerRef = useRef(null);
-
-  // Animation state
-  const [animatingMove, setAnimatingMove] = useState(null); // { from, to, piece }
-  const prevBoardRef = useRef(null);
-  const prevLastMoveRef = useRef(null);
-
-  // Calculate board size to fit viewport while staying square
-  useEffect(() => {
-    const updateSize = () => {
-      const vh60 = window.innerHeight * 0.60;
-      const containerWidth = containerRef.current?.offsetWidth || window.innerWidth * 0.9;
-      // Cap at 520px max for good balance
-      const size = Math.min(vh60, containerWidth, 520);
-      setBoardSize(size);
-    };
-
-    updateSize();
-    window.addEventListener('resize', updateSize);
-    return () => window.removeEventListener('resize', updateSize);
-  }, []);
-
-  // Handle move animation
-  useEffect(() => {
-    // Only animate if lastMove changed and we have a previous board to compare
-    if (lastMove && prevBoardRef.current &&
-        (prevLastMoveRef.current?.from !== lastMove.from || prevLastMoveRef.current?.to !== lastMove.to)) {
-      const piece = board[lastMove.to]; // Piece is now at destination
-      if (piece && Number(piece.pieceType) !== 0) {
-        setAnimatingMove({
-          from: lastMove.from,
-          to: lastMove.to,
-          piece: piece
-        });
-        // Clear animation after it completes
-        const timer = setTimeout(() => {
-          setAnimatingMove(null);
-        }, 450); // Match animation duration
-        return () => clearTimeout(timer);
-      }
-    }
-    prevBoardRef.current = board;
-    prevLastMoveRef.current = lastMove;
-  }, [lastMove, board]);
-
-  // Determine if current user is white or black
-  const isPlayer1 = account && player1?.toLowerCase() === account.toLowerCase();
-  const isPlayer2 = account && player2?.toLowerCase() === account.toLowerCase();
-  const isWhite = isPlayer1; // Player 1 is white
-  const isMyTurn = account && currentTurn?.toLowerCase() === account.toLowerCase();
-
-  // Flip board for white player (contract stores board with black at top by default)
-  const shouldFlip = isPlayer1;
-
-  // Timer state
-  const MOVE_TIMEOUT = 300; // 5 minutes
-  const [timeRemaining, setTimeRemaining] = useState(null);
+  // Countdown timer logic for enrollment
+  const ENROLLMENT_DURATION = 1 * 60; // 1 minute in seconds (matches contract)
+  const [timeRemaining, setTimeRemaining] = useState(0);
+  const [countdownExpired, setCountdownExpired] = useState(false);
 
   useEffect(() => {
-    if (matchStatus !== 1) {
-      setTimeRemaining(null);
+    if (!countdownActive || !firstEnrollmentTime || status !== 0) {
+      setTimeRemaining(0);
+      setCountdownExpired(false);
       return;
     }
 
     const updateTimer = () => {
       const now = Math.floor(Date.now() / 1000);
-      const timeRef = lastMoveTime > 0 ? lastMoveTime : startTime;
-      if (timeRef > 0) {
-        const elapsed = now - timeRef;
-        const remaining = Math.max(0, MOVE_TIMEOUT - elapsed);
+      const deadline = firstEnrollmentTime + ENROLLMENT_DURATION;
+      const remaining = deadline - now;
+
+      if (remaining <= 0) {
+        setTimeRemaining(0);
+        setCountdownExpired(true);
+      } else {
         setTimeRemaining(remaining);
+        setCountdownExpired(false);
       }
     };
 
     updateTimer();
     const interval = setInterval(updateTimer, 1000);
+
     return () => clearInterval(interval);
-  }, [lastMoveTime, startTime, matchStatus]);
+  }, [firstEnrollmentTime, countdownActive, status]);
 
   const formatTime = (seconds) => {
-    if (seconds === null) return '--:--';
-    const mins = Math.floor(seconds / 60);
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    return `${hours}h ${minutes}m ${secs}s`;
   };
 
-  // Convert display index to actual board index based on flip
-  const getActualIndex = (displayIdx) => {
-    if (shouldFlip) {
-      return 63 - displayIdx;
-    }
-    return displayIdx;
-  };
+  // Auto-scroll to user's active match after every sync
+  useEffect(() => {
+    if (!account || !rounds || status !== 1) return;
 
-  // Get square color (for alternating pattern) - based on actual board position
-  const getSquareColor = (actualIdx) => {
-    const row = Math.floor(actualIdx / 8);
-    const col = actualIdx % 8;
-    // In chess, a1 (bottom-left for white) is dark, h1 is light
-    // a1 = index 56, row=7, col=0, (7+0)%2=1 -> should be dark (return false for light)
-    return (row + col) % 2 === 1;
-  };
+    // Find the user's active match that needs their attention
+    let userActiveMatch = null;
 
-  // Check if a piece belongs to current player
-  const isMyPiece = (piece) => {
-    if (!piece) return false;
-    const pieceType = Number(piece.pieceType);
-    const pieceColor = Number(piece.color);
-    if (pieceType === 0) return false;
-    if (isWhite && pieceColor === 1) return true;
-    if (!isWhite && isPlayer2 && pieceColor === 2) return true;
-    return false;
-  };
+    for (const round of rounds) {
+      for (const match of round.matches) {
+        const isUserPlayer =
+          match.player1?.toLowerCase() === account.toLowerCase() ||
+          match.player2?.toLowerCase() === account.toLowerCase();
 
-  // Handle square click
-  const handleSquareClick = (displayIdx) => {
-    console.log('Square clicked:', displayIdx, { matchStatus, isMyTurn, loading, isWhite, isPlayer1, isPlayer2 });
-    if (matchStatus !== 1 || !isMyTurn || loading) {
-      console.log('Click rejected:', { matchStatus, isMyTurn, loading });
-      return;
-    }
+        const isMatchInProgress = match.matchStatus === 1;
+        const isUserTurn = match.currentTurn?.toLowerCase() === account.toLowerCase();
 
-    const actualIdx = getActualIndex(displayIdx);
-    const piece = board[actualIdx];
-    console.log('Piece at square:', actualIdx, piece, 'isMyPiece:', isMyPiece(piece));
-
-    if (selectedSquare === null) {
-      // Select piece if it belongs to current player
-      if (isMyPiece(piece)) {
-        console.log('Selected piece at:', displayIdx);
-        setSelectedSquare(displayIdx);
-      }
-    } else {
-      const fromActual = getActualIndex(selectedSquare);
-      const fromPiece = board[fromActual];
-
-      // If clicking on own piece, reselect
-      if (isMyPiece(piece)) {
-        setSelectedSquare(displayIdx);
-        return;
-      }
-
-      // Check for pawn promotion - any pawn reaching row 0 or row 7 must promote
-      const toRow = Math.floor(actualIdx / 8);
-      const isPawn = fromPiece && Number(fromPiece.pieceType) === 1;
-      const isPromotionRank = toRow === 0 || toRow === 7;
-
-      if (isPawn && isPromotionRank) {
-        // Show promotion dialog
-        setPromotionSquare(actualIdx);
-        setPendingMove({ from: fromActual, to: actualIdx });
-      } else {
-        // Execute move
-        onMove(fromActual, actualIdx, 0); // 0 = no promotion
-        setSelectedSquare(null);
-      }
-    }
-  };
-
-  // Handle promotion selection
-  const handlePromotion = (pieceType) => {
-    if (pendingMove) {
-      onMove(pendingMove.from, pendingMove.to, pieceType);
-      setPromotionSquare(null);
-      setPendingMove(null);
-      setSelectedSquare(null);
-    }
-  };
-
-  // Helper to convert actual index to display position (row, col)
-  const getDisplayPosition = (actualIdx) => {
-    const displayIdx = shouldFlip ? 63 - actualIdx : actualIdx;
-    return {
-      row: Math.floor(displayIdx / 8),
-      col: displayIdx % 8
-    };
-  };
-
-  // Render board
-  const renderBoard = () => {
-    const squares = [];
-    for (let displayIdx = 0; displayIdx < 64; displayIdx++) {
-      const actualIdx = getActualIndex(displayIdx);
-      const piece = board[actualIdx];
-      const isLight = getSquareColor(actualIdx);
-      const isSelected = selectedSquare === displayIdx;
-
-      // Check if this is part of the last move
-      const isLastMoveFrom = lastMove && lastMove.from === actualIdx;
-      const isLastMoveTo = lastMove && lastMove.to === actualIdx;
-
-      // Determine if last move was made by ME based on the piece that moved
-      // My moves = green/yellow, Opponent's moves = orange/red
-      const movedPiece = lastMove && board[lastMove.to];
-      const movedPieceColor = movedPiece ? Number(movedPiece.color) : 0;
-      const isMyMove = lastMove && (
-        (movedPieceColor === 1 && isPlayer1) || // White piece and I'm white
-        (movedPieceColor === 2 && isPlayer2)    // Black piece and I'm black
-      );
-
-      // Hide piece at destination during animation (animated piece shows instead)
-      const hideForAnimation = animatingMove && actualIdx === animatingMove.to;
-
-      // Check if this square's king is in check
-      const pieceType = piece ? Number(piece.pieceType) : 0;
-      const pieceColor = piece ? Number(piece.color) : 0;
-      const isKingInCheck = pieceType === 6 && (
-        (pieceColor === 1 && whiteInCheck) ||
-        (pieceColor === 2 && blackInCheck)
-      );
-
-      // Get file and rank labels
-      // Use display position for WHERE to show labels (left column, bottom row)
-      const displayRow = Math.floor(displayIdx / 8);
-      const displayCol = displayIdx % 8;
-      const showRankLabel = displayCol === 0; // Left column of display
-      const showFileLabel = displayRow === 7; // Bottom row of display
-      // Use actual position for WHAT labels to show
-      const actualRow = Math.floor(actualIdx / 8);
-      const actualCol = actualIdx % 8;
-      const rankLabel = 8 - actualRow;
-      const fileLabel = String.fromCharCode(97 + actualCol);
-
-      // Color scheme for last move highlighting
-      // My moves: green (from) → yellow (to)
-      // Opponent's moves: orange (from) → red (to)
-      const getLastMoveFromClass = () => {
-        if (!isLastMoveFrom || isSelected || isKingInCheck) return '';
-        return isMyMove
-          ? 'bg-emerald-500/50 ring-2 ring-emerald-400 ring-inset'  // My move: green from
-          : 'bg-orange-500/50 ring-2 ring-orange-400 ring-inset';   // Opponent's move: orange from
-      };
-
-      const getLastMoveToClass = () => {
-        if (!isLastMoveTo || isSelected || isKingInCheck) return '';
-        return isMyMove
-          ? 'bg-yellow-400/50 ring-2 ring-yellow-300 ring-inset'    // My move: yellow to
-          : 'bg-red-500/50 ring-2 ring-red-400 ring-inset';         // Opponent's move: red to
-      };
-
-      const getLastMoveShadow = () => {
-        if (isSelected) return '0 0 20px rgba(6, 182, 212, 0.3)';
-        if (isLastMoveTo && !isKingInCheck) {
-          return isMyMove
-            ? 'inset 0 0 20px rgba(234, 179, 8, 0.5)'    // My move: yellow glow
-            : 'inset 0 0 20px rgba(239, 68, 68, 0.5)';   // Opponent's move: red glow
+        if (isUserPlayer && isMatchInProgress && isUserTurn) {
+          userActiveMatch = match;
+          break;
         }
-        if (isLastMoveFrom && !isKingInCheck) {
-          return isMyMove
-            ? 'inset 0 0 15px rgba(16, 185, 129, 0.4)'   // My move: green glow
-            : 'inset 0 0 15px rgba(249, 115, 22, 0.4)';  // Opponent's move: orange glow
-        }
-        return 'none';
-      };
-
-      const getPieceGlow = () => {
-        if (!isLastMoveTo || hideForAnimation || pieceType === 0) return undefined;
-        return isMyMove
-          ? 'drop-shadow(0 0 10px rgba(234, 179, 8, 0.8))'    // My move: yellow glow
-          : 'drop-shadow(0 0 10px rgba(239, 68, 68, 0.8))';   // Opponent's move: red glow
-      };
-
-      // When a piece is selected, potential target squares should highlight yellow on hover
-      const isPotentialTarget = selectedSquare !== null && !isSelected && !isMyPiece(piece);
-
-      squares.push(
-        <div
-          key={displayIdx}
-          onClick={() => handleSquareClick(displayIdx)}
-          className={`relative flex items-center justify-center cursor-pointer transition-all duration-200
-            ${isLight
-              ? 'bg-slate-700/50'
-              : 'bg-slate-900/80'}
-            ${isSelected
-              ? 'ring-2 ring-emerald-400 ring-inset bg-emerald-500/50'
-              : ''}
-            ${isKingInCheck
-              ? 'bg-red-500/50 ring-2 ring-red-400 ring-inset'
-              : ''}
-            ${getLastMoveFromClass()}
-            ${getLastMoveToClass()}
-            ${isMyTurn && isMyPiece(piece) && !isSelected
-              ? 'hover:bg-emerald-500/30'
-              : ''}
-            ${isMyTurn && isPotentialTarget
-              ? 'hover:bg-yellow-400/40'
-              : ''}
-          `}
-          style={{
-            boxShadow: isSelected
-              ? 'inset 0 0 20px rgba(16, 185, 129, 0.5)'
-              : getLastMoveShadow()
-          }}
-        >
-          <span
-            className={`text-3xl md:text-4xl lg:text-5xl select-none transition-all duration-300 ${
-              isSelected ? 'scale-110' : ''
-            } ${pieceColor === 1
-              ? 'text-slate-100 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]'
-              : 'text-purple-300 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]'
-            }`}
-            style={{
-              opacity: hideForAnimation ? 0 : 1,
-              filter: getPieceGlow()
-            }}
-          >
-            {getPieceSymbol(piece)}
-          </span>
-
-          {/* Rank labels */}
-          {showRankLabel && (
-            <span className={`absolute left-1 top-0.5 text-[10px] font-medium ${
-              isLight ? 'text-slate-500' : 'text-slate-600'
-            }`}>
-              {rankLabel}
-            </span>
-          )}
-
-          {/* File labels */}
-          {showFileLabel && (
-            <span className={`absolute right-1 bottom-0.5 text-[10px] font-medium ${
-              isLight ? 'text-slate-500' : 'text-slate-600'
-            }`}>
-              {fileLabel}
-            </span>
-          )}
-        </div>
-      );
+      }
+      if (userActiveMatch) break;
     }
-    return squares;
-  };
 
-  // Render animated piece overlay
-  const renderAnimatedPiece = () => {
-    if (!animatingMove || !boardSize) return null;
+    // Scroll to the active match if found (happens after every sync)
+    if (userActiveMatch && activeMatchRef.current) {
+      setTimeout(() => {
+        activeMatchRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center'
+        });
+      }, 300); // Small delay to ensure render is complete
+    }
+  }, [account, rounds, status, syncDots]); // Include syncDots to trigger on every sync
 
-    const fromPos = getDisplayPosition(animatingMove.from);
-    const toPos = getDisplayPosition(animatingMove.to);
-    const squareSize = boardSize / 8;
+  // Chess-specific options for match status display
+  const matchStatusOptions = { doubleForfeitText: 'Eliminated - Double Forfeit' };
 
-    const pieceColor = animatingMove.piece ? Number(animatingMove.piece.color) : 0;
-
-    // Determine if this is MY move based on piece color
-    // My moves = yellow glow, Opponent's moves = red glow
-    const isMyAnimatedMove = (pieceColor === 1 && isPlayer1) || (pieceColor === 2 && isPlayer2);
-    const animationGlow = isMyAnimatedMove
-      ? 'rgba(234, 179, 8, 0.8)'   // My move: yellow glow
-      : 'rgba(239, 68, 68, 0.8)';  // Opponent's move: red glow
-
-    return (
-      <div
-        className="absolute pointer-events-none z-20"
-        style={{
-          width: squareSize,
-          height: squareSize,
-          transform: `translate(${toPos.col * squareSize}px, ${toPos.row * squareSize}px)`,
-        }}
-      >
-        <div
-          className="w-full h-full flex items-center justify-center"
-          style={{
-            '--from-x': `${(fromPos.col - toPos.col) * squareSize}px`,
-            '--from-y': `${(fromPos.row - toPos.row) * squareSize}px`,
-          }}
-        >
-          <span
-            className={`text-3xl md:text-4xl lg:text-5xl select-none ${
-              pieceColor === 1
-                ? 'text-slate-100'
-                : 'text-purple-300'
-            }`}
-            style={{
-              transform: `translate(var(--from-x), var(--from-y))`,
-              animation: 'pieceMove 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards',
-              filter: `drop-shadow(0 0 12px ${animationGlow})`,
-            }}
-          >
-            {getPieceSymbol(animatingMove.piece)}
-          </span>
-        </div>
-      </div>
-    );
-  };
-
-  return (
-    <div className="relative flex flex-col items-center">
-      {/* Timer */}
-      {matchStatus === 1 && (
-        <div className={`mb-4 text-center py-2 px-6 rounded-full font-mono text-base font-semibold backdrop-blur-sm ${
-          timeRemaining !== null && timeRemaining < 60
-            ? 'bg-red-500/20 text-red-300 border border-red-500/40 animate-pulse'
-            : 'bg-slate-800/60 text-cyan-300 border border-cyan-500/30'
-        }`}>
-          <Clock className="inline-block mr-2" size={16} />
-          {formatTime(timeRemaining)}
-        </div>
-      )}
-
-      {/* Board container with JS-calculated size for cross-browser compatibility */}
-      <div ref={containerRef} className="w-full flex justify-center">
-        <div
-          className="relative rounded-xl overflow-hidden"
-          style={{
-            width: boardSize || 400,
-            height: boardSize || 400,
-            minWidth: 280,
-            minHeight: 280,
-            background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.9))',
-            border: '1px solid rgba(148, 163, 184, 0.2)',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(6, 182, 212, 0.1), inset 0 1px 0 rgba(255,255,255,0.05)'
-          }}
-        >
-          <div
-            className="grid gap-0 w-full h-full"
-            style={{
-              gridTemplateColumns: 'repeat(8, 1fr)',
-              gridTemplateRows: 'repeat(8, 1fr)'
-            }}
-          >
-            {renderBoard()}
-          </div>
-          {/* Animated piece overlay */}
-          {renderAnimatedPiece()}
-        </div>
-      </div>
-
-      {/* Animation keyframes */}
-      <style>{`
-        @keyframes pieceMove {
-          0% {
-            transform: translate(var(--from-x), var(--from-y)) scale(1);
-          }
-          50% {
-            transform: translate(calc(var(--from-x) * 0.3), calc(var(--from-y) * 0.3)) scale(1.15);
-          }
-          100% {
-            transform: translate(0, 0) scale(1);
-          }
-        }
-      `}</style>
-
-      {/* Promotion Dialog */}
-      {promotionSquare !== null && (
-        <div className="absolute inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center rounded-xl">
-          <div
-            className="p-6 rounded-2xl"
-            style={{
-              background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.95))',
-              border: '1px solid rgba(168, 85, 247, 0.4)',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 30px rgba(168, 85, 247, 0.2)'
-            }}
-          >
-            <h3 className="text-slate-100 font-bold text-lg mb-4 text-center">Promote Pawn</h3>
-            <div className="flex gap-3">
-              {[5, 4, 3, 2].map((pieceType) => (
-                <button
-                  key={pieceType}
-                  onClick={() => handlePromotion(pieceType)}
-                  className="w-14 h-14 md:w-16 md:h-16 rounded-xl flex items-center justify-center text-3xl md:text-4xl transition-all duration-200 hover:scale-110"
-                  style={{
-                    background: 'rgba(51, 65, 85, 0.6)',
-                    border: '1px solid rgba(148, 163, 184, 0.3)',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'rgba(6, 182, 212, 0.2)';
-                    e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.5)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'rgba(51, 65, 85, 0.6)';
-                    e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.3)';
-                  }}
-                >
-                  <span className={isWhite ? 'text-slate-100' : 'text-purple-300'}>
-                    {PIECE_SYMBOLS[isWhite ? 'white' : 'black'][PIECE_TYPES[pieceType]]}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Turn indicator */}
-      {matchStatus === 1 && (
-        <div
-          className={`mt-4 text-center py-3 px-6 rounded-xl font-semibold text-base backdrop-blur-sm ${
-            isMyTurn
-              ? 'text-cyan-300'
-              : 'text-slate-400'
-          }`}
-          style={{
-            ...(boardSize ? { width: boardSize } : { maxWidth: '100%' }),
-            background: isMyTurn
-              ? 'linear-gradient(135deg, rgba(6, 182, 212, 0.15), rgba(59, 130, 246, 0.15))'
-              : 'rgba(30, 41, 59, 0.6)',
-            border: isMyTurn
-              ? '1px solid rgba(6, 182, 212, 0.4)'
-              : '1px solid rgba(148, 163, 184, 0.2)',
-            boxShadow: isMyTurn ? '0 0 20px rgba(6, 182, 212, 0.15)' : 'none'
-          }}
-        >
-          {isMyTurn ? (
-            <div className="space-y-1">
-              <div className="text-lg flex items-center justify-center gap-2">
-                <span className="inline-block w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
-                Your Move
-              </div>
-              <div className="text-sm text-slate-400">Playing as {isWhite ? 'White' : 'Black'}</div>
-            </div>
-          ) : (
-            <div className="space-y-1">
-              <div className="flex items-center justify-center gap-2">
-                <span className="inline-block w-2 h-2 rounded-full bg-slate-500 animate-pulse"></span>
-                Opponent's Turn
-              </div>
-              <div className="text-sm text-slate-500">Waiting for their move...</div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Check indicator */}
-      {(whiteInCheck || blackInCheck) && matchStatus === 1 && (
-        <div
-          className="mt-3 text-center py-2 px-6 rounded-full text-red-300 font-semibold text-sm animate-pulse"
-          style={{
-            ...(boardSize ? { width: boardSize } : { maxWidth: '100%' }),
-            background: 'rgba(239, 68, 68, 0.15)',
-            border: '1px solid rgba(239, 68, 68, 0.4)',
-            boxShadow: '0 0 20px rgba(239, 68, 68, 0.2)'
-          }}
-        >
-          {whiteInCheck ? 'White' : 'Black'} King in Check
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Tournament Card Component
-// Tournament Bracket Component
-const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onManualStart, onEnroll, account, loading, syncDots, theme: _theme, isEnrolled, entryFee, isFull }) => {
-  const { tierId, instanceId, status, currentRound, enrolledCount, prizePool, rounds, playerCount, enrolledPlayers, enrollmentTimeout } = tournamentData;
-
-  const totalRounds = Math.ceil(Math.log2(playerCount));
-
-  // Colors for bracket section (header colors derived from gameType in TournamentHeader)
+  // Bracket colors (used for bracket section below)
   const colors = {
     headerBorder: 'border-purple-400/30',
     text: 'text-purple-300',
@@ -662,6 +172,144 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onManualStart
         entryFee={entryFee}
         onEnroll={onEnroll}
         loading={loading}
+        renderCountdown={countdownActive && status === 0 ? () => (
+          <div className="mt-4 bg-orange-500/20 border border-orange-400/50 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Clock className="text-orange-400" size={20} />
+                <span className="text-orange-300 font-semibold">
+                  {countdownExpired ? 'Enrollment Countdown Expired' : 'Enrollment Time Remaining'}
+                </span>
+              </div>
+              <span className="text-orange-300 font-bold text-lg">
+                {countdownExpired ? '0h 0m 0s' : formatTime(timeRemaining)}
+              </span>
+            </div>
+            {countdownExpired && (
+              <p className="text-orange-200 text-sm mt-2">
+                Enrolled players can force-start the tournament using the button below.
+              </p>
+            )}
+          </div>
+        ) : null}
+        renderEscalation={status === 0 && enrollmentTimeout ? () => {
+          const now = Math.floor(Date.now() / 1000);
+          const escalation1Start = Number(enrollmentTimeout.escalation1Start);
+          const escalation2Start = Number(enrollmentTimeout.escalation2Start);
+          const isEnrolledUser = account && enrolledPlayers?.some(addr => addr.toLowerCase() === account.toLowerCase());
+
+          const timeToEsc1 = escalation1Start > 0 ? Math.max(0, escalation1Start - now) : 0;
+          const timeToEsc2 = escalation2Start > 0 ? Math.max(0, escalation2Start - now) : 0;
+          const canForceStart = escalation1Start > 0 && now >= escalation1Start;
+          const canAnyoneStart = escalation2Start > 0 && now >= escalation2Start;
+
+          if (!(timeToEsc1 > 0 || timeToEsc2 > 0 || canForceStart || canAnyoneStart)) return null;
+
+          const prizePoolETH = ethers.formatEther(prizePool);
+
+          return (
+            <>
+              <div className="mt-4 bg-gradient-to-r from-orange-500/20 to-red-500/20 border border-orange-400/50 rounded-lg p-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <AlertCircle className="text-orange-400" size={22} />
+                  <h4 className="text-orange-300 font-bold text-lg">Tournament Waiting Period</h4>
+                </div>
+
+                <div className="space-y-3">
+                  {/* Level 1: Early Start Option */}
+                  <div className={`p-4 rounded-lg ${canForceStart ? 'bg-orange-500/30 border-2 border-orange-400' : 'bg-black/30 border border-orange-400/30'}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Trophy className="text-orange-400" size={18} />
+                        <span className={`font-bold ${canForceStart ? 'text-orange-200' : 'text-orange-300/70'}`}>
+                          Start Tournament Early
+                        </span>
+                      </div>
+                      {timeToEsc1 > 0 ? (
+                        <span className="text-orange-300 font-mono text-sm bg-black/30 px-2 py-1 rounded">{formatTime(timeToEsc1)}</span>
+                      ) : (
+                        <span className="text-orange-200 font-bold text-xs bg-orange-500/50 px-3 py-1 rounded-full">AVAILABLE NOW</span>
+                      )}
+                    </div>
+                    <p className={`text-sm ${canForceStart ? 'text-orange-100' : 'text-orange-200/70'} leading-relaxed`}>
+                      {canForceStart ? (
+                        <>
+                          <span className="font-semibold">You can start now!</span> Any enrolled player can begin the tournament with the current {enrolledCount} player{enrolledCount !== 1 ? 's' : ''} and prize pool of {prizePoolETH} ETH.
+                        </>
+                      ) : (
+                        <>
+                          In {formatTime(timeToEsc1)}, enrolled players can start the tournament early with the current {enrolledCount} player{enrolledCount !== 1 ? 's' : ''} instead of waiting for more.
+                        </>
+                      )}
+                    </p>
+                  </div>
+
+                  {/* Level 2: Abandonment Warning */}
+                  <div className={`p-4 rounded-lg ${canAnyoneStart ? 'bg-red-500/30 border-2 border-red-400' : 'bg-black/30 border border-red-400/30'}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="text-red-400" size={18} />
+                        <span className={`font-bold ${canAnyoneStart ? 'text-red-200' : 'text-red-300/70'}`}>
+                          Abandonment Risk
+                        </span>
+                      </div>
+                      {timeToEsc2 > 0 ? (
+                        <span className="text-red-300 font-mono text-sm bg-black/30 px-2 py-1 rounded">{formatTime(timeToEsc2)}</span>
+                      ) : canAnyoneStart ? (
+                        <span className="text-red-200 font-bold text-xs bg-red-500/50 px-3 py-1 rounded-full">CRITICAL</span>
+                      ) : (
+                        <span className="text-red-300/50 text-xs">After Level 1</span>
+                      )}
+                    </div>
+                    <p className={`text-sm ${canAnyoneStart ? 'text-red-100' : 'text-red-200/70'} leading-relaxed`}>
+                      {canAnyoneStart ? (
+                        <>
+                          <span className="font-semibold">⚠️ Critical:</span> Anyone (even non-enrolled players) can now terminate this tournament and claim the entire {prizePoolETH} ETH prize pool. <span className="font-semibold text-red-200">All enrolled players will lose their entry fees!</span>
+                        </>
+                      ) : (
+                        <>
+                          If the tournament remains inactive for too long, anyone can terminate it and claim the entire {prizePoolETH} ETH pool. Enrolled players would lose their entry fees.
+                        </>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {canForceStart && isEnrolledUser && (
+                <div className="mt-4">
+                  <button
+                    onClick={() => onManualStart(tierId, instanceId)}
+                    disabled={loading}
+                    className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-4 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 shadow-lg"
+                  >
+                    <Trophy size={20} />
+                    {loading ? 'Starting Tournament...' : `Start Tournament Now with ${enrolledCount} Players`}
+                  </button>
+                  <p className="text-orange-200 text-sm text-center mt-2 font-medium">
+                    Begin playing immediately with current participants
+                  </p>
+                </div>
+              )}
+
+              {canAnyoneStart && !isEnrolledUser && (
+                <div className="mt-4">
+                  <button
+                    onClick={() => onClaimAbandonedPool(tierId, instanceId)}
+                    disabled={loading}
+                    className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold py-4 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 shadow-lg"
+                  >
+                    <DollarSign size={20} />
+                    {loading ? 'Claiming Pool...' : `Claim Abandoned Pool (${prizePoolETH} ETH)`}
+                  </button>
+                  <p className="text-red-200 text-sm text-center mt-2 font-medium">
+                    Terminate the inactive tournament and receive the prize pool
+                  </p>
+                </div>
+              )}
+            </>
+          );
+        } : null}
       />
 
       {/* Bracket View */}
@@ -674,35 +322,58 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onManualStart
         {rounds && rounds.length > 0 ? (
           <div className="space-y-8">
             {rounds.map((round, roundIdx) => (
-              <div key={roundIdx}>
-                <h4 className={`text-xl font-bold ${colors.icon} mb-4`}>
-                  Round {roundIdx + 1}
-                  {roundIdx === totalRounds - 1 && ' - Finals'}
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {round.matches.map((match, matchIdx) => (
-                    <MatchCard
+            <div key={roundIdx}>
+              <h4 className={`text-xl font-bold ${colors.icon} mb-4`}>
+                Round {roundIdx + 1}
+                {roundIdx === totalRounds - 1 && ' - Finals'}
+                {roundIdx === totalRounds - 2 && rounds.length > 1 && ' - Semi-Finals'}
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {round.matches.map((match, matchIdx) => {
+                  // Check if this is the user's active match that needs their turn
+                  const isUserPlayer =
+                    match.player1?.toLowerCase() === account?.toLowerCase() ||
+                    match.player2?.toLowerCase() === account?.toLowerCase();
+                  const isMatchInProgress = match.matchStatus === 1;
+                  const isUserTurn = match.currentTurn?.toLowerCase() === account?.toLowerCase();
+                  const shouldHighlight = isUserPlayer && isMatchInProgress && isUserTurn;
+
+                  return (
+                    <div
                       key={matchIdx}
-                      match={match}
-                      matchIdx={matchIdx}
-                      roundIdx={roundIdx}
-                      tierId={tierId}
-                      instanceId={instanceId}
-                      account={account}
-                      loading={loading}
-                      onEnterMatch={onEnterMatch}
-                      playerIcons={{ player1: '♔', player2: '♚' }}
-                      showEscalation={false}
-                      showThisIsYou={false}
-                    />
-                  ))}
-                </div>
+                      ref={shouldHighlight ? activeMatchRef : null}
+                    >
+                      <MatchCard
+                        match={match}
+                        matchIdx={matchIdx}
+                        roundIdx={roundIdx}
+                        tierId={tierId}
+                        instanceId={instanceId}
+                        account={account}
+                        loading={loading}
+                        onEnterMatch={onEnterMatch}
+                        onForceEliminate={onForceEliminate}
+                        onClaimReplacement={onClaimReplacement}
+                        playerIcons={{ player1: '♔', player2: '♚' }}
+                        matchStatusOptions={matchStatusOptions}
+                        showEscalation={true}
+                        showThisIsYou={true}
+                        tournamentRounds={rounds}
+                      />
+                    </div>
+                  );
+                })}
               </div>
+            </div>
             ))}
           </div>
         ) : (
-          <div className="text-center py-12 text-purple-300">
-            <p>No matches available yet. Tournament may be in enrollment phase.</p>
+          <div className="text-center py-12">
+            <div className={`${colors.text} text-lg`}>
+              {status === 0
+                ? 'Tournament bracket will be generated once the tournament starts.'
+                : 'No bracket data available.'}
+            </div>
           </div>
         )}
       </div>
@@ -710,47 +381,252 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onManualStart
   );
 };
 
-// Main Chess Component
-export default function ChessOnChain() {
+// Chess Board Component - copied from Chess.jsx
+const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, matchStatus, loading, whiteInCheck, blackInCheck, lastMoveTime, startTime, lastMove }) => {
+  const [selectedSquare, setSelectedSquare] = useState(null);
+  const [promotionSquare, setPromotionSquare] = useState(null);
+  const [pendingMove, setPendingMove] = useState(null);
+  const [boardSize, setBoardSize] = useState(null);
+  const containerRef = useRef(null);
+  const [animatingMove, setAnimatingMove] = useState(null);
+  const prevBoardRef = useRef(null);
+  const prevLastMoveRef = useRef(null);
+
+  useEffect(() => {
+    const updateSize = () => {
+      const vh60 = window.innerHeight * 0.60;
+      const containerWidth = containerRef.current?.offsetWidth || window.innerWidth * 0.9;
+      const size = Math.min(vh60, containerWidth, 520);
+      setBoardSize(size);
+    };
+    updateSize();
+    window.addEventListener('resize', updateSize);
+    return () => window.removeEventListener('resize', updateSize);
+  }, []);
+
+  useEffect(() => {
+    if (lastMove && prevBoardRef.current && (prevLastMoveRef.current?.from !== lastMove.from || prevLastMoveRef.current?.to !== lastMove.to)) {
+      const piece = board[lastMove.to];
+      if (piece && Number(piece.pieceType) !== 0) {
+        setAnimatingMove({ from: lastMove.from, to: lastMove.to, piece: piece });
+        const timer = setTimeout(() => setAnimatingMove(null), 450);
+        return () => clearTimeout(timer);
+      }
+    }
+    prevBoardRef.current = board;
+    prevLastMoveRef.current = lastMove;
+  }, [lastMove, board]);
+
+  const isPlayer1 = account && player1?.toLowerCase() === account.toLowerCase();
+  const isPlayer2 = account && player2?.toLowerCase() === account.toLowerCase();
+  const isWhite = isPlayer1;
+  const isMyTurn = account && currentTurn?.toLowerCase() === account.toLowerCase();
+  const shouldFlip = isPlayer1;
+
+  const MOVE_TIMEOUT = 300;
+  const [timeRemaining, setTimeRemaining] = useState(null);
+
+  useEffect(() => {
+    if (matchStatus !== 1) {
+      setTimeRemaining(null);
+      return;
+    }
+    const updateTimer = () => {
+      const now = Math.floor(Date.now() / 1000);
+      const timeRef = lastMoveTime > 0 ? lastMoveTime : startTime;
+      if (timeRef > 0) {
+        const elapsed = now - timeRef;
+        const remaining = Math.max(0, MOVE_TIMEOUT - elapsed);
+        setTimeRemaining(remaining);
+      }
+    };
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [lastMoveTime, startTime, matchStatus]);
+
+  const formatTime = (seconds) => {
+    if (seconds === null) return '--:--';
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return mins + ':' + secs.toString().padStart(2, '0');
+  };
+
+  const getActualIndex = (displayIdx) => shouldFlip ? 63 - displayIdx : displayIdx;
+
+  const getSquareColor = (actualIdx) => {
+    const row = Math.floor(actualIdx / 8);
+    const col = actualIdx % 8;
+    return (row + col) % 2 === 1;
+  };
+
+  const isMyPiece = (piece) => {
+    if (!piece) return false;
+    const pieceType = Number(piece.pieceType);
+    const pieceColor = Number(piece.color);
+    if (pieceType === 0) return false;
+    if (isWhite && pieceColor === 1) return true;
+    if (!isWhite && isPlayer2 && pieceColor === 2) return true;
+    return false;
+  };
+
+  const handleSquareClick = (displayIdx) => {
+    if (matchStatus !== 1 || !isMyTurn || loading) return;
+    const actualIdx = getActualIndex(displayIdx);
+    const piece = board[actualIdx];
+    if (selectedSquare === null) {
+      if (isMyPiece(piece)) setSelectedSquare(displayIdx);
+    } else {
+      const fromActual = getActualIndex(selectedSquare);
+      const fromPiece = board[fromActual];
+      if (isMyPiece(piece)) {
+        setSelectedSquare(displayIdx);
+        return;
+      }
+      const toRow = Math.floor(actualIdx / 8);
+      const isPawn = fromPiece && Number(fromPiece.pieceType) === 1;
+      const isPromotionRank = toRow === 0 || toRow === 7;
+      if (isPawn && isPromotionRank) {
+        setPromotionSquare(actualIdx);
+        setPendingMove({ from: fromActual, to: actualIdx });
+      } else {
+        onMove(fromActual, actualIdx, 0);
+        setSelectedSquare(null);
+      }
+    }
+  };
+
+  const handlePromotion = (pieceType) => {
+    if (pendingMove) {
+      onMove(pendingMove.from, pendingMove.to, pieceType);
+      setPromotionSquare(null);
+      setPendingMove(null);
+      setSelectedSquare(null);
+    }
+  };
+
+  const getDisplayPosition = (actualIdx) => {
+    const displayIdx = shouldFlip ? 63 - actualIdx : actualIdx;
+    return { row: Math.floor(displayIdx / 8), col: displayIdx % 8 };
+  };
+
+  const renderBoard = () => {
+    const squares = [];
+    for (let displayIdx = 0; displayIdx < 64; displayIdx++) {
+      const actualIdx = getActualIndex(displayIdx);
+      const piece = board[actualIdx];
+      const isLight = getSquareColor(actualIdx);
+      const isSelected = selectedSquare === displayIdx;
+      const isLastMoveFrom = lastMove && lastMove.from === actualIdx;
+      const isLastMoveTo = lastMove && lastMove.to === actualIdx;
+      const movedPiece = lastMove && board[lastMove.to];
+      const movedPieceColor = movedPiece ? Number(movedPiece.color) : 0;
+      const isMyMove = lastMove && ((movedPieceColor === 1 && isPlayer1) || (movedPieceColor === 2 && isPlayer2));
+      const hideForAnimation = animatingMove && actualIdx === animatingMove.to;
+      const pieceType = piece ? Number(piece.pieceType) : 0;
+      const pieceColor = piece ? Number(piece.color) : 0;
+      const isKingInCheck = pieceType === 6 && ((pieceColor === 1 && whiteInCheck) || (pieceColor === 2 && blackInCheck));
+      const displayRow = Math.floor(displayIdx / 8);
+      const displayCol = displayIdx % 8;
+      const showRankLabel = displayCol === 0;
+      const showFileLabel = displayRow === 7;
+      const actualRow = Math.floor(actualIdx / 8);
+      const actualCol = actualIdx % 8;
+      const rankLabel = 8 - actualRow;
+      const fileLabel = String.fromCharCode(97 + actualCol);
+
+      const getLastMoveFromClass = () => {
+        if (!isLastMoveFrom || isSelected || isKingInCheck) return '';
+        return isMyMove ? 'bg-emerald-500/50 ring-2 ring-emerald-400 ring-inset' : 'bg-orange-500/50 ring-2 ring-orange-400 ring-inset';
+      };
+      const getLastMoveToClass = () => {
+        if (!isLastMoveTo || isSelected || isKingInCheck) return '';
+        return isMyMove ? 'bg-yellow-400/50 ring-2 ring-yellow-300 ring-inset' : 'bg-red-500/50 ring-2 ring-red-400 ring-inset';
+      };
+      const getLastMoveShadow = () => {
+        if (isSelected) return '0 0 20px rgba(6, 182, 212, 0.3)';
+        if (isLastMoveTo && !isKingInCheck) return isMyMove ? 'inset 0 0 20px rgba(234, 179, 8, 0.5)' : 'inset 0 0 20px rgba(239, 68, 68, 0.5)';
+        if (isLastMoveFrom && !isKingInCheck) return isMyMove ? 'inset 0 0 15px rgba(16, 185, 129, 0.4)' : 'inset 0 0 15px rgba(249, 115, 22, 0.4)';
+        return 'none';
+      };
+      const getPieceGlow = () => {
+        if (!isLastMoveTo || hideForAnimation || pieceType === 0) return undefined;
+        return isMyMove ? 'drop-shadow(0 0 10px rgba(234, 179, 8, 0.8))' : 'drop-shadow(0 0 10px rgba(239, 68, 68, 0.8))';
+      };
+      const isPotentialTarget = selectedSquare !== null && !isSelected && !isMyPiece(piece);
+
+      squares.push(<div key={displayIdx} onClick={() => handleSquareClick(displayIdx)} className={'relative flex items-center justify-center cursor-pointer transition-all duration-200 ' + (isLight ? 'bg-slate-700/50' : 'bg-slate-900/80') + (isSelected ? ' ring-2 ring-emerald-400 ring-inset bg-emerald-500/50' : '') + (isKingInCheck ? ' bg-red-500/50 ring-2 ring-red-400 ring-inset' : '') + ' ' + getLastMoveFromClass() + ' ' + getLastMoveToClass() + (isMyTurn && isMyPiece(piece) && !isSelected ? ' hover:bg-emerald-500/30' : '') + (isMyTurn && isPotentialTarget ? ' hover:bg-yellow-400/40' : '')} style={{ boxShadow: isSelected ? 'inset 0 0 20px rgba(16, 185, 129, 0.5)' : getLastMoveShadow() }}>
+        <span className={'text-3xl md:text-4xl lg:text-5xl select-none transition-all duration-300 ' + (isSelected ? 'scale-110' : '') + ' ' + (pieceColor === 1 ? 'text-slate-100 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]' : 'text-purple-300 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]')} style={{ opacity: hideForAnimation ? 0 : 1, filter: getPieceGlow() }}>{getPieceSymbol(piece)}</span>
+        {showRankLabel && <span className={'absolute left-1 top-0.5 text-[10px] font-medium ' + (isLight ? 'text-slate-500' : 'text-slate-600')}>{rankLabel}</span>}
+        {showFileLabel && <span className={'absolute right-1 bottom-0.5 text-[10px] font-medium ' + (isLight ? 'text-slate-500' : 'text-slate-600')}>{fileLabel}</span>}
+      </div>);
+    }
+    return squares;
+  };
+
+  const renderAnimatedPiece = () => {
+    if (!animatingMove || !boardSize) return null;
+    const fromPos = getDisplayPosition(animatingMove.from);
+    const toPos = getDisplayPosition(animatingMove.to);
+    const squareSize = boardSize / 8;
+    const pieceColor = animatingMove.piece ? Number(animatingMove.piece.color) : 0;
+    const isMyAnimatedMove = (pieceColor === 1 && isPlayer1) || (pieceColor === 2 && isPlayer2);
+    const animationGlow = isMyAnimatedMove ? 'rgba(234, 179, 8, 0.8)' : 'rgba(239, 68, 68, 0.8)';
+    return (<div className="absolute pointer-events-none z-20" style={{ width: squareSize, height: squareSize, transform: 'translate(' + (toPos.col * squareSize) + 'px, ' + (toPos.row * squareSize) + 'px)' }}><div className="w-full h-full flex items-center justify-center" style={{ '--from-x': ((fromPos.col - toPos.col) * squareSize) + 'px', '--from-y': ((fromPos.row - toPos.row) * squareSize) + 'px' }}><span className={'text-3xl md:text-4xl lg:text-5xl select-none ' + (pieceColor === 1 ? 'text-slate-100' : 'text-purple-300')} style={{ transform: 'translate(var(--from-x), var(--from-y))', animation: 'pieceMove 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards', filter: 'drop-shadow(0 0 12px ' + animationGlow + ')' }}>{getPieceSymbol(animatingMove.piece)}</span></div></div>);
+  };
+
+  return (<div className="relative flex flex-col items-center">{matchStatus === 1 && (<div className={'mb-4 text-center py-2 px-6 rounded-full font-mono text-base font-semibold backdrop-blur-sm ' + (timeRemaining !== null && timeRemaining < 60 ? 'bg-red-500/20 text-red-300 border border-red-500/40 animate-pulse' : 'bg-slate-800/60 text-cyan-300 border border-cyan-500/30')}><Clock className="inline-block mr-2" size={16} />{formatTime(timeRemaining)}</div>)}<div ref={containerRef} className="w-full flex justify-center"><div className="relative rounded-xl overflow-hidden" style={{ width: boardSize || 400, height: boardSize || 400, minWidth: 280, minHeight: 280, background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.9))', border: '1px solid rgba(148, 163, 184, 0.2)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(6, 182, 212, 0.1), inset 0 1px 0 rgba(255,255,255,0.05)' }}><div className="grid gap-0 w-full h-full" style={{ gridTemplateColumns: 'repeat(8, 1fr)', gridTemplateRows: 'repeat(8, 1fr)' }}>{renderBoard()}</div>{renderAnimatedPiece()}</div></div><style>{'@keyframes pieceMove { 0% { transform: translate(var(--from-x), var(--from-y)) scale(1); } 50% { transform: translate(calc(var(--from-x) * 0.3), calc(var(--from-y) * 0.3)) scale(1.15); } 100% { transform: translate(0, 0) scale(1); } }'}</style>{promotionSquare !== null && (<div className="absolute inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center rounded-xl"><div className="p-6 rounded-2xl" style={{ background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.95))', border: '1px solid rgba(168, 85, 247, 0.4)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 30px rgba(168, 85, 247, 0.2)' }}><h3 className="text-slate-100 font-bold text-lg mb-4 text-center">Promote Pawn</h3><div className="flex gap-3">{[5, 4, 3, 2].map((pt) => (<button key={pt} onClick={() => handlePromotion(pt)} className="w-14 h-14 md:w-16 md:h-16 rounded-xl flex items-center justify-center text-3xl md:text-4xl transition-all duration-200 hover:scale-110" style={{ background: 'rgba(51, 65, 85, 0.6)', border: '1px solid rgba(148, 163, 184, 0.3)' }} onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(6, 182, 212, 0.2)'; e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.5)'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(51, 65, 85, 0.6)'; e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.3)'; }}><span className={isWhite ? 'text-slate-100' : 'text-purple-300'}>{PIECE_SYMBOLS[isWhite ? 'white' : 'black'][PIECE_TYPES[pt]]}</span></button>))}</div></div></div>)}{matchStatus === 1 && (<div className={'mt-4 text-center py-3 px-6 rounded-xl font-semibold text-base backdrop-blur-sm ' + (isMyTurn ? 'text-cyan-300' : 'text-slate-400')} style={{ ...(boardSize ? { width: boardSize } : { maxWidth: '100%' }), background: isMyTurn ? 'linear-gradient(135deg, rgba(6, 182, 212, 0.15), rgba(59, 130, 246, 0.15))' : 'rgba(30, 41, 59, 0.6)', border: isMyTurn ? '1px solid rgba(6, 182, 212, 0.4)' : '1px solid rgba(148, 163, 184, 0.2)', boxShadow: isMyTurn ? '0 0 20px rgba(6, 182, 212, 0.15)' : 'none' }}>{isMyTurn ? (<div className="space-y-1"><div className="text-lg flex items-center justify-center gap-2"><span className="inline-block w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>Your Move</div><div className="text-sm text-slate-400">Playing as {isWhite ? 'White' : 'Black'}</div></div>) : (<div className="space-y-1"><div className="flex items-center justify-center gap-2"><span className="inline-block w-2 h-2 rounded-full bg-slate-500 animate-pulse"></span>Opponent's Turn</div><div className="text-sm text-slate-500">Waiting for their move...</div></div>)}</div>)}{(whiteInCheck || blackInCheck) && matchStatus === 1 && (<div className="mt-3 text-center py-2 px-6 rounded-full text-red-300 font-semibold text-sm animate-pulse" style={{ ...(boardSize ? { width: boardSize } : { maxWidth: '100%' }), background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.4)', boxShadow: '0 0 20px rgba(239, 68, 68, 0.2)' }}>{whiteInCheck ? 'White' : 'Black'} King in Check</div>)}</div>);
+};
+
+export default function Chess() {
   // Use network config instead of hardcoded values
   const CONTRACT_ADDRESS = CONTRACT_ADDRESSES.ChessOnChain;
   const EXPECTED_CHAIN_ID = CURRENT_NETWORK.chainId;
   const RPC_URL = import.meta.env.VITE_RPC_URL || CURRENT_NETWORK.rpcUrl;
   const EXPLORER_URL = getAddressUrl(CONTRACT_ADDRESS);
 
+  // Helper to get read-only contract (bypasses MetaMask for read operations)
+  const getReadOnlyContract = useCallback(() => {
+    const provider = new ethers.JsonRpcProvider(RPC_URL);
+    return new ethers.Contract(CONTRACT_ADDRESS, CHESS_ABI, provider);
+  }, [CONTRACT_ADDRESS, RPC_URL]);
+
   // Wallet & Contract State
   const [account, setAccount] = useState(null);
-  const [contract, setContract] = useState(null);
+  const [contract, setContract] = useState(null); // This contract has signer for write ops
 
-  // Game State
+  // Time Configuration from Contract
+  const [matchTimePerPlayer, setMatchTimePerPlayer] = useState(300); // Default 5 minutes
+  const [timeIncrement, setTimeIncrement] = useState(0); // Default no increment
+  const [escalationInterval, setEscalationInterval] = useState(60); // Default 60 seconds between escalations
+
+  // Loading State
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [networkInfo, setNetworkInfo] = useState(null);
-  const [contractStatus, setContractStatus] = useState('not_checked');
-
-  // Theme State
-  const [theme, setTheme] = useState('dream');
-  const [showThemeToggle, setShowThemeToggle] = useState(true);
 
   // Tournament State - Lazy Loading Architecture
-  const [tierMetadata, setTierMetadata] = useState({});
-  const [tierInstances, setTierInstances] = useState({});
-  const [tierLoading, setTierLoading] = useState({});
+  // tierMetadata: Basic tier info loaded on initial page load (fast)
+  // tierInstances: Detailed tournament instances loaded on tier expand (lazy)
+  const [tierMetadata, setTierMetadata] = useState({}); // { [tierId]: { playerCount, instanceCount, entryFee, statuses, enrolledCounts } }
+  const [tierInstances, setTierInstances] = useState({}); // { [tierId]: [tournament instances] }
+  const [tierLoading, setTierLoading] = useState({}); // { [tierId]: boolean }
   const [metadataLoading, setMetadataLoading] = useState(true);
   const [tournamentsLoading, setTournamentsLoading] = useState(false);
-  const [viewingTournament, setViewingTournament] = useState(null);
+  const [viewingTournament, setViewingTournament] = useState(null); // { tierId, instanceId, tournamentData, bracketData }
   const [bracketSyncDots, setBracketSyncDots] = useState(1);
   const [expandedTiers, setExpandedTiers] = useState({});
 
   // Match State
   const [currentMatch, setCurrentMatch] = useState(null);
   const [matchLoading, setMatchLoading] = useState(false);
+  const [moveHistory, setMoveHistory] = useState([]);
   const [syncDots, setSyncDots] = useState(1);
-  const [lastMove, setLastMove] = useState(null); // { from: actualIdx, to: actualIdx }
-  const previousBoardRef = useRef(null);
-  const [moveHistory, setMoveHistory] = useState([]); // Array of { from, to, promotion, notation }
   const [matchEndResult, setMatchEndResult] = useState(null); // 'win' | 'lose' | 'draw' | 'forfeit_win' | 'forfeit_lose' | 'double_forfeit'
   const [matchEndWinnerLabel, setMatchEndWinnerLabel] = useState('');
+  const [matchEndWinner, setMatchEndWinner] = useState(null); // Winner address for modal display
+  const [matchEndLoser, setMatchEndLoser] = useState(null); // Loser address for modal display
+  const previousBoardRef = useRef(null); // Track previous board state for move history sync
 
   // Leaderboard State
   const [leaderboard, setLeaderboard] = useState([]);
@@ -760,134 +636,81 @@ export default function ChessOnChain() {
   const [connectionError, setConnectionError] = useState(null); // null = no error, string = error message
   const [leaderboardError, setLeaderboardError] = useState(false);
 
-  // Theme colors
-  const themeColors = {
-    dream: {
-      primary: 'rgba(0, 191, 255, 0.5)',
-      secondary: 'rgba(138, 43, 226, 0.5)',
-      gradient: 'linear-gradient(135deg, #0a0020 0%, #1a0050 50%, #0a0030 100%)',
-      border: 'rgba(0, 255, 255, 0.3)',
-      glow: 'rgba(0, 255, 255, 0.3)',
-      particleColors: ['#00ffff', '#8a2be2'],
-      icon: '🌙',
-      label: 'Dare to Level Up?',
-      heroGlow: 'from-blue-500 via-cyan-500 to-blue-500',
-      heroIcon: 'text-blue-400',
-      heroTitle: 'from-blue-400 via-cyan-400 to-blue-400',
-      heroText: 'text-blue-200',
-      heroSubtext: 'text-blue-300',
-      buttonGradient: 'from-blue-500 to-cyan-500',
-      buttonHover: 'hover:from-blue-600 hover:to-cyan-600',
-    },
-    daring: {
-      primary: 'rgba(255, 69, 0, 0.5)',
-      secondary: 'rgba(255, 165, 0, 0.5)',
-      gradient: 'linear-gradient(135deg, #1a0000 0%, #330a00 50%, #1a0500 100%)',
-      border: 'rgba(255, 69, 0, 0.3)',
-      glow: 'rgba(255, 69, 0, 0.3)',
-      particleColors: ['#ff4500', '#ffa500'],
-      icon: '✨',
-      label: 'Back to Classic',
-      heroGlow: 'from-red-500 via-orange-500 to-red-500',
-      heroIcon: 'text-red-400',
-      heroTitle: 'from-red-400 via-orange-400 to-red-400',
-      heroText: 'text-red-200',
-      heroSubtext: 'text-orange-300',
-      buttonGradient: 'from-red-500 to-orange-500',
-      buttonHover: 'hover:from-red-600 hover:to-orange-600',
-    }
-  };
-
-  const currentTheme = themeColors[theme];
-  const themeRef = useRef(theme);
-
-  useEffect(() => {
-    themeRef.current = theme;
-  }, [theme]);
-
   // Set page title
   useEffect(() => {
     document.title = 'ETour - Chess';
   }, []);
 
-  // Cycle theme
-  const cycleTheme = () => {
-    setTheme(prev => prev === 'dream' ? 'daring' : 'dream');
-  };
-
-  // Convert square index to chess notation (0=a8, 7=h8, 56=a1, 63=h1)
-  const squareToNotation = (idx) => {
-    const file = String.fromCharCode(97 + (idx % 8)); // a-h
-    const rank = 8 - Math.floor(idx / 8); // 8-1
-    return `${file}${rank}`;
-  };
-
-  // Piece type names for notation
-  const PIECE_NOTATION = ['', '', 'N', 'B', 'R', 'Q', 'K']; // Pawn has no letter
-
-  // Fetch and decode move history from contract
-  const fetchMoveHistory = useCallback(async (contractInstance, tierId, instanceId, roundNumber, matchNumber) => {
-    try {
-      const historyBytes = await contractInstance.getMoveHistory(tierId, instanceId, roundNumber, matchNumber);
-
-      // Decode bytes - each move is 3 bytes: from, to, promotion
-      const moves = [];
-      const bytes = ethers.getBytes(historyBytes);
-
-      for (let i = 0; i < bytes.length; i += 3) {
-        const from = bytes[i];
-        const to = bytes[i + 1];
-        const promotion = bytes[i + 2];
-
-        // Create notation (simplified - just from-to for now)
-        const fromNotation = squareToNotation(from);
-        const toNotation = squareToNotation(to);
-        let notation = `${fromNotation}-${toNotation}`;
-
-        // Add promotion piece if applicable
-        if (promotion > 0 && promotion <= 6) {
-          notation += `=${PIECE_NOTATION[promotion] || '?'}`;
-        }
-
-        moves.push({
-          moveNumber: Math.floor(i / 6) + 1, // Full move number (each full move = 2 half moves)
-          isWhite: (i / 3) % 2 === 0,
-          from,
-          to,
-          promotion,
-          notation
-        });
-      }
-
-      return moves;
-    } catch (error) {
-      console.error('Error fetching move history:', error);
-      return [];
+  // Add mobile debugging console (Eruda) on mobile devices
+  useEffect(() => {
+    if ('ontouchstart' in window) {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/eruda';
+      script.onload = () => {
+        window.eruda.init();
+        console.log('Eruda mobile console initialized');
+      };
+      document.body.appendChild(script);
     }
   }, []);
 
-  // Switch to Local Network
-  const switchToLocalNetwork = async () => {
+  // Theme colors - Single "dream" theme from Chess.jsx
+  const currentTheme = {
+    primary: 'rgba(0, 191, 255, 0.5)',
+    secondary: 'rgba(138, 43, 226, 0.5)',
+    gradient: 'linear-gradient(135deg, #0a0020 0%, #1a0050 50%, #0a0030 100%)',
+    border: 'rgba(0, 255, 255, 0.3)',
+    glow: 'rgba(0, 255, 255, 0.3)',
+    particleColors: ['#00ffff', '#8a2be2'],
+    heroGlow: 'from-blue-500 via-cyan-500 to-blue-500',
+    heroIcon: 'text-blue-400',
+    heroTitle: 'from-blue-400 via-cyan-400 to-blue-400',
+    heroText: 'text-blue-200',
+    heroSubtext: 'text-blue-300',
+    buttonGradient: 'from-blue-500 to-cyan-500',
+    buttonHover: 'hover:from-blue-600 hover:to-cyan-600',
+    infoCard: 'from-blue-500/20 to-cyan-500/20',
+    infoBorder: 'border-blue-400/30',
+    infoIcon: 'text-blue-400',
+    infoTitle: 'text-blue-300',
+    infoText: 'text-blue-200'
+  };
+
+  // Switch to Local Network (Chain ID 412346)
+  const switchToArbitrum = async () => {
     try {
       await window.ethereum.request({
         method: 'wallet_switchEthereumChain',
-        params: [{ chainId: '0x64aba' }],
+        params: [{ chainId: '0x64aba' }], // 412346 in hex
       });
     } catch (switchError) {
+      // This error code indicates that the chain has not been added to MetaMask
       if (switchError.code === 4902) {
         try {
           await window.ethereum.request({
             method: 'wallet_addEthereumChain',
-            params: [{
-              chainId: '0x64aba',
-              chainName: 'Local Network',
-              nativeCurrency: { name: 'Ethereum', symbol: 'ETH', decimals: 18 },
-              rpcUrls: [RPC_URL],
-            }],
+            params: [
+              {
+          chainId: '0x64aba', // 412346 in hex
+          chainName: 'Local Network',
+          nativeCurrency: {
+            name: 'Ethereum',
+            symbol: 'ETH',
+            decimals: 18,
+          },
+          rpcUrls: [RPC_URL],
+          blockExplorerUrls: [],
+              },
+            ],
           });
+          alert('✅ Local network added! Please connect your wallet again.');
         } catch (addError) {
-          console.error('Error adding network:', addError);
+          console.error('Error adding local network:', addError);
+          alert('Failed to add local network. Please add it manually in MetaMask.');
         }
+      } else {
+        console.error('Error switching network:', switchError);
+        alert('Failed to switch network: ' + switchError.message);
       }
     }
   };
@@ -902,34 +725,48 @@ export default function ChessOnChain() {
 
       setLoading(true);
 
+      // Request accounts - this prompts MetaMask unlock if needed
       const accounts = await window.ethereum.request({
         method: 'eth_requestAccounts'
       });
 
+      if (!accounts || accounts.length === 0) {
+        throw new Error('No accounts returned. Please unlock MetaMask and try again.');
+      }
+
+      // Use MetaMask's provider for network check (works on deployed domains)
       const web3Provider = new ethers.BrowserProvider(window.ethereum);
       const network = await web3Provider.getNetwork();
 
       const networkData = {
         name: network.name || 'Unknown',
         chainId: network.chainId.toString(),
-        isExpected: network.chainId === BigInt(EXPECTED_CHAIN_ID)
+        isArbitrum: network.chainId === BigInt(EXPECTED_CHAIN_ID)
       };
 
       setNetworkInfo(networkData);
 
+      // Check if connected to expected network (chain ID 412346)
       if (network.chainId !== BigInt(EXPECTED_CHAIN_ID)) {
         const shouldSwitch = window.confirm(
-          `Wrong Network! Expected Chain ID: ${EXPECTED_CHAIN_ID}\nSwitch networks?`
+          `⚠️ Wrong Network Detected\n\n` +
+          `You're connected to: ${network.name || 'Unknown'} (Chain ID: ${network.chainId})\n` +
+          `Expected: Local Network (Chain ID: ${EXPECTED_CHAIN_ID})\n\n` +
+          `Click OK to automatically switch networks, or Cancel to stay on current network.`
         );
+
         if (shouldSwitch) {
-          await switchToLocalNetwork();
+          await switchToArbitrum();
+          // Reload after switch attempt
           window.location.reload();
           return;
         }
       }
 
+      // Get signer from MetaMask for write operations
       const web3Signer = await web3Provider.getSigner();
 
+      // Create contract with signer for write operations
       const contractInstance = new ethers.Contract(
         CONTRACT_ADDRESS,
         CHESS_ABI,
@@ -939,71 +776,112 @@ export default function ChessOnChain() {
       setAccount(accounts[0]);
       setContract(contractInstance);
 
-      await loadContractData(contractInstance, false);
+      // Refresh tier data with new account (lazy loading)
+      await refreshAfterAction(null, contractInstance, accounts[0]);
+      await fetchLeaderboard(false);
       setLoading(false);
     } catch (error) {
       console.error('Error connecting wallet:', error);
-      alert('Failed to connect wallet: ' + error.message);
+
+      let errorMessage = 'Failed to connect wallet.\n\n';
+
+      if (error.message.includes('user rejected')) {
+        errorMessage += 'You rejected the connection request.';
+      } else if (error.code === 'NETWORK_ERROR') {
+        errorMessage += 'Network error. Are you connected to Arbitrum One?\n\nSwitch to Arbitrum One in MetaMask.';
+      } else if (error.code === -32002) {
+        errorMessage += 'MetaMask is busy. Please open MetaMask and complete any pending actions.';
+      } else {
+        errorMessage += error.message;
+      }
+
+      alert(errorMessage);
       setLoading(false);
     }
   };
 
-  // Load contract data
-  const loadContractData = async (contractInstance, isInitialLoad = false) => {
-    // Fetch leaderboard
+  // Fetch time configuration from contract
+  const fetchTimeConfiguration = useCallback(async (contractInstance) => {
     try {
-      console.log('🔄 Fetching leaderboard...');
-      setLeaderboardLoading(true);
-      setLeaderboardError(false);
+      // Chess contract uses DEFAULT_MATCH_MOVE_TIMEOUT instead of getMatchTimePerPlayer
+      const matchTimeout = await contractInstance.DEFAULT_MATCH_MOVE_TIMEOUT();
+      const escalationInt = await contractInstance.DEFAULT_ESCALATION_INTERVAL();
 
-      const leaderboardData = await contractInstance.getLeaderboard();
-      // Sort by earnings descending (highest to lowest)
+      setMatchTimePerPlayer(Number(matchTimeout));
+      setTimeIncrement(0); // Chess doesn't use time increment
+      setEscalationInterval(Number(escalationInt));
+
+      console.log('Time configuration fetched:', {
+        matchTimePerPlayer: Number(matchTimeout),
+        timeIncrement: 0,
+        escalationInterval: Number(escalationInt)
+      });
+    } catch (error) {
+      console.error('Error fetching time configuration (using defaults):', error);
+      // Use defaults if contract doesn't support these functions yet
+      setMatchTimePerPlayer(300);
+      setTimeIncrement(0);
+      setEscalationInterval(60);
+    }
+  }, []);
+
+  // Load contract data (simplified - matches ConnectFour pattern)
+  // Uses lazy loading: only fetch tier metadata initially, instances load on expand
+  const loadContractData = async (contractInstance, isInitialLoad = false) => {
+    try {
+      // Fetch tier metadata only (fast) - instances load on tier expand
+      await fetchTierMetadata(contractInstance);
+      await fetchTimeConfiguration(contractInstance);
+      await fetchLeaderboard(false);
+
+      if (isInitialLoad) {
+        setInitialLoading(false);
+      }
+    } catch (error) {
+      console.error('Error loading contract data:', error);
+      if (isInitialLoad) {
+        setInitialLoading(false);
+      }
+    }
+  };
+
+  // Fetch leaderboard data
+  const fetchLeaderboard = useCallback(async (silent = false) => {
+    try {
+      if (!silent) {
+        setLeaderboardLoading(true);
+        setLeaderboardError(false);
+      }
+
+      // Use read-only contract to avoid MetaMask rate limiting
+      const readContract = getReadOnlyContract();
+
+      const leaderboardData = await readContract.getLeaderboard();
+      // Convert to plain array with player and earnings, sorted by earnings descending
       const entries = Array.from(leaderboardData).map(entry => ({
         player: entry.player,
         earnings: entry.earnings
       })).sort((a, b) => (b.earnings > a.earnings ? 1 : b.earnings < a.earnings ? -1 : 0));
-      console.log('✅ Fetched', entries.length, 'leaderboard entries');
 
       setLeaderboard(entries);
       setLeaderboardError(false);
-      setLeaderboardLoading(false);
-    } catch (err) {
-      console.error('Could not fetch leaderboard:', err);
-      setLeaderboard([]);
-      setLeaderboardError(true);
-      setLeaderboardLoading(false);
-    }
-
-    // Verify contract deployment
-    try {
-      setContractStatus('checking');
-
-      const provider = contractInstance.runner.provider;
-      const contractAddress = await contractInstance.getAddress();
-      const code = await provider.getCode(contractAddress);
-
-      if (code === '0x' || code === '0x0') {
-        setContractStatus('not_deployed');
-        throw new Error(`No contract found at ${contractAddress}`);
-      }
-
-      setContractStatus('deployed');
-
-      if (isInitialLoad) {
-        await fetchTierMetadata(contractInstance);
-        setInitialLoading(false);
+      if (!silent) {
+        setLeaderboardLoading(false);
       }
     } catch (error) {
-      console.error('Error verifying contract:', error);
-      if (isInitialLoad) {
-        setInitialLoading(false);
+      console.error('Error fetching leaderboard:', error.message || error);
+      setLeaderboard([]);
+      setLeaderboardError(true);
+      if (!silent) {
+        setLeaderboardLoading(false);
       }
     }
-  };
+  }, [getReadOnlyContract]);
 
   // LAZY LOADING: Fetch tier metadata only (fast initial load)
+  // This gets basic tier info without detailed instance data
   const fetchTierMetadata = useCallback(async (contractInstance = null) => {
-    const readContract = contractInstance || contract;
+    const readContract = contractInstance || getReadOnlyContract();
     if (!readContract) {
       setConnectionError('Unable to connect to blockchain. Please check your network connection.');
       setMetadataLoading(false);
@@ -1016,9 +894,11 @@ export default function ChessOnChain() {
     let successfulFetches = 0;
     let totalAttempts = 0;
 
+    // Fetch metadata for tiers 0-6
     for (let tierId = 0; tierId <= 6; tierId++) {
       totalAttempts++;
       try {
+        // Parallel fetch tier config, entry fee, and overview
         const [tierConfig, fee, tierOverview] = await Promise.all([
           readContract.tierConfigs(tierId),
           readContract.ENTRY_FEES(tierId),
@@ -1049,17 +929,19 @@ export default function ChessOnChain() {
 
     setTierMetadata(metadata);
     setMetadataLoading(false);
-  }, [contract]);
+  }, [getReadOnlyContract]);
 
-  // LAZY LOADING: Fetch detailed instances for a specific tier
+  // LAZY LOADING: Fetch detailed instances for a specific tier (called on expand)
+  // Note: Uses functional state updates to avoid dependency on tierInstances/tierMetadata
   const fetchTierInstances = useCallback(async (tierId, contractInstance = null, userAccount = null, metadataOverride = null) => {
-    const readContract = contractInstance || contract;
+    const readContract = contractInstance || getReadOnlyContract();
     const currentAccount = userAccount ?? account;
     if (!readContract) return;
 
     setTierLoading(prev => ({ ...prev, [tierId]: true }));
 
     try {
+      // Get metadata from override or fetch fresh
       let metadata = metadataOverride;
       if (!metadata) {
         const [tierConfig, fee, tierOverview] = await Promise.all([
@@ -1083,8 +965,10 @@ export default function ChessOnChain() {
 
       const instances = [];
 
+      // Fetch detailed data for each instance in this tier
       for (let i = 0; i < metadata.instanceCount; i++) {
         try {
+          // Parallel fetch tournament data and enrollment status
           const [tournamentInfo, isUserEnrolled] = await Promise.all([
             readContract.tournaments(tierId, i),
             currentAccount ? readContract.isEnrolled(tierId, i, currentAccount).catch(() => false) : Promise.resolve(false)
@@ -1099,6 +983,7 @@ export default function ChessOnChain() {
             entryFee: metadata.entryFee,
             isEnrolled: isUserEnrolled,
             enrollmentTimeout: tournamentInfo.enrollmentTimeout,
+            hasStartedViaTimeout: tournamentInfo.hasStartedViaTimeout,
             tournamentStatus: metadata.statuses[i]
           });
         } catch (err) {
@@ -1112,7 +997,7 @@ export default function ChessOnChain() {
     }
 
     setTierLoading(prev => ({ ...prev, [tierId]: false }));
-  }, [contract, account]);
+  }, [getReadOnlyContract, account]);
 
   // Refs to access current state without causing dependency loops
   const expandedTiersRef = useRef(expandedTiers);
@@ -1125,6 +1010,7 @@ export default function ChessOnChain() {
     const isCurrentlyExpanded = expandedTiersRef.current[tierId];
     const alreadyLoaded = tierInstancesRef.current[tierId];
 
+    // If expanding and not yet loaded, fetch instances
     if (!isCurrentlyExpanded && !alreadyLoaded) {
       setExpandedTiers(prev => ({ ...prev, [tierId]: true }));
       await fetchTierInstances(tierId);
@@ -1133,13 +1019,16 @@ export default function ChessOnChain() {
     }
   }, [fetchTierInstances]);
 
-  // LAZY LOADING: Refresh data after an action
+  // LAZY LOADING: Refresh data after an action (enroll, claim, etc.)
+  // Refreshes metadata and re-fetches instances for expanded/affected tiers
   const refreshAfterAction = useCallback(async (affectedTierId = null, contractInstance = null, userAccount = null) => {
-    const readContract = contractInstance || contract;
+    const readContract = contractInstance || getReadOnlyContract();
     const currentAccount = userAccount ?? account;
 
+    // Refresh tier metadata
     await fetchTierMetadata(readContract);
 
+    // Clear and re-fetch instances for affected/expanded tiers
     const tiersToRefresh = new Set();
     if (affectedTierId !== null) tiersToRefresh.add(affectedTierId);
     const currentExpanded = expandedTiersRef.current;
@@ -1147,6 +1036,7 @@ export default function ChessOnChain() {
       if (currentExpanded[tid]) tiersToRefresh.add(Number(tid));
     });
 
+    // Clear cached instances for tiers that need refresh
     if (tiersToRefresh.size > 0) {
       setTierInstances(prev => {
         const updated = { ...prev };
@@ -1154,131 +1044,16 @@ export default function ChessOnChain() {
         return updated;
       });
 
+      // Re-fetch instances for expanded tiers
       for (const tid of tiersToRefresh) {
         if (currentExpanded[tid]) {
           await fetchTierInstances(tid, readContract, currentAccount);
         }
       }
     }
-  }, [contract, account, fetchTierMetadata, fetchTierInstances]);
+  }, [getReadOnlyContract, account, fetchTierMetadata, fetchTierInstances]);
 
-  // Refresh tournament bracket data
-  const refreshTournamentBracket = useCallback(async (contractInstance, tierId, instanceId) => {
-    try {
-      const tournamentInfo = await contractInstance.getTournamentInfo(tierId, instanceId);
-      const tierConfig = await contractInstance.tierConfigs(tierId);
-      const enrolledPlayers = await contractInstance.getEnrolledPlayers(tierId, instanceId);
-
-      const rounds = [];
-      const totalRounds = Math.ceil(Math.log2(Number(tierConfig.playerCount)));
-
-      for (let roundNum = 0; roundNum <= Number(tournamentInfo[2]); roundNum++) {
-        try {
-          const roundInfo = await contractInstance.getRoundInfo(tierId, instanceId, roundNum);
-          const matches = [];
-
-          for (let matchNum = 0; matchNum < Number(roundInfo.totalMatches); matchNum++) {
-            try {
-              const matchData = await contractInstance.getChessMatch(tierId, instanceId, roundNum, matchNum);
-              matches.push({
-                player1: matchData[0],
-                player2: matchData[1],
-                currentTurn: matchData[2],
-                winner: matchData[3],
-                matchStatus: Number(matchData[4]),
-                isDraw: matchData[5],
-                startTime: Number(matchData[6]),
-                lastMoveTime: Number(matchData[7])
-              });
-            } catch (err) {
-              matches.push({
-                player1: ethers.ZeroAddress,
-                player2: ethers.ZeroAddress,
-                matchStatus: 0
-              });
-            }
-          }
-
-          rounds.push({ matches, roundInfo });
-        } catch (err) {
-          break;
-        }
-      }
-
-      const fee = await contractInstance.ENTRY_FEES(tierId);
-
-      return {
-        tierId,
-        instanceId,
-        status: Number(tournamentInfo[0]),
-        currentRound: Number(tournamentInfo[2]),
-        enrolledCount: Number(tournamentInfo[3]),
-        prizePool: tournamentInfo[4],
-        playerCount: Number(tierConfig.playerCount),
-        enrolledPlayers: Array.from(enrolledPlayers),
-        rounds,
-        entryFee: fee
-      };
-    } catch (error) {
-      console.error('Error refreshing bracket:', error);
-      return null;
-    }
-  }, []);
-
-  // Refresh match data
-  const refreshMatchData = useCallback(async (contractInstance, userAccount, match) => {
-    try {
-      const matchData = await contractInstance.getChessMatch(
-        match.tierId, match.instanceId, match.roundNumber, match.matchNumber
-      );
-
-      const board = await contractInstance.getBoard(
-        match.tierId, match.instanceId, match.roundNumber, match.matchNumber
-      );
-
-      // Fetch timeoutState from chessMatches mapping
-      const matchKey = ethers.solidityPackedKeccak256(
-        ['uint8', 'uint8', 'uint8', 'uint8'],
-        [match.tierId, match.instanceId, match.roundNumber, match.matchNumber]
-      );
-      const chessMatchData = await contractInstance.chessMatches(matchKey);
-
-      const timeoutState = {
-        escalation1Start: Number(chessMatchData.timeoutState.escalation1Start),
-        escalation2Start: Number(chessMatchData.timeoutState.escalation2Start),
-        escalation3Start: Number(chessMatchData.timeoutState.escalation3Start),
-        activeEscalation: Number(chessMatchData.timeoutState.activeEscalation),
-        timeoutActive: chessMatchData.timeoutState.timeoutActive,
-        forfeitAmount: chessMatchData.timeoutState.forfeitAmount
-      };
-
-      const isPlayer1 = matchData[0].toLowerCase() === userAccount.toLowerCase();
-
-      return {
-        ...match,
-        player1: matchData[0],
-        player2: matchData[1],
-        currentTurn: matchData[2],
-        winner: matchData[3],
-        matchStatus: Number(matchData[4]),
-        isDraw: matchData[5],
-        startTime: Number(matchData[6]),
-        lastMoveTime: Number(matchData[7]),
-        fullMoveNumber: Number(matchData[8]),
-        whiteInCheck: matchData[9],
-        blackInCheck: matchData[10],
-        board: Array.from(board),
-        isPlayer1,
-        isYourTurn: matchData[2].toLowerCase() === userAccount.toLowerCase(),
-        timeoutState
-      };
-    } catch (error) {
-      console.error('Error refreshing match:', error);
-      return null;
-    }
-  }, []);
-
-  // Handle enroll in tournament
+  // Handle tournament enrollment
   const handleEnroll = async (tierId, instanceId, entryFee) => {
     if (!contract || !account) {
       alert('Please connect your wallet first');
@@ -1286,176 +1061,691 @@ export default function ChessOnChain() {
     }
 
     try {
-      setLoading(true);
-      const tx = await contract.enrollInTournament(tierId, instanceId, {
-        value: ethers.parseEther(entryFee)
-      });
-      await tx.wait();
-      await refreshAfterAction(tierId);
-      setLoading(false);
-    } catch (error) {
-      console.error('Enrollment error:', error);
-      alert('Enrollment failed: ' + error.message);
-      setLoading(false);
-    }
-  };
-
-  // Handle enter tournament
-  const handleEnterTournament = async (tierId, instanceId) => {
-    try {
       setTournamentsLoading(true);
-      const bracketData = await refreshTournamentBracket(contract, tierId, instanceId);
+
+      // Convert entry fee to wei
+      const feeInWei = ethers.parseEther(entryFee);
+
+      // Call enrollInTournament function with entry fee as value
+      const tx = await contract.enrollInTournament(tierId, instanceId, { value: feeInWei });
+      await tx.wait();
+
+      alert('Successfully enrolled in tournament!');
+
+      // Navigate to tournament bracket view
+      const bracketData = await refreshTournamentBracket(contract, tierId, instanceId, matchTimePerPlayer);
       if (bracketData) {
         setViewingTournament(bracketData);
       }
+
+      // Refresh tier data (lazy loading)
+      await refreshAfterAction(tierId);
+
       setTournamentsLoading(false);
     } catch (error) {
-      console.error('Error entering tournament:', error);
+      console.error('Error enrolling:', error);
+      alert(`Error enrolling: ${error.message}`);
       setTournamentsLoading(false);
     }
   };
 
-  // Handle play match
-  const handlePlayMatch = async (tierId, instanceId, roundNumber, matchNumber) => {
+  // Handle force start tournament (with timeout tier system)
+  const handleManualStart = async (tierId, instanceId) => {
     if (!contract || !account) {
       alert('Please connect your wallet first');
       return;
     }
 
     try {
-      setMatchLoading(true);
+      setTournamentsLoading(true);
 
-      const [matchData, board, tierConfig] = await Promise.all([
-        contract.getChessMatch(tierId, instanceId, roundNumber, matchNumber),
-        contract.getBoard(tierId, instanceId, roundNumber, matchNumber),
-        contract.tierConfigs(tierId)
-      ]);
+      // First check if this instance exists
+      const instanceCount = Number(await contract.INSTANCE_COUNTS(tierId));
+      if (instanceId >= instanceCount) {
+        alert(`Invalid instance ID. Tier ${tierId} only has ${instanceCount} instances (0-${instanceCount-1})`);
+        setTournamentsLoading(false);
+        return;
+      }
+
+      // Get tournament info to validate
+      const tournamentInfo = await contract.tournaments(tierId, instanceId);
+      const enrolledCount = Number(tournamentInfo.enrolledCount);
+      const status = Number(tournamentInfo.status);
+      const enrollmentTimeout = tournamentInfo.enrollmentTimeout;
+
+      // Extract escalation level information
+      const escalation1Start = Number(enrollmentTimeout.escalation1Start);
+      const escalation2Start = Number(enrollmentTimeout.escalation2Start);
+      const forfeitPool = enrollmentTimeout.forfeitPool;
+
+      // Calculate client-side escalation availability
+      const now = Math.floor(Date.now() / 1000);
+      const canStartEscalation1 = escalation1Start > 0 && now >= escalation1Start;
+      const canStartEscalation2 = escalation2Start > 0 && now >= escalation2Start;
+
+      // Validation checks
+      if (status !== 0) {
+        alert('Tournament has already started or completed');
+        setTournamentsLoading(false);
+        return;
+      }
+
+      // Check if any escalation window is open
+      if (!canStartEscalation1 && !canStartEscalation2) {
+        let timeUntilCanStart = 0;
+
+        if (escalation1Start > 0) {
+          timeUntilCanStart = escalation1Start - now;
+        }
+
+        if (timeUntilCanStart > 0) {
+          const minutes = Math.floor(timeUntilCanStart / 60);
+          const seconds = timeUntilCanStart % 60;
+          alert(`Tournament cannot be force-started yet. Wait ${minutes}m ${seconds}s for the escalation window to open.`);
+        } else {
+          alert('Tournament cannot be force-started at this time');
+        }
+        setTournamentsLoading(false);
+        return;
+      }
+
+      if (enrolledCount < 1) {
+        alert('Tournament has no enrolled players');
+        setTournamentsLoading(false);
+        return;
+      }
+
+      // Check if user is enrolled
+      const isEnrolled = await contract.isEnrolled(tierId, instanceId, account);
+
+      // Only enrolled players can force start
+      if (!isEnrolled) {
+        alert('You must be enrolled in the tournament to force-start it.');
+        setTournamentsLoading(false);
+        return;
+      }
+
+      // Build warning message for Escalation 1 force start
+      let warningMessage = '';
+
+      if (enrolledCount === 1) {
+        // Escalation 1: Only you are enrolled
+        warningMessage = 'You are the only enrolled player. Force-starting will declare you the winner and award you the prize pool';
+        if (forfeitPool && forfeitPool > 0n) {
+          warningMessage += ` plus any forfeited fees (${ethers.formatEther(forfeitPool)} ETH)`;
+        }
+        warningMessage += '. Continue?';
+      } else {
+        // Escalation 1: Multiple players enrolled
+        warningMessage = `Force-starting will begin the tournament with ${enrolledCount} players`;
+        if (forfeitPool && forfeitPool > 0n) {
+          warningMessage += `. Forfeit pool of ${ethers.formatEther(forfeitPool)} ETH will be distributed`;
+        }
+        warningMessage += '. Continue?';
+      }
+
+      const confirmStart = window.confirm(warningMessage);
+      if (!confirmStart) {
+        setTournamentsLoading(false);
+        return;
+      }
+
+      const tx = await contract.forceStartTournament(tierId, instanceId);
+      await tx.wait();
+
+      alert('Tournament force-started successfully!');
+
+      // Exit tournament view and go back to tournaments list
+      setViewingTournament(null);
+      setCurrentMatch(null);
+
+      // Refresh cached stats
+      await fetchLeaderboard(true);
+
+      // Refresh tier data (lazy loading)
+      await refreshAfterAction(tierId);
+
+      setTournamentsLoading(false);
+    } catch (error) {
+      console.error('Error force-starting tournament:', error);
+      let errorMessage = error.message;
+      if (error.message.includes('ARRAY_RANGE_ERROR')) {
+        errorMessage = `Tournament cannot be started. This may be due to:\n- Invalid tier ID (${tierId}) or instance ID (${instanceId})\n- Tournament already started\n- Contract state issue\n\nCheck console for full error details.`;
+      } else if (error.message.includes('TimeoutNotReached')) {
+        errorMessage = 'Enrollment timeout window has not been reached yet';
+      } else if (error.message.includes('NotEnrolled')) {
+        errorMessage = 'You must be enrolled to force-start the tournament';
+      } else if (error.message.includes('TournamentAlreadyStarted')) {
+        errorMessage = 'Tournament has already been started';
+      } else if (error.message.includes('InvalidTournamentStatus')) {
+        errorMessage = 'Tournament is not in enrollment phase';
+      } else if (error.message.includes('CannotForceStart')) {
+        errorMessage = 'Tournament cannot be force-started yet - timeout tier requirements not met';
+      }
+
+      alert(`Error force-starting tournament: ${errorMessage}`);
+      setTournamentsLoading(false);
+    }
+  };
+
+  // Handle claiming abandoned enrollment pool
+  const handleClaimAbandonedPool = async (tierId, instanceId) => {
+    if (!contract || !account) {
+      alert('Please connect your wallet first');
+      return;
+    }
+
+    try {
+      setTournamentsLoading(true);
+
+      // Get tournament info to validate
+      const tournamentInfo = await contract.tournaments(tierId, instanceId);
+      const status = Number(tournamentInfo.status);
+      const enrolledCount = Number(tournamentInfo.enrolledCount);
+      const enrollmentTimeout = tournamentInfo.enrollmentTimeout;
+      const forfeitPool = enrollmentTimeout.forfeitPool || 0n;
+
+      // Calculate escalation availability
+      const escalation2Start = Number(enrollmentTimeout.escalation2Start);
+      const now = Math.floor(Date.now() / 1000);
+      const canStartEscalation2 = escalation2Start > 0 && now >= escalation2Start;
+
+      // For ongoing tournaments (status 0), check if we're in Escalation 2
+      if (status === 0) {
+        if (!canStartEscalation2) {
+          alert('Escalation 2 has not opened yet. Wait for the escalation period to complete.');
+          setTournamentsLoading(false);
+          return;
+        }
+
+        const confirmClaim = window.confirm(
+          `Claim the abandoned enrollment pool (Escalation 2)?\n\n` +
+          `This tournament has ${enrolledCount} enrolled player${enrolledCount !== 1 ? 's' : ''} but failed to start in time.\n` +
+          `You will receive the entire enrollment pool${forfeitPool > 0n ? ` plus ${ethers.formatEther(forfeitPool)} ETH in forfeited fees` : ''}.\n\n` +
+          `The tournament will be terminated and reset.`
+        );
+
+        if (!confirmClaim) {
+          setTournamentsLoading(false);
+          return;
+        }
+      } else {
+        // For completed tournaments (status >= 2)
+        if (forfeitPool <= 0n) {
+          alert('No forfeited funds to claim');
+          setTournamentsLoading(false);
+          return;
+        }
+
+        const confirmClaim = window.confirm(
+          `Claim ${ethers.formatEther(forfeitPool)} ETH from abandoned enrollment pool?\n\nThis pool consists of forfeited entry fees from players who did not start the tournament.`
+        );
+
+        if (!confirmClaim) {
+          setTournamentsLoading(false);
+          return;
+        }
+      }
+
+      const tx = await contract.claimAbandonedEnrollmentPool(tierId, instanceId);
+      await tx.wait();
+
+      alert('Abandoned enrollment pool claimed successfully!');
+
+      // Exit tournament view and go back to tournaments list
+      setViewingTournament(null);
+      setCurrentMatch(null);
+
+      // Refresh cached stats
+      await fetchLeaderboard(true);
+
+      // Refresh tier data (lazy loading)
+      await refreshAfterAction(tierId);
+
+      setTournamentsLoading(false);
+    } catch (error) {
+      console.error('Error claiming abandoned pool:', error);
+
+      let errorMessage = error.message;
+      if (error.message.includes('NothingToClaim')) {
+        errorMessage = 'No forfeited funds available to claim';
+      } else if (error.message.includes('TournamentNotEnded')) {
+        errorMessage = 'Tournament must be completed before claiming abandoned pool';
+      } else if (error.message.includes('ClaimWindowNotOpen')) {
+        errorMessage = 'Claim window is not open yet';
+      }
+
+      alert(`Error claiming abandoned pool: ${errorMessage}`);
+      setTournamentsLoading(false);
+    }
+  };
+
+  // Refresh tournament bracket data
+  const refreshTournamentBracket = useCallback(async (contractInstance, tierId, instanceId, totalMatchTime) => {
+    try {
+      // Get tournament info
+      const tournamentInfo = await contractInstance.getTournamentInfo(tierId, instanceId);
+      const status = Number(tournamentInfo[0]);
+      const currentRound = Number(tournamentInfo[2]);
+      const enrolledCount = Number(tournamentInfo[3]);
+      const prizePool = tournamentInfo[4];
+
+      // Get tier config for player count and entry fee
+      const tierConfig = await contractInstance.tierConfigs(tierId);
       const playerCount = Number(tierConfig.playerCount);
+      const entryFee = tierConfig.entryFee;
 
-      // Fetch timeoutState from chessMatches mapping
-      const matchKey = ethers.solidityPackedKeccak256(
-        ['uint8', 'uint8', 'uint8', 'uint8'],
-        [tierId, instanceId, roundNumber, matchNumber]
-      );
-      const chessMatchData = await contract.chessMatches(matchKey);
+      // Extract timeout config using shared utility function
+      const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, tierId, totalMatchTime);
 
-      const timeoutState = {
-        escalation1Start: Number(chessMatchData.timeoutState.escalation1Start),
-        escalation2Start: Number(chessMatchData.timeoutState.escalation2Start),
-        escalation3Start: Number(chessMatchData.timeoutState.escalation3Start),
-        activeEscalation: Number(chessMatchData.timeoutState.activeEscalation),
-        timeoutActive: chessMatchData.timeoutState.timeoutActive,
-        forfeitAmount: chessMatchData.timeoutState.forfeitAmount
+      // Get enrolled players
+      const enrolledPlayers = await contractInstance.getEnrolledPlayers(tierId, instanceId);
+
+      // Get countdown data
+      let firstEnrollmentTime = 0;
+      let countdownActive = false;
+      let enrollmentTimeout = null;
+      try {
+        const tournamentData = await contractInstance.tournaments(tierId, instanceId);
+        firstEnrollmentTime = Number(tournamentData.firstEnrollmentTime);
+        countdownActive = tournamentData.countdownActive;
+        enrollmentTimeout = tournamentData.enrollmentTimeout;
+      } catch (err) {
+        console.log('Could not fetch countdown data:', err);
+      }
+
+      // Use per-tier timeout config (fetched above), fallback to parameter if not available
+      const tierMatchTime = timeoutConfig?.matchTimePerPlayer ?? totalMatchTime;
+
+      // Calculate total rounds
+      const totalRounds = Math.ceil(Math.log2(playerCount));
+
+      // Fetch all rounds and matches
+      const rounds = [];
+      for (let roundNum = 0; roundNum < totalRounds; roundNum++) {
+        const roundInfo = await contractInstance.getRoundInfo(tierId, instanceId, roundNum);
+        const totalMatches = Number(roundInfo[0]);
+
+        const matches = [];
+        for (let matchNum = 0; matchNum < totalMatches; matchNum++) {
+          try {
+            // Chess uses getChessMatch instead of getMatch
+            const matchData = await contractInstance.getChessMatch(tierId, instanceId, roundNum, matchNum);
+
+            // Parse match data directly (chess contract returns array)
+            const parsedMatch = {
+              player1: matchData[0],
+              player2: matchData[1],
+              currentTurn: matchData[2],
+              winner: matchData[3],
+              matchStatus: Number(matchData[4]),
+              isDraw: matchData[5],
+              startTime: Number(matchData[6]),
+              lastMoveTime: Number(matchData[7]),
+              fullMoveNumber: Number(matchData[8]),
+              whiteInCheck: matchData[9],
+              blackInCheck: matchData[10]
+            };
+
+            // Use per-tier match time from contract tier configuration
+            let player1TimeRemaining = tierMatchTime;
+            let player2TimeRemaining = tierMatchTime;
+
+            try {
+              const timeData = await contractInstance.getCurrentTimeRemaining(tierId, instanceId, roundNum, matchNum);
+              player1TimeRemaining = Number(timeData[0]);
+              player2TimeRemaining = Number(timeData[1]);
+            } catch (timeErr) {
+              console.warn(`Could not fetch time for match ${matchNum}:`, timeErr);
+            }
+
+            // Fetch escalation state using chessMatches mapping
+            let timeoutState = null;
+            try {
+              const matchKey = ethers.solidityPackedKeccak256(
+                ['uint8', 'uint8', 'uint8', 'uint8'],
+                [tierId, instanceId, roundNum, matchNum]
+              );
+              const chessMatchData = await contractInstance.chessMatches(matchKey);
+
+              // Chess contract has timeoutState nested structure
+              const esc1Start = Number(chessMatchData.timeoutState.escalation1Start);
+              const esc2Start = Number(chessMatchData.timeoutState.escalation2Start);
+              const esc3Start = Number(chessMatchData.timeoutState.escalation3Start);
+              const hasTimeoutData = esc1Start > 0 || esc2Start > 0 || esc3Start > 0 || chessMatchData.timeoutState.timeoutActive;
+
+              if (hasTimeoutData) {
+                timeoutState = {
+                  escalation1Start: esc1Start,
+                  escalation2Start: esc2Start,
+                  escalation3Start: esc3Start,
+                  activeEscalation: Number(chessMatchData.timeoutState.activeEscalation),
+                  timeoutActive: chessMatchData.timeoutState.timeoutActive,
+                  forfeitAmount: chessMatchData.timeoutState.forfeitAmount
+                };
+              }
+            } catch (escalationErr) {
+              // Match may not have timeout state yet - this is normal for active matches
+              console.debug('No escalation state for match (normal for non-stalled matches):', escalationErr.message);
+            }
+
+            // Check escalation availability using contract functions (more reliable than client calculation)
+            let escL2Available = false;
+            let escL3Available = false;
+            try {
+              escL2Available = await contractInstance.isMatchEscL2Available(tierId, instanceId, roundNum, matchNum);
+              escL3Available = await contractInstance.isMatchEscL3Available(tierId, instanceId, roundNum, matchNum);
+            } catch (escCheckErr) {
+              console.debug('Could not check escalation availability:', escCheckErr.message);
+            }
+
+            matches.push({
+              ...parsedMatch,
+              timeoutState,
+              // Override with contract's real-time values
+              player1TimeRemaining,
+              player2TimeRemaining,
+              matchTimePerPlayer: tierMatchTime, // Pass through per-tier value for UI
+              timeoutConfig, // Add tier timeout config for escalation calculations
+              escL2Available, // Contract says Level 2 is available
+              escL3Available  // Contract says Level 3 is available
+            });
+          } catch (err) {
+            // Match might not exist yet - create placeholder with all required fields
+            console.warn(`Match ${matchNum} not yet initialized`);
+            const zeroAddress = '0x0000000000000000000000000000000000000000';
+            matches.push({
+              player1: zeroAddress,
+              player2: zeroAddress,
+              currentTurn: zeroAddress,
+              winner: zeroAddress,
+              loser: zeroAddress,
+              board: [0, 0, 0, 0, 0, 0, 0, 0, 0],
+              matchStatus: 0,
+              isDraw: false,
+              startTime: 0,
+              lastMoveTime: 0,
+              timeoutState: null,
+              player1TimeRemaining: tierMatchTime,
+              player2TimeRemaining: tierMatchTime,
+              matchTimePerPlayer: tierMatchTime,
+              timeoutConfig, // Add tier timeout config for placeholder matches too
+              escL2Available: false, // Placeholder: no escalations available
+              escL3Available: false  // Placeholder: no escalations available
+            });
+          }
+        }
+
+        rounds.push({ roundNumber: roundNum, matches });
+      }
+
+      return {
+        tierId,
+        instanceId,
+        status,
+        currentRound,
+        enrolledCount,
+        prizePool,
+        playerCount,
+        entryFee,
+        enrolledPlayers,
+        rounds,
+        firstEnrollmentTime,
+        countdownActive,
+        enrollmentTimeout,
+        timeoutConfig // Add tier timeout configuration
       };
+    } catch (error) {
+      console.error('Error refreshing tournament bracket:', error);
+      return null;
+    }
+  }, [escalationInterval]);
 
-      const isPlayer1 = matchData[0].toLowerCase() === account.toLowerCase();
+  // Handle entering tournament (fetch and display bracket)
+  const handleEnterTournament = async (tierId, instanceId) => {
+    if (!contract) return;
 
+    try {
+      setTournamentsLoading(true);
+
+      const bracketData = await refreshTournamentBracket(contract, tierId, instanceId, matchTimePerPlayer);
+      if (bracketData) {
+        setViewingTournament(bracketData);
+      }
+
+      setTournamentsLoading(false);
+    } catch (error) {
+      console.error('Error loading tournament bracket:', error);
+      alert(`Error loading tournament: ${error.message}`);
+      setTournamentsLoading(false);
+    }
+  };
+
+  // Fetch move history from blockchain events with fallback to board state reconstruction
+  const fetchMoveHistory = useCallback(async (contractInstance, tierId, instanceId, roundNumber, matchNumber) => {
+    try {
+      // Chess move history - get match data using chess functions
+      const matchData = await contractInstance.getChessMatch(tierId, instanceId, roundNumber, matchNumber);
+      const player1 = matchData[0];
+
+      // Try to query MoveMade events for this match
+      try {
+        const matchKey = ethers.keccak256(
+          ethers.AbiCoder.defaultAbiCoder().encode(
+            ['uint8', 'uint8', 'uint8', 'uint8'],
+            [tierId, instanceId, roundNumber, matchNumber]
+          )
+        );
+
+        const filter = contractInstance.filters.MoveMade(matchKey);
+        const events = await contractInstance.queryFilter(filter);
+
+        if (events.length > 0) {
+          // Convert events to move history
+          const history = events.map(event => {
+            const player = event.args.player;
+            const cellIndex = Number(event.args.cellIndex);
+            const isPlayer1 = player.toLowerCase() === player1.toLowerCase();
+            return {
+              player: isPlayer1 ? 'X' : 'O',
+              cell: cellIndex,
+              address: player,
+              blockNumber: event.blockNumber
+            };
+          });
+
+          // Sort by block number to ensure correct order
+          history.sort((a, b) => a.blockNumber - b.blockNumber);
+          return history;
+        }
+      } catch (eventError) {
+        console.warn('Event query failed, falling back to board reconstruction:', eventError);
+      }
+
+      // Fallback: Reconstruct from board state (loses move order but shows current state)
+      const history = [];
       const boardArray = Array.from(board);
+      for (let i = 0; i < boardArray.length; i++) {
+        const cell = Number(boardArray[i]);
+        if (cell !== 0) {
+          history.push({
+            player: cell === 1 ? 'X' : 'O',
+            cell: i
+          });
+        }
+      }
+      return history;
+    } catch (error) {
+      console.error('Error fetching move history:', error);
+      return [];
+    }
+  }, []);
 
-      // Initialize board tracking for move detection
-      previousBoardRef.current = boardArray;
-      setLastMove(null);
+  // Refresh match data from contract
+  const refreshMatchData = useCallback(async (contractInstance, userAccount, matchInfo, totalMatchTime) => {
+    try {
+      const { tierId, instanceId, roundNumber, matchNumber } = matchInfo;
 
-      // Fetch move history
-      const history = await fetchMoveHistory(contract, tierId, instanceId, roundNumber, matchNumber);
-      setMoveHistory(history);
+      // Chess uses getChessMatch instead of getMatch
+      const matchData = await contractInstance.getChessMatch(tierId, instanceId, roundNumber, matchNumber);
 
-      setCurrentMatch({
+      // Chess requires separate getBoard call
+      const board = await contractInstance.getBoard(tierId, instanceId, roundNumber, matchNumber);
+
+      // Fetch per-tier timeout config to get correct match time
+      const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, tierId, totalMatchTime);
+      const tierMatchTime = timeoutConfig?.matchTimePerPlayer ?? totalMatchTime;
+
+      // Fetch escalation state using chessMatches mapping (not matchTimeouts)
+      let timeoutState = null;
+      try {
+        const matchKey = ethers.solidityPackedKeccak256(
+          ['uint8', 'uint8', 'uint8', 'uint8'],
+          [tierId, instanceId, roundNumber, matchNumber]
+        );
+        const chessMatchData = await contractInstance.chessMatches(matchKey);
+
+        // Check if timeoutState exists (it won't for new matches)
+        if (chessMatchData.timeoutState) {
+          timeoutState = {
+            escalation1Start: Number(chessMatchData.timeoutState.escalation1Start),
+            escalation2Start: Number(chessMatchData.timeoutState.escalation2Start),
+            escalation3Start: Number(chessMatchData.timeoutState.escalation3Start),
+            activeEscalation: Number(chessMatchData.timeoutState.activeEscalation),
+            timeoutActive: chessMatchData.timeoutState.timeoutActive,
+            forfeitAmount: chessMatchData.timeoutState.forfeitAmount
+          };
+        }
+      } catch (escalationErr) {
+        // Match may not have timeout state yet - this is normal for active matches
+        console.debug('No escalation state for match (normal for non-stalled matches):', escalationErr.message);
+      }
+
+      // Parse match data - chess contract returns array with specific indices
+      const player1 = matchData[0];
+      const player2 = matchData[1];
+      const currentTurn = matchData[2];
+      const winner = matchData[3];
+      const matchStatus = Number(matchData[4]);
+      const isDraw = matchData[5];
+      const startTime = Number(matchData[6]);
+      const lastMoveTime = Number(matchData[7]);
+      const fullMoveNumber = Number(matchData[8]);
+      const whiteInCheck = matchData[9];
+      const blackInCheck = matchData[10];
+
+      const zeroAddress = '0x0000000000000000000000000000000000000000';
+      const isMatchInitialized =
+        player1.toLowerCase() !== zeroAddress &&
+        player2.toLowerCase() !== zeroAddress;
+
+      let actualPlayer1 = player1;
+      let actualPlayer2 = player2;
+
+      if (!isMatchInitialized && matchInfo.player1 && matchInfo.player2) {
+        actualPlayer1 = matchInfo.player1;
+        actualPlayer2 = matchInfo.player2;
+      }
+
+      // Use per-tier match time from contract config
+      let player1TimeRemaining = tierMatchTime;
+      let player2TimeRemaining = tierMatchTime;
+
+      try {
+        const timeData = await contractInstance.getCurrentTimeRemaining(tierId, instanceId, roundNumber, matchNumber);
+        player1TimeRemaining = Number(timeData[0]); // player1Time from contract
+        player2TimeRemaining = Number(timeData[1]); // player2Time from contract
+      } catch (timeErr) {
+        // Using default values (match may not be initialized)
+      }
+
+      const boardState = Array.from(board);
+      const isPlayer1 = actualPlayer1.toLowerCase() === userAccount.toLowerCase();
+      const isYourTurn = currentTurn.toLowerCase() === userAccount.toLowerCase();
+
+      return {
+        ...matchInfo,
+        player1: actualPlayer1,
+        player2: actualPlayer2,
+        currentTurn,
+        winner,
+        board: boardState,
+        matchStatus,
+        isDraw,
+        isPlayer1,
+        isYourTurn,
+        isMatchInitialized,
+        timeoutState,
+        lastMoveTime,
+        startTime,
+        fullMoveNumber,
+        whiteInCheck,
+        blackInCheck,
+        // Time tracking fields
+        player1TimeRemaining,
+        player2TimeRemaining,
+        lastMoveTimestamp: lastMoveTime, // Use lastMoveTime as timestamp
+        matchTimePerPlayer: tierMatchTime, // Pass through per-tier value for UI components
+        timeoutConfig // Pass timeout config to UI components
+      };
+    } catch (error) {
+      console.error('Error refreshing match:', error);
+      return null;
+    }
+  }, [escalationInterval]);
+
+  // Handle making a chess move (called from ChessBoard component)
+  const handleMakeMove = async (fromSquare, toSquare, promotion = 0) => {
+    if (!currentMatch || !contract || !account) return;
+
+    // Attempt to make the move
+    try {
+      setMatchLoading(true);
+      const { tierId, instanceId, roundNumber, matchNumber } = currentMatch;
+
+      console.log('Making chess move:', { from: fromSquare, to: toSquare, promotion });
+
+      // Chess makeMove signature: (tierId, instanceId, roundNumber, matchNumber, from, to, promotion)
+      const tx = await contract.makeMove(
         tierId,
         instanceId,
         roundNumber,
         matchNumber,
-        playerCount,
-        player1: matchData[0],
-        player2: matchData[1],
-        currentTurn: matchData[2],
-        winner: matchData[3],
-        matchStatus: Number(matchData[4]),
-        isDraw: matchData[5],
-        startTime: Number(matchData[6]),
-        lastMoveTime: Number(matchData[7]),
-        fullMoveNumber: Number(matchData[8]),
-        whiteInCheck: matchData[9],
-        blackInCheck: matchData[10],
-        board: boardArray,
-        isPlayer1,
-        isYourTurn: matchData[2].toLowerCase() === account.toLowerCase(),
-        timeoutState
-      });
-
-      setMatchLoading(false);
-    } catch (error) {
-      console.error('Error loading match:', error);
-      alert('Error loading match: ' + error.message);
-      setMatchLoading(false);
-    }
-  };
-
-  // Handle make move
-  const handleMakeMove = async (from, to, promotion = 0) => {
-    if (!contract || !account || !currentMatch) return;
-
-    try {
-      setMatchLoading(true);
-
-      // Track the move for animation before making it
-      setLastMove({ from, to });
-
-      const tx = await contract.makeMove(
-        currentMatch.tierId,
-        currentMatch.instanceId,
-        currentMatch.roundNumber,
-        currentMatch.matchNumber,
-        from,
-        to,
+        fromSquare,
+        toSquare,
         promotion
       );
 
       await tx.wait();
 
-      // Refresh match data and move history
-      const updated = await refreshMatchData(contract, account, currentMatch);
+      // Refresh match data
+      const updated = await refreshMatchData(contract, account, currentMatch, matchTimePerPlayer);
       if (updated) {
-        previousBoardRef.current = updated.board;
         setCurrentMatch(updated);
+        previousBoardRef.current = [...updated.board];
+
+        // Refresh move history
+        const history = await fetchMoveHistory(
+          contract,
+          currentMatch.tierId,
+          currentMatch.instanceId,
+          currentMatch.roundNumber,
+          currentMatch.matchNumber
+        );
+        setMoveHistory(history);
       }
 
-      // Refresh move history
-      const history = await fetchMoveHistory(contract, currentMatch.tierId, currentMatch.instanceId, currentMatch.roundNumber, currentMatch.matchNumber);
-      setMoveHistory(history);
-
       setMatchLoading(false);
     } catch (error) {
-      console.error('Move error:', error);
-      alert('Move failed: ' + (error.reason || error.message));
-      setMatchLoading(false);
-    }
-  };
+      console.error('Error making chess move:', error);
 
-  // Handle resign
-  const handleResign = async () => {
-    if (!contract || !account || !currentMatch) return;
+      // Show user-friendly error message
+      let errorMsg = 'Error making move';
+      if (error.message) {
+        errorMsg += ': ' + error.message;
+      }
+      alert(errorMsg);
 
-    if (!window.confirm('Are you sure you want to resign? This will forfeit the match.')) {
-      return;
-    }
-
-    try {
-      setMatchLoading(true);
-
-      const tx = await contract.resign(
-        currentMatch.tierId,
-        currentMatch.instanceId,
-        currentMatch.roundNumber,
-        currentMatch.matchNumber
-      );
-
-      await tx.wait();
-      setCurrentMatch(null);
-      setMatchLoading(false);
-    } catch (error) {
-      console.error('Resign error:', error);
-      alert('Resign failed: ' + error.message);
       setMatchLoading(false);
     }
   };
@@ -1471,12 +1761,17 @@ export default function ChessOnChain() {
       const tx = await contract.claimTimeoutWin(tierId, instanceId, roundNumber, matchNumber);
       await tx.wait();
 
-      alert('Timeout victory claimed! You win by opponent forfeit.');
+      // Refresh match data to get updated winner/loser
+      const updatedMatch = await refreshMatchData(contract, account, currentMatch, matchTimePerPlayer);
+      if (updatedMatch) {
+        setCurrentMatch(updatedMatch);
 
-      setCurrentMatch(null);
-      setViewingTournament(null);
-
-      await refreshAfterAction();
+        // Show victory modal with proper winner/loser info
+        setMatchEndResult('forfeit_win');
+        setMatchEndWinnerLabel('You');
+        setMatchEndWinner(updatedMatch.winner);
+        setMatchEndLoser(updatedMatch.loser);
+      }
 
       setMatchLoading(false);
     } catch (error) {
@@ -1500,11 +1795,17 @@ export default function ChessOnChain() {
 
       alert('Stalled match eliminated! Tournament can now continue.');
 
+      // Exit match view and go to tournament bracket
       setCurrentMatch(null);
 
+      // Refresh cached stats
+      await fetchLeaderboard(true);
+
+      // Refresh tier data (lazy loading)
       await refreshAfterAction(tierId);
 
-      const bracketData = await refreshTournamentBracket(contract, tierId, instanceId);
+      // Refresh and show tournament bracket
+      const bracketData = await refreshTournamentBracket(contract, tierId, instanceId, matchTimePerPlayer);
       if (bracketData) {
         setViewingTournament(bracketData);
       }
@@ -1519,6 +1820,8 @@ export default function ChessOnChain() {
 
   // Handle Escalation 3: Outsider claims match slot by replacement
   const handleClaimMatchSlotByReplacement = async (matchData = null) => {
+    // If called from bracket, matchData will be provided
+    // If called from match view, use currentMatch
     const match = matchData || currentMatch;
     if (!match || !contract) return;
 
@@ -1531,117 +1834,107 @@ export default function ChessOnChain() {
 
       alert('Match slot claimed! You have replaced both players and advanced.');
 
+      // Exit match view and go back to tournaments list
       setCurrentMatch(null);
       setViewingTournament(null);
 
+      // Refresh cached stats
+      await fetchLeaderboard(true);
+
+      // Refresh tier data (lazy loading)
       await refreshAfterAction(tierId);
 
       setMatchLoading(false);
     } catch (error) {
-      console.error('Error claiming replacement:', error);
-      alert(`Error claiming replacement: ${error.message}`);
+      console.error('Error claiming match slot:', error);
+      alert(`Error claiming match slot: ${error.message}`);
       setMatchLoading(false);
     }
   };
 
-  // Handle manual start
-  const handleManualStart = async (tierId, instanceId) => {
-    if (!contract || !account) return;
-
-    try {
-      setLoading(true);
-      const tx = await contract.forceStartTournament(tierId, instanceId);
-      await tx.wait();
-      await refreshAfterAction(tierId);
-      setLoading(false);
-    } catch (error) {
-      console.error('Force start error:', error);
-      alert('Force start failed: ' + error.message);
-      setLoading(false);
-    }
-  };
-
-  // Handle claim abandoned pool (Escalation 2)
-  const handleClaimAbandonedPool = async (tierId, instanceId) => {
+  // Handle entering a match from tournament bracket
+  const handlePlayMatch = async (tierId, instanceId, roundNumber, matchNumber) => {
     if (!contract || !account) {
       alert('Please connect your wallet first');
       return;
     }
 
     try {
-      setLoading(true);
+      setMatchLoading(true);
 
-      // Get tournament info to validate
-      const tournamentInfo = await contract.tournaments(tierId, instanceId);
-      const status = Number(tournamentInfo.status);
-      const enrolledCount = Number(tournamentInfo.enrolledCount);
-      const enrollmentTimeout = tournamentInfo.enrollmentTimeout;
-      const forfeitPool = enrollmentTimeout.forfeitPool || 0n;
+      // Fetch tournament info to get playerCount and prizePool
+      const tournamentInfo = await contract.getTournamentInfo(tierId, instanceId);
+      const tierConfig = await contract.tierConfigs(tierId);
+      const playerCount = Number(tierConfig.playerCount);
+      const prizePool = tournamentInfo[4]; // prizePool is at index 4
 
-      // Calculate escalation availability
-      const escalation2Start = Number(enrollmentTimeout.escalation2Start);
-      const now = Math.floor(Date.now() / 1000);
-      const canStartEscalation2 = escalation2Start > 0 && now >= escalation2Start;
+      // Chess uses getChessMatch instead of getMatch
+      const matchData = await contract.getChessMatch(tierId, instanceId, roundNumber, matchNumber);
 
-      // For ongoing tournaments (status 0), check if we're in Escalation 2
-      if (status === 0) {
-        if (!canStartEscalation2) {
-          alert('Escalation 2 has not opened yet. Wait for the escalation period to complete.');
-          setLoading(false);
-          return;
-        }
+      const player1 = matchData[0];
+      const player2 = matchData[1];
 
-        const confirmClaim = window.confirm(
-          `Claim the entire tournament pool (Escalation 2 - Abandoned Tournament)?\n\n` +
-          `This tournament has ${enrolledCount} enrolled player${enrolledCount !== 1 ? 's' : ''} but failed to start in time.\n` +
-          `You will receive the entire enrollment pool${forfeitPool > 0n ? ` plus ${ethers.formatEther(forfeitPool)} ETH in forfeited fees` : ''}.\n\n` +
-          `The tournament will be reset after claiming.`
-        );
+      const zeroAddress = '0x0000000000000000000000000000000000000000';
+      let actualPlayer1 = player1;
+      let actualPlayer2 = player2;
 
-        if (!confirmClaim) {
-          setLoading(false);
-          return;
-        }
-      } else {
-        // For completed tournaments (status >= 2)
-        if (forfeitPool <= 0n) {
-          alert('No forfeited funds to claim');
-          setLoading(false);
-          return;
-        }
-
-        const confirmClaim = window.confirm(
-          `Claim ${ethers.formatEther(forfeitPool)} ETH from abandoned enrollment pool?\n\nThis pool consists of forfeited entry fees from players who did not start the tournament.`
-        );
-
-        if (!confirmClaim) {
-          setLoading(false);
-          return;
+      if (player1.toLowerCase() === zeroAddress) {
+        const enrolledPlayers = await contract.getEnrolledPlayers(tierId, instanceId);
+        if (enrolledPlayers.length >= 2) {
+          actualPlayer1 = enrolledPlayers[0];
+          actualPlayer2 = enrolledPlayers[1];
         }
       }
 
-      const tx = await contract.claimAbandonedEnrollmentPool(tierId, instanceId);
-      await tx.wait();
+      const updated = await refreshMatchData(contract, account, {
+        tierId, instanceId, roundNumber, matchNumber,
+        player1: actualPlayer1,
+        player2: actualPlayer2,
+        playerCount, // Add tournament context
+        prizePool    // Add tournament context
+      }, matchTimePerPlayer);
 
-      alert('Abandoned enrollment pool claimed successfully!');
+      if (updated) {
+        setCurrentMatch(updated);
+        // Initialize board ref for move detection
+        previousBoardRef.current = [...updated.board];
+        // Fetch move history from blockchain events
+        const history = await fetchMoveHistory(contract, tierId, instanceId, roundNumber, matchNumber);
+        setMoveHistory(history);
+      }
 
-      // Exit tournament view and go back to tournaments list
-      setViewingTournament(null);
-      setCurrentMatch(null);
-
-      // Refresh tier data
-      await refreshAfterAction(tierId);
+      setMatchLoading(false);
     } catch (error) {
-      console.error('Claim abandoned pool error:', error);
-      alert('Claim failed: ' + (error.reason || error.message));
-    } finally {
-      setLoading(false);
+      console.error('Error loading match:', error);
+      alert(`Error loading match: ${error.message}`);
+      setMatchLoading(false);
     }
   };
 
-  // Close match view
-  const closeMatch = () => {
+  // Close match view and refresh tournament bracket
+  const closeMatch = async () => {
+    const tournamentInfo = currentMatch ? {
+      tierId: currentMatch.tierId,
+      instanceId: currentMatch.instanceId
+    } : viewingTournament ? {
+      tierId: viewingTournament.tierId,
+      instanceId: viewingTournament.instanceId
+    } : null;
+
     setCurrentMatch(null);
+    setMoveHistory([]);
+    previousBoardRef.current = null;
+
+    // Refresh tournament bracket and cached stats (with loading indicator)
+    if (tournamentInfo && contract) {
+      setTournamentsLoading(true);
+      const bracketData = await refreshTournamentBracket(contract, tournamentInfo.tierId, tournamentInfo.instanceId, matchTimePerPlayer);
+      if (bracketData) {
+        setViewingTournament(bracketData);
+      }
+      await fetchLeaderboard(false);
+      setTournamentsLoading(false);
+    }
   };
 
   // Handle closing the match end modal
@@ -1650,22 +1943,21 @@ export default function ChessOnChain() {
       tierId: currentMatch.tierId,
       instanceId: currentMatch.instanceId
     } : null;
-    const wasWinner = matchEndResult === 'win' || matchEndResult === 'forfeit_win';
 
     // Clear the modal state
     setMatchEndResult(null);
     setMatchEndWinnerLabel('');
     setCurrentMatch(null);
     setMoveHistory([]);
-    setLastMove(null);
 
     // Refresh data
     if (contract) {
+      await fetchLeaderboard(true);
       await refreshAfterAction(tournamentInfo?.tierId ?? null);
 
       // Show tournament bracket for winners, go back to list for losers
-      if (tournamentInfo && wasWinner) {
-        const bracketData = await refreshTournamentBracket(contract, tournamentInfo.tierId, tournamentInfo.instanceId);
+      if (tournamentInfo && (matchEndResult === 'win' || matchEndResult === 'forfeit_win')) {
+        const bracketData = await refreshTournamentBracket(contract, tournamentInfo.tierId, tournamentInfo.instanceId, matchTimePerPlayer);
         if (bracketData) {
           setViewingTournament(bracketData);
         }
@@ -1675,12 +1967,23 @@ export default function ChessOnChain() {
     }
   };
 
-  // Initialize contract in read-only mode
+  // Go back from tournament bracket to tournaments list
+  const handleBackToTournaments = async () => {
+    setViewingTournament(null);
+
+    // Refresh tier metadata and cached stats (lazy loading)
+    if (contract) {
+      await refreshAfterAction();
+      await fetchLeaderboard(false);
+    }
+  };
+
+  // Initialize contract in read-only mode on mount (using public RPC - no wallet required)
   useEffect(() => {
     const initReadOnlyContract = async () => {
       try {
+        // Use JsonRpcProvider for read-only access - doesn't require MetaMask
         const provider = new ethers.JsonRpcProvider(RPC_URL);
-
         const readOnlyContract = new ethers.Contract(
           CONTRACT_ADDRESS,
           CHESS_ABI,
@@ -1690,7 +1993,8 @@ export default function ChessOnChain() {
         setContract(readOnlyContract);
         await loadContractData(readOnlyContract, true);
       } catch (error) {
-        console.error('Error initializing contract:', error);
+        console.error('Error initializing read-only contract:', error);
+        // Page should still load even if contract init fails
         setInitialLoading(false);
       }
     };
@@ -1702,12 +2006,14 @@ export default function ChessOnChain() {
 
   // Listen for account changes
   useEffect(() => {
-    if (window.ethereum) {
+    if (window.ethereum && typeof window.ethereum.on === 'function') {
       window.ethereum.on('accountsChanged', (accounts) => {
         if (accounts.length === 0) {
           setAccount(null);
         } else {
-          connectWallet();
+          connectWallet().catch(err => {
+            console.error('Error reconnecting wallet:', err);
+          });
         }
       });
 
@@ -1717,171 +2023,165 @@ export default function ChessOnChain() {
     }
   }, []);
 
-  // Refresh tier data when account changes
+  // Refresh tier data when account changes (initial load handled by initReadOnlyContract)
   useEffect(() => {
-    if (contract && account) {
+    // Skip initial mount - initReadOnlyContract handles that via loadContractData
+    if (account) {
+      // Clear cached instances so they re-fetch with new account's enrollment status
       setTierInstances({});
       refreshAfterAction();
     }
-  }, [contract, account, refreshAfterAction]);
+  }, [account, refreshAfterAction]);
 
-  // Helper to detect move by comparing two boards
-  const detectMoveFromBoards = useCallback((oldBoard, newBoard) => {
-    if (!oldBoard || !newBoard) return null;
+  // Fetch cached stats when contract is available
+  useEffect(() => {
+    fetchLeaderboard();
+  }, [fetchLeaderboard]);
 
-    let fromSquare = null;
-    let toSquare = null;
+  // Poll tournament bracket every 3 seconds (using refs for seamless syncing)
+  const tournamentRef = useRef(viewingTournament);
+  const contractRefForBracket = useRef(contract);
 
-    for (let i = 0; i < 64; i++) {
-      const oldPiece = oldBoard[i];
-      const newPiece = newBoard[i];
-      const oldType = oldPiece ? Number(oldPiece.pieceType) : 0;
-      const newType = newPiece ? Number(newPiece.pieceType) : 0;
-
-      // Square had a piece but now is empty = from square
-      if (oldType !== 0 && newType === 0) {
-        fromSquare = i;
-      }
-      // Square has a different piece or piece appeared = potential to square
-      else if (oldType !== newType || (oldType !== 0 && newType !== 0 && Number(oldPiece.color) !== Number(newPiece.color))) {
-        toSquare = i;
-      }
-    }
-
-    // If we found both from and to, return the move
-    if (fromSquare !== null && toSquare !== null) {
-      return { from: fromSquare, to: toSquare };
-    }
-
-    return null;
-  }, []);
-
-  // Poll match data
-  const matchRef = useRef(currentMatch);
-  const contractRef = useRef(contract);
-  const accountRef = useRef(account);
+  // Keep refs updated
+  useEffect(() => {
+    tournamentRef.current = viewingTournament;
+    contractRefForBracket.current = contract;
+  }, [viewingTournament, contract]);
 
   useEffect(() => {
-    matchRef.current = currentMatch;
-    contractRef.current = contract;
-    accountRef.current = account;
+    if (!viewingTournament || !contract) return;
+
+    const doSync = async () => {
+      const tournament = tournamentRef.current;
+      const contractInstance = contractRefForBracket.current;
+
+      if (!tournament || !contractInstance) return;
+
+      const updated = await refreshTournamentBracket(contractInstance, tournament.tierId, tournament.instanceId, matchTimePerPlayer);
+      if (updated) setViewingTournament(updated);
+
+      // Reset dots to 1 after sync completes
+      setBracketSyncDots(1);
+    };
+
+    // Set up polling interval - runs every 3 seconds
+    const pollInterval = setInterval(doSync, 3000);
+
+    return () => clearInterval(pollInterval);
+  }, [viewingTournament?.tierId, viewingTournament?.instanceId, refreshTournamentBracket]);
+
+  // Poll current match every 2 seconds for live timer updates (using refs for seamless syncing)
+  const currentMatchRef = useRef(currentMatch);
+  const contractRefForMatch = useRef(contract);
+  const accountRefForMatch = useRef(account);
+
+  // Keep refs updated
+  useEffect(() => {
+    currentMatchRef.current = currentMatch;
+    contractRefForMatch.current = contract;
+    accountRefForMatch.current = account;
   }, [currentMatch, contract, account]);
 
   useEffect(() => {
     if (!currentMatch || !contract || !account) return;
 
-    // Initialize previousBoardRef if needed
-    if (!previousBoardRef.current && currentMatch.board) {
-      previousBoardRef.current = currentMatch.board;
-    }
-
-    const doSync = async () => {
-      const match = matchRef.current;
-      const contractInstance = contractRef.current;
-      const userAccount = accountRef.current;
+    const doMatchSync = async () => {
+      const match = currentMatchRef.current;
+      const contractInstance = contractRefForMatch.current;
+      const userAccount = accountRefForMatch.current;
 
       if (!match || !contractInstance || !userAccount) return;
 
-      const updated = await refreshMatchData(contractInstance, userAccount, match);
-      if (updated) {
-        const zeroAddress = '0x0000000000000000000000000000000000000000';
-        const matchWasCompleted = updated.matchStatus === 2 && match.matchStatus !== 2;
-        const wasParticipant =
-          updated.player1?.toLowerCase() === userAccount.toLowerCase() ||
-          updated.player2?.toLowerCase() === userAccount.toLowerCase();
+      try {
+        const updatedMatch = await refreshMatchData(
+          contractInstance,
+          userAccount,
+          match,
+          matchTimePerPlayer
+        );
+        if (updatedMatch) {
+          // Use standardized match completion handler
+          const matchResult = determineMatchResult({
+            updatedMatch,
+            previousMatch: match,
+            userAccount,
+            gameType: 'chess'
+          });
 
-        // Detect match completion and show modal
-        if (matchWasCompleted && wasParticipant) {
-          const userWon = updated.winner?.toLowerCase() === userAccount.toLowerCase();
-          const isDoubleForfeited = updated.winner?.toLowerCase() === zeroAddress && !updated.isDraw;
-          const winnerIsWhite = updated.winner?.toLowerCase() === updated.player1?.toLowerCase();
+          if (matchResult) {
+            // Match just completed - set result state for modal
+            setMatchEndResult(matchResult.type);
+            setMatchEndWinnerLabel(matchResult.winnerLabel);
+            setMatchEndWinner(matchResult.winnerAddress);
+            setMatchEndLoser(matchResult.loserAddress);
 
-          if (updated.isDraw) {
-            setMatchEndResult('draw');
-            setMatchEndWinnerLabel('');
-          } else if (isDoubleForfeited) {
-            setMatchEndResult('double_forfeit');
-            setMatchEndWinnerLabel('');
-          } else if (updated.isTimedOut) {
-            setMatchEndResult(userWon ? 'forfeit_win' : 'forfeit_lose');
-            setMatchEndWinnerLabel(winnerIsWhite ? 'White' : 'Black');
-          } else {
-            setMatchEndResult(userWon ? 'win' : 'lose');
-            setMatchEndWinnerLabel(winnerIsWhite ? 'White' : 'Black');
+            // Update match to show final state, modal will handle the rest
+            setCurrentMatch(updatedMatch);
+            return;
           }
 
-          setCurrentMatch(updated);
-          setSyncDots(1);
-          return;
-        }
+          // Detect new moves by comparing board states
+          const prevBoard = previousBoardRef.current;
+          let moveDetected = false;
+          if (prevBoard && updatedMatch.board) {
+            for (let i = 0; i < updatedMatch.board.length; i++) {
+              if (prevBoard[i] === 0 && updatedMatch.board[i] !== 0) {
+                moveDetected = true;
+                break;
+              }
+            }
+          }
 
-        // Detect opponent's move by comparing boards
-        if (previousBoardRef.current && updated.board) {
-          const detectedMove = detectMoveFromBoards(previousBoardRef.current, updated.board);
-          if (detectedMove) {
-            setLastMove(detectedMove);
-            // Refresh move history when a move is detected
+          // If a new move was detected, refresh history from blockchain
+          if (moveDetected) {
             const history = await fetchMoveHistory(contractInstance, match.tierId, match.instanceId, match.roundNumber, match.matchNumber);
             setMoveHistory(history);
           }
+
+          // Update board ref for next comparison
+          previousBoardRef.current = [...updatedMatch.board];
+
+          // Normal match update (game still in progress)
+          setCurrentMatch(updatedMatch);
         }
-        previousBoardRef.current = updated.board;
-        setCurrentMatch(updated);
+      } catch (error) {
+        console.error('Error syncing match:', error);
       }
+
+      // Reset sync dots to 1 after sync completes
       setSyncDots(1);
     };
 
-    const pollInterval = setInterval(doSync, 3000);
-    return () => clearInterval(pollInterval);
-  }, [currentMatch?.tierId, currentMatch?.instanceId, currentMatch?.roundNumber, currentMatch?.matchNumber, refreshMatchData, detectMoveFromBoards, fetchMoveHistory]);
+    // Set up polling interval - runs every 2 seconds for responsive timers
+    const matchPollInterval = setInterval(doMatchSync, 2000);
 
-  // Sync dots animation
+    return () => clearInterval(matchPollInterval);
+  }, [currentMatch?.tierId, currentMatch?.instanceId, currentMatch?.roundNumber, currentMatch?.matchNumber, account, refreshMatchData, fetchMoveHistory]);
+
+  // Increment match sync dots every second (1 -> 2 -> 3, resets on sync)
   useEffect(() => {
     if (!currentMatch) return;
-
     const dotsInterval = setInterval(() => {
       setSyncDots(prev => prev >= 3 ? 3 : prev + 1);
     }, 1000);
-
     return () => clearInterval(dotsInterval);
   }, [currentMatch]);
 
-  // Poll bracket data
-  useEffect(() => {
-    if (!viewingTournament || !contract) return;
-
-    const doSync = async () => {
-      const updated = await refreshTournamentBracket(contract, viewingTournament.tierId, viewingTournament.instanceId);
-      if (updated) setViewingTournament(updated);
-      setBracketSyncDots(1);
-    };
-
-    const pollInterval = setInterval(doSync, 3000);
-    return () => clearInterval(pollInterval);
-  }, [viewingTournament?.tierId, viewingTournament?.instanceId, refreshTournamentBracket, contract]);
-
-  // Bracket sync dots
+  // Increment bracket sync dots every second
   useEffect(() => {
     if (!viewingTournament) return;
 
     const dotsInterval = setInterval(() => {
-      setBracketSyncDots(prev => prev >= 3 ? 3 : prev + 1);
+      setBracketSyncDots(prev => {
+        if (prev >= 3) return 3;
+        return prev + 1;
+      });
     }, 1000);
 
     return () => clearInterval(dotsInterval);
   }, [viewingTournament]);
 
-  // Scroll listener for theme toggle
-  useEffect(() => {
-    const handleScroll = () => {
-      setShowThemeToggle(window.scrollY <= 600);
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  // Loading state
+  // Loading animation component
   if (initialLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 text-white flex items-center justify-center">
@@ -1894,11 +2194,16 @@ export default function ChessOnChain() {
               <div className="w-32 h-32 border-4 border-transparent border-t-blue-500 rounded-full animate-spin"></div>
             </div>
             <div className="relative flex items-center justify-center w-32 h-32 mx-auto">
-              <span className="text-6xl">♟️</span>
+              <Grid className="text-blue-400 animate-pulse" size={48} />
             </div>
           </div>
-          <h2 className="text-2xl font-bold text-blue-300 mb-2">Loading Chess Data</h2>
-          <p className="text-blue-400/70">Connecting to blockchain...</p>
+          <h2 className="text-2xl font-bold text-blue-300 mb-2">Loading Game Data</h2>
+          <p className="text-blue-400/70">Connecting to Arbitrum blockchain...</p>
+          <div className="mt-6 flex items-center justify-center gap-2">
+            <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+            <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+            <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+          </div>
         </div>
       </div>
     );
@@ -1914,7 +2219,7 @@ export default function ChessOnChain() {
       transition: 'background 0.8s ease-in-out'
     }}>
       {/* Particle Background */}
-      <ParticleBackground colors={currentTheme.particleColors} symbols={CHESS_PARTICLES} fontSize="32px" />
+      <ParticleBackground colors={currentTheme.particleColors} symbols={CHESS_PIECES} fontSize="40px" />
 
       {/* Back to ETour Button */}
       <Link
@@ -1952,15 +2257,15 @@ export default function ChessOnChain() {
 
       {/* Trust Banner */}
       <div style={{
-        background: theme === 'dream' ? 'rgba(0, 100, 200, 0.2)' : 'rgba(139, 0, 0, 0.2)',
+        background: 'rgba(0, 100, 200, 0.2)',
         borderBottom: `1px solid ${currentTheme.border}`,
         backdropFilter: 'blur(10px)',
         position: 'relative',
         zIndex: 10
       }}>
         <div className="max-w-7xl mx-auto px-6 py-3">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 text-xs md:text-sm">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 justify-center md:justify-start">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-4 text-xs md:text-sm">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 md:gap-6 justify-center md:justify-start">
               <div className="flex items-center gap-2">
                 <Shield className="text-blue-400" size={16} />
                 <span className="text-blue-100 font-medium">100% On-Chain</span>
@@ -1986,7 +2291,7 @@ export default function ChessOnChain() {
                 className="flex items-center gap-2 text-blue-300 hover:text-blue-200 transition-colors justify-center md:justify-end"
               >
                 <Code size={16} />
-                <span className="font-mono">{shortenAddress(CONTRACT_ADDRESS)}</span>
+                <span className="font-mono text-xs">{shortenAddress(CONTRACT_ADDRESS)}</span>
                 <ExternalLink size={14} />
               </a>
             )}
@@ -1994,7 +2299,6 @@ export default function ChessOnChain() {
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 py-12" style={{ position: 'relative', zIndex: 10 }}>
         {/* Hero Section */}
         <div className="text-center mb-16">
@@ -2043,7 +2347,7 @@ export default function ChessOnChain() {
                 <span className="font-bold text-green-300">Instant ETH Payouts</span>
               </div>
               <p className="text-sm text-green-200">
-                Winners paid automatically on-chain. No delays, no middlemen, no way to stop payment.
+                Winners paid automatically on-chain. No delays, no middlemen.
               </p>
             </div>
             <div className="bg-gradient-to-br from-purple-500/20 to-violet-500/20 border border-purple-400/30 rounded-xl p-4">
@@ -2056,6 +2360,7 @@ export default function ChessOnChain() {
               </p>
             </div>
           </div>
+
 
           {/* Connect Wallet CTA */}
           {!account ? (
@@ -2075,11 +2380,11 @@ export default function ChessOnChain() {
           )}
 
           {/* Why Arbitrum Info */}
-          <WhyArbitrum variant={theme === 'daring' ? 'red' : 'blue'} />
+          <WhyArbitrum variant="blue" />
         </div>
 
-        {/* Match View */}
-        {currentMatch && (
+        {/* Match View - Shows when player enters a match */}
+        {account && contract && currentMatch && (
           <GameMatchLayout
             gameType="chess"
             match={currentMatch}
@@ -2090,6 +2395,8 @@ export default function ChessOnChain() {
             onClaimTimeoutWin={handleClaimTimeoutWin}
             onForceEliminate={handleForceEliminateStalledMatch}
             onClaimReplacement={handleClaimMatchSlotByReplacement}
+            tournamentRounds={viewingTournament?.rounds || null}
+            currentRoundNumber={currentMatch.roundNumber}
             playerConfig={{
               player1: { icon: '♔', label: 'White' },
               player2: { icon: '♚', label: 'Black' }
@@ -2105,85 +2412,25 @@ export default function ChessOnChain() {
                 <span className="text-red-300 text-xs font-bold">⚠️ CHECK</span>
               </div>
             ) : undefined}
-            renderGameControls={() => (
-              <>
-                {/* Resign Button */}
-                {currentMatch.matchStatus === 1 && (
-                  currentMatch.player1?.toLowerCase() === account?.toLowerCase() ||
-                  currentMatch.player2?.toLowerCase() === account?.toLowerCase()
-                ) && (
-                  <button
-                    onClick={handleResign}
-                    disabled={matchLoading}
-                    className="mt-4 bg-red-500/20 hover:bg-red-500/30 text-red-300 font-semibold py-2 px-6 rounded-full transition-all disabled:opacity-50 border border-red-500/40"
-                  >
-                    🏳️ Resign
-                  </button>
-                )}
-              </>
-            )}
-            renderMatchInfo={() => (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-black/20 rounded-lg p-3 text-center">
-                  <div className="text-purple-300 text-sm">Move #</div>
-                  <div className="text-white font-bold text-xl">{currentMatch.fullMoveNumber}</div>
-                </div>
-                <div className="bg-black/20 rounded-lg p-3 text-center">
-                  <div className="text-purple-300 text-sm">Tier</div>
-                  <div className="text-white font-bold text-xl">{getTierName(currentMatch.playerCount)}</div>
-                </div>
-                <div className="bg-black/20 rounded-lg p-3 text-center">
-                  <div className="text-purple-300 text-sm">Round</div>
-                  <div className="text-white font-bold text-xl">{currentMatch.roundNumber + 1}</div>
-                </div>
-                <div className="bg-black/20 rounded-lg p-3 text-center">
-                  <div className="text-purple-300 text-sm">Match</div>
-                  <div className="text-white font-bold text-xl">{currentMatch.matchNumber + 1}</div>
-                </div>
-              </div>
-            )}
             renderMoveHistory={moveHistory.length > 0 ? () => (
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <History size={18} className="text-cyan-400" />
-                  <h3 className="text-white font-bold">Move History</h3>
-                  <span className="text-slate-400 text-sm">({moveHistory.length} moves)</span>
-                </div>
-                <div
-                  className="rounded-xl p-4 max-h-48 overflow-y-auto"
-                  style={{
-                    background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.8), rgba(30, 41, 59, 0.8))',
-                    border: '1px solid rgba(148, 163, 184, 0.2)',
-                  }}
-                >
-                  <div className="grid grid-cols-2 gap-x-6 gap-y-1 font-mono text-sm">
-                    {Array.from({ length: Math.ceil(moveHistory.length / 2) }, (_, i) => {
-                      const whiteMove = moveHistory[i * 2];
-                      const blackMove = moveHistory[i * 2 + 1];
-                      const moveNum = i + 1;
-                      return (
-                        <div key={moveNum} className="contents">
-                          <div className="flex items-center gap-2">
-                            <span className="text-slate-500 w-6 text-right">{moveNum}.</span>
-                            <span className="text-slate-100">{whiteMove?.notation || ''}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {blackMove && (
-                              <>
-                                <span className="text-slate-500 w-6 text-right">{moveNum}...</span>
-                                <span className="text-purple-300">{blackMove.notation}</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+              <div className="bg-slate-900/50 rounded-xl p-6 border border-purple-500/30">
+                <h3 className="text-xl font-bold text-purple-300 mb-4 flex items-center gap-2">
+                  <History size={20} />
+                  Move History
+                </h3>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {moveHistory.map((move, idx) => (
+                    <div key={idx} className="flex items-center gap-3 text-sm bg-purple-500/10 p-2 rounded">
+                      <span className="text-purple-300">Move {idx + 1}:</span>
+                      <span className="text-white font-bold">{move.player}</span>
+                      <span className="text-purple-400">→ Cell {move.cell}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             ) : undefined}
           >
-            {/* Chess Board */}
+            {/* Chess Board Component */}
             <ChessBoard
               board={currentMatch.board}
               onMove={handleMakeMove}
@@ -2197,7 +2444,11 @@ export default function ChessOnChain() {
               blackInCheck={currentMatch.blackInCheck}
               lastMoveTime={currentMatch.lastMoveTime}
               startTime={currentMatch.startTime}
-              lastMove={lastMove}
+              lastMove={currentMatch.lastMove}
+              player1TimeRemaining={currentMatch.player1TimeRemaining}
+              player2TimeRemaining={currentMatch.player2TimeRemaining}
+              lastMoveTimestamp={currentMatch.lastMoveTimestamp}
+              matchTimePerPlayer={matchTimePerPlayer}
             />
           </GameMatchLayout>
         )}
@@ -2208,29 +2459,34 @@ export default function ChessOnChain() {
             {viewingTournament ? (
               <TournamentBracket
                 tournamentData={viewingTournament}
-                onBack={() => setViewingTournament(null)}
+                onBack={handleBackToTournaments}
                 onEnterMatch={handlePlayMatch}
+                onForceEliminate={handleForceEliminateStalledMatch}
+                onClaimReplacement={handleClaimMatchSlotByReplacement}
                 onManualStart={handleManualStart}
+                onClaimAbandonedPool={handleClaimAbandonedPool}
                 onEnroll={handleEnroll}
                 account={account}
                 loading={tournamentsLoading}
                 syncDots={bracketSyncDots}
-                theme={theme}
                 isEnrolled={viewingTournament?.enrolledPlayers?.some(addr => addr.toLowerCase() === account?.toLowerCase())}
                 entryFee={viewingTournament?.entryFee ? ethers.formatEther(viewingTournament.entryFee) : '0'}
                 isFull={viewingTournament?.enrolledCount >= viewingTournament?.playerCount}
               />
             ) : (
+              // Show Tournament List
               <div className="mb-16">
                 {/* Section Header */}
                 <div className="text-center mb-12">
                   <div className="inline-flex items-center gap-3 mb-4">
-                    <Trophy className={theme === 'dream' ? 'text-blue-400' : 'text-red-400'} size={48} />
-                    <h2 className={`text-5xl font-bold bg-gradient-to-r ${theme === 'dream' ? 'from-blue-400 to-cyan-400' : 'from-red-400 to-orange-400'} bg-clip-text text-transparent`}>
-                      Live Instances
-                    </h2>
+                    <Trophy className="text-blue-400" size={48} />
+                    <div className="flex flex-col items-start">
+                      <h2 className="text-5xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+                        Live Instances
+                      </h2>
+                    </div>
                   </div>
-                  <p className={`text-xl ${theme === 'dream' ? 'text-blue-200' : 'text-red-200'}`}>
+                  <p className="text-xl text-blue-200">
                     Compete in on-chain with real ETH stakes
                   </p>
                 </div>
@@ -2238,12 +2494,14 @@ export default function ChessOnChain() {
                 {/* Loading State */}
                 {metadataLoading && (
                   <div className="text-center py-12">
-                    <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
-                    <p className="text-purple-300">Loading tournaments...</p>
+                    <div className="inline-block">
+                      <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
+                      <p className="text-purple-300">Loading tournaments...</p>
+                    </div>
                   </div>
                 )}
 
-                {/* Tournament Cards - Lazy Loading */}
+                {/* Tournament Cards Grid - Grouped by Tier (Lazy Loading) */}
                 {!metadataLoading && Object.keys(tierMetadata).length > 0 && (
                   <>
                     {[0, 6, 1, 2, 3, 4, 5].map((tierId) => {
@@ -2264,7 +2522,7 @@ export default function ChessOnChain() {
                               ♔ {getTierName(metadata.playerCount)}s
                               <span className="text-sm font-normal text-purple-300">• {metadata.playerCount} players total</span>
                               <span className="text-sm font-normal text-purple-300">• {metadata.entryFee} ETH entry</span>
-                              <span className="text-sm font-normal text-purple-300">• <span className="text-cyan-400 font-bold">{metadata.instanceCount} lobbies</span> • <span className="font-bold text-green-400">{statusCounts.enrolling} enrolling</span> • <span className="font-bold text-yellow-400">{statusCounts.inProgress} in progress</span></span>
+                              <span className="text-sm font-normal text-purple-300">• <span className="font-bold text-cyan-400">{metadata.instanceCount} lobbies</span> • <span className="font-bold text-green-400">{statusCounts.enrolling} enrolling</span> • <span className="font-bold text-yellow-400">{statusCounts.inProgress} in progress</span></span>
                               <span className="text-sm font-normal text-purple-300">• {getEstimatedDuration('chess', metadata.playerCount)}</span>
                               <ChevronDown
                                 size={24}
@@ -2295,8 +2553,8 @@ export default function ChessOnChain() {
                                       onEnter={() => handleEnterTournament(tournament.tierId, tournament.instanceId)}
                                       loading={tournamentsLoading}
                                       tierName={getTierName(tournament.maxPlayers)}
-                                      theme={theme}
                                       enrollmentTimeout={tournament.enrollmentTimeout}
+                                      hasStartedViaTimeout={tournament.hasStartedViaTimeout}
                                       tournamentStatus={tournament.tournamentStatus}
                                       onManualStart={handleManualStart}
                                       onClaimAbandonedPool={handleClaimAbandonedPool}
@@ -2324,6 +2582,7 @@ export default function ChessOnChain() {
                         setMetadataLoading(true);
                         setConnectionError(null);
                         fetchTierMetadata();
+                        fetchLeaderboard();
                       }}
                       className="bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white font-bold py-2 px-6 rounded-xl transition-all"
                     >
@@ -2335,16 +2594,29 @@ export default function ChessOnChain() {
                 {/* Empty State - only show when no connection error */}
                 {!metadataLoading && !connectionError && Object.keys(tierMetadata).length === 0 && (
                   <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-12 border border-purple-400/30 text-center">
-                    <span className="text-6xl mb-4 block">♟️</span>
+                    <Trophy className="text-purple-400/50 mx-auto mb-4" size={64} />
                     <h3 className="text-2xl font-bold text-purple-300 mb-2">No Tournaments Available</h3>
-                    <p className="text-purple-200/70">Check back soon for new chess tournaments!</p>
+                    <p className="text-purple-200/70">Check back soon for new tournaments!</p>
+                  </div>
+                )}
+
+                {/* User Info Footer - Only show when wallet is connected */}
+                {account && (
+                  <div className="mt-8 flex justify-center gap-4">
+                    <div className="bg-purple-500/20 border border-purple-400/50 rounded-xl p-4">
+                      <div className="text-purple-300 text-sm mb-1">Your Address</div>
+                      <div className="font-mono text-purple-100 font-bold">{account.slice(0, 6)}...{account.slice(-4)}</div>
+                    </div>
+                    <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-4">
+                      <div className="text-blue-300 text-sm mb-1">Network</div>
+                      <div className="font-bold text-blue-100">{networkInfo?.name || 'Connected'}</div>
+                    </div>
                   </div>
                 )}
               </div>
             )}
           </>
         )}
-
       </div>
 
       {/* Winners Leaderboard Section */}
@@ -2355,7 +2627,7 @@ export default function ChessOnChain() {
             loading={leaderboardLoading}
             error={leaderboardError}
             currentAccount={account}
-            onRetry={() => loadContractData(contract)}
+            onRetry={() => fetchLeaderboard()}
           />
         </div>
       </div>
@@ -2425,22 +2697,173 @@ export default function ChessOnChain() {
         </div>
       </footer>
 
-      {/* CSS for particle animation */}
+      {/* CSS Animations & Custom Styles */}
       <style>{`
+        /* Smooth scrolling for anchor links */
+        html {
+          scroll-behavior: smooth;
+        }
+
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-20px); }
+        }
+        .animate-float {
+          animation: float 3s ease-in-out infinite;
+        }
+
+        /* Custom scrollbar for game log */
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(15, 23, 42, 0.5);
+          border-radius: 3px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(139, 92, 246, 0.5);
+          border-radius: 3px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(139, 92, 246, 0.7);
+        }
+
+        /* Smooth transitions for all interactive elements */
+        button, .transition-all {
+          transition-property: all;
+          transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+          transition-duration: 150ms;
+        }
+
+        /* Enhanced glow effects */
+        @keyframes glow-pulse {
+          0%, 100% {
+            box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+          }
+          50% {
+            box-shadow: 0 0 30px rgba(139, 92, 246, 0.5);
+          }
+        }
+
+        /* Grid cell hover glow */
+        button:hover:not(:disabled) {
+          box-shadow: 0 0 20px currentColor;
+        }
+
+        /* Particle styles */
+        .particle {
+          font-size: 16px;
+        }
+
+        /* Mobile particle adjustments */
+        @media (max-width: 768px) {
+          .particle {
+            font-size: 12px;
+          }
+        }
+
+        /* Particle animation for Dream theme - Desktop */
         @keyframes particle-float {
           0% {
-            transform: translateY(100vh) rotate(0deg);
-            opacity: 0;
+            transform: translateY(100vh) translateX(0);
+            opacity: 0.3;
           }
           10% {
-            opacity: 0.6;
+            opacity: 0.5;
           }
           90% {
-            opacity: 0.6;
+            opacity: 1;
           }
           100% {
-            transform: translateY(-100vh) rotate(360deg);
+            transform: translateY(calc(-100vh - 100px)) translateX(100px);
             opacity: 0;
+          }
+        }
+
+        /* Mobile particle animation with lower opacity */
+        @media (max-width: 768px) {
+          @keyframes particle-float {
+            0% {
+              transform: translateY(100vh) translateX(0);
+              opacity: 0.2;
+            }
+            10% {
+              opacity: 0.3;
+            }
+            90% {
+              opacity: 0.7;
+            }
+            100% {
+              transform: translateY(calc(-100vh - 100px)) translateX(100px);
+              opacity: 0;
+            }
+          }
+        }
+
+        /* Mobile text size reduction - reduce all text by 4 points */
+        @media (max-width: 768px) {
+          body {
+            font-size: 12px;
+          }
+
+          h1 {
+            font-size: calc(1em - 4px);
+          }
+
+          h2 {
+            font-size: calc(1em - 4px);
+          }
+
+          h3 {
+            font-size: calc(1em - 4px);
+          }
+
+          h4 {
+            font-size: calc(1em - 4px);
+          }
+
+          p, span, div, button, a {
+            font-size: inherit;
+          }
+
+          .text-xs {
+            font-size: 0.5rem !important; /* 8px instead of 12px */
+          }
+
+          .text-sm {
+            font-size: 0.625rem !important; /* 10px instead of 14px */
+          }
+
+          .text-base {
+            font-size: 0.75rem !important; /* 12px instead of 16px */
+          }
+
+          .text-lg {
+            font-size: 0.875rem !important; /* 14px instead of 18px */
+          }
+
+          .text-xl {
+            font-size: 1rem !important; /* 16px instead of 20px */
+          }
+
+          .text-2xl {
+            font-size: 1.25rem !important; /* 20px instead of 24px */
+          }
+
+          .text-3xl {
+            font-size: 1.625rem !important; /* 26px instead of 30px */
+          }
+
+          .text-4xl {
+            font-size: 1.875rem !important; /* 30px instead of 36px */
+          }
+
+          .text-5xl {
+            font-size: 2.375rem !important; /* 38px instead of 48px */
+          }
+
+          .text-6xl {
+            font-size: 2.875rem !important; /* 46px instead of 60px */
           }
         }
       `}</style>
@@ -2450,8 +2873,14 @@ export default function ChessOnChain() {
         result={matchEndResult}
         onClose={handleMatchEndModalClose}
         winnerLabel={matchEndWinnerLabel}
+        winnerAddress={matchEndWinner}
+        loserAddress={matchEndLoser}
+        currentAccount={account}
         gameType="chess"
         isVisible={!!matchEndResult}
+        roundNumber={currentMatch?.roundNumber}
+        totalRounds={currentMatch?.playerCount ? Math.ceil(Math.log2(currentMatch.playerCount)) : undefined}
+        prizePool={currentMatch?.prizePool}
       />
     </div>
   );

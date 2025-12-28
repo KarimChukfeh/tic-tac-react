@@ -491,7 +491,7 @@ export default function Landing() {
                 "Fast-paced tactical play",
                 "First to four wins it all"
               ]}
-              href="/c42"
+              href="/connect4"
               accentColor="#ef4444"
             />
 
@@ -506,7 +506,7 @@ export default function Landing() {
                 "Higher stakes for serious players",
                 "Prove your rating means something"
               ]}
-              href="/chess2"
+              href="/chess"
               accentColor="#fbbf24"
             />
             
