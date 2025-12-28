@@ -24,7 +24,7 @@ const UserManual = () => {
 
         <ol className="list-decimal list-inside space-y-2 text-gray-300 ml-2">
           <li>
-            <span className="font-semibold text-blue-300">Enrollment</span> - some players enroll, but not enough start the tournament.
+            <span className="font-semibold text-blue-300">Enrollment</span> - players enroll, but not enough to start the tournament.
           </li>
           <li>
             <span className="font-semibold text-blue-300">Match Play</span> - one or both players in a match stop making moves.
