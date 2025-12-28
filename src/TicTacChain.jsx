@@ -32,6 +32,7 @@ import ParticleBackground from './components/shared/ParticleBackground';
 import MatchCard from './components/shared/MatchCard';
 import TournamentCard from './components/shared/TournamentCard';
 import WinnersLeaderboard from './components/shared/WinnersLeaderboard';
+import UserManual from './components/shared/UserManual';
 import MatchEndModal from './components/shared/MatchEndModal';
 import WhyArbitrum from './components/shared/WhyArbitrum';
 import GameMatchLayout from './components/shared/GameMatchLayout';
@@ -2401,6 +2402,13 @@ export default function TicTacChain() {
             currentAccount={account}
             onRetry={() => fetchLeaderboard()}
           />
+        </div>
+      </div>
+
+      {/* User Manual Section */}
+      <div className="max-w-7xl mx-auto px-6 pb-12" style={{ position: 'relative', zIndex: 10 }}>
+        <div className="max-w-4xl mx-auto">
+          <UserManual />
         </div>
       </div>
 
