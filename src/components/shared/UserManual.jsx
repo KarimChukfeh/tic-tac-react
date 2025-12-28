@@ -32,7 +32,7 @@ const UserManual = () => {
         </ol>
 
         <p className="text-gray-300">
-          Legacy systems rely on centralized authorities to resolve these stalls, which requires trust in a person a company.
+          Legacy systems rely on centralized authorities to resolve these stalls, which requires trust in a person or a company.
         </p>
         
         <br/>
