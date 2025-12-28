@@ -209,29 +209,18 @@ const GameMatchLayout = ({
   // Render sidebar layout (Chess style)
   const renderSidebarLayout = () => (
     <div className="flex flex-col xl:flex-row gap-6">
-      {/* Player Cards - Side by side on mobile/tablet, stacked on left for desktop */}
-      <div className="flex flex-row xl:flex-col gap-4 xl:w-56 shrink-0">
+      {/* Player 1 - Left side */}
+      <div className="flex-none xl:w-56">
         <PlayerPanel
           playerAddress={player1}
           currentAccount={account}
-          isCurrentTurn={isPlayer1Turn}
+          isCurrentTurn={isPlayer1Turn && isPlayer1You}
           isGameOver={isGameOver}
           icon={playerConfig?.player1?.icon}
           label={playerConfig?.player1?.label || 'Player 1'}
           colorScheme={theme.player1Color}
           variant="full"
           extraContent={renderPlayer1Extra?.()}
-        />
-        <PlayerPanel
-          playerAddress={player2}
-          currentAccount={account}
-          isCurrentTurn={isPlayer2Turn}
-          isGameOver={isGameOver}
-          icon={playerConfig?.player2?.icon}
-          label={playerConfig?.player2?.label || 'Player 2'}
-          colorScheme={theme.player2Color}
-          variant="full"
-          extraContent={renderPlayer2Extra?.()}
         />
       </div>
 
@@ -281,6 +270,21 @@ const GameMatchLayout = ({
             />
           </div>
         )}
+      </div>
+
+      {/* Player 2 - Right side */}
+      <div className="flex-none xl:w-56">
+        <PlayerPanel
+          playerAddress={player2}
+          currentAccount={account}
+          isCurrentTurn={isPlayer2Turn && account?.toLowerCase() === player2?.toLowerCase()}
+          isGameOver={isGameOver}
+          icon={playerConfig?.player2?.icon}
+          label={playerConfig?.player2?.label || 'Player 2'}
+          colorScheme={theme.player2Color}
+          variant="full"
+          extraContent={renderPlayer2Extra?.()}
+        />
       </div>
     </div>
   );
