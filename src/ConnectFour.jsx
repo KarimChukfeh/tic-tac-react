@@ -39,6 +39,7 @@ import WhyArbitrum from './components/shared/WhyArbitrum';
 import GameMatchLayout from './components/shared/GameMatchLayout';
 import TournamentHeader from './components/shared/TournamentHeader';
 import PlayerActivity from './components/shared/PlayerActivity';
+import CommunityRaffleCard from './components/shared/CommunityRaffleCard';
 import { usePlayerActivity } from './hooks/usePlayerActivity';
 
 // ConnectFour particle symbols (matching landing page style)
@@ -684,8 +685,20 @@ export default function ConnectFour() {
   const [connectionError, setConnectionError] = useState(null); // null = no error, string = error message
   const [leaderboardError, setLeaderboardError] = useState(false);
 
+  // Raffle Info State
+  const [raffleInfo, setRaffleInfo] = useState({
+    isReady: false,
+    currentAccumulated: 0n,
+    raffleAmount: 0n,
+    ownerShare: 0n,
+    winnerShare: 0n,
+    eligiblePlayerCount: 0n
+  });
+  const [raffleSyncing, setRaffleSyncing] = useState(false);
+
   // Player Activity Hook
   const playerActivity = usePlayerActivity(contract, account, 'connect4');
+  const [playerActivityHeight, setPlayerActivityHeight] = useState(0);
 
   // Set page title
   useEffect(() => {
@@ -961,6 +974,38 @@ export default function ConnectFour() {
     }
   }, [getReadOnlyContract]);
 
+  // Fetch raffle info (view function)
+  const fetchRaffleInfo = useCallback(async () => {
+    try {
+      setRaffleSyncing(true);
+      const readContract = getReadOnlyContract();
+
+      const [isReady, currentAccumulated, raffleAmount, ownerShare, winnerShare, eligiblePlayerCount] =
+        await readContract.getRaffleInfo();
+
+      setRaffleInfo({
+        isReady,
+        currentAccumulated,
+        raffleAmount,
+        ownerShare,
+        winnerShare,
+        eligiblePlayerCount
+      });
+
+      console.log('Raffle Info:', {
+        isReady,
+        currentAccumulated: ethers.formatEther(currentAccumulated),
+        raffleAmount: ethers.formatEther(raffleAmount),
+        eligiblePlayerCount: eligiblePlayerCount.toString()
+      });
+    } catch (error) {
+      console.error('Error fetching raffle info:', error);
+      // Keep previous state on error
+    } finally {
+      setRaffleSyncing(false);
+    }
+  }, [getReadOnlyContract]);
+
   // LAZY LOADING: Fetch tier metadata only (fast initial load)
   // This gets basic tier info without detailed instance data
   const fetchTierMetadata = useCallback(async (contractInstance = null, silentUpdate = false) => {
@@ -1105,6 +1150,97 @@ export default function ConnectFour() {
 
     if (!silentUpdate) setTierLoading(prev => ({ ...prev, [tierId]: false }));
   }, [getReadOnlyContract, account]);
+
+  // Execute protocol raffle (state-modifying transaction)
+  const executeRaffle = useCallback(async () => {
+    if (!contract || !account) {
+      alert('Please connect your wallet first');
+      return;
+    }
+
+    try {
+      setRaffleSyncing(true);
+
+      const tx = await contract.executeProtocolRaffle();
+      console.log('Raffle transaction submitted:', tx.hash);
+      alert('Raffle transaction submitted! Waiting for confirmation...');
+
+      const receipt = await tx.wait();
+      console.log('Raffle transaction confirmed:', receipt);
+
+      // Parse event logs for winner info
+      let winner = null;
+      let winnerAmount = null;
+      let ownerAmount = null;
+
+      for (const log of receipt.logs) {
+        try {
+          const parsedLog = contract.interface.parseLog({
+            topics: log.topics,
+            data: log.data
+          });
+
+          if (parsedLog.name === 'ProtocolRaffleExecuted') {
+            winner = parsedLog.args.winner;
+            winnerAmount = parsedLog.args.winnerShare;
+            ownerAmount = parsedLog.args.ownerShare;
+            break;
+          }
+        } catch (e) {
+          // Not the event we're looking for
+        }
+      }
+
+      // Show success message
+      if (winner) {
+        const winnerETH = ethers.formatEther(winnerAmount);
+        const ownerETH = ethers.formatEther(ownerAmount);
+        const isYouWinner = winner.toLowerCase() === account.toLowerCase();
+
+        alert(
+          `Raffle Complete!\n\n` +
+          `Winner: ${isYouWinner ? 'YOU!' : shortenAddress(winner)}\n` +
+          `Winner Prize: ${winnerETH} ETH\n` +
+          `Owner Share: ${ownerETH} ETH`
+        );
+      } else {
+        alert('Raffle executed successfully!');
+      }
+
+      // Refresh data
+      await fetchRaffleInfo();
+
+      // Refresh tournament instances
+      if (expandedTiers) {
+        const expandedTierIds = Object.keys(expandedTiers)
+          .filter(id => expandedTiers[id])
+          .map(id => parseInt(id));
+
+        for (const tierId of expandedTierIds) {
+          await fetchTierInstances(tierId, null, null, null, true);
+        }
+      }
+
+    } catch (error) {
+      console.error('Error executing raffle:', error);
+
+      let errorMessage = error.message || 'Unknown error';
+
+      if (error.message?.includes('InsufficientThreshold')) {
+        errorMessage = 'Raffle threshold not reached yet';
+      } else if (error.message?.includes('NotEligible')) {
+        errorMessage = 'You must be enrolled in at least one tournament to trigger the raffle';
+      } else if (error.message?.includes('NoEligiblePlayers')) {
+        errorMessage = 'No eligible players for raffle';
+      } else if (error.message?.includes('user rejected')) {
+        errorMessage = 'Transaction cancelled';
+      }
+
+      alert(`Raffle execution failed: ${errorMessage}`);
+    } finally {
+      setRaffleSyncing(false);
+    }
+  }, [contract, account, fetchRaffleInfo, expandedTiers, fetchTierInstances]);
 
   // Refs to access current state without causing dependency loops
   const expandedTiersRef = useRef(expandedTiers);
@@ -2127,6 +2263,14 @@ export default function ConnectFour() {
     fetchLeaderboard();
   }, [fetchLeaderboard]);
 
+  // Poll raffle info every 10 seconds (runs globally when wallet connected)
+  useEffect(() => {
+    if (!account) return;
+    fetchRaffleInfo();
+    const pollInterval = setInterval(fetchRaffleInfo, 10000);
+    return () => clearInterval(pollInterval);
+  }, [account, fetchRaffleInfo]);
+
   // Poll tier metadata and expanded tier instances every 10 seconds on home page
   useEffect(() => {
     // Only poll when on home page (not viewing tournament or match)
@@ -2379,6 +2523,18 @@ export default function ConnectFour() {
           onRefresh={playerActivity.refetch}
           gameName="connect4"
           gameEmoji="🔴"
+          onHeightChange={setPlayerActivityHeight}
+        />
+      )}
+
+      {/* Community Raffle Card - Below Player Activity Toggle */}
+      {account && (
+        <CommunityRaffleCard
+          raffleInfo={raffleInfo}
+          playerActivityHeight={playerActivityHeight}
+          onRefresh={fetchRaffleInfo}
+          onTriggerRaffle={executeRaffle}
+          syncing={raffleSyncing}
         />
       )}
 
