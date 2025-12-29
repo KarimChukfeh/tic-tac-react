@@ -31,7 +31,7 @@ const EscalationTimer = ({ escalationState, enrollmentTimeout }) => {
           <div className="flex items-center justify-between pr-6">
             <div className="flex items-center gap-2">
               <Clock className="text-orange-400" size={16} />
-              <span className="text-orange-300 text-sm font-semibold">
+              <span className="text-orange-300 text-xs font-semibold">
                 EL1: Force Start in {formatTime(escalationState.timeToEscalation1)}
               </span>
             </div>
@@ -56,7 +56,7 @@ const EscalationTimer = ({ escalationState, enrollmentTimeout }) => {
           <div className="flex items-center justify-between pr-6">
             <div className="flex items-center gap-2">
               <Clock className="text-red-400" size={16} />
-              <span className="text-red-300 text-sm font-semibold">
+              <span className="text-red-300 text-xs font-semibold">
                 EL2: Claim Abandoned Pool in {formatTime(escalationState.timeToEscalation2)}
               </span>
             </div>

@@ -13,15 +13,14 @@ export const shortenAddress = (addr) => {
 };
 
 /**
- * Format seconds into hours/minutes/seconds display
+ * Format seconds into minutes/seconds display
  * @param {number} seconds - Total seconds
- * @returns {string} - Formatted string like "1h 30m 45s"
+ * @returns {string} - Formatted string like "5m 30s"
  */
 export const formatTime = (seconds) => {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
+  const minutes = Math.floor(seconds / 60);
   const secs = seconds % 60;
-  return `${hours}h ${minutes}m ${secs}s`;
+  return `${minutes}m ${secs}s`;
 };
 
 /**
