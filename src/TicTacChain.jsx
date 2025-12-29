@@ -676,16 +676,16 @@ export default function TicTacChain() {
 
   // LAZY LOADING: Fetch tier metadata only (fast initial load)
   // This gets basic tier info without detailed instance data
-  const fetchTierMetadata = useCallback(async (contractInstance = null) => {
+  const fetchTierMetadata = useCallback(async (contractInstance = null, silentUpdate = false) => {
     const readContract = contractInstance || getReadOnlyContract();
     if (!readContract) {
       setConnectionError('Unable to connect to blockchain. Please check your network connection.');
-      setMetadataLoading(false);
+      if (!silentUpdate) setMetadataLoading(false);
       return;
     }
 
-    setMetadataLoading(true);
-    setConnectionError(null); // Clear any previous error
+    if (!silentUpdate) setMetadataLoading(true);
+    if (!silentUpdate) setConnectionError(null); // Clear any previous error
     const metadata = {};
     let successfulFetches = 0;
     let totalAttempts = 0;
@@ -720,21 +720,21 @@ export default function TicTacChain() {
 
     // If no fetches succeeded, we have a connection problem
     if (successfulFetches === 0 && totalAttempts > 0) {
-      setConnectionError('Unable to load tournament data. Please check your connection and try again.');
+      if (!silentUpdate) setConnectionError('Unable to load tournament data. Please check your connection and try again.');
     }
 
     setTierMetadata(metadata);
-    setMetadataLoading(false);
+    if (!silentUpdate) setMetadataLoading(false);
   }, [getReadOnlyContract]);
 
   // LAZY LOADING: Fetch detailed instances for a specific tier (called on expand)
   // Note: Uses functional state updates to avoid dependency on tierInstances/tierMetadata
-  const fetchTierInstances = useCallback(async (tierId, contractInstance = null, userAccount = null, metadataOverride = null) => {
+  const fetchTierInstances = useCallback(async (tierId, contractInstance = null, userAccount = null, metadataOverride = null, silentUpdate = false) => {
     const readContract = contractInstance || getReadOnlyContract();
     const currentAccount = userAccount ?? account;
     if (!readContract) return;
 
-    setTierLoading(prev => ({ ...prev, [tierId]: true }));
+    if (!silentUpdate) setTierLoading(prev => ({ ...prev, [tierId]: true }));
 
     try {
       // Get metadata from override or fetch fresh
@@ -755,7 +755,7 @@ export default function TicTacChain() {
       }
 
       if (!metadata || metadata.instanceCount === 0) {
-        setTierLoading(prev => ({ ...prev, [tierId]: false }));
+        if (!silentUpdate) setTierLoading(prev => ({ ...prev, [tierId]: false }));
         return;
       }
 
@@ -796,7 +796,7 @@ export default function TicTacChain() {
       console.error(`Error fetching tier ${tierId} instances:`, error);
     }
 
-    setTierLoading(prev => ({ ...prev, [tierId]: false }));
+    if (!silentUpdate) setTierLoading(prev => ({ ...prev, [tierId]: false }));
   }, [getReadOnlyContract, account]);
 
   // Refs to access current state without causing dependency loops
@@ -1815,6 +1815,35 @@ export default function TicTacChain() {
   useEffect(() => {
     fetchLeaderboard();
   }, [fetchLeaderboard]);
+
+  // Poll tier metadata and expanded tier instances every 10 seconds on home page
+  useEffect(() => {
+    // Only poll when on home page (not viewing tournament or match)
+    if (currentMatch || viewingTournament || !contract) return;
+
+    const pollHomePageData = async () => {
+      try {
+        // Fetch tier metadata silently (no loading indicators)
+        await fetchTierMetadata(null, true);
+
+        // Re-fetch instances for expanded tiers silently
+        const expandedTierIds = Object.keys(expandedTiers)
+          .filter(id => expandedTiers[id])
+          .map(id => parseInt(id));
+
+        for (const tierId of expandedTierIds) {
+          await fetchTierInstances(tierId, null, null, null, true);
+        }
+      } catch (err) {
+        console.error('Error polling home page data:', err);
+      }
+    };
+
+    // Set up polling interval - runs every 10 seconds
+    const pollInterval = setInterval(pollHomePageData, 10000);
+
+    return () => clearInterval(pollInterval);
+  }, [currentMatch, viewingTournament, contract, expandedTiers, fetchTierMetadata, fetchTierInstances]);
 
   // Poll tournament bracket every 3 seconds (using refs for seamless syncing)
   const tournamentRef = useRef(viewingTournament);
