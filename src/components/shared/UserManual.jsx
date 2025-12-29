@@ -108,7 +108,7 @@ const UserManual = () => {
 
           {/* EL1 */}
           <div className="mb-8">
-            <h4 className="text-lg font-semibold text-purple-200 mb-3">EL1: Not Enough Enrolled Players</h4>
+            <h4 id="el1" className="text-lg font-semibold text-purple-200 mb-3">EL1: Force-Start Tournament When Not Enough Enrolled Players</h4>
             <div className="space-y-3 text-gray-300">
               <p>
                 Sometimes players enroll in a tournament but not enough join to fill all spots. Without intervention, these enrolled players would be stuck waiting indefinitely.
@@ -153,7 +153,7 @@ const UserManual = () => {
 
           {/* EL2 */}
           <div className="mb-8">
-            <h4 className="text-lg font-semibold text-purple-200 mb-3">EL2: Tournament Never Started</h4>
+            <h4 id="el2" className="text-lg font-semibold text-purple-200 mb-3">EL2: Claim Abandoned Prize Pool When Tournament Never Started</h4>
             <div className="space-y-3 text-gray-300">
               <p>
                 If EL1 is available but no enrolled player starts the tournament, the prize pool sits idle.
@@ -179,7 +179,7 @@ const UserManual = () => {
 
           {/* ML1 */}
           <div className="mb-8">
-            <h4 className="text-lg font-semibold text-purple-200 mb-3">ML1: Opponent Timeout</h4>
+            <h4 id="ml1" className="text-lg font-semibold text-purple-200 mb-3">ML1: Claim Victory by Opponent Timeout</h4>
             <div className="space-y-3 text-gray-300">
               <p>
                 During a match, one player may run out of time on their clock. Their opponent shouldn't have to wait forever for a move that's never coming.
@@ -195,7 +195,7 @@ const UserManual = () => {
 
           {/* ML2 */}
           <div className="mb-8">
-            <h4 className="text-lg font-semibold text-purple-200 mb-3">ML2: Stalled Match</h4>
+            <h4 id="ml2" className="text-lg font-semibold text-purple-200 mb-3">ML2: Eliminate Both Players in a Stalled Match</h4>
             <div className="space-y-3 text-gray-300">
               <p>
                 If ML1 is available but the winning player doesn't claim their victory, the match blocks the entire tournament from progressing.
@@ -214,7 +214,7 @@ const UserManual = () => {
 
           {/* ML3 */}
           <div className="mb-8">
-            <h4 className="text-lg font-semibold text-purple-200 mb-3">ML3: Abandoned Match</h4>
+            <h4 id="ml3" className="text-lg font-semibold text-purple-200 mb-3">ML3: Replace Players in Abandoned Match</h4>
             <div className="space-y-3 text-gray-300">
               <p>
                 If ML2 is available but no advanced player steps in, the match is considered fully abandoned.
