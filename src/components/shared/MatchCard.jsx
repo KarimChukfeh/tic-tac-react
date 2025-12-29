@@ -5,7 +5,7 @@
  * Supports escalation display, player icons, and various color themes.
  */
 
-import { Play, Award } from 'lucide-react';
+import { Play, Award, Clock, HelpCircle, Zap, Users } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
 import { getMatchStatusText, getMatchStatusColor } from '../../utils/matchStatus';
 import { calculatePlayerTimes } from '../../utils/timeCalculations';
@@ -237,6 +237,20 @@ const MatchCard = ({
     canReplace: false,
   };
 
+  // Debug logging for escalation issues
+  if (showEscalation && match.matchStatus === 1 && !isUserMatch && escalation.hasEscalation) {
+    console.log(`[MatchCard R${roundIdx}M${matchIdx}] Escalation State:`, {
+      account: account?.slice(0, 10),
+      isUserAdvancedPlayer,
+      canForceEliminate: escalation.canForceEliminate,
+      canReplace: escalation.canReplace,
+      escL2Available: match.escL2Available,
+      escL3Available: match.escL3Available,
+      showingML2CTA: escalation.canForceEliminate && isUserAdvancedPlayer,
+      showingML3CTA: escalation.canReplace && !isUserAdvancedPlayer,
+    });
+  }
+
   // Get border class
   const borderClass = showEscalation
     ? getBorderClass(isUserMatch, escalation, colors.defaultBorder)
@@ -302,34 +316,47 @@ const MatchCard = ({
         </div>
       </div>
 
-      {/* Escalation countdown timers - show when escalations are active */}
+      {/* Escalation countdown timers - show only the next pending timer */}
       {showEscalation && match.matchStatus === 1 && escalation.hasEscalation && !isUserMatch && (
-        <div className="mb-3 space-y-1">
-          {/* Timer until Escalation 1: Claim timeout win */}
-          {escalation.timeToEscalation1 !== null && escalation.timeToEscalation1 > 0 && (
-            <div className="flex items-center justify-between text-xs bg-orange-500/10 rounded px-2 py-1 border border-orange-400/20">
-              <span className="text-orange-300/80">Esc 1: Timeout claim in:</span>
-              <span className="text-orange-300 font-mono font-bold">
-                {formatEscalationTime(escalation.timeToEscalation1)}
-              </span>
+        <div className="mb-3">
+          {/* Show ML2 timer if it's pending (timeToEscalation1 = ML2 timer) - Advanced Players Only */}
+          {escalation.timeToEscalation1 !== null && escalation.timeToEscalation1 > 0 && !escalation.canForceEliminate && isUserAdvancedPlayer && (
+            <div className="relative bg-gradient-to-r from-yellow-500/20 to-orange-600/20 border border-yellow-400/50 rounded-lg p-3">
+              <div className="flex items-center justify-between pr-6">
+                <div className="flex items-center gap-2">
+                  <Clock className="text-yellow-400" size={16} />
+                  <span className="text-yellow-300 text-xs font-semibold">
+                    ML2: Force Eliminate in {formatEscalationTime(escalation.timeToEscalation1)}
+                  </span>
+                </div>
+              </div>
+              <a
+                href="#ml2"
+                className="absolute top-3 right-3 text-yellow-400 hover:text-yellow-300 transition-colors"
+                title="Learn more about force elimination"
+              >
+                <HelpCircle size={16} />
+              </a>
             </div>
           )}
-          {/* Timer until Escalation 2: Force eliminate */}
-          {escalation.timeToEscalation2 !== null && escalation.timeToEscalation2 > 0 && (
-            <div className="flex items-center justify-between text-xs bg-yellow-500/10 rounded px-2 py-1 border border-yellow-400/20">
-              <span className="text-yellow-300/80">Esc 2: Force eliminate in:</span>
-              <span className="text-yellow-300 font-mono font-bold">
-                {formatEscalationTime(escalation.timeToEscalation2)}
-              </span>
-            </div>
-          )}
-          {/* Timer until Escalation 3: Replace both players */}
-          {escalation.timeToEscalation3 !== null && escalation.timeToEscalation3 > 0 && (
-            <div className="flex items-center justify-between text-xs bg-red-500/10 rounded px-2 py-1 border border-red-400/20">
-              <span className="text-red-300/80">Esc 3: Replace both in:</span>
-              <span className="text-red-300 font-mono font-bold">
-                {formatEscalationTime(escalation.timeToEscalation3)}
-              </span>
+          {/* Show ML3 timer if ML2 is active and ML3 is pending (timeToEscalation2 = ML3 timer) - Non-Advanced Players Only */}
+          {escalation.canForceEliminate && escalation.timeToEscalation2 !== null && escalation.timeToEscalation2 > 0 && !escalation.canReplace && !isUserAdvancedPlayer && (
+            <div className="relative bg-gradient-to-r from-red-500/20 to-red-600/20 border border-red-400/50 rounded-lg p-3">
+              <div className="flex items-center justify-between pr-6">
+                <div className="flex items-center gap-2">
+                  <Clock className="text-red-400" size={16} />
+                  <span className="text-red-300 text-xs font-semibold">
+                    ML3: Replace Players in {formatEscalationTime(escalation.timeToEscalation2)}
+                  </span>
+                </div>
+              </div>
+              <a
+                href="#ml3"
+                className="absolute top-3 right-3 text-red-400 hover:text-red-300 transition-colors"
+                title="Learn more about replacing players"
+              >
+                <HelpCircle size={16} />
+              </a>
             </div>
           )}
         </div>
@@ -400,18 +427,22 @@ const MatchCard = ({
                     matchNumber: matchIdx
                   })}
                   disabled={loading}
-                  className="w-full bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-all transform hover:scale-105 disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="w-full bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 flex items-center justify-center gap-2 text-xs"
                 >
-                  Force Eliminate (Higher Rank)
+                  <Zap size={14} />
+                  {loading ? 'Eliminating...' : 'ML2: Force Eliminate Both'}
                 </button>
-                <p className="text-xs text-yellow-300 mt-1 text-center">
-                  Escalation 2: Eliminate both stalled players
-                </p>
+                <a
+                  href="#ml2"
+                  className="block w-full text-center text-yellow-300 hover:text-yellow-200 hover:bg-yellow-500/10 text-xs mt-2 py-2 px-4 rounded-lg border border-yellow-400/30 hover:border-yellow-400/50 transition-all"
+                >
+                  Learn more about ML2 (Force Eliminate)
+                </a>
               </div>
             )}
 
-            {/* Escalation 3: Replace Both Players */}
-            {escalation.canReplace && onClaimReplacement && (
+            {/* Escalation 3: Replace Both Players (Non-Advanced Players Only) */}
+            {escalation.canReplace && !isUserAdvancedPlayer && onClaimReplacement && (
               <div className="mt-2">
                 <button
                   onClick={() => onClaimReplacement({
@@ -421,13 +452,17 @@ const MatchCard = ({
                     matchNumber: matchIdx
                   })}
                   disabled={loading}
-                  className="w-full bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white font-bold py-2 px-4 rounded-lg transition-all transform hover:scale-105 disabled:opacity-50 animate-pulse flex items-center justify-center gap-2"
+                  className="w-full bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 flex items-center justify-center gap-2 text-xs"
                 >
-                  Claim Match & Replace Both
+                  <Users size={14} />
+                  {loading ? 'Claiming...' : 'ML3: Replace & Claim Match'}
                 </button>
-                <p className="text-xs text-red-300 mt-1 text-center">
-                  Escalation 3: Take this match slot and advance!
-                </p>
+                <a
+                  href="#ml3"
+                  className="block w-full text-center text-red-300 hover:text-red-200 hover:bg-red-500/10 text-xs mt-2 py-2 px-4 rounded-lg border border-red-400/30 hover:border-red-400/50 transition-all"
+                >
+                  Learn more about ML3 (Replace Players)
+                </a>
               </div>
             )}
           </>
