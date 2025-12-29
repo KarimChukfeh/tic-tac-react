@@ -2219,47 +2219,15 @@ export default function Chess() {
           activity={playerActivity.data}
           loading={playerActivity.loading}
           syncing={playerActivity.syncing}
+          contract={contract}
+          account={account}
           onEnterMatch={handlePlayMatch}
           onEnterTournament={handleEnterTournament}
           onRefresh={playerActivity.refetch}
-          gameName="Chess"
+          gameName="chess"
           gameEmoji="♔"
         />
       )}
-
-      {/* Back to ETour Button */}
-      <Link
-        to="/"
-        style={{
-          position: 'fixed',
-          top: 'calc(1rem + 100px)',
-          left: '1rem',
-          zIndex: 50,
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem',
-          padding: '0.5rem 1rem',
-          background: 'rgba(0, 0, 0, 0.6)',
-          backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255, 255, 255, 0.2)',
-          borderRadius: '0.5rem',
-          color: '#fff',
-          fontSize: '0.875rem',
-          fontWeight: 500,
-          textDecoration: 'none',
-          transition: 'all 0.2s ease'
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = 'rgba(0, 0, 0, 0.8)';
-          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.4)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = 'rgba(0, 0, 0, 0.6)';
-          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
-        }}
-      >
-        <ArrowLeft size={16} />
-      </Link>
 
       {/* Trust Banner */}
       <div style={{

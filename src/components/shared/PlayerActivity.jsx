@@ -8,14 +8,19 @@
  */
 
 import { useState } from 'react';
-import { Users, X, Zap, Trophy, Clock, Play, Eye, RefreshCw } from 'lucide-react';
+import { Users, X, Zap, Trophy, Clock, Play, Eye, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
 import { formatTimeRemaining } from '../../utils/activityHelpers';
+import MiniTicTacToeBoard from './MiniTicTacToeBoard';
+import MiniChessBoard from './MiniChessBoard';
+import MiniConnect4Board from './MiniConnect4Board';
 
 const PlayerActivity = ({
   activity,
   loading,
   syncing,
+  contract,
+  account,
   onEnterMatch,
   onEnterTournament,
   onRefresh,
@@ -23,6 +28,26 @@ const PlayerActivity = ({
   gameEmoji,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [expandedMatches, setExpandedMatches] = useState(new Set());
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  const toggleMatchExpand = (matchKey) => {
+    setExpandedMatches(prev => {
+      const next = new Set(prev);
+      if (next.has(matchKey)) {
+        next.delete(matchKey);
+      } else {
+        next.add(matchKey);
+      }
+      return next;
+    });
+  };
+
+  const handleRefresh = () => {
+    onRefresh();
+    // Trigger mini board refresh by changing the value
+    setRefreshTrigger(prev => prev + 1);
+  };
 
   // Only count matches where it's your turn for the badge
   const activeMatchCount = activity?.activeMatches?.filter(m => m.isMyTurn).length || 0;
@@ -77,7 +102,7 @@ const PlayerActivity = ({
             <div className="flex items-center gap-1">
               {/* Refresh Button */}
               <button
-                onClick={onRefresh}
+                onClick={handleRefresh}
                 disabled={syncing}
                 className="text-slate-400 hover:text-white transition-colors p-1 hover:bg-slate-700/50 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                 aria-label="Refresh"
@@ -118,54 +143,123 @@ const PlayerActivity = ({
                     Active Matches ({activity.activeMatches.length})
                   </h4>
                   <div className="space-y-2">
-                    {activity.activeMatches.map((match) => (
-                      <div
-                        key={`${match.tierId}-${match.instanceId}-${match.roundIdx}-${match.matchIdx}`}
-                        className="bg-gradient-to-br from-yellow-500/20 to-orange-500/20 border-2 border-yellow-400/50 hover:border-yellow-400/80 rounded-lg p-3 transition-all"
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-white font-semibold text-sm">
-                              Tier {match.tierId} Instance {match.instanceId}
-                            </span>
-                            {match.isMyTurn && (
-                              <span className="bg-yellow-500 text-black text-[10px] font-bold px-2 py-0.5 rounded uppercase animate-pulse">
-                                Your Turn!
-                              </span>
-                            )}
-                          </div>
-                          <span className="text-yellow-300 bg-yellow-900/30 font-mono text-xs font-bold px-2 py-1 rounded">
-                            {formatTimeRemaining(match.timeRemaining)}
-                          </span>
-                        </div>
-                        <div className="text-slate-300 text-xs mb-3">
-                          vs {shortenAddress(match.opponent)}
-                        </div>
-                        <button
-                          onClick={() =>
-                            onEnterMatch(
-                              match.tierId,
-                              match.instanceId,
-                              match.roundIdx,
-                              match.matchIdx
-                            )
-                          }
-                          className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-bold py-2 px-4 rounded-lg transition-all transform hover:scale-105 flex items-center justify-center gap-2 text-sm"
+                    {activity.activeMatches.map((match) => {
+                      const matchKey = `${match.tierId}-${match.instanceId}-${match.roundIdx}-${match.matchIdx}`;
+                      const isMatchExpanded = expandedMatches.has(matchKey);
+
+                      return (
+                        <div
+                          key={matchKey}
+                          className="bg-gradient-to-br from-yellow-500/20 to-orange-500/20 border-2 border-yellow-400/50 hover:border-yellow-400/80 rounded-lg p-3 transition-all"
                         >
-                          {match.isMyTurn ? (
-                            <>
-                              <Play size={16} />
-                              Make Move
-                            </>
-                          ) : (
-                            <>
-                              <Eye size={16} />
-                              View Match
-                            </>
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-white font-semibold text-sm">
+                                Tier {match.tierId} Instance {match.instanceId}
+                              </span>
+                              {match.isMyTurn && (
+                                <span className="bg-yellow-500 text-black text-[10px] font-bold px-2 py-0.5 rounded uppercase animate-pulse">
+                                  Your Turn!
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-yellow-300 bg-yellow-900/30 font-mono text-xs font-bold px-2 py-1 rounded">
+                              {formatTimeRemaining(match.timeRemaining)}
+                            </span>
+                          </div>
+                          <div className="text-slate-300 text-xs mb-3">
+                            vs {shortenAddress(match.opponent)}
+                          </div>
+
+                          {/* Buttons */}
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() =>
+                                onEnterMatch(
+                                  match.tierId,
+                                  match.instanceId,
+                                  match.roundIdx,
+                                  match.matchIdx
+                                )
+                              }
+                              className="flex-1 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-bold py-2 px-4 rounded-lg transition-all transform hover:scale-105 flex items-center justify-center gap-2 text-sm"
+                            >
+                              {match.isMyTurn ? (
+                                <>
+                                  <Play size={16} />
+                                  Make Move
+                                </>
+                              ) : (
+                                <>
+                                  <Eye size={16} />
+                                  View Match
+                                </>
+                              )}
+                            </button>
+
+                            {/* Expand button - show for all games */}
+                            <button
+                              onClick={() => toggleMatchExpand(matchKey)}
+                              className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-all"
+                              title={isMatchExpanded ? "Hide board" : "Show board"}
+                            >
+                              {isMatchExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                            </button>
+                          </div>
+
+                          {/* Mini Board - support all three games */}
+                          {isMatchExpanded && (
+                            <div className="mt-3 pt-3 border-t border-yellow-400/20">
+                              {gameName === 'tictactoe' && (
+                                <MiniTicTacToeBoard
+                                  contract={contract}
+                                  account={account}
+                                  match={match}
+                                  refreshTrigger={refreshTrigger}
+                                  onMoveComplete={() => {
+                                    // Refresh activity data to update time/turn status
+                                    handleRefresh();
+                                    // Board stays open so user can see result
+                                  }}
+                                  onError={(err) => {
+                                    console.error('Mini board error:', err);
+                                    // Error shown inline within MiniTicTacToeBoard
+                                  }}
+                                />
+                              )}
+                              {gameName === 'chess' && (
+                                <MiniChessBoard
+                                  contract={contract}
+                                  account={account}
+                                  match={match}
+                                  refreshTrigger={refreshTrigger}
+                                  onMoveComplete={() => {
+                                    handleRefresh();
+                                  }}
+                                  onError={(err) => {
+                                    console.error('Mini board error:', err);
+                                  }}
+                                />
+                              )}
+                              {gameName === 'connect4' && (
+                                <MiniConnect4Board
+                                  contract={contract}
+                                  account={account}
+                                  match={match}
+                                  refreshTrigger={refreshTrigger}
+                                  onMoveComplete={() => {
+                                    handleRefresh();
+                                  }}
+                                  onError={(err) => {
+                                    console.error('Mini board error:', err);
+                                  }}
+                                />
+                              )}
+                            </div>
                           )}
-                        </button>
-                      </div>
-                    ))}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}

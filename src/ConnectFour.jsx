@@ -2233,10 +2233,12 @@ export default function ConnectFour() {
           activity={playerActivity.data}
           loading={playerActivity.loading}
           syncing={playerActivity.syncing}
+          contract={contract}
+          account={account}
           onEnterMatch={handlePlayMatch}
           onEnterTournament={handleEnterTournament}
           onRefresh={playerActivity.refetch}
-          gameName="Connect Four"
+          gameName="connect4"
           gameEmoji="🔴"
         />
       )}
