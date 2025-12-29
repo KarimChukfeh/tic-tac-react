@@ -54,7 +54,11 @@ const UserManual = () => {
       {/* Introduction */}
       <div className="mb-6 space-y-4">
         <p className="text-gray-300">
-          Competitive tournaments stall during:
+          Griefing is when player intentionally disrupt a game, preventing it from progressing or concluding.
+        </p>
+
+        <p className="text-gray-300">
+          Competitive tournaments can get stuck during:
         </p>
 
         <ol className="list-decimal list-inside space-y-2 text-gray-300 ml-2">
@@ -112,7 +116,6 @@ const UserManual = () => {
         Griefing becomes impossible when stallers lose (real ETH) and resolvers earn (real ETH).
       </p>
 
-
       <br/>
 
       <hr className="border-purple-500/20 mb-8" />
@@ -153,7 +156,7 @@ const UserManual = () => {
               </p>
               <div className="bg-purple-500/20 border border-purple-400/40 rounded-lg p-3">
                 <p className="text-purple-200">
-                  This gives enrolled players the power to autonomously begin the tournament they paid to enter—no waiting on a full lobby, no relying on an admin.
+                  This gives enrolled players the power to autonomously begin the tournament they paid to enter. No waiting on a full lobby, no relying on an admin.
                 </p>
               </div>
             </div>
@@ -200,7 +203,7 @@ const UserManual = () => {
                 If EL1 is available but no enrolled player starts the tournament, the prize pool sits idle.
               </p>
               <p>
-                5 minutes after EL1, anyone—even someone who never enrolled—can claim the entire prize pool.
+                5 minutes after EL1, anyone (even someone who never enrolled) can claim the entire prize pool.
               </p>
               <div className="bg-purple-500/20 border border-purple-400/40 rounded-lg p-3">
                 <p className="text-purple-200">
@@ -208,7 +211,7 @@ const UserManual = () => {
                 </p>
               </div>
               <p className="italic">
-                The mere existence of EL2 pressures enrolled players to trigger EL1 first—if they don't, they risk losing their entire entry fee to an outsider.
+                The mere existence of EL2 pressures enrolled players to trigger EL1 first. If they don't, they risk losing their entire entry fee to an outsider.
               </p>
             </div>
           </div>
@@ -256,7 +259,7 @@ const UserManual = () => {
                 </p>
               </div>
               <p className="italic">
-                The mere existence of ML2 pressures the winning player to claim ML1 promptly—if they don't, they risk being eliminated alongside their opponent.
+                The mere existence of ML2 pressures the winning player to claim ML1 promptly. If they don't, they risk being eliminated alongside their opponent.
               </p>
             </div>
           </div>
@@ -271,15 +274,15 @@ const UserManual = () => {
                 If ML2 is available but no advanced player steps in, the match is considered fully abandoned.
               </p>
               <p>
-                2 minutes after ML2, anyone—even someone outside the tournament—can replace both players and take their spot in the bracket.
+                2 minutes after ML2, anyone (even someone outside the tournament) can replace both players and take their spot in the bracket.
               </p>
               <div className="bg-purple-500/20 border border-purple-400/40 rounded-lg p-3">
                 <p className="text-purple-200">
-                  At this point, resolving the stall is risk-free profit. This final level guarantees that every match will eventually complete—someone will always claim the free ETH.
+                  At this point, resolving the stall is risk-free profit. This final level guarantees that every match will eventually complete; someone will always claim the free ETH.
                 </p>
               </div>
               <p className="italic">
-                The mere existence of ML3 pressures advanced players to act at ML2 first—if they don't, an outsider can swoop in and take a spot in the bracket that should have been theirs to protect.
+                The mere existence of ML3 pressures advanced players to act at ML2 first. If they don't, an outsider can swoop in and take a spot in the bracket that should have been theirs to protect.
               </p>
             </div>
           </div>
