@@ -1164,7 +1164,7 @@ export default function Chess() {
       // First check if this instance exists
       const instanceCount = Number(await contract.INSTANCE_COUNTS(tierId));
       if (instanceId >= instanceCount) {
-        alert(`Invalid instance ID. Tier ${tierId} only has ${instanceCount} instances (0-${instanceCount-1})`);
+        alert(`Invalid instance ID. Tier ${tierId + 1} only has ${instanceCount} instances (1-${instanceCount})`);
         setTournamentsLoading(false);
         return;
       }
@@ -1272,7 +1272,7 @@ export default function Chess() {
       console.error('Error force-starting tournament:', error);
       let errorMessage = error.message;
       if (error.message.includes('ARRAY_RANGE_ERROR')) {
-        errorMessage = `Tournament cannot be started. This may be due to:\n- Invalid tier ID (${tierId}) or instance ID (${instanceId})\n- Tournament already started\n- Contract state issue\n\nCheck console for full error details.`;
+        errorMessage = `Tournament cannot be started. This may be due to:\n- Invalid tier ID (${tierId + 1}) or instance ID (${instanceId + 1})\n- Tournament already started\n- Contract state issue\n\nCheck console for full error details.`;
       } else if (error.message.includes('TimeoutNotReached')) {
         errorMessage = 'Enrollment timeout window has not been reached yet';
       } else if (error.message.includes('NotEnrolled')) {
@@ -2311,8 +2311,8 @@ export default function Chess() {
         </div>
       )}
 
-      {/* Player Activity Component */}
-      {account && !currentMatch && !viewingTournament && (
+      {/* Player Activity Component - Available in all views */}
+      {account && (
         <PlayerActivity
           activity={playerActivity.data}
           loading={playerActivity.loading}

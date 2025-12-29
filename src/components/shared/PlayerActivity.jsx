@@ -165,7 +165,7 @@ const PlayerActivity = ({
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-2">
                               <span className="text-white font-semibold text-sm">
-                                Tier {match.tierId} Instance {match.instanceId}
+                                Tier {match.tierId + 1} Instance {match.instanceId + 1}
                               </span>
                               {match.isMyTurn && (
                                 <span className="bg-yellow-500 text-black text-[10px] font-bold px-2 py-0.5 rounded uppercase animate-pulse">
@@ -289,7 +289,7 @@ const PlayerActivity = ({
                       >
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-white font-semibold text-sm">
-                            Tier {tournament.tierId} Instance {tournament.instanceId}
+                            Tier {tournament.tierId + 1} Instance {tournament.instanceId + 1}
                           </span>
                         </div>
                         <div className="text-slate-400 text-xs mb-3">
@@ -323,7 +323,7 @@ const PlayerActivity = ({
                       >
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-white font-semibold text-sm">
-                            Tier {tournament.tierId} Instance {tournament.instanceId}
+                            Tier {tournament.tierId + 1} Instance {tournament.instanceId + 1}
                           </span>
                         </div>
                         <div className="text-slate-400 text-xs mb-3">

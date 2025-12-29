@@ -136,7 +136,7 @@ const TournamentCard = ({
           <Trophy className={colors.icon} size={24} />
           <div>
             <h3 className="text-xl font-bold text-white">
-              {tierName || `Tier ${tierId}`}
+              {tierName || `Tier ${tierId + 1}`}
             </h3>
             <div className={`text-xs ${colors.textMuted}`}>Instance #{instanceId + 1}</div>
           </div>

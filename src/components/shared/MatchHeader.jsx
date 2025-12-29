@@ -53,7 +53,7 @@ const MatchHeader = ({
           </div>
           {tournamentInfo && (
             <p className={`${theme.textMuted} mt-2`}>
-              T{tournamentInfo.tierId}-I{tournamentInfo.instanceId} • Round {tournamentInfo.roundNumber + 1} • Match {tournamentInfo.matchNumber + 1}
+              T{tournamentInfo.tierId + 1}-I{tournamentInfo.instanceId + 1} • Round {tournamentInfo.roundNumber + 1} • Match {tournamentInfo.matchNumber + 1}
             </p>
           )}
         </div>
