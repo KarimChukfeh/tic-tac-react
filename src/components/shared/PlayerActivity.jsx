@@ -31,6 +31,16 @@ const PlayerActivity = ({
   const [expandedMatches, setExpandedMatches] = useState(new Set());
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
+  // Convert gameName to display title
+  const getGameTitle = (name) => {
+    const titles = {
+      'tictactoe': 'TicTacToe',
+      'chess': 'Chess',
+      'connect4': 'Connect Four'
+    };
+    return titles[name] || name;
+  };
+
   const toggleMatchExpand = (matchKey) => {
     setExpandedMatches(prev => {
       const next = new Set(prev);
@@ -95,7 +105,7 @@ const PlayerActivity = ({
             <div className="flex items-center gap-2">
               <span className="text-2xl">{gameEmoji}</span>
               <div>
-                <h3 className="text-white font-bold text-lg">{gameName}</h3>
+                <h3 className="text-white font-bold text-lg">{getGameTitle(gameName)}</h3>
                 <p className="text-slate-400 text-xs">Your Activity</p>
               </div>
             </div>
