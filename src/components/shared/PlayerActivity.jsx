@@ -99,7 +99,7 @@ const PlayerActivity = ({
 
       {/* Expanded State */}
       {isExpanded && (
-        <div className="bg-gradient-to-br from-slate-900/95 to-slate-800/95 backdrop-blur-lg rounded-2xl p-4 md:p-6 border-2 border-purple-400/40 shadow-2xl w-[calc(100vw-2rem)] md:w-96 max-h-[80vh] overflow-y-auto">
+        <div className="bg-gradient-to-br from-slate-900/95 to-slate-800/95 backdrop-blur-lg rounded-2xl p-4 md:p-6 border-2 border-purple-400/40 shadow-2xl w-[calc(100vw-2rem)] md:w-[464px] max-h-[80vh] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-slate-800/50 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-purple-500/60 [&::-webkit-scrollbar-thumb]:to-blue-500/60 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border [&::-webkit-scrollbar-thumb]:border-purple-400/30 hover:[&::-webkit-scrollbar-thumb]:from-purple-500/80 hover:[&::-webkit-scrollbar-thumb]:to-blue-500/80">
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
