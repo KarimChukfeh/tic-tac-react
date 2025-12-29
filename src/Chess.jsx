@@ -18,8 +18,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Wallet, Grid, Clock, Shield, Lock, Eye, Code, ExternalLink,
-  Trophy, DollarSign, History,
-  CheckCircle, AlertCircle, ChevronDown, ArrowLeft
+  Trophy, Zap, Coins, History,
+  CheckCircle, AlertCircle, ChevronDown, ArrowLeft, HelpCircle
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import CHESS_ABI from './COCABI.json';
@@ -31,6 +31,7 @@ import ParticleBackground from './components/shared/ParticleBackground';
 import MatchCard from './components/shared/MatchCard';
 import TournamentCard from './components/shared/TournamentCard';
 import WinnersLeaderboard from './components/shared/WinnersLeaderboard';
+import UserManual from './components/shared/UserManual';
 import MatchEndModal from './components/shared/MatchEndModal';
 import WhyArbitrum from './components/shared/WhyArbitrum';
 import GameMatchLayout from './components/shared/GameMatchLayout';
@@ -209,102 +210,88 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
 
           return (
             <>
-              <div className="mt-4 bg-gradient-to-r from-orange-500/20 to-red-500/20 border border-orange-400/50 rounded-lg p-5">
-                <div className="flex items-center gap-2 mb-4">
-                  <AlertCircle className="text-orange-400" size={22} />
-                  <h4 className="text-orange-300 font-bold text-lg">Tournament Waiting Period</h4>
-                </div>
-
-                <div className="space-y-3">
-                  {/* Level 1: Early Start Option */}
-                  <div className={`p-4 rounded-lg ${canForceStart ? 'bg-orange-500/30 border-2 border-orange-400' : 'bg-black/30 border border-orange-400/30'}`}>
-                    <div className="flex items-center justify-between mb-2">
+              {/* Countdown Timer Display */}
+              {timeToEsc1 > 0 && (
+                <div className="mt-4">
+                  <div className="relative bg-gradient-to-r from-orange-500/20 to-orange-600/20 border border-orange-400/50 rounded-lg p-3">
+                    <div className="flex items-center justify-between pr-6">
                       <div className="flex items-center gap-2">
-                        <Trophy className="text-orange-400" size={18} />
-                        <span className={`font-bold ${canForceStart ? 'text-orange-200' : 'text-orange-300/70'}`}>
-                          Start Tournament Early
+                        <Clock className="text-orange-400" size={16} />
+                        <span className="text-orange-300 text-xs font-semibold">
+                          EL1: Force Start in {formatTime(timeToEsc1)}
                         </span>
                       </div>
-                      {timeToEsc1 > 0 ? (
-                        <span className="text-orange-300 font-mono text-sm bg-black/30 px-2 py-1 rounded">{formatTime(timeToEsc1)}</span>
-                      ) : (
-                        <span className="text-orange-200 font-bold text-xs bg-orange-500/50 px-3 py-1 rounded-full">AVAILABLE NOW</span>
-                      )}
                     </div>
-                    <p className={`text-sm ${canForceStart ? 'text-orange-100' : 'text-orange-200/70'} leading-relaxed`}>
-                      {canForceStart ? (
-                        <>
-                          <span className="font-semibold">You can start now!</span> Any enrolled player can begin the tournament with the current {enrolledCount} player{enrolledCount !== 1 ? 's' : ''} and prize pool of {prizePoolETH} ETH.
-                        </>
-                      ) : (
-                        <>
-                          In {formatTime(timeToEsc1)}, enrolled players can start the tournament early with the current {enrolledCount} player{enrolledCount !== 1 ? 's' : ''} instead of waiting for more.
-                        </>
-                      )}
-                    </p>
-                  </div>
-
-                  {/* Level 2: Abandonment Warning */}
-                  <div className={`p-4 rounded-lg ${canAnyoneStart ? 'bg-red-500/30 border-2 border-red-400' : 'bg-black/30 border border-red-400/30'}`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <AlertCircle className="text-red-400" size={18} />
-                        <span className={`font-bold ${canAnyoneStart ? 'text-red-200' : 'text-red-300/70'}`}>
-                          Abandonment Risk
-                        </span>
-                      </div>
-                      {timeToEsc2 > 0 ? (
-                        <span className="text-red-300 font-mono text-sm bg-black/30 px-2 py-1 rounded">{formatTime(timeToEsc2)}</span>
-                      ) : canAnyoneStart ? (
-                        <span className="text-red-200 font-bold text-xs bg-red-500/50 px-3 py-1 rounded-full">CRITICAL</span>
-                      ) : (
-                        <span className="text-red-300/50 text-xs">After Level 1</span>
-                      )}
-                    </div>
-                    <p className={`text-sm ${canAnyoneStart ? 'text-red-100' : 'text-red-200/70'} leading-relaxed`}>
-                      {canAnyoneStart ? (
-                        <>
-                          <span className="font-semibold">⚠️ Critical:</span> Anyone (even non-enrolled players) can now terminate this tournament and claim the entire {prizePoolETH} ETH prize pool. <span className="font-semibold text-red-200">All enrolled players will lose their entry fees!</span>
-                        </>
-                      ) : (
-                        <>
-                          If the tournament remains inactive for too long, anyone can terminate it and claim the entire {prizePoolETH} ETH pool. Enrolled players would lose their entry fees.
-                        </>
-                      )}
-                    </p>
+                    <a
+                      href="#el1"
+                      className="absolute top-3 right-3 text-orange-400 hover:text-orange-300 transition-colors"
+                      title="Learn more about force-starting tournaments"
+                    >
+                      <HelpCircle size={16} />
+                    </a>
                   </div>
                 </div>
-              </div>
+              )}
 
+              {canForceStart && timeToEsc2 > 0 && (
+                <div className="mt-4">
+                  <div className="relative bg-gradient-to-r from-red-500/20 to-red-600/20 border border-red-400/50 rounded-lg p-3">
+                    <div className="flex items-center justify-between pr-6">
+                      <div className="flex items-center gap-2">
+                        <Clock className="text-red-400" size={16} />
+                        <span className="text-red-300 text-xs font-semibold">
+                          EL2: Claim Abandoned Pool in {formatTime(timeToEsc2)}
+                        </span>
+                      </div>
+                    </div>
+                    <a
+                      href="#el2"
+                      className="absolute top-3 right-3 text-red-400 hover:text-red-300 transition-colors"
+                      title="Learn more about claiming abandoned pools"
+                    >
+                      <HelpCircle size={16} />
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {/* EL1: Force Start CTA */}
               {canForceStart && isEnrolledUser && (
                 <div className="mt-4">
                   <button
                     onClick={() => onManualStart(tierId, instanceId)}
                     disabled={loading}
-                    className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-4 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 shadow-lg"
+                    className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-xs"
                   >
-                    <Trophy size={20} />
-                    {loading ? 'Starting Tournament...' : `Start Tournament Now with ${enrolledCount} Players`}
+                    <Zap size={14} />
+                    {loading ? 'Starting...' : `EL1: Force Start with ${enrolledCount} Players`}
                   </button>
-                  <p className="text-orange-200 text-sm text-center mt-2 font-medium">
-                    Begin playing immediately with current participants
-                  </p>
+                  <a
+                    href="#el1"
+                    className="block w-full text-center text-orange-300 hover:text-orange-200 hover:bg-orange-500/10 text-xs mt-2 py-2 px-4 rounded-lg border border-orange-400/30 hover:border-orange-400/50 transition-all"
+                  >
+                    Learn more about EL1 (Force Start)
+                  </a>
                 </div>
               )}
 
+              {/* EL2: Claim Abandoned Pool CTA */}
               {canAnyoneStart && !isEnrolledUser && (
                 <div className="mt-4">
                   <button
                     onClick={() => onClaimAbandonedPool(tierId, instanceId)}
                     disabled={loading}
-                    className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold py-4 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 shadow-lg"
+                    className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-xs"
                   >
-                    <DollarSign size={20} />
-                    {loading ? 'Claiming Pool...' : `Claim Abandoned Pool (${prizePoolETH} ETH)`}
+                    <Coins size={14} />
+                    {loading ? 'Claiming...' : `EL2: Claim Abandoned Pool (${prizePoolETH} ETH)`}
                   </button>
-                  <p className="text-red-200 text-sm text-center mt-2 font-medium">
-                    Terminate the inactive tournament and receive the prize pool
-                  </p>
+                  <a
+                    href="#el2"
+                    className="block w-full text-center text-red-300 hover:text-red-200 hover:bg-red-500/10 text-xs mt-2 py-2 px-4 rounded-lg border border-red-400/30 hover:border-red-400/50 transition-all"
+                  >
+                    Learn more about EL2 (Claim Pool)
+                  </a>
                 </div>
               )}
             </>
@@ -2350,11 +2337,18 @@ export default function Chess() {
                 Winners paid automatically on-chain. No delays, no middlemen.
               </p>
             </div>
-            <div className="bg-gradient-to-br from-purple-500/20 to-violet-500/20 border border-purple-400/30 rounded-xl p-4">
+            <div className="relative bg-gradient-to-br from-purple-500/20 to-violet-500/20 border border-purple-400/30 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Shield className="text-purple-400" size={20} />
                 <span className="font-bold text-purple-300">Impossible to grief</span>
               </div>
+              <a
+                href="#user-manual"
+                className="absolute top-3 right-3 text-purple-400 hover:text-purple-300 transition-colors"
+                title="Learn more about anti-griefing"
+              >
+                <HelpCircle size={16} />
+              </a>
               <p className="text-sm text-purple-200">
                 Anti-stalling mechanisms ensure every match completes. No admin required.
               </p>
@@ -2629,6 +2623,13 @@ export default function Chess() {
             currentAccount={account}
             onRetry={() => fetchLeaderboard()}
           />
+        </div>
+      </div>
+
+      {/* User Manual Section */}
+      <div id="user-manual" className="max-w-7xl mx-auto px-6 pb-12" style={{ position: 'relative', zIndex: 10 }}>
+        <div className="max-w-4xl mx-auto">
+          <UserManual />
         </div>
       </div>
 
