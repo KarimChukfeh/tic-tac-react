@@ -1054,6 +1054,26 @@ export default function Chess() {
         }
       }
 
+      // Sort instances by priority
+      // 1. In progress (status 1) + enrolled
+      // 2. Enrolling (status 0) + enrolled
+      // 3. Enrolling (status 0) + not enrolled + has players
+      // 4. Enrolling (status 0) + not enrolled + empty
+      // 5. In progress (status 1) + not enrolled
+      // 6. Everything else (completed, etc.)
+      const getSortPriority = (instance) => {
+        const { tournamentStatus, isEnrolled, enrolledCount } = instance;
+
+        if (tournamentStatus === 1 && isEnrolled) return 1;
+        if (tournamentStatus === 0 && isEnrolled) return 2;
+        if (tournamentStatus === 0 && !isEnrolled && enrolledCount > 0) return 3;
+        if (tournamentStatus === 0 && !isEnrolled && enrolledCount === 0) return 4;
+        if (tournamentStatus === 1 && !isEnrolled) return 5;
+        return 6; // Completed tournaments and others
+      };
+
+      instances.sort((a, b) => getSortPriority(a) - getSortPriority(b));
+
       setTierInstances(prev => ({ ...prev, [tierId]: instances }));
     } catch (error) {
       console.error(`Error fetching tier ${tierId} instances:`, error);
