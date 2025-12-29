@@ -30,11 +30,11 @@ const CommunityRaffleCard = ({ raffleInfo, playerActivityHeight, onRefresh, onTr
 
   // Dynamic positioning based on actual PlayerActivity panel height
   // PlayerActivity base positions: top-4 (16px) mobile, md:top-20 (80px) desktop
-  // PlayerActivity collapsed button size: ~24px mobile, ~64px desktop (with padding)
+  // PlayerActivity collapsed button size: ~32px mobile, ~64px desktop (with padding)
   // Spacing between components: 32px
   const BASE_TOP_MOBILE = 16; // top-4 in pixels
   const BASE_TOP_DESKTOP = 80; // md:top-20 in pixels
-  const COLLAPSED_BUTTON_HEIGHT_MOBILE = 24; // collapsed button height on mobile (50% smaller)
+  const COLLAPSED_BUTTON_HEIGHT_MOBILE = 32; // collapsed button height on mobile
   const COLLAPSED_BUTTON_HEIGHT_DESKTOP = 64; // collapsed button height on desktop
   const SPACING = 32; // gap between components
 
@@ -57,14 +57,14 @@ const CommunityRaffleCard = ({ raffleInfo, playerActivityHeight, onRefresh, onTr
       {!isExpanded && (
         <button
           onClick={() => setIsExpanded(true)}
-          className={`rounded-full p-1.5 md:p-4 border-2 transition-all hover:scale-110 shadow-xl relative group ${
+          className={`rounded-full p-2 md:p-4 border-2 transition-all hover:scale-110 shadow-xl relative group ${
             isFull
               ? 'bg-gradient-to-br from-yellow-500/90 to-amber-500/90 border-yellow-400/70 hover:border-yellow-400 animate-pulse'
               : 'bg-gradient-to-br from-yellow-600/90 to-amber-600/90 backdrop-blur-lg border-yellow-400/40 hover:border-yellow-400/70'
           }`}
           aria-label="Open contract pool"
         >
-          <Trophy size={10} className="text-white md:w-6 md:h-6" />
+          <Trophy size={16} className="text-white md:w-6 md:h-6" />
 
           {/* Sync Circle Animation */}
           {syncing && (
@@ -73,8 +73,8 @@ const CommunityRaffleCard = ({ raffleInfo, playerActivityHeight, onRefresh, onTr
 
           {/* Full Badge */}
           {isFull && (
-            <div className="absolute -top-1 -right-1 bg-green-500 rounded-full w-4 h-4 md:w-6 md:h-6 flex items-center justify-center animate-pulse">
-              <span className="text-white text-[10px] md:text-xs font-bold">✓</span>
+            <div className="absolute -top-1 -right-1 bg-green-500 rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center animate-pulse">
+              <span className="text-white text-[11px] md:text-xs font-bold">✓</span>
             </div>
           )}
 

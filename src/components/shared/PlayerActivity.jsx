@@ -97,10 +97,10 @@ const PlayerActivity = ({
       {!isExpanded && (
         <button
           onClick={() => setIsExpanded(true)}
-          className="bg-gradient-to-br from-purple-600/90 to-blue-600/90 backdrop-blur-lg rounded-full p-1.5 md:p-4 border-2 border-purple-400/40 hover:border-purple-400/70 transition-all hover:scale-110 shadow-xl relative group"
+          className="bg-gradient-to-br from-purple-600/90 to-blue-600/90 backdrop-blur-lg rounded-full p-2 md:p-4 border-2 border-purple-400/40 hover:border-purple-400/70 transition-all hover:scale-110 shadow-xl relative group"
           aria-label="Open player activity"
         >
-          <Users size={10} className="text-white md:w-6 md:h-6" />
+          <Users size={16} className="text-white md:w-6 md:h-6" />
 
           {/* Sync Circle Animation */}
           {syncing && (
@@ -109,8 +109,8 @@ const PlayerActivity = ({
 
           {/* Activity Badge */}
           {activeMatchCount > 0 && (
-            <div className="absolute -top-1 -right-1 bg-red-500 rounded-full w-4 h-4 md:w-6 md:h-6 flex items-center justify-center animate-pulse">
-              <span className="text-white text-[10px] md:text-xs font-bold">{activeMatchCount}</span>
+            <div className="absolute -top-1 -right-1 bg-red-500 rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center animate-pulse">
+              <span className="text-white text-[11px] md:text-xs font-bold">{activeMatchCount}</span>
             </div>
           )}
 
