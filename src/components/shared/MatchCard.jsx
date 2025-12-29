@@ -246,8 +246,13 @@ const MatchCard = ({
       canReplace: escalation.canReplace,
       escL2Available: match.escL2Available,
       escL3Available: match.escL3Available,
+      timeToEscalation1: escalation.timeToEscalation1,
+      timeToEscalation2: escalation.timeToEscalation2,
+      showingML2Timer: escalation.timeToEscalation1 > 0 && !escalation.canForceEliminate && isUserAdvancedPlayer,
+      showingML3Timer: escalation.canForceEliminate && escalation.timeToEscalation2 > 0 && !escalation.canReplace && !isUserAdvancedPlayer,
       showingML2CTA: escalation.canForceEliminate && isUserAdvancedPlayer,
       showingML3CTA: escalation.canReplace && !isUserAdvancedPlayer,
+      hasOnClaimReplacement: !!onClaimReplacement,
     });
   }
 
