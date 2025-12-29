@@ -19,7 +19,7 @@ import { Link } from 'react-router-dom';
 import {
   Wallet, Grid, Clock, Shield, Lock, Eye, Code, ExternalLink,
   Trophy, DollarSign, Zap, History,
-  CheckCircle, AlertCircle, ChevronDown, ArrowLeft
+  CheckCircle, AlertCircle, ChevronDown, ArrowLeft, HelpCircle
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import DUMMY_ABI from './TicTacChainABI.json';
@@ -2102,11 +2102,18 @@ export default function TicTacChain() {
                 Winners paid automatically on-chain. No delays, no middlemen.
               </p>
             </div>
-            <div className="bg-gradient-to-br from-purple-500/20 to-violet-500/20 border border-purple-400/30 rounded-xl p-4">
+            <div className="relative bg-gradient-to-br from-purple-500/20 to-violet-500/20 border border-purple-400/30 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Shield className="text-purple-400" size={20} />
                 <span className="font-bold text-purple-300">Impossible to grief</span>
               </div>
+              <a
+                href="#user-manual"
+                className="absolute top-3 right-3 text-purple-400 hover:text-purple-300 transition-colors"
+                title="Learn more about anti-griefing"
+              >
+                <HelpCircle size={16} />
+              </a>
               <p className="text-sm text-purple-200">
                 Anti-stalling mechanisms ensure every match completes. No admin required.
               </p>
@@ -2406,7 +2413,7 @@ export default function TicTacChain() {
       </div>
 
       {/* User Manual Section */}
-      <div className="max-w-7xl mx-auto px-6 pb-12" style={{ position: 'relative', zIndex: 10 }}>
+      <div id="user-manual" className="max-w-7xl mx-auto px-6 pb-12" style={{ position: 'relative', zIndex: 10 }}>
         <div className="max-w-4xl mx-auto">
           <UserManual />
         </div>
