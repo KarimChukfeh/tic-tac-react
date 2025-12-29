@@ -37,6 +37,8 @@ import MatchEndModal from './components/shared/MatchEndModal';
 import WhyArbitrum from './components/shared/WhyArbitrum';
 import GameMatchLayout from './components/shared/GameMatchLayout';
 import TournamentHeader from './components/shared/TournamentHeader';
+import PlayerActivity from './components/shared/PlayerActivity';
+import { usePlayerActivity } from './hooks/usePlayerActivity';
 
 // ConnectFour particle symbols (matching landing page style)
 const CONNECTFOUR_SYMBOLS = ['🔴', '🔵'];
@@ -673,6 +675,9 @@ export default function ConnectFour() {
   // Connection Error State
   const [connectionError, setConnectionError] = useState(null); // null = no error, string = error message
   const [leaderboardError, setLeaderboardError] = useState(false);
+
+  // Player Activity Hook
+  const playerActivity = usePlayerActivity(contract, account, 'connect4');
 
   // Set page title
   useEffect(() => {
@@ -2221,6 +2226,20 @@ export default function ConnectFour() {
     }}>
       {/* Particle Background */}
       <ParticleBackground colors={currentTheme.particleColors} symbols={CONNECTFOUR_SYMBOLS} fontSize="24px" count={38} />
+
+      {/* Player Activity Component */}
+      {account && !currentMatch && !viewingTournament && (
+        <PlayerActivity
+          activity={playerActivity.data}
+          loading={playerActivity.loading}
+          syncing={playerActivity.syncing}
+          onEnterMatch={handlePlayMatch}
+          onEnterTournament={handleEnterTournament}
+          onRefresh={playerActivity.refetch}
+          gameName="Connect Four"
+          gameEmoji="🔴"
+        />
+      )}
 
       {/* Back to ETour Button */}
       <Link

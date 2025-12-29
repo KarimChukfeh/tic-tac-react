@@ -36,6 +36,8 @@ import MatchEndModal from './components/shared/MatchEndModal';
 import WhyArbitrum from './components/shared/WhyArbitrum';
 import GameMatchLayout from './components/shared/GameMatchLayout';
 import TournamentHeader from './components/shared/TournamentHeader';
+import PlayerActivity from './components/shared/PlayerActivity';
+import { usePlayerActivity } from './hooks/usePlayerActivity';
 
 // Chess piece symbols for particles
 const CHESS_PIECES = ['♔', '♕', '♖', '♗', '♘', '♙', '♚', '♛', '♜', '♝', '♞', '♟'];
@@ -622,6 +624,9 @@ export default function Chess() {
   // Connection Error State
   const [connectionError, setConnectionError] = useState(null); // null = no error, string = error message
   const [leaderboardError, setLeaderboardError] = useState(false);
+
+  // Player Activity Hook
+  const playerActivity = usePlayerActivity(contract, account, 'chess');
 
   // Set page title
   useEffect(() => {
@@ -2207,6 +2212,20 @@ export default function Chess() {
     }}>
       {/* Particle Background */}
       <ParticleBackground colors={currentTheme.particleColors} symbols={CHESS_PIECES} fontSize="40px" />
+
+      {/* Player Activity Component */}
+      {account && !currentMatch && !viewingTournament && (
+        <PlayerActivity
+          activity={playerActivity.data}
+          loading={playerActivity.loading}
+          syncing={playerActivity.syncing}
+          onEnterMatch={handlePlayMatch}
+          onEnterTournament={handleEnterTournament}
+          onRefresh={playerActivity.refetch}
+          gameName="Chess"
+          gameEmoji="♔"
+        />
+      )}
 
       {/* Back to ETour Button */}
       <Link
