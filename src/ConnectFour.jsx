@@ -908,30 +908,6 @@ export default function ConnectFour() {
     }
   };
 
-  // Fetch time configuration from contract
-  const fetchTimeConfiguration = useCallback(async (contractInstance) => {
-    try {
-      const matchTime = await contractInstance.getMatchTimePerPlayer();
-      const increment = await contractInstance.getTimeIncrement();
-      const escalationInt = await contractInstance.DEFAULT_ESCALATION_INTERVAL();
-
-      setMatchTimePerPlayer(Number(matchTime));
-      setTimeIncrement(Number(increment));
-      setEscalationInterval(Number(escalationInt));
-
-      console.log('Time configuration fetched:', {
-        matchTimePerPlayer: Number(matchTime),
-        timeIncrement: Number(increment),
-        escalationInterval: Number(escalationInt)
-      });
-    } catch (error) {
-      console.error('Error fetching time configuration (using defaults):', error);
-      // Use defaults if contract doesn't support these functions yet
-      setMatchTimePerPlayer(300);
-      setTimeIncrement(0);
-      setEscalationInterval(60);
-    }
-  }, []);
 
   // Load contract data (simplified - matches ConnectFour pattern)
   // Uses lazy loading: only fetch tier metadata initially, instances load on expand
@@ -939,7 +915,6 @@ export default function ConnectFour() {
     try {
       // Fetch tier metadata only (fast) - instances load on tier expand
       await fetchTierMetadata(contractInstance);
-      await fetchTimeConfiguration(contractInstance);
       await fetchLeaderboard(false);
 
       if (isInitialLoad) {

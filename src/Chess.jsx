@@ -863,30 +863,6 @@ export default function Chess() {
     }
   };
 
-  // Fetch time configuration from contract
-  const fetchTimeConfiguration = useCallback(async (contractInstance) => {
-    try {
-      // Chess contract uses DEFAULT_MATCH_MOVE_TIMEOUT instead of getMatchTimePerPlayer
-      const matchTimeout = await contractInstance.DEFAULT_MATCH_MOVE_TIMEOUT();
-      const escalationInt = await contractInstance.DEFAULT_ESCALATION_INTERVAL();
-
-      setMatchTimePerPlayer(Number(matchTimeout));
-      setTimeIncrement(0); // Chess doesn't use time increment
-      setEscalationInterval(Number(escalationInt));
-
-      console.log('Time configuration fetched:', {
-        matchTimePerPlayer: Number(matchTimeout),
-        timeIncrement: 0,
-        escalationInterval: Number(escalationInt)
-      });
-    } catch (error) {
-      console.error('Error fetching time configuration (using defaults):', error);
-      // Use defaults if contract doesn't support these functions yet
-      setMatchTimePerPlayer(300);
-      setTimeIncrement(0);
-      setEscalationInterval(60);
-    }
-  }, []);
 
   // Load contract data (simplified - matches ConnectFour pattern)
   // Uses lazy loading: only fetch tier metadata initially, instances load on expand
@@ -894,7 +870,6 @@ export default function Chess() {
     try {
       // Fetch tier metadata only (fast) - instances load on tier expand
       await fetchTierMetadata(contractInstance);
-      await fetchTimeConfiguration(contractInstance);
       await fetchLeaderboard(false);
 
       if (isInitialLoad) {
