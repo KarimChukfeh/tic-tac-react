@@ -33,15 +33,15 @@ const PlayerActivity = ({
   );
 
   return (
-    <div className="fixed top-20 left-16 z-50">
+    <div className="fixed top-4 left-4 md:top-20 md:left-16 z-50">
       {/* Collapsed State */}
       {!isExpanded && (
         <button
           onClick={() => setIsExpanded(true)}
-          className="bg-gradient-to-br from-purple-600/90 to-blue-600/90 backdrop-blur-lg rounded-full p-4 border-2 border-purple-400/40 hover:border-purple-400/70 transition-all hover:scale-110 shadow-xl relative group"
+          className="bg-gradient-to-br from-purple-600/90 to-blue-600/90 backdrop-blur-lg rounded-full p-3 md:p-4 border-2 border-purple-400/40 hover:border-purple-400/70 transition-all hover:scale-110 shadow-xl relative group"
           aria-label="Open player activity"
         >
-          <Users size={24} className="text-white" />
+          <Users size={20} className="text-white md:w-6 md:h-6" />
 
           {/* Sync Circle Animation */}
           {syncing && (
@@ -64,7 +64,7 @@ const PlayerActivity = ({
 
       {/* Expanded State */}
       {isExpanded && (
-        <div className="bg-gradient-to-br from-slate-900/95 to-slate-800/95 backdrop-blur-lg rounded-2xl p-6 border-2 border-purple-400/40 shadow-2xl w-96 max-h-[80vh] overflow-y-auto">
+        <div className="bg-gradient-to-br from-slate-900/95 to-slate-800/95 backdrop-blur-lg rounded-2xl p-4 md:p-6 border-2 border-purple-400/40 shadow-2xl w-[calc(100vw-2rem)] md:w-96 max-h-[80vh] overflow-y-auto">
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
@@ -118,7 +118,7 @@ const PlayerActivity = ({
                     Active Matches ({activity.activeMatches.length})
                   </h4>
                   <div className="space-y-2">
-                    {activity.activeMatches.map((match, idx) => (
+                    {activity.activeMatches.map((match) => (
                       <div
                         key={`${match.tierId}-${match.instanceId}-${match.roundIdx}-${match.matchIdx}`}
                         className="bg-gradient-to-br from-yellow-500/20 to-orange-500/20 border-2 border-yellow-400/50 hover:border-yellow-400/80 rounded-lg p-3 transition-all"
@@ -178,7 +178,7 @@ const PlayerActivity = ({
                     Tournaments In Progress ({activity.inProgressTournaments.length})
                   </h4>
                   <div className="space-y-2">
-                    {activity.inProgressTournaments.map((tournament, idx) => (
+                    {activity.inProgressTournaments.map((tournament) => (
                       <div
                         key={`${tournament.tierId}-${tournament.instanceId}`}
                         className="bg-black/30 border border-cyan-400/30 rounded-lg p-3 hover:border-cyan-400/60 transition-all"
@@ -212,7 +212,7 @@ const PlayerActivity = ({
                     Waiting for Players ({activity.unfilledTournaments.length})
                   </h4>
                   <div className="space-y-2">
-                    {activity.unfilledTournaments.map((tournament, idx) => (
+                    {activity.unfilledTournaments.map((tournament) => (
                       <div
                         key={`${tournament.tierId}-${tournament.instanceId}`}
                         className="bg-black/30 border border-orange-400/30 rounded-lg p-3 hover:border-orange-400/60 transition-all"
