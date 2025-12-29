@@ -731,6 +731,9 @@ export default function TicTacChain() {
             currentAccount ? readContract.isEnrolled(tierId, i, currentAccount).catch(() => false) : Promise.resolve(false)
           ]);
 
+          // Calculate prize pool (enrolled count * entry fee)
+          const prizePoolETH = (metadata.enrolledCounts[i] * parseFloat(metadata.entryFee)).toFixed(4);
+
           instances.push({
             tierId,
             instanceId: i,
@@ -738,6 +741,7 @@ export default function TicTacChain() {
             enrolledCount: metadata.enrolledCounts[i],
             maxPlayers: metadata.playerCount,
             entryFee: metadata.entryFee,
+            prizePool: prizePoolETH,
             isEnrolled: isUserEnrolled,
             enrollmentTimeout: tournamentInfo.enrollmentTimeout,
             hasStartedViaTimeout: tournamentInfo.hasStartedViaTimeout,
@@ -2297,6 +2301,7 @@ export default function TicTacChain() {
                                       maxPlayers={tournament.maxPlayers}
                                       currentEnrolled={tournament.enrolledCount}
                                       entryFee={tournament.entryFee}
+                                      prizePool={tournament.prizePool}
                                       isEnrolled={tournament.isEnrolled}
                                       onEnroll={() => handleEnroll(tournament.tierId, tournament.instanceId, tournament.entryFee)}
                                       onEnter={() => handleEnterTournament(tournament.tierId, tournament.instanceId)}

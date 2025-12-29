@@ -32,6 +32,7 @@ const DEFAULT_COLORS = {
  * @param {number} props.maxPlayers - Maximum players allowed
  * @param {number} props.currentEnrolled - Current number of enrolled players
  * @param {string} props.entryFee - Entry fee in ETH
+ * @param {string} props.prizePool - Total prize pool in ETH
  * @param {boolean} props.isEnrolled - Whether current user is enrolled
  * @param {Function} props.onEnroll - Handler for enrollment
  * @param {Function} props.onEnter - Handler for entering/viewing tournament
@@ -50,6 +51,7 @@ const TournamentCard = ({
   maxPlayers,
   currentEnrolled,
   entryFee,
+  prizePool,
   isEnrolled,
   onEnroll,
   onEnter,
@@ -216,6 +218,21 @@ const TournamentCard = ({
           />
         </div>
       </div>
+
+      {/* Prize Pool Display - Only when at least 1 player enrolled */}
+      {currentEnrolled > 0 && (
+        <div className="mb-6">
+          <div className="bg-black/20 rounded-lg p-3">
+            <div className="flex items-center gap-2 mb-1">
+              <Trophy className="text-yellow-300" size={16} />
+              <span className="text-yellow-300 text-xs font-semibold">Current Prize Pool</span>
+            </div>
+            <div className="text-white font-bold text-lg">
+              {prizePool} ETH
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Enrollment Escalation System */}
       <EscalationTimer
