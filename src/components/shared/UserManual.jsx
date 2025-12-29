@@ -5,9 +5,44 @@
  * system works, including escalation levels, time settings, and rules.
  */
 
+import { useEffect } from 'react';
 import { BookOpen, Shield } from 'lucide-react';
 
 const UserManual = () => {
+  // Handle hash navigation and trigger highlight animation
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.slice(1); // Remove the '#'
+      if (hash) {
+        const element = document.getElementById(hash);
+        if (element && element.tagName === 'H3') {
+          // Remove any existing highlight-target class
+          document.querySelectorAll('.highlight-target').forEach(el => {
+            el.classList.remove('highlight-target');
+          });
+
+          // Add highlight-target class to trigger animation
+          element.classList.add('highlight-target');
+
+          // Remove the class after animation completes
+          setTimeout(() => {
+            element.classList.remove('highlight-target');
+          }, 3500);
+        }
+      }
+    };
+
+    // Trigger on mount if there's already a hash in URL
+    handleHashChange();
+
+    // Listen for hash changes
+    window.addEventListener('hashchange', handleHashChange);
+
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+    };
+  }, []);
+
   return (
     <div className="bg-gradient-to-br from-blue-500/10 to-purple-500/10 border border-blue-500/30 rounded-2xl p-6">
       {/* Header */}
