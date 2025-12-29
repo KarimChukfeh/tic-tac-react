@@ -354,6 +354,7 @@ export default function TicTacChain() {
   const [matchEndWinner, setMatchEndWinner] = useState(null); // Winner address for modal display
   const [matchEndLoser, setMatchEndLoser] = useState(null); // Loser address for modal display
   const previousBoardRef = useRef(null); // Track previous board state for move history sync
+  const tournamentBracketRef = useRef(null); // Ref for auto-scrolling to tournament after URL navigation
 
   // Leaderboard State
   const [leaderboard, setLeaderboard] = useState([]);
@@ -419,6 +420,13 @@ export default function TicTacChain() {
           setViewingTournament(bracketData);
           // Clear URL params after successful navigation
           setSearchParams({});
+
+          // Auto-scroll to tournament bracket after a brief delay for rendering
+          setTimeout(() => {
+            if (tournamentBracketRef.current) {
+              tournamentBracketRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          }, 100);
         } else {
           // Tournament not found, clear params
           setSearchParams({});
@@ -2250,22 +2258,24 @@ export default function TicTacChain() {
         {contract && !currentMatch && (
           <>
             {viewingTournament ? (
-              <TournamentBracket
-                tournamentData={viewingTournament}
-                onBack={handleBackToTournaments}
-                onEnterMatch={handlePlayMatch}
-                onForceEliminate={handleForceEliminateStalledMatch}
-                onClaimReplacement={handleClaimMatchSlotByReplacement}
-                onManualStart={handleManualStart}
-                onClaimAbandonedPool={handleClaimAbandonedPool}
-                onEnroll={handleEnroll}
-                account={account}
-                loading={tournamentsLoading}
-                syncDots={bracketSyncDots}
-                isEnrolled={viewingTournament?.enrolledPlayers?.some(addr => addr.toLowerCase() === account?.toLowerCase())}
-                entryFee={viewingTournament?.entryFee ? ethers.formatEther(viewingTournament.entryFee) : '0'}
-                isFull={viewingTournament?.enrolledCount >= viewingTournament?.playerCount}
-              />
+              <div ref={tournamentBracketRef}>
+                <TournamentBracket
+                  tournamentData={viewingTournament}
+                  onBack={handleBackToTournaments}
+                  onEnterMatch={handlePlayMatch}
+                  onForceEliminate={handleForceEliminateStalledMatch}
+                  onClaimReplacement={handleClaimMatchSlotByReplacement}
+                  onManualStart={handleManualStart}
+                  onClaimAbandonedPool={handleClaimAbandonedPool}
+                  onEnroll={handleEnroll}
+                  account={account}
+                  loading={tournamentsLoading}
+                  syncDots={bracketSyncDots}
+                  isEnrolled={viewingTournament?.enrolledPlayers?.some(addr => addr.toLowerCase() === account?.toLowerCase())}
+                  entryFee={viewingTournament?.entryFee ? ethers.formatEther(viewingTournament.entryFee) : '0'}
+                  isFull={viewingTournament?.enrolledCount >= viewingTournament?.playerCount}
+                />
+              </div>
             ) : (
               // Show Tournament List
               <div className="mb-16">

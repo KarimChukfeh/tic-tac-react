@@ -187,7 +187,7 @@ const TournamentHeader = ({
       <div className="mt-4 bg-purple-500/10 border border-purple-400/30 rounded-lg p-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="flex-1 min-w-0">
-            <div className="text-purple-300 text-sm mb-1">Share Tournament</div>
+            <div className="text-purple-300 text-sm mb-1">Invite a Friend</div>
             <div className="font-mono text-xs md:text-sm text-white bg-black/20 rounded px-3 py-2 overflow-x-auto">
               {shareUrl}
             </div>
