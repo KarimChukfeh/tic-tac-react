@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Trophy, X, RefreshCw, Zap } from 'lucide-react';
+import { X, RefreshCw, Zap } from 'lucide-react';
 import { ethers } from 'ethers';
 
 const CommunityRaffleCard = ({ raffleInfo, playerActivityHeight, onRefresh, onTriggerRaffle, syncing }) => {
@@ -64,7 +64,12 @@ const CommunityRaffleCard = ({ raffleInfo, playerActivityHeight, onRefresh, onTr
           }`}
           aria-label="Open contract pool"
         >
-          <Trophy size={16} className="text-white md:w-6 md:h-6" />
+          <img
+            src="/raffle-icon.png"
+            alt="Raffle"
+            className="w-4 h-4 md:w-6 md:h-6"
+            style={{ filter: 'brightness(0) invert(1)' }}
+          />
 
           {/* Sync Circle Animation */}
           {syncing && (
@@ -97,7 +102,12 @@ const CommunityRaffleCard = ({ raffleInfo, playerActivityHeight, onRefresh, onTr
           {/* Header */}
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <Trophy className="text-yellow-400" size={20} />
+              <img
+                src="/raffle-icon.png"
+                alt="Raffle"
+                className="w-5 h-5"
+                style={{ filter: 'brightness(0) saturate(100%) invert(87%) sepia(69%) saturate(425%) hue-rotate(356deg) brightness(103%) contrast(97%)' }}
+              />
               <h3 className="text-white font-bold text-sm">Community Raffle</h3>
             </div>
             <div className="flex items-center gap-1">
