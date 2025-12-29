@@ -45,7 +45,7 @@ body {
   }
 }
 
-h4:target {
+h3:target {
   animation: target-highlight 3.5s ease-out;
   border-radius: 0.5rem;
   padding-left: 0.5rem;

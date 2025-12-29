@@ -104,11 +104,11 @@ const UserManual = () => {
 
         {/* Enrollment Timeout Events */}
         <div>
-          <h3 className="text-xl font-bold text-purple-300 mb-6">Enrollment Timeout Events</h3>
+          <h2 className="text-xl font-bold text-purple-300 mb-6">Enrollment Timeout Events</h2>
 
           {/* EL1 */}
           <div className="mb-8">
-            <h4 id="el1" className="text-lg font-semibold text-purple-200 mb-3 scroll-mt-24">EL1: Force-Start Tournament When Not Enough Enrolled Players</h4>
+            <h3 id="el1" className="text-lg font-semibold text-purple-200 mb-3 scroll-mt-24">EL1: Force-Start Tournament When Not Enough Enrolled Players</h3>
             <div className="space-y-3 text-gray-300">
               <p>
                 Sometimes players enroll in a tournament but not enough join to fill all spots. Without intervention, these enrolled players would be stuck waiting indefinitely.
@@ -116,11 +116,15 @@ const UserManual = () => {
               <p>
                 Once the enrollment window elapses, any enrolled player can start the tournament early with whoever has joined so far.
               </p>
-              <p>
-                This gives enrolled players the power to autonomously begin the tournament they paid to enter—no waiting on a full lobby, no relying on an admin.
-              </p>
+              <div className="bg-purple-500/20 border border-purple-400/40 rounded-lg p-3">
+                <p className="text-purple-200">
+                  This gives enrolled players the power to autonomously begin the tournament they paid to enter—no waiting on a full lobby, no relying on an admin.
+                </p>
+              </div>
             </div>
           </div>
+
+          <hr className="border-purple-500/20 mb-8" />
 
           {/* Enrollment Windows Table */}
           <div className="mb-8">
@@ -151,9 +155,11 @@ const UserManual = () => {
             </div>
           </div>
 
+          <hr className="border-purple-500/20 mb-8" />
+
           {/* EL2 */}
           <div className="mb-8 mt-4">
-            <h4 id="el2" className="text-lg font-semibold text-purple-200 mb-3 scroll-mt-24">EL2: Claim Abandoned Prize Pool When Tournament Never Started</h4>
+            <h3 id="el2" className="text-lg font-semibold text-purple-200 mb-3 scroll-mt-24">EL2: Claim Abandoned Prize Pool When Tournament Never Started</h3>
             <div className="space-y-3 text-gray-300">
               <p>
                 If EL1 is available but no enrolled player starts the tournament, the prize pool sits idle.
@@ -161,9 +167,11 @@ const UserManual = () => {
               <p>
                 5 minutes after EL1, anyone—even someone who never enrolled—can claim the entire prize pool.
               </p>
-              <p>
-                This ensures no ETH ever gets trapped in an abandoned tournament. Someone will always have an incentive to resolve it.
-              </p>
+              <div className="bg-purple-500/20 border border-purple-400/40 rounded-lg p-3">
+                <p className="text-purple-200">
+                  This ensures no ETH ever gets trapped in an abandoned tournament. Someone will always have an incentive to resolve it.
+                </p>
+              </div>
               <p className="italic">
                 The mere existence of EL2 pressures enrolled players to trigger EL1 first—if they don't, they risk losing their entire entry fee to an outsider.
               </p>
@@ -175,11 +183,11 @@ const UserManual = () => {
 
         {/* Match Timeout Events */}
         <div>
-          <h3 className="text-xl font-bold text-purple-300 mb-6">Match Timeout Events</h3>
+          <h2 className="text-xl font-bold text-purple-300 mb-6">Match Timeout Events</h2>
 
           {/* ML1 */}
           <div className="mb-8">
-            <h4 id="ml1" className="text-lg font-semibold text-purple-200 mb-3 scroll-mt-24">ML1: Claim Victory by Opponent Timeout</h4>
+            <h3 id="ml1" className="text-lg font-semibold text-purple-200 mb-3 scroll-mt-24">ML1: Claim Victory by Opponent Timeout</h3>
             <div className="space-y-3 text-gray-300">
               <p>
                 During a match, one player may run out of time on their clock. Their opponent shouldn't have to wait forever for a move that's never coming.
@@ -187,15 +195,19 @@ const UserManual = () => {
               <p>
                 When your opponent's clock hits zero, you can claim victory by forfeit.
               </p>
-              <p>
-                This protects active players from being held hostage by opponents who walk away mid-game.
-              </p>
+              <div className="bg-purple-500/20 border border-purple-400/40 rounded-lg p-3">
+                <p className="text-purple-200">
+                  This protects active players from being held hostage by opponents who walk away mid-game.
+                </p>
+              </div>
             </div>
           </div>
 
+          <hr className="border-purple-500/20 mb-8" />
+
           {/* ML2 */}
           <div className="mb-8">
-            <h4 id="ml2" className="text-lg font-semibold text-purple-200 mb-3 scroll-mt-24">ML2: Eliminate Both Players in a Stalled Match</h4>
+            <h3 id="ml2" className="text-lg font-semibold text-purple-200 mb-3 scroll-mt-24">ML2: Eliminate Both Players in a Stalled Match</h3>
             <div className="space-y-3 text-gray-300">
               <p>
                 If ML1 is available but the winning player doesn't claim their victory, the match blocks the entire tournament from progressing.
@@ -203,18 +215,22 @@ const UserManual = () => {
               <p>
                 2 minutes after ML1, any player who has already advanced in the tournament can step in, eliminate both players, and keep things moving.
               </p>
-              <p>
-                This empowers players with skin in the game to protect their tournament investment by clearing stalled matches ahead of them.
-              </p>
+              <div className="bg-purple-500/20 border border-purple-400/40 rounded-lg p-3">
+                <p className="text-purple-200">
+                  This empowers players with skin in the game to protect their tournament investment by clearing stalled matches ahead of them.
+                </p>
+              </div>
               <p className="italic">
                 The mere existence of ML2 pressures the winning player to claim ML1 promptly—if they don't, they risk being eliminated alongside their opponent.
               </p>
             </div>
           </div>
 
+          <hr className="border-purple-500/20 mb-8" />
+
           {/* ML3 */}
           <div className="mb-8">
-            <h4 id="ml3" className="text-lg font-semibold text-purple-200 mb-3 scroll-mt-24">ML3: Replace Players in Abandoned Match</h4>
+            <h3 id="ml3" className="text-lg font-semibold text-purple-200 mb-3 scroll-mt-24">ML3: Replace Players in Abandoned Match</h3>
             <div className="space-y-3 text-gray-300">
               <p>
                 If ML2 is available but no advanced player steps in, the match is considered fully abandoned.
@@ -222,9 +238,11 @@ const UserManual = () => {
               <p>
                 2 minutes after ML2, anyone—even someone outside the tournament—can replace both players and take their spot in the bracket.
               </p>
-              <p>
-                At this point, resolving the stall is risk-free profit. This final level guarantees that every match will eventually complete—someone will always claim the free ETH.
-              </p>
+              <div className="bg-purple-500/20 border border-purple-400/40 rounded-lg p-3">
+                <p className="text-purple-200">
+                  At this point, resolving the stall is risk-free profit. This final level guarantees that every match will eventually complete—someone will always claim the free ETH.
+                </p>
+              </div>
               <p className="italic">
                 The mere existence of ML3 pressures advanced players to act at ML2 first—if they don't, an outsider can swoop in and take a spot in the bracket that should have been theirs to protect.
               </p>
