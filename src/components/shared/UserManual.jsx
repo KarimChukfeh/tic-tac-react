@@ -80,17 +80,15 @@ const UserManual = () => {
         <div className="relative bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border-2 border-cyan-400/50 rounded-xl p-5 shadow-lg shadow-cyan-500/10">
           <div className="flex items-start gap-3">
             <Shield className="text-cyan-400 flex-shrink-0 mt-1" size={28} />
-            <p className="text-gray-100 text-lg font-bold leading-relaxed">
-              ETour rewards ETH to whoever steps in to resolve these scenarios. Rewards are blockchain-enforced and don't require a centralized authority.
-            </p>
+            <div className="text-gray-100 text-lg font-bold leading-relaxed space-y-2">
+              <p>ETour rewards ETH to whoever steps in to resolve these scenarios.</p>
+              <p>Rewards are instant, blockchain-enforced, and don't require a centralized authority.</p>
+            </div>
           </div>
           {/* Glow effect */}
           <div className="absolute inset-0 bg-gradient-to-r from-cyan-400/5 to-blue-400/5 rounded-xl blur-xl -z-10"></div>
         </div>
         
-        <br/>
-
-
         {/* Secondary Highlight - Fair System */}
         <div className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-400/30 rounded-lg p-4">
           <ul className="space-y-2 text-gray-200 font-medium mb-3">
@@ -106,16 +104,14 @@ const UserManual = () => {
               <span className="text-purple-400 mt-0.5">•</span>
               <span>Payouts are instant and impossible to stop</span>
             </li>
+            <li className="flex items-start gap-2">
+              <span className="text-purple-400 mt-0.5">•</span>
+              <span><strong>Griefing is impossible when stallers lose and resolvers earn real ETH</strong></span>
+            </li>
           </ul>
         </div>
       </div>
        
-      <br/>
-
-      <p className="text-gray-300 font-semibold text-xl">
-        Griefing becomes impossible when stallers lose (real ETH) and resolvers earn (real ETH).
-      </p>
-
       <br/>
 
       <hr className="border-purple-500/20 mb-8" />
