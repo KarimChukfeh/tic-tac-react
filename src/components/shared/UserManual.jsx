@@ -15,7 +15,7 @@ const UserManual = () => {
       const hash = window.location.hash.slice(1); // Remove the '#'
       if (hash) {
         const element = document.getElementById(hash);
-        if (element && element.tagName === 'H3') {
+        if (element && (element.tagName === 'H3' || element.tagName === 'H2')) {
           // Remove any existing highlight-target class
           document.querySelectorAll('.highlight-target').forEach(el => {
             el.classList.remove('highlight-target');
@@ -280,6 +280,193 @@ const UserManual = () => {
               <p className="italic">
                 The mere existence of ML3 pressures advanced players to act at ML2 first. If they don't, an outsider can swoop in and take a spot in the bracket that should have been theirs to protect.
               </p>
+            </div>
+          </div>
+        </div>
+
+        <hr className="border-blue-500/20" />
+
+        {/* Community Raffles Section */}
+        <div>
+          <h2 id="community-raffles" className="text-2xl font-bold text-blue-300 mb-6 scroll-mt-24">Community Raffles</h2>
+
+          {/* How Does the Community Raffle Work */}
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold text-purple-200 mb-3 scroll-mt-24">How Does the Community Raffle Work?</h3>
+            <div className="space-y-3 text-gray-300">
+              <p>
+                ETour keeps 2.5% of every entry fee to ensure the protocol remains healthy and operational. Rather than letting this ETH accumulate indefinitely, ETour redistributes it back to the community through periodic raffle events.
+              </p>
+              <p>
+                This is part of ETour's commitment to fairness - the protocol doesn't hoard fees or funnel them to privileged insiders. Instead, accumulated capital flows back to active players who keep the ecosystem alive.
+              </p>
+
+              {/* Highlighted Key Message */}
+              <div className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-400/30 rounded-lg p-4">
+                <p className="text-gray-200 font-bold mb-2">
+                  ETour rewards a randomly selected enrolled player with accumulated ETH.
+                </p>
+                <p className="text-gray-200 font-bold">
+                  No centralized control, no owner privileges - just community rewards.
+                </p>
+              </div>
+
+              <ul className="space-y-2 text-gray-300 ml-4">
+                <li className="flex items-start gap-2">
+                  <span className="text-purple-400 mt-1">•</span>
+                  <span>It prevents ETH from sitting idle in the contract</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-purple-400 mt-1">•</span>
+                  <span>Active players have a chance to win significant prizes</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-purple-400 mt-1">•</span>
+                  <span>The more tournaments you're enrolled in, the higher your odds</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <hr className="border-purple-500/20 mb-8" />
+
+          {/* Prize Distribution */}
+          <div className="mb-8">
+            <h5 className="text-md font-semibold text-blue-300 mb-3">Prize Distribution</h5>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-blue-500/30">
+                    <th className="text-left py-3 px-4 text-blue-200 font-semibold">Recipient</th>
+                    <th className="text-left py-3 px-4 text-blue-200 font-semibold">Share</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-blue-500/20">
+                  <tr className="hover:bg-blue-500/5 transition-colors">
+                    <td className="py-3 px-4 text-gray-300">Random Winner</td>
+                    <td className="py-3 px-4 text-gray-300 font-mono">80%</td>
+                  </tr>
+                  <tr className="hover:bg-blue-500/5 transition-colors">
+                    <td className="py-3 px-4 text-gray-300">Owner</td>
+                    <td className="py-3 px-4 text-gray-300 font-mono">20%</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <hr className="border-purple-500/20 mb-8" />
+
+          {/* Trigger Raffle When Threshold Reached */}
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold text-purple-200 mb-3 scroll-mt-24">Trigger Raffle When Threshold Reached</h3>
+            <div className="space-y-3 text-gray-300">
+              <p>
+                When the contract's accumulated balance reaches the current threshold, any currently enrolled player can trigger the raffle.
+              </p>
+              <p>
+                A randomly selected enrolled player wins the prize pool - including the player who triggered it, with the same odds as everyone else.
+              </p>
+
+              <div className="bg-purple-500/20 border border-purple-400/40 rounded-lg p-3">
+                <p className="text-purple-200">
+                  This ensures accumulated ETH always flows back to active community members.
+                </p>
+              </div>
+
+              <p className="italic">
+                The visible progress bar creates anticipation - as the threshold approaches, more players enroll to increase their odds.
+              </p>
+            </div>
+          </div>
+
+          <hr className="border-purple-500/20 mb-8" />
+
+          {/* Weighted Odds by Active Enrollments */}
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold text-purple-200 mb-3 scroll-mt-24">Weighted Odds by Active Enrollments</h3>
+            <div className="space-y-3 text-gray-300">
+              <p>
+                Your odds of winning scale with how many tournaments you're currently enrolled in across all tiers.
+              </p>
+
+              <div className="overflow-x-auto mb-3">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-blue-500/30">
+                      <th className="text-left py-3 px-4 text-blue-200 font-semibold">Active Enrollments</th>
+                      <th className="text-left py-3 px-4 text-blue-200 font-semibold">Odds Multiplier</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-blue-500/20">
+                    <tr className="hover:bg-blue-500/5 transition-colors">
+                      <td className="py-3 px-4 text-gray-300">1 tournament</td>
+                      <td className="py-3 px-4 text-gray-300 font-mono">1x</td>
+                    </tr>
+                    <tr className="hover:bg-blue-500/5 transition-colors">
+                      <td className="py-3 px-4 text-gray-300">2 tournaments</td>
+                      <td className="py-3 px-4 text-gray-300 font-mono">2x</td>
+                    </tr>
+                    <tr className="hover:bg-blue-500/5 transition-colors">
+                      <td className="py-3 px-4 text-gray-300">3 tournaments</td>
+                      <td className="py-3 px-4 text-gray-300 font-mono">3x</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="bg-purple-500/20 border border-purple-400/40 rounded-lg p-3">
+                <p className="text-purple-200">
+                  This rewards committed players who actively participate across multiple tournaments.
+                </p>
+              </div>
+
+              <p className="italic">
+                The weighted system incentivizes multi-tournament enrollment, keeping pools active and tournaments starting faster.
+              </p>
+            </div>
+          </div>
+
+          <hr className="border-purple-500/20 mb-8" />
+
+          {/* Raffle Trigger Thresholds */}
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold text-purple-200 mb-3 scroll-mt-24">Raffle Trigger Thresholds</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-blue-500/30">
+                    <th className="text-left py-3 px-4 text-blue-200 font-semibold">Raffle Number</th>
+                    <th className="text-left py-3 px-4 text-blue-200 font-semibold">Threshold</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-blue-500/20">
+                  <tr className="hover:bg-blue-500/5 transition-colors">
+                    <td className="py-3 px-4 text-gray-300">1st Raffle</td>
+                    <td className="py-3 px-4 text-gray-300 font-mono">0.5 ETH</td>
+                  </tr>
+                  <tr className="hover:bg-blue-500/5 transition-colors">
+                    <td className="py-3 px-4 text-gray-300">2nd Raffle</td>
+                    <td className="py-3 px-4 text-gray-300 font-mono">1.0 ETH</td>
+                  </tr>
+                  <tr className="hover:bg-blue-500/5 transition-colors">
+                    <td className="py-3 px-4 text-gray-300">3rd Raffle</td>
+                    <td className="py-3 px-4 text-gray-300 font-mono">1.5 ETH</td>
+                  </tr>
+                  <tr className="hover:bg-blue-500/5 transition-colors">
+                    <td className="py-3 px-4 text-gray-300">4th Raffle</td>
+                    <td className="py-3 px-4 text-gray-300 font-mono">2.0 ETH</td>
+                  </tr>
+                  <tr className="hover:bg-blue-500/5 transition-colors">
+                    <td className="py-3 px-4 text-gray-300">5th Raffle</td>
+                    <td className="py-3 px-4 text-gray-300 font-mono">2.5 ETH</td>
+                  </tr>
+                  <tr className="hover:bg-blue-500/5 transition-colors">
+                    <td className="py-3 px-4 text-gray-300">6th+ Raffle</td>
+                    <td className="py-3 px-4 text-gray-300 font-mono">3.0 ETH</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </div>

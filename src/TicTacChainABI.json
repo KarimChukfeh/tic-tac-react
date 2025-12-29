@@ -498,6 +498,55 @@
       "inputs": [
         {
           "indexed": true,
+          "internalType": "address",
+          "name": "winner",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "caller",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "raffleAmount",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "ownerShare",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "winnerShare",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "remainingReserve",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "winnerEnrollmentCount",
+          "type": "uint256"
+        }
+      ],
+      "name": "ProtocolRaffleExecuted",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
           "internalType": "uint8",
           "name": "tierId",
           "type": "uint8"
@@ -1251,6 +1300,29 @@
         }
       ],
       "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "executeProtocolRaffle",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "winner",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "ownerAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "winnerAmount",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
@@ -2066,6 +2138,44 @@
           "internalType": "uint8",
           "name": "percentage",
           "type": "uint8"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getRaffleInfo",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "isReady",
+          "type": "bool"
+        },
+        {
+          "internalType": "uint256",
+          "name": "currentAccumulated",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "raffleAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "ownerShare",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "winnerShare",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "eligiblePlayerCount",
+          "type": "uint256"
         }
       ],
       "stateMutability": "view",
