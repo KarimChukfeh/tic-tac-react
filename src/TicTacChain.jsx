@@ -770,8 +770,8 @@ export default function TicTacChain() {
             currentAccount ? readContract.isEnrolled(tierId, i, currentAccount).catch(() => false) : Promise.resolve(false)
           ]);
 
-          // Calculate prize pool (enrolled count * entry fee)
-          const prizePoolETH = (metadata.enrolledCounts[i] * parseFloat(metadata.entryFee)).toFixed(4);
+          // Calculate prize pool (enrolled count * entry fee * 0.9 to account for 10% network fee)
+          const prizePoolETH = (metadata.enrolledCounts[i] * parseFloat(metadata.entryFee) * 0.9).toFixed(4);
 
           instances.push({
             tierId,
