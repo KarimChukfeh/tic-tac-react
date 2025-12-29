@@ -10,17 +10,18 @@ import { parseChessMatch } from '../../utils/matchDataParser';
 import { Loader2 } from 'lucide-react';
 
 // Chess piece Unicode symbols
+// Use filled pieces for both colors, style them with CSS
 const PIECE_SYMBOLS = {
   white: {
-    pawn: '♙',
-    knight: '♘',
-    bishop: '♗',
-    rook: '♖',
-    queen: '♕',
-    king: '♔'
+    pawn: '♟',    // Filled, styled light
+    knight: '♞',
+    bishop: '♝',
+    rook: '♜',
+    queen: '♛',
+    king: '♚'
   },
   black: {
-    pawn: '♟',
+    pawn: '♟',    // Filled, styled dark
     knight: '♞',
     bishop: '♝',
     rook: '♜',
@@ -277,6 +278,11 @@ const MiniChessBoard = ({
           const col = actualIdx % 8;
           const isLight = (row + col) % 2 === 1;
           const isSelected = selectedSquare === displayIdx;
+          const pieceColor = piece?.color ? Number(piece.color) : 0;
+          const pieceColorClass = pieceColor === 1 ? 'text-white' : 'text-black drop-shadow-[0_0_3px_rgba(255,255,255,0.6)]';
+          const pieceStyle = pieceColor === 1
+            ? { textShadow: '0 0 8px rgba(0,0,0,0.8), 0 2px 4px rgba(0,0,0,0.6)' }
+            : {};
 
           return (
             <button
@@ -285,15 +291,16 @@ const MiniChessBoard = ({
               disabled={!match.isMyTurn || makingMove || matchData.matchStatus === 2}
               className={`
                 aspect-square flex items-center justify-center text-xl md:text-2xl font-bold transition-all
-                ${isLight ? 'bg-slate-300' : 'bg-slate-700'}
+                ${isLight ? 'bg-stone-300' : 'bg-stone-700'}
                 ${isSelected ? 'ring-2 ring-yellow-400 ring-inset' : ''}
                 ${!match.isMyTurn || makingMove || matchData.matchStatus === 2 ? 'cursor-not-allowed' : 'cursor-pointer hover:opacity-80'}
+                ${pieceColorClass}
               `}
             >
               {makingMove && isSelected ? (
                 <Loader2 className="animate-spin" size={16} />
               ) : (
-                getPieceSymbol(piece)
+                <span style={pieceStyle}>{getPieceSymbol(piece)}</span>
               )}
             </button>
           );
