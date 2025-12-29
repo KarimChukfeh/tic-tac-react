@@ -152,7 +152,7 @@ const UserManual = () => {
           </div>
 
           {/* EL2 */}
-          <div className="mb-8">
+          <div className="mb-8 mt-4">
             <h4 id="el2" className="text-lg font-semibold text-purple-200 mb-3 scroll-mt-24">EL2: Claim Abandoned Prize Pool When Tournament Never Started</h4>
             <div className="space-y-3 text-gray-300">
               <p>
