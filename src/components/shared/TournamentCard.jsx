@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Trophy, Play, Users, Zap, Coins, Eye, HelpCircle } from 'lucide-react';
+import { Trophy, Play, Users, Zap, Coins, Eye } from 'lucide-react';
 import { ethers } from 'ethers';
 import EscalationTimer from './EscalationTimer';
 
@@ -243,42 +243,40 @@ const TournamentCard = ({
       {/* Action Buttons */}
       {/* Escalation 1: Enrolled players can force start */}
       {tournamentStatus === 0 && escalationState.canStartEscalation1 && isEnrolled && (
-        <div className="relative mb-2">
+        <div className="mb-4">
           <button
             onClick={() => onManualStart(tierId, instanceId)}
             disabled={loading || !account}
-            className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
+            className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-xs"
           >
-            <Zap size={18} />
-            {loading ? 'Starting...' : !account ? 'Connect Wallet to Force Start' : 'Force Start Tournament'}
+            <Zap size={14} />
+            {loading ? 'Starting...' : !account ? 'Connect Wallet' : `EL1: Force Start with ${currentEnrolled} Players`}
           </button>
           <a
             href="#el1"
-            className="absolute top-3 right-3 text-orange-400 hover:text-orange-300 transition-colors"
-            title="Learn more about force-starting tournaments"
+            className="block w-full text-center text-orange-300 hover:text-orange-200 hover:bg-orange-500/10 text-xs mt-2 py-2 px-4 rounded-lg border border-orange-400/30 hover:border-orange-400/50 transition-all"
           >
-            <HelpCircle size={16} />
+            Learn more about EL1 (Force Start)
           </a>
         </div>
       )}
 
       {/* Escalation 2: Non-enrolled players can claim abandoned pool */}
       {tournamentStatus === 0 && escalationState.canStartEscalation2 && !isEnrolled && onClaimAbandonedPool && (
-        <div className="relative mb-2">
+        <div className="mb-4">
           <button
             onClick={() => onClaimAbandonedPool(tierId, instanceId)}
             disabled={loading || !account}
-            className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
+            className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-xs"
           >
-            <Coins size={18} />
-            {loading ? 'Claiming...' : !account ? 'Connect Wallet to Claim' : 'Claim Abandoned Pool'}
+            <Coins size={14} />
+            {loading ? 'Claiming...' : !account ? 'Connect Wallet' : 'EL2: Claim Abandoned Pool'}
           </button>
           <a
             href="#el2"
-            className="absolute top-3 right-3 text-red-400 hover:text-red-300 transition-colors"
-            title="Learn more about claiming abandoned pools"
+            className="block w-full text-center text-red-300 hover:text-red-200 hover:bg-red-500/10 text-xs mt-2 py-2 px-4 rounded-lg border border-red-400/30 hover:border-red-400/50 transition-all"
           >
-            <HelpCircle size={16} />
+            Learn more about EL2 (Claim Pool)
           </a>
         </div>
       )}
@@ -321,21 +319,20 @@ const TournamentCard = ({
       {/* Abandoned Pool Claim Button - show for completed/abandoned tournaments with claimable funds */}
       {onClaimAbandonedPool && tournamentStatus >= 2 &&
         escalationState.forfeitPool && escalationState.forfeitPool > 0n && (
-        <div className="relative mt-2">
+        <div className="mt-4">
           <button
             onClick={() => onClaimAbandonedPool(tierId, instanceId)}
             disabled={loading || !account}
-            className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
+            className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-xs"
           >
-            <Coins size={18} />
-            {loading ? 'Claiming...' : !account ? 'Connect Wallet to Claim' : `Claim Pool (${ethers.formatEther(escalationState.forfeitPool)} ETH)`}
+            <Coins size={14} />
+            {loading ? 'Claiming...' : !account ? 'Connect Wallet' : `EL2: Claim Pool (${ethers.formatEther(escalationState.forfeitPool)} ETH)`}
           </button>
           <a
             href="#el2"
-            className="absolute top-3 right-3 text-purple-400 hover:text-purple-300 transition-colors"
-            title="Learn more about claiming abandoned pools"
+            className="block w-full text-center text-purple-300 hover:text-purple-200 hover:bg-purple-500/10 text-xs mt-2 py-2 px-4 rounded-lg border border-purple-400/30 hover:border-purple-400/50 transition-all"
           >
-            <HelpCircle size={16} />
+            Learn more about EL2 (Claim Pool)
           </a>
         </div>
       )}
