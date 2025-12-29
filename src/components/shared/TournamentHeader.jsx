@@ -5,8 +5,10 @@
  * Includes: back button, title, sync indicator, prize pool, stats, enrolled players.
  */
 
-import { Trophy, ChevronDown } from 'lucide-react';
+import { Trophy, ChevronDown, Copy, Check } from 'lucide-react';
 import { ethers } from 'ethers';
+import { useState } from 'react';
+import { generateTournamentUrl, copyToClipboard } from '../../utils/urlHelpers';
 import StatsGrid from './StatsGrid';
 import EnrolledPlayersList from './EnrolledPlayersList';
 
@@ -90,6 +92,21 @@ const TournamentHeader = ({
   const { colors } = config;
   const totalRounds = Math.ceil(Math.log2(playerCount));
 
+  // State for copy feedback
+  const [copiedUrl, setCopiedUrl] = useState(false);
+
+  // Generate shareable URL
+  const shareUrl = generateTournamentUrl(gameType, tierId, instanceId);
+
+  // Copy handler
+  const handleCopyUrl = async () => {
+    const success = await copyToClipboard(shareUrl);
+    if (success) {
+      setCopiedUrl(true);
+      setTimeout(() => setCopiedUrl(false), 2000);
+    }
+  };
+
   return (
     <div className={`bg-gradient-to-r ${colors.headerBg} backdrop-blur-lg rounded-2xl p-4 md:p-8 border ${colors.headerBorder} mb-8`}>
       {/* Back Button */}
@@ -165,6 +182,29 @@ const TournamentHeader = ({
         account={account}
         colors={colors}
       />
+
+      {/* Shareable URL Section */}
+      <div className="mt-4 bg-purple-500/10 border border-purple-400/30 rounded-lg p-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="text-purple-300 text-sm mb-1">Share Tournament</div>
+            <div className="font-mono text-xs md:text-sm text-white bg-black/20 rounded px-3 py-2 overflow-x-auto">
+              {shareUrl}
+            </div>
+          </div>
+          <button
+            onClick={handleCopyUrl}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap ${
+              copiedUrl
+                ? 'bg-green-500/20 text-green-400 border border-green-400/30'
+                : 'bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white'
+            }`}
+          >
+            {copiedUrl ? <Check size={18} /> : <Copy size={18} />}
+            {copiedUrl ? 'Copied!' : 'Copy Link'}
+          </button>
+        </div>
+      </div>
 
       {/* Escalation Timers (optional) */}
       {renderEscalation && renderEscalation()}

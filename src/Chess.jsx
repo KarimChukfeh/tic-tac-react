@@ -15,7 +15,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   Wallet, Grid, Clock, Shield, Lock, Eye, Code, ExternalLink,
   Trophy, Zap, Coins, History,
@@ -25,6 +25,7 @@ import { ethers } from 'ethers';
 import CHESS_ABI from './COCABI.json';
 import { CURRENT_NETWORK, CONTRACT_ADDRESSES, getAddressUrl, getExplorerHomeUrl } from './config/networks';
 import { shortenAddress, formatTime as formatTimeHMS, getTierName, getEstimatedDuration, countInstancesByStatus } from './utils/formatters';
+import { parseTournamentParams } from './utils/urlHelpers';
 import { determineMatchResult } from './utils/matchCompletionHandler';
 import { fetchTierTimeoutConfig } from './utils/timeCalculations';
 import ParticleBackground from './components/shared/ParticleBackground';
@@ -607,6 +608,11 @@ export default function Chess() {
   const [bracketSyncDots, setBracketSyncDots] = useState(1);
   const [expandedTiers, setExpandedTiers] = useState({});
 
+  // URL Parameters State for shareable tournament links
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [urlTournamentParams, setUrlTournamentParams] = useState(null);
+  const [hasProcessedUrlParams, setHasProcessedUrlParams] = useState(false);
+
   // Match State
   const [currentMatch, setCurrentMatch] = useState(null);
   const [matchLoading, setMatchLoading] = useState(false);
@@ -646,6 +652,61 @@ export default function Chess() {
       document.body.appendChild(script);
     }
   }, []);
+
+  // Parse URL parameters on initial load (for shareable tournament links)
+  useEffect(() => {
+    if (hasProcessedUrlParams) return;
+
+    const params = parseTournamentParams(searchParams);
+
+    if (params) {
+      const { tierId, instanceId } = params;
+      // Validate tier/instance are reasonable (0-6 for tiers, 0+ for instances)
+      if (tierId >= 0 && tierId <= 6 && instanceId >= 0) {
+        setUrlTournamentParams({ tierId, instanceId });
+      } else {
+        // Invalid params, clear them
+        setSearchParams({});
+      }
+    }
+
+    setHasProcessedUrlParams(true);
+  }, [searchParams, hasProcessedUrlParams, setSearchParams]);
+
+  // Auto-navigate to tournament if URL params present and wallet connected
+  useEffect(() => {
+    if (!urlTournamentParams || !account || !contract || viewingTournament) return;
+
+    const autoNavigate = async () => {
+      const { tierId, instanceId } = urlTournamentParams;
+
+      try {
+        setTournamentsLoading(true);
+        const bracketData = await refreshTournamentBracket(contract, tierId, instanceId, matchTimePerPlayer);
+
+        if (bracketData) {
+          setViewingTournament(bracketData);
+          // Clear URL params after successful navigation
+          setSearchParams({});
+        } else {
+          // Tournament not found, clear params
+          setSearchParams({});
+          alert(`Tournament T${tierId + 1}-I${instanceId + 1} not found or not accessible.`);
+        }
+      } catch (err) {
+        console.error('Failed to load tournament from URL:', err);
+        setSearchParams({});
+        alert('Failed to load tournament. It may not exist yet.');
+      } finally {
+        setTournamentsLoading(false);
+      }
+
+      // Clear the params state so we don't retry
+      setUrlTournamentParams(null);
+    };
+
+    autoNavigate();
+  }, [urlTournamentParams, account, contract, viewingTournament, matchTimePerPlayer, setSearchParams]);
 
   // Theme colors - Single "dream" theme from Chess.jsx
   const currentTheme = {
@@ -1963,6 +2024,7 @@ export default function Chess() {
   // Go back from tournament bracket to tournaments list
   const handleBackToTournaments = async () => {
     setViewingTournament(null);
+    setSearchParams({}); // Clear URL params when going back
 
     // Refresh tier metadata and cached stats (lazy loading)
     if (contract) {
@@ -2213,6 +2275,33 @@ export default function Chess() {
     }}>
       {/* Particle Background */}
       <ParticleBackground colors={currentTheme.particleColors} symbols={CHESS_PIECES} fontSize="40px" />
+
+      {/* Tournament Invitation Banner - shown when URL params present but not connected */}
+      {urlTournamentParams && !account && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 max-w-2xl mx-4 w-full">
+          <div className="bg-gradient-to-r from-purple-600/90 to-blue-600/90 backdrop-blur-lg rounded-xl p-4 border border-purple-400/50 shadow-2xl">
+            <div className="flex items-start gap-3">
+              <Trophy className="text-yellow-400 shrink-0 mt-1" size={24} />
+              <div className="flex-1 min-w-0">
+                <p className="text-white font-semibold mb-1">
+                  Tournament Invitation
+                </p>
+                <p className="text-purple-100 text-sm mb-3">
+                  You've been invited to Tournament T{urlTournamentParams.tierId + 1}-I{urlTournamentParams.instanceId + 1}.
+                  Connect your wallet to view and join!
+                </p>
+                <button
+                  onClick={connectWallet}
+                  className="bg-white/20 hover:bg-white/30 text-white font-semibold py-2 px-4 rounded-lg transition-all flex items-center gap-2"
+                >
+                  <Wallet size={18} />
+                  Connect Wallet
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Player Activity Component */}
       {account && !currentMatch && !viewingTournament && (
