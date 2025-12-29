@@ -45,6 +45,41 @@ const MiniChessBoard = ({
   const [error, setError] = useState(null);
   const [selectedSquare, setSelectedSquare] = useState(null);
 
+  // Helper to extract user-friendly error message
+  const getUserFriendlyError = (err) => {
+    if (err.reason) return err.reason;
+    if (err.message) {
+      // Extract contract revert message if present
+      const match = err.message.match(/reason="([^"]+)"/);
+      if (match) return match[1];
+      // Fallback to simpler message
+      if (err.message.includes('user rejected')) return 'Transaction cancelled';
+      return 'Invalid move';
+    }
+    return 'Failed to make move';
+  };
+
+  // Helper to flip board index (so player is always at bottom)
+  // Contract board has indices 0-7 = rank 1 (white's back rank) at TOP of rendered grid
+  // We need to flip it so player is always at BOTTOM
+  const getDisplayIndex = (actualIndex) => {
+    if (!matchData) return actualIndex;
+    const shouldFlip = matchData.isPlayer1; // Flip if player is white (player 1) so white is at bottom
+    if (shouldFlip) {
+      return 63 - actualIndex;
+    }
+    return actualIndex;
+  };
+
+  const getActualIndex = (displayIndex) => {
+    if (!matchData) return displayIndex;
+    const shouldFlip = matchData.isPlayer1; // Flip if player is white (player 1) so white is at bottom
+    if (shouldFlip) {
+      return 63 - displayIndex;
+    }
+    return displayIndex;
+  };
+
   // Extract fetch logic into reusable function
   const fetchMatchData = useCallback(async (isInitialLoad = false) => {
     if (!contract) return;
@@ -104,7 +139,7 @@ const MiniChessBoard = ({
   };
 
   // Handle square click (two-click system)
-  const handleSquareClick = async (squareIndex) => {
+  const handleSquareClick = async (displayIndex) => {
     if (!matchData || !contract || !account) return;
 
     // Validation
@@ -120,7 +155,8 @@ const MiniChessBoard = ({
       return;
     }
 
-    const piece = matchData.board[squareIndex];
+    const actualIndex = getActualIndex(displayIndex);
+    const piece = matchData.board[actualIndex];
 
     if (selectedSquare === null) {
       // First click: Select piece
@@ -128,7 +164,7 @@ const MiniChessBoard = ({
         const isMyPiece = (piece.color === 1 && matchData.isPlayer1) ||
                          (piece.color === 2 && !matchData.isPlayer1);
         if (isMyPiece) {
-          setSelectedSquare(squareIndex);
+          setSelectedSquare(displayIndex);
         } else {
           setError("That's not your piece!");
           setTimeout(() => setError(null), 3000);
@@ -136,7 +172,9 @@ const MiniChessBoard = ({
       }
     } else {
       // Second click: Move piece
-      await handleMove(selectedSquare, squareIndex);
+      const fromActual = getActualIndex(selectedSquare);
+      const toActual = getActualIndex(displayIndex);
+      await handleMove(fromActual, toActual);
       setSelectedSquare(null);
     }
   };
@@ -177,7 +215,9 @@ const MiniChessBoard = ({
       setMakingMove(false);
     } catch (err) {
       console.error('Error making move:', err);
-      setError(err.message || 'Failed to make move');
+      const friendlyError = getUserFriendlyError(err);
+      setError(friendlyError);
+      setTimeout(() => setError(null), 3000);
       onError?.(err);
       setMakingMove(false);
     }
@@ -230,16 +270,18 @@ const MiniChessBoard = ({
 
       {/* 8x8 Chess Grid */}
       <div className="grid grid-cols-8 gap-0.5 p-3 bg-black/20 rounded-lg">
-        {matchData.board.map((piece, idx) => {
-          const row = Math.floor(idx / 8);
-          const col = idx % 8;
+        {Array.from({ length: 64 }).map((_, displayIdx) => {
+          const actualIdx = getActualIndex(displayIdx);
+          const piece = matchData.board[actualIdx];
+          const row = Math.floor(actualIdx / 8);
+          const col = actualIdx % 8;
           const isLight = (row + col) % 2 === 1;
-          const isSelected = selectedSquare === idx;
+          const isSelected = selectedSquare === displayIdx;
 
           return (
             <button
-              key={idx}
-              onClick={() => handleSquareClick(idx)}
+              key={displayIdx}
+              onClick={() => handleSquareClick(displayIdx)}
               disabled={!match.isMyTurn || makingMove || matchData.matchStatus === 2}
               className={`
                 aspect-square flex items-center justify-center text-xl md:text-2xl font-bold transition-all

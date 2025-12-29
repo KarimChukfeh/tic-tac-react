@@ -90,7 +90,10 @@ export const parseChessMatch = (matchData) => ({
   ...parseCommonMatchData(matchData),
 
   // Game-specific fields
-  board: Array.from(matchData.board).map(cell => Number(cell)),
+  board: Array.from(matchData.board).map(cell => ({
+    pieceType: Number(cell.pieceType),
+    color: Number(cell.color)
+  })),
   currentTurn: matchData.currentTurn,
   firstPlayer: matchData.firstPlayer,
 
