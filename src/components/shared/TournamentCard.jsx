@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Trophy, Play, Users, Zap, Coins, Eye } from 'lucide-react';
+import { Trophy, Play, Users, Zap, Coins, Eye, HelpCircle } from 'lucide-react';
 import { ethers } from 'ethers';
 import EscalationTimer from './EscalationTimer';
 
@@ -226,26 +226,44 @@ const TournamentCard = ({
       {/* Action Buttons */}
       {/* Escalation 1: Enrolled players can force start */}
       {tournamentStatus === 0 && escalationState.canStartEscalation1 && isEnrolled && (
-        <button
-          onClick={() => onManualStart(tierId, instanceId)}
-          disabled={loading || !account}
-          className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 mb-2"
-        >
-          <Zap size={18} />
-          {loading ? 'Starting...' : !account ? 'Connect Wallet to Force Start' : 'Force Start Tournament'}
-        </button>
+        <div className="relative mb-2">
+          <button
+            onClick={() => onManualStart(tierId, instanceId)}
+            disabled={loading || !account}
+            className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
+          >
+            <Zap size={18} />
+            {loading ? 'Starting...' : !account ? 'Connect Wallet to Force Start' : 'Force Start Tournament'}
+          </button>
+          <a
+            href="#el1"
+            className="absolute top-3 right-3 text-orange-400 hover:text-orange-300 transition-colors"
+            title="Learn more about force-starting tournaments"
+          >
+            <HelpCircle size={16} />
+          </a>
+        </div>
       )}
 
       {/* Escalation 2: Non-enrolled players can claim abandoned pool */}
       {tournamentStatus === 0 && escalationState.canStartEscalation2 && !isEnrolled && onClaimAbandonedPool && (
-        <button
-          onClick={() => onClaimAbandonedPool(tierId, instanceId)}
-          disabled={loading || !account}
-          className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 mb-2"
-        >
-          <Coins size={18} />
-          {loading ? 'Claiming...' : !account ? 'Connect Wallet to Claim' : 'Claim Abandoned Pool'}
-        </button>
+        <div className="relative mb-2">
+          <button
+            onClick={() => onClaimAbandonedPool(tierId, instanceId)}
+            disabled={loading || !account}
+            className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
+          >
+            <Coins size={18} />
+            {loading ? 'Claiming...' : !account ? 'Connect Wallet to Claim' : 'Claim Abandoned Pool'}
+          </button>
+          <a
+            href="#el2"
+            className="absolute top-3 right-3 text-red-400 hover:text-red-300 transition-colors"
+            title="Learn more about claiming abandoned pools"
+          >
+            <HelpCircle size={16} />
+          </a>
+        </div>
       )}
 
       {isEnrolled ? (
@@ -286,14 +304,23 @@ const TournamentCard = ({
       {/* Abandoned Pool Claim Button - show for completed/abandoned tournaments with claimable funds */}
       {onClaimAbandonedPool && tournamentStatus >= 2 &&
         escalationState.forfeitPool && escalationState.forfeitPool > 0n && (
-        <button
-          onClick={() => onClaimAbandonedPool(tierId, instanceId)}
-          disabled={loading || !account}
-          className="w-full mt-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
-        >
-          <Coins size={18} />
-          {loading ? 'Claiming...' : !account ? 'Connect Wallet to Claim' : `Claim Pool (${ethers.formatEther(escalationState.forfeitPool)} ETH)`}
-        </button>
+        <div className="relative mt-2">
+          <button
+            onClick={() => onClaimAbandonedPool(tierId, instanceId)}
+            disabled={loading || !account}
+            className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
+          >
+            <Coins size={18} />
+            {loading ? 'Claiming...' : !account ? 'Connect Wallet to Claim' : `Claim Pool (${ethers.formatEther(escalationState.forfeitPool)} ETH)`}
+          </button>
+          <a
+            href="#el2"
+            className="absolute top-3 right-3 text-purple-400 hover:text-purple-300 transition-colors"
+            title="Learn more about claiming abandoned pools"
+          >
+            <HelpCircle size={16} />
+          </a>
+        </div>
       )}
     </div>
   );
