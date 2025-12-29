@@ -657,6 +657,7 @@ export default function ConnectFour() {
   const [viewingTournament, setViewingTournament] = useState(null); // { tierId, instanceId, tournamentData, bracketData }
   const [bracketSyncDots, setBracketSyncDots] = useState(1);
   const [expandedTiers, setExpandedTiers] = useState({});
+  const [visibleInstancesCount, setVisibleInstancesCount] = useState({}); // { [tierId]: number } - tracks how many instances to show per tier
 
   // URL Parameters State for shareable tournament links
   const [searchParams, setSearchParams] = useSearchParams();
@@ -1120,11 +1121,24 @@ export default function ConnectFour() {
     // If expanding and not yet loaded, fetch instances
     if (!isCurrentlyExpanded && !alreadyLoaded) {
       setExpandedTiers(prev => ({ ...prev, [tierId]: true }));
+      setVisibleInstancesCount(prev => ({ ...prev, [tierId]: 4 })); // Initialize to show 4 instances
       await fetchTierInstances(tierId);
     } else {
       setExpandedTiers(prev => ({ ...prev, [tierId]: !prev[tierId] }));
+      if (!isCurrentlyExpanded) {
+        // When expanding an already loaded tier, ensure visible count is set
+        setVisibleInstancesCount(prev => ({ ...prev, [tierId]: prev[tierId] || 4 }));
+      }
     }
   }, [fetchTierInstances]);
+
+  // Show more instances for a tier
+  const showMoreInstances = useCallback((tierId) => {
+    setVisibleInstancesCount(prev => ({
+      ...prev,
+      [tierId]: (prev[tierId] || 4) + 4
+    }));
+  }, []);
 
   // LAZY LOADING: Refresh data after an action (enroll, claim, etc.)
   // Refreshes metadata and re-fetches instances for expanded/affected tiers
@@ -2613,7 +2627,10 @@ export default function ConnectFour() {
                       const metadata = tierMetadata[tierId];
                       if (!metadata) return null;
 
-                      const instances = tierInstances[tierId] || [];
+                      const allInstances = tierInstances[tierId] || [];
+                      const visibleCount = visibleInstancesCount[tierId] || 4;
+                      const instances = allInstances.slice(0, visibleCount);
+                      const hasMore = allInstances.length > visibleCount;
                       const isLoading = tierLoading[tierId];
                       const statusCounts = countInstancesByStatus(metadata.statuses, metadata.enrolledCounts);
 
@@ -2666,6 +2683,19 @@ export default function ConnectFour() {
                                       account={account}
                                     />
                                   ))}
+                                </div>
+                              )}
+
+                              {/* Show More Button */}
+                              {!isLoading && hasMore && (
+                                <div className="mt-6 text-center">
+                                  <button
+                                    onClick={() => showMoreInstances(tierId)}
+                                    className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-semibold py-3 px-8 rounded-xl transition-all transform hover:scale-105 flex items-center gap-2 mx-auto"
+                                  >
+                                    <ChevronDown size={20} />
+                                    Show More ({allInstances.length - visibleCount} remaining)
+                                  </button>
                                 </div>
                               )}
                             </div>
