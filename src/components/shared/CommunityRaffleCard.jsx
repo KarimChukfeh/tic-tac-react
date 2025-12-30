@@ -111,10 +111,7 @@ const CommunityRaffleCard = ({ raffleInfo, playerActivityHeight, onRefresh, onTr
                 className="w-5 h-5"
                 style={{ filter: 'brightness(0) saturate(100%) invert(87%) sepia(69%) saturate(425%) hue-rotate(356deg) brightness(103%) contrast(97%)' }}
               />
-              <div>
-                <h3 className="text-white font-bold text-sm">Community Raffle</h3>
-                <p className="text-yellow-300/60 text-[10px]">Raffle #{raffleNumber}</p>
-              </div>
+              <h3 className="text-white font-bold text-sm">Community Raffle #{raffleNumber}</h3>
             </div>
             <div className="flex items-center gap-1">
               {isFull && (
