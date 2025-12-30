@@ -44,7 +44,7 @@ export default function WhyArbitrum({ variant = 'blue' }) {
               <p><strong className={theme.text}>First time on Arbitrum?</strong> You'll need to:</p>
               <ol className="list-decimal list-inside pl-2 space-y-1">
                 <li>Select the Arbitrum One network in MetaMask</li>
-                <li>Bridge ETH from Mainnet to Arbitrum</li>
+                <li>Bridge ETH from Ethereum mainnet to Arbitrum</li>
               </ol>
               <p><strong className={theme.text}>Already have Arbitrum ETH?</strong> Just connect and play.</p>
               <p className="pt-1"><span className={theme.text}>Lower fees. Same ETH.</span></p>
