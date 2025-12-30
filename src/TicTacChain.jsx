@@ -370,6 +370,7 @@ export default function TicTacChain() {
   const [matchEndLoser, setMatchEndLoser] = useState(null); // Loser address for modal display
   const previousBoardRef = useRef(null); // Track previous board state for move history sync
   const tournamentBracketRef = useRef(null); // Ref for auto-scrolling to tournament after URL navigation
+  const matchViewRef = useRef(null); // Ref for auto-scrolling to match view
 
   // Leaderboard State
   const [leaderboard, setLeaderboard] = useState([]);
@@ -384,6 +385,9 @@ export default function TicTacChain() {
 
   // Player Activity Height State (for positioning CommunityRaffleCard)
   const [playerActivityHeight, setPlayerActivityHeight] = useState(0);
+
+  // Player Activity Collapse Function Ref
+  const collapseActivityPanelRef = useRef(null);
 
   // Raffle Syncing State
   const [raffleSyncing, setRaffleSyncing] = useState(false);
@@ -1451,6 +1455,17 @@ export default function TicTacChain() {
       const bracketData = await refreshTournamentBracket(contract, tierId, instanceId, matchTimePerPlayer);
       if (bracketData) {
         setViewingTournament(bracketData);
+
+        // Scroll to tournament bracket after rendering
+        setTimeout(() => {
+          if (tournamentBracketRef.current) {
+            tournamentBracketRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+          // Collapse activity panel after scrolling
+          if (collapseActivityPanelRef.current) {
+            collapseActivityPanelRef.current();
+          }
+        }, 100);
       }
 
       setTournamentsLoading(false);
@@ -1821,6 +1836,17 @@ export default function TicTacChain() {
         // Fetch move history from blockchain events
         const history = await fetchMoveHistory(contract, tierId, instanceId, roundNumber, matchNumber);
         setMoveHistory(history);
+
+        // Scroll to match view after rendering
+        setTimeout(() => {
+          if (matchViewRef.current) {
+            matchViewRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+          // Collapse activity panel after scrolling
+          if (collapseActivityPanelRef.current) {
+            collapseActivityPanelRef.current();
+          }
+        }, 100);
       }
 
       setMatchLoading(false);
@@ -2225,6 +2251,7 @@ export default function TicTacChain() {
           gameName="tictactoe"
           gameEmoji="✖️"
           onHeightChange={setPlayerActivityHeight}
+          onCollapse={(collapseFn) => { collapseActivityPanelRef.current = collapseFn; }}
         />
       )}
 
@@ -2376,7 +2403,8 @@ export default function TicTacChain() {
 
         {/* Match View - Shows when player enters a match */}
         {account && contract && currentMatch && (
-          <GameMatchLayout
+          <div ref={matchViewRef}>
+            <GameMatchLayout
             gameType="tictactoe"
             match={currentMatch}
             account={account}
@@ -2463,6 +2491,7 @@ export default function TicTacChain() {
               ))}
             </div>
           </GameMatchLayout>
+          </div>
         )}
 
         {/* Tournaments Section */}

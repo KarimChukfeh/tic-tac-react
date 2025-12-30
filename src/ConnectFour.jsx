@@ -676,6 +676,7 @@ export default function ConnectFour() {
   const [matchEndLoser, setMatchEndLoser] = useState(null); // Loser address for modal display
   const previousBoardRef = useRef(null); // Track previous board state for move history sync
   const tournamentBracketRef = useRef(null); // Ref for auto-scrolling to tournament after URL navigation
+  const matchViewRef = useRef(null); // Ref for auto-scrolling to match view
 
   // Leaderboard State
   const [leaderboard, setLeaderboard] = useState([]);
@@ -702,6 +703,9 @@ export default function ConnectFour() {
   // Player Activity Hook
   const playerActivity = usePlayerActivity(contract, account, 'connect4');
   const [playerActivityHeight, setPlayerActivityHeight] = useState(0);
+
+  // Player Activity Collapse Function Ref
+  const collapseActivityPanelRef = useRef(null);
 
   // Set page title
   useEffect(() => {
@@ -1760,6 +1764,17 @@ export default function ConnectFour() {
       const bracketData = await refreshTournamentBracket(contract, tierId, instanceId, matchTimePerPlayer);
       if (bracketData) {
         setViewingTournament(bracketData);
+
+        // Scroll to tournament bracket after rendering
+        setTimeout(() => {
+          if (tournamentBracketRef.current) {
+            tournamentBracketRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+          // Collapse activity panel after scrolling
+          if (collapseActivityPanelRef.current) {
+            collapseActivityPanelRef.current();
+          }
+        }, 100);
       }
 
       setTournamentsLoading(false);
@@ -2134,6 +2149,17 @@ export default function ConnectFour() {
         // Fetch move history from blockchain events
         const history = await fetchMoveHistory(contract, tierId, instanceId, roundNumber, matchNumber);
         setMoveHistory(history);
+
+        // Scroll to match view after rendering
+        setTimeout(() => {
+          if (matchViewRef.current) {
+            matchViewRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+          // Collapse activity panel after scrolling
+          if (collapseActivityPanelRef.current) {
+            collapseActivityPanelRef.current();
+          }
+        }, 100);
       }
 
       setMatchLoading(false);
@@ -2533,6 +2559,7 @@ export default function ConnectFour() {
           gameName="connect4"
           gameEmoji="🔴"
           onHeightChange={setPlayerActivityHeight}
+          onCollapse={(collapseFn) => { collapseActivityPanelRef.current = collapseFn; }}
         />
       )}
 
@@ -2684,7 +2711,8 @@ export default function ConnectFour() {
 
         {/* Match View - Shows when player enters a match */}
         {account && contract && currentMatch && (
-          <GameMatchLayout
+          <div ref={matchViewRef}>
+            <GameMatchLayout
             gameType="connectfour"
             match={currentMatch}
             account={account}
@@ -2761,6 +2789,7 @@ export default function ConnectFour() {
               lastColumn={currentMatch.lastColumn}
             />
           </GameMatchLayout>
+          </div>
         )}
 
         {/* Tournaments Section */}

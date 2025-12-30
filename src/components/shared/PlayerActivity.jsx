@@ -27,9 +27,17 @@ const PlayerActivity = ({
   gameName,
   gameEmoji,
   onHeightChange,
+  onCollapse,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const expandedPanelRef = useRef(null);
+
+  // Expose collapse function via callback
+  useEffect(() => {
+    if (onCollapse) {
+      onCollapse(() => setIsExpanded(false));
+    }
+  }, [onCollapse]);
 
   // Measure and report height whenever content changes
   useEffect(() => {
