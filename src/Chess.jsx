@@ -64,7 +64,7 @@ const getPieceSymbol = (piece) => {
 };
 
 // Tournament Bracket Component
-const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceEliminate, onClaimReplacement, onManualStart, onClaimAbandonedPool, onEnroll, account, loading, syncDots, isEnrolled, entryFee, isFull }) => {
+const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceEliminate, onClaimReplacement, onManualStart, onClaimAbandonedPool, onResetEnrollmentWindow, onEnroll, account, loading, syncDots, isEnrolled, entryFee, isFull, contract }) => {
   const { tierId, instanceId, status, currentRound, enrolledCount, prizePool, rounds, playerCount, enrolledPlayers, firstEnrollmentTime, countdownActive, enrollmentTimeout } = tournamentData;
 
   // Calculate total rounds based on player count
@@ -198,110 +198,11 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
             )}
           </div>
         ) : null}
-        renderEscalation={status === 0 && enrollmentTimeout ? () => {
-          const now = Math.floor(Date.now() / 1000);
-          const escalation1Start = Number(enrollmentTimeout.escalation1Start);
-          const escalation2Start = Number(enrollmentTimeout.escalation2Start);
-          const isEnrolledUser = account && enrolledPlayers?.some(addr => addr.toLowerCase() === account.toLowerCase());
-
-          const timeToEsc1 = escalation1Start > 0 ? Math.max(0, escalation1Start - now) : 0;
-          const timeToEsc2 = escalation2Start > 0 ? Math.max(0, escalation2Start - now) : 0;
-          const canForceStart = escalation1Start > 0 && now >= escalation1Start;
-          const canAnyoneStart = escalation2Start > 0 && now >= escalation2Start;
-
-          if (!(timeToEsc1 > 0 || timeToEsc2 > 0 || canForceStart || canAnyoneStart)) return null;
-
-          const prizePoolETH = ethers.formatEther(prizePool);
-
-          return (
-            <>
-              {/* Countdown Timer Display */}
-              {timeToEsc1 > 0 && (
-                <div className="mt-4">
-                  <div className="relative bg-gradient-to-r from-orange-500/20 to-orange-600/20 border border-orange-400/50 rounded-lg p-3">
-                    <div className="flex items-center justify-between pr-6">
-                      <div className="flex items-center gap-2">
-                        <Clock className="text-orange-400" size={16} />
-                        <span className="text-orange-300 text-xs font-semibold">
-                          EL1: Force Start in {formatTime(timeToEsc1)}
-                        </span>
-                      </div>
-                    </div>
-                    <a
-                      href="#el1"
-                      className="absolute top-3 right-3 text-orange-400 hover:text-orange-300 transition-colors"
-                      title="Learn more about force-starting tournaments"
-                    >
-                      <HelpCircle size={16} />
-                    </a>
-                  </div>
-                </div>
-              )}
-
-              {canForceStart && timeToEsc2 > 0 && (
-                <div className="mt-4">
-                  <div className="relative bg-gradient-to-r from-red-500/20 to-red-600/20 border border-red-400/50 rounded-lg p-3">
-                    <div className="flex items-center justify-between pr-6">
-                      <div className="flex items-center gap-2">
-                        <Clock className="text-red-400" size={16} />
-                        <span className="text-red-300 text-xs font-semibold">
-                          EL2: Claim Abandoned Pool in {formatTime(timeToEsc2)}
-                        </span>
-                      </div>
-                    </div>
-                    <a
-                      href="#el2"
-                      className="absolute top-3 right-3 text-red-400 hover:text-red-300 transition-colors"
-                      title="Learn more about claiming abandoned pools"
-                    >
-                      <HelpCircle size={16} />
-                    </a>
-                  </div>
-                </div>
-              )}
-
-              {/* EL1: Force Start CTA */}
-              {canForceStart && isEnrolledUser && (
-                <div className="mt-4">
-                  <button
-                    onClick={() => onManualStart(tierId, instanceId)}
-                    disabled={loading}
-                    className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-xs"
-                  >
-                    <Zap size={14} />
-                    {loading ? 'Starting...' : `EL1: Force Start with ${enrolledCount} Players`}
-                  </button>
-                  <a
-                    href="#el1"
-                    className="block w-full text-center text-orange-300 hover:text-orange-200 hover:bg-orange-500/10 text-xs mt-2 py-2 px-4 rounded-lg border border-orange-400/30 hover:border-orange-400/50 transition-all"
-                  >
-                    Learn more about EL1 (Force Start)
-                  </a>
-                </div>
-              )}
-
-              {/* EL2: Claim Abandoned Pool CTA */}
-              {canAnyoneStart && !isEnrolledUser && (
-                <div className="mt-4">
-                  <button
-                    onClick={() => onClaimAbandonedPool(tierId, instanceId)}
-                    disabled={loading}
-                    className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-xs"
-                  >
-                    <Coins size={14} />
-                    {loading ? 'Claiming...' : `EL2: Claim Abandoned Pool (${prizePoolETH} ETH)`}
-                  </button>
-                  <a
-                    href="#el2"
-                    className="block w-full text-center text-red-300 hover:text-red-200 hover:bg-red-500/10 text-xs mt-2 py-2 px-4 rounded-lg border border-red-400/30 hover:border-red-400/50 transition-all"
-                  >
-                    Learn more about EL2 (Claim Pool)
-                  </a>
-                </div>
-              )}
-            </>
-          );
-        } : null}
+        enrollmentTimeout={enrollmentTimeout}
+        onManualStart={onManualStart}
+        onClaimAbandonedPool={onClaimAbandonedPool}
+        onResetEnrollmentWindow={onResetEnrollmentWindow}
+        contract={contract}
       />
 
       {/* Bracket View */}
@@ -2839,6 +2740,7 @@ export default function Chess() {
                   onClaimReplacement={handleClaimMatchSlotByReplacement}
                   onManualStart={handleManualStart}
                   onClaimAbandonedPool={handleClaimAbandonedPool}
+                  onResetEnrollmentWindow={handleResetEnrollmentWindow}
                   onEnroll={handleEnroll}
                   account={account}
                   loading={tournamentsLoading}
@@ -2846,6 +2748,7 @@ export default function Chess() {
                   isEnrolled={viewingTournament?.enrolledPlayers?.some(addr => addr.toLowerCase() === account?.toLowerCase())}
                   entryFee={viewingTournament?.entryFee ? ethers.formatEther(viewingTournament.entryFee) : '0'}
                   isFull={viewingTournament?.enrolledCount >= viewingTournament?.playerCount}
+                  contract={contract}
                 />
               </div>
             ) : (
