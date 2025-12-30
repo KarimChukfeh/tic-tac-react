@@ -54,7 +54,7 @@ const UserManual = () => {
       {/* Introduction */}
       <div className="mb-6 space-y-4">
         <p className="text-gray-300">
-          Griefing is when player intentionally disrupt a game, preventing it from progressing or concluding.
+          Griefing is when players intentionally disrupt a game and prevent it from progressing or concluding.
         </p>
 
         <p className="text-gray-300">
