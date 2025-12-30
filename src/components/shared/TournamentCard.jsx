@@ -9,6 +9,7 @@ import { useState, useEffect } from 'react';
 import { Trophy, Play, Users, Zap, Coins, Eye, RefreshCw } from 'lucide-react';
 import { ethers } from 'ethers';
 import EscalationTimer from './EscalationTimer';
+import { formatTime } from '../../utils/formatters';
 
 // Default color theme (purple/blue - TicTacToe style)
 const DEFAULT_COLORS = {
@@ -184,9 +185,40 @@ const TournamentCard = ({
       {(tournamentStatus === 0 && currentEnrolled > 0) || tournamentStatus >= 1 ? (
         <div className="mb-4">
           {tournamentStatus === 0 && currentEnrolled > 0 && (
-            <div className="bg-yellow-500/20 border border-yellow-400 rounded-lg p-3 flex items-center justify-center gap-2">
-              <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
-              <span className="text-yellow-300 font-bold text-sm">Waiting for more players</span>
+            <div className={`${
+              isEnrolled && escalationState.canStartEscalation2
+                ? 'bg-red-500/20 border-red-400'
+                : 'bg-yellow-500/20 border-yellow-400'
+            } border rounded-lg p-3`}>
+              <div className="flex items-center justify-center gap-2">
+                <div className={`w-2 h-2 ${
+                  isEnrolled && escalationState.canStartEscalation2
+                    ? 'bg-red-400'
+                    : 'bg-yellow-400'
+                } rounded-full animate-pulse`}></div>
+                <span className={`${
+                  isEnrolled && escalationState.canStartEscalation2
+                    ? 'text-red-300'
+                    : 'text-yellow-300'
+                } font-bold text-sm`}>Waiting for more players</span>
+              </div>
+              {isEnrolled && escalationState.timeToEscalation2 > 0 && escalationState.canStartEscalation1 && (
+                <div className="text-center mt-1">
+                  <span className="text-yellow-300/70 text-[10px]">
+                    {formatTime(escalationState.timeToEscalation2)} until considered abandoned
+                  </span>
+                </div>
+              )}
+              {isEnrolled && escalationState.canStartEscalation2 && (
+                <div className="text-center mt-1">
+                  <a
+                    href="#el2"
+                    className="text-red-300 hover:text-red-200 text-[10px] underline underline-offset-[2px]"
+                  >
+                    Abandoned! (EL2 active)
+                  </a>
+                </div>
+              )}
             </div>
           )}
           {tournamentStatus === 1 && (
@@ -260,6 +292,7 @@ const TournamentCard = ({
       <EscalationTimer
         escalationState={escalationState}
         enrollmentTimeout={enrollmentTimeout}
+        isEnrolled={isEnrolled}
       />
 
       {/* Action Buttons */}

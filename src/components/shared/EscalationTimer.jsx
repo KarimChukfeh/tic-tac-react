@@ -16,8 +16,9 @@ import { formatTime } from '../../utils/formatters';
  * @param {number} props.escalationState.timeToEscalation1 - Seconds until escalation 1 activates
  * @param {number} props.escalationState.timeToEscalation2 - Seconds until escalation 2 activates
  * @param {Object|null} props.enrollmentTimeout - Enrollment timeout data (null if not active)
+ * @param {boolean} props.isEnrolled - Whether the current player is enrolled
  */
-const EscalationTimer = ({ escalationState, enrollmentTimeout }) => {
+const EscalationTimer = ({ escalationState, enrollmentTimeout, isEnrolled }) => {
   // Don't render if no escalation data
   if (!enrollmentTimeout) {
     return null;
@@ -49,7 +50,8 @@ const EscalationTimer = ({ escalationState, enrollmentTimeout }) => {
   }
 
   // Show EL2 timer if EL1 is active but EL2 is not yet available
-  if (escalationState.canStartEscalation1 && escalationState.timeToEscalation2 > 0) {
+  // Don't show for enrolled players - they see it in the "Waiting for more players" banner instead
+  if (escalationState.canStartEscalation1 && escalationState.timeToEscalation2 > 0 && !isEnrolled) {
     return (
       <div className="mb-4">
         <div className="relative bg-gradient-to-r from-red-500/20 to-red-600/20 border border-red-400/50 rounded-lg p-3">
