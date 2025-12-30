@@ -295,34 +295,31 @@ const UserManual = () => {
             <h3 className="text-lg font-semibold text-purple-200 mb-3 scroll-mt-24">How Does the Community Raffle Work?</h3>
             <div className="space-y-3 text-gray-300">
               <p>
-                ETour keeps 2.5% of every entry fee to ensure the protocol remains healthy and operational. Rather than letting this ETH accumulate indefinitely, ETour redistributes it back to the community through periodic raffle events.
+                ETour keeps 2.5% of every entry fee to ensure the protocol remains healthy and operational.
               </p>
               <p>
-                This is part of ETour's commitment to fairness - the protocol doesn't hoard fees or funnel them to privileged insiders. Instead, accumulated capital flows back to active players who keep the ecosystem alive.
+                Rather than letting this ETH accumulate indefinitely, ETour redistributes it back to the community through periodic raffle events. This is part of ETour's commitment to fairness.
               </p>
 
               {/* Highlighted Key Message */}
               <div className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-400/30 rounded-lg p-4">
                 <p className="text-gray-200 font-bold mb-2">
-                  ETour rewards a randomly selected enrolled player with accumulated ETH.
+                  ETour rewards a random enrolled player with accumulated ETH.
                 </p>
                 <p className="text-gray-200 font-bold">
-                  No centralized control, no owner privileges - just community rewards.
+                  The protocol doesn't hoard fees or funnel them to privileged insiders. Instead, accumulated capital flows back to active players who keep the ecosystem alive.
                 </p>
               </div>
 
               <ul className="space-y-2 text-gray-300 ml-4">
                 <li className="flex items-start gap-2">
-                  <span className="text-purple-400 mt-1">•</span>
-                  <span>It prevents ETH from sitting idle in the contract</span>
+                  <span>• It prevents ETH from sitting idle in the contract</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-purple-400 mt-1">•</span>
-                  <span>Active players have a chance to win significant prizes</span>
+                  <span>• Active players have a chance to win significant prizes</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-purple-400 mt-1">•</span>
-                  <span>The more tournaments you're enrolled in, the higher your odds</span>
+                  <span>• The more tournaments you're enrolled in, the higher your odds</span>
                 </li>
               </ul>
             </div>
@@ -330,53 +327,19 @@ const UserManual = () => {
 
           <hr className="border-purple-500/20 mb-8" />
 
-          {/* Prize Distribution */}
-          <div className="mb-8">
-            <h5 className="text-md font-semibold text-blue-300 mb-3">Prize Distribution</h5>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-blue-500/30">
-                    <th className="text-left py-3 px-4 text-blue-200 font-semibold">Recipient</th>
-                    <th className="text-left py-3 px-4 text-blue-200 font-semibold">Share</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-blue-500/20">
-                  <tr className="hover:bg-blue-500/5 transition-colors">
-                    <td className="py-3 px-4 text-gray-300">Random Winner</td>
-                    <td className="py-3 px-4 text-gray-300 font-mono">80%</td>
-                  </tr>
-                  <tr className="hover:bg-blue-500/5 transition-colors">
-                    <td className="py-3 px-4 text-gray-300">Owner</td>
-                    <td className="py-3 px-4 text-gray-300 font-mono">20%</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <hr className="border-purple-500/20 mb-8" />
-
           {/* Trigger Raffle When Threshold Reached */}
           <div className="mb-8">
-            <h3 className="text-lg font-semibold text-purple-200 mb-3 scroll-mt-24">Trigger Raffle When Threshold Reached</h3>
+            <h3 className="text-lg font-semibold text-purple-200 mb-3 scroll-mt-24">Trigger the raffle when the threshold is reached</h3>
             <div className="space-y-3 text-gray-300">
               <p>
-                When the contract's accumulated balance reaches the current threshold, any currently enrolled player can trigger the raffle.
-              </p>
-              <p>
-                A randomly selected enrolled player wins the prize pool - including the player who triggered it, with the same odds as everyone else.
+                When the contract's accumulated balance reaches the current threshold, any currently enrolled player can trigger the raffle. A randomly selected enrolled player wins the prize pool.
               </p>
 
               <div className="bg-purple-500/20 border border-purple-400/40 rounded-lg p-3">
                 <p className="text-purple-200">
-                  This ensures accumulated ETH always flows back to active community members.
+                  This ensures accumulated ETH flows back to active community members.
                 </p>
               </div>
-
-              <p className="italic">
-                The visible progress bar creates anticipation - as the threshold approaches, more players enroll to increase their odds.
-              </p>
             </div>
           </div>
 
@@ -384,7 +347,7 @@ const UserManual = () => {
 
           {/* Weighted Odds by Active Enrollments */}
           <div className="mb-8">
-            <h3 className="text-lg font-semibold text-purple-200 mb-3 scroll-mt-24">Weighted Odds by Active Enrollments</h3>
+            <h3 className="text-lg font-semibold text-purple-200 mb-3 scroll-mt-24">Weighted odds by active enrollments</h3>
             <div className="space-y-3 text-gray-300">
               <p>
                 Your odds of winning scale with how many tournaments you're currently enrolled in across all tiers.
@@ -420,10 +383,72 @@ const UserManual = () => {
                   This rewards committed players who actively participate across multiple tournaments.
                 </p>
               </div>
+            </div>
+          </div>
 
-              <p className="italic">
-                The weighted system incentivizes multi-tournament enrollment, keeping pools active and tournaments starting faster.
+          <hr className="border-purple-500/20 mb-8" />
+          
+          {/* Prize Distribution */}
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold text-purple-200 mb-3 scroll-mt-24">Prize Distribution</h3>
+            <div className="space-y-3 text-gray-300">
+              <p>
+                The game always keeps 10% of the threshold to ensure continuous operation remains covered. The remaining accumulated pool is then split between the winner and owner.
               </p>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-blue-500/30">
+                      <th className="text-left py-3 px-4 text-blue-200 font-semibold">Recipient</th>
+                      <th className="text-left py-3 px-4 text-blue-200 font-semibold">Share</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-blue-500/20">
+                    <tr className="hover:bg-blue-500/5 transition-colors">
+                      <td className="py-3 px-4 text-gray-300">Random Winner</td>
+                      <td className="py-3 px-4 text-gray-300 font-mono">80%</td>
+                    </tr>
+                    <tr className="hover:bg-blue-500/5 transition-colors">
+                      <td className="py-3 px-4 text-gray-300">Owner</td>
+                      <td className="py-3 px-4 text-gray-300 font-mono">20%</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <p className="font-semibold text-gray-200">
+                Example: A raffle with a 1 ETH threshold triggers after accumulating 1.5 ETH.
+              </p>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-blue-500/30">
+                      <th className="text-left py-3 px-4 text-blue-200 font-semibold">Allocation</th>
+                      <th className="text-left py-3 px-4 text-blue-200 font-semibold">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-blue-500/20">
+                    <tr className="hover:bg-blue-500/5 transition-colors">
+                      <td className="py-3 px-4 text-gray-300">Contract Reserve (10% of threshold)</td>
+                      <td className="py-3 px-4 text-gray-300 font-mono">0.1 ETH</td>
+                    </tr>
+                    <tr className="hover:bg-blue-500/5 transition-colors">
+                      <td className="py-3 px-4 text-gray-300">Raffle Pool</td>
+                      <td className="py-3 px-4 text-gray-300 font-mono">1.4 ETH</td>
+                    </tr>
+                    <tr className="hover:bg-blue-500/5 transition-colors">
+                      <td className="py-3 px-4 text-gray-300 pl-8">→ Random Winner (80%)</td>
+                      <td className="py-3 px-4 text-gray-300 font-mono">1.12 ETH</td>
+                    </tr>
+                    <tr className="hover:bg-blue-500/5 transition-colors">
+                      <td className="py-3 px-4 text-gray-300 pl-8">→ Owner (20%)</td>
+                      <td className="py-3 px-4 text-gray-300 font-mono">0.28 ETH</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 
@@ -431,7 +456,10 @@ const UserManual = () => {
 
           {/* Raffle Trigger Thresholds */}
           <div className="mb-8">
-            <h3 className="text-lg font-semibold text-purple-200 mb-3 scroll-mt-24">Raffle Trigger Thresholds</h3>
+            <h3 className="text-lg font-semibold text-purple-200 mb-3 scroll-mt-24">Raffle Thresholds</h3>
+            <p>
+              Early raffles have lower thresholds since the system doesn't expect heavy traffic at launch. As user adoption grows, subsequent raffles scale up with higher thresholds and bigger prizes.
+            </p>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
