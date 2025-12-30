@@ -2942,22 +2942,18 @@ export default function ConnectFour() {
 
       {/* Winners Leaderboard Section */}
       <div className="max-w-7xl mx-auto px-6 pb-12" style={{ position: 'relative', zIndex: 10 }}>
-        <div className="max-w-2xl mx-auto mb-16">
-          <WinnersLeaderboard
-            leaderboard={leaderboard}
-            loading={leaderboardLoading}
-            error={leaderboardError}
-            currentAccount={account}
-            onRetry={() => fetchLeaderboard()}
-          />
-        </div>
+        <WinnersLeaderboard
+          leaderboard={leaderboard}
+          loading={leaderboardLoading}
+          error={leaderboardError}
+          currentAccount={account}
+          onRetry={() => fetchLeaderboard()}
+        />
       </div>
 
       {/* User Manual Section */}
       <div id="user-manual" className="max-w-7xl mx-auto px-6 pb-12" style={{ position: 'relative', zIndex: 10 }}>
-        <div className="max-w-4xl mx-auto">
-          <UserManual />
-        </div>
+        <UserManual />
       </div>
 
       {/* ============ FOOTER ============ */}

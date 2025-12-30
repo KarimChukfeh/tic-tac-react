@@ -10,8 +10,7 @@ import { BookOpen, Shield } from 'lucide-react';
 
 const UserManual = () => {
   // Handle hash navigation and trigger highlight animation
-  useEffect(() => {
-    const handleHashChange = () => {
+  useEffect(() => {    const handleHashChange = () => {
       const hash = window.location.hash.slice(1); // Remove the '#'
       if (hash) {
         const element = document.getElementById(hash);
@@ -73,11 +72,9 @@ const UserManual = () => {
         <p className="text-gray-300">
           Legacy systems rely on centralized authorities to resolve these stalls, which requires trust in a person or a company.
         </p>
-        
-        <br/>
 
         {/* Highlighted Key Value Proposition */}
-        <div className="relative bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border-2 border-cyan-400/50 rounded-xl p-5 shadow-lg shadow-cyan-500/10">
+        <div className="relative bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border-2 border-cyan-400/50 rounded-xl p-5 shadow-lg shadow-cyan-500/10 !mt-10">
           <div className="flex items-start gap-3">
             <Shield className="text-cyan-400 flex-shrink-0 mt-1" size={28} />
             <div className="text-gray-100 text-lg font-bold leading-relaxed space-y-2">
@@ -88,9 +85,9 @@ const UserManual = () => {
           {/* Glow effect */}
           <div className="absolute inset-0 bg-gradient-to-r from-cyan-400/5 to-blue-400/5 rounded-xl blur-xl -z-10"></div>
         </div>
-        
+
         {/* Secondary Highlight - Fair System */}
-        <div className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-400/30 rounded-lg p-4">
+        <div className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-400/30 rounded-lg p-4 !mt-10">
           <ul className="space-y-2 text-gray-200 font-medium mb-3">
             <li className="flex items-start gap-2">
               <span className="text-purple-400 mt-0.5">•</span>
