@@ -31,6 +31,19 @@ const CommunityRaffleCard = ({ raffleInfo, playerActivityHeight, onRefresh, onTr
   const isFull = raffleInfo.isReady; // Use isReady flag from contract
   const raffleNumber = Number(raffleInfo.raffleIndex || 0n) + 1; // Display as 1-indexed
 
+  // Handle anchor link click with collapse after scroll
+  const handleCommunityRafflesClick = (e) => {
+    e.preventDefault();
+    const element = document.getElementById('community-raffles');
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Collapse card after scrolling
+      setTimeout(() => {
+        setIsExpanded(false);
+      }, 100);
+    }
+  };
+
   // Dynamic positioning based on actual PlayerActivity panel height
   // PlayerActivity base positions: top-4 (16px) mobile, md:top-20 (80px) desktop
   // PlayerActivity collapsed button size: ~32px mobile, ~64px desktop (with padding)
@@ -214,7 +227,8 @@ const CommunityRaffleCard = ({ raffleInfo, playerActivityHeight, onRefresh, onTr
           {/* What are Community Raffles? Link */}
           <a
             href="#community-raffles"
-            className="block w-full text-center text-yellow-300 hover:text-yellow-200 hover:bg-yellow-500/10 text-xs mt-3 py-2 px-4 rounded-lg border border-yellow-400/30 hover:border-yellow-400/50 transition-all"
+            onClick={handleCommunityRafflesClick}
+            className="block w-full text-center text-yellow-300 hover:text-yellow-200 hover:bg-yellow-500/10 text-xs mt-3 py-2 px-4 rounded-lg border border-yellow-400/30 hover:border-yellow-400/50 transition-all cursor-pointer"
           >
             What are Community Raffles?
           </a>
