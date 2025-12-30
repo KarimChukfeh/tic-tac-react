@@ -2324,7 +2324,7 @@ export default function TicTacChain() {
             ETour TicTacToe
           </h1>
           <p className="text-2xl text-blue-200 mb-6">
-            Provably Fair • <a href="/#zero-trust" className="text-blue-200 hover:text-green-300 transition-colors underline decoration-blue-400/50 hover:decoration-green-400 underline-offset-4">Zero Trust</a> • 100% On-Chain
+            Provably Fair • Zero Trust • 100% On-Chain
           </p>
           <p className={`text-lg ${currentTheme.heroSubtext} max-w-3xl mx-auto mb-8`}>
             Play Tic-Tac-Toe on the blockchain. Real opponents. Real ETH on the line.
