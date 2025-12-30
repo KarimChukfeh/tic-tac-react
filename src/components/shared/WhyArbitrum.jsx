@@ -1,5 +1,3 @@
-import { Info } from 'lucide-react';
-
 /**
  * WhyArbitrum - Shared component explaining Arbitrum to new users
  *
@@ -34,7 +32,7 @@ export default function WhyArbitrum({ variant = 'blue' }) {
   const theme = colors[variant] || colors.blue;
 
   return (
-    <div className="mt-6 max-w-2xl mx-auto px-4">
+    <div className="mt-6 max-w-2xl mx-auto">
       <div className={`${theme.bg} border ${theme.border} rounded-lg p-3 md:p-4`}>
         <div className="flex items-start gap-3">
           <div className="text-sm w-full">
