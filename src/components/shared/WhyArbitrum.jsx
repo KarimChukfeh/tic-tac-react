@@ -40,7 +40,7 @@ export default function WhyArbitrum({ variant = 'blue' }) {
           <div className="text-sm w-full">
             <p className={`${theme.text} font-medium mb-2`}>Why Arbitrum?</p>
             <p className={`${theme.subtext} opacity-80 leading-relaxed mb-3`}>
-              This game runs on <a href="https://arbitrum.io" target="_blank" rel="noopener noreferrer" className={`font-semibold ${theme.text} hover:text-green-300 underline decoration-current/50 hover:decoration-green-300 transition-colors`}>Arbitrum One</a>, an Ethereum Layer 2 network.
+              This game runs on <a href="https://arbitrum.io" target="_blank" rel="noopener noreferrer" className={`font-semibold ${theme.text} hover:text-green-300 underline decoration-current/50 hover:decoration-green-300 transition-colors`}>Arbitrum One</a>, an Ethereum L2 network.
             </p>
             <div className={`${theme.subtext} opacity-80 leading-relaxed space-y-2 text-sm`}>
               <p><strong className={theme.text}>First time on Arbitrum?</strong> You'll need to:</p>
