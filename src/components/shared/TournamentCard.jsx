@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Trophy, Play, Users, Zap, Coins, Eye } from 'lucide-react';
+import { Trophy, Play, Users, Zap, Coins, Eye, RefreshCw } from 'lucide-react';
 import { ethers } from 'ethers';
 import EscalationTimer from './EscalationTimer';
 
@@ -44,6 +44,8 @@ const DEFAULT_COLORS = {
  * @param {number} props.tournamentStatus - Tournament status (0=enrollment, 1=active, 2+=completed)
  * @param {string|null} props.account - Current user's wallet address
  * @param {Object} [props.colors] - Custom color theme
+ * @param {Function} [props.onResetEnrollmentWindow] - Handler for resetting enrollment window
+ * @param {Object} [props.contract] - Contract instance for calling canResetEnrollmentWindow
  */
 const TournamentCard = ({
   tierId,
@@ -63,6 +65,8 @@ const TournamentCard = ({
   tournamentStatus,
   account,
   colors: customColors,
+  onResetEnrollmentWindow,
+  contract,
 }) => {
   const isFull = currentEnrolled >= maxPlayers;
   const enrollmentPercentage = (currentEnrolled / maxPlayers) * 100;
@@ -80,6 +84,9 @@ const TournamentCard = ({
     forfeitPool: 0n
   });
 
+  // EL1* - Reset enrollment window state
+  const [canResetWindow, setCanResetWindow] = useState(false);
+
   useEffect(() => {
     if (!enrollmentTimeout) {
       setEscalationState({
@@ -93,7 +100,7 @@ const TournamentCard = ({
       return;
     }
 
-    const updateEscalationState = () => {
+    const updateEscalationState = async () => {
       const now = Math.floor(Date.now() / 1000);
       const escalation1Start = Number(enrollmentTimeout.escalation1Start);
       const escalation2Start = Number(enrollmentTimeout.escalation2Start);
@@ -120,13 +127,28 @@ const TournamentCard = ({
         timeToEscalation2,
         forfeitPool
       });
+
+      // Check canResetEnrollmentWindow every second when enrollment window expires
+      // Continue checking even when EL2 is active - solo player can still reset
+      if ((canStartEscalation1 || canStartEscalation2) && isEnrolled && contract) {
+        try {
+          const canReset = await contract.canResetEnrollmentWindow(tierId, instanceId);
+          setCanResetWindow(canReset);
+        } catch (error) {
+          console.error('Error checking canResetEnrollmentWindow:', error);
+          setCanResetWindow(false);
+        }
+      } else if (!canStartEscalation1 && !canStartEscalation2) {
+        // Reset the flag only when both escalation windows are cleared
+        setCanResetWindow(false);
+      }
     };
 
     updateEscalationState();
     const interval = setInterval(updateEscalationState, 1000);
 
     return () => clearInterval(interval);
-  }, [enrollmentTimeout]);
+  }, [enrollmentTimeout, isEnrolled, contract, tierId, instanceId]);
 
   return (
     <div className={`bg-gradient-to-br ${colors.cardBg} backdrop-blur-lg rounded-2xl p-6 border-2 ${colors.cardBorder} transition-all hover:shadow-xl ${colors.cardShadow}`}>
@@ -241,6 +263,20 @@ const TournamentCard = ({
       />
 
       {/* Action Buttons */}
+      {/* EL1*: Reset Enrollment Window - Solo player can extend enrollment */}
+      {tournamentStatus === 0 && canResetWindow && isEnrolled && onResetEnrollmentWindow && (
+        <div className="mb-4">
+          <button
+            onClick={() => onResetEnrollmentWindow(tierId, instanceId)}
+            disabled={loading || !account}
+            className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-xs"
+          >
+            <RefreshCw size={14} />
+            {loading ? 'Resetting...' : !account ? 'Connect Wallet' : 'EL1*: Reset Enrollment Window'}
+          </button>
+        </div>
+      )}
+
       {/* Escalation 1: Enrolled players can force start */}
       {tournamentStatus === 0 && escalationState.canStartEscalation1 && isEnrolled && (
         <div className="mb-4">

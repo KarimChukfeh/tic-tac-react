@@ -1497,6 +1497,64 @@ export default function ConnectFour() {
     }
   };
 
+  // Handle resetting enrollment window (EL1*)
+  const handleResetEnrollmentWindow = useCallback(async (tierId, instanceId) => {
+    if (!contract || !account) {
+      alert('Please connect your wallet first');
+      return;
+    }
+
+    try {
+      setTournamentsLoading(true);
+
+      // Confirm action with user
+      const confirmed = window.confirm(
+        `Reset Enrollment Window\n\n` +
+        `This will restart the enrollment period for this tournament, ` +
+        `allowing new players to join.\n\n` +
+        `Continue?`
+      );
+
+      if (!confirmed) {
+        setTournamentsLoading(false);
+        return;
+      }
+
+      // Call contract function
+      const tx = await contract.resetEnrollmentWindow(tierId, instanceId);
+      console.log('Reset enrollment window transaction submitted:', tx.hash);
+      alert('Transaction submitted! Waiting for confirmation...');
+
+      const receipt = await tx.wait();
+      console.log('Reset enrollment window confirmed:', receipt);
+
+      alert('Enrollment window has been reset successfully! New players can now join.');
+
+      // Refresh tournament data
+      await fetchTierInstances(tierId, null, null, null, true);
+
+      setTournamentsLoading(false);
+    } catch (error) {
+      console.error('Error resetting enrollment window:', error);
+
+      let errorMessage = error.message || 'Unknown error';
+
+      // Parse common error messages
+      if (error.message?.includes('NotSoloEnrolled')) {
+        errorMessage = 'Only solo enrolled players can reset the enrollment window';
+      } else if (error.message?.includes('EnrollmentNotExpired')) {
+        errorMessage = 'Enrollment window has not expired yet';
+      } else if (error.message?.includes('TournamentNotInEnrollment')) {
+        errorMessage = 'Tournament is no longer in enrollment phase';
+      } else if (error.message?.includes('user rejected')) {
+        errorMessage = 'Transaction cancelled';
+      }
+
+      alert(`Failed to reset enrollment window: ${errorMessage}`);
+      setTournamentsLoading(false);
+    }
+  }, [contract, account, fetchTierInstances]);
+
   // Handle claiming abandoned enrollment pool
   const handleClaimAbandonedPool = async (tierId, instanceId) => {
     if (!contract || !account) {
@@ -2903,7 +2961,9 @@ export default function ConnectFour() {
                                       tournamentStatus={tournament.tournamentStatus}
                                       onManualStart={handleManualStart}
                                       onClaimAbandonedPool={handleClaimAbandonedPool}
+                                      onResetEnrollmentWindow={handleResetEnrollmentWindow}
                                       account={account}
+                                      contract={contract}
                                     />
                                   ))}
                                 </div>

@@ -63,7 +63,7 @@ const UserManual = () => {
 
         <ol className="list-decimal list-inside space-y-2 text-gray-300 ml-2">
           <li>
-            <span className="font-semibold text-blue-300">Enrollment</span> - some players enroll, but not enough start the tournament.
+            <span className="font-semibold text-blue-300">Enrollment</span> - some players enroll, but not enough to start the tournament.
           </li>
           <li>
             <span className="font-semibold text-blue-300">Match Play</span> - one or both players in a match stop making moves.
@@ -142,7 +142,7 @@ const UserManual = () => {
 
           {/* EL1 */}
           <div className="mb-8">
-            <h3 id="el1" className="text-lg font-semibold text-purple-200 mb-3 scroll-mt-24">EL1: Force-Start Tournament When Not Enough Enrolled Players</h3>
+            <h3 id="el1" className="text-lg font-semibold text-purple-200 mb-3 scroll-mt-24">EL1: Force-Start Tournament After Enrollment Window Expires</h3>
             <div className="space-y-3 text-gray-300">
               <p>
                 Sometimes players enroll in a tournament but not enough join to fill all spots. Without intervention, these enrolled players would be stuck waiting indefinitely.
@@ -157,6 +157,25 @@ const UserManual = () => {
               </div>
             </div>
           </div>
+
+          <div className="mb-8">
+            <h3 id="el1x" className="text-lg font-semibold text-purple-200 mb-3 scroll-mt-24">EL1* : Extend Enrollment Window When Solo Enrolled</h3>
+            <div className="space-y-3 text-gray-300">
+              <p>
+                Sometimes a player enrolls in a tournament but remains the only participant when the enrollment window expires.</p>
+              <p>
+                Rather than being forced to start a solo tournament or lose their entry fee, enrolled players have the option to extend the enrollment period.
+              </p>
+              <div className="bg-purple-500/20 border border-purple-400/40 rounded-lg p-3">
+                <p className="text-purple-200">
+                  This gives solo players the option to wait for competition without penalty or escalation consequences, just a fresh enrollment window to build a proper tournament.
+                </p>
+              </div>
+            </div>
+          </div>
+
+
+
 
           <hr className="border-purple-500/20 mb-8" />
 

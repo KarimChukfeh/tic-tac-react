@@ -76,6 +76,43 @@
       "inputs": [
         {
           "indexed": true,
+          "internalType": "uint8",
+          "name": "tierId",
+          "type": "uint8"
+        },
+        {
+          "indexed": true,
+          "internalType": "uint8",
+          "name": "instanceId",
+          "type": "uint8"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "player",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "newEscalation1Start",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "newEscalation2Start",
+          "type": "uint256"
+        }
+      ],
+      "name": "EnrollmentWindowReset",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
           "internalType": "bytes32",
           "name": "matchKey",
           "type": "bytes32"
@@ -1118,6 +1155,30 @@
           "internalType": "uint16",
           "name": "",
           "type": "uint16"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint8",
+          "name": "tierId",
+          "type": "uint8"
+        },
+        {
+          "internalType": "uint8",
+          "name": "instanceId",
+          "type": "uint8"
+        }
+      ],
+      "name": "canResetEnrollmentWindow",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "canReset",
+          "type": "bool"
         }
       ],
       "stateMutability": "view",
@@ -3192,6 +3253,24 @@
         }
       ],
       "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint8",
+          "name": "tierId",
+          "type": "uint8"
+        },
+        {
+          "internalType": "uint8",
+          "name": "instanceId",
+          "type": "uint8"
+        }
+      ],
+      "name": "resetEnrollmentWindow",
+      "outputs": [],
+      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
