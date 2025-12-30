@@ -498,6 +498,12 @@
       "inputs": [
         {
           "indexed": true,
+          "internalType": "uint256",
+          "name": "raffleIndex",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
           "internalType": "address",
           "name": "winner",
           "type": "address"
@@ -1201,6 +1207,19 @@
       "name": "claimTimeoutWin",
       "outputs": [],
       "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "currentRaffleIndex",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
       "type": "function"
     },
     {
@@ -2148,6 +2167,11 @@
       "name": "getRaffleInfo",
       "outputs": [
         {
+          "internalType": "uint256",
+          "name": "raffleIndex",
+          "type": "uint256"
+        },
+        {
           "internalType": "bool",
           "name": "isReady",
           "type": "bool"
@@ -2155,6 +2179,16 @@
         {
           "internalType": "uint256",
           "name": "currentAccumulated",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "threshold",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "reserve",
           "type": "uint256"
         },
         {

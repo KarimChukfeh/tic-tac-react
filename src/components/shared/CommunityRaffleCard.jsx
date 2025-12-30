@@ -23,10 +23,13 @@ const CommunityRaffleCard = ({ raffleInfo, playerActivityHeight, onRefresh, onTr
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const TARGET_ETH = 3;
+  const thresholdETH = parseFloat(ethers.formatEther(raffleInfo.threshold || 0n));
   const currentETH = parseFloat(ethers.formatEther(raffleInfo.currentAccumulated || 0n));
-  const percentage = Math.min((currentETH / TARGET_ETH) * 100, 100);
+  const reserveETH = parseFloat(ethers.formatEther(raffleInfo.reserve || 0n));
+  const raffleAmountETH = parseFloat(ethers.formatEther(raffleInfo.raffleAmount || 0n));
+  const percentage = thresholdETH > 0 ? Math.min((currentETH / thresholdETH) * 100, 100) : 0;
   const isFull = raffleInfo.isReady; // Use isReady flag from contract
+  const raffleNumber = Number(raffleInfo.raffleIndex || 0n) + 1; // Display as 1-indexed
 
   // Dynamic positioning based on actual PlayerActivity panel height
   // PlayerActivity base positions: top-4 (16px) mobile, md:top-20 (80px) desktop
@@ -108,7 +111,10 @@ const CommunityRaffleCard = ({ raffleInfo, playerActivityHeight, onRefresh, onTr
                 className="w-5 h-5"
                 style={{ filter: 'brightness(0) saturate(100%) invert(87%) sepia(69%) saturate(425%) hue-rotate(356deg) brightness(103%) contrast(97%)' }}
               />
-              <h3 className="text-white font-bold text-sm">Community Raffle</h3>
+              <div>
+                <h3 className="text-white font-bold text-sm">Community Raffle</h3>
+                <p className="text-yellow-300/60 text-[10px]">Raffle #{raffleNumber}</p>
+              </div>
             </div>
             <div className="flex items-center gap-1">
               {isFull && (
@@ -143,8 +149,13 @@ const CommunityRaffleCard = ({ raffleInfo, playerActivityHeight, onRefresh, onTr
               {currentETH.toFixed(4)} ETH
             </div>
             <div className="text-xs text-yellow-300/70">
-              Target: {TARGET_ETH} ETH
+              Target: {thresholdETH.toFixed(4)} ETH
             </div>
+            {reserveETH > 0 && (
+              <div className="text-[10px] text-yellow-300/50 mt-1">
+                Reserve: {reserveETH.toFixed(4)} ETH kept in contract
+              </div>
+            )}
           </div>
 
           {/* Progress Bar */}
@@ -165,6 +176,31 @@ const CommunityRaffleCard = ({ raffleInfo, playerActivityHeight, onRefresh, onTr
               {percentage.toFixed(1)}%
             </span>
           </div>
+
+          {/* Raffle Distribution Info - Only show when ready */}
+          {isFull && raffleAmountETH > 0 && (
+            <div className="mt-3 p-3 bg-yellow-500/10 border border-yellow-400/30 rounded-lg">
+              <div className="text-xs text-yellow-300/80 mb-2">
+                <span className="font-semibold">Raffle Distribution:</span>
+              </div>
+              <div className="space-y-1 text-[11px]">
+                <div className="flex justify-between text-yellow-300/70">
+                  <span>Current Pool:</span>
+                  <span className="font-mono">{currentETH.toFixed(4)} ETH</span>
+                </div>
+                {reserveETH > 0 && (
+                  <div className="flex justify-between text-yellow-300/60">
+                    <span>- Contract Reserve:</span>
+                    <span className="font-mono">-{reserveETH.toFixed(4)} ETH</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-yellow-300 font-semibold border-t border-yellow-400/20 pt-1">
+                  <span>= Raffle Prize Pool:</span>
+                  <span className="font-mono">{raffleAmountETH.toFixed(4)} ETH</span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Trigger Raffle Button - Only show when ready */}
           {isFull && (

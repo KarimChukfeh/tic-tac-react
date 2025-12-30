@@ -320,8 +320,11 @@ export default function TicTacChain() {
 
   // Raffle Info State
   const [raffleInfo, setRaffleInfo] = useState({
+    raffleIndex: 0n,
     isReady: false,
     currentAccumulated: 0n,
+    threshold: 0n,
+    reserve: 0n,
     raffleAmount: 0n,
     ownerShare: 0n,
     winnerShare: 0n,
@@ -672,12 +675,15 @@ export default function TicTacChain() {
       setRaffleSyncing(true);
       const readContract = getReadOnlyContract();
 
-      const [isReady, currentAccumulated, raffleAmount, ownerShare, winnerShare, eligiblePlayerCount] =
+      const [raffleIndex, isReady, currentAccumulated, threshold, reserve, raffleAmount, ownerShare, winnerShare, eligiblePlayerCount] =
         await readContract.getRaffleInfo();
 
       setRaffleInfo({
+        raffleIndex,
         isReady,
         currentAccumulated,
+        threshold,
+        reserve,
         raffleAmount,
         ownerShare,
         winnerShare,
@@ -685,8 +691,11 @@ export default function TicTacChain() {
       });
 
       console.log('Raffle Info:', {
+        raffleIndex: raffleIndex.toString(),
         isReady,
         currentAccumulated: ethers.formatEther(currentAccumulated),
+        threshold: ethers.formatEther(threshold),
+        reserve: ethers.formatEther(reserve),
         raffleAmount: ethers.formatEther(raffleAmount),
         eligiblePlayerCount: eligiblePlayerCount.toString()
       });
