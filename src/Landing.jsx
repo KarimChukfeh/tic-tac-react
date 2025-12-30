@@ -385,7 +385,6 @@ export default function Landing() {
         {/* ============ HERO SECTION ============ */}
         <br/>
         <br/>
-        <br/>
         <section className="min-h-[70vh] flex flex-col justify-center items-center px-6 py-16">
           
           {/* Eyebrow */}
@@ -418,7 +417,7 @@ export default function Landing() {
           </p>
           
           {/* Trust Signals */}
-          <div className="flex flex-wrap justify-center gap-6 mb-12 py-8">
+          <div className="flex flex-wrap justify-center gap-6 mb-12 py-2">
             <TrustSignal icon="🔒" text="Every move verified on-chain" />
             <TrustSignal icon="⚡" text="Instant ETH payouts to your wallet" />
             <TrustSignal icon="🎯" text="No RNG, pure skill" />
@@ -510,7 +509,7 @@ export default function Landing() {
             
             <div className="text-center mb-16">
               <h2 className="text-4xl font-bold text-white mb-4">Dead Simple</h2>
-              <p className="text-slate-400 text-lg">No accounts. No downloads. No Nonsense.</p>
+              <p className="text-slate-400 text-lg">No accounts. No downloads. No nonsense.</p>
             </div>
             
             <div className="grid md:grid-cols-3 gap-12">
@@ -520,7 +519,7 @@ export default function Landing() {
                   1
                 </div>
                 <h3 className="text-xl font-bold text-white mb-3">Connect Wallet</h3>
-                <p className="text-slate-500">MetaMask, WalletConnect, whatever. If it holds ETH, it works.</p>
+                <p className="text-slate-500">MetaMask, Brave, whatever. If it holds ETH, it works.</p>
               </div>
               
               <div className="text-center">
