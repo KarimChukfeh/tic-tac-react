@@ -14,16 +14,12 @@ const UserManual = ({
   // Optional overrides for configuration values
   enrollmentWindows = null, // e.g., { '2': 300, '4': 600, '8': 1200 } in seconds
   raffleThresholds = null, // e.g., ['0.5', '1.0', '1.5', '2.0', '2.5', '3.0'] in ETH
-  protocolFeePercent = null,
-  ownerSharePercent = null,
-  winnerSharePercent = null
+  protocolFeePercent = null
 }) => {
   // State for contract-fetched values
   const [contractConfig, setContractConfig] = useState({
     basisPoints: 10000,
     protocolShareBps: 250, // 2.5%
-    ownerShareBps: 2000, // 20%
-    participantsShareBps: 7750, // 77.5%
     enrollmentWindows: { '2': 300, '4': 600, '8': 1200 }, // Default: 5min, 10min, 20min
     currentRaffleThreshold: null,
     isLoading: true
@@ -41,14 +37,10 @@ const UserManual = ({
         const [
           basisPoints,
           protocolShareBps,
-          ownerShareBps,
-          participantsShareBps,
           raffleInfo
         ] = await Promise.all([
           contractInstance.BASIS_POINTS(),
           contractInstance.PROTOCOL_SHARE_BPS(),
-          contractInstance.OWNER_SHARE_BPS(),
-          contractInstance.PARTICIPANTS_SHARE_BPS(),
           contractInstance.getRaffleInfo().catch(() => null)
         ]);
 
@@ -67,8 +59,6 @@ const UserManual = ({
         setContractConfig({
           basisPoints: Number(basisPoints),
           protocolShareBps: Number(protocolShareBps),
-          ownerShareBps: Number(ownerShareBps),
-          participantsShareBps: Number(participantsShareBps),
           enrollmentWindows: timeoutConfigs,
           currentRaffleThreshold: raffleInfo ? ethers.formatEther(raffleInfo.threshold) : null,
           isLoading: false
@@ -82,10 +72,12 @@ const UserManual = ({
     fetchContractConfig();
   }, [contractInstance]);
 
-  // Calculate percentages from basis points
+  // Calculate protocol fee percentage from basis points
   const protocolFee = protocolFeePercent ?? (contractConfig.protocolShareBps / contractConfig.basisPoints * 100);
-  const ownerShare = ownerSharePercent ?? (contractConfig.ownerShareBps / contractConfig.basisPoints * 100);
-  const winnerShare = winnerSharePercent ?? (contractConfig.participantsShareBps / contractConfig.basisPoints * 100);
+
+  // Raffle prize distribution is hardcoded in the contract (80% winner, 20% owner)
+  const raffleWinnerShare = 80;
+  const raffleOwnerShare = 20;
 
   // Use provided enrollment windows or contract values
   const finalEnrollmentWindows = enrollmentWindows || contractConfig.enrollmentWindows;
@@ -519,11 +511,11 @@ const UserManual = ({
                   <tbody className="divide-y divide-blue-500/20">
                     <tr className="hover:bg-blue-500/5 transition-colors">
                       <td className="py-3 px-4 text-gray-300">Random Winner</td>
-                      <td className="py-3 px-4 text-gray-300 font-mono">{(100 - ownerShare).toFixed(0)}%</td>
+                      <td className="py-3 px-4 text-gray-300 font-mono">{raffleWinnerShare}%</td>
                     </tr>
                     <tr className="hover:bg-blue-500/5 transition-colors">
                       <td className="py-3 px-4 text-gray-300">Owner</td>
-                      <td className="py-3 px-4 text-gray-300 font-mono">{ownerShare.toFixed(0)}%</td>
+                      <td className="py-3 px-4 text-gray-300 font-mono">{raffleOwnerShare}%</td>
                     </tr>
                   </tbody>
                 </table>
@@ -551,12 +543,12 @@ const UserManual = ({
                       <td className="py-3 px-4 text-gray-300 font-mono">{(parseFloat(finalRaffleThresholds[1]) * 1.5 - parseFloat(finalRaffleThresholds[1]) * 0.1).toFixed(1)} ETH</td>
                     </tr>
                     <tr className="hover:bg-blue-500/5 transition-colors">
-                      <td className="py-3 px-4 text-gray-300 pl-8">→ Random Winner ({(100 - ownerShare).toFixed(0)}%)</td>
-                      <td className="py-3 px-4 text-gray-300 font-mono">{((parseFloat(finalRaffleThresholds[1]) * 1.5 - parseFloat(finalRaffleThresholds[1]) * 0.1) * (100 - ownerShare) / 100).toFixed(2)} ETH</td>
+                      <td className="py-3 px-4 text-gray-300 pl-8">→ Random Winner ({raffleWinnerShare}%)</td>
+                      <td className="py-3 px-4 text-gray-300 font-mono">{((parseFloat(finalRaffleThresholds[1]) * 1.5 - parseFloat(finalRaffleThresholds[1]) * 0.1) * raffleWinnerShare / 100).toFixed(2)} ETH</td>
                     </tr>
                     <tr className="hover:bg-blue-500/5 transition-colors">
-                      <td className="py-3 px-4 text-gray-300 pl-8">→ Owner ({ownerShare.toFixed(0)}%)</td>
-                      <td className="py-3 px-4 text-gray-300 font-mono">{((parseFloat(finalRaffleThresholds[1]) * 1.5 - parseFloat(finalRaffleThresholds[1]) * 0.1) * ownerShare / 100).toFixed(2)} ETH</td>
+                      <td className="py-3 px-4 text-gray-300 pl-8">→ Owner ({raffleOwnerShare}%)</td>
+                      <td className="py-3 px-4 text-gray-300 font-mono">{((parseFloat(finalRaffleThresholds[1]) * 1.5 - parseFloat(finalRaffleThresholds[1]) * 0.1) * raffleOwnerShare / 100).toFixed(2)} ETH</td>
                     </tr>
                   </tbody>
                 </table>
