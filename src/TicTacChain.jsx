@@ -24,7 +24,7 @@ import {
 import { ethers } from 'ethers';
 import DUMMY_ABI from './TicTacChainABI.json';
 import { CURRENT_NETWORK, CONTRACT_ADDRESSES, getAddressUrl, getExplorerHomeUrl } from './config/networks';
-import { shortenAddress, formatTime as formatTimeHMS, getTierName, getEstimatedDuration, countInstancesByStatus } from './utils/formatters';
+import { shortenAddress, formatTime as formatTimeHMS, getTierName } from './utils/formatters';
 import { parseTournamentParams } from './utils/urlHelpers';
 import { parseTicTacToeMatch } from './utils/matchDataParser';
 import { determineMatchResult } from './utils/matchCompletionHandler';
@@ -2548,7 +2548,18 @@ export default function TicTacChain() {
                       const instances = allInstances.slice(0, visibleCount);
                       const hasMore = allInstances.length > visibleCount;
                       const isLoading = tierLoading[tierId];
-                      const statusCounts = countInstancesByStatus(metadata.statuses, metadata.enrolledCounts);
+
+                      // Calculate prize pool per tournament
+                      const totalPrizePool = (parseFloat(metadata.entryFee) * metadata.playerCount * 0.9).toFixed(4);
+
+                      // Calculate currently active players (enrolling + in progress)
+                      const activePlayersCount = metadata.enrolledCounts.reduce((sum, enrolledCount, index) => {
+                        const status = metadata.statuses[index];
+                        if (status === 0 || status === 1) {
+                          return sum + enrolledCount;
+                        }
+                        return sum;
+                      }, 0);
 
                       return (
                         <div key={tierId} className="mb-6">
@@ -2560,11 +2571,11 @@ export default function TicTacChain() {
                               <Grid size={24} /> {getTierName(metadata.playerCount)}s
                               <span className="text-sm font-normal text-purple-300">• {metadata.playerCount} players total</span>
                               <span className="text-sm font-normal text-purple-300">• {metadata.entryFee} ETH entry</span>
-                              <span className="text-sm font-normal text-purple-300">• <span className="font-bold text-cyan-400">{metadata.instanceCount} lobbies</span> • <span className="font-bold text-green-400">{statusCounts.enrolling} enrolling</span> • <span className="font-bold text-yellow-400">{statusCounts.inProgress} in progress</span></span>
-                              <span className="text-sm font-normal text-purple-300">• {getEstimatedDuration('tictactoe', metadata.playerCount)}</span>
+                              <span className="text-sm font-normal text-purple-300">• {totalPrizePool} ETH prize pool</span>
+                              <span className="text-sm font-normal text-purple-300 ml-auto">{activePlayersCount} active players</span>
                               <ChevronDown
                                 size={24}
-                                className={`ml-auto transition-transform duration-200 ${expandedTiers[tierId] ? 'rotate-180' : ''}`}
+                                className={`transition-transform duration-200 ${expandedTiers[tierId] ? 'rotate-180' : ''}`}
                               />
                             </h3>
                           </button>
