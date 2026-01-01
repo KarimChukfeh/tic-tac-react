@@ -93,8 +93,10 @@ const PlayerActivity = ({
     setRefreshTrigger(prev => prev + 1);
   };
 
-  // Only count matches where it's your turn for the badge
-  const activeMatchCount = activity?.activeMatches?.filter(m => m.isMyTurn).length || 0;
+  // Count all active matches (regardless of turn)
+  const activeMatchCount = activity?.activeMatches?.length || 0;
+  // Count all enrolled tournaments (in progress + waiting for players)
+  const enrolledTournamentCount = (activity?.inProgressTournaments?.length || 0) + (activity?.unfilledTournaments?.length || 0);
   const hasActivity = activity && (
     activity.activeMatches.length > 0 ||
     activity.inProgressTournaments.length > 0 ||
@@ -117,9 +119,14 @@ const PlayerActivity = ({
             <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-cyan-400 animate-spin"></div>
           )}
 
-          {/* Activity Badge */}
+          {/* Activity Badges */}
+          {enrolledTournamentCount > 0 && (
+            <div className="absolute -top-1 -right-1 bg-orange-500 rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center animate-pulse">
+              <span className="text-white text-[11px] md:text-xs font-bold">{enrolledTournamentCount}</span>
+            </div>
+          )}
           {activeMatchCount > 0 && (
-            <div className="absolute -top-1 -right-1 bg-red-500 rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center animate-pulse">
+            <div className="absolute -top-1 -left-1 bg-red-500 rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center animate-pulse">
               <span className="text-white text-[11px] md:text-xs font-bold">{activeMatchCount}</span>
             </div>
           )}
