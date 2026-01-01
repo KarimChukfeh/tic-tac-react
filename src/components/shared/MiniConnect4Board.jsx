@@ -261,7 +261,7 @@ const MiniConnect4Board = ({
       </div>
 
       {/* Connect Four Board */}
-      <div className="p-3 bg-blue-900/30 rounded-lg">
+      <div className="p-3 bg-slate-900/30 rounded-lg">
         {/* Column click zones */}
         <div className="flex gap-1 mb-2">
           {[0, 1, 2, 3, 4, 5, 6].map(col => (
@@ -283,7 +283,7 @@ const MiniConnect4Board = ({
               {row.map((cell, colIdx) => (
                 <div
                   key={colIdx}
-                  className="aspect-square bg-blue-800 rounded-full flex items-center justify-center w-full"
+                  className="aspect-square bg-slate-700 rounded-full flex items-center justify-center w-full"
                 >
                   {cell !== 0 && (
                     <div
