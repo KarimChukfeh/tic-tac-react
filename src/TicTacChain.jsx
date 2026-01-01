@@ -2655,7 +2655,7 @@ export default function TicTacChain() {
 
       {/* User Manual Section */}
       <div id="user-manual" className="max-w-7xl mx-auto px-6 pb-12" style={{ position: 'relative', zIndex: 10 }}>
-        <UserManual />
+        <UserManual contractInstance={contract} />
       </div>
 
       {/* ============ FOOTER ============ */}

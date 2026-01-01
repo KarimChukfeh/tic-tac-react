@@ -3540,26 +3540,6 @@
           "internalType": "bool",
           "name": "hasStartedViaTimeout",
           "type": "bool"
-        },
-        {
-          "internalType": "address",
-          "name": "firstEnroller",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "firstEnrollmentTimestamp",
-          "type": "uint256"
-        },
-        {
-          "internalType": "address",
-          "name": "forceStarter",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "forceStartTimestamp",
-          "type": "uint256"
         }
       ],
       "stateMutability": "view",

@@ -5,10 +5,100 @@
  * system works, including escalation levels, time settings, and rules.
  */
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { BookOpen, Shield } from 'lucide-react';
+import { ethers } from 'ethers';
 
-const UserManual = () => {
+const UserManual = ({
+  contractInstance = null,
+  // Optional overrides for configuration values
+  enrollmentWindows = null, // e.g., { '2': 300, '4': 600, '8': 1200 } in seconds
+  raffleThresholds = null, // e.g., ['0.5', '1.0', '1.5', '2.0', '2.5', '3.0'] in ETH
+  protocolFeePercent = null,
+  ownerSharePercent = null,
+  winnerSharePercent = null
+}) => {
+  // State for contract-fetched values
+  const [contractConfig, setContractConfig] = useState({
+    basisPoints: 10000,
+    protocolShareBps: 250, // 2.5%
+    ownerShareBps: 2000, // 20%
+    participantsShareBps: 7750, // 77.5%
+    enrollmentWindows: { '2': 300, '4': 600, '8': 1200 }, // Default: 5min, 10min, 20min
+    currentRaffleThreshold: null,
+    isLoading: true
+  });
+
+  // Fetch contract configuration on mount
+  useEffect(() => {
+    const fetchContractConfig = async () => {
+      if (!contractInstance) {
+        setContractConfig(prev => ({ ...prev, isLoading: false }));
+        return;
+      }
+
+      try {
+        const [
+          basisPoints,
+          protocolShareBps,
+          ownerShareBps,
+          participantsShareBps,
+          raffleInfo
+        ] = await Promise.all([
+          contractInstance.BASIS_POINTS(),
+          contractInstance.PROTOCOL_SHARE_BPS(),
+          contractInstance.OWNER_SHARE_BPS(),
+          contractInstance.PARTICIPANTS_SHARE_BPS(),
+          contractInstance.getRaffleInfo().catch(() => null)
+        ]);
+
+        // Fetch timeout configs for common tier sizes
+        const timeoutConfigs = {};
+        for (const tierSize of [2, 4, 8]) {
+          try {
+            const tierId = tierSize === 2 ? 0 : tierSize === 4 ? 1 : 2;
+            const config = await contractInstance.getTimeoutConfig(tierId);
+            timeoutConfigs[tierSize] = Number(config.enrollmentWindow);
+          } catch (err) {
+            console.warn(`Could not fetch timeout config for tier ${tierSize}:`, err);
+          }
+        }
+
+        setContractConfig({
+          basisPoints: Number(basisPoints),
+          protocolShareBps: Number(protocolShareBps),
+          ownerShareBps: Number(ownerShareBps),
+          participantsShareBps: Number(participantsShareBps),
+          enrollmentWindows: timeoutConfigs,
+          currentRaffleThreshold: raffleInfo ? ethers.formatEther(raffleInfo.threshold) : null,
+          isLoading: false
+        });
+      } catch (error) {
+        console.error('Error fetching contract config:', error);
+        setContractConfig(prev => ({ ...prev, isLoading: false }));
+      }
+    };
+
+    fetchContractConfig();
+  }, [contractInstance]);
+
+  // Calculate percentages from basis points
+  const protocolFee = protocolFeePercent ?? (contractConfig.protocolShareBps / contractConfig.basisPoints * 100);
+  const ownerShare = ownerSharePercent ?? (contractConfig.ownerShareBps / contractConfig.basisPoints * 100);
+  const winnerShare = winnerSharePercent ?? (contractConfig.participantsShareBps / contractConfig.basisPoints * 100);
+
+  // Use provided enrollment windows or contract values
+  const finalEnrollmentWindows = enrollmentWindows || contractConfig.enrollmentWindows;
+
+  // Format enrollment windows for display
+  const formatTime = (seconds) => {
+    const minutes = Math.floor(seconds / 60);
+    return minutes === 1 ? '1 minute' : `${minutes} minutes`;
+  };
+
+  // Use provided raffle thresholds or defaults
+  const finalRaffleThresholds = raffleThresholds || ['0.5', '1.0', '1.5', '2.0', '2.5', '3.0'];
+
   // Handle hash navigation and trigger highlight animation
   useEffect(() => {    const handleHashChange = () => {
       const hash = window.location.hash.slice(1); // Remove the '#'
@@ -188,18 +278,24 @@ const UserManual = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-blue-500/20">
-                  <tr className="hover:bg-blue-500/5 transition-colors">
-                    <td className="py-3 px-4 text-gray-300">1v1 Duels</td>
-                    <td className="py-3 px-4 text-gray-300 font-mono">5 minutes</td>
-                  </tr>
-                  <tr className="hover:bg-blue-500/5 transition-colors">
-                    <td className="py-3 px-4 text-gray-300">4-Player Tournaments</td>
-                    <td className="py-3 px-4 text-gray-300 font-mono">10 minutes</td>
-                  </tr>
-                  <tr className="hover:bg-blue-500/5 transition-colors">
-                    <td className="py-3 px-4 text-gray-300">8-Player Tournaments</td>
-                    <td className="py-3 px-4 text-gray-300 font-mono">20 minutes</td>
-                  </tr>
+                  {finalEnrollmentWindows['2'] && (
+                    <tr className="hover:bg-blue-500/5 transition-colors">
+                      <td className="py-3 px-4 text-gray-300">1v1 Duels</td>
+                      <td className="py-3 px-4 text-gray-300 font-mono">{formatTime(finalEnrollmentWindows['2'])}</td>
+                    </tr>
+                  )}
+                  {finalEnrollmentWindows['4'] && (
+                    <tr className="hover:bg-blue-500/5 transition-colors">
+                      <td className="py-3 px-4 text-gray-300">4-Player Tournaments</td>
+                      <td className="py-3 px-4 text-gray-300 font-mono">{formatTime(finalEnrollmentWindows['4'])}</td>
+                    </tr>
+                  )}
+                  {finalEnrollmentWindows['8'] && (
+                    <tr className="hover:bg-blue-500/5 transition-colors">
+                      <td className="py-3 px-4 text-gray-300">8-Player Tournaments</td>
+                      <td className="py-3 px-4 text-gray-300 font-mono">{formatTime(finalEnrollmentWindows['8'])}</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -311,7 +407,7 @@ const UserManual = () => {
             <h3 className="text-lg font-semibold text-purple-200 mb-3 scroll-mt-24">How Does the Community Raffle Work?</h3>
             <div className="space-y-3 text-gray-300">
               <p>
-                ETour keeps 2.5% of every entry fee to ensure the protocol remains healthy and operational.
+                ETour keeps {protocolFee.toFixed(1)}% of every entry fee to ensure the protocol remains healthy and operational.
               </p>
               <p>
                 Rather than letting this ETH accumulate indefinitely, ETour redistributes it back to the community through periodic raffle events. This is part of ETour's commitment to fairness.
@@ -423,18 +519,18 @@ const UserManual = () => {
                   <tbody className="divide-y divide-blue-500/20">
                     <tr className="hover:bg-blue-500/5 transition-colors">
                       <td className="py-3 px-4 text-gray-300">Random Winner</td>
-                      <td className="py-3 px-4 text-gray-300 font-mono">80%</td>
+                      <td className="py-3 px-4 text-gray-300 font-mono">{(100 - ownerShare).toFixed(0)}%</td>
                     </tr>
                     <tr className="hover:bg-blue-500/5 transition-colors">
                       <td className="py-3 px-4 text-gray-300">Owner</td>
-                      <td className="py-3 px-4 text-gray-300 font-mono">20%</td>
+                      <td className="py-3 px-4 text-gray-300 font-mono">{ownerShare.toFixed(0)}%</td>
                     </tr>
                   </tbody>
                 </table>
               </div>
 
               <p className="font-semibold text-gray-200">
-                Example: A raffle with a 1 ETH threshold triggers after accumulating 1.5 ETH.
+                Example: A raffle with a {finalRaffleThresholds[1]} ETH threshold triggers after accumulating {(parseFloat(finalRaffleThresholds[1]) * 1.5).toFixed(1)} ETH.
               </p>
 
               <div className="overflow-x-auto">
@@ -448,19 +544,19 @@ const UserManual = () => {
                   <tbody className="divide-y divide-blue-500/20">
                     <tr className="hover:bg-blue-500/5 transition-colors">
                       <td className="py-3 px-4 text-gray-300">Contract Reserve (10% of threshold)</td>
-                      <td className="py-3 px-4 text-gray-300 font-mono">0.1 ETH</td>
+                      <td className="py-3 px-4 text-gray-300 font-mono">{(parseFloat(finalRaffleThresholds[1]) * 0.1).toFixed(1)} ETH</td>
                     </tr>
                     <tr className="hover:bg-blue-500/5 transition-colors">
                       <td className="py-3 px-4 text-gray-300">Raffle Pool</td>
-                      <td className="py-3 px-4 text-gray-300 font-mono">1.4 ETH</td>
+                      <td className="py-3 px-4 text-gray-300 font-mono">{(parseFloat(finalRaffleThresholds[1]) * 1.5 - parseFloat(finalRaffleThresholds[1]) * 0.1).toFixed(1)} ETH</td>
                     </tr>
                     <tr className="hover:bg-blue-500/5 transition-colors">
-                      <td className="py-3 px-4 text-gray-300 pl-8">→ Random Winner (80%)</td>
-                      <td className="py-3 px-4 text-gray-300 font-mono">1.12 ETH</td>
+                      <td className="py-3 px-4 text-gray-300 pl-8">→ Random Winner ({(100 - ownerShare).toFixed(0)}%)</td>
+                      <td className="py-3 px-4 text-gray-300 font-mono">{((parseFloat(finalRaffleThresholds[1]) * 1.5 - parseFloat(finalRaffleThresholds[1]) * 0.1) * (100 - ownerShare) / 100).toFixed(2)} ETH</td>
                     </tr>
                     <tr className="hover:bg-blue-500/5 transition-colors">
-                      <td className="py-3 px-4 text-gray-300 pl-8">→ Owner (20%)</td>
-                      <td className="py-3 px-4 text-gray-300 font-mono">0.28 ETH</td>
+                      <td className="py-3 px-4 text-gray-300 pl-8">→ Owner ({ownerShare.toFixed(0)}%)</td>
+                      <td className="py-3 px-4 text-gray-300 font-mono">{((parseFloat(finalRaffleThresholds[1]) * 1.5 - parseFloat(finalRaffleThresholds[1]) * 0.1) * ownerShare / 100).toFixed(2)} ETH</td>
                     </tr>
                   </tbody>
                 </table>
@@ -485,30 +581,18 @@ const UserManual = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-blue-500/20">
-                  <tr className="hover:bg-blue-500/5 transition-colors">
-                    <td className="py-3 px-4 text-gray-300">1st Raffle</td>
-                    <td className="py-3 px-4 text-gray-300 font-mono">0.5 ETH</td>
-                  </tr>
-                  <tr className="hover:bg-blue-500/5 transition-colors">
-                    <td className="py-3 px-4 text-gray-300">2nd Raffle</td>
-                    <td className="py-3 px-4 text-gray-300 font-mono">1.0 ETH</td>
-                  </tr>
-                  <tr className="hover:bg-blue-500/5 transition-colors">
-                    <td className="py-3 px-4 text-gray-300">3rd Raffle</td>
-                    <td className="py-3 px-4 text-gray-300 font-mono">1.5 ETH</td>
-                  </tr>
-                  <tr className="hover:bg-blue-500/5 transition-colors">
-                    <td className="py-3 px-4 text-gray-300">4th Raffle</td>
-                    <td className="py-3 px-4 text-gray-300 font-mono">2.0 ETH</td>
-                  </tr>
-                  <tr className="hover:bg-blue-500/5 transition-colors">
-                    <td className="py-3 px-4 text-gray-300">5th Raffle</td>
-                    <td className="py-3 px-4 text-gray-300 font-mono">2.5 ETH</td>
-                  </tr>
-                  <tr className="hover:bg-blue-500/5 transition-colors">
-                    <td className="py-3 px-4 text-gray-300">6th+ Raffle</td>
-                    <td className="py-3 px-4 text-gray-300 font-mono">3.0 ETH</td>
-                  </tr>
+                  {finalRaffleThresholds.slice(0, 5).map((threshold, index) => (
+                    <tr key={index} className="hover:bg-blue-500/5 transition-colors">
+                      <td className="py-3 px-4 text-gray-300">{index + 1}{index === 0 ? 'st' : index === 1 ? 'nd' : index === 2 ? 'rd' : 'th'} Raffle</td>
+                      <td className="py-3 px-4 text-gray-300 font-mono">{threshold} ETH</td>
+                    </tr>
+                  ))}
+                  {finalRaffleThresholds.length > 5 && (
+                    <tr className="hover:bg-blue-500/5 transition-colors">
+                      <td className="py-3 px-4 text-gray-300">6th+ Raffle</td>
+                      <td className="py-3 px-4 text-gray-300 font-mono">{finalRaffleThresholds[5]} ETH</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
