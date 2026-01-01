@@ -5,6 +5,7 @@
  * Supports escalation display, player icons, and various color themes.
  */
 
+import { useState, useEffect, useRef } from 'react';
 import { Play, Award, Clock, HelpCircle, Zap, Users } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
 import { getMatchStatusText, getMatchStatusColor } from '../../utils/matchStatus';
@@ -237,6 +238,39 @@ const MatchCard = ({
     canReplace: false,
   };
 
+  // Client-side countdown ticking for smoother UI
+  const [tickingTimeRemaining, setTickingTimeRemaining] = useState(escalation.timeRemaining);
+  const lastServerTimeRef = useRef(escalation.timeRemaining);
+  const lastUpdateRef = useRef(Date.now());
+
+  // Update ticking time when server data changes (on poll)
+  useEffect(() => {
+    if (escalation.timeRemaining !== lastServerTimeRef.current) {
+      setTickingTimeRemaining(escalation.timeRemaining);
+      lastServerTimeRef.current = escalation.timeRemaining;
+      lastUpdateRef.current = Date.now();
+    }
+  }, [escalation.timeRemaining]);
+
+  // Tick down the countdown every second
+  useEffect(() => {
+    if (match.matchStatus !== 1 || !showEscalation || escalation.timeRemaining === null) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const elapsedSeconds = Math.floor((now - lastUpdateRef.current) / 1000);
+      const newTime = Math.max(0, lastServerTimeRef.current - elapsedSeconds);
+      setTickingTimeRemaining(newTime);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [match.matchStatus, showEscalation, escalation.timeRemaining]);
+
+  // Use ticking time for display instead of static server time
+  const displayTimeRemaining = tickingTimeRemaining !== null ? tickingTimeRemaining : escalation.timeRemaining;
+
   // Debug logging for escalation issues
   if (showEscalation && match.matchStatus === 1 && !isUserMatch && escalation.hasEscalation) {
     console.log(`[MatchCard R${roundIdx}M${matchIdx}] Escalation State:`, {
@@ -304,14 +338,14 @@ const MatchCard = ({
             </span>
           )}
           {/* Move timer */}
-          {showEscalation && escalation.effectiveEscalation === 0 && escalation.timeRemaining !== null && match.matchStatus === 1 && (
+          {showEscalation && escalation.effectiveEscalation === 0 && displayTimeRemaining !== null && match.matchStatus === 1 && (
             <span className={`text-xs font-bold px-2 py-1 rounded font-mono ${
-              escalation.timeRemaining === 0 ? 'bg-red-500/30 text-red-300 animate-pulse' :
-              escalation.timeRemaining <= 10 ? 'bg-red-500/20 text-red-300' :
-              escalation.timeRemaining <= 30 ? 'bg-yellow-500/20 text-yellow-300' :
+              displayTimeRemaining === 0 ? 'bg-red-500/30 text-red-300 animate-pulse' :
+              displayTimeRemaining <= 10 ? 'bg-red-500/20 text-red-300' :
+              displayTimeRemaining <= 30 ? 'bg-yellow-500/20 text-yellow-300' :
               'bg-blue-500/20 text-blue-300'
             }`}>
-              {Math.floor(escalation.timeRemaining / 60)}:{(escalation.timeRemaining % 60).toString().padStart(2, '0')}
+              {Math.floor(displayTimeRemaining / 60)}:{(displayTimeRemaining % 60).toString().padStart(2, '0')}
             </span>
           )}
           {/* Status */}
