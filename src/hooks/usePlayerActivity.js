@@ -65,6 +65,12 @@ export const usePlayerActivity = (contract, account, gameName) => {
 
       // Step 2: Get enrolling tournaments (unfilled)
       const enrollingTournaments = await contract.getPlayerEnrollingTournaments(account);
+      console.log('[PlayerActivity] Raw enrollingTournaments from contract:',
+        enrollingTournaments.map(ref => ({
+          tierId: Number(ref.tierId),
+          instanceId: Number(ref.instanceId)
+        }))
+      );
 
       const unfilledTournaments = await Promise.all(
         enrollingTournaments.map(async (ref) => {
@@ -82,6 +88,12 @@ export const usePlayerActivity = (contract, account, gameName) => {
 
       // Step 3: Get active tournaments
       const activeTournaments = await contract.getPlayerActiveTournaments(account);
+      console.log('[PlayerActivity] Raw activeTournaments from contract:',
+        activeTournaments.map(ref => ({
+          tierId: Number(ref.tierId),
+          instanceId: Number(ref.instanceId)
+        }))
+      );
 
       const activeMatches = [];
       const inProgressTournaments = [];
@@ -93,6 +105,13 @@ export const usePlayerActivity = (contract, account, gameName) => {
 
         const tournamentInfo = await contract.getTournamentInfo(tierId, instanceId);
         const currentRound = Number(tournamentInfo.currentRound);
+        const tournamentStatus = Number(tournamentInfo.status);
+
+        console.log(`[PlayerActivity] Processing tournament T${tierId}I${instanceId}:`, {
+          status: tournamentStatus,
+          currentRound,
+          enrolledCount: Number(tournamentInfo.enrolledCount)
+        });
 
         let hasActiveMatch = false;
 
@@ -116,8 +135,17 @@ export const usePlayerActivity = (contract, account, gameName) => {
             const isMyTurn = matchData.currentTurn?.toLowerCase() === account.toLowerCase();
             const matchKey = `${tierId}-${instanceId}-${roundIdx}-${matchIdx}`;
 
+            console.log(`[PlayerActivity] Found player's match at T${tierId}I${instanceId}R${roundIdx}M${matchIdx}:`, {
+              status: matchStatus,
+              isMyTurn,
+              isDismissed: dismissedMatches.has(matchKey),
+              player1: matchData.common.player1,
+              player2: matchData.common.player2
+            });
+
             // Skip dismissed matches
             if (dismissedMatches.has(matchKey)) {
+              console.log(`[PlayerActivity] Skipping dismissed match ${matchKey}`);
               continue;
             }
 
@@ -135,6 +163,7 @@ export const usePlayerActivity = (contract, account, gameName) => {
               if (matchStatus === 2 && completedMatchTimestamps[matchKey]) {
                 const elapsed = Date.now() - completedMatchTimestamps[matchKey];
                 if (elapsed > 10000) {
+                  console.log(`[PlayerActivity] Skipping completed match ${matchKey} (elapsed: ${elapsed}ms)`);
                   continue; // Skip this match, it's been completed for more than 10 seconds
                 }
               }
@@ -158,6 +187,13 @@ export const usePlayerActivity = (contract, account, gameName) => {
                   : Number(matchData.player2TimeRemaining);
               }
 
+              console.log(`[PlayerActivity] Adding match ${matchKey} to activeMatches`, {
+                opponent,
+                timeRemaining,
+                isMyTurn,
+                isCompleted: matchStatus === 2
+              });
+
               activeMatches.push({
                 tierId,
                 instanceId,
@@ -168,17 +204,22 @@ export const usePlayerActivity = (contract, account, gameName) => {
                 isMyTurn, // Add flag to indicate if it's player's turn
                 isCompleted: matchStatus === 2, // Add flag to indicate if match is completed
               });
+            } else {
+              console.log(`[PlayerActivity] Skipping match ${matchKey} - status not 1 or 2 (status: ${matchStatus})`);
             }
           }
         }
 
         // If no active match but player is in tournament, add to waiting list
         if (!hasActiveMatch) {
+          console.log(`[PlayerActivity] No active match found for T${tierId}I${instanceId}, adding to inProgressTournaments`);
           inProgressTournaments.push({
             tierId,
             instanceId,
             currentRound,
           });
+        } else {
+          console.log(`[PlayerActivity] Active match found for T${tierId}I${instanceId}, not adding to inProgressTournaments`);
         }
       }
 
@@ -191,12 +232,18 @@ export const usePlayerActivity = (contract, account, gameName) => {
         return a.timeRemaining - b.timeRemaining;
       });
 
-      console.log('[PlayerActivity] Found activity:', {
-        activeMatches: activeMatches.length,
-        inProgressTournaments: inProgressTournaments.length,
-        unfilledTournaments: unfilledTournaments.length,
-        totalEarnings: totalEarnings.toString(),
-      });
+      console.log('[PlayerActivity] ===== FINAL RESULTS =====');
+      console.log('[PlayerActivity] Active Matches:', activeMatches.map(m =>
+        `T${m.tierId}I${m.instanceId}R${m.roundIdx}M${m.matchIdx}`
+      ));
+      console.log('[PlayerActivity] In Progress Tournaments:', inProgressTournaments.map(t =>
+        `T${t.tierId}I${t.instanceId} (Round ${t.currentRound})`
+      ));
+      console.log('[PlayerActivity] Unfilled Tournaments:', unfilledTournaments.map(t =>
+        `T${t.tierId}I${t.instanceId} (${t.enrolledCount}/${t.playerCount})`
+      ));
+      console.log('[PlayerActivity] Total Earnings:', totalEarnings.toString());
+      console.log('[PlayerActivity] ===========================');
 
       setData({
         activeMatches,
