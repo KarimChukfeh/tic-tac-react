@@ -8,12 +8,13 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { Users, X, Zap, Trophy, Clock, Play, Eye, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
+import { Users, X, Zap, Trophy, Clock, Play, Eye, RefreshCw, ChevronDown, ChevronUp, TrendingUp } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
 import { formatTimeRemaining } from '../../utils/activityHelpers';
 import MiniTicTacToeBoard from './MiniTicTacToeBoard';
 import MiniChessBoard from './MiniChessBoard';
 import MiniConnect4Board from './MiniConnect4Board';
+import { ethers } from 'ethers';
 
 const PlayerActivity = ({
   activity,
@@ -24,6 +25,7 @@ const PlayerActivity = ({
   onEnterMatch,
   onEnterTournament,
   onRefresh,
+  onDismissMatch,
   gameName,
   gameEmoji,
   onHeightChange,
@@ -91,8 +93,10 @@ const PlayerActivity = ({
     setRefreshTrigger(prev => prev + 1);
   };
 
-  // Only count matches where it's your turn for the badge
-  const activeMatchCount = activity?.activeMatches?.filter(m => m.isMyTurn).length || 0;
+  // Count all active matches (regardless of turn)
+  const activeMatchCount = activity?.activeMatches?.length || 0;
+  // Count all enrolled tournaments (in progress + waiting for players)
+  const enrolledTournamentCount = (activity?.inProgressTournaments?.length || 0) + (activity?.unfilledTournaments?.length || 0);
   const hasActivity = activity && (
     activity.activeMatches.length > 0 ||
     activity.inProgressTournaments.length > 0 ||
@@ -115,9 +119,14 @@ const PlayerActivity = ({
             <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-cyan-400 animate-spin"></div>
           )}
 
-          {/* Activity Badge */}
+          {/* Activity Badges */}
+          {enrolledTournamentCount > 0 && (
+            <div className="absolute -top-1 -right-1 bg-orange-500 rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center animate-pulse">
+              <span className="text-white text-[11px] md:text-xs font-bold">{enrolledTournamentCount}</span>
+            </div>
+          )}
           {activeMatchCount > 0 && (
-            <div className="absolute -top-1 -right-1 bg-red-500 rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center animate-pulse">
+            <div className="absolute -top-1 -left-1 bg-red-500 rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center animate-pulse">
               <span className="text-white text-[11px] md:text-xs font-bold">{activeMatchCount}</span>
             </div>
           )}
@@ -133,33 +142,49 @@ const PlayerActivity = ({
       {isExpanded && (
         <div ref={expandedPanelRef} className="bg-gradient-to-br from-slate-900/95 to-slate-800/95 backdrop-blur-lg rounded-2xl p-4 md:p-6 border-2 border-purple-400/40 shadow-2xl w-[calc(100vw-2rem)] md:w-[464px] max-h-[80vh] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-slate-800/50 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-purple-500/60 [&::-webkit-scrollbar-thumb]:to-blue-500/60 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border [&::-webkit-scrollbar-thumb]:border-purple-400/30 hover:[&::-webkit-scrollbar-thumb]:from-purple-500/80 hover:[&::-webkit-scrollbar-thumb]:to-blue-500/80">
           {/* Header */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">{gameEmoji}</span>
-              <div>
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">{gameEmoji}</span>
                 <h3 className="text-white font-bold text-lg">{getGameTitle(gameName)}</h3>
-                <p className="text-slate-400 text-xs">Your Activity</p>
+              </div>
+              <div className="flex items-center gap-1">
+                {/* Refresh Button */}
+                <button
+                  onClick={handleRefresh}
+                  disabled={syncing}
+                  className="text-slate-400 hover:text-white transition-colors p-1 hover:bg-slate-700/50 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                  aria-label="Refresh"
+                  title="Refresh activity"
+                >
+                  <RefreshCw size={18} className={syncing ? 'animate-spin' : ''} />
+                </button>
+                {/* Close Button */}
+                <button
+                  onClick={() => setIsExpanded(false)}
+                  className="text-slate-400 hover:text-white transition-colors p-1 hover:bg-slate-700/50 rounded"
+                  aria-label="Close"
+                >
+                  <X size={20} />
+                </button>
               </div>
             </div>
-            <div className="flex items-center gap-1">
-              {/* Refresh Button */}
-              <button
-                onClick={handleRefresh}
-                disabled={syncing}
-                className="text-slate-400 hover:text-white transition-colors p-1 hover:bg-slate-700/50 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                aria-label="Refresh"
-                title="Refresh activity"
-              >
-                <RefreshCw size={18} className={syncing ? 'animate-spin' : ''} />
-              </button>
-              {/* Close Button */}
-              <button
-                onClick={() => setIsExpanded(false)}
-                className="text-slate-400 hover:text-white transition-colors p-1 hover:bg-slate-700/50 rounded"
-                aria-label="Close"
-              >
-                <X size={20} />
-              </button>
+
+            {/* Wallet Address & Earnings */}
+            <div className="space-y-1">
+              <div className="text-xs">
+                <span className="text-blue-400">You are: </span>
+                <span className="text-blue-400 font-mono font-bold">{shortenAddress(account)}</span>
+              </div>
+              {!loading && activity?.totalEarnings !== undefined && (
+                <div className="flex items-center gap-1.5 text-xs">
+                  <span className="text-green-400">You earned:</span>
+                  <TrendingUp className={`${activity.totalEarnings >= 0n ? 'text-green-400' : 'text-red-400'}`} size={14} />
+                  <span className={`font-semibold font-mono ${activity.totalEarnings >= 0n ? 'text-green-400' : 'text-red-400'}`}>
+                    {activity.totalEarnings >= 0n ? '+' : ''}{ethers.formatEther(activity.totalEarnings)} ETH
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -263,6 +288,10 @@ const PlayerActivity = ({
                                     handleRefresh();
                                     // Board stays open so user can see result
                                   }}
+                                  onMatchDismissed={() => {
+                                    // Dismiss this match from the activity panel
+                                    onDismissMatch?.(match.tierId, match.instanceId, match.roundIdx, match.matchIdx);
+                                  }}
                                   onError={(err) => {
                                     console.error('Mini board error:', err);
                                     // Error shown inline within MiniTicTacToeBoard
@@ -278,6 +307,10 @@ const PlayerActivity = ({
                                   onMoveComplete={() => {
                                     handleRefresh();
                                   }}
+                                  onMatchDismissed={() => {
+                                    // Dismiss this match from the activity panel
+                                    onDismissMatch?.(match.tierId, match.instanceId, match.roundIdx, match.matchIdx);
+                                  }}
                                   onError={(err) => {
                                     console.error('Mini board error:', err);
                                   }}
@@ -291,6 +324,10 @@ const PlayerActivity = ({
                                   refreshTrigger={refreshTrigger}
                                   onMoveComplete={() => {
                                     handleRefresh();
+                                  }}
+                                  onMatchDismissed={() => {
+                                    // Dismiss this match from the activity panel
+                                    onDismissMatch?.(match.tierId, match.instanceId, match.roundIdx, match.matchIdx);
                                   }}
                                   onError={(err) => {
                                     console.error('Mini board error:', err);

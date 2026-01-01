@@ -530,6 +530,16 @@ export default function TicTacChain() {
       await fetchTierMetadata(contractInstance);
       await fetchLeaderboard(false);
 
+      // Fetch match time from first tier for display in Game Info Cards
+      try {
+        const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, 0, 300);
+        if (timeoutConfig?.matchTimePerPlayer) {
+          setMatchTimePerPlayer(timeoutConfig.matchTimePerPlayer);
+        }
+      } catch (err) {
+        console.warn('Could not fetch default match time from tier 0:', err);
+      }
+
       if (isInitialLoad) {
         setInitialLoading(false);
       }
@@ -1849,19 +1859,39 @@ export default function TicTacChain() {
       instanceId: currentMatch.instanceId
     } : null;
 
+    // Check if this was the finals match
+    const totalRounds = currentMatch?.playerCount ? Math.ceil(Math.log2(currentMatch.playerCount)) : 0;
+    const isFinals = currentMatch?.roundNumber === totalRounds - 1;
+
+    // Check if player lost (defeat or forfeit_lose)
+    const isDefeat = matchEndResult === 'lose' || matchEndResult === 'forfeit_lose';
+
     // Clear the modal state
     setMatchEndResult(null);
     setMatchEndWinnerLabel('');
-    setCurrentMatch(null);
-    setMoveHistory([]);
+
+    // For defeat: keep match state so player can view final board position
+    // For victory: clear match state and navigate
+    if (!isDefeat) {
+      setCurrentMatch(null);
+      setMoveHistory([]);
+    }
 
     // Refresh data
     if (contract) {
       await fetchLeaderboard(true);
       await refreshAfterAction(tournamentInfo?.tierId ?? null);
 
-      // Show tournament bracket for winners, go back to list for losers
-      if (tournamentInfo && (matchEndResult === 'win' || matchEndResult === 'forfeit_win')) {
+      // For defeat: don't navigate, let player view the board
+      if (isDefeat) {
+        // Stay on board - no navigation
+      }
+      // If finals, always return to instances list
+      else if (isFinals) {
+        setViewingTournament(null);
+      }
+      // If not finals and player won, show tournament bracket
+      else if (tournamentInfo && (matchEndResult === 'win' || matchEndResult === 'forfeit_win')) {
         const bracketData = await refreshTournamentBracket(contract, tournamentInfo.tierId, tournamentInfo.instanceId, matchTimePerPlayer);
         if (bracketData) {
           setViewingTournament(bracketData);
@@ -2207,6 +2237,7 @@ export default function TicTacChain() {
           onEnterMatch={handlePlayMatch}
           onEnterTournament={handleEnterTournament}
           onRefresh={playerActivity.refetch}
+          onDismissMatch={playerActivity.dismissMatch}
           gameName="tictactoe"
           gameEmoji="✖️"
           onHeightChange={setPlayerActivityHeight}
@@ -2298,10 +2329,10 @@ export default function TicTacChain() {
             <div className="bg-gradient-to-br from-yellow-500/20 to-amber-500/20 border border-yellow-400/30 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Clock className="text-yellow-400" size={20} />
-                <span className="font-bold text-yellow-300">5 minutes per match</span>
+                <span className="font-bold text-yellow-300">{Math.floor(matchTimePerPlayer / 60)} {Math.floor(matchTimePerPlayer / 60) === 1 ? 'minute' : 'minutes'} per match</span>
               </div>
               <p className="text-sm text-yellow-200">
-                Each player gets five minutes total for all their moves in the match.
+                Each player gets {Math.floor(matchTimePerPlayer / 60)} {Math.floor(matchTimePerPlayer / 60) === 1 ? 'minute' : 'minutes'} total for all their moves in the match.
               </p>
             </div>
             <div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-xl p-4">
@@ -2655,7 +2686,7 @@ export default function TicTacChain() {
 
       {/* User Manual Section */}
       <div id="user-manual" className="max-w-7xl mx-auto px-6 pb-12" style={{ position: 'relative', zIndex: 10 }}>
-        <UserManual />
+        <UserManual contractInstance={contract} />
       </div>
 
       {/* ============ FOOTER ============ */}

@@ -2166,34 +2166,13 @@
       "type": "function"
     },
     {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "player",
-          "type": "address"
-        }
-      ],
+      "inputs": [],
       "name": "getPlayerStats",
       "outputs": [
         {
-          "internalType": "uint256",
-          "name": "tournamentsWon",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "tournamentsPlayed",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "matchesWon",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "matchesPlayed",
-          "type": "uint256"
+          "internalType": "int256",
+          "name": "totalEarnings",
+          "type": "int256"
         }
       ],
       "stateMutability": "view",
@@ -3540,26 +3519,6 @@
           "internalType": "bool",
           "name": "hasStartedViaTimeout",
           "type": "bool"
-        },
-        {
-          "internalType": "address",
-          "name": "firstEnroller",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "firstEnrollmentTimestamp",
-          "type": "uint256"
-        },
-        {
-          "internalType": "address",
-          "name": "forceStarter",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "forceStartTimestamp",
-          "type": "uint256"
         }
       ],
       "stateMutability": "view",
