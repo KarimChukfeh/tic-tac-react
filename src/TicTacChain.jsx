@@ -2237,6 +2237,7 @@ export default function TicTacChain() {
           onEnterMatch={handlePlayMatch}
           onEnterTournament={handleEnterTournament}
           onRefresh={playerActivity.refetch}
+          onDismissMatch={playerActivity.dismissMatch}
           gameName="tictactoe"
           gameEmoji="✖️"
           onHeightChange={setPlayerActivityHeight}

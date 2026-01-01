@@ -2545,6 +2545,7 @@ export default function ConnectFour() {
           onEnterMatch={handlePlayMatch}
           onEnterTournament={handleEnterTournament}
           onRefresh={playerActivity.refetch}
+          onDismissMatch={playerActivity.dismissMatch}
           gameName="connect4"
           gameEmoji="🔴"
           onHeightChange={setPlayerActivityHeight}

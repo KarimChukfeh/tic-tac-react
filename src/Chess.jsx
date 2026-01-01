@@ -2532,6 +2532,7 @@ export default function Chess() {
           onEnterMatch={handlePlayMatch}
           onEnterTournament={handleEnterTournament}
           onRefresh={playerActivity.refetch}
+          onDismissMatch={playerActivity.dismissMatch}
           gameName="chess"
           gameEmoji="♔"
           onHeightChange={setPlayerActivityHeight}

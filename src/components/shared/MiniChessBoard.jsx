@@ -8,6 +8,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { parseChessMatch } from '../../utils/matchDataParser';
 import { Loader2 } from 'lucide-react';
+import MiniMatchEndModal from './MiniMatchEndModal';
 
 // Chess piece Unicode symbols
 // Use filled pieces for both colors, style them with CSS
@@ -37,6 +38,7 @@ const MiniChessBoard = ({
   account,
   match,
   onMoveComplete,
+  onMatchDismissed,
   onError,
   refreshTrigger,
 }) => {
@@ -45,6 +47,8 @@ const MiniChessBoard = ({
   const [makingMove, setMakingMove] = useState(false);
   const [error, setError] = useState(null);
   const [selectedSquare, setSelectedSquare] = useState(null);
+  const [showMatchEndModal, setShowMatchEndModal] = useState(false);
+  const [matchEndResult, setMatchEndResult] = useState(null);
 
   // Helper to extract user-friendly error message
   const getUserFriendlyError = (err) => {
@@ -101,6 +105,24 @@ const MiniChessBoard = ({
       const parsed = parseChessMatch(data);
       // Compute isPlayer1 by comparing account to player1
       parsed.isPlayer1 = parsed.player1?.toLowerCase() === account?.toLowerCase();
+
+      // Detect match end and show modal
+      if (parsed.matchStatus === 2 && !showMatchEndModal) {
+        // Determine result
+        let result = null;
+        if (parsed.isDraw) {
+          result = 'draw';
+        } else if (parsed.winner?.toLowerCase() === account?.toLowerCase()) {
+          // Check if forfeit win
+          result = parsed.isForfeit ? 'forfeit_win' : 'win';
+        } else {
+          // Check if forfeit lose
+          result = parsed.isForfeit ? 'forfeit_lose' : 'lose';
+        }
+        setMatchEndResult(result);
+        setShowMatchEndModal(true);
+      }
+
       setMatchData(parsed);
       setLoading(false);
     } catch (err) {
@@ -314,21 +336,39 @@ const MiniChessBoard = ({
         </div>
       )}
 
-      {/* Match Status */}
-      {matchData.matchStatus === 2 && (
-        <div className="bg-green-500/20 border border-green-500/50 rounded-lg p-2 text-center">
-          <p className="text-green-300 text-xs font-bold">
-            {matchData.isDraw ? 'Match ended in a draw!' : `Winner: ${matchData.winner === account ? 'You!' : 'Opponent'}`}
+      {/* Mini Match End Modal */}
+      {showMatchEndModal && matchEndResult && matchData.matchStatus === 2 && (
+        <MiniMatchEndModal
+          result={matchEndResult}
+          onClose={() => {
+            const isDefeat = matchEndResult === 'lose' || matchEndResult === 'forfeit_lose';
+            // Hide modal
+            setShowMatchEndModal(false);
+            // Notify parent that match was dismissed
+            onMatchDismissed?.();
+            // For victory/draw, also trigger refresh
+            if (!isDefeat) {
+              onMoveComplete?.();
+            }
+          }}
+          winnerAddress={matchData.winner}
+          loserAddress={matchData.isDraw ? null : (matchData.winner?.toLowerCase() === matchData.player1?.toLowerCase() ? matchData.player2 : matchData.player1)}
+          currentAccount={account}
+          gameType="chess"
+          roundNumber={match.roundNumber}
+          totalRounds={match.totalRounds}
+          prizePool={match.prizePool}
+        />
+      )}
+
+      {/* Helper Text - only show when match is not ended */}
+      {matchData.matchStatus !== 2 && (
+        <div className="text-center">
+          <p className="text-slate-500 text-[10px]">
+            Click a piece to select, then click destination
           </p>
         </div>
       )}
-
-      {/* Helper Text */}
-      <div className="text-center">
-        <p className="text-slate-500 text-[10px]">
-          Click a piece to select, then click destination
-        </p>
-      </div>
     </div>
   );
 };

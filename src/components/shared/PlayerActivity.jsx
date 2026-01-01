@@ -25,6 +25,7 @@ const PlayerActivity = ({
   onEnterMatch,
   onEnterTournament,
   onRefresh,
+  onDismissMatch,
   gameName,
   gameEmoji,
   onHeightChange,
@@ -280,6 +281,10 @@ const PlayerActivity = ({
                                     handleRefresh();
                                     // Board stays open so user can see result
                                   }}
+                                  onMatchDismissed={() => {
+                                    // Dismiss this match from the activity panel
+                                    onDismissMatch?.(match.tierId, match.instanceId, match.roundIdx, match.matchIdx);
+                                  }}
                                   onError={(err) => {
                                     console.error('Mini board error:', err);
                                     // Error shown inline within MiniTicTacToeBoard
@@ -295,6 +300,10 @@ const PlayerActivity = ({
                                   onMoveComplete={() => {
                                     handleRefresh();
                                   }}
+                                  onMatchDismissed={() => {
+                                    // Dismiss this match from the activity panel
+                                    onDismissMatch?.(match.tierId, match.instanceId, match.roundIdx, match.matchIdx);
+                                  }}
                                   onError={(err) => {
                                     console.error('Mini board error:', err);
                                   }}
@@ -308,6 +317,10 @@ const PlayerActivity = ({
                                   refreshTrigger={refreshTrigger}
                                   onMoveComplete={() => {
                                     handleRefresh();
+                                  }}
+                                  onMatchDismissed={() => {
+                                    // Dismiss this match from the activity panel
+                                    onDismissMatch?.(match.tierId, match.instanceId, match.roundIdx, match.matchIdx);
                                   }}
                                   onError={(err) => {
                                     console.error('Mini board error:', err);

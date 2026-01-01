@@ -28,6 +28,8 @@ export const usePlayerActivity = (contract, account, gameName) => {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState(null);
+  const [dismissedMatches, setDismissedMatches] = useState(new Set());
+  const [completedMatchTimestamps, setCompletedMatchTimestamps] = useState({});
 
   const fetchActivity = useCallback(async (isInitialLoad = false) => {
     // Don't fetch if contract or account not available
@@ -109,11 +111,34 @@ export const usePlayerActivity = (contract, account, gameName) => {
 
             if (!isPlayer1 && !isPlayer2) continue;
 
-            // Check if match is in progress (regardless of whose turn it is)
+            // Check if match is in progress OR recently completed
             const matchStatus = Number(matchData.common.status);
             const isMyTurn = matchData.currentTurn?.toLowerCase() === account.toLowerCase();
+            const matchKey = `${tierId}-${instanceId}-${roundIdx}-${matchIdx}`;
 
-            if (matchStatus === 1) {
+            // Skip dismissed matches
+            if (dismissedMatches.has(matchKey)) {
+              continue;
+            }
+
+            // Include in-progress matches (status === 1) or recently completed matches (status === 2)
+            if (matchStatus === 1 || matchStatus === 2) {
+              // If match just completed, record timestamp
+              if (matchStatus === 2 && !completedMatchTimestamps[matchKey]) {
+                setCompletedMatchTimestamps(prev => ({
+                  ...prev,
+                  [matchKey]: Date.now()
+                }));
+              }
+
+              // Filter out completed matches older than 10 seconds
+              if (matchStatus === 2 && completedMatchTimestamps[matchKey]) {
+                const elapsed = Date.now() - completedMatchTimestamps[matchKey];
+                if (elapsed > 10000) {
+                  continue; // Skip this match, it's been completed for more than 10 seconds
+                }
+              }
+
               hasActiveMatch = true;
 
               // Determine opponent
@@ -141,6 +166,7 @@ export const usePlayerActivity = (contract, account, gameName) => {
                 opponent,
                 timeRemaining,
                 isMyTurn, // Add flag to indicate if it's player's turn
+                isCompleted: matchStatus === 2, // Add flag to indicate if match is completed
               });
             }
           }
@@ -186,7 +212,7 @@ export const usePlayerActivity = (contract, account, gameName) => {
       setLoading(false);
       setSyncing(false);
     }
-  }, [contract, account, gameName]);
+  }, [contract, account, gameName, dismissedMatches, completedMatchTimestamps]);
 
   // Initial fetch
   useEffect(() => {
@@ -204,7 +230,20 @@ export const usePlayerActivity = (contract, account, gameName) => {
     return () => clearInterval(interval);
   }, [contract, account, fetchActivity]);
 
-  return { data, loading, syncing, error, refetch: () => fetchActivity(false) };
+  // Function to dismiss a completed match
+  const dismissMatch = useCallback((tierId, instanceId, roundIdx, matchIdx) => {
+    const matchKey = `${tierId}-${instanceId}-${roundIdx}-${matchIdx}`;
+    setDismissedMatches(prev => new Set([...prev, matchKey]));
+  }, []);
+
+  return {
+    data,
+    loading,
+    syncing,
+    error,
+    refetch: () => fetchActivity(false),
+    dismissMatch
+  };
 };
 
 /**
