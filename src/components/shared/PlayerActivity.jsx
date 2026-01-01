@@ -134,54 +134,51 @@ const PlayerActivity = ({
       {isExpanded && (
         <div ref={expandedPanelRef} className="bg-gradient-to-br from-slate-900/95 to-slate-800/95 backdrop-blur-lg rounded-2xl p-4 md:p-6 border-2 border-purple-400/40 shadow-2xl w-[calc(100vw-2rem)] md:w-[464px] max-h-[80vh] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-slate-800/50 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-purple-500/60 [&::-webkit-scrollbar-thumb]:to-blue-500/60 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border [&::-webkit-scrollbar-thumb]:border-purple-400/30 hover:[&::-webkit-scrollbar-thumb]:from-purple-500/80 hover:[&::-webkit-scrollbar-thumb]:to-blue-500/80">
           {/* Header */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">{gameEmoji}</span>
-              <div>
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">{gameEmoji}</span>
                 <h3 className="text-white font-bold text-lg">{getGameTitle(gameName)}</h3>
-                <p className="text-slate-400 text-xs">Your Activity</p>
+              </div>
+              <div className="flex items-center gap-1">
+                {/* Refresh Button */}
+                <button
+                  onClick={handleRefresh}
+                  disabled={syncing}
+                  className="text-slate-400 hover:text-white transition-colors p-1 hover:bg-slate-700/50 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                  aria-label="Refresh"
+                  title="Refresh activity"
+                >
+                  <RefreshCw size={18} className={syncing ? 'animate-spin' : ''} />
+                </button>
+                {/* Close Button */}
+                <button
+                  onClick={() => setIsExpanded(false)}
+                  className="text-slate-400 hover:text-white transition-colors p-1 hover:bg-slate-700/50 rounded"
+                  aria-label="Close"
+                >
+                  <X size={20} />
+                </button>
               </div>
             </div>
-            <div className="flex items-center gap-1">
-              {/* Refresh Button */}
-              <button
-                onClick={handleRefresh}
-                disabled={syncing}
-                className="text-slate-400 hover:text-white transition-colors p-1 hover:bg-slate-700/50 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                aria-label="Refresh"
-                title="Refresh activity"
-              >
-                <RefreshCw size={18} className={syncing ? 'animate-spin' : ''} />
-              </button>
-              {/* Close Button */}
-              <button
-                onClick={() => setIsExpanded(false)}
-                className="text-slate-400 hover:text-white transition-colors p-1 hover:bg-slate-700/50 rounded"
-                aria-label="Close"
-              >
-                <X size={20} />
-              </button>
+
+            {/* Wallet Address & Earnings */}
+            <div className="space-y-1">
+              <div className="text-xs">
+                <span className="text-blue-400">You are: </span>
+                <span className="text-blue-400 font-mono font-bold">{shortenAddress(account)}</span>
+              </div>
+              {!loading && activity?.totalEarnings !== undefined && (
+                <div className="flex items-center gap-1.5 text-xs">
+                  <span className="text-green-400">You earned:</span>
+                  <TrendingUp className={`${activity.totalEarnings >= 0n ? 'text-green-400' : 'text-red-400'}`} size={14} />
+                  <span className={`font-semibold font-mono ${activity.totalEarnings >= 0n ? 'text-green-400' : 'text-red-400'}`}>
+                    {activity.totalEarnings >= 0n ? '+' : ''}{ethers.formatEther(activity.totalEarnings)} ETH
+                  </span>
+                </div>
+              )}
             </div>
           </div>
-
-          {/* Total Earnings Section */}
-          {!loading && activity?.totalEarnings !== undefined && (
-            <div className="mb-4 bg-gradient-to-br from-green-500/20 to-emerald-500/20 border-2 border-green-400/40 rounded-xl p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="bg-green-500/20 rounded-full p-2">
-                    <TrendingUp className="text-green-400" size={20} />
-                  </div>
-                  <div>
-                    <p className="text-slate-400 text-xs font-medium uppercase tracking-wide">Total Earnings</p>
-                    <p className="text-white font-bold text-xl">
-                      {activity.totalEarnings >= 0n ? '+' : ''}{ethers.formatEther(activity.totalEarnings)} ETH
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Loading State */}
           {loading ? (
