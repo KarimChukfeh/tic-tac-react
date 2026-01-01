@@ -5,7 +5,7 @@
  * Highlights the current user if they appear on the leaderboard.
  */
 
-import { Trophy } from 'lucide-react';
+import { Trophy, RefreshCw } from 'lucide-react';
 import { ethers } from 'ethers';
 import { shortenAddress } from '../../utils/formatters';
 
@@ -22,7 +22,8 @@ const WinnersLeaderboard = ({
   error = false,
   currentAccount = null,
   title = 'Top Earners',
-  onRetry = null
+  onRetry = null,
+  onRefresh = null
 }) => {
   // Show top 10 entries
   const displayEntries = leaderboard.slice(0, 10);
@@ -37,6 +38,17 @@ const WinnersLeaderboard = ({
           <span className="text-sm text-yellow-400/70">
             ({leaderboard.length} player{leaderboard.length !== 1 ? 's' : ''})
           </span>
+        )}
+        {/* Manual Refresh Button */}
+        {onRefresh && !error && (
+          <button
+            onClick={onRefresh}
+            disabled={loading}
+            className="ml-auto p-2 rounded-lg bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Refresh leaderboard"
+          >
+            <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+          </button>
         )}
       </div>
 

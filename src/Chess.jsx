@@ -2282,6 +2282,18 @@ export default function Chess() {
     return () => clearInterval(pollInterval);
   }, [account, fetchRaffleInfo]);
 
+  // Poll leaderboard every 1 minute (runs globally)
+  useEffect(() => {
+    if (!contract) return;
+
+    // Set up polling interval - runs every 60 seconds
+    const pollInterval = setInterval(() => {
+      fetchLeaderboard(true); // Silent update (no loading indicator)
+    }, 60000);
+
+    return () => clearInterval(pollInterval);
+  }, [contract, fetchLeaderboard]);
+
   // Poll tier metadata and expanded tier instances every 10 seconds on home page
   useEffect(() => {
     // Only poll when on home page (not viewing tournament or match)
@@ -2966,6 +2978,7 @@ export default function Chess() {
           error={leaderboardError}
           currentAccount={account}
           onRetry={() => fetchLeaderboard()}
+          onRefresh={() => fetchLeaderboard()}
         />
       </div>
 

@@ -2016,6 +2016,18 @@ export default function TicTacChain() {
     return () => clearInterval(pollInterval);
   }, [account, fetchRaffleInfo]);
 
+  // Poll leaderboard every 1 minute (runs globally)
+  useEffect(() => {
+    if (!contract) return;
+
+    // Set up polling interval - runs every 60 seconds
+    const pollInterval = setInterval(() => {
+      fetchLeaderboard(true); // Silent update (no loading indicator)
+    }, 60000);
+
+    return () => clearInterval(pollInterval);
+  }, [contract, fetchLeaderboard]);
+
   // Poll tournament bracket every 3 seconds (using refs for seamless syncing)
   const tournamentRef = useRef(viewingTournament);
   const contractRefForBracket = useRef(contract);
@@ -2692,6 +2704,7 @@ export default function TicTacChain() {
           error={leaderboardError}
           currentAccount={account}
           onRetry={() => fetchLeaderboard()}
+          onRefresh={() => fetchLeaderboard()}
         />
       </div>
 
