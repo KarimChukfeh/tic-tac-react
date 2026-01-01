@@ -105,6 +105,8 @@ const MiniChessBoard = ({
       const parsed = parseChessMatch(data);
       // Compute isPlayer1 by comparing account to player1
       parsed.isPlayer1 = parsed.player1?.toLowerCase() === account?.toLowerCase();
+      // Calculate isMyTurn based on current turn
+      parsed.isMyTurn = parsed.currentTurn?.toLowerCase() === account?.toLowerCase();
 
       // Detect match end and show modal
       if (parsed.matchStatus === 2 && !showMatchEndModal) {
@@ -166,7 +168,7 @@ const MiniChessBoard = ({
     if (!matchData || !contract || !account) return;
 
     // Validation
-    if (!match.isMyTurn) {
+    if (!matchData.isMyTurn) {
       setError("It's not your turn!");
       setTimeout(() => setError(null), 3000);
       return;
@@ -231,6 +233,8 @@ const MiniChessBoard = ({
       const parsed = parseChessMatch(updatedData);
       // Compute isPlayer1 by comparing account to player1
       parsed.isPlayer1 = parsed.player1?.toLowerCase() === account?.toLowerCase();
+      // Calculate isMyTurn based on current turn
+      parsed.isMyTurn = parsed.currentTurn?.toLowerCase() === account?.toLowerCase();
       setMatchData(parsed);
 
       // Notify parent
@@ -278,7 +282,7 @@ const MiniChessBoard = ({
           You are playing as <span className={`${colorClass} font-bold text-sm`}>{playerColor}</span>
         </p>
         <p className="text-slate-300 text-xs">
-          {match.isMyTurn ? (
+          {matchData.isMyTurn ? (
             <span className="text-yellow-300 font-bold">Your turn to move</span>
           ) : (
             <span className="text-slate-400">Waiting for opponent...</span>
@@ -310,12 +314,12 @@ const MiniChessBoard = ({
             <button
               key={displayIdx}
               onClick={() => handleSquareClick(displayIdx)}
-              disabled={!match.isMyTurn || makingMove || matchData.matchStatus === 2}
+              disabled={!matchData.isMyTurn || makingMove || matchData.matchStatus === 2}
               className={`
                 aspect-square flex items-center justify-center text-xl md:text-2xl font-bold transition-all
                 ${isLight ? 'bg-stone-300' : 'bg-stone-700'}
                 ${isSelected ? 'ring-2 ring-yellow-400 ring-inset' : ''}
-                ${!match.isMyTurn || makingMove || matchData.matchStatus === 2 ? 'cursor-not-allowed' : 'cursor-pointer hover:opacity-80'}
+                ${!matchData.isMyTurn || makingMove || matchData.matchStatus === 2 ? 'cursor-not-allowed' : 'cursor-pointer hover:opacity-80'}
                 ${pieceColorClass}
               `}
             >

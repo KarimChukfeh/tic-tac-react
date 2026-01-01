@@ -46,6 +46,8 @@ const MiniTicTacToeBoard = ({
       const parsed = parseTicTacToeMatch(data);
       // Compute isPlayer1 by comparing account to player1
       parsed.isPlayer1 = parsed.player1?.toLowerCase() === account?.toLowerCase();
+      // Calculate isMyTurn based on current turn
+      parsed.isMyTurn = parsed.currentTurn?.toLowerCase() === account?.toLowerCase();
 
       // Detect match end and show modal
       if (parsed.matchStatus === 2 && !showMatchEndModal) {
@@ -99,7 +101,7 @@ const MiniTicTacToeBoard = ({
     if (!matchData || !contract || !account) return;
 
     // Validation
-    if (!match.isMyTurn) {
+    if (!matchData.isMyTurn) {
       setError("It's not your turn!");
       setTimeout(() => setError(null), 3000);
       return;
@@ -142,6 +144,8 @@ const MiniTicTacToeBoard = ({
       const parsed = parseTicTacToeMatch(updatedData);
       // Compute isPlayer1 by comparing account to player1
       parsed.isPlayer1 = parsed.player1?.toLowerCase() === account?.toLowerCase();
+      // Calculate isMyTurn based on current turn
+      parsed.isMyTurn = parsed.currentTurn?.toLowerCase() === account?.toLowerCase();
       setMatchData(parsed);
 
       // Notify parent
@@ -198,7 +202,7 @@ const MiniTicTacToeBoard = ({
           You are playing as <span className={`${symbolColor} font-bold text-sm`}>{playerSymbol}</span>
         </p>
         <p className="text-slate-300 text-xs">
-          {match.isMyTurn ? (
+          {matchData.isMyTurn ? (
             <span className="text-yellow-300 font-bold">Your turn to move</span>
           ) : (
             <span className="text-slate-400">Waiting for opponent...</span>
@@ -212,7 +216,7 @@ const MiniTicTacToeBoard = ({
           <button
             key={idx}
             onClick={() => handleCellClick(idx)}
-            disabled={!match.isMyTurn || makingMove || cell !== 0 || matchData.matchStatus === 2}
+            disabled={!matchData.isMyTurn || makingMove || cell !== 0 || matchData.matchStatus === 2}
             className={`
               aspect-square rounded-lg flex items-center justify-center
               text-2xl md:text-3xl font-bold transition-all transform

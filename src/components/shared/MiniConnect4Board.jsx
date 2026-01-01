@@ -63,6 +63,8 @@ const MiniConnect4Board = ({
       const parsed = parseConnectFourMatch(data);
       // Compute isPlayer1 by comparing account to player1
       parsed.isPlayer1 = parsed.player1?.toLowerCase() === account?.toLowerCase();
+      // Calculate isMyTurn based on current turn
+      parsed.isMyTurn = parsed.currentTurn?.toLowerCase() === account?.toLowerCase();
 
       // Detect match end and show modal
       if (parsed.matchStatus === 2 && !showMatchEndModal) {
@@ -118,7 +120,7 @@ const MiniConnect4Board = ({
     const grid = boardToGrid(matchData.board);
 
     // Validation
-    if (!match.isMyTurn) {
+    if (!matchData.isMyTurn) {
       setError("It's not your turn!");
       setTimeout(() => setError(null), 3000);
       return;
@@ -161,6 +163,8 @@ const MiniConnect4Board = ({
       const parsed = parseConnectFourMatch(updatedData);
       // Compute isPlayer1 by comparing account to player1
       parsed.isPlayer1 = parsed.player1?.toLowerCase() === account?.toLowerCase();
+      // Calculate isMyTurn based on current turn
+      parsed.isMyTurn = parsed.currentTurn?.toLowerCase() === account?.toLowerCase();
       setMatchData(parsed);
 
       // Notify parent
@@ -208,7 +212,7 @@ const MiniConnect4Board = ({
           You are playing as <span className={`${colorClass} font-bold text-sm`}>{playerColor}</span>
         </p>
         <p className="text-slate-300 text-xs">
-          {match.isMyTurn ? (
+          {matchData.isMyTurn ? (
             <span className="text-yellow-300 font-bold">Your turn to move</span>
           ) : (
             <span className="text-slate-400">Waiting for opponent...</span>
@@ -224,7 +228,7 @@ const MiniConnect4Board = ({
             <button
               key={col}
               onClick={() => handleColumnClick(col)}
-              disabled={!match.isMyTurn || makingMove || isColumnFull(grid, col) || matchData.matchStatus === 2}
+              disabled={!matchData.isMyTurn || makingMove || isColumnFull(grid, col) || matchData.matchStatus === 2}
               className="flex-1 h-8 bg-slate-700 hover:bg-slate-600 rounded-t transition-all disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-bold"
             >
               {makingMove ? <Loader2 className="animate-spin mx-auto" size={16} /> : '↓'}
