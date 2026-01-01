@@ -51,16 +51,7 @@ const MiniMatchEndModal = ({
       return 'Champion!';
     }
 
-    switch (gameType) {
-      case 'chess':
-        return 'Checkmate!';
-      case 'connectfour':
-        return '4 in a Row!';
-      case 'tictactoe':
-        return '3 in a Row!';
-      default:
-        return 'Victory!';
-    }
+    return 'You Win!';
   };
 
   const config = {
@@ -71,22 +62,22 @@ const MiniMatchEndModal = ({
       message: isFinalRound
         ? `Tournament Champion!${formattedPrizePool ? ` +${formattedPrizePool} ETH` : ''}`
         : `Advance to ${getNextRoundName()}`,
-      bgGradient: 'from-yellow-500/30 to-orange-500/30',
-      borderColor: 'border-yellow-400/60',
-      iconColor: 'text-yellow-400',
-      titleColor: 'text-yellow-300'
+      bgGradient: 'from-green-500/30 to-emerald-500/30',
+      borderColor: 'border-green-400/60',
+      iconColor: 'text-green-400',
+      titleColor: 'text-green-300'
     },
     forfeit_win: {
       icon: Trophy,
-      title: isFinalRound ? 'Champion!' : 'Win by Forfeit',
-      subtitle: 'You Won!',
+      title: isFinalRound ? 'Champion!' : 'You Win!',
+      subtitle: 'Victory by Forfeit!',
       message: isFinalRound
         ? `Opponent timed out. Champion!${formattedPrizePool ? ` +${formattedPrizePool} ETH` : ''}`
         : `Opponent timed out. Advance to ${getNextRoundName()}`,
-      bgGradient: 'from-yellow-500/30 to-orange-500/30',
-      borderColor: 'border-yellow-400/60',
-      iconColor: 'text-yellow-400',
-      titleColor: 'text-yellow-300'
+      bgGradient: 'from-green-500/30 to-emerald-500/30',
+      borderColor: 'border-green-400/60',
+      iconColor: 'text-green-400',
+      titleColor: 'text-green-300'
     },
     lose: {
       icon: Frown,

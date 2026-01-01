@@ -120,16 +120,7 @@ const MatchEndModal = ({
       return 'Tournament Champion!';
     }
 
-    switch (gameType) {
-      case 'chess':
-        return 'Checkmate!';
-      case 'connectfour':
-        return 'Four in a Row!';
-      case 'tictactoe':
-        return 'Three in a Row!';
-      default:
-        return 'Victory!';
-    }
+    return 'You Win!';
   };
 
   const config = {
@@ -171,17 +162,17 @@ const MatchEndModal = ({
           ? `Congratulations! You have won the tournament!${formattedPrizePool ? ` Prize: ${formattedPrizePool} ETH` : ''}`
           : `Congratulations! You advance to ${getNextRoundName()}.`
       ),
-      bgGradient: 'from-yellow-500/20 via-amber-500/20 to-orange-500/20',
-      borderColor: 'border-yellow-400/50',
-      iconColor: 'text-yellow-400',
-      titleColor: 'text-yellow-300',
-      glowColor: 'shadow-yellow-500/30',
+      bgGradient: 'from-green-500/20 via-emerald-500/20 to-teal-500/20',
+      borderColor: 'border-green-400/50',
+      iconColor: 'text-green-400',
+      titleColor: 'text-green-300',
+      glowColor: 'shadow-green-500/30',
       animation: 'animate-bounce'
     },
     forfeit_win: {
       icon: Trophy,
-      title: isFinalRound ? 'Tournament Champion!' : 'Victory by Forfeit!',
-      subtitle: 'You Won!',
+      title: isFinalRound ? 'Tournament Champion!' : 'You Win!',
+      subtitle: 'Victory by Forfeit!',
       description: winnerAddress && loserAddress ? (
         <div className="space-y-2">
           <div className="flex items-center justify-center gap-2">
@@ -216,11 +207,11 @@ const MatchEndModal = ({
           ? `Your opponent failed to move in time. You have won the tournament!${formattedPrizePool ? ` Prize: ${formattedPrizePool} ETH` : ''}`
           : `Your opponent failed to move in time. You advance to ${getNextRoundName()}!`
       ),
-      bgGradient: 'from-yellow-500/20 via-amber-500/20 to-orange-500/20',
-      borderColor: 'border-yellow-400/50',
-      iconColor: 'text-yellow-400',
-      titleColor: 'text-yellow-300',
-      glowColor: 'shadow-yellow-500/30',
+      bgGradient: 'from-green-500/20 via-emerald-500/20 to-teal-500/20',
+      borderColor: 'border-green-400/50',
+      iconColor: 'text-green-400',
+      titleColor: 'text-green-300',
+      glowColor: 'shadow-green-500/30',
       animation: 'animate-bounce'
     },
     lose: {
