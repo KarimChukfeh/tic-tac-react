@@ -64,7 +64,7 @@ const StatsGrid = ({ enrolledCount, playerCount, status, currentRound, totalRoun
   const showStatus = !(status === 0 && enrolledCount === 0);
 
   return (
-    <div className="grid grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       <div className="bg-black/20 rounded-lg p-4">
         <div className={`${colors.text} text-sm mb-1`}>Players</div>
         <div className="text-white font-bold text-xl">{enrolledCount} / {playerCount}</div>
