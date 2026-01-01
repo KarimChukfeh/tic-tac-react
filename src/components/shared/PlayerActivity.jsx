@@ -33,6 +33,8 @@ const PlayerActivity = ({
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const expandedPanelRef = useRef(null);
+  // Track completed matches that should remain visible until user dismisses them
+  const [completedMatches, setCompletedMatches] = useState(new Map());
 
   // Expose collapse function via callback
   useEffect(() => {
@@ -93,12 +95,64 @@ const PlayerActivity = ({
     setRefreshTrigger(prev => prev + 1);
   };
 
+  // Handler when a match completes - add it to completed matches to keep it visible
+  const handleMatchCompleted = (match) => {
+    const matchKey = `${match.tierId}-${match.instanceId}-${match.roundIdx}-${match.matchIdx}`;
+    setCompletedMatches(prev => {
+      const next = new Map(prev);
+      next.set(matchKey, match);
+      return next;
+    });
+    // Keep it expanded so user sees the result
+    setExpandedMatches(prev => {
+      const next = new Set(prev);
+      next.add(matchKey);
+      return next;
+    });
+  };
+
+  // Handler when user dismisses a completed match
+  const handleDismissMatch = (tierId, instanceId, roundIdx, matchIdx) => {
+    const matchKey = `${tierId}-${instanceId}-${roundIdx}-${matchIdx}`;
+    setCompletedMatches(prev => {
+      const next = new Map(prev);
+      next.delete(matchKey);
+      return next;
+    });
+    // Also call parent's dismiss handler if provided
+    onDismissMatch?.(tierId, instanceId, roundIdx, matchIdx);
+  };
+
+  // Merge active matches from polling with completed matches we're keeping visible
+  const getDisplayMatches = () => {
+    const activeMatches = activity?.activeMatches || [];
+    const matchMap = new Map();
+
+    // First, add all completed matches (these take priority to show final state)
+    completedMatches.forEach((match, key) => {
+      matchMap.set(key, match);
+    });
+
+    // Then add active matches (won't override completed ones)
+    activeMatches.forEach(match => {
+      const matchKey = `${match.tierId}-${match.instanceId}-${match.roundIdx}-${match.matchIdx}`;
+      if (!matchMap.has(matchKey)) {
+        matchMap.set(matchKey, match);
+      }
+    });
+
+    return Array.from(matchMap.values());
+  };
+
+  // Get merged display matches (active + completed)
+  const displayMatches = getDisplayMatches();
+
   // Count all active matches (regardless of turn)
-  const activeMatchCount = activity?.activeMatches?.length || 0;
+  const activeMatchCount = displayMatches.length;
   // Count all enrolled tournaments (in progress + waiting for players)
   const enrolledTournamentCount = (activity?.inProgressTournaments?.length || 0) + (activity?.unfilledTournaments?.length || 0);
   const hasActivity = activity && (
-    activity.activeMatches.length > 0 ||
+    displayMatches.length > 0 ||
     activity.inProgressTournaments.length > 0 ||
     activity.unfilledTournaments.length > 0
   );
@@ -203,14 +257,14 @@ const PlayerActivity = ({
           ) : (
             <>
               {/* Priority 1: Active Matches */}
-              {activity.activeMatches && activity.activeMatches.length > 0 && (
+              {displayMatches && displayMatches.length > 0 && (
                 <div className="mb-6">
                   <h4 className="text-purple-300 font-semibold text-sm mb-3 flex items-center gap-2 uppercase">
                     <Zap size={16} className="text-yellow-400" />
-                    Active Matches ({activity.activeMatches.length})
+                    Active Matches ({displayMatches.length})
                   </h4>
                   <div className="space-y-2">
-                    {activity.activeMatches.map((match) => {
+                    {displayMatches.map((match) => {
                       const matchKey = `${match.tierId}-${match.instanceId}-${match.roundIdx}-${match.matchIdx}`;
                       const isMatchExpanded = expandedMatches.has(matchKey);
 
@@ -288,9 +342,13 @@ const PlayerActivity = ({
                                     handleRefresh();
                                     // Board stays open so user can see result
                                   }}
+                                  onMatchCompleted={() => {
+                                    // Match completed - add to completed matches to keep visible
+                                    handleMatchCompleted(match);
+                                  }}
                                   onMatchDismissed={() => {
                                     // Dismiss this match from the activity panel
-                                    onDismissMatch?.(match.tierId, match.instanceId, match.roundIdx, match.matchIdx);
+                                    handleDismissMatch(match.tierId, match.instanceId, match.roundIdx, match.matchIdx);
                                   }}
                                   onError={(err) => {
                                     console.error('Mini board error:', err);
@@ -307,9 +365,11 @@ const PlayerActivity = ({
                                   onMoveComplete={() => {
                                     handleRefresh();
                                   }}
+                                  onMatchCompleted={() => {
+                                    handleMatchCompleted(match);
+                                  }}
                                   onMatchDismissed={() => {
-                                    // Dismiss this match from the activity panel
-                                    onDismissMatch?.(match.tierId, match.instanceId, match.roundIdx, match.matchIdx);
+                                    handleDismissMatch(match.tierId, match.instanceId, match.roundIdx, match.matchIdx);
                                   }}
                                   onError={(err) => {
                                     console.error('Mini board error:', err);
@@ -325,9 +385,11 @@ const PlayerActivity = ({
                                   onMoveComplete={() => {
                                     handleRefresh();
                                   }}
+                                  onMatchCompleted={() => {
+                                    handleMatchCompleted(match);
+                                  }}
                                   onMatchDismissed={() => {
-                                    // Dismiss this match from the activity panel
-                                    onDismissMatch?.(match.tierId, match.instanceId, match.roundIdx, match.matchIdx);
+                                    handleDismissMatch(match.tierId, match.instanceId, match.roundIdx, match.matchIdx);
                                   }}
                                   onError={(err) => {
                                     console.error('Mini board error:', err);

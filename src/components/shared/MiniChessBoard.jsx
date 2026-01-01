@@ -38,6 +38,7 @@ const MiniChessBoard = ({
   account,
   match,
   onMoveComplete,
+  onMatchCompleted,
   onMatchDismissed,
   onError,
   refreshTrigger,
@@ -49,6 +50,7 @@ const MiniChessBoard = ({
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [showMatchEndModal, setShowMatchEndModal] = useState(false);
   const [matchEndResult, setMatchEndResult] = useState(null);
+  const [hasNotifiedCompletion, setHasNotifiedCompletion] = useState(false);
 
   // Helper to extract user-friendly error message
   const getUserFriendlyError = (err) => {
@@ -123,6 +125,12 @@ const MiniChessBoard = ({
         }
         setMatchEndResult(result);
         setShowMatchEndModal(true);
+
+        // Notify parent that match completed so it stays visible (only once)
+        if (!hasNotifiedCompletion) {
+          onMatchCompleted?.();
+          setHasNotifiedCompletion(true);
+        }
       }
 
       setMatchData(parsed);
@@ -236,6 +244,13 @@ const MiniChessBoard = ({
       // Calculate isMyTurn based on current turn
       parsed.isMyTurn = parsed.currentTurn?.toLowerCase() === account?.toLowerCase();
       setMatchData(parsed);
+
+      // Check if this move completed the match
+      if (parsed.matchStatus === 2 && !hasNotifiedCompletion) {
+        // Notify parent that match completed so it stays visible
+        onMatchCompleted?.();
+        setHasNotifiedCompletion(true);
+      }
 
       // Notify parent
       onMoveComplete?.();

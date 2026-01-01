@@ -15,6 +15,7 @@ const MiniConnect4Board = ({
   account,
   match,
   onMoveComplete,
+  onMatchCompleted,
   onMatchDismissed,
   onError,
   refreshTrigger,
@@ -25,6 +26,7 @@ const MiniConnect4Board = ({
   const [error, setError] = useState(null);
   const [showMatchEndModal, setShowMatchEndModal] = useState(false);
   const [matchEndResult, setMatchEndResult] = useState(null);
+  const [hasNotifiedCompletion, setHasNotifiedCompletion] = useState(false);
 
   // Convert flat board to 2D grid
   const boardToGrid = (flatBoard) => {

@@ -15,6 +15,7 @@ const MiniTicTacToeBoard = ({
   account,
   match,
   onMoveComplete,
+  onMatchCompleted,
   onMatchDismissed,
   onError,
   refreshTrigger, // New prop: changes when manual refresh is triggered
@@ -25,6 +26,7 @@ const MiniTicTacToeBoard = ({
   const [error, setError] = useState(null);
   const [showMatchEndModal, setShowMatchEndModal] = useState(false);
   const [matchEndResult, setMatchEndResult] = useState(null);
+  const [hasNotifiedCompletion, setHasNotifiedCompletion] = useState(false);
 
   // Extract fetch logic into reusable function
   const fetchMatchData = useCallback(async (isInitialLoad = false) => {
@@ -64,6 +66,12 @@ const MiniTicTacToeBoard = ({
         }
         setMatchEndResult(result);
         setShowMatchEndModal(true);
+
+        // Notify parent that match completed so it stays visible (only once)
+        if (!hasNotifiedCompletion) {
+          onMatchCompleted?.();
+          setHasNotifiedCompletion(true);
+        }
       }
 
       setMatchData(parsed);
@@ -147,6 +155,13 @@ const MiniTicTacToeBoard = ({
       // Calculate isMyTurn based on current turn
       parsed.isMyTurn = parsed.currentTurn?.toLowerCase() === account?.toLowerCase();
       setMatchData(parsed);
+
+      // Check if this move completed the match
+      if (parsed.matchStatus === 2 && !hasNotifiedCompletion) {
+        // Notify parent that match completed so it stays visible
+        onMatchCompleted?.();
+        setHasNotifiedCompletion(true);
+      }
 
       // Notify parent
       onMoveComplete?.();
