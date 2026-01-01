@@ -206,6 +206,31 @@ const MiniConnect4Board = ({
 
   return (
     <div className="space-y-3">
+      {/* Mini Match End Modal - Above Board */}
+      {showMatchEndModal && matchEndResult && matchData.matchStatus === 2 && (
+        <MiniMatchEndModal
+          result={matchEndResult}
+          onClose={() => {
+            const isDefeat = matchEndResult === 'lose' || matchEndResult === 'forfeit_lose';
+            // Hide modal
+            setShowMatchEndModal(false);
+            // Notify parent that match was dismissed
+            onMatchDismissed?.();
+            // For victory/draw, also trigger refresh
+            if (!isDefeat) {
+              onMoveComplete?.();
+            }
+          }}
+          winnerAddress={matchData.winner}
+          loserAddress={matchData.isDraw ? null : (matchData.winner?.toLowerCase() === matchData.player1?.toLowerCase() ? matchData.player2 : matchData.player1)}
+          currentAccount={account}
+          gameType="connectfour"
+          roundNumber={match.roundNumber}
+          totalRounds={match.totalRounds}
+          prizePool={match.prizePool}
+        />
+      )}
+
       {/* Board Header */}
       <div className="text-center space-y-1">
         <p className="text-slate-400 text-[10px]">
@@ -277,31 +302,6 @@ const MiniConnect4Board = ({
         <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-2 text-center">
           <p className="text-red-300 text-xs">{error}</p>
         </div>
-      )}
-
-      {/* Mini Match End Modal */}
-      {showMatchEndModal && matchEndResult && matchData.matchStatus === 2 && (
-        <MiniMatchEndModal
-          result={matchEndResult}
-          onClose={() => {
-            const isDefeat = matchEndResult === 'lose' || matchEndResult === 'forfeit_lose';
-            // Hide modal
-            setShowMatchEndModal(false);
-            // Notify parent that match was dismissed
-            onMatchDismissed?.();
-            // For victory/draw, also trigger refresh
-            if (!isDefeat) {
-              onMoveComplete?.();
-            }
-          }}
-          winnerAddress={matchData.winner}
-          loserAddress={matchData.isDraw ? null : (matchData.winner?.toLowerCase() === matchData.player1?.toLowerCase() ? matchData.player2 : matchData.player1)}
-          currentAccount={account}
-          gameType="connectfour"
-          roundNumber={match.roundNumber}
-          totalRounds={match.totalRounds}
-          prizePool={match.prizePool}
-        />
       )}
 
       {/* Helper Text - only show when match is not ended */}

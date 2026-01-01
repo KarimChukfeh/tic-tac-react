@@ -135,70 +135,43 @@ const MiniMatchEndModal = ({
 
   return (
     <div className={`
-      relative mt-3 p-4
+      relative mb-2 p-2
       bg-gradient-to-br ${currentConfig.bgGradient}
       backdrop-blur-sm rounded-lg
-      border-2 ${currentConfig.borderColor}
+      border ${currentConfig.borderColor}
       animate-in fade-in zoom-in-95 duration-300
     `}>
       {/* Close button */}
       <button
         onClick={onClose}
-        className="absolute top-2 right-2 p-1 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+        className="absolute top-1 right-1 p-0.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
         aria-label="Close"
       >
-        <X size={14} className="text-white/70" />
+        <X size={12} className="text-white/70" />
       </button>
 
-      {/* Icon and Title */}
-      <div className="flex flex-col items-center mb-3">
-        <div className={`p-2 rounded-full bg-white/10 ${currentConfig.iconColor} mb-2`}>
-          <IconComponent size={32} />
+      {/* Icon and Title - Compact */}
+      <div className="flex items-center justify-center gap-2 mb-1.5">
+        <IconComponent size={20} className={currentConfig.iconColor} />
+        <div className="text-center">
+          <h3 className={`text-sm font-bold ${currentConfig.titleColor}`}>
+            {currentConfig.title}
+          </h3>
+          <p className="text-[10px] text-white/70">
+            {currentConfig.message}
+          </p>
         </div>
-        <h3 className={`text-lg font-bold ${currentConfig.titleColor}`}>
-          {currentConfig.title}
-        </h3>
-        <p className="text-xs text-white/80 mt-0.5">
-          {currentConfig.subtitle}
-        </p>
       </div>
 
-      {/* Player Info */}
-      {winnerAddress && loserAddress && (
-        <div className="space-y-1.5 mb-3 text-xs">
-          <div className="flex items-center justify-center gap-2">
-            <span className={result.includes('win') ? 'text-green-400 font-bold' : 'text-green-400'}>
-              Winner{result.includes('win') ? ' (You)' : ''}:
-            </span>
-            <span className="text-white/90 font-mono">
-              {shortenAddress(winnerAddress)}
-            </span>
-          </div>
-          <div className="flex items-center justify-center gap-2">
-            <span className={result.includes('lose') || result === 'forfeit_lose' ? 'text-red-400 font-bold' : 'text-red-400'}>
-              Loser{result.includes('lose') || result === 'forfeit_lose' ? ' (You)' : ''}:
-            </span>
-            <span className="text-white/70 font-mono">
-              {shortenAddress(loserAddress)}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Message */}
-      <p className="text-center text-white/80 text-xs mb-3">
-        {currentConfig.message}
-      </p>
-
-      {/* Dismiss button */}
+      {/* Dismiss button - Compact */}
       <button
         onClick={onClose}
-        className="w-full py-2 px-4 rounded-lg font-semibold text-sm
+        className="w-full py-1 px-3 rounded font-semibold text-xs
           bg-white/10 hover:bg-white/20
           border border-white/20 hover:border-white/30
           transition-all duration-200 text-white"
       >
-        {result.includes('lose') || result === 'forfeit_lose' ? 'View Board' : 'Continue'}
+        Dismiss
       </button>
     </div>
   );
