@@ -114,6 +114,26 @@ export const usePlayerActivity = (contract, account, gameName) => {
         });
 
         let hasActiveMatch = false;
+        let playerRound = null; // Track which round the player is in
+
+        // Get player's round from contract using isPlayerInAdvancedRound
+        // Check up to currentRound + 1 to catch players who have advanced but round hasn't started yet
+        // Start from highest possible round and check backwards to find the highest round the player is in
+        const tierConfig = await contract.tierConfigs(tierId);
+        const totalRounds = Number(tierConfig.totalRounds);
+        const maxRoundToCheck = Math.min(currentRound + 1, totalRounds - 1);
+
+        for (let roundIdx = maxRoundToCheck; roundIdx >= 0; roundIdx--) {
+          try {
+            const isInRound = await contract.isPlayerInAdvancedRound(account, tierId, instanceId, roundIdx);
+            if (isInRound) {
+              playerRound = roundIdx;
+              break; // Found the player's round
+            }
+          } catch (err) {
+            console.warn(`[PlayerActivity] Error checking round ${roundIdx}:`, err);
+          }
+        }
 
         // Check all rounds up to current for active matches
         for (let roundIdx = 0; roundIdx <= currentRound; roundIdx++) {
@@ -212,11 +232,12 @@ export const usePlayerActivity = (contract, account, gameName) => {
 
         // If no active match but player is in tournament, add to waiting list
         if (!hasActiveMatch) {
-          console.log(`[PlayerActivity] No active match found for T${tierId}I${instanceId}, adding to inProgressTournaments`);
+          console.log(`[PlayerActivity] No active match found for T${tierId}I${instanceId}, adding to inProgressTournaments with playerRound:`, playerRound);
           inProgressTournaments.push({
             tierId,
             instanceId,
             currentRound,
+            playerRound, // Add the round the player is in (last completed or waiting for)
           });
         } else {
           console.log(`[PlayerActivity] Active match found for T${tierId}I${instanceId}, not adding to inProgressTournaments`);

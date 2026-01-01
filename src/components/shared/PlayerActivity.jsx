@@ -423,9 +423,14 @@ const PlayerActivity = ({
                             Tier {tournament.tierId + 1} Instance {tournament.instanceId + 1}
                           </span>
                         </div>
-                        <div className="text-slate-400 text-xs mb-3">
+                        <div className={`text-slate-400 text-xs ${tournament.playerRound !== null ? 'mb-1' : 'mb-3'}`}>
                           Round {tournament.currentRound + 1} in progress
                         </div>
+                        {tournament.playerRound !== null && (
+                          <div className="text-cyan-400 text-xs mb-3 font-semibold">
+                            You are in Round {tournament.playerRound + 1}
+                          </div>
+                        )}
                         <button
                           onClick={() => onEnterTournament(tournament.tierId, tournament.instanceId)}
                           className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition-all flex items-center justify-center gap-2 text-sm"
