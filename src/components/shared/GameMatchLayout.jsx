@@ -35,7 +35,7 @@ const GAME_THEMES = {
     textMuted: 'text-purple-300',
     player1Color: 'blue',
     player2Color: 'pink',
-    moveTimeout: 60, // 1 minute
+    moveTimeout: 60, // Legacy: Now uses total match time (300s per player)
     completeText: 'Match Complete!'
   },
   chess: {
@@ -46,7 +46,7 @@ const GAME_THEMES = {
     textMuted: 'text-purple-300',
     player1Color: 'white',
     player2Color: 'black',
-    moveTimeout: 60, // 1 minute
+    moveTimeout: 60, // Legacy: Now uses total match time (300s per player)
     completeText: 'Checkmate!'
   },
   connectfour: {
@@ -57,7 +57,7 @@ const GAME_THEMES = {
     textMuted: 'text-purple-300',
     player1Color: 'red',
     player2Color: 'blue',
-    moveTimeout: 60, // 1 minute
+    moveTimeout: 60, // Legacy: Now uses total match time (300s per player)
     completeText: 'Match Complete!'
   }
 };
@@ -75,6 +75,10 @@ const GameMatchLayout = ({
   onClaimTimeoutWin,
   onForceEliminate,
   onClaimReplacement,
+
+  // Tournament data for advanced player checks
+  tournamentRounds = null,
+  currentRoundNumber = 0,
 
   // Player configuration
   playerConfig, // { player1: { icon, label }, player2: { icon, label } }
@@ -115,12 +119,8 @@ const GameMatchLayout = ({
   const hasWinner = winner && winner !== zeroAddress;
   const userWon = hasWinner && account && winner.toLowerCase() === account.toLowerCase();
 
-  // Calculate time remaining for turn timer
-  const now = Math.floor(Date.now() / 1000);
-  const timeReference = lastMoveTime > 0 ? lastMoveTime : startTime;
-  const timeSinceLastMove = now - timeReference;
-  const timeRemaining = Math.max(0, theme.moveTimeout - timeSinceLastMove);
-  const showTurnTimer = matchStatus === 1 && timeReference > 0;
+  // Show turn timer when match is in progress
+  const showTurnTimer = matchStatus === 1;
 
   // Determine if players are current user
   const isPlayer1You = account && player1?.toLowerCase() === account.toLowerCase();
@@ -153,10 +153,11 @@ const GameMatchLayout = ({
         <div className="space-y-3 mt-6">
           {showTurnTimer && (
             <TurnTimer
-              isYourTurn={isYourTurn}
-              timeRemaining={timeRemaining}
+              match={match}
+              account={account}
               onClaimTimeoutWin={onClaimTimeoutWin}
               loading={loading}
+              syncDots={syncDots}
             />
           )}
 
@@ -169,6 +170,9 @@ const GameMatchLayout = ({
               onForceEliminate={onForceEliminate}
               onClaimReplacement={onClaimReplacement}
               loading={loading}
+              tournamentRounds={tournamentRounds}
+              currentAccount={account}
+              currentRoundNumber={currentRoundNumber}
             />
           )}
 
@@ -205,29 +209,18 @@ const GameMatchLayout = ({
   // Render sidebar layout (Chess style)
   const renderSidebarLayout = () => (
     <div className="flex flex-col xl:flex-row gap-6">
-      {/* Player Cards - Side by side on mobile/tablet, stacked on left for desktop */}
-      <div className="flex flex-row xl:flex-col gap-4 xl:w-56 shrink-0">
+      {/* Player 1 - Left side */}
+      <div className="flex-none xl:w-56">
         <PlayerPanel
           playerAddress={player1}
           currentAccount={account}
-          isCurrentTurn={isPlayer1Turn}
+          isCurrentTurn={isPlayer1Turn && isPlayer1You}
           isGameOver={isGameOver}
           icon={playerConfig?.player1?.icon}
           label={playerConfig?.player1?.label || 'Player 1'}
           colorScheme={theme.player1Color}
           variant="full"
           extraContent={renderPlayer1Extra?.()}
-        />
-        <PlayerPanel
-          playerAddress={player2}
-          currentAccount={account}
-          isCurrentTurn={isPlayer2Turn}
-          isGameOver={isGameOver}
-          icon={playerConfig?.player2?.icon}
-          label={playerConfig?.player2?.label || 'Player 2'}
-          colorScheme={theme.player2Color}
-          variant="full"
-          extraContent={renderPlayer2Extra?.()}
         />
       </div>
 
@@ -238,10 +231,11 @@ const GameMatchLayout = ({
         {showTurnTimer && (
           <div className="w-full max-w-md mt-4">
             <TurnTimer
-              isYourTurn={isYourTurn}
-              timeRemaining={timeRemaining}
+              match={match}
+              account={account}
               onClaimTimeoutWin={onClaimTimeoutWin}
               loading={loading}
+              syncDots={syncDots}
             />
           </div>
         )}
@@ -256,6 +250,9 @@ const GameMatchLayout = ({
               onForceEliminate={onForceEliminate}
               onClaimReplacement={onClaimReplacement}
               loading={loading}
+              tournamentRounds={tournamentRounds}
+              currentAccount={account}
+              currentRoundNumber={currentRoundNumber}
             />
           </div>
         )}
@@ -273,6 +270,21 @@ const GameMatchLayout = ({
             />
           </div>
         )}
+      </div>
+
+      {/* Player 2 - Right side */}
+      <div className="flex-none xl:w-56">
+        <PlayerPanel
+          playerAddress={player2}
+          currentAccount={account}
+          isCurrentTurn={isPlayer2Turn && account?.toLowerCase() === player2?.toLowerCase()}
+          isGameOver={isGameOver}
+          icon={playerConfig?.player2?.icon}
+          label={playerConfig?.player2?.label || 'Player 2'}
+          colorScheme={theme.player2Color}
+          variant="full"
+          extraContent={renderPlayer2Extra?.()}
+        />
       </div>
     </div>
   );
@@ -323,10 +335,11 @@ const GameMatchLayout = ({
       {showTurnTimer && (
         <div className="max-w-md mx-auto mt-6 w-full">
           <TurnTimer
-            isYourTurn={isYourTurn}
-            timeRemaining={timeRemaining}
+            match={match}
+            account={account}
             onClaimTimeoutWin={onClaimTimeoutWin}
             loading={loading}
+            syncDots={syncDots}
           />
         </div>
       )}
@@ -342,6 +355,9 @@ const GameMatchLayout = ({
             onForceEliminate={onForceEliminate}
             onClaimReplacement={onClaimReplacement}
             loading={loading}
+            tournamentRounds={tournamentRounds}
+            currentAccount={account}
+            currentRoundNumber={currentRoundNumber}
           />
         </div>
       )}
@@ -370,7 +386,6 @@ const GameMatchLayout = ({
         gameType={gameType}
         title={theme.title}
         icon={theme.icon}
-        syncDots={syncDots}
         matchStatus={matchStatus}
         isDraw={isDraw}
         onClose={onClose}

@@ -14,7 +14,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <Route path="/" element={<Landing />} />
         <Route path="/tictactoe" element={<TicTacChain />} />
         <Route path="/chess" element={<Chess />} />
-        <Route path="/c4" element={<ConnectFour />} />
+        <Route path="/connect4" element={<ConnectFour />} />
       </Routes>
     </BrowserRouter>
   </React.StrictMode>,

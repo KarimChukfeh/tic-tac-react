@@ -1,5 +1,3 @@
-import { Info } from 'lucide-react';
-
 /**
  * WhyArbitrum - Shared component explaining Arbitrum to new users
  *
@@ -35,22 +33,21 @@ export default function WhyArbitrum({ variant = 'blue' }) {
 
   return (
     <div className="mt-6 max-w-2xl mx-auto">
-      <div className={`${theme.bg} border ${theme.border} rounded-lg p-4`}>
+      <div className={`${theme.bg} border ${theme.border} rounded-lg p-3 md:p-4`}>
         <div className="flex items-start gap-3">
-          <Info size={18} className={`${theme.icon} mt-0.5 flex-shrink-0`} />
           <div className="text-sm w-full">
             <p className={`${theme.text} font-medium mb-2`}>Why Arbitrum?</p>
             <p className={`${theme.subtext} opacity-80 leading-relaxed mb-3`}>
-              This game runs on <a href="https://arbitrum.io" target="_blank" rel="noopener noreferrer" className={`font-semibold ${theme.text} hover:text-green-300 underline decoration-current/50 hover:decoration-green-300 transition-colors`}>Arbitrum One</a>, an Ethereum Layer 2 network.
+              This game runs on <a href="https://arbitrum.io" target="_blank" rel="noopener noreferrer" className={`font-semibold ${theme.text} hover:text-green-300 underline decoration-current/50 hover:decoration-green-300 transition-colors`}>Arbitrum One</a>, an Ethereum L2 network.
             </p>
             <div className={`${theme.subtext} opacity-80 leading-relaxed space-y-2 text-sm`}>
               <p><strong className={theme.text}>First time on Arbitrum?</strong> You'll need to:</p>
               <ol className="list-decimal list-inside pl-2 space-y-1">
-                <li>Switch to Arbitrum network in MetaMask (instant and free)</li>
-                <li>Bridge ETH from Ethereum mainnet to Arbitrum (max 5 min, requires L1 gas)</li>
+                <li>Select the Arbitrum One network in MetaMask</li>
+                <li>Bridge ETH from Ethereum mainnet to Arbitrum</li>
               </ol>
-              <p><strong className={theme.text}>Already have Arbitrum ETH?</strong> Just switch networks and play.</p>
-              <p className="pt-1"><span className={theme.text}>Lower fees than Ethereum mainnet. Final outcomes secured by Ethereum L1.</span></p>
+              <p><strong className={theme.text}>Already have Arbitrum ETH?</strong> Just connect and play.</p>
+              <p className="pt-1"><span className={theme.text}>Lower fees. Same ETH.</span></p>
             </div>
           </div>
         </div>

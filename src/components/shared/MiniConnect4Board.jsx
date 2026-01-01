@@ -1,0 +1,275 @@
+/**
+ * MiniConnect4Board Component
+ *
+ * Compact, interactive Connect Four board for the Player Activity panel
+ * Allows players to make moves directly without navigating to full match view
+ */
+
+import { useState, useEffect, useCallback } from 'react';
+import { parseConnectFourMatch } from '../../utils/matchDataParser';
+import { Loader2 } from 'lucide-react';
+
+const MiniConnect4Board = ({
+  contract,
+  account,
+  match,
+  onMoveComplete,
+  onError,
+  refreshTrigger,
+}) => {
+  const [matchData, setMatchData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [makingMove, setMakingMove] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Convert flat board to 2D grid
+  const boardToGrid = (flatBoard) => {
+    const grid = Array(6).fill(null).map(() => Array(7).fill(0));
+    for (let row = 0; row < 6; row++) {
+      for (let col = 0; col < 7; col++) {
+        const idx = row * 7 + col;
+        grid[row][col] = Number(flatBoard[idx]);
+      }
+    }
+    return grid;
+  };
+
+  // Check if column is full
+  const isColumnFull = (grid, col) => {
+    return grid[0][col] !== 0;
+  };
+
+  // Extract fetch logic into reusable function
+  const fetchMatchData = useCallback(async (isInitialLoad = false) => {
+    if (!contract) return;
+
+    try {
+      if (isInitialLoad) {
+        setLoading(true);
+      }
+      setError(null);
+
+      const data = await contract.getMatch(
+        match.tierId,
+        match.instanceId,
+        match.roundIdx,
+        match.matchIdx
+      );
+
+      const parsed = parseConnectFourMatch(data);
+      // Compute isPlayer1 by comparing account to player1
+      parsed.isPlayer1 = parsed.player1?.toLowerCase() === account?.toLowerCase();
+      setMatchData(parsed);
+      setLoading(false);
+    } catch (err) {
+      console.error('Error fetching match data:', err);
+      setError('Failed to load board');
+      setLoading(false);
+    }
+  }, [contract, account, match.tierId, match.instanceId, match.roundIdx, match.matchIdx]);
+
+  // Fetch match data on mount
+  useEffect(() => {
+    fetchMatchData(true);
+  }, [fetchMatchData]);
+
+  // Auto-refresh every 2 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchMatchData(false);
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [fetchMatchData]);
+
+  // Refresh when manual sync button is clicked
+  useEffect(() => {
+    if (refreshTrigger !== undefined) {
+      fetchMatchData(false);
+    }
+  }, [refreshTrigger, fetchMatchData]);
+
+  // Handle column click
+  const handleColumnClick = async (columnIndex) => {
+    if (!matchData || !contract || !account) return;
+
+    const grid = boardToGrid(matchData.board);
+
+    // Validation
+    if (!match.isMyTurn) {
+      setError("It's not your turn!");
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
+
+    if (isColumnFull(grid, columnIndex)) {
+      setError('Column is full!');
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
+
+    if (matchData.matchStatus === 2) {
+      setError('Match is already complete!');
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
+
+    try {
+      setMakingMove(true);
+      setError(null);
+
+      const tx = await contract.makeMove(
+        match.tierId,
+        match.instanceId,
+        match.roundIdx,
+        match.matchIdx,
+        columnIndex  // Just the column index (0-6)
+      );
+
+      await tx.wait();
+
+      // Refresh match data
+      const updatedData = await contract.getMatch(
+        match.tierId,
+        match.instanceId,
+        match.roundIdx,
+        match.matchIdx
+      );
+
+      const parsed = parseConnectFourMatch(updatedData);
+      // Compute isPlayer1 by comparing account to player1
+      parsed.isPlayer1 = parsed.player1?.toLowerCase() === account?.toLowerCase();
+      setMatchData(parsed);
+
+      // Notify parent
+      onMoveComplete?.();
+      setMakingMove(false);
+    } catch (err) {
+      console.error('Error making move:', err);
+      setError(err.message || 'Failed to make move');
+      onError?.(err);
+      setMakingMove(false);
+    }
+  };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="p-4 flex flex-col items-center justify-center gap-2">
+        <Loader2 className="animate-spin text-purple-400" size={24} />
+        <p className="text-slate-400 text-xs">Loading board...</p>
+      </div>
+    );
+  }
+
+  // Error state (no match data)
+  if (!matchData) {
+    return (
+      <div className="p-4 text-center">
+        <p className="text-red-400 text-sm">Failed to load board</p>
+      </div>
+    );
+  }
+
+  // Determine player color
+  const isPlayer1 = matchData.isPlayer1;
+  const playerColor = isPlayer1 ? 'Red' : 'Blue';
+  const colorClass = isPlayer1 ? 'text-red-400' : 'text-blue-400';
+
+  const grid = boardToGrid(matchData.board);
+
+  return (
+    <div className="space-y-3">
+      {/* Board Header */}
+      <div className="text-center space-y-1">
+        <p className="text-slate-400 text-[10px]">
+          You are playing as <span className={`${colorClass} font-bold text-sm`}>{playerColor}</span>
+        </p>
+        <p className="text-slate-300 text-xs">
+          {match.isMyTurn ? (
+            <span className="text-yellow-300 font-bold">Your turn to move</span>
+          ) : (
+            <span className="text-slate-400">Waiting for opponent...</span>
+          )}
+        </p>
+      </div>
+
+      {/* Connect Four Board */}
+      <div className="p-3 bg-blue-900/30 rounded-lg">
+        {/* Column click zones */}
+        <div className="flex gap-1 mb-2">
+          {[0, 1, 2, 3, 4, 5, 6].map(col => (
+            <button
+              key={col}
+              onClick={() => handleColumnClick(col)}
+              disabled={!match.isMyTurn || makingMove || isColumnFull(grid, col) || matchData.matchStatus === 2}
+              className="flex-1 h-8 bg-slate-700 hover:bg-slate-600 rounded-t transition-all disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-bold"
+            >
+              {makingMove ? <Loader2 className="animate-spin mx-auto" size={16} /> : '↓'}
+            </button>
+          ))}
+        </div>
+
+        {/* Board grid */}
+        <div className="space-y-1">
+          {grid.map((row, rowIdx) => (
+            <div key={rowIdx} className="flex gap-1">
+              {row.map((cell, colIdx) => (
+                <div
+                  key={colIdx}
+                  className="aspect-square bg-blue-800 rounded-full flex items-center justify-center w-full"
+                >
+                  {cell !== 0 && (
+                    <div
+                      className="rounded-full w-[85%] h-[85%]"
+                      style={{
+                        background: cell === 1
+                          ? 'radial-gradient(circle at 30% 30%, #ff6b6b, #c92a2a)'  // Red
+                          : 'radial-gradient(circle at 30% 30%, #60a5fa, #2563eb)',  // Blue
+                        boxShadow: cell === 1
+                          ? '0 0 10px rgba(255,107,107,0.5)'
+                          : '0 0 10px rgba(96,165,250,0.5)'
+                      }}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+
+        {/* Column labels */}
+        <div className="flex gap-1 mt-2">
+          {['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((label, idx) => (
+            <div key={idx} className="flex-1 text-center text-xs text-slate-400 font-bold">{label}</div>
+          ))}
+        </div>
+      </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-2 text-center">
+          <p className="text-red-300 text-xs">{error}</p>
+        </div>
+      )}
+
+      {/* Match Status */}
+      {matchData.matchStatus === 2 && (
+        <div className="bg-green-500/20 border border-green-500/50 rounded-lg p-2 text-center">
+          <p className="text-green-300 text-xs font-bold">
+            {matchData.isDraw ? 'Match ended in a draw!' : `Winner: ${matchData.winner === account ? 'You!' : 'Opponent'}`}
+          </p>
+        </div>
+      )}
+
+      {/* Helper Text */}
+      <div className="text-center">
+        <p className="text-slate-500 text-[10px]">
+          Click a column to drop your disc
+        </p>
+      </div>
+    </div>
+  );
+};
+
+export default MiniConnect4Board;

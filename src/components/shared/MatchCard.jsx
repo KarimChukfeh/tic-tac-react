@@ -5,15 +5,11 @@
  * Supports escalation display, player icons, and various color themes.
  */
 
-import { Play, Award } from 'lucide-react';
+import { Play, Award, Clock, HelpCircle, Zap, Users } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
 import { getMatchStatusText, getMatchStatusColor } from '../../utils/matchStatus';
-
-// Constants
-const MOVE_TIMEOUT = 60; // 60 seconds until timeout
-const ESCALATION_1_DELAY = 60; // 60 seconds after timeout for escalation 1
-const ESCALATION_2_DELAY = 120; // 120 seconds after timeout for escalation 2
-const ESCALATION_3_DELAY = 180; // 180 seconds after timeout for escalation 3
+import { calculatePlayerTimes } from '../../utils/timeCalculations';
+import { isAdvancedPlayer } from '../../utils/tournamentHelpers';
 
 /**
  * Format seconds into MM:SS display
@@ -26,58 +22,134 @@ const formatEscalationTime = (seconds) => {
 };
 
 /**
- * Calculate escalation state for a match
+ * Calculate escalation state using contract data (NO client-side calculations)
  */
-const calculateEscalationState = (match) => {
+const calculateEscalationState = (match, account, timeoutConfig, isUserAdvancedPlayer) => {
+  // Use contract-provided time data (no calculations)
+  const times = calculatePlayerTimes(match, account, match.matchTimePerPlayer);
+
+  // Determine if either player has timed out (contract says <= 0)
+  const isTimeout = times.isExpired;
+
+  // Determine which player's turn it is and show their time
+  const isPlayer1Turn = match.currentTurn?.toLowerCase() === match.player1?.toLowerCase();
+  const activePlayerTime = isPlayer1Turn ? times.player1.remaining : times.player2.remaining;
+
+  // For compact display, show the active player's remaining time
+  const timeRemaining = match.matchStatus === 1 ? activePlayerTime : null;
+
+  // Use escalation status from contract (authoritative source)
+  const contractIsStalled = match.timeoutState && match.timeoutState.timeoutActive;
+  const effectiveEscalation = match.timeoutState?.activeEscalation || 0; // Result field (history), not status
+
   const now = Math.floor(Date.now() / 1000);
-  const timeReference = match.lastMoveTime > 0 ? match.lastMoveTime : match.startTime;
-  const timeSinceLastMove = timeReference > 0 ? now - timeReference : 0;
-  const timeRemaining = timeReference > 0 ? Math.max(0, MOVE_TIMEOUT - timeSinceLastMove) : null;
-  const isTimeout = timeRemaining !== null && timeRemaining === 0;
-
-  // Check escalation status from contract
-  const hasEscalation = match.timeoutState && match.timeoutState.timeoutActive;
-  const activeEscalation = match.timeoutState?.activeEscalation || 0;
-
-  // Calculate client-side escalation based on time
-  let clientEscalation = 0;
-  if (!hasEscalation && isTimeout && match.matchStatus === 1) {
-    const timeoutDuration = timeSinceLastMove - MOVE_TIMEOUT;
-    if (timeoutDuration >= ESCALATION_3_DELAY) clientEscalation = 3;
-    else if (timeoutDuration >= ESCALATION_2_DELAY) clientEscalation = 2;
-    else if (timeoutDuration >= ESCALATION_1_DELAY) clientEscalation = 1;
-  }
-
-  const effectiveEscalation = hasEscalation ? activeEscalation : clientEscalation;
-
-  // Calculate time until each escalation level (for countdown timers)
-  // These are only relevant when match is in progress and has timed out
   let timeToEscalation1 = null;
   let timeToEscalation2 = null;
   let timeToEscalation3 = null;
+  let canForceEliminate = false;
+  let canReplace = false;
+  let isStalled = contractIsStalled;
+  let clientCalculated = false;
 
-  if (match.matchStatus === 1 && timeReference > 0) {
-    if (effectiveEscalation < 1) {
-      // Time until escalation 1 = timeout + escalation 1 delay - time since last move
-      timeToEscalation1 = Math.max(0, MOVE_TIMEOUT + ESCALATION_1_DELAY - timeSinceLastMove);
+  // If contract has escalation data, use it
+  if (match.timeoutState && contractIsStalled) {
+    const esc1Start = match.timeoutState.escalation1Start || 0;
+    const esc2Start = match.timeoutState.escalation2Start || 0;
+
+    // Calculate countdown timers
+    if (esc1Start > 0 && now < esc1Start) {
+      timeToEscalation1 = esc1Start - now;
     }
-    if (effectiveEscalation < 2) {
-      // Time until escalation 2 (force eliminate available)
-      timeToEscalation2 = Math.max(0, MOVE_TIMEOUT + ESCALATION_2_DELAY - timeSinceLastMove);
+    if (esc2Start > 0 && now < esc2Start) {
+      timeToEscalation2 = esc2Start - now;
     }
-    if (effectiveEscalation < 3) {
-      // Time until escalation 3 (replace available)
-      timeToEscalation3 = Math.max(0, MOVE_TIMEOUT + ESCALATION_3_DELAY - timeSinceLastMove);
+
+      // Use contract-provided escalation availability flags (more reliable than time calculations)
+    // If contract provides the flags, use them; otherwise fall back to time-based logic
+    if (match.escL2Available !== undefined) {
+      canForceEliminate = match.escL2Available;
+    } else {
+      // Fallback: Level 2 active from esc1Start onwards (never expires)
+      canForceEliminate = esc1Start > 0 && now >= esc1Start;
+    }
+
+    if (match.escL3Available !== undefined) {
+      // Level 3: Use contract flag, but still respect advanced player restriction
+      // RESTRICTION: Not available to advanced players (they can only use Level 2)
+      canReplace = match.escL3Available && !isUserAdvancedPlayer;
+    } else {
+      // Fallback: Level 3 active from esc2Start onwards (never expires)
+      // RESTRICTION: Not available to advanced players (they can only use Level 2)
+      canReplace = esc2Start > 0 && now >= esc2Start && !isUserAdvancedPlayer;
     }
   }
+  // Otherwise, calculate client-side if player has timed out
+  else if (match.matchStatus === 1 && match.lastMoveTime > 0) {
+    clientCalculated = true;
+    const timeSinceLastMove = now - match.lastMoveTime;
+
+    // Determine whose turn it is and their remaining time
+    const isPlayer1Turn = match.currentTurn?.toLowerCase() === match.player1?.toLowerCase();
+    const currentPlayerTime = isPlayer1Turn ? match.player1TimeRemaining : match.player2TimeRemaining;
+
+    // Check if current player has timed out
+    const hasTimedOut = currentPlayerTime <= 0 || timeSinceLastMove >= currentPlayerTime;
+
+    if (hasTimedOut) {
+      isStalled = true;
+
+      // Calculate when timeout occurred
+      const timeoutOccurred = match.lastMoveTime + currentPlayerTime;
+
+      // Use tier-specific delays with fallbacks for backwards compatibility
+      const matchLevel2Delay = timeoutConfig?.matchLevel2Delay || 60;
+      const matchLevel3Delay = timeoutConfig?.matchLevel3Delay || 120;
+
+      // Calculate escalation start times using tier-specific delays
+      // escalation1Start = when Level 2 (Force Eliminate) becomes available
+      // escalation2Start = when Level 3 (Replace Players) becomes available
+      const esc1Start = timeoutOccurred + matchLevel2Delay;
+      const esc2Start = timeoutOccurred + matchLevel3Delay;
+
+      // Calculate countdowns
+      if (now < esc1Start) {
+        timeToEscalation1 = esc1Start - now;
+      }
+      if (now < esc2Start) {
+        timeToEscalation2 = esc2Start - now;
+      }
+
+      // Use contract-provided escalation availability flags if available
+      if (match.escL2Available !== undefined) {
+        canForceEliminate = match.escL2Available;
+      } else {
+        // Fallback: Level 2 active from esc1Start onwards (never expires)
+        canForceEliminate = now >= esc1Start;
+      }
+
+      if (match.escL3Available !== undefined) {
+        // Level 3: Use contract flag, but still respect advanced player restriction
+        // RESTRICTION: Not available to advanced players (they can only use Level 2)
+        canReplace = match.escL3Available && !isUserAdvancedPlayer;
+      } else {
+        // Fallback: Level 3 active from esc2Start onwards (never expires)
+        // RESTRICTION: Not available to advanced players (they can only use Level 2)
+        canReplace = now >= esc2Start && !isUserAdvancedPlayer;
+      }
+    }
+  }
+
+  const hasEscalation = isStalled;
 
   return {
     timeRemaining,
     isTimeout,
     hasEscalation,
-    effectiveEscalation,
-    canForceEliminate: effectiveEscalation >= 2,
-    canReplace: effectiveEscalation >= 3,
+    effectiveEscalation, // Keep for debug display
+    isStalled,
+    clientCalculated,
+    canForceEliminate,
+    canReplace,
     timeToEscalation1,
     timeToEscalation2,
     timeToEscalation3,
@@ -123,6 +195,7 @@ const getBorderClass = (isUserMatch, escalation, defaultBorder = 'border-purple-
  * @param {boolean} [props.showEscalation=true] - Whether to show escalation features
  * @param {boolean} [props.showThisIsYou=false] - Whether to show "THIS IS YOU" label
  * @param {Object} [props.colors] - Color theme overrides
+ * @param {Array} [props.tournamentRounds] - Tournament rounds data for advanced player check
  */
 const MatchCard = ({
   match,
@@ -140,6 +213,7 @@ const MatchCard = ({
   showEscalation = true,
   showThisIsYou = false,
   colors = {},
+  tournamentRounds = null,
 }) => {
   const isUserMatch =
     match.player1?.toLowerCase() === account?.toLowerCase() ||
@@ -148,8 +222,13 @@ const MatchCard = ({
   const isPlayer1 = match.player1?.toLowerCase() === account?.toLowerCase();
   const isPlayer2 = match.player2?.toLowerCase() === account?.toLowerCase();
 
-  // Calculate escalation state
-  const escalation = showEscalation ? calculateEscalationState(match) : {
+  // Check if current user is an advanced player (for Level 2 escalation, Level 3 restriction)
+  const isUserAdvancedPlayer = tournamentRounds && account
+    ? isAdvancedPlayer(tournamentRounds, account, roundIdx)
+    : false;
+
+  // Calculate escalation state (pass account for player-specific time and timeoutConfig for tier delays)
+  const escalation = showEscalation ? calculateEscalationState(match, account, match.timeoutConfig, isUserAdvancedPlayer) : {
     timeRemaining: null,
     isTimeout: false,
     hasEscalation: false,
@@ -157,6 +236,25 @@ const MatchCard = ({
     canForceEliminate: false,
     canReplace: false,
   };
+
+  // Debug logging for escalation issues
+  if (showEscalation && match.matchStatus === 1 && !isUserMatch && escalation.hasEscalation) {
+    console.log(`[MatchCard R${roundIdx}M${matchIdx}] Escalation State:`, {
+      account: account?.slice(0, 10),
+      isUserAdvancedPlayer,
+      canForceEliminate: escalation.canForceEliminate,
+      canReplace: escalation.canReplace,
+      escL2Available: match.escL2Available,
+      escL3Available: match.escL3Available,
+      timeToEscalation1: escalation.timeToEscalation1,
+      timeToEscalation2: escalation.timeToEscalation2,
+      showingML2Timer: escalation.timeToEscalation1 > 0 && !escalation.canForceEliminate && isUserAdvancedPlayer,
+      showingML3Timer: escalation.canForceEliminate && escalation.timeToEscalation2 > 0 && !escalation.canReplace && !isUserAdvancedPlayer,
+      showingML2CTA: escalation.canForceEliminate && isUserAdvancedPlayer,
+      showingML3CTA: escalation.canReplace && !isUserAdvancedPlayer,
+      hasOnClaimReplacement: !!onClaimReplacement,
+    });
+  }
 
   // Get border class
   const borderClass = showEscalation
@@ -223,25 +321,47 @@ const MatchCard = ({
         </div>
       </div>
 
-      {/* Escalation countdown timers - show when match is stalled and timers are active */}
-      {showEscalation && match.matchStatus === 1 && escalation.isTimeout && !isUserMatch && (
-        <div className="mb-3 space-y-1">
-          {/* Timer until force eliminate (Escalation 2) */}
-          {escalation.timeToEscalation2 !== null && escalation.timeToEscalation2 > 0 && (
-            <div className="flex items-center justify-between text-xs bg-yellow-500/10 rounded px-2 py-1">
-              <span className="text-yellow-300/80">Force eliminate in:</span>
-              <span className="text-yellow-300 font-mono font-bold">
-                {formatEscalationTime(escalation.timeToEscalation2)}
-              </span>
+      {/* Escalation countdown timers - show only the next pending timer */}
+      {showEscalation && match.matchStatus === 1 && escalation.hasEscalation && !isUserMatch && (
+        <div className="mb-3">
+          {/* Show ML2 timer if it's pending (timeToEscalation1 = ML2 timer) - Advanced Players Only */}
+          {escalation.timeToEscalation1 !== null && escalation.timeToEscalation1 > 0 && !escalation.canForceEliminate && isUserAdvancedPlayer && (
+            <div className="relative bg-gradient-to-r from-yellow-500/20 to-orange-600/20 border border-yellow-400/50 rounded-lg p-3">
+              <div className="flex items-center justify-between pr-6">
+                <div className="flex items-center gap-2">
+                  <Clock className="text-yellow-400" size={16} />
+                  <span className="text-yellow-300 text-xs font-semibold">
+                    ML2: Force Eliminate in {formatEscalationTime(escalation.timeToEscalation1)}
+                  </span>
+                </div>
+              </div>
+              <a
+                href="#ml2"
+                className="absolute top-3 right-3 text-yellow-400 hover:text-yellow-300 transition-colors"
+                title="Learn more about force elimination"
+              >
+                <HelpCircle size={16} />
+              </a>
             </div>
           )}
-          {/* Timer until replace (Escalation 3) */}
-          {escalation.timeToEscalation3 !== null && escalation.timeToEscalation3 > 0 && (
-            <div className="flex items-center justify-between text-xs bg-red-500/10 rounded px-2 py-1">
-              <span className="text-red-300/80">Replace players in:</span>
-              <span className="text-red-300 font-mono font-bold">
-                {formatEscalationTime(escalation.timeToEscalation3)}
-              </span>
+          {/* Show ML3 timer if ML2 is active and ML3 is pending (timeToEscalation2 = ML3 timer) - Non-Advanced Players Only */}
+          {escalation.canForceEliminate && escalation.timeToEscalation2 !== null && escalation.timeToEscalation2 > 0 && !escalation.canReplace && !isUserAdvancedPlayer && (
+            <div className="relative bg-gradient-to-r from-red-500/20 to-red-600/20 border border-red-400/50 rounded-lg p-3">
+              <div className="flex items-center justify-between pr-6">
+                <div className="flex items-center gap-2">
+                  <Clock className="text-red-400" size={16} />
+                  <span className="text-red-300 text-xs font-semibold">
+                    ML3: Replace Players in {formatEscalationTime(escalation.timeToEscalation2)}
+                  </span>
+                </div>
+              </div>
+              <a
+                href="#ml3"
+                className="absolute top-3 right-3 text-red-400 hover:text-red-300 transition-colors"
+                title="Learn more about replacing players"
+              >
+                <HelpCircle size={16} />
+              </a>
             </div>
           )}
         </div>
@@ -301,8 +421,8 @@ const MatchCard = ({
         {/* Escalation CTAs for outsiders */}
         {showEscalation && !isUserMatch && match.matchStatus !== 2 && (
           <>
-            {/* Escalation 2: Force Eliminate */}
-            {escalation.canForceEliminate && onForceEliminate && (
+            {/* Escalation 2: Force Eliminate (Advanced Players Only) */}
+            {escalation.canForceEliminate && isUserAdvancedPlayer && onForceEliminate && (
               <div className="mt-2">
                 <button
                   onClick={() => onForceEliminate({
@@ -312,18 +432,22 @@ const MatchCard = ({
                     matchNumber: matchIdx
                   })}
                   disabled={loading}
-                  className="w-full bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-all transform hover:scale-105 disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="w-full bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 flex items-center justify-center gap-2 text-xs"
                 >
-                  Force Eliminate (Higher Rank)
+                  <Zap size={14} />
+                  {loading ? 'Eliminating...' : 'ML2: Force Eliminate Both'}
                 </button>
-                <p className="text-xs text-yellow-300 mt-1 text-center">
-                  Escalation 2: Eliminate both stalled players
-                </p>
+                <a
+                  href="#ml2"
+                  className="block w-full text-center text-yellow-300 hover:text-yellow-200 hover:bg-yellow-500/10 text-xs mt-2 py-2 px-4 rounded-lg border border-yellow-400/30 hover:border-yellow-400/50 transition-all"
+                >
+                  Learn more about ML2 (Force Eliminate)
+                </a>
               </div>
             )}
 
-            {/* Escalation 3: Replace Both Players */}
-            {escalation.canReplace && onClaimReplacement && (
+            {/* Escalation 3: Replace Both Players (Non-Advanced Players Only) */}
+            {escalation.canReplace && !isUserAdvancedPlayer && onClaimReplacement && (
               <div className="mt-2">
                 <button
                   onClick={() => onClaimReplacement({
@@ -333,13 +457,17 @@ const MatchCard = ({
                     matchNumber: matchIdx
                   })}
                   disabled={loading}
-                  className="w-full bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white font-bold py-2 px-4 rounded-lg transition-all transform hover:scale-105 disabled:opacity-50 animate-pulse flex items-center justify-center gap-2"
+                  className="w-full bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 flex items-center justify-center gap-2 text-xs"
                 >
-                  Claim Match & Replace Both
+                  <Users size={14} />
+                  {loading ? 'Claiming...' : 'ML3: Replace & Claim Match'}
                 </button>
-                <p className="text-xs text-red-300 mt-1 text-center">
-                  Escalation 3: Take this match slot and advance!
-                </p>
+                <a
+                  href="#ml3"
+                  className="block w-full text-center text-red-300 hover:text-red-200 hover:bg-red-500/10 text-xs mt-2 py-2 px-4 rounded-lg border border-red-400/30 hover:border-red-400/50 transition-all"
+                >
+                  Learn more about ML3 (Replace Players)
+                </a>
               </div>
             )}
           </>

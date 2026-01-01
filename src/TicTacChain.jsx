@@ -15,39 +15,42 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   Wallet, Grid, Clock, Shield, Lock, Eye, Code, ExternalLink,
-  Trophy, DollarSign, Zap, History,
-  CheckCircle, AlertCircle, ChevronDown, ArrowLeft
+  Trophy, Coins, Zap, History,
+  CheckCircle, AlertCircle, ChevronDown, ArrowLeft, HelpCircle
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import DUMMY_ABI from './TicTacChainABI.json';
 import { CURRENT_NETWORK, CONTRACT_ADDRESSES, getAddressUrl, getExplorerHomeUrl } from './config/networks';
 import { shortenAddress, formatTime as formatTimeHMS, getTierName, getEstimatedDuration, countInstancesByStatus } from './utils/formatters';
+import { parseTournamentParams } from './utils/urlHelpers';
 import { parseTicTacToeMatch } from './utils/matchDataParser';
 import { determineMatchResult } from './utils/matchCompletionHandler';
+import { fetchTierTimeoutConfig } from './utils/timeCalculations';
 import ParticleBackground from './components/shared/ParticleBackground';
 import MatchCard from './components/shared/MatchCard';
 import TournamentCard from './components/shared/TournamentCard';
 import WinnersLeaderboard from './components/shared/WinnersLeaderboard';
+import UserManual from './components/shared/UserManual';
 import MatchEndModal from './components/shared/MatchEndModal';
 import WhyArbitrum from './components/shared/WhyArbitrum';
 import GameMatchLayout from './components/shared/GameMatchLayout';
 import TournamentHeader from './components/shared/TournamentHeader';
+import PlayerActivity from './components/shared/PlayerActivity';
+import CommunityRaffleCard from './components/shared/CommunityRaffleCard';
+import { usePlayerActivity } from './hooks/usePlayerActivity';
 
 // TicTacToe particle symbols (matching landing page style)
 const TICTACTOE_SYMBOLS = ['✕', '○'];
 
 // Tournament Bracket Component
-const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceEliminate, onClaimReplacement, onManualStart, onEnroll, account, loading, syncDots, isEnrolled, entryFee, isFull }) => {
+const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceEliminate, onClaimReplacement, onManualStart, onClaimAbandonedPool, onResetEnrollmentWindow, onEnroll, account, loading, syncDots, isEnrolled, entryFee, isFull, contract }) => {
   const { tierId, instanceId, status, currentRound, enrolledCount, prizePool, rounds, playerCount, enrolledPlayers, firstEnrollmentTime, countdownActive, enrollmentTimeout } = tournamentData;
 
   // Calculate total rounds based on player count
   const totalRounds = Math.ceil(Math.log2(playerCount));
-
-  // Ref for active match scrolling
-  const activeMatchRef = useRef(null);
 
   // Countdown timer logic for enrollment
   const ENROLLMENT_DURATION = 1 * 60; // 1 minute in seconds (matches contract)
@@ -82,46 +85,10 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
   }, [firstEnrollmentTime, countdownActive, status]);
 
   const formatTime = (seconds) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
+    const minutes = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${hours}h ${minutes}m ${secs}s`;
+    return `${minutes}m ${secs}s`;
   };
-
-  // Auto-scroll to user's active match after every sync
-  useEffect(() => {
-    if (!account || !rounds || status !== 1) return;
-
-    // Find the user's active match that needs their attention
-    let userActiveMatch = null;
-
-    for (const round of rounds) {
-      for (const match of round.matches) {
-        const isUserPlayer =
-          match.player1?.toLowerCase() === account.toLowerCase() ||
-          match.player2?.toLowerCase() === account.toLowerCase();
-
-        const isMatchInProgress = match.matchStatus === 1;
-        const isUserTurn = match.currentTurn?.toLowerCase() === account.toLowerCase();
-
-        if (isUserPlayer && isMatchInProgress && isUserTurn) {
-          userActiveMatch = match;
-          break;
-        }
-      }
-      if (userActiveMatch) break;
-    }
-
-    // Scroll to the active match if found (happens after every sync)
-    if (userActiveMatch && activeMatchRef.current) {
-      setTimeout(() => {
-        activeMatchRef.current?.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center'
-        });
-      }, 300); // Small delay to ensure render is complete
-    }
-  }, [account, rounds, status, syncDots]); // Include syncDots to trigger on every sync
 
   // TicTacToe-specific options for match status display
   const matchStatusOptions = { doubleForfeitText: 'Eliminated - Double Forfeit' };
@@ -164,134 +131,16 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
                 </span>
               </div>
               <span className="text-orange-300 font-bold text-lg">
-                {countdownExpired ? '0h 0m 0s' : formatTime(timeRemaining)}
+                {countdownExpired ? '0m 0s' : formatTime(timeRemaining)}
               </span>
             </div>
-            {countdownExpired && (
-              <p className="text-orange-200 text-sm mt-2">
-                Enrolled players can force-start the tournament using the button below.
-              </p>
-            )}
           </div>
         ) : null}
-        renderEscalation={status === 0 && enrollmentTimeout ? () => {
-          const now = Math.floor(Date.now() / 1000);
-          const escalation1Start = Number(enrollmentTimeout.escalation1Start);
-          const escalation2Start = Number(enrollmentTimeout.escalation2Start);
-          const isEnrolledUser = account && enrolledPlayers?.some(addr => addr.toLowerCase() === account.toLowerCase());
-
-          const timeToEsc1 = escalation1Start > 0 ? Math.max(0, escalation1Start - now) : 0;
-          const timeToEsc2 = escalation2Start > 0 ? Math.max(0, escalation2Start - now) : 0;
-          const canForceStart = escalation1Start > 0 && now >= escalation1Start;
-          const canAnyoneStart = escalation2Start > 0 && now >= escalation2Start;
-
-          if (!(timeToEsc1 > 0 || timeToEsc2 > 0 || canForceStart || canAnyoneStart)) return null;
-
-          const prizePoolETH = ethers.formatEther(prizePool);
-
-          return (
-            <>
-              <div className="mt-4 bg-gradient-to-r from-orange-500/20 to-red-500/20 border border-orange-400/50 rounded-lg p-5">
-                <div className="flex items-center gap-2 mb-4">
-                  <AlertCircle className="text-orange-400" size={22} />
-                  <h4 className="text-orange-300 font-bold text-lg">Tournament Waiting Period</h4>
-                </div>
-
-                <div className="space-y-3">
-                  {/* Level 1: Early Start Option */}
-                  <div className={`p-4 rounded-lg ${canForceStart ? 'bg-orange-500/30 border-2 border-orange-400' : 'bg-black/30 border border-orange-400/30'}`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <Trophy className="text-orange-400" size={18} />
-                        <span className={`font-bold ${canForceStart ? 'text-orange-200' : 'text-orange-300/70'}`}>
-                          Start Tournament Early
-                        </span>
-                      </div>
-                      {timeToEsc1 > 0 ? (
-                        <span className="text-orange-300 font-mono text-sm bg-black/30 px-2 py-1 rounded">{formatTime(timeToEsc1)}</span>
-                      ) : (
-                        <span className="text-orange-200 font-bold text-xs bg-orange-500/50 px-3 py-1 rounded-full">AVAILABLE NOW</span>
-                      )}
-                    </div>
-                    <p className={`text-sm ${canForceStart ? 'text-orange-100' : 'text-orange-200/70'} leading-relaxed`}>
-                      {canForceStart ? (
-                        <>
-                          <span className="font-semibold">You can start now!</span> Any enrolled player can begin the tournament with the current {enrolledCount} player{enrolledCount !== 1 ? 's' : ''} and prize pool of {prizePoolETH} ETH.
-                        </>
-                      ) : (
-                        <>
-                          In {formatTime(timeToEsc1)}, enrolled players can start the tournament early with the current {enrolledCount} player{enrolledCount !== 1 ? 's' : ''} instead of waiting for more.
-                        </>
-                      )}
-                    </p>
-                  </div>
-
-                  {/* Level 2: Abandonment Warning */}
-                  <div className={`p-4 rounded-lg ${canAnyoneStart ? 'bg-red-500/30 border-2 border-red-400' : 'bg-black/30 border border-red-400/30'}`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <AlertCircle className="text-red-400" size={18} />
-                        <span className={`font-bold ${canAnyoneStart ? 'text-red-200' : 'text-red-300/70'}`}>
-                          Abandonment Risk
-                        </span>
-                      </div>
-                      {timeToEsc2 > 0 ? (
-                        <span className="text-red-300 font-mono text-sm bg-black/30 px-2 py-1 rounded">{formatTime(timeToEsc2)}</span>
-                      ) : canAnyoneStart ? (
-                        <span className="text-red-200 font-bold text-xs bg-red-500/50 px-3 py-1 rounded-full">CRITICAL</span>
-                      ) : (
-                        <span className="text-red-300/50 text-xs">After Level 1</span>
-                      )}
-                    </div>
-                    <p className={`text-sm ${canAnyoneStart ? 'text-red-100' : 'text-red-200/70'} leading-relaxed`}>
-                      {canAnyoneStart ? (
-                        <>
-                          <span className="font-semibold">⚠️ Critical:</span> Anyone (even non-enrolled players) can now terminate this tournament and claim the entire {prizePoolETH} ETH prize pool. <span className="font-semibold text-red-200">All enrolled players will lose their entry fees!</span>
-                        </>
-                      ) : (
-                        <>
-                          If the tournament remains inactive for too long, anyone can terminate it and claim the entire {prizePoolETH} ETH pool. Enrolled players would lose their entry fees.
-                        </>
-                      )}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {canForceStart && isEnrolledUser && (
-                <div className="mt-4">
-                  <button
-                    onClick={() => onManualStart(tierId, instanceId)}
-                    disabled={loading}
-                    className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-4 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 shadow-lg"
-                  >
-                    <Trophy size={20} />
-                    {loading ? 'Starting Tournament...' : `Start Tournament Now with ${enrolledCount} Players`}
-                  </button>
-                  <p className="text-orange-200 text-sm text-center mt-2 font-medium">
-                    Begin playing immediately with current participants
-                  </p>
-                </div>
-              )}
-
-              {canAnyoneStart && !isEnrolledUser && (
-                <div className="mt-4">
-                  <button
-                    onClick={() => onManualStart(tierId, instanceId)}
-                    disabled={loading}
-                    className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold py-4 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 shadow-lg"
-                  >
-                    <DollarSign size={20} />
-                    {loading ? 'Claiming Pool...' : `Claim Abandoned Pool (${prizePoolETH} ETH)`}
-                  </button>
-                  <p className="text-red-200 text-sm text-center mt-2 font-medium">
-                    Terminate the inactive tournament and receive the prize pool
-                  </p>
-                </div>
-              )}
-            </>
-          );
-        } : null}
+        enrollmentTimeout={enrollmentTimeout}
+        onManualStart={onManualStart}
+        onClaimAbandonedPool={onClaimAbandonedPool}
+        onResetEnrollmentWindow={onResetEnrollmentWindow}
+        contract={contract}
       />
 
       {/* Bracket View */}
@@ -312,18 +161,9 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {round.matches.map((match, matchIdx) => {
-                  // Check if this is the user's active match that needs their turn
-                  const isUserPlayer =
-                    match.player1?.toLowerCase() === account?.toLowerCase() ||
-                    match.player2?.toLowerCase() === account?.toLowerCase();
-                  const isMatchInProgress = match.matchStatus === 1;
-                  const isUserTurn = match.currentTurn?.toLowerCase() === account?.toLowerCase();
-                  const shouldHighlight = isUserPlayer && isMatchInProgress && isUserTurn;
-
                   return (
                     <div
                       key={matchIdx}
-                      ref={shouldHighlight ? activeMatchRef : null}
                     >
                       <MatchCard
                         match={match}
@@ -339,6 +179,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
                         matchStatusOptions={matchStatusOptions}
                         showEscalation={true}
                         showThisIsYou={true}
+                        tournamentRounds={rounds}
                       />
                     </div>
                   );
@@ -378,6 +219,24 @@ export default function TicTacChain() {
   const [account, setAccount] = useState(null);
   const [contract, setContract] = useState(null); // This contract has signer for write ops
 
+  // Raffle Info State
+  const [raffleInfo, setRaffleInfo] = useState({
+    raffleIndex: 0n,
+    isReady: false,
+    currentAccumulated: 0n,
+    threshold: 0n,
+    reserve: 0n,
+    raffleAmount: 0n,
+    ownerShare: 0n,
+    winnerShare: 0n,
+    eligiblePlayerCount: 0n
+  });
+
+  // Time Configuration from Contract
+  const [matchTimePerPlayer, setMatchTimePerPlayer] = useState(300); // Default 5 minutes
+  const [timeIncrement, setTimeIncrement] = useState(0); // Default no increment
+  const [escalationInterval, setEscalationInterval] = useState(60); // Default 60 seconds between escalations
+
   // Loading State
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -394,6 +253,12 @@ export default function TicTacChain() {
   const [viewingTournament, setViewingTournament] = useState(null); // { tierId, instanceId, tournamentData, bracketData }
   const [bracketSyncDots, setBracketSyncDots] = useState(1);
   const [expandedTiers, setExpandedTiers] = useState({});
+  const [visibleInstancesCount, setVisibleInstancesCount] = useState({}); // { [tierId]: number } - tracks how many instances to show per tier
+
+  // URL Parameters State for shareable tournament links
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [urlTournamentParams, setUrlTournamentParams] = useState(null);
+  const [hasProcessedUrlParams, setHasProcessedUrlParams] = useState(false);
 
   // Match State
   const [currentMatch, setCurrentMatch] = useState(null);
@@ -405,6 +270,8 @@ export default function TicTacChain() {
   const [matchEndWinner, setMatchEndWinner] = useState(null); // Winner address for modal display
   const [matchEndLoser, setMatchEndLoser] = useState(null); // Loser address for modal display
   const previousBoardRef = useRef(null); // Track previous board state for move history sync
+  const tournamentBracketRef = useRef(null); // Ref for auto-scrolling to tournament after URL navigation
+  const matchViewRef = useRef(null); // Ref for auto-scrolling to match view
 
   // Leaderboard State
   const [leaderboard, setLeaderboard] = useState([]);
@@ -413,6 +280,18 @@ export default function TicTacChain() {
   // Connection Error State
   const [connectionError, setConnectionError] = useState(null); // null = no error, string = error message
   const [leaderboardError, setLeaderboardError] = useState(false);
+
+  // Player Activity Hook
+  const playerActivity = usePlayerActivity(contract, account, 'tictactoe');
+
+  // Player Activity Height State (for positioning CommunityRaffleCard)
+  const [playerActivityHeight, setPlayerActivityHeight] = useState(0);
+
+  // Player Activity Collapse Function Ref
+  const collapseActivityPanelRef = useRef(null);
+
+  // Raffle Syncing State
+  const [raffleSyncing, setRaffleSyncing] = useState(false);
 
   // Set page title
   useEffect(() => {
@@ -431,6 +310,68 @@ export default function TicTacChain() {
       document.body.appendChild(script);
     }
   }, []);
+
+  // Parse URL parameters on initial load (for shareable tournament links)
+  useEffect(() => {
+    if (hasProcessedUrlParams) return;
+
+    const params = parseTournamentParams(searchParams);
+
+    if (params) {
+      const { tierId, instanceId } = params;
+      // Validate tier/instance are reasonable (0-6 for tiers, 0+ for instances)
+      if (tierId >= 0 && tierId <= 6 && instanceId >= 0) {
+        setUrlTournamentParams({ tierId, instanceId });
+      } else {
+        // Invalid params, clear them
+        setSearchParams({});
+      }
+    }
+
+    setHasProcessedUrlParams(true);
+  }, [searchParams, hasProcessedUrlParams, setSearchParams]);
+
+  // Auto-navigate to tournament if URL params present and wallet connected
+  useEffect(() => {
+    if (!urlTournamentParams || !account || !contract || viewingTournament) return;
+
+    const autoNavigate = async () => {
+      const { tierId, instanceId } = urlTournamentParams;
+
+      try {
+        setTournamentsLoading(true);
+        const bracketData = await refreshTournamentBracket(contract, tierId, instanceId, matchTimePerPlayer);
+
+        if (bracketData) {
+          setViewingTournament(bracketData);
+          // Clear URL params after successful navigation
+          setSearchParams({});
+
+          // Auto-scroll to tournament bracket after a brief delay for rendering
+          setTimeout(() => {
+            if (tournamentBracketRef.current) {
+              tournamentBracketRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          }, 100);
+        } else {
+          // Tournament not found, clear params
+          setSearchParams({});
+          alert(`Tournament T${tierId + 1}-I${instanceId + 1} not found or not accessible.`);
+        }
+      } catch (err) {
+        console.error('Failed to load tournament from URL:', err);
+        setSearchParams({});
+        alert('Failed to load tournament. It may not exist yet.');
+      } finally {
+        setTournamentsLoading(false);
+      }
+
+      // Clear the params state so we don't retry
+      setUrlTournamentParams(null);
+    };
+
+    autoNavigate();
+  }, [urlTournamentParams, account, contract, viewingTournament, matchTimePerPlayer, setSearchParams]);
 
 
   // Theme colors (single theme - classic blue/cyan)
@@ -580,6 +521,7 @@ export default function TicTacChain() {
     }
   };
 
+
   // Load contract data (simplified - matches ConnectFour pattern)
   // Uses lazy loading: only fetch tier metadata initially, instances load on expand
   const loadContractData = async (contractInstance, isInitialLoad = false) => {
@@ -632,18 +574,55 @@ export default function TicTacChain() {
     }
   }, [getReadOnlyContract]);
 
+  // Fetch raffle information from contract
+  const fetchRaffleInfo = useCallback(async () => {
+    try {
+      setRaffleSyncing(true);
+      const readContract = getReadOnlyContract();
+
+      const [raffleIndex, isReady, currentAccumulated, threshold, reserve, raffleAmount, ownerShare, winnerShare, eligiblePlayerCount] =
+        await readContract.getRaffleInfo();
+
+      setRaffleInfo({
+        raffleIndex,
+        isReady,
+        currentAccumulated,
+        threshold,
+        reserve,
+        raffleAmount,
+        ownerShare,
+        winnerShare,
+        eligiblePlayerCount
+      });
+
+      console.log('Raffle Info:', {
+        raffleIndex: raffleIndex.toString(),
+        isReady,
+        currentAccumulated: ethers.formatEther(currentAccumulated),
+        threshold: ethers.formatEther(threshold),
+        reserve: ethers.formatEther(reserve),
+        raffleAmount: ethers.formatEther(raffleAmount),
+        eligiblePlayerCount: eligiblePlayerCount.toString()
+      });
+    } catch (error) {
+      console.error('Error fetching raffle info:', error);
+      // Keep previous state on error
+    } finally {
+      setRaffleSyncing(false);
+    }
+  }, [getReadOnlyContract]);
   // LAZY LOADING: Fetch tier metadata only (fast initial load)
   // This gets basic tier info without detailed instance data
-  const fetchTierMetadata = useCallback(async (contractInstance = null) => {
+  const fetchTierMetadata = useCallback(async (contractInstance = null, silentUpdate = false) => {
     const readContract = contractInstance || getReadOnlyContract();
     if (!readContract) {
       setConnectionError('Unable to connect to blockchain. Please check your network connection.');
-      setMetadataLoading(false);
+      if (!silentUpdate) setMetadataLoading(false);
       return;
     }
 
-    setMetadataLoading(true);
-    setConnectionError(null); // Clear any previous error
+    if (!silentUpdate) setMetadataLoading(true);
+    if (!silentUpdate) setConnectionError(null); // Clear any previous error
     const metadata = {};
     let successfulFetches = 0;
     let totalAttempts = 0;
@@ -678,21 +657,21 @@ export default function TicTacChain() {
 
     // If no fetches succeeded, we have a connection problem
     if (successfulFetches === 0 && totalAttempts > 0) {
-      setConnectionError('Unable to load tournament data. Please check your connection and try again.');
+      if (!silentUpdate) setConnectionError('Unable to load tournament data. Please check your connection and try again.');
     }
 
     setTierMetadata(metadata);
-    setMetadataLoading(false);
+    if (!silentUpdate) setMetadataLoading(false);
   }, [getReadOnlyContract]);
 
   // LAZY LOADING: Fetch detailed instances for a specific tier (called on expand)
   // Note: Uses functional state updates to avoid dependency on tierInstances/tierMetadata
-  const fetchTierInstances = useCallback(async (tierId, contractInstance = null, userAccount = null, metadataOverride = null) => {
+  const fetchTierInstances = useCallback(async (tierId, contractInstance = null, userAccount = null, metadataOverride = null, silentUpdate = false) => {
     const readContract = contractInstance || getReadOnlyContract();
     const currentAccount = userAccount ?? account;
     if (!readContract) return;
 
-    setTierLoading(prev => ({ ...prev, [tierId]: true }));
+    if (!silentUpdate) setTierLoading(prev => ({ ...prev, [tierId]: true }));
 
     try {
       // Get metadata from override or fetch fresh
@@ -713,7 +692,7 @@ export default function TicTacChain() {
       }
 
       if (!metadata || metadata.instanceCount === 0) {
-        setTierLoading(prev => ({ ...prev, [tierId]: false }));
+        if (!silentUpdate) setTierLoading(prev => ({ ...prev, [tierId]: false }));
         return;
       }
 
@@ -728,6 +707,9 @@ export default function TicTacChain() {
             currentAccount ? readContract.isEnrolled(tierId, i, currentAccount).catch(() => false) : Promise.resolve(false)
           ]);
 
+          // Calculate prize pool (enrolled count * entry fee * 0.9 to account for 10% network fee)
+          const prizePoolETH = (metadata.enrolledCounts[i] * parseFloat(metadata.entryFee) * 0.9).toFixed(4);
+
           instances.push({
             tierId,
             instanceId: i,
@@ -735,6 +717,7 @@ export default function TicTacChain() {
             enrolledCount: metadata.enrolledCounts[i],
             maxPlayers: metadata.playerCount,
             entryFee: metadata.entryFee,
+            prizePool: prizePoolETH,
             isEnrolled: isUserEnrolled,
             enrollmentTimeout: tournamentInfo.enrollmentTimeout,
             hasStartedViaTimeout: tournamentInfo.hasStartedViaTimeout,
@@ -745,13 +728,124 @@ export default function TicTacChain() {
         }
       }
 
+      // Sort instances by priority
+      // 1. In progress (status 1) + enrolled
+      // 2. Enrolling (status 0) + enrolled
+      // 3. Enrolling (status 0) + not enrolled + has players
+      // 4. Enrolling (status 0) + not enrolled + empty
+      // 5. In progress (status 1) + not enrolled
+      // 6. Everything else (completed, etc.)
+      const getSortPriority = (instance) => {
+        const { tournamentStatus, isEnrolled, enrolledCount } = instance;
+
+        if (tournamentStatus === 1 && isEnrolled) return 1;
+        if (tournamentStatus === 0 && isEnrolled) return 2;
+        if (tournamentStatus === 0 && !isEnrolled && enrolledCount > 0) return 3;
+        if (tournamentStatus === 0 && !isEnrolled && enrolledCount === 0) return 4;
+        if (tournamentStatus === 1 && !isEnrolled) return 5;
+        return 6; // Completed tournaments and others
+      };
+
+      instances.sort((a, b) => getSortPriority(a) - getSortPriority(b));
+
       setTierInstances(prev => ({ ...prev, [tierId]: instances }));
     } catch (error) {
       console.error(`Error fetching tier ${tierId} instances:`, error);
     }
 
-    setTierLoading(prev => ({ ...prev, [tierId]: false }));
+    if (!silentUpdate) setTierLoading(prev => ({ ...prev, [tierId]: false }));
   }, [getReadOnlyContract, account]);
+
+  // Execute protocol raffle (state-modifying transaction)
+  const executeRaffle = useCallback(async () => {
+    if (!contract || !account) {
+      alert('Please connect your wallet first');
+      return;
+    }
+
+    try {
+      setRaffleSyncing(true);
+
+      const tx = await contract.executeProtocolRaffle();
+      console.log('Raffle transaction submitted:', tx.hash);
+      alert('Raffle transaction submitted! Waiting for confirmation...');
+
+      const receipt = await tx.wait();
+      console.log('Raffle transaction confirmed:', receipt);
+
+      // Parse event logs for winner info
+      let winner = null;
+      let winnerAmount = null;
+      let ownerAmount = null;
+
+      for (const log of receipt.logs) {
+        try {
+          const parsedLog = contract.interface.parseLog({
+            topics: log.topics,
+            data: log.data
+          });
+
+          if (parsedLog.name === 'ProtocolRaffleExecuted') {
+            winner = parsedLog.args.winner;
+            winnerAmount = parsedLog.args.winnerShare;
+            ownerAmount = parsedLog.args.ownerShare;
+            break;
+          }
+        } catch (e) {
+          // Not the event we're looking for
+        }
+      }
+
+      // Show success message
+      if (winner) {
+        const winnerETH = ethers.formatEther(winnerAmount);
+        const ownerETH = ethers.formatEther(ownerAmount);
+        const isYouWinner = winner.toLowerCase() === account.toLowerCase();
+
+        alert(
+          `Raffle Complete!\n\n` +
+          `Winner: ${isYouWinner ? 'YOU!' : shortenAddress(winner)}\n` +
+          `Winner Prize: ${winnerETH} ETH\n` +
+          `Owner Share: ${ownerETH} ETH`
+        );
+      } else {
+        alert('Raffle executed successfully!');
+      }
+
+      // Refresh data
+      await fetchRaffleInfo();
+
+      // Refresh tournament instances
+      if (expandedTiers) {
+        const expandedTierIds = Object.keys(expandedTiers)
+          .filter(id => expandedTiers[id])
+          .map(id => parseInt(id));
+
+        for (const tierId of expandedTierIds) {
+          await fetchTierInstances(tierId, null, null, null, true);
+        }
+      }
+
+    } catch (error) {
+      console.error('Error executing raffle:', error);
+
+      let errorMessage = error.message || 'Unknown error';
+
+      if (error.message?.includes('InsufficientThreshold')) {
+        errorMessage = 'Raffle threshold not reached yet';
+      } else if (error.message?.includes('NotEligible')) {
+        errorMessage = 'You must be enrolled in at least one tournament to trigger the raffle';
+      } else if (error.message?.includes('NoEligiblePlayers')) {
+        errorMessage = 'No eligible players for raffle';
+      } else if (error.message?.includes('user rejected')) {
+        errorMessage = 'Transaction cancelled';
+      }
+
+      alert(`Raffle execution failed: ${errorMessage}`);
+    } finally {
+      setRaffleSyncing(false);
+    }
+  }, [contract, account, fetchRaffleInfo, expandedTiers, fetchTierInstances]);
 
   // Refs to access current state without causing dependency loops
   const expandedTiersRef = useRef(expandedTiers);
@@ -767,11 +861,24 @@ export default function TicTacChain() {
     // If expanding and not yet loaded, fetch instances
     if (!isCurrentlyExpanded && !alreadyLoaded) {
       setExpandedTiers(prev => ({ ...prev, [tierId]: true }));
+      setVisibleInstancesCount(prev => ({ ...prev, [tierId]: 4 })); // Initialize to show 4 instances
       await fetchTierInstances(tierId);
     } else {
       setExpandedTiers(prev => ({ ...prev, [tierId]: !prev[tierId] }));
+      if (!isCurrentlyExpanded) {
+        // When expanding an already loaded tier, ensure visible count is set
+        setVisibleInstancesCount(prev => ({ ...prev, [tierId]: prev[tierId] || 4 }));
+      }
     }
   }, [fetchTierInstances]);
+
+  // Show more instances for a tier
+  const showMoreInstances = useCallback((tierId) => {
+    setVisibleInstancesCount(prev => ({
+      ...prev,
+      [tierId]: (prev[tierId] || 4) + 4
+    }));
+  }, []);
 
   // LAZY LOADING: Refresh data after an action (enroll, claim, etc.)
   // Refreshes metadata and re-fetches instances for expanded/affected tiers
@@ -827,7 +934,7 @@ export default function TicTacChain() {
       alert('Successfully enrolled in tournament!');
 
       // Navigate to tournament bracket view
-      const bracketData = await refreshTournamentBracket(contract, tierId, instanceId);
+      const bracketData = await refreshTournamentBracket(contract, tierId, instanceId, matchTimePerPlayer);
       if (bracketData) {
         setViewingTournament(bracketData);
       }
@@ -856,7 +963,7 @@ export default function TicTacChain() {
       // First check if this instance exists
       const instanceCount = Number(await contract.INSTANCE_COUNTS(tierId));
       if (instanceId >= instanceCount) {
-        alert(`Invalid instance ID. Tier ${tierId} only has ${instanceCount} instances (0-${instanceCount-1})`);
+        alert(`Invalid instance ID. Tier ${tierId + 1} only has ${instanceCount} instances (1-${instanceCount})`);
         setTournamentsLoading(false);
         return;
       }
@@ -964,7 +1071,7 @@ export default function TicTacChain() {
       console.error('Error force-starting tournament:', error);
       let errorMessage = error.message;
       if (error.message.includes('ARRAY_RANGE_ERROR')) {
-        errorMessage = `Tournament cannot be started. This may be due to:\n- Invalid tier ID (${tierId}) or instance ID (${instanceId})\n- Tournament already started\n- Contract state issue\n\nCheck console for full error details.`;
+        errorMessage = `Tournament cannot be started. This may be due to:\n- Invalid tier ID (${tierId + 1}) or instance ID (${instanceId + 1})\n- Tournament already started\n- Contract state issue\n\nCheck console for full error details.`;
       } else if (error.message.includes('TimeoutNotReached')) {
         errorMessage = 'Enrollment timeout window has not been reached yet';
       } else if (error.message.includes('NotEnrolled')) {
@@ -981,6 +1088,64 @@ export default function TicTacChain() {
       setTournamentsLoading(false);
     }
   };
+
+  // Handle resetting enrollment window (EL1*)
+  const handleResetEnrollmentWindow = useCallback(async (tierId, instanceId) => {
+    if (!contract || !account) {
+      alert('Please connect your wallet first');
+      return;
+    }
+
+    try {
+      setTournamentsLoading(true);
+
+      // Confirm action with user
+      const confirmed = window.confirm(
+        `Reset Enrollment Window\n\n` +
+        `This will restart the enrollment period for this tournament, ` +
+        `allowing new players to join.\n\n` +
+        `Continue?`
+      );
+
+      if (!confirmed) {
+        setTournamentsLoading(false);
+        return;
+      }
+
+      // Call contract function
+      const tx = await contract.resetEnrollmentWindow(tierId, instanceId);
+      console.log('Reset enrollment window transaction submitted:', tx.hash);
+      alert('Transaction submitted! Waiting for confirmation...');
+
+      const receipt = await tx.wait();
+      console.log('Reset enrollment window confirmed:', receipt);
+
+      alert('Enrollment window has been reset successfully! New players can now join.');
+
+      // Refresh tournament data
+      await fetchTierInstances(tierId, null, null, null, true);
+
+      setTournamentsLoading(false);
+    } catch (error) {
+      console.error('Error resetting enrollment window:', error);
+
+      let errorMessage = error.message || 'Unknown error';
+
+      // Parse common error messages
+      if (error.message?.includes('NotSoloEnrolled')) {
+        errorMessage = 'Only solo enrolled players can reset the enrollment window';
+      } else if (error.message?.includes('EnrollmentNotExpired')) {
+        errorMessage = 'Enrollment window has not expired yet';
+      } else if (error.message?.includes('TournamentNotInEnrollment')) {
+        errorMessage = 'Tournament is no longer in enrollment phase';
+      } else if (error.message?.includes('user rejected')) {
+        errorMessage = 'Transaction cancelled';
+      }
+
+      alert(`Failed to reset enrollment window: ${errorMessage}`);
+      setTournamentsLoading(false);
+    }
+  }, [contract, account, fetchTierInstances]);
 
   // Handle claiming abandoned enrollment pool
   const handleClaimAbandonedPool = async (tierId, instanceId) => {
@@ -1013,10 +1178,10 @@ export default function TicTacChain() {
         }
 
         const confirmClaim = window.confirm(
-          `Claim the entire tournament pool (Escalation 2 - Abandoned Tournament)?\n\n` +
+          `Claim the abandoned enrollment pool (Escalation 2)?\n\n` +
           `This tournament has ${enrolledCount} enrolled player${enrolledCount !== 1 ? 's' : ''} but failed to start in time.\n` +
           `You will receive the entire enrollment pool${forfeitPool > 0n ? ` plus ${ethers.formatEther(forfeitPool)} ETH in forfeited fees` : ''}.\n\n` +
-          `The tournament will be reset after claiming.`
+          `The tournament will be terminated and reset.`
         );
 
         if (!confirmClaim) {
@@ -1075,7 +1240,7 @@ export default function TicTacChain() {
   };
 
   // Refresh tournament bracket data
-  const refreshTournamentBracket = useCallback(async (contractInstance, tierId, instanceId) => {
+  const refreshTournamentBracket = useCallback(async (contractInstance, tierId, instanceId, totalMatchTime) => {
     try {
       // Get tournament info
       const tournamentInfo = await contractInstance.getTournamentInfo(tierId, instanceId);
@@ -1088,6 +1253,9 @@ export default function TicTacChain() {
       const tierConfig = await contractInstance.tierConfigs(tierId);
       const playerCount = Number(tierConfig.playerCount);
       const entryFee = tierConfig.entryFee;
+
+      // Extract timeout config using shared utility function
+      const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, tierId, totalMatchTime);
 
       // Get enrolled players
       const enrolledPlayers = await contractInstance.getEnrolledPlayers(tierId, instanceId);
@@ -1105,6 +1273,9 @@ export default function TicTacChain() {
         console.log('Could not fetch countdown data:', err);
       }
 
+      // Use per-tier timeout config (fetched above), fallback to parameter if not available
+      const tierMatchTime = timeoutConfig?.matchTimePerPlayer ?? totalMatchTime;
+
       // Calculate total rounds
       const totalRounds = Math.ceil(Math.log2(playerCount));
 
@@ -1120,28 +1291,71 @@ export default function TicTacChain() {
             const matchData = await contractInstance.getMatch(tierId, instanceId, roundNum, matchNum);
             const parsedMatch = parseTicTacToeMatch(matchData);
 
-            // Fetch escalation state from matches mapping
-            const matchKey = ethers.keccak256(ethers.AbiCoder.defaultAbiCoder().encode(
-              ['uint8', 'uint8', 'uint8', 'uint8'],
-              [tierId, instanceId, roundNum, matchNum]
-            ));
-            const matchesData = await contractInstance.matches(matchKey);
+            // Use per-tier match time from contract config
+            let player1TimeRemaining = tierMatchTime;
+            let player2TimeRemaining = tierMatchTime;
 
-            const timeoutState = {
-              escalation1Start: Number(matchesData.timeoutState.escalation1Start),
-              escalation2Start: Number(matchesData.timeoutState.escalation2Start),
-              escalation3Start: Number(matchesData.timeoutState.escalation3Start),
-              activeEscalation: Number(matchesData.timeoutState.activeEscalation),
-              timeoutActive: matchesData.timeoutState.timeoutActive,
-              forfeitAmount: matchesData.timeoutState.forfeitAmount
-            };
+            try {
+              const timeData = await contractInstance.getCurrentTimeRemaining(tierId, instanceId, roundNum, matchNum);
+              player1TimeRemaining = Number(timeData[0]);
+              player2TimeRemaining = Number(timeData[1]);
+            } catch (timeErr) {
+              console.warn(`Could not fetch time for match ${matchNum}:`, timeErr);
+            }
+
+            // Fetch escalation state using matchTimeouts function
+            let timeoutState = null;
+            try {
+              const matchKey = ethers.keccak256(ethers.AbiCoder.defaultAbiCoder().encode(
+                ['uint8', 'uint8', 'uint8', 'uint8'],
+                [tierId, instanceId, roundNum, matchNum]
+              ));
+              const timeoutData = await contractInstance.matchTimeouts(matchKey);
+
+              // Only set timeoutState if there's actual escalation data
+              // (contract returns all 0s for matches without timeouts)
+              const esc1Start = Number(timeoutData.escalation1Start);
+              const esc2Start = Number(timeoutData.escalation2Start);
+              const hasTimeoutData = esc1Start > 0 || esc2Start > 0 || timeoutData.isStalled;
+
+              if (hasTimeoutData) {
+                timeoutState = {
+                  escalation1Start: esc1Start,
+                  escalation2Start: esc2Start,
+                  activeEscalation: Number(timeoutData.activeEscalation),
+                  timeoutActive: timeoutData.isStalled,
+                  forfeitAmount: 0 // Not provided by matchTimeouts
+                };
+              }
+            } catch (escalationErr) {
+              // Match may not have timeout state yet - this is normal for active matches
+              console.debug('No escalation state for match (normal for non-stalled matches):', escalationErr.message);
+            }
+
+            // Check escalation availability using contract functions (more reliable than client calculation)
+            let escL2Available = false;
+            let escL3Available = false;
+            try {
+              escL2Available = await contractInstance.isMatchEscL2Available(tierId, instanceId, roundNum, matchNum);
+              escL3Available = await contractInstance.isMatchEscL3Available(tierId, instanceId, roundNum, matchNum);
+            } catch (escCheckErr) {
+              console.debug('Could not check escalation availability:', escCheckErr.message);
+            }
 
             matches.push({
               ...parsedMatch,
-              timeoutState
+              timeoutState,
+              // Override with contract's real-time values
+              player1TimeRemaining,
+              player2TimeRemaining,
+              matchTimePerPlayer: tierMatchTime, // Pass through per-tier value for UI
+              timeoutConfig, // Add tier timeout config for escalation calculations
+              escL2Available, // Contract says Level 2 is available
+              escL3Available  // Contract says Level 3 is available
             });
           } catch (err) {
             // Match might not exist yet - create placeholder with all required fields
+            console.warn(`Match ${matchNum} not yet initialized`);
             const zeroAddress = '0x0000000000000000000000000000000000000000';
             matches.push({
               player1: zeroAddress,
@@ -1154,7 +1368,13 @@ export default function TicTacChain() {
               isDraw: false,
               startTime: 0,
               lastMoveTime: 0,
-              timeoutState: null
+              timeoutState: null,
+              player1TimeRemaining: tierMatchTime,
+              player2TimeRemaining: tierMatchTime,
+              matchTimePerPlayer: tierMatchTime,
+              timeoutConfig, // Add tier timeout config for placeholder matches too
+              escL2Available: false, // Placeholder: no escalations available
+              escL3Available: false  // Placeholder: no escalations available
             });
           }
         }
@@ -1175,13 +1395,14 @@ export default function TicTacChain() {
         rounds,
         firstEnrollmentTime,
         countdownActive,
-        enrollmentTimeout
+        enrollmentTimeout,
+        timeoutConfig // Add tier timeout configuration
       };
     } catch (error) {
       console.error('Error refreshing tournament bracket:', error);
       return null;
     }
-  }, []);
+  }, [escalationInterval]);
 
   // Handle entering tournament (fetch and display bracket)
   const handleEnterTournament = async (tierId, instanceId) => {
@@ -1190,9 +1411,20 @@ export default function TicTacChain() {
     try {
       setTournamentsLoading(true);
 
-      const bracketData = await refreshTournamentBracket(contract, tierId, instanceId);
+      const bracketData = await refreshTournamentBracket(contract, tierId, instanceId, matchTimePerPlayer);
       if (bracketData) {
         setViewingTournament(bracketData);
+
+        // Scroll to tournament bracket after rendering
+        setTimeout(() => {
+          if (tournamentBracketRef.current) {
+            tournamentBracketRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+          // Collapse activity panel after scrolling
+          if (collapseActivityPanelRef.current) {
+            collapseActivityPanelRef.current();
+          }
+        }, 100);
       }
 
       setTournamentsLoading(false);
@@ -1266,13 +1498,20 @@ export default function TicTacChain() {
   }, []);
 
   // Refresh match data from contract
-  const refreshMatchData = useCallback(async (contractInstance, userAccount, matchInfo) => {
+  const refreshMatchData = useCallback(async (contractInstance, userAccount, matchInfo, totalMatchTime) => {
     try {
       const { tierId, instanceId, roundNumber, matchNumber } = matchInfo;
       const matchData = await contractInstance.getMatch(tierId, instanceId, roundNumber, matchNumber);
       const parsedMatch = parseTicTacToeMatch(matchData);
 
-      const { player1, player2, currentTurn, winner, loser, board, matchStatus, isDraw, startTime, lastMoveTime, lastMovedCell } = parsedMatch;
+      // Fetch per-tier timeout config to get correct match time
+      const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, tierId, totalMatchTime);
+      const tierMatchTime = timeoutConfig?.matchTimePerPlayer ?? totalMatchTime;
+
+      const {
+        player1, player2, currentTurn, winner, loser, board, matchStatus, isDraw,
+        startTime, lastMoveTime, lastMovedCell, lastMoveTimestamp
+      } = parsedMatch;
 
       const zeroAddress = '0x0000000000000000000000000000000000000000';
       const isMatchInitialized =
@@ -1287,25 +1526,47 @@ export default function TicTacChain() {
         actualPlayer2 = matchInfo.player2;
       }
 
-      // Fetch timeout state from matches mapping
-      const matchKey = ethers.keccak256(ethers.AbiCoder.defaultAbiCoder().encode(
-        ['uint8', 'uint8', 'uint8', 'uint8'],
-        [tierId, instanceId, roundNumber, matchNumber]
-      ));
-      const matchesData = await contractInstance.matches(matchKey);
+      // Use per-tier match time from contract config
+      let player1TimeRemaining = tierMatchTime;
+      let player2TimeRemaining = tierMatchTime;
 
-      const timeoutState = {
-        escalation1Start: Number(matchesData.timeoutState.escalation1Start),
-        escalation2Start: Number(matchesData.timeoutState.escalation2Start),
-        escalation3Start: Number(matchesData.timeoutState.escalation3Start),
-        activeEscalation: Number(matchesData.timeoutState.activeEscalation),
-        timeoutActive: matchesData.timeoutState.timeoutActive,
-        forfeitAmount: matchesData.timeoutState.forfeitAmount
-      };
+      try {
+        const timeData = await contractInstance.getCurrentTimeRemaining(tierId, instanceId, roundNumber, matchNumber);
+        player1TimeRemaining = Number(timeData[0]); // player1Time from contract
+        player2TimeRemaining = Number(timeData[1]); // player2Time from contract
+      } catch (timeErr) {
+        // Using default values (match may not be initialized)
+      }
 
-      const isTimedOut = matchesData.isTimedOut;
-      const timeoutClaimant = matchesData.timeoutClaimant;
-      const timeoutClaimReward = matchesData.timeoutClaimReward;
+      // Fetch escalation state using matchTimeouts function
+      let timeoutState = null;
+
+      try {
+        const matchKey = ethers.keccak256(ethers.AbiCoder.defaultAbiCoder().encode(
+          ['uint8', 'uint8', 'uint8', 'uint8'],
+          [tierId, instanceId, roundNumber, matchNumber]
+        ));
+        const timeoutData = await contractInstance.matchTimeouts(matchKey);
+
+        // Only set timeoutState if there's actual escalation data
+        // (contract returns all 0s for matches without timeouts)
+        const esc1Start = Number(timeoutData.escalation1Start);
+        const esc2Start = Number(timeoutData.escalation2Start);
+        const hasTimeoutData = esc1Start > 0 || esc2Start > 0 || timeoutData.isStalled;
+
+        if (hasTimeoutData) {
+          timeoutState = {
+            escalation1Start: esc1Start,
+            escalation2Start: esc2Start,
+            activeEscalation: Number(timeoutData.activeEscalation),
+            timeoutActive: timeoutData.isStalled,
+            forfeitAmount: 0 // Not provided by matchTimeouts
+          };
+        }
+      } catch (escalationErr) {
+        // Match may not have timeout state yet - this is normal for active matches
+        console.debug('No escalation state for match (normal for non-stalled matches):', escalationErr.message);
+      }
 
       const boardState = Array.from(board).map(cell => Number(cell));
       const isPlayer1 = actualPlayer1.toLowerCase() === userAccount.toLowerCase();
@@ -1327,17 +1588,20 @@ export default function TicTacChain() {
         lastMovedCell,
         isMatchInitialized,
         timeoutState,
-        isTimedOut,
-        timeoutClaimant,
-        timeoutClaimReward,
         lastMoveTime,
-        startTime
+        startTime,
+        // New total match time fields
+        player1TimeRemaining,
+        player2TimeRemaining,
+        lastMoveTimestamp,
+        matchTimePerPlayer: tierMatchTime, // Pass through per-tier value for UI components
+        timeoutConfig // Pass timeout config to UI components
       };
     } catch (error) {
       console.error('Error refreshing match:', error);
       return null;
     }
-  }, []); // No dependencies - pure function
+  }, [escalationInterval]);
 
   // Handle cell click for making moves
   const handleCellClick = async (cellIndex) => {
@@ -1363,7 +1627,7 @@ export default function TicTacChain() {
       const tx = await contract.makeMove(tierId, instanceId, roundNumber, matchNumber, cellIndex);
       await tx.wait();
 
-      const updated = await refreshMatchData(contract, account, currentMatch);
+      const updated = await refreshMatchData(contract, account, currentMatch, matchTimePerPlayer);
       if (updated) {
         setCurrentMatch(updated);
         // Update board ref to prevent sync from detecting this move again
@@ -1392,7 +1656,7 @@ export default function TicTacChain() {
       await tx.wait();
 
       // Refresh match data to get updated winner/loser
-      const updatedMatch = await refreshMatchData(contract, account, currentMatch);
+      const updatedMatch = await refreshMatchData(contract, account, currentMatch, matchTimePerPlayer);
       if (updatedMatch) {
         setCurrentMatch(updatedMatch);
 
@@ -1435,7 +1699,7 @@ export default function TicTacChain() {
       await refreshAfterAction(tierId);
 
       // Refresh and show tournament bracket
-      const bracketData = await refreshTournamentBracket(contract, tierId, instanceId);
+      const bracketData = await refreshTournamentBracket(contract, tierId, instanceId, matchTimePerPlayer);
       if (bracketData) {
         setViewingTournament(bracketData);
       }
@@ -1500,6 +1764,7 @@ export default function TicTacChain() {
 
       const matchData = await contract.getMatch(tierId, instanceId, roundNumber, matchNumber);
       const parsedMatch = parseTicTacToeMatch(matchData);
+
       const player1 = parsedMatch.player1;
       const player2 = parsedMatch.player2;
 
@@ -1521,7 +1786,7 @@ export default function TicTacChain() {
         player2: actualPlayer2,
         playerCount, // Add tournament context
         prizePool    // Add tournament context
-      });
+      }, matchTimePerPlayer);
 
       if (updated) {
         setCurrentMatch(updated);
@@ -1530,6 +1795,17 @@ export default function TicTacChain() {
         // Fetch move history from blockchain events
         const history = await fetchMoveHistory(contract, tierId, instanceId, roundNumber, matchNumber);
         setMoveHistory(history);
+
+        // Scroll to match view after rendering
+        setTimeout(() => {
+          if (matchViewRef.current) {
+            matchViewRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+          // Collapse activity panel after scrolling
+          if (collapseActivityPanelRef.current) {
+            collapseActivityPanelRef.current();
+          }
+        }, 100);
       }
 
       setMatchLoading(false);
@@ -1557,7 +1833,7 @@ export default function TicTacChain() {
     // Refresh tournament bracket and cached stats (with loading indicator)
     if (tournamentInfo && contract) {
       setTournamentsLoading(true);
-      const bracketData = await refreshTournamentBracket(contract, tournamentInfo.tierId, tournamentInfo.instanceId);
+      const bracketData = await refreshTournamentBracket(contract, tournamentInfo.tierId, tournamentInfo.instanceId, matchTimePerPlayer);
       if (bracketData) {
         setViewingTournament(bracketData);
       }
@@ -1586,7 +1862,7 @@ export default function TicTacChain() {
 
       // Show tournament bracket for winners, go back to list for losers
       if (tournamentInfo && (matchEndResult === 'win' || matchEndResult === 'forfeit_win')) {
-        const bracketData = await refreshTournamentBracket(contract, tournamentInfo.tierId, tournamentInfo.instanceId);
+        const bracketData = await refreshTournamentBracket(contract, tournamentInfo.tierId, tournamentInfo.instanceId, matchTimePerPlayer);
         if (bracketData) {
           setViewingTournament(bracketData);
         }
@@ -1599,6 +1875,7 @@ export default function TicTacChain() {
   // Go back from tournament bracket to tournaments list
   const handleBackToTournaments = async () => {
     setViewingTournament(null);
+    setSearchParams({}); // Clear URL params when going back
 
     // Refresh tier metadata and cached stats (lazy loading)
     if (contract) {
@@ -1667,6 +1944,48 @@ export default function TicTacChain() {
     fetchLeaderboard();
   }, [fetchLeaderboard]);
 
+  // Poll tier metadata and expanded tier instances every 10 seconds on home page
+  useEffect(() => {
+    // Only poll when on home page (not viewing tournament or match)
+    if (currentMatch || viewingTournament || !contract) return;
+
+    const pollHomePageData = async () => {
+      try {
+        // Fetch tier metadata silently (no loading indicators)
+        await fetchTierMetadata(null, true);
+
+        // Re-fetch instances for expanded tiers silently
+        const expandedTierIds = Object.keys(expandedTiers)
+          .filter(id => expandedTiers[id])
+          .map(id => parseInt(id));
+
+        for (const tierId of expandedTierIds) {
+          await fetchTierInstances(tierId, null, null, null, true);
+        }
+      } catch (err) {
+        console.error('Error polling home page data:', err);
+      }
+    };
+
+    // Set up polling interval - runs every 10 seconds
+    const pollInterval = setInterval(pollHomePageData, 10000);
+
+    return () => clearInterval(pollInterval);
+  }, [currentMatch, viewingTournament, contract, expandedTiers, fetchTierMetadata, fetchTierInstances]);
+
+  // Poll raffle info every 10 seconds (runs globally when wallet connected)
+  useEffect(() => {
+    if (!account) return; // Only show when wallet connected
+
+    // Initial fetch
+    fetchRaffleInfo();
+
+    // Set up polling interval - runs every 10 seconds
+    const pollInterval = setInterval(fetchRaffleInfo, 10000);
+
+    return () => clearInterval(pollInterval);
+  }, [account, fetchRaffleInfo]);
+
   // Poll tournament bracket every 3 seconds (using refs for seamless syncing)
   const tournamentRef = useRef(viewingTournament);
   const contractRefForBracket = useRef(contract);
@@ -1686,7 +2005,7 @@ export default function TicTacChain() {
 
       if (!tournament || !contractInstance) return;
 
-      const updated = await refreshTournamentBracket(contractInstance, tournament.tierId, tournament.instanceId);
+      const updated = await refreshTournamentBracket(contractInstance, tournament.tierId, tournament.instanceId, matchTimePerPlayer);
       if (updated) setViewingTournament(updated);
 
       // Reset dots to 1 after sync completes
@@ -1725,7 +2044,8 @@ export default function TicTacChain() {
         const updatedMatch = await refreshMatchData(
           contractInstance,
           userAccount,
-          match
+          match,
+          matchTimePerPlayer
         );
         if (updatedMatch) {
           // Use standardized match completion handler
@@ -1849,39 +2169,50 @@ export default function TicTacChain() {
       {/* Particle Background */}
       <ParticleBackground colors={currentTheme.particleColors} symbols={TICTACTOE_SYMBOLS} fontSize="24px" count={38} />
 
-      {/* Back to ETour Button */}
-      <Link
-        to="/"
-        style={{
-          position: 'fixed',
-          top: 'calc(1rem + 100px)',
-          left: '1rem',
-          zIndex: 50,
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem',
-          padding: '0.5rem 1rem',
-          background: 'rgba(0, 0, 0, 0.6)',
-          backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255, 255, 255, 0.2)',
-          borderRadius: '0.5rem',
-          color: '#fff',
-          fontSize: '0.875rem',
-          fontWeight: 500,
-          textDecoration: 'none',
-          transition: 'all 0.2s ease'
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = 'rgba(0, 0, 0, 0.8)';
-          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.4)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = 'rgba(0, 0, 0, 0.6)';
-          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
-        }}
-      >
-        <ArrowLeft size={16} />
-      </Link>
+      {/* Tournament Invitation Banner - shown when URL params present but not connected */}
+      {urlTournamentParams && !account && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 max-w-2xl mx-4 w-full">
+          <div className="bg-gradient-to-r from-purple-600/90 to-blue-600/90 backdrop-blur-lg rounded-xl p-4 border border-purple-400/50 shadow-2xl">
+            <div className="flex items-start gap-3">
+              <Trophy className="text-yellow-400 shrink-0 mt-1" size={24} />
+              <div className="flex-1 min-w-0">
+                <p className="text-white font-semibold mb-1">
+                  Tournament Invitation
+                </p>
+                <p className="text-purple-100 text-sm mb-3">
+                  You've been invited to Tournament T{urlTournamentParams.tierId + 1}-I{urlTournamentParams.instanceId + 1}.
+                  Connect your wallet to view and join!
+                </p>
+                <button
+                  onClick={connectWallet}
+                  className="bg-white/20 hover:bg-white/30 text-white font-semibold py-2 px-4 rounded-lg transition-all flex items-center gap-2"
+                >
+                  <Wallet size={18} />
+                  Connect Wallet
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Player Activity Component - Available in all views */}
+      {account && (
+        <PlayerActivity
+          activity={playerActivity.data}
+          loading={playerActivity.loading}
+          syncing={playerActivity.syncing}
+          contract={contract}
+          account={account}
+          onEnterMatch={handlePlayMatch}
+          onEnterTournament={handleEnterTournament}
+          onRefresh={playerActivity.refetch}
+          gameName="tictactoe"
+          gameEmoji="✖️"
+          onHeightChange={setPlayerActivityHeight}
+          onCollapse={(collapseFn) => { collapseActivityPanelRef.current = collapseFn; }}
+        />
+      )}
 
       {/* Trust Banner */}
       <div style={{
@@ -1927,6 +2258,17 @@ export default function TicTacChain() {
         </div>
       </div>
 
+      {/* Community Raffle Card - Below Player Activity Toggle */}
+      {account && (
+        <CommunityRaffleCard
+          raffleInfo={raffleInfo}
+          playerActivityHeight={playerActivityHeight}
+          onRefresh={fetchRaffleInfo}
+          onTriggerRaffle={executeRaffle}
+          syncing={raffleSyncing}
+        />
+      )}
+
       <div className="max-w-7xl mx-auto px-6 py-12" style={{ position: 'relative', zIndex: 10 }}>
         {/* Hero Section */}
         <div className="text-center mb-16">
@@ -1941,7 +2283,7 @@ export default function TicTacChain() {
             ETour TicTacToe
           </h1>
           <p className="text-2xl text-blue-200 mb-6">
-            Provably Fair • <a href="/#zero-trust" className="text-blue-200 hover:text-green-300 transition-colors underline decoration-blue-400/50 hover:decoration-green-400 underline-offset-4">Zero Trust</a> • 100% On-Chain
+            Provably Fair • Zero Trust • 100% On-Chain
           </p>
           <p className={`text-lg ${currentTheme.heroSubtext} max-w-3xl mx-auto mb-8`}>
             Play Tic-Tac-Toe on the blockchain. Real opponents. Real ETH on the line.
@@ -1953,31 +2295,45 @@ export default function TicTacChain() {
 
           {/* Game Info Cards */}
           <div className="grid md:grid-cols-3 gap-4 max-w-4xl mx-auto mb-8">
-            <div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Trophy className="text-green-400" size={20} />
-                <span className="font-bold text-green-300">Prize Distribution</span>
-              </div>
-              <p className="text-sm text-green-200">
-                Winner takes the ETH prizepool.<br/>Draws share the prize 50/50.
-              </p>
-            </div>
             <div className="bg-gradient-to-br from-yellow-500/20 to-amber-500/20 border border-yellow-400/30 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Clock className="text-yellow-400" size={20} />
-                <span className="font-bold text-yellow-300">1min Moves</span>
+                <span className="font-bold text-yellow-300">5 minutes per match</span>
               </div>
               <p className="text-sm text-yellow-200">
-                Players have 1 minute per move before their opponent can claim victory.
+                Each player gets five minutes total for all their moves in the match.
               </p>
             </div>
-            <div className="bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-blue-400/30 rounded-xl p-4">
+            <div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
-                <Zap className="text-blue-400" size={20} />
-                <span className="font-bold text-blue-300">On-Chain Randomness</span>
+                <svg width="20" height="20" viewBox="0 0 256 417" xmlns="http://www.w3.org/2000/svg" className="text-green-400" fill="currentColor">
+                  <path d="M127.961 0l-2.795 9.5v275.668l2.795 2.79 127.962-75.638z" fillOpacity="0.6"/>
+                  <path d="M127.962 0L0 212.32l127.962 75.639V154.158z"/>
+                  <path d="M127.961 312.187l-1.575 1.92v98.199l1.575 4.6L256 236.587z" fillOpacity="0.6"/>
+                  <path d="M127.962 416.905v-104.72L0 236.585z"/>
+                  <path d="M127.961 287.958l127.96-75.637-127.96-58.162z" fillOpacity="0.2"/>
+                  <path d="M0 212.32l127.96 75.638v-133.8z" fillOpacity="0.6"/>
+                </svg>
+                <span className="font-bold text-green-300">Instant ETH Payouts</span>
               </div>
-              <p className="text-sm text-blue-200">
-                First move determined by verifiable on-chain randomness. Fair play.
+              <p className="text-sm text-green-200">
+                Winners paid automatically on-chain. No delays, no middlemen.
+              </p>
+            </div>
+            <div className="relative bg-gradient-to-br from-purple-500/20 to-violet-500/20 border border-purple-400/30 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Shield className="text-purple-400" size={20} />
+                <span className="font-bold text-purple-300">Impossible to grief</span>
+              </div>
+              <a
+                href="#user-manual"
+                className="absolute top-3 right-3 text-purple-400 hover:text-purple-300 transition-colors"
+                title="Learn more about anti-griefing"
+              >
+                <HelpCircle size={16} />
+              </a>
+              <p className="text-sm text-purple-200">
+                Anti-stalling mechanisms ensure every match completes. No admin required.
               </p>
             </div>
           </div>
@@ -2006,7 +2362,8 @@ export default function TicTacChain() {
 
         {/* Match View - Shows when player enters a match */}
         {account && contract && currentMatch && (
-          <GameMatchLayout
+          <div ref={matchViewRef}>
+            <GameMatchLayout
             gameType="tictactoe"
             match={currentMatch}
             account={account}
@@ -2016,6 +2373,8 @@ export default function TicTacChain() {
             onClaimTimeoutWin={handleClaimTimeoutWin}
             onForceEliminate={handleForceEliminateStalledMatch}
             onClaimReplacement={handleClaimMatchSlotByReplacement}
+            tournamentRounds={viewingTournament?.rounds || null}
+            currentRoundNumber={currentMatch.roundNumber}
             playerConfig={{
               player1: { icon: 'X', label: 'Player 1' },
               player2: { icon: 'O', label: 'Player 2' }
@@ -2091,27 +2450,33 @@ export default function TicTacChain() {
               ))}
             </div>
           </GameMatchLayout>
+          </div>
         )}
 
         {/* Tournaments Section */}
         {contract && !currentMatch && (
           <>
             {viewingTournament ? (
-              <TournamentBracket
-                tournamentData={viewingTournament}
-                onBack={handleBackToTournaments}
-                onEnterMatch={handlePlayMatch}
-                onForceEliminate={handleForceEliminateStalledMatch}
-                onClaimReplacement={handleClaimMatchSlotByReplacement}
-                onManualStart={handleManualStart}
-                onEnroll={handleEnroll}
-                account={account}
-                loading={tournamentsLoading}
-                syncDots={bracketSyncDots}
-                isEnrolled={viewingTournament?.enrolledPlayers?.some(addr => addr.toLowerCase() === account?.toLowerCase())}
-                entryFee={viewingTournament?.entryFee ? ethers.formatEther(viewingTournament.entryFee) : '0'}
-                isFull={viewingTournament?.enrolledCount >= viewingTournament?.playerCount}
-              />
+              <div ref={tournamentBracketRef}>
+                <TournamentBracket
+                  tournamentData={viewingTournament}
+                  onBack={handleBackToTournaments}
+                  onEnterMatch={handlePlayMatch}
+                  onForceEliminate={handleForceEliminateStalledMatch}
+                  onClaimReplacement={handleClaimMatchSlotByReplacement}
+                  onManualStart={handleManualStart}
+                  onClaimAbandonedPool={handleClaimAbandonedPool}
+                  onResetEnrollmentWindow={handleResetEnrollmentWindow}
+                  onEnroll={handleEnroll}
+                  account={account}
+                  loading={tournamentsLoading}
+                  syncDots={bracketSyncDots}
+                  isEnrolled={viewingTournament?.enrolledPlayers?.some(addr => addr.toLowerCase() === account?.toLowerCase())}
+                  entryFee={viewingTournament?.entryFee ? ethers.formatEther(viewingTournament.entryFee) : '0'}
+                  isFull={viewingTournament?.enrolledCount >= viewingTournament?.playerCount}
+                  contract={contract}
+                />
+              </div>
             ) : (
               // Show Tournament List
               <div className="mb-16">
@@ -2147,7 +2512,10 @@ export default function TicTacChain() {
                       const metadata = tierMetadata[tierId];
                       if (!metadata) return null;
 
-                      const instances = tierInstances[tierId] || [];
+                      const allInstances = tierInstances[tierId] || [];
+                      const visibleCount = visibleInstancesCount[tierId] || 4;
+                      const instances = allInstances.slice(0, visibleCount);
+                      const hasMore = allInstances.length > visibleCount;
                       const isLoading = tierLoading[tierId];
                       const statusCounts = countInstancesByStatus(metadata.statuses, metadata.enrolledCounts);
 
@@ -2187,6 +2555,7 @@ export default function TicTacChain() {
                                       maxPlayers={tournament.maxPlayers}
                                       currentEnrolled={tournament.enrolledCount}
                                       entryFee={tournament.entryFee}
+                                      prizePool={tournament.prizePool}
                                       isEnrolled={tournament.isEnrolled}
                                       onEnroll={() => handleEnroll(tournament.tierId, tournament.instanceId, tournament.entryFee)}
                                       onEnter={() => handleEnterTournament(tournament.tierId, tournament.instanceId)}
@@ -2197,9 +2566,24 @@ export default function TicTacChain() {
                                       tournamentStatus={tournament.tournamentStatus}
                                       onManualStart={handleManualStart}
                                       onClaimAbandonedPool={handleClaimAbandonedPool}
+                                      onResetEnrollmentWindow={handleResetEnrollmentWindow}
                                       account={account}
+                                      contract={contract}
                                     />
                                   ))}
+                                </div>
+                              )}
+
+                              {/* Show More Button */}
+                              {!isLoading && hasMore && (
+                                <div className="mt-6 text-center">
+                                  <button
+                                    onClick={() => showMoreInstances(tierId)}
+                                    className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-semibold py-3 px-8 rounded-xl transition-all transform hover:scale-105 flex items-center gap-2 mx-auto"
+                                  >
+                                    <ChevronDown size={20} />
+                                    Show More ({allInstances.length - visibleCount} remaining)
+                                  </button>
                                 </div>
                               )}
                             </div>
@@ -2260,15 +2644,18 @@ export default function TicTacChain() {
 
       {/* Winners Leaderboard Section */}
       <div className="max-w-7xl mx-auto px-6 pb-12" style={{ position: 'relative', zIndex: 10 }}>
-        <div className="max-w-2xl mx-auto mb-16">
-          <WinnersLeaderboard
-            leaderboard={leaderboard}
-            loading={leaderboardLoading}
-            error={leaderboardError}
-            currentAccount={account}
-            onRetry={() => fetchLeaderboard()}
-          />
-        </div>
+        <WinnersLeaderboard
+          leaderboard={leaderboard}
+          loading={leaderboardLoading}
+          error={leaderboardError}
+          currentAccount={account}
+          onRetry={() => fetchLeaderboard()}
+        />
+      </div>
+
+      {/* User Manual Section */}
+      <div id="user-manual" className="max-w-7xl mx-auto px-6 pb-12" style={{ position: 'relative', zIndex: 10 }}>
+        <UserManual />
       </div>
 
       {/* ============ FOOTER ============ */}

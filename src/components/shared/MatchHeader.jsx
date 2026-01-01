@@ -12,7 +12,6 @@ const MatchHeader = ({
   gameType: _gameType,
   title,
   icon,
-  syncDots,
   matchStatus,
   isDraw,
   onClose,
@@ -51,14 +50,10 @@ const MatchHeader = ({
             <h2 className="text-3xl font-bold text-white">
               {title}
             </h2>
-            <span className="text-cyan-400 text-sm font-semibold flex items-center gap-1">
-              <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
-              Syncing{'.'.repeat(syncDots)}
-            </span>
           </div>
           {tournamentInfo && (
             <p className={`${theme.textMuted} mt-2`}>
-              T{tournamentInfo.tierId}-I{tournamentInfo.instanceId} • Round {tournamentInfo.roundNumber + 1} • Match {tournamentInfo.matchNumber + 1}
+              T{tournamentInfo.tierId + 1}-I{tournamentInfo.instanceId + 1} • Round {tournamentInfo.roundNumber + 1} • Match {tournamentInfo.matchNumber + 1}
             </p>
           )}
         </div>
