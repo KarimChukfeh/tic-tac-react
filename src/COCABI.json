@@ -211,19 +211,6 @@
           "internalType": "bytes32",
           "name": "matchId",
           "type": "bytes32"
-        }
-      ],
-      "name": "DrawByRepetition",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "bytes32",
-          "name": "matchId",
-          "type": "bytes32"
         },
         {
           "indexed": true,
@@ -1111,58 +1098,6 @@
       "type": "function"
     },
     {
-      "inputs": [],
-      "name": "BOARD_SIZE",
-      "outputs": [
-        {
-          "internalType": "uint8",
-          "name": "",
-          "type": "uint8"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "DEFAULT_ENROLLMENT_WINDOW",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "DEFAULT_ESCALATION_INTERVAL",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "DEFAULT_MATCH_MOVE_TIMEOUT",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
       "inputs": [
         {
           "internalType": "uint8",
@@ -1415,11 +1350,6 @@
           "internalType": "enum ETour.MatchStatus",
           "name": "status",
           "type": "uint8"
-        },
-        {
-          "internalType": "uint256",
-          "name": "lastMoveTime",
-          "type": "uint256"
         },
         {
           "internalType": "uint256",
@@ -3283,34 +3213,6 @@
           "type": "uint16"
         }
       ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint8",
-          "name": "tierId",
-          "type": "uint8"
-        },
-        {
-          "internalType": "uint8",
-          "name": "instanceId",
-          "type": "uint8"
-        },
-        {
-          "internalType": "uint8",
-          "name": "roundNumber",
-          "type": "uint8"
-        },
-        {
-          "internalType": "uint8",
-          "name": "matchNumber",
-          "type": "uint8"
-        }
-      ],
-      "name": "offerDraw",
-      "outputs": [],
       "stateMutability": "view",
       "type": "function"
     },
