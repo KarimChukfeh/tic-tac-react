@@ -2753,6 +2753,11 @@
             },
             {
               "internalType": "uint256",
+              "name": "timeIncrementPerMove",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
               "name": "matchLevel2Delay",
               "type": "uint256"
             },
@@ -3576,6 +3581,11 @@
             {
               "internalType": "uint256",
               "name": "matchTimePerPlayer",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "timeIncrementPerMove",
               "type": "uint256"
             },
             {

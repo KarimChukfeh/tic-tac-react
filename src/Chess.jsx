@@ -1732,7 +1732,7 @@ export default function Chess() {
       const matchData = await contractInstance.getChessMatch(tierId, instanceId, roundNumber, matchNumber);
       const player1 = matchData[0];
 
-      // Try to query MoveMade events for this match
+      // Try to query ChessMoveMade events for this match
       try {
         const matchKey = ethers.keccak256(
           ethers.AbiCoder.defaultAbiCoder().encode(
@@ -1741,18 +1741,23 @@ export default function Chess() {
           )
         );
 
-        const filter = contractInstance.filters.MoveMade(matchKey);
+        const filter = contractInstance.filters.ChessMoveMade(matchKey);
         const events = await contractInstance.queryFilter(filter);
 
         if (events.length > 0) {
           // Convert events to move history
           const history = events.map(event => {
             const player = event.args.player;
-            const cellIndex = Number(event.args.cellIndex);
+            const from = Number(event.args.from);
+            const to = Number(event.args.to);
+            const promotion = Number(event.args.promotion);
             const isPlayer1 = player.toLowerCase() === player1.toLowerCase();
             return {
               player: isPlayer1 ? 'X' : 'O',
-              cell: cellIndex,
+              cell: `${from}→${to}${promotion ? ' (promoted)' : ''}`,
+              from,
+              to,
+              promotion,
               address: player,
               blockNumber: event.blockNumber
             };
