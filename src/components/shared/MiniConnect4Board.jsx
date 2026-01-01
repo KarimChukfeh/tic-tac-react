@@ -83,6 +83,12 @@ const MiniConnect4Board = ({
         }
         setMatchEndResult(result);
         setShowMatchEndModal(true);
+
+        // Notify parent that match completed so it stays visible (only once)
+        if (!hasNotifiedCompletion) {
+          onMatchCompleted?.();
+          setHasNotifiedCompletion(true);
+        }
       }
 
       setMatchData(parsed);
@@ -168,6 +174,13 @@ const MiniConnect4Board = ({
       // Calculate isMyTurn based on current turn
       parsed.isMyTurn = parsed.currentTurn?.toLowerCase() === account?.toLowerCase();
       setMatchData(parsed);
+
+      // Check if this move completed the match
+      if (parsed.matchStatus === 2 && !hasNotifiedCompletion) {
+        // Notify parent that match completed so it stays visible
+        onMatchCompleted?.();
+        setHasNotifiedCompletion(true);
+      }
 
       // Notify parent
       onMoveComplete?.();
