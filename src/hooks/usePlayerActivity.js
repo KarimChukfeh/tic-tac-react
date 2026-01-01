@@ -23,6 +23,7 @@ export const usePlayerActivity = (contract, account, gameName) => {
     activeMatches: [],
     inProgressTournaments: [],
     unfilledTournaments: [],
+    totalEarnings: 0n,
   });
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -37,6 +38,7 @@ export const usePlayerActivity = (contract, account, gameName) => {
         activeMatches: [],
         inProgressTournaments: [],
         unfilledTournaments: [],
+        totalEarnings: 0n,
       });
       return;
     }
@@ -51,7 +53,15 @@ export const usePlayerActivity = (contract, account, gameName) => {
 
       console.log('[PlayerActivity] Fetching activity for', gameName, 'account:', account);
 
-      // Step 1: Get enrolling tournaments (unfilled)
+      // Step 1: Get player stats (total earnings)
+      let totalEarnings = 0n;
+      try {
+        totalEarnings = await contract.getPlayerStats();
+      } catch (err) {
+        console.warn('[PlayerActivity] Could not fetch player stats:', err);
+      }
+
+      // Step 2: Get enrolling tournaments (unfilled)
       const enrollingTournaments = await contract.getPlayerEnrollingTournaments(account);
 
       const unfilledTournaments = await Promise.all(
@@ -68,13 +78,13 @@ export const usePlayerActivity = (contract, account, gameName) => {
         })
       );
 
-      // Step 2: Get active tournaments
+      // Step 3: Get active tournaments
       const activeTournaments = await contract.getPlayerActiveTournaments(account);
 
       const activeMatches = [];
       const inProgressTournaments = [];
 
-      // Step 3: For each active tournament, find matches where it's player's turn
+      // Step 4: For each active tournament, find matches where it's player's turn
       for (const ref of activeTournaments) {
         const tierId = Number(ref.tierId);
         const instanceId = Number(ref.instanceId);
@@ -159,12 +169,14 @@ export const usePlayerActivity = (contract, account, gameName) => {
         activeMatches: activeMatches.length,
         inProgressTournaments: inProgressTournaments.length,
         unfilledTournaments: unfilledTournaments.length,
+        totalEarnings: totalEarnings.toString(),
       });
 
       setData({
         activeMatches,
         inProgressTournaments,
         unfilledTournaments,
+        totalEarnings,
       });
       setLoading(false);
       setSyncing(false);

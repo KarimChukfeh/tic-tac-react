@@ -8,12 +8,13 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { Users, X, Zap, Trophy, Clock, Play, Eye, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
+import { Users, X, Zap, Trophy, Clock, Play, Eye, RefreshCw, ChevronDown, ChevronUp, TrendingUp } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
 import { formatTimeRemaining } from '../../utils/activityHelpers';
 import MiniTicTacToeBoard from './MiniTicTacToeBoard';
 import MiniChessBoard from './MiniChessBoard';
 import MiniConnect4Board from './MiniConnect4Board';
+import { ethers } from 'ethers';
 
 const PlayerActivity = ({
   activity,
@@ -162,6 +163,25 @@ const PlayerActivity = ({
               </button>
             </div>
           </div>
+
+          {/* Total Earnings Section */}
+          {!loading && activity?.totalEarnings !== undefined && (
+            <div className="mb-4 bg-gradient-to-br from-green-500/20 to-emerald-500/20 border-2 border-green-400/40 rounded-xl p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="bg-green-500/20 rounded-full p-2">
+                    <TrendingUp className="text-green-400" size={20} />
+                  </div>
+                  <div>
+                    <p className="text-slate-400 text-xs font-medium uppercase tracking-wide">Total Earnings</p>
+                    <p className="text-white font-bold text-xl">
+                      {activity.totalEarnings >= 0n ? '+' : ''}{ethers.formatEther(activity.totalEarnings)} ETH
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Loading State */}
           {loading ? (
