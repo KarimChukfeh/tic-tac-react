@@ -5,10 +5,11 @@
  * Allows players to make moves directly without navigating to full match view
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { parseTicTacToeMatch } from '../../utils/matchDataParser';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Clock } from 'lucide-react';
 import MiniMatchEndModal from './MiniMatchEndModal';
+import { formatTime, getTimeColorScheme } from '../../utils/timeCalculations';
 
 const MiniTicTacToeBoard = ({
   contract,
@@ -27,6 +28,13 @@ const MiniTicTacToeBoard = ({
   const [showMatchEndModal, setShowMatchEndModal] = useState(false);
   const [matchEndResult, setMatchEndResult] = useState(null);
   const [hasNotifiedCompletion, setHasNotifiedCompletion] = useState(false);
+
+  // Client-side ticking timer state
+  const [player1TimeLeft, setPlayer1TimeLeft] = useState(300);
+  const [player2TimeLeft, setPlayer2TimeLeft] = useState(300);
+  const lastSyncRef = useRef(Date.now());
+  const lastContractP1TimeRef = useRef(300);
+  const lastContractP2TimeRef = useRef(300);
 
   // Extract fetch logic into reusable function
   const fetchMatchData = useCallback(async (isInitialLoad = false) => {
@@ -75,6 +83,20 @@ const MiniTicTacToeBoard = ({
       }
 
       setMatchData(parsed);
+
+      // Update timer state when contract data changes (on sync)
+      const contractP1Time = parsed.player1TimeRemaining ?? 300;
+      const contractP2Time = parsed.player2TimeRemaining ?? 300;
+
+      // Only update if contract values actually changed (real sync occurred)
+      if (contractP1Time !== lastContractP1TimeRef.current || contractP2Time !== lastContractP2TimeRef.current) {
+        setPlayer1TimeLeft(contractP1Time);
+        setPlayer2TimeLeft(contractP2Time);
+        lastSyncRef.current = Date.now();
+        lastContractP1TimeRef.current = contractP1Time;
+        lastContractP2TimeRef.current = contractP2Time;
+      }
+
       setLoading(false);
     } catch (err) {
       console.error('Error fetching match data:', err);
@@ -103,6 +125,31 @@ const MiniTicTacToeBoard = ({
       fetchMatchData(false);
     }
   }, [refreshTrigger, fetchMatchData]);
+
+  // Client-side countdown ticker
+  useEffect(() => {
+    if (!matchData || matchData.matchStatus !== 1) return; // Only tick during active match
+
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const elapsedSinceSync = Math.floor((now - lastSyncRef.current) / 1000);
+
+      // Determine whose turn it is
+      const isPlayer1Turn = matchData.currentTurn?.toLowerCase() === matchData.player1?.toLowerCase();
+      const isPlayer2Turn = matchData.currentTurn?.toLowerCase() === matchData.player2?.toLowerCase();
+
+      // Decrement the time for the player whose turn it is
+      if (isPlayer1Turn) {
+        const newP1Time = Math.max(0, lastContractP1TimeRef.current - elapsedSinceSync);
+        setPlayer1TimeLeft(newP1Time);
+      } else if (isPlayer2Turn) {
+        const newP2Time = Math.max(0, lastContractP2TimeRef.current - elapsedSinceSync);
+        setPlayer2TimeLeft(newP2Time);
+      }
+    }, 100); // Update every 100ms for smooth countdown
+
+    return () => clearInterval(interval);
+  }, [matchData]);
 
   // Handle cell click
   const handleCellClick = async (cellIndex) => {
@@ -249,6 +296,30 @@ const MiniTicTacToeBoard = ({
           )}
         </p>
       </div>
+
+      {/* Timer Display */}
+      {matchData.matchStatus === 1 && (
+        <div className="bg-black/30 rounded-lg p-3 border border-purple-400/20">
+          {/* Current Player's Timer */}
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Clock className="text-purple-400" size={14} />
+              <span className="text-xs text-slate-400">Your time</span>
+            </div>
+            <span className={`font-mono font-bold ${getTimeColorScheme(isPlayer1 ? player1TimeLeft : player2TimeLeft).text}`}>
+              {formatTime(isPlayer1 ? player1TimeLeft : player2TimeLeft)}
+            </span>
+          </div>
+
+          {/* Opponent's Timer */}
+          <div className="flex items-center justify-between border-t border-slate-700/50 pt-2">
+            <span className="text-xs text-slate-500">Opponent's time</span>
+            <span className={`font-mono text-sm ${getTimeColorScheme(isPlayer1 ? player2TimeLeft : player1TimeLeft).text} opacity-70`}>
+              {formatTime(isPlayer1 ? player2TimeLeft : player1TimeLeft)}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* 3x3 Grid */}
       <div className="grid grid-cols-3 gap-2 p-3 bg-black/20 rounded-lg">
