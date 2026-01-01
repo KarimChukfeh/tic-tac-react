@@ -219,37 +219,6 @@
         {
           "indexed": true,
           "internalType": "address",
-          "name": "blocker",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint8",
-          "name": "blockedCell",
-          "type": "uint8"
-        },
-        {
-          "indexed": false,
-          "internalType": "address",
-          "name": "blockedPlayer",
-          "type": "address"
-        }
-      ],
-      "name": "MoveBlocked",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "bytes32",
-          "name": "matchId",
-          "type": "bytes32"
-        },
-        {
-          "indexed": true,
-          "internalType": "address",
           "name": "player",
           "type": "address"
         },
@@ -928,84 +897,6 @@
       "type": "function"
     },
     {
-      "inputs": [],
-      "name": "DEFAULT_ENROLLMENT_WINDOW",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "DEFAULT_ESCALATION_INTERVAL",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "DEFAULT_MATCH_MOVE_TIMEOUT",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "DEMO_ENROLLMENT_WINDOW",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "DEMO_ESCALATION_INTERVAL",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "DEMO_MATCH_MOVE_TIMEOUT",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
       "inputs": [
         {
           "internalType": "uint8",
@@ -1051,19 +942,6 @@
           "internalType": "uint16",
           "name": "",
           "type": "uint16"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "NO_CELL",
-      "outputs": [
-        {
-          "internalType": "uint8",
-          "name": "",
-          "type": "uint8"
         }
       ],
       "stateMutability": "view",
@@ -1521,16 +1399,6 @@
               "internalType": "bool",
               "name": "exists",
               "type": "bool"
-            },
-            {
-              "internalType": "bool",
-              "name": "player1UsedBlock",
-              "type": "bool"
-            },
-            {
-              "internalType": "bool",
-              "name": "player2UsedBlock",
-              "type": "bool"
             }
           ],
           "internalType": "struct TicTacChain.CachedMatchData[]",
@@ -1622,16 +1490,6 @@
               "internalType": "bool",
               "name": "exists",
               "type": "bool"
-            },
-            {
-              "internalType": "bool",
-              "name": "player1UsedBlock",
-              "type": "bool"
-            },
-            {
-              "internalType": "bool",
-              "name": "player2UsedBlock",
-              "type": "bool"
             }
           ],
           "internalType": "struct TicTacChain.CachedMatchData",
@@ -1717,16 +1575,6 @@
             {
               "internalType": "bool",
               "name": "exists",
-              "type": "bool"
-            },
-            {
-              "internalType": "bool",
-              "name": "player1UsedBlock",
-              "type": "bool"
-            },
-            {
-              "internalType": "bool",
-              "name": "player2UsedBlock",
               "type": "bool"
             }
           ],
@@ -1957,31 +1805,6 @@
               "internalType": "address",
               "name": "firstPlayer",
               "type": "address"
-            },
-            {
-              "internalType": "uint8",
-              "name": "lastMovedCell",
-              "type": "uint8"
-            },
-            {
-              "internalType": "address",
-              "name": "blockedPlayer",
-              "type": "address"
-            },
-            {
-              "internalType": "uint8",
-              "name": "blockedCell",
-              "type": "uint8"
-            },
-            {
-              "internalType": "bool",
-              "name": "player1UsedBlock",
-              "type": "bool"
-            },
-            {
-              "internalType": "bool",
-              "name": "player2UsedBlock",
-              "type": "bool"
             },
             {
               "internalType": "uint256",
@@ -2330,16 +2153,6 @@
             {
               "internalType": "bool",
               "name": "exists",
-              "type": "bool"
-            },
-            {
-              "internalType": "bool",
-              "name": "player1UsedBlock",
-              "type": "bool"
-            },
-            {
-              "internalType": "bool",
-              "name": "player2UsedBlock",
               "type": "bool"
             }
           ],
@@ -2871,16 +2684,6 @@
           "internalType": "bool",
           "name": "exists",
           "type": "bool"
-        },
-        {
-          "internalType": "bool",
-          "name": "player1UsedBlock",
-          "type": "bool"
-        },
-        {
-          "internalType": "bool",
-          "name": "player2UsedBlock",
-          "type": "bool"
         }
       ],
       "stateMutability": "view",
@@ -2973,31 +2776,6 @@
         {
           "internalType": "bool",
           "name": "isDraw",
-          "type": "bool"
-        },
-        {
-          "internalType": "uint8",
-          "name": "lastMovedCell",
-          "type": "uint8"
-        },
-        {
-          "internalType": "address",
-          "name": "blockedPlayer",
-          "type": "address"
-        },
-        {
-          "internalType": "uint8",
-          "name": "blockedCell",
-          "type": "uint8"
-        },
-        {
-          "internalType": "bool",
-          "name": "player1UsedBlock",
-          "type": "bool"
-        },
-        {
-          "internalType": "bool",
-          "name": "player2UsedBlock",
           "type": "bool"
         },
         {
