@@ -935,8 +935,21 @@ export default function Chess() {
     let successfulFetches = 0;
     let totalAttempts = 0;
 
-    // Fetch metadata for tiers 0-6
-    for (let tierId = 0; tierId <= 6; tierId++) {
+    // Fetch all valid tier IDs from contract
+    let tierIds = [];
+    try {
+      const tierIdsRaw = await readContract.getAllTierIds();
+      // Convert ethers Result object to plain array manually
+      for (let i = 0; i < tierIdsRaw.length; i++) {
+        tierIds.push(tierIdsRaw[i]);
+      }
+    } catch (error) {
+      console.warn('Could not fetch tier IDs, using default range:', error.message);
+      tierIds = [0, 1]; // Chess default: 2 tiers
+    }
+
+    // Fetch metadata for each tier
+    for (const tierId of tierIds) {
       totalAttempts++;
       try {
         // Parallel fetch tier config, entry fee, and overview

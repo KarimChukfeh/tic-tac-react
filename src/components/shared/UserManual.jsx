@@ -38,7 +38,16 @@ const UserManual = ({
 
       try {
         // Fetch all tier IDs first
-        const tierIds = await contractInstance.getAllTierIds();
+        const tierIdsRaw = await contractInstance.getAllTierIds();
+        console.log('[UserManual] Raw tier IDs result:', tierIdsRaw);
+
+        // Convert ethers Result object to plain array
+        // ethers.js v6 Result objects need manual conversion
+        const tierIds = [];
+        for (let i = 0; i < tierIdsRaw.length; i++) {
+          tierIds.push(tierIdsRaw[i]);
+        }
+        console.log('[UserManual] Fetched tier IDs:', tierIds, `(${tierIds.length} tiers)`);
 
         const [
           basisPoints,
@@ -58,24 +67,51 @@ const UserManual = ({
         const tierConfigurations = [];
         for (const tierId of tierIds) {
           try {
-            // Use split functions that work across all three game contracts
-            const [tierInfo, prizeDistribution, timeouts] = await Promise.all([
+            // Fetch basic tier info and prize distribution (all contracts have these)
+            const [tierInfo, prizeDistribution] = await Promise.all([
               contractInstance.getTierInfo(Number(tierId)),
-              contractInstance.getTierPrizeDistribution(Number(tierId)),
-              contractInstance.getTierTimeouts(Number(tierId)).catch(() => null) // TicTacChain/Chess don't have this
+              contractInstance.getTierPrizeDistribution(Number(tierId))
             ]);
+
+            // Fetch timeout config - different methods per contract
+            let timeouts = null;
+
+            // Try ConnectFour method: getTierTimeouts(tierId)
+            if (typeof contractInstance.getTierTimeouts === 'function') {
+              try {
+                timeouts = await contractInstance.getTierTimeouts(Number(tierId));
+                console.log(`[UserManual] Loaded timeouts via getTierTimeouts for tier ${tierId}:`, timeouts);
+              } catch (err) {
+                console.log(`[UserManual] getTierTimeouts failed for tier ${tierId}, trying tierConfigs:`, err.message);
+              }
+            }
+
+            // Try TicTacChain/Chess method: tierConfigs(tierId).timeouts
+            if (!timeouts && typeof contractInstance.tierConfigs === 'function') {
+              try {
+                const fullConfig = await contractInstance.tierConfigs(Number(tierId));
+                timeouts = fullConfig.timeouts;
+                console.log(`[UserManual] Loaded timeouts via tierConfigs for tier ${tierId}:`, timeouts);
+              } catch (err) {
+                console.warn(`[UserManual] tierConfigs failed for tier ${tierId}:`, err);
+              }
+            }
+
+            if (!timeouts) {
+              console.warn(`[UserManual] No timeouts found for tier ${tierId}, using defaults`);
+            }
 
             tierConfigurations.push({
               tierId: Number(tierId),
               playerCount: Number(tierInfo.playerCount),
               instanceCount: Number(tierInfo.instanceCount),
               entryFee: tierInfo.entryFee,
-              matchTimePerPlayer: timeouts ? Number(timeouts.matchTimePerPlayer) : 0,
+              matchTimePerPlayer: timeouts ? Number(timeouts.matchTimePerPlayer) : 300,
               timeIncrementPerMove: timeouts ? Number(timeouts.timeIncrementPerMove) : 0,
-              matchLevel2Delay: timeouts ? Number(timeouts.matchLevel2Delay) : 0,
-              matchLevel3Delay: timeouts ? Number(timeouts.matchLevel3Delay) : 0,
-              enrollmentWindow: timeouts ? Number(timeouts.enrollmentWindow) : 0,
-              enrollmentLevel2Delay: timeouts ? Number(timeouts.enrollmentLevel2Delay) : 0,
+              matchLevel2Delay: timeouts ? Number(timeouts.matchLevel2Delay) : 60,
+              matchLevel3Delay: timeouts ? Number(timeouts.matchLevel3Delay) : 120,
+              enrollmentWindow: timeouts ? Number(timeouts.enrollmentWindow) : 60,
+              enrollmentLevel2Delay: timeouts ? Number(timeouts.enrollmentLevel2Delay) : 60,
               prizeDistribution: prizeDistribution.percentages || prizeDistribution
             });
           } catch (err) {
@@ -85,13 +121,14 @@ const UserManual = ({
 
         // Sort tier configurations by player count for consistent display
         tierConfigurations.sort((a, b) => a.playerCount - b.playerCount);
+        console.log('[UserManual] Final tier configurations:', tierConfigurations);
 
         // Parse raffle thresholds
         const thresholds = raffleThresholdsData
           ? raffleThresholdsData.thresholds.map(t => ethers.formatEther(t))
           : [];
 
-        setContractConfig({
+        const newConfig = {
           basisPoints: Number(basisPoints),
           protocolShareBps: Number(protocolShareBps),
           tierConfigurations,
@@ -100,7 +137,9 @@ const UserManual = ({
           raffleWinnerSharePercentage: raffleConfig ? Number(raffleConfig.winnerSharePercentage) : 80,
           currentRaffleThreshold: raffleInfo ? ethers.formatEther(raffleInfo.threshold) : null,
           isLoading: false
-        });
+        };
+        console.log('[UserManual] Setting contract config state:', newConfig);
+        setContractConfig(newConfig);
       } catch (error) {
         console.error('Error fetching contract config:', error);
         setContractConfig(prev => ({ ...prev, isLoading: false }));
@@ -132,6 +171,10 @@ const UserManual = ({
   const matchTimePerPlayer = contractConfig.tierConfigurations.length > 0
     ? contractConfig.tierConfigurations[0].matchTimePerPlayer
     : 300;
+
+  // Debug logging
+  console.log('[UserManual] Rendering with tierConfigurations:', contractConfig.tierConfigurations);
+  console.log('[UserManual] Calculated matchTimePerPlayer:', matchTimePerPlayer, 'seconds =', Math.floor(matchTimePerPlayer / 60), 'minutes');
 
   // Handle hash navigation and trigger highlight animation
   useEffect(() => {    const handleHashChange = () => {
@@ -172,6 +215,9 @@ const UserManual = ({
       <div className="flex items-center gap-3 mb-6">
         <BookOpen className="text-blue-400" size={24} />
         <h3 className="text-xl font-bold text-blue-300">How Does Anti-Griefing Work?</h3>
+        {contractConfig.isLoading && (
+          <span className="text-sm text-gray-400">(Loading contract config...)</span>
+        )}
       </div>
 
       {/* Introduction */}
