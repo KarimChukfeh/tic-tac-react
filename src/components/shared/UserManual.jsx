@@ -20,8 +20,10 @@ const UserManual = ({
   const [contractConfig, setContractConfig] = useState({
     basisPoints: 10000,
     protocolShareBps: 250, // 2.5%
-    enrollmentWindows: { '2': 300, '4': 600, '8': 1200 }, // Default: 5min, 10min, 20min
-    matchTimePerPlayer: 300, // Default: 5 minutes (300 seconds)
+    tierConfigurations: [], // Array of tier configs: { tierId, playerCount, entryFee, matchTimePerPlayer, timeIncrementPerMove, matchLevel2Delay, matchLevel3Delay, enrollmentWindow, enrollmentLevel2Delay }
+    raffleThresholds: [], // Array of threshold values
+    raffleOwnerSharePercentage: 20,
+    raffleWinnerSharePercentage: 80,
     currentRaffleThreshold: null,
     isLoading: true
   });
@@ -35,38 +37,61 @@ const UserManual = ({
       }
 
       try {
+        // Fetch all tier IDs first
+        const tierIds = await contractInstance.getAllTierIds();
+
         const [
           basisPoints,
           protocolShareBps,
-          raffleInfo
+          raffleInfo,
+          raffleConfig,
+          raffleThresholdsData
         ] = await Promise.all([
           contractInstance.BASIS_POINTS(),
           contractInstance.PROTOCOL_SHARE_BPS(),
-          contractInstance.getRaffleInfo().catch(() => null)
+          contractInstance.getRaffleInfo().catch(() => null),
+          contractInstance.getRaffleConfiguration().catch(() => null),
+          contractInstance.getRaffleThresholds().catch(() => null)
         ]);
 
-        // Fetch timeout configs for common tier sizes
-        const timeoutConfigs = {};
-        let matchTimePerPlayerSeconds = 300; // Default: 5 minutes
-        for (const tierSize of [2, 4, 8]) {
+        // Fetch configuration for each tier
+        const tierConfigurations = [];
+        for (const tierId of tierIds) {
           try {
-            const tierId = tierSize === 2 ? 0 : tierSize === 4 ? 1 : 2;
-            const config = await contractInstance.getTimeoutConfig(tierId);
-            timeoutConfigs[tierSize] = Number(config.enrollmentWindow);
-            // Get matchTimePerPlayer from the first tier we fetch (they should all be the same)
-            if (tierId === 0 && config.matchTimePerPlayer) {
-              matchTimePerPlayerSeconds = Number(config.matchTimePerPlayer);
-            }
+            const config = await contractInstance.getTierConfiguration(Number(tierId));
+            tierConfigurations.push({
+              tierId: Number(tierId),
+              playerCount: Number(config.playerCount),
+              instanceCount: Number(config.instanceCount),
+              entryFee: config.entryFee,
+              matchTimePerPlayer: Number(config.matchTimePerPlayer),
+              timeIncrementPerMove: Number(config.timeIncrementPerMove),
+              matchLevel2Delay: Number(config.matchLevel2Delay),
+              matchLevel3Delay: Number(config.matchLevel3Delay),
+              enrollmentWindow: Number(config.enrollmentWindow),
+              enrollmentLevel2Delay: Number(config.enrollmentLevel2Delay),
+              prizeDistribution: config.prizeDistribution
+            });
           } catch (err) {
-            console.warn(`Could not fetch timeout config for tier ${tierSize}:`, err);
+            console.warn(`Could not fetch config for tier ${tierId}:`, err);
           }
         }
+
+        // Sort tier configurations by player count for consistent display
+        tierConfigurations.sort((a, b) => a.playerCount - b.playerCount);
+
+        // Parse raffle thresholds
+        const thresholds = raffleThresholdsData
+          ? raffleThresholdsData.thresholds.map(t => ethers.formatEther(t))
+          : [];
 
         setContractConfig({
           basisPoints: Number(basisPoints),
           protocolShareBps: Number(protocolShareBps),
-          enrollmentWindows: timeoutConfigs,
-          matchTimePerPlayer: matchTimePerPlayerSeconds,
+          tierConfigurations,
+          raffleThresholds: thresholds,
+          raffleOwnerSharePercentage: raffleConfig ? Number(raffleConfig.ownerSharePercentage) : 20,
+          raffleWinnerSharePercentage: raffleConfig ? Number(raffleConfig.winnerSharePercentage) : 80,
           currentRaffleThreshold: raffleInfo ? ethers.formatEther(raffleInfo.threshold) : null,
           isLoading: false
         });
@@ -82,12 +107,9 @@ const UserManual = ({
   // Calculate protocol fee percentage from basis points
   const protocolFee = protocolFeePercent ?? (contractConfig.protocolShareBps / contractConfig.basisPoints * 100);
 
-  // Raffle prize distribution is hardcoded in the contract (80% winner, 20% owner)
-  const raffleWinnerShare = 80;
-  const raffleOwnerShare = 20;
-
-  // Use provided enrollment windows or contract values
-  const finalEnrollmentWindows = enrollmentWindows || contractConfig.enrollmentWindows;
+  // Raffle prize distribution from contract
+  const raffleWinnerShare = contractConfig.raffleWinnerSharePercentage;
+  const raffleOwnerShare = contractConfig.raffleOwnerSharePercentage;
 
   // Format enrollment windows for display
   const formatTime = (seconds) => {
@@ -95,8 +117,15 @@ const UserManual = ({
     return minutes === 1 ? '1 minute' : `${minutes} minutes`;
   };
 
-  // Use provided raffle thresholds or defaults
-  const finalRaffleThresholds = raffleThresholds || ['0.5', '1.0', '1.5', '2.0', '2.5', '3.0'];
+  // Use provided raffle thresholds or contract values
+  const finalRaffleThresholds = raffleThresholds || contractConfig.raffleThresholds.length > 0
+    ? contractConfig.raffleThresholds
+    : ['0.5', '1.0', '1.5', '2.0', '2.5', '3.0'];
+
+  // Get match time per player from first tier (should be consistent across tiers)
+  const matchTimePerPlayer = contractConfig.tierConfigurations.length > 0
+    ? contractConfig.tierConfigurations[0].matchTimePerPlayer
+    : 300;
 
   // Handle hash navigation and trigger highlight animation
   useEffect(() => {    const handleHashChange = () => {
@@ -277,23 +306,30 @@ const UserManual = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-blue-500/20">
-                  {finalEnrollmentWindows['2'] && (
-                    <tr className="hover:bg-blue-500/5 transition-colors">
-                      <td className="py-3 px-4 text-gray-300">1v1 Duels</td>
-                      <td className="py-3 px-4 text-gray-300 font-mono">{formatTime(finalEnrollmentWindows['2'])}</td>
-                    </tr>
-                  )}
-                  {finalEnrollmentWindows['4'] && (
-                    <tr className="hover:bg-blue-500/5 transition-colors">
-                      <td className="py-3 px-4 text-gray-300">4-Player Tournaments</td>
-                      <td className="py-3 px-4 text-gray-300 font-mono">{formatTime(finalEnrollmentWindows['4'])}</td>
-                    </tr>
-                  )}
-                  {finalEnrollmentWindows['8'] && (
-                    <tr className="hover:bg-blue-500/5 transition-colors">
-                      <td className="py-3 px-4 text-gray-300">8-Player Tournaments</td>
-                      <td className="py-3 px-4 text-gray-300 font-mono">{formatTime(finalEnrollmentWindows['8'])}</td>
-                    </tr>
+                  {contractConfig.tierConfigurations.length > 0 ? (
+                    contractConfig.tierConfigurations.map((tier) => (
+                      <tr key={tier.tierId} className="hover:bg-blue-500/5 transition-colors">
+                        <td className="py-3 px-4 text-gray-300">
+                          {tier.playerCount === 2 ? '1v1 Duels' : `${tier.playerCount}-Player Tournaments`}
+                        </td>
+                        <td className="py-3 px-4 text-gray-300 font-mono">{formatTime(tier.enrollmentWindow)}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <>
+                      <tr className="hover:bg-blue-500/5 transition-colors">
+                        <td className="py-3 px-4 text-gray-300">1v1 Duels</td>
+                        <td className="py-3 px-4 text-gray-300 font-mono">5 minutes</td>
+                      </tr>
+                      <tr className="hover:bg-blue-500/5 transition-colors">
+                        <td className="py-3 px-4 text-gray-300">4-Player Tournaments</td>
+                        <td className="py-3 px-4 text-gray-300 font-mono">10 minutes</td>
+                      </tr>
+                      <tr className="hover:bg-blue-500/5 transition-colors">
+                        <td className="py-3 px-4 text-gray-300">8-Player Tournaments</td>
+                        <td className="py-3 px-4 text-gray-300 font-mono">20 minutes</td>
+                      </tr>
+                    </>
                   )}
                 </tbody>
               </table>
@@ -310,7 +346,9 @@ const UserManual = ({
                 If EL1 is available but no enrolled player starts the tournament, the prize pool sits idle.
               </p>
               <p>
-                5 minutes after EL1, anyone (even someone who never enrolled) can claim the entire prize pool.
+                {contractConfig.tierConfigurations.length > 0
+                  ? formatTime(contractConfig.tierConfigurations[0].enrollmentLevel2Delay)
+                  : '5 minutes'} after EL1, anyone (even someone who never enrolled) can claim the entire prize pool.
               </p>
               <div className="bg-purple-500/20 border border-purple-400/40 rounded-lg p-3">
                 <p className="text-purple-200">
@@ -335,7 +373,7 @@ const UserManual = ({
             <h3 id="ml1" className="text-lg font-semibold text-purple-200 mb-3 scroll-mt-24">ML1: Claim Victory by Opponent Timeout</h3>
             <div className="space-y-3 text-gray-300">
               <p>
-                Each player gets {formatTime(contractConfig.matchTimePerPlayer)} per match to make all their moves. However during a match one player may run out of time on their clock. 
+                Each player gets {formatTime(matchTimePerPlayer)} per match to make all their moves. However during a match one player may run out of time on their clock.
               </p>
               <p>
                 <strong>Their opponent shouldn't have to wait forever for a move that's never coming.</strong>
@@ -361,7 +399,9 @@ const UserManual = ({
                 If ML1 is available but the winning player doesn't claim their victory, the match blocks the entire tournament from progressing.
               </p>
               <p>
-                2 minutes after ML1, any player who has already advanced in the tournament can step in, eliminate both players, and keep things moving.
+                {contractConfig.tierConfigurations.length > 0
+                  ? formatTime(contractConfig.tierConfigurations[0].matchLevel2Delay)
+                  : '2 minutes'} after ML1, any player who has already advanced in the tournament can step in, eliminate both players, and keep things moving.
               </p>
               <div className="bg-purple-500/20 border border-purple-400/40 rounded-lg p-3">
                 <p className="text-purple-200">
@@ -384,7 +424,9 @@ const UserManual = ({
                 If ML2 is available but no advanced player steps in, the match is considered fully abandoned.
               </p>
               <p>
-                2 minutes after ML2, anyone (even someone outside the tournament) can replace both players and take their spot in the bracket.
+                {contractConfig.tierConfigurations.length > 0
+                  ? formatTime(contractConfig.tierConfigurations[0].matchLevel3Delay)
+                  : '2 minutes'} after ML2, anyone (even someone outside the tournament) can replace both players and take their spot in the bracket.
               </p>
               <div className="bg-purple-500/20 border border-purple-400/40 rounded-lg p-3">
                 <p className="text-purple-200">
@@ -532,7 +574,7 @@ const UserManual = ({
               </div>
 
               <p className="font-semibold text-gray-200">
-                Example: A raffle with a {finalRaffleThresholds[1]} ETH threshold triggers after accumulating {(parseFloat(finalRaffleThresholds[1]) * 1.5).toFixed(1)} ETH.
+                Example: A raffle with a 0.4 ETH threshold triggers after accumulating 0.6 ETH.
               </p>
 
               <div className="overflow-x-auto">
@@ -546,19 +588,19 @@ const UserManual = ({
                   <tbody className="divide-y divide-blue-500/20">
                     <tr className="hover:bg-blue-500/5 transition-colors">
                       <td className="py-3 px-4 text-gray-300">Contract Reserve (10% of threshold)</td>
-                      <td className="py-3 px-4 text-gray-300 font-mono">{(parseFloat(finalRaffleThresholds[1]) * 0.1).toFixed(1)} ETH</td>
+                      <td className="py-3 px-4 text-gray-300 font-mono">0.04 ETH</td>
                     </tr>
                     <tr className="hover:bg-blue-500/5 transition-colors">
                       <td className="py-3 px-4 text-gray-300">Raffle Pool</td>
-                      <td className="py-3 px-4 text-gray-300 font-mono">{(parseFloat(finalRaffleThresholds[1]) * 1.5 - parseFloat(finalRaffleThresholds[1]) * 0.1).toFixed(1)} ETH</td>
+                      <td className="py-3 px-4 text-gray-300 font-mono">0.56 ETH</td>
                     </tr>
                     <tr className="hover:bg-blue-500/5 transition-colors">
-                      <td className="py-3 px-4 text-gray-300 pl-8">→ Random Winner ({raffleWinnerShare}%)</td>
-                      <td className="py-3 px-4 text-gray-300 font-mono">{((parseFloat(finalRaffleThresholds[1]) * 1.5 - parseFloat(finalRaffleThresholds[1]) * 0.1) * raffleWinnerShare / 100).toFixed(2)} ETH</td>
+                      <td className="py-3 px-4 text-gray-300 pl-8">→ Random Winner 80%</td>
+                      <td className="py-3 px-4 text-gray-300 font-mono">0.448 ETH</td>
                     </tr>
                     <tr className="hover:bg-blue-500/5 transition-colors">
-                      <td className="py-3 px-4 text-gray-300 pl-8">→ Owner ({raffleOwnerShare}%)</td>
-                      <td className="py-3 px-4 text-gray-300 font-mono">{((parseFloat(finalRaffleThresholds[1]) * 1.5 - parseFloat(finalRaffleThresholds[1]) * 0.1) * raffleOwnerShare / 100).toFixed(2)} ETH</td>
+                      <td className="py-3 px-4 text-gray-300 pl-8">→ Owner 20%</td>
+                      <td className="py-3 px-4 text-gray-300 font-mono">0.112 ETH</td>
                     </tr>
                   </tbody>
                 </table>
@@ -583,17 +625,48 @@ const UserManual = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-blue-500/20">
-                  {finalRaffleThresholds.slice(0, 5).map((threshold, index) => (
-                    <tr key={index} className="hover:bg-blue-500/5 transition-colors">
-                      <td className="py-3 px-4 text-gray-300">{index + 1}{index === 0 ? 'st' : index === 1 ? 'nd' : index === 2 ? 'rd' : 'th'} Raffle</td>
-                      <td className="py-3 px-4 text-gray-300 font-mono">{threshold} ETH</td>
-                    </tr>
-                  ))}
-                  {finalRaffleThresholds.length > 5 && (
-                    <tr className="hover:bg-blue-500/5 transition-colors">
-                      <td className="py-3 px-4 text-gray-300">6th+ Raffle</td>
-                      <td className="py-3 px-4 text-gray-300 font-mono">{finalRaffleThresholds[5]} ETH</td>
-                    </tr>
+                  {finalRaffleThresholds.length > 0 ? (
+                    <>
+                      {finalRaffleThresholds.slice(0, 5).map((threshold, index) => (
+                        <tr key={index} className="hover:bg-blue-500/5 transition-colors">
+                          <td className="py-3 px-4 text-gray-300">{index + 1}{index === 0 ? 'st' : index === 1 ? 'nd' : index === 2 ? 'rd' : 'th'} Raffle</td>
+                          <td className="py-3 px-4 text-gray-300 font-mono">{threshold} ETH</td>
+                        </tr>
+                      ))}
+                      {finalRaffleThresholds.length > 5 && (
+                        <tr className="hover:bg-blue-500/5 transition-colors">
+                          <td className="py-3 px-4 text-gray-300">6th+ Raffle</td>
+                          <td className="py-3 px-4 text-gray-300 font-mono">{finalRaffleThresholds[5]} ETH</td>
+                        </tr>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <tr className="hover:bg-blue-500/5 transition-colors">
+                        <td className="py-3 px-4 text-gray-300">1st Raffle</td>
+                        <td className="py-3 px-4 text-gray-300 font-mono">0.5 ETH</td>
+                      </tr>
+                      <tr className="hover:bg-blue-500/5 transition-colors">
+                        <td className="py-3 px-4 text-gray-300">2nd Raffle</td>
+                        <td className="py-3 px-4 text-gray-300 font-mono">1.0 ETH</td>
+                      </tr>
+                      <tr className="hover:bg-blue-500/5 transition-colors">
+                        <td className="py-3 px-4 text-gray-300">3rd Raffle</td>
+                        <td className="py-3 px-4 text-gray-300 font-mono">1.5 ETH</td>
+                      </tr>
+                      <tr className="hover:bg-blue-500/5 transition-colors">
+                        <td className="py-3 px-4 text-gray-300">4th Raffle</td>
+                        <td className="py-3 px-4 text-gray-300 font-mono">2.0 ETH</td>
+                      </tr>
+                      <tr className="hover:bg-blue-500/5 transition-colors">
+                        <td className="py-3 px-4 text-gray-300">5th Raffle</td>
+                        <td className="py-3 px-4 text-gray-300 font-mono">2.5 ETH</td>
+                      </tr>
+                      <tr className="hover:bg-blue-500/5 transition-colors">
+                        <td className="py-3 px-4 text-gray-300">6th+ Raffle</td>
+                        <td className="py-3 px-4 text-gray-300 font-mono">3.0 ETH</td>
+                      </tr>
+                    </>
                   )}
                 </tbody>
               </table>
