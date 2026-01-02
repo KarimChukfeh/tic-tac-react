@@ -413,11 +413,11 @@ export default function Landing() {
           <p className="text-xl md:text-2xl text-slate-400 text-center max-w-2xl mb-12 leading-relaxed">
             Classic strategy games. Real stakes. No tokens, no tricks.
             <br />
-            <span className="text-white font-semibold">Skill vs skill. Real ETH on the line.</span>
+            <span className="text-white font-semibold inline-block mt-4">Skill vs skill. Real ETH on the line.</span>
           </p>
           
           {/* Trust Signals */}
-          <div className="flex flex-wrap justify-center gap-6 mb-12 py-2">
+          <div className="flex flex-wrap justify-center gap-6 mb-12">
             <TrustSignal icon="🔒" text="Every move verified on-chain" />
             <TrustSignal icon="⚡" text="Instant ETH payouts to your wallet" />
             <TrustSignal icon="🎯" text="No RNG, pure skill" />
