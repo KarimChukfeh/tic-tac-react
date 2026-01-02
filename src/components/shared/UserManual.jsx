@@ -58,19 +58,25 @@ const UserManual = ({
         const tierConfigurations = [];
         for (const tierId of tierIds) {
           try {
-            const config = await contractInstance.getTierConfiguration(Number(tierId));
+            // Use split functions that work across all three game contracts
+            const [tierInfo, prizeDistribution, timeouts] = await Promise.all([
+              contractInstance.getTierInfo(Number(tierId)),
+              contractInstance.getTierPrizeDistribution(Number(tierId)),
+              contractInstance.getTierTimeouts(Number(tierId)).catch(() => null) // TicTacChain/Chess don't have this
+            ]);
+
             tierConfigurations.push({
               tierId: Number(tierId),
-              playerCount: Number(config.playerCount),
-              instanceCount: Number(config.instanceCount),
-              entryFee: config.entryFee,
-              matchTimePerPlayer: Number(config.matchTimePerPlayer),
-              timeIncrementPerMove: Number(config.timeIncrementPerMove),
-              matchLevel2Delay: Number(config.matchLevel2Delay),
-              matchLevel3Delay: Number(config.matchLevel3Delay),
-              enrollmentWindow: Number(config.enrollmentWindow),
-              enrollmentLevel2Delay: Number(config.enrollmentLevel2Delay),
-              prizeDistribution: config.prizeDistribution
+              playerCount: Number(tierInfo.playerCount),
+              instanceCount: Number(tierInfo.instanceCount),
+              entryFee: tierInfo.entryFee,
+              matchTimePerPlayer: timeouts ? Number(timeouts.matchTimePerPlayer) : 0,
+              timeIncrementPerMove: timeouts ? Number(timeouts.timeIncrementPerMove) : 0,
+              matchLevel2Delay: timeouts ? Number(timeouts.matchLevel2Delay) : 0,
+              matchLevel3Delay: timeouts ? Number(timeouts.matchLevel3Delay) : 0,
+              enrollmentWindow: timeouts ? Number(timeouts.enrollmentWindow) : 0,
+              enrollmentLevel2Delay: timeouts ? Number(timeouts.enrollmentLevel2Delay) : 0,
+              prizeDistribution: prizeDistribution.percentages || prizeDistribution
             });
           } catch (err) {
             console.warn(`Could not fetch config for tier ${tierId}:`, err);

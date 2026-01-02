@@ -22,7 +22,8 @@ import {
   CheckCircle, AlertCircle, ChevronDown, ArrowLeft, HelpCircle
 } from 'lucide-react';
 import { ethers } from 'ethers';
-import CONNECTFOUR_ABI from './CFOCABI.json';
+import ConnectFourABIData from './CFOCABI.json';
+const CONNECTFOUR_ABI = ConnectFourABIData.abi;
 import { CURRENT_NETWORK, CONTRACT_ADDRESSES, getAddressUrl, getExplorerHomeUrl } from './config/networks';
 import { shortenAddress, formatTime as formatTimeHMS, getTierName } from './utils/formatters';
 import { parseTournamentParams } from './utils/urlHelpers';
@@ -1862,7 +1863,7 @@ export default function ConnectFour() {
 
       const {
         player1, player2, currentTurn, winner, loser, board, matchStatus, isDraw,
-        startTime, lastMoveTime, lastMovedCell, lastMoveTimestamp
+        startTime, lastMoveTime, lastMoveTimestamp
       } = parsedMatch;
 
       const zeroAddress = '0x0000000000000000000000000000000000000000';
@@ -1942,7 +1943,6 @@ export default function ConnectFour() {
         isPlayer1,
         isYourTurn,
         userSymbol: isPlayer1 ? 'X' : 'O',
-        lastMovedCell,
         isMatchInitialized,
         timeoutState,
         lastMoveTime,

@@ -22,7 +22,8 @@ import {
   CheckCircle, AlertCircle, ChevronDown, ArrowLeft, HelpCircle
 } from 'lucide-react';
 import { ethers } from 'ethers';
-import CHESS_ABI from './COCABI.json';
+import ChessABIData from './COCABI.json';
+const CHESS_ABI = ChessABIData.abi;
 import { CURRENT_NETWORK, CONTRACT_ADDRESSES, getAddressUrl, getExplorerHomeUrl } from './config/networks';
 import { shortenAddress, formatTime as formatTimeHMS, getTierName } from './utils/formatters';
 import { parseTournamentParams } from './utils/urlHelpers';

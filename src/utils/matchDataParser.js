@@ -53,13 +53,8 @@ export const parseTicTacToeMatch = (matchData) => ({
   board: Array.from(matchData.board).map(cell => Number(cell)),
   currentTurn: matchData.currentTurn,
   firstPlayer: matchData.firstPlayer,
-  lastMovedCell: Number(matchData.lastMovedCell),
-  blockedPlayer: matchData.blockedPlayer,
-  blockedCell: Number(matchData.blockedCell),
-  player1UsedBlock: matchData.player1UsedBlock,
-  player2UsedBlock: matchData.player2UsedBlock,
 
-  // Total match time tracking fields (with defaults for backward compatibility)
+  // Total match time tracking fields
   player1TimeRemaining: matchData.player1TimeRemaining !== undefined ? Number(matchData.player1TimeRemaining) : 300,
   player2TimeRemaining: matchData.player2TimeRemaining !== undefined ? Number(matchData.player2TimeRemaining) : 300,
   lastMoveTimestamp: matchData.lastMoveTimestamp !== undefined ? Number(matchData.lastMoveTimestamp) : 0,
@@ -79,39 +74,73 @@ export const parseConnectFourMatch = (matchData) => ({
   firstPlayer: matchData.firstPlayer,
   moveCount: Number(matchData.moveCount),
   lastColumn: Number(matchData.lastColumn),
+
+  // Total match time tracking fields
+  player1TimeRemaining: matchData.player1TimeRemaining !== undefined ? Number(matchData.player1TimeRemaining) : 300,
+  player2TimeRemaining: matchData.player2TimeRemaining !== undefined ? Number(matchData.player2TimeRemaining) : 300,
+  lastMoveTimestamp: matchData.lastMoveTimestamp !== undefined ? Number(matchData.lastMoveTimestamp) : 0,
 });
 
 /**
  * Parse Chess match data
  * @param {Object} matchData - Raw match data from Chess contract
  * @returns {Object} Parsed Chess match with all fields
+ *
+ * Note: Chess contract returns a FLAT structure, not nested with 'common' field
  */
 export const parseChessMatch = (matchData) => ({
-  ...parseCommonMatchData(matchData),
+  // Player addresses
+  player1: matchData.player1,
+  player2: matchData.player2,
+
+  // Match result
+  winner: matchData.winner,
+  loser: matchData.loser || '0x0000000000000000000000000000000000000000',
+
+  // Match status
+  matchStatus: Number(matchData.status),
+  isDraw: matchData.isDraw,
+
+  // Timestamps
+  startTime: Number(matchData.startTime),
+  lastMoveTime: Number(matchData.lastMoveTime),
+  endTime: matchData.endTime ? Number(matchData.endTime) : 0,
+
+  // Tournament context (may not be in flat structure)
+  tierId: matchData.tierId !== undefined ? Number(matchData.tierId) : 0,
+  instanceId: matchData.instanceId !== undefined ? Number(matchData.instanceId) : 0,
+  roundNumber: matchData.roundNumber !== undefined ? Number(matchData.roundNumber) : 0,
+  matchNumber: matchData.matchNumber !== undefined ? Number(matchData.matchNumber) : 0,
+
+  // Cache status
+  isCached: matchData.isCached || false,
 
   // Game-specific fields
-  board: Array.from(matchData.board).map(cell => ({
-    pieceType: Number(cell.pieceType),
-    color: Number(cell.color)
-  })),
   currentTurn: matchData.currentTurn,
   firstPlayer: matchData.firstPlayer,
 
   // Chess-specific state
   whiteInCheck: matchData.whiteInCheck,
   blackInCheck: matchData.blackInCheck,
-  enPassantSquare: Number(matchData.enPassantSquare),
-  halfMoveClock: Number(matchData.halfMoveClock),
   fullMoveNumber: Number(matchData.fullMoveNumber),
 
-  // Castling rights
-  whiteKingSideCastle: matchData.whiteKingSideCastle,
-  whiteQueenSideCastle: matchData.whiteQueenSideCastle,
-  blackKingSideCastle: matchData.blackKingSideCastle,
-  blackQueenSideCastle: matchData.blackQueenSideCastle,
+  // Fields that may not exist in the flat structure
+  board: matchData.board ? Array.from(matchData.board).map(cell => ({
+    pieceType: Number(cell.pieceType),
+    color: Number(cell.color)
+  })) : [],
+  enPassantSquare: matchData.enPassantSquare !== undefined ? Number(matchData.enPassantSquare) : 0,
+  halfMoveClock: matchData.halfMoveClock !== undefined ? Number(matchData.halfMoveClock) : 0,
+  whiteKingSideCastle: matchData.whiteKingSideCastle || false,
+  whiteQueenSideCastle: matchData.whiteQueenSideCastle || false,
+  blackKingSideCastle: matchData.blackKingSideCastle || false,
+  blackQueenSideCastle: matchData.blackQueenSideCastle || false,
+  moveHistory: matchData.moveHistory || [],
 
-  // Move history
-  moveHistory: matchData.moveHistory,
+  // Time tracking fields
+  player1TimeRemaining: matchData.player1TimeRemaining !== undefined ? Number(matchData.player1TimeRemaining) : 300,
+  player2TimeRemaining: matchData.player2TimeRemaining !== undefined ? Number(matchData.player2TimeRemaining) : 300,
+  lastMoveTimestamp: matchData.lastMoveTimestamp !== undefined ? Number(matchData.lastMoveTimestamp) : 0,
 });
 
 /**

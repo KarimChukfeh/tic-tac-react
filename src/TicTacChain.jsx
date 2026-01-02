@@ -22,7 +22,8 @@ import {
   CheckCircle, AlertCircle, ChevronDown, ArrowLeft, HelpCircle
 } from 'lucide-react';
 import { ethers } from 'ethers';
-import DUMMY_ABI from './TicTacChainABI.json';
+import TicTacChainABIData from './TicTacChainABI.json';
+const DUMMY_ABI = TicTacChainABIData.abi;
 import { CURRENT_NETWORK, CONTRACT_ADDRESSES, getAddressUrl, getExplorerHomeUrl } from './config/networks';
 import { shortenAddress, formatTime as formatTimeHMS, getTierName } from './utils/formatters';
 import { parseTournamentParams } from './utils/urlHelpers';
@@ -1553,7 +1554,7 @@ export default function TicTacChain() {
 
       const {
         player1, player2, currentTurn, winner, loser, board, matchStatus, isDraw,
-        startTime, lastMoveTime, lastMovedCell, lastMoveTimestamp
+        startTime, lastMoveTime, lastMoveTimestamp
       } = parsedMatch;
 
       const zeroAddress = '0x0000000000000000000000000000000000000000';
@@ -1633,7 +1634,6 @@ export default function TicTacChain() {
         isPlayer1,
         isYourTurn,
         userSymbol: isPlayer1 ? 'X' : 'O',
-        lastMovedCell,
         isMatchInitialized,
         timeoutState,
         lastMoveTime,
@@ -2521,9 +2521,7 @@ export default function TicTacChain() {
                       ? 'bg-blue-500/40 text-blue-200'
                       : 'bg-pink-500/40 text-pink-200'
                   } ${
-                    currentMatch.lastMovedCell === idx && currentMatch.matchStatus === 1
-                      ? 'ring-2 ring-yellow-400 animate-pulse'
-                      : ''
+                    ''
                   }`}
                 >
                   {cell === 1 ? 'X' : cell === 2 ? 'O' : ''}
