@@ -1615,6 +1615,10 @@ export default function TicTacChain() {
       const isPlayer1 = actualPlayer1.toLowerCase() === userAccount.toLowerCase();
       const isYourTurn = currentTurn.toLowerCase() === userAccount.toLowerCase();
 
+      // Determine if match was completed by timeout
+      // A match is timed out if it completed with an active timeout state
+      const isTimedOut = matchStatus === 2 && timeoutState?.timeoutActive === true;
+
       return {
         ...matchInfo,
         player1: actualPlayer1,
@@ -1625,6 +1629,7 @@ export default function TicTacChain() {
         board: boardState,
         matchStatus,
         isDraw,
+        isTimedOut,
         isPlayer1,
         isYourTurn,
         userSymbol: isPlayer1 ? 'X' : 'O',

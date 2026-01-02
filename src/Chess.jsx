@@ -1599,13 +1599,31 @@ export default function Chess() {
             const matchData = await contractInstance.getChessMatch(tierId, instanceId, roundNum, matchNum);
 
             // Parse match data directly (chess contract returns array)
+            const zeroAddress = '0x0000000000000000000000000000000000000000';
+            const player1 = matchData[0];
+            const player2 = matchData[1];
+            const winner = matchData[3];
+            const matchStatus = Number(matchData[4]);
+            const isDraw = matchData[5];
+
+            // Compute loser field (not provided by getChessMatch)
+            let loser = zeroAddress;
+            if (matchStatus === 2 && !isDraw) {
+              if (winner.toLowerCase() === player1.toLowerCase()) {
+                loser = player2;
+              } else if (winner.toLowerCase() === player2.toLowerCase()) {
+                loser = player1;
+              }
+            }
+
             const parsedMatch = {
-              player1: matchData[0],
-              player2: matchData[1],
+              player1,
+              player2,
               currentTurn: matchData[2],
-              winner: matchData[3],
-              matchStatus: Number(matchData[4]),
-              isDraw: matchData[5],
+              winner,
+              loser,
+              matchStatus,
+              isDraw,
               startTime: Number(matchData[6]),
               lastMoveTime: Number(matchData[7]),
               fullMoveNumber: Number(matchData[8]),
@@ -1665,9 +1683,13 @@ export default function Chess() {
               console.debug('Could not check escalation availability:', escCheckErr.message);
             }
 
+            // Determine if match was completed by timeout
+            const isTimedOut = parsedMatch.matchStatus === 2 && timeoutState?.timeoutActive === true;
+
             matches.push({
               ...parsedMatch,
               timeoutState,
+              isTimedOut,
               // Override with contract's real-time values
               player1TimeRemaining,
               player2TimeRemaining,
@@ -1905,15 +1927,33 @@ export default function Chess() {
       const isPlayer1 = actualPlayer1.toLowerCase() === userAccount.toLowerCase();
       const isYourTurn = currentTurn.toLowerCase() === userAccount.toLowerCase();
 
+      // Compute loser field (not provided by getChessMatch)
+      let loser = zeroAddress;
+      if (matchStatus === 2 && !isDraw) {
+        // Match completed and not a draw - determine loser
+        if (winner.toLowerCase() === actualPlayer1.toLowerCase()) {
+          loser = actualPlayer2;
+        } else if (winner.toLowerCase() === actualPlayer2.toLowerCase()) {
+          loser = actualPlayer1;
+        }
+        // If winner is zero address (double forfeit), loser stays zero address
+      }
+
+      // Determine if match was completed by timeout
+      // A match is timed out if it completed with an active timeout state
+      const isTimedOut = matchStatus === 2 && timeoutState?.timeoutActive === true;
+
       return {
         ...matchInfo,
         player1: actualPlayer1,
         player2: actualPlayer2,
         currentTurn,
         winner,
+        loser,
         board: boardState,
         matchStatus,
         isDraw,
+        isTimedOut,
         isPlayer1,
         isYourTurn,
         isMatchInitialized,
