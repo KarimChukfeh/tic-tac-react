@@ -21,6 +21,7 @@ const UserManual = ({
     basisPoints: 10000,
     protocolShareBps: 250, // 2.5%
     enrollmentWindows: { '2': 300, '4': 600, '8': 1200 }, // Default: 5min, 10min, 20min
+    matchTimePerPlayer: 300, // Default: 5 minutes (300 seconds)
     currentRaffleThreshold: null,
     isLoading: true
   });
@@ -46,11 +47,16 @@ const UserManual = ({
 
         // Fetch timeout configs for common tier sizes
         const timeoutConfigs = {};
+        let matchTimePerPlayerSeconds = 300; // Default: 5 minutes
         for (const tierSize of [2, 4, 8]) {
           try {
             const tierId = tierSize === 2 ? 0 : tierSize === 4 ? 1 : 2;
             const config = await contractInstance.getTimeoutConfig(tierId);
             timeoutConfigs[tierSize] = Number(config.enrollmentWindow);
+            // Get matchTimePerPlayer from the first tier we fetch (they should all be the same)
+            if (tierId === 0 && config.matchTimePerPlayer) {
+              matchTimePerPlayerSeconds = Number(config.matchTimePerPlayer);
+            }
           } catch (err) {
             console.warn(`Could not fetch timeout config for tier ${tierSize}:`, err);
           }
@@ -60,6 +66,7 @@ const UserManual = ({
           basisPoints: Number(basisPoints),
           protocolShareBps: Number(protocolShareBps),
           enrollmentWindows: timeoutConfigs,
+          matchTimePerPlayer: matchTimePerPlayerSeconds,
           currentRaffleThreshold: raffleInfo ? ethers.formatEther(raffleInfo.threshold) : null,
           isLoading: false
         });
@@ -328,7 +335,10 @@ const UserManual = ({
             <h3 id="ml1" className="text-lg font-semibold text-purple-200 mb-3 scroll-mt-24">ML1: Claim Victory by Opponent Timeout</h3>
             <div className="space-y-3 text-gray-300">
               <p>
-                During a match, one player may run out of time on their clock. Their opponent shouldn't have to wait forever for a move that's never coming.
+                Each player gets {formatTime(contractConfig.matchTimePerPlayer)} per match to make all their moves.
+              </p>
+              <p>
+                However during a match one player may run out of time on their clock. Their opponent shouldn't have to wait forever for a move that's never coming.
               </p>
               <p>
                 When your opponent's clock hits zero, you can claim victory by forfeit.
