@@ -335,10 +335,10 @@ const UserManual = ({
             <h3 id="ml1" className="text-lg font-semibold text-purple-200 mb-3 scroll-mt-24">ML1: Claim Victory by Opponent Timeout</h3>
             <div className="space-y-3 text-gray-300">
               <p>
-                Each player gets {formatTime(contractConfig.matchTimePerPlayer)} per match to make all their moves.
+                Each player gets {formatTime(contractConfig.matchTimePerPlayer)} per match to make all their moves. However during a match one player may run out of time on their clock. 
               </p>
               <p>
-                However during a match one player may run out of time on their clock. Their opponent shouldn't have to wait forever for a move that's never coming.
+                <strong>Their opponent shouldn't have to wait forever for a move that's never coming.</strong>
               </p>
               <p>
                 When your opponent's clock hits zero, you can claim victory by forfeit.
