@@ -458,7 +458,7 @@ export default function Landing() {
             <GameCard
               icon="✖️"
               title="Tic-Tac-Toe"
-              stakes="0.001 ETH"
+              stakes="0.001 - 0.004 ETH"
               tagline="The game everyone knows. Now with real stakes and zero mercy."
               features={[
                 "Each players gets 2 minutes per match",
