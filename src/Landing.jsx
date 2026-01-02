@@ -461,7 +461,7 @@ export default function Landing() {
               stakes="0.001 ETH"
               tagline="The game everyone knows. Now with real stakes and zero mercy."
               features={[
-                "5 minutes per match",
+                "Each players gets 2 minutes per match",
                 "Perfect for your first match",
                 "Quick games, instant results",
                 "Classic rules, pure strategy"
@@ -476,7 +476,7 @@ export default function Landing() {
               stakes="0.002 – 0.01 ETH"
               tagline="Drop. Connect. Collect. The vertical battle for supremacy."
               features={[
-                "1 minute per move",
+                "Each players gets 5 minutes per match",
                 "Deceptively deep strategy",
                 "Fast-paced tactical play",
                 "First to four wins it all"
@@ -491,7 +491,7 @@ export default function Landing() {
               stakes="0.01 – 0.02 ETH"
               tagline="Full chess. Every rule. Every move immortalized on-chain forever."
               features={[
-                "1 minute per move",
+                "Each players gets 10 minutes per match",
                 "Castling, en passant, promotion",
                 "Higher stakes for serious players",
                 "Prove your rating means something"
