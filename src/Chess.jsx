@@ -492,6 +492,7 @@ export default function Chess() {
   const [matchTimePerPlayer, setMatchTimePerPlayer] = useState(300); // Default 5 minutes
   const [timeIncrement, setTimeIncrement] = useState(0); // Default no increment
   const [escalationInterval, setEscalationInterval] = useState(60); // Default 60 seconds between escalations
+  const [displayTimeoutConfig, setDisplayTimeoutConfig] = useState({ matchTimePerPlayer: 300 }); // Dynamic timeout config for display
 
   // Loading State
   const [loading, setLoading] = useState(false);
@@ -637,6 +638,37 @@ export default function Chess() {
 
     autoNavigate();
   }, [urlTournamentParams, account, contract, viewingTournament, matchTimePerPlayer, setSearchParams]);
+
+  // Update display timeout config when viewing tournament changes
+  useEffect(() => {
+    const updateDisplayConfig = async () => {
+      if (!contract) return;
+
+      if (viewingTournament?.tierId !== undefined) {
+        // Fetch timeout config for the viewing tournament's tier
+        try {
+          const timeoutConfig = await fetchTierTimeoutConfig(contract, viewingTournament.tierId, 300);
+          if (timeoutConfig?.matchTimePerPlayer) {
+            setDisplayTimeoutConfig(timeoutConfig);
+          }
+        } catch (err) {
+          console.warn(`Could not fetch timeout config for tier ${viewingTournament.tierId}:`, err);
+        }
+      } else {
+        // No tournament viewing, reset to tier 0 (default)
+        try {
+          const timeoutConfig = await fetchTierTimeoutConfig(contract, 0, 300);
+          if (timeoutConfig?.matchTimePerPlayer) {
+            setDisplayTimeoutConfig(timeoutConfig);
+          }
+        } catch (err) {
+          console.warn('Could not fetch default timeout config for tier 0:', err);
+        }
+      }
+    };
+
+    updateDisplayConfig();
+  }, [viewingTournament, contract]);
 
   // Theme colors - Single "dream" theme from Chess.jsx
   const currentTheme = {
@@ -798,6 +830,7 @@ export default function Chess() {
         const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, 0, 300);
         if (timeoutConfig?.matchTimePerPlayer) {
           setMatchTimePerPlayer(timeoutConfig.matchTimePerPlayer);
+          setDisplayTimeoutConfig(timeoutConfig);
         }
       } catch (err) {
         console.warn('Could not fetch default match time from tier 0:', err);
@@ -2641,10 +2674,10 @@ export default function Chess() {
             <div className="bg-gradient-to-br from-yellow-500/20 to-amber-500/20 border border-yellow-400/30 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Clock className="text-yellow-400" size={20} />
-                <span className="font-bold text-yellow-300">{Math.floor(matchTimePerPlayer / 60)} {Math.floor(matchTimePerPlayer / 60) === 1 ? 'minute' : 'minutes'} per match</span>
+                <span className="font-bold text-yellow-300">{Math.floor(displayTimeoutConfig.matchTimePerPlayer / 60)} {Math.floor(displayTimeoutConfig.matchTimePerPlayer / 60) === 1 ? 'minute' : 'minutes'} per match</span>
               </div>
               <p className="text-sm text-yellow-200">
-                Each player gets {Math.floor(matchTimePerPlayer / 60)} {Math.floor(matchTimePerPlayer / 60) === 1 ? 'minute' : 'minutes'} total for all their moves in the match.
+                Each player gets {Math.floor(displayTimeoutConfig.matchTimePerPlayer / 60)} {Math.floor(displayTimeoutConfig.matchTimePerPlayer / 60) === 1 ? 'minute' : 'minutes'} total for all their moves in the match.
               </p>
             </div>
             <div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-xl p-4">
