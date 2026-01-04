@@ -278,7 +278,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
 };
 
 // Chess Board Component - copied from Chess.jsx
-const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, matchStatus, loading, whiteInCheck, blackInCheck, lastMoveTime, startTime, lastMove }) => {
+const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, firstPlayer, matchStatus, loading, whiteInCheck, blackInCheck, lastMoveTime, startTime, lastMove }) => {
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [promotionSquare, setPromotionSquare] = useState(null);
   const [pendingMove, setPendingMove] = useState(null);
@@ -315,9 +315,11 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, mat
 
   const isPlayer1 = account && player1?.toLowerCase() === account.toLowerCase();
   const isPlayer2 = account && player2?.toLowerCase() === account.toLowerCase();
-  const isWhite = isPlayer1;
+  // firstPlayer is white, so check if current account is the firstPlayer
+  const isWhite = account && firstPlayer?.toLowerCase() === account.toLowerCase();
   const isMyTurn = account && currentTurn?.toLowerCase() === account.toLowerCase();
-  const shouldFlip = isPlayer1;
+  // Flip board so white is at bottom for white player, black at bottom for black player
+  const shouldFlip = !isWhite;
 
   const MOVE_TIMEOUT = 300;
   const [timeRemaining, setTimeRemaining] = useState(null);
@@ -1798,14 +1800,18 @@ export default function Chess() {
               console.warn(`Could not fetch time for match ${matchNum}:`, timeErr);
             }
 
-            // Fetch escalation state using chessMatches mapping
+            // Fetch escalation state and firstPlayer using chessMatches mapping
             let timeoutState = null;
+            let firstPlayer = null;
             try {
               const matchKey = ethers.solidityPackedKeccak256(
                 ['uint8', 'uint8', 'uint8', 'uint8'],
                 [tierId, instanceId, roundNum, matchNum]
               );
               const chessMatchData = await contractInstance.chessMatches(matchKey);
+
+              // Extract firstPlayer (white player)
+              firstPlayer = chessMatchData.firstPlayer;
 
               // Chess contract has timeoutState nested structure
               const esc1Start = Number(chessMatchData.timeoutState.escalation1Start);
@@ -1843,6 +1849,7 @@ export default function Chess() {
 
             matches.push({
               ...parsedMatch,
+              firstPlayer, // White player
               timeoutState,
               isTimedOut,
               // Override with contract's real-time values
@@ -2015,14 +2022,18 @@ export default function Chess() {
       const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, tierId, totalMatchTime);
       const tierMatchTime = timeoutConfig?.matchTimePerPlayer ?? totalMatchTime;
 
-      // Fetch escalation state using chessMatches mapping (not matchTimeouts)
+      // Fetch escalation state and firstPlayer using chessMatches mapping
       let timeoutState = null;
+      let firstPlayer = null;
       try {
         const matchKey = ethers.solidityPackedKeccak256(
           ['uint8', 'uint8', 'uint8', 'uint8'],
           [tierId, instanceId, roundNumber, matchNumber]
         );
         const chessMatchData = await contractInstance.chessMatches(matchKey);
+
+        // Extract firstPlayer (white player)
+        firstPlayer = chessMatchData.firstPlayer;
 
         // Check if timeoutState exists (it won't for new matches)
         if (chessMatchData.timeoutState) {
@@ -2102,6 +2113,7 @@ export default function Chess() {
         ...matchInfo,
         player1: actualPlayer1,
         player2: actualPlayer2,
+        firstPlayer, // White player
         currentTurn,
         winner,
         loser,
@@ -3001,6 +3013,7 @@ export default function Chess() {
               account={account}
               player1={currentMatch.player1}
               player2={currentMatch.player2}
+              firstPlayer={currentMatch.firstPlayer}
               matchStatus={currentMatch.matchStatus}
               loading={matchLoading}
               whiteInCheck={currentMatch.whiteInCheck}
