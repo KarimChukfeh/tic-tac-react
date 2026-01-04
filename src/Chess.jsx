@@ -892,8 +892,8 @@ export default function Chess() {
 
       // Fetch match time from first tier for display in Game Info Cards
       try {
-        const coreContract = getCoreContract();
-        const timeoutConfig = await fetchTierTimeoutConfig(coreContract, 0, 300);
+        const readOnlyContract = getReadOnlyContract();
+        const timeoutConfig = await fetchTierTimeoutConfig(readOnlyContract, 0, 300);
         if (timeoutConfig?.matchTimePerPlayer) {
           setMatchTimePerPlayer(timeoutConfig.matchTimePerPlayer);
           setDisplayTimeoutConfig(timeoutConfig);
@@ -1069,7 +1069,7 @@ export default function Chess() {
 
     setTierMetadata(metadata);
     if (!silentUpdate) setMetadataLoading(false);
-  }, [getCoreContract]);
+  }, [getReadOnlyContract]);
 
   // LAZY LOADING: Fetch detailed instances for a specific tier (called on expand)
   // Note: Uses functional state updates to avoid dependency on tierInstances/tierMetadata
@@ -1189,12 +1189,12 @@ export default function Chess() {
     try {
       setRaffleSyncing(true);
 
-      // Get raffle contract with signer
+      // Get ChessOnChain contract with signer
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
-      const raffleContract = getRaffleContract(signer);
+      const chessContract = new ethers.Contract(CONTRACT_ADDRESS, CHESS_ABI, signer);
 
-      const tx = await raffleContract.executeProtocolRaffle();
+      const tx = await chessContract.executeProtocolRaffle();
       console.log('Raffle transaction submitted:', tx.hash);
       alert('Raffle transaction submitted! Waiting for confirmation...');
 
@@ -1208,7 +1208,7 @@ export default function Chess() {
 
       for (const log of receipt.logs) {
         try {
-          const parsedLog = raffleContract.interface.parseLog({
+          const parsedLog = chessContract.interface.parseLog({
             topics: log.topics,
             data: log.data
           });
@@ -1273,7 +1273,7 @@ export default function Chess() {
     } finally {
       setRaffleSyncing(false);
     }
-  }, [contract, account, getRaffleContract, fetchRaffleInfo, expandedTiers, fetchTierInstances]);
+  }, [contract, account, fetchRaffleInfo, expandedTiers, fetchTierInstances]);
 
   // Refs to access current state without causing dependency loops
   const expandedTiersRef = useRef(expandedTiers);
@@ -1658,13 +1658,13 @@ export default function Chess() {
     try {
       setTournamentsLoading(true);
 
-      // Get Core contract with signer
+      // Get ChessOnChain contract with signer
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
-      const coreContract = getCoreContract(signer);
+      const chessContract = new ethers.Contract(CONTRACT_ADDRESS, CHESS_ABI, signer);
 
       // Get tournament info to validate
-      const tournamentInfo = await coreContract.tournaments(tierId, instanceId);
+      const tournamentInfo = await chessContract.tournaments(tierId, instanceId);
       const status = Number(tournamentInfo.status);
       const enrolledCount = Number(tournamentInfo.enrolledCount);
       const enrollmentTimeout = tournamentInfo.enrollmentTimeout;
@@ -1712,7 +1712,7 @@ export default function Chess() {
         }
       }
 
-      const tx = await coreContract.claimAbandonedEnrollmentPool(tierId, instanceId);
+      const tx = await chessContract.claimAbandonedEnrollmentPool(tierId, instanceId);
       await tx.wait();
 
       alert('Abandoned enrollment pool claimed successfully!');
@@ -1748,9 +1748,6 @@ export default function Chess() {
   // Refresh tournament bracket data
   const refreshTournamentBracket = useCallback(async (contractInstance, tierId, instanceId, totalMatchTime) => {
     try {
-      // Get Core contract for tournament/tier info
-      const coreContract = getCoreContract();
-
       // Get read-only ChessOnChain contract
       const readOnlyContract = getReadOnlyContract();
 
@@ -1767,7 +1764,7 @@ export default function Chess() {
       const entryFee = tierConfig.entryFee;
 
       // Extract timeout config using shared utility function
-      const timeoutConfig = await fetchTierTimeoutConfig(coreContract, tierId, totalMatchTime);
+      const timeoutConfig = await fetchTierTimeoutConfig(readOnlyContract, tierId, totalMatchTime);
 
       // Get enrolled players from ChessOnChain enrolledPlayers mapping
       const enrolledPlayers = [];
@@ -1797,10 +1794,9 @@ export default function Chess() {
 
       // Fetch all rounds and matches
       const rounds = [];
-      const matchesContract = getMatchesContract();
       for (let roundNum = 0; roundNum < totalRounds; roundNum++) {
-        const roundInfo = await matchesContract.getRoundInfo(tierId, instanceId, roundNum);
-        const totalMatches = Number(roundInfo[0]);
+        const roundInfo = await readOnlyContract.rounds(tierId, instanceId, roundNum);
+        const totalMatches = Number(roundInfo.totalMatches);
 
         const matches = [];
         for (let matchNum = 0; matchNum < totalMatches; matchNum++) {
@@ -2283,12 +2279,12 @@ export default function Chess() {
       setMatchLoading(true);
       const { tierId, instanceId, roundNumber, matchNumber } = match;
 
-      // Get Escalation contract with signer
+      // Get ChessOnChain contract with signer
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
-      const escalationContract = getEscalationContract(signer);
+      const chessContract = new ethers.Contract(CONTRACT_ADDRESS, CHESS_ABI, signer);
 
-      const tx = await escalationContract.forceEliminateStalledMatch(tierId, instanceId, roundNumber, matchNumber);
+      const tx = await chessContract.forceEliminateStalledMatch(tierId, instanceId, roundNumber, matchNumber);
       await tx.wait();
 
       alert('Stalled match eliminated! Tournament can now continue.');
@@ -2327,12 +2323,12 @@ export default function Chess() {
       setMatchLoading(true);
       const { tierId, instanceId, roundNumber, matchNumber } = match;
 
-      // Get Escalation contract with signer
+      // Get ChessOnChain contract with signer
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
-      const escalationContract = getEscalationContract(signer);
+      const chessContract = new ethers.Contract(CONTRACT_ADDRESS, CHESS_ABI, signer);
 
-      const tx = await escalationContract.claimMatchSlotByReplacement(tierId, instanceId, roundNumber, matchNumber);
+      const tx = await chessContract.claimMatchSlotByReplacement(tierId, instanceId, roundNumber, matchNumber);
       await tx.wait();
 
       alert('Match slot claimed! You have replaced both players and advanced.');
@@ -3304,9 +3300,9 @@ export default function Chess() {
       </div>
 
       {/* User Manual Section */}
-      {/* <div id="user-manual" className="max-w-7xl mx-auto px-6 pb-12" style={{ position: 'relative', zIndex: 10 }}>
+      <div id="user-manual" className="max-w-7xl mx-auto px-6 pb-12" style={{ position: 'relative', zIndex: 10 }}>
         <UserManual contractInstance={contract} />
-      </div> */}
+      </div>
 
       {/* ============ FOOTER ============ */}
       <footer className="border-t border-slate-800/50 px-6 py-12" style={{ position: 'relative', zIndex: 10 }}>
