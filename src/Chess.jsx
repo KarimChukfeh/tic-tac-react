@@ -318,8 +318,9 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
   // firstPlayer is white, so check if current account is the firstPlayer
   const isWhite = account && firstPlayer?.toLowerCase() === account.toLowerCase();
   const isMyTurn = account && currentTurn?.toLowerCase() === account.toLowerCase();
-  // Flip board so white is at bottom for white player, black at bottom for black player
-  const shouldFlip = !isWhite;
+  // Flip board: white player needs flip to see their pieces at bottom
+  // (board indices 0-7 are rank 1, but CSS grid renders 0 at top-left)
+  const shouldFlip = isWhite;
 
   const MOVE_TIMEOUT = 300;
   const [timeRemaining, setTimeRemaining] = useState(null);
