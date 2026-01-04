@@ -108,8 +108,11 @@ const MiniChessBoard = ({
         firstPlayer: data.firstPlayer,
         player1: data.common?.player1,
         player2: data.common?.player2,
-        board: data.board ? 'exists' : 'missing',
-        hasCommonField: !!data.common
+        currentTurn: data.currentTurn,
+        board: data.board ? `${data.board.length} pieces` : 'missing',
+        boardSample: data.board ? [data.board[0], data.board[1], data.board[2]] : 'no board',
+        hasCommonField: !!data.common,
+        allKeys: Object.keys(data)
       });
 
       const parsed = parseChessMatch(data);
@@ -117,8 +120,11 @@ const MiniChessBoard = ({
         firstPlayer: parsed.firstPlayer,
         player1: parsed.player1,
         player2: parsed.player2,
+        currentTurn: parsed.currentTurn,
         board: parsed.board ? `${parsed.board.length} squares` : 'missing',
-        isWhite: parsed.isWhite
+        boardSample: parsed.board ? [parsed.board[0], parsed.board[1], parsed.board[2]] : 'no board',
+        isWhite: parsed.isWhite,
+        matchStatus: parsed.matchStatus
       });
       // Compute isPlayer1 by comparing account to player1
       parsed.isPlayer1 = parsed.player1?.toLowerCase() === account?.toLowerCase();
