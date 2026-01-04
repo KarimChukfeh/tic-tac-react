@@ -1758,31 +1758,23 @@ export default function Chess() {
         const matches = [];
         for (let matchNum = 0; matchNum < totalMatches; matchNum++) {
           try {
-            // Chess uses getChessMatch instead of getMatch
-            const matchData = await contractInstance.getChessMatch(tierId, instanceId, roundNum, matchNum);
+            const matchData = await contractInstance.getMatch(tierId, instanceId, roundNum, matchNum);
 
-            // Parse match data directly (chess contract returns array)
+            // Parse match data from nested structure
             const zeroAddress = '0x0000000000000000000000000000000000000000';
-            const player1 = matchData[0];
-            const player2 = matchData[1];
-            const winner = matchData[3];
-            const matchStatus = Number(matchData[4]);
-            const isDraw = matchData[5];
+            const player1 = matchData.common.player1;
+            const player2 = matchData.common.player2;
+            const winner = matchData.common.winner;
+            const matchStatus = Number(matchData.common.status);
+            const isDraw = matchData.common.isDraw;
 
-            // Compute loser field (not provided by getChessMatch)
-            let loser = zeroAddress;
-            if (matchStatus === 2 && !isDraw) {
-              if (winner.toLowerCase() === player1.toLowerCase()) {
-                loser = player2;
-              } else if (winner.toLowerCase() === player2.toLowerCase()) {
-                loser = player1;
-              }
-            }
+            // Get loser from common data
+            const loser = matchData.common.loser || zeroAddress;
 
             const parsedMatch = {
               player1,
               player2,
-              currentTurn: matchData[2],
+              currentTurn: matchData.currentTurn,
               winner,
               loser,
               matchStatus,
@@ -1952,8 +1944,8 @@ export default function Chess() {
   const fetchMoveHistory = useCallback(async (contractInstance, tierId, instanceId, roundNumber, matchNumber) => {
     try {
       // Chess move history - get match data using chess functions
-      const matchData = await contractInstance.getChessMatch(tierId, instanceId, roundNumber, matchNumber);
-      const player1 = matchData[0];
+      const matchData = await contractInstance.getMatch(tierId, instanceId, roundNumber, matchNumber);
+      const player1 = matchData.common.player1;
 
       // Try to query ChessMoveMade events for this match
       try {
@@ -2018,28 +2010,24 @@ export default function Chess() {
     try {
       const { tierId, instanceId, roundNumber, matchNumber } = matchInfo;
 
-      // Chess uses getChessMatch instead of getMatch
-      const matchData = await contractInstance.getChessMatch(tierId, instanceId, roundNumber, matchNumber);
+      const matchData = await contractInstance.getMatch(tierId, instanceId, roundNumber, matchNumber);
 
-      // Chess requires separate getBoard call
-      const board = await contractInstance.getBoard(tierId, instanceId, roundNumber, matchNumber);
+      // Board and firstPlayer are included in getMatch response
+      const board = matchData.board;
 
       // Fetch per-tier timeout config to get correct match time
       const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, tierId, totalMatchTime);
       const tierMatchTime = timeoutConfig?.matchTimePerPlayer ?? totalMatchTime;
 
-      // Fetch escalation state and firstPlayer using chessMatches mapping
+      // Fetch escalation state using chessMatches mapping
       let timeoutState = null;
-      let firstPlayer = null;
+      let firstPlayer = matchData.firstPlayer; // Initialize from getMatch
       try {
         const matchKey = ethers.solidityPackedKeccak256(
           ['uint8', 'uint8', 'uint8', 'uint8'],
           [tierId, instanceId, roundNumber, matchNumber]
         );
         const chessMatchData = await contractInstance.chessMatches(matchKey);
-
-        // Extract firstPlayer (white player)
-        firstPlayer = chessMatchData.firstPlayer;
 
         // Check if timeoutState exists (it won't for new matches)
         if (chessMatchData.timeoutState) {
@@ -2057,18 +2045,18 @@ export default function Chess() {
         console.debug('No escalation state for match (normal for non-stalled matches):', escalationErr.message);
       }
 
-      // Parse match data - chess contract returns array with specific indices
-      const player1 = matchData[0];
-      const player2 = matchData[1];
-      const currentTurn = matchData[2];
-      const winner = matchData[3];
-      const matchStatus = Number(matchData[4]);
-      const isDraw = matchData[5];
-      const startTime = Number(matchData[6]);
-      const lastMoveTime = Number(matchData[7]);
-      const fullMoveNumber = Number(matchData[8]);
-      const whiteInCheck = matchData[9];
-      const blackInCheck = matchData[10];
+      // Parse match data from nested structure
+      const player1 = matchData.common.player1;
+      const player2 = matchData.common.player2;
+      const currentTurn = matchData.currentTurn;
+      const winner = matchData.common.winner;
+      const matchStatus = Number(matchData.common.status);
+      const isDraw = matchData.common.isDraw;
+      const startTime = Number(matchData.common.startTime);
+      const lastMoveTime = Number(matchData.common.lastMoveTime);
+      const fullMoveNumber = Number(matchData.fullMoveNumber);
+      const whiteInCheck = matchData.whiteInCheck;
+      const blackInCheck = matchData.blackInCheck;
 
       const zeroAddress = '0x0000000000000000000000000000000000000000';
       const isMatchInitialized =
@@ -2099,17 +2087,8 @@ export default function Chess() {
       const isPlayer1 = actualPlayer1.toLowerCase() === userAccount.toLowerCase();
       const isYourTurn = currentTurn.toLowerCase() === userAccount.toLowerCase();
 
-      // Compute loser field (not provided by getChessMatch)
-      let loser = zeroAddress;
-      if (matchStatus === 2 && !isDraw) {
-        // Match completed and not a draw - determine loser
-        if (winner.toLowerCase() === actualPlayer1.toLowerCase()) {
-          loser = actualPlayer2;
-        } else if (winner.toLowerCase() === actualPlayer2.toLowerCase()) {
-          loser = actualPlayer1;
-        }
-        // If winner is zero address (double forfeit), loser stays zero address
-      }
+      // Get loser from match data
+      const loser = matchData.common.loser || zeroAddress;
 
       // Determine if match was completed by timeout
       // A match is timed out if it completed with an active timeout state
@@ -2336,11 +2315,10 @@ export default function Chess() {
       const playerCount = Number(tierConfig.playerCount);
       const prizePool = tournamentInfo[6]; // prizePool is at index 6
 
-      // Chess uses getChessMatch instead of getMatch
-      const matchData = await contract.getChessMatch(tierId, instanceId, roundNumber, matchNumber);
+      const matchData = await contract.getMatch(tierId, instanceId, roundNumber, matchNumber);
 
-      const player1 = matchData[0];
-      const player2 = matchData[1];
+      const player1 = matchData.common.player1;
+      const player2 = matchData.common.player2;
 
       const zeroAddress = '0x0000000000000000000000000000000000000000';
       let actualPlayer1 = player1;
