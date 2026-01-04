@@ -22,8 +22,20 @@ import {
   CheckCircle, AlertCircle, ChevronDown, ArrowLeft, HelpCircle
 } from 'lucide-react';
 import { ethers } from 'ethers';
-import ChessABIData from './COCABI.json';
+import ChessABIData from './ChessOnChain-ABI-modular.json';
+import CoreABIData from './ETour_Core-ABI.json';
+import MatchesABIData from './ETour_Matches-ABI.json';
+import PrizesABIData from './ETour_Prizes-ABI.json';
+import RaffleABIData from './ETour_Raffle-ABI.json';
+import EscalationABIData from './ETour_Escalation-ABI.json';
+
 const CHESS_ABI = ChessABIData.abi;
+const CORE_ABI = CoreABIData.abi;
+const MATCHES_ABI = MatchesABIData.abi;
+const PRIZES_ABI = PrizesABIData.abi;
+const RAFFLE_ABI = RaffleABIData.abi;
+const ESCALATION_ABI = EscalationABIData.abi;
+
 import { CURRENT_NETWORK, CONTRACT_ADDRESSES, getAddressUrl, getExplorerHomeUrl } from './config/networks';
 import { shortenAddress, formatTime as formatTimeHMS, getTierName } from './utils/formatters';
 import { parseTournamentParams } from './utils/urlHelpers';
@@ -485,6 +497,47 @@ export default function Chess() {
     return new ethers.Contract(CONTRACT_ADDRESS, CHESS_ABI, provider);
   }, [CONTRACT_ADDRESS, RPC_URL]);
 
+  // Module contract helpers
+  const getCoreContract = useCallback((signer = null) => {
+    if (signer) {
+      return new ethers.Contract(CONTRACT_ADDRESSES.ETour_Core, CORE_ABI, signer);
+    }
+    const provider = new ethers.JsonRpcProvider(RPC_URL);
+    return new ethers.Contract(CONTRACT_ADDRESSES.ETour_Core, CORE_ABI, provider);
+  }, [RPC_URL]);
+
+  const getMatchesContract = useCallback((signer = null) => {
+    if (signer) {
+      return new ethers.Contract(CONTRACT_ADDRESSES.ETour_Matches, MATCHES_ABI, signer);
+    }
+    const provider = new ethers.JsonRpcProvider(RPC_URL);
+    return new ethers.Contract(CONTRACT_ADDRESSES.ETour_Matches, MATCHES_ABI, provider);
+  }, [RPC_URL]);
+
+  const getPrizesContract = useCallback((signer = null) => {
+    if (signer) {
+      return new ethers.Contract(CONTRACT_ADDRESSES.ETour_Prizes, PRIZES_ABI, signer);
+    }
+    const provider = new ethers.JsonRpcProvider(RPC_URL);
+    return new ethers.Contract(CONTRACT_ADDRESSES.ETour_Prizes, PRIZES_ABI, provider);
+  }, [RPC_URL]);
+
+  const getRaffleContract = useCallback((signer = null) => {
+    if (signer) {
+      return new ethers.Contract(CONTRACT_ADDRESSES.ETour_Raffle, RAFFLE_ABI, signer);
+    }
+    const provider = new ethers.JsonRpcProvider(RPC_URL);
+    return new ethers.Contract(CONTRACT_ADDRESSES.ETour_Raffle, RAFFLE_ABI, provider);
+  }, [RPC_URL]);
+
+  const getEscalationContract = useCallback((signer = null) => {
+    if (signer) {
+      return new ethers.Contract(CONTRACT_ADDRESSES.ETour_Escalation, ESCALATION_ABI, signer);
+    }
+    const provider = new ethers.JsonRpcProvider(RPC_URL);
+    return new ethers.Contract(CONTRACT_ADDRESSES.ETour_Escalation, ESCALATION_ABI, provider);
+  }, [RPC_URL]);
+
   // Wallet & Contract State
   const [account, setAccount] = useState(null);
   const [contract, setContract] = useState(null); // This contract has signer for write ops
@@ -512,6 +565,8 @@ export default function Chess() {
   const [bracketSyncDots, setBracketSyncDots] = useState(1);
   const [expandedTiers, setExpandedTiers] = useState({});
   const [visibleInstancesCount, setVisibleInstancesCount] = useState({}); // { [tierId]: number } - tracks how many instances to show per tier
+  const [allInstancesInitialized, setAllInstancesInitialized] = useState(false); // Whether all tier instances have been initialized by owner
+  const [initializingInstances, setInitializingInstances] = useState(false); // Loading state for initialization
 
   // URL Parameters State for shareable tournament links
   const [searchParams, setSearchParams] = useSearchParams();
@@ -794,7 +849,7 @@ export default function Chess() {
       setContract(contractInstance);
 
       // Refresh tier data with new account (lazy loading)
-      await refreshAfterAction(null, contractInstance, accounts[0]);
+      await refreshAfterAction(null, accounts[0]);
       await fetchLeaderboard(false);
       setLoading(false);
     } catch (error) {
@@ -820,15 +875,25 @@ export default function Chess() {
 
   // Load contract data (simplified - matches ConnectFour pattern)
   // Uses lazy loading: only fetch tier metadata initially, instances load on expand
-  const loadContractData = async (contractInstance, isInitialLoad = false) => {
+  const loadContractData = async (isInitialLoad = false) => {
     try {
-      // Fetch tier metadata only (fast) - instances load on tier expand
-      await fetchTierMetadata(contractInstance);
+      // Fetch allInstancesInitialized status
+      try {
+        const readOnlyContract = getReadOnlyContract();
+        const initialized = await readOnlyContract.allInstancesInitialized();
+        setAllInstancesInitialized(initialized);
+      } catch (err) {
+        console.warn('Could not fetch allInstancesInitialized:', err);
+      }
+
+      // Fetch tier metadata
+      await fetchTierMetadata();
       await fetchLeaderboard(false);
 
       // Fetch match time from first tier for display in Game Info Cards
       try {
-        const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, 0, 300);
+        const coreContract = getCoreContract();
+        const timeoutConfig = await fetchTierTimeoutConfig(coreContract, 0, 300);
         if (timeoutConfig?.matchTimePerPlayer) {
           setMatchTimePerPlayer(timeoutConfig.matchTimePerPlayer);
           setDisplayTimeoutConfig(timeoutConfig);
@@ -856,10 +921,10 @@ export default function Chess() {
         setLeaderboardError(false);
       }
 
-      // Use read-only contract to avoid MetaMask rate limiting
-      const readContract = getReadOnlyContract();
+      // Use read-only Prizes module contract
+      const prizesContract = getPrizesContract();
 
-      const leaderboardData = await readContract.getLeaderboard();
+      const leaderboardData = await prizesContract.getLeaderboard();
       // Convert to plain array with player and earnings, sorted by earnings descending
       const entries = Array.from(leaderboardData).map(entry => ({
         player: entry.player,
@@ -879,16 +944,16 @@ export default function Chess() {
         setLeaderboardLoading(false);
       }
     }
-  }, [getReadOnlyContract]);
+  }, [getPrizesContract]);
 
   // Fetch raffle info (view function)
   const fetchRaffleInfo = useCallback(async () => {
     try {
       setRaffleSyncing(true);
-      const readContract = getReadOnlyContract();
+      const raffleContract = getRaffleContract();
 
       const [raffleIndex, isReady, currentAccumulated, threshold, reserve, raffleAmount, ownerShare, winnerShare, eligiblePlayerCount] =
-        await readContract.getRaffleInfo();
+        await raffleContract.getRaffleInfo();
 
       setRaffleInfo({
         raffleIndex,
@@ -917,13 +982,14 @@ export default function Chess() {
     } finally {
       setRaffleSyncing(false);
     }
-  }, [getReadOnlyContract]);
+  }, [getRaffleContract]);
 
   // LAZY LOADING: Fetch tier metadata only (fast initial load)
   // This gets basic tier info without detailed instance data
-  const fetchTierMetadata = useCallback(async (contractInstance = null, silentUpdate = false) => {
-    const readContract = contractInstance || getReadOnlyContract();
-    if (!readContract) {
+  const fetchTierMetadata = useCallback(async (silentUpdate = false) => {
+    // Use ChessOnChain contract for all functionality
+    const readOnlyContract = getReadOnlyContract();
+    if (!readOnlyContract) {
       setConnectionError('Unable to connect to blockchain. Please check your network connection.');
       if (!silentUpdate) setMetadataLoading(false);
       return;
@@ -935,33 +1001,53 @@ export default function Chess() {
     let successfulFetches = 0;
     let totalAttempts = 0;
 
-    // Fetch all valid tier IDs from contract
-    let tierIds = [];
+    // Fetch tier count from ChessOnChain contract
+    let tierCount = 0;
     try {
-      const tierIdsRaw = await readContract.getAllTierIds();
-      // Convert ethers Result object to plain array manually
-      for (let i = 0; i < tierIdsRaw.length; i++) {
-        tierIds.push(tierIdsRaw[i]);
-      }
+      tierCount = Number(await readOnlyContract.tierCount());
     } catch (error) {
-      console.warn('Could not fetch tier IDs, using default range:', error.message);
-      tierIds = [0, 1]; // Chess default: 2 tiers
+      console.warn('Could not fetch tier count:', error.message);
     }
+
+    // If no tiers, show empty state
+    if (tierCount === 0) {
+      console.log('No tiers available');
+      setTierMetadata({});
+      if (!silentUpdate) setMetadataLoading(false);
+      return;
+    }
+
+    // Get tier IDs: sequential from 0 to tierCount-1
+    const tierIds = Array.from({ length: tierCount }, (_, i) => i);
 
     // Fetch metadata for each tier
     for (const tierId of tierIds) {
       totalAttempts++;
       try {
-        // Parallel fetch tier config, entry fee, and overview
-        const [tierConfig, fee, tierOverview] = await Promise.all([
-          readContract.tierConfigs(tierId),
-          readContract.ENTRY_FEES(tierId),
-          readContract.getTierOverview(tierId)
-        ]);
+        // Fetch tier config from chess contract (includes entryFee and instanceCount)
+        const readOnlyContract = getReadOnlyContract();
+        const tierConfig = await readOnlyContract.getTierConfig(tierId);
+
+        const instanceCount = tierConfig.instanceCount;
+        const fee = tierConfig.entryFee;
+
+        if (instanceCount === 0) continue;
+
+        // Fetch tournament info for each instance
+        const tournamentInfoPromises = [];
+        for (let i = 0; i < instanceCount; i++) {
+          tournamentInfoPromises.push(readOnlyContract.tournaments(tierId, i));
+        }
+        const tournamentInfos = await Promise.all(tournamentInfoPromises);
+
+        // Reconstruct tierOverview-like structure
+        const tierOverview = [
+          tournamentInfos.map(t => t.status),
+          tournamentInfos.map(t => t.enrolledCount),
+          tournamentInfos.map(t => t.prizePool)
+        ];
 
         successfulFetches++;
-        const instanceCount = tierOverview[0].length;
-        if (instanceCount === 0) continue;
 
         metadata[tierId] = {
           playerCount: Number(tierConfig.playerCount),
@@ -983,14 +1069,15 @@ export default function Chess() {
 
     setTierMetadata(metadata);
     if (!silentUpdate) setMetadataLoading(false);
-  }, [getReadOnlyContract]);
+  }, [getCoreContract]);
 
   // LAZY LOADING: Fetch detailed instances for a specific tier (called on expand)
   // Note: Uses functional state updates to avoid dependency on tierInstances/tierMetadata
-  const fetchTierInstances = useCallback(async (tierId, contractInstance = null, userAccount = null, metadataOverride = null, silentUpdate = false) => {
-    const readContract = contractInstance || getReadOnlyContract();
+  const fetchTierInstances = useCallback(async (tierId, userAccount = null, metadataOverride = null, silentUpdate = false) => {
+    // Use ChessOnChain contract for all functionality
     const currentAccount = userAccount ?? account;
-    if (!readContract) return;
+    const readOnlyContract = getReadOnlyContract();
+    if (!readOnlyContract) return;
 
     if (!silentUpdate) setTierLoading(prev => ({ ...prev, [tierId]: true }));
 
@@ -998,14 +1085,29 @@ export default function Chess() {
       // Get metadata from override or fetch fresh
       let metadata = metadataOverride;
       if (!metadata) {
-        const [tierConfig, fee, tierOverview] = await Promise.all([
-          readContract.tierConfigs(tierId),
-          readContract.ENTRY_FEES(tierId),
-          readContract.getTierOverview(tierId)
-        ]);
+        // Fetch tier config from chess contract (includes entryFee and instanceCount)
+        const tierConfig = await readOnlyContract.getTierConfig(tierId);
+
+        const instanceCount = tierConfig.instanceCount;
+        const fee = tierConfig.entryFee;
+
+        // Fetch tournament info for each instance
+        const tournamentInfoPromises = [];
+        for (let i = 0; i < instanceCount; i++) {
+          tournamentInfoPromises.push(readOnlyContract.tournaments(tierId, i));
+        }
+        const tournamentInfos = await Promise.all(tournamentInfoPromises);
+
+        // Reconstruct tierOverview-like structure
+        const tierOverview = [
+          tournamentInfos.map(t => t.status),
+          tournamentInfos.map(t => t.enrolledCount),
+          tournamentInfos.map(t => t.prizePool)
+        ];
+
         metadata = {
           playerCount: Number(tierConfig.playerCount),
-          instanceCount: tierOverview[0].length,
+          instanceCount,
           entryFee: ethers.formatEther(fee),
           statuses: tierOverview[0].map(s => Number(s)),
           enrolledCounts: tierOverview[1].map(c => Number(c))
@@ -1022,10 +1124,10 @@ export default function Chess() {
       // Fetch detailed data for each instance in this tier
       for (let i = 0; i < metadata.instanceCount; i++) {
         try {
-          // Parallel fetch tournament data and enrollment status
+          // Parallel fetch tournament data and enrollment status from ChessOnChain contract
           const [tournamentInfo, isUserEnrolled] = await Promise.all([
-            readContract.tournaments(tierId, i),
-            currentAccount ? readContract.isEnrolled(tierId, i, currentAccount).catch(() => false) : Promise.resolve(false)
+            readOnlyContract.tournaments(tierId, i),
+            currentAccount ? readOnlyContract.isEnrolled(tierId, i, currentAccount).catch(() => false) : Promise.resolve(false)
           ]);
 
           // Calculate prize pool (enrolled count * entry fee * 0.9 to account for 10% network fee)
@@ -1087,7 +1189,12 @@ export default function Chess() {
     try {
       setRaffleSyncing(true);
 
-      const tx = await contract.executeProtocolRaffle();
+      // Get raffle contract with signer
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const raffleContract = getRaffleContract(signer);
+
+      const tx = await raffleContract.executeProtocolRaffle();
       console.log('Raffle transaction submitted:', tx.hash);
       alert('Raffle transaction submitted! Waiting for confirmation...');
 
@@ -1101,7 +1208,7 @@ export default function Chess() {
 
       for (const log of receipt.logs) {
         try {
-          const parsedLog = contract.interface.parseLog({
+          const parsedLog = raffleContract.interface.parseLog({
             topics: log.topics,
             data: log.data
           });
@@ -1143,7 +1250,7 @@ export default function Chess() {
           .map(id => parseInt(id));
 
         for (const tierId of expandedTierIds) {
-          await fetchTierInstances(tierId, null, null, null, true);
+          await fetchTierInstances(tierId, null, null, true);
         }
       }
 
@@ -1166,7 +1273,7 @@ export default function Chess() {
     } finally {
       setRaffleSyncing(false);
     }
-  }, [contract, account, fetchRaffleInfo, expandedTiers, fetchTierInstances]);
+  }, [contract, account, getRaffleContract, fetchRaffleInfo, expandedTiers, fetchTierInstances]);
 
   // Refs to access current state without causing dependency loops
   const expandedTiersRef = useRef(expandedTiers);
@@ -1203,12 +1310,11 @@ export default function Chess() {
 
   // LAZY LOADING: Refresh data after an action (enroll, claim, etc.)
   // Refreshes metadata and re-fetches instances for expanded/affected tiers
-  const refreshAfterAction = useCallback(async (affectedTierId = null, contractInstance = null, userAccount = null) => {
-    const readContract = contractInstance || getReadOnlyContract();
+  const refreshAfterAction = useCallback(async (affectedTierId = null, userAccount = null) => {
     const currentAccount = userAccount ?? account;
 
     // Refresh tier metadata
-    await fetchTierMetadata(readContract);
+    await fetchTierMetadata();
 
     // Clear and re-fetch instances for affected/expanded tiers
     const tiersToRefresh = new Set();
@@ -1229,11 +1335,11 @@ export default function Chess() {
       // Re-fetch instances for expanded tiers
       for (const tid of tiersToRefresh) {
         if (currentExpanded[tid]) {
-          await fetchTierInstances(tid, readContract, currentAccount);
+          await fetchTierInstances(tid, currentAccount);
         }
       }
     }
-  }, [getReadOnlyContract, account, fetchTierMetadata, fetchTierInstances]);
+  }, [account, fetchTierMetadata, fetchTierInstances]);
 
   // Handle tournament enrollment
   const handleEnroll = async (tierId, instanceId, entryFee) => {
@@ -1248,8 +1354,13 @@ export default function Chess() {
       // Convert entry fee to wei
       const feeInWei = ethers.parseEther(entryFee);
 
+      // Get ChessOnChain contract with signer for enrollInTournament
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const chessContract = new ethers.Contract(CONTRACT_ADDRESS, CHESS_ABI, signer);
+
       // Call enrollInTournament function with entry fee as value
-      const tx = await contract.enrollInTournament(tierId, instanceId, { value: feeInWei });
+      const tx = await chessContract.enrollInTournament(tierId, instanceId, { value: feeInWei });
       await tx.wait();
 
       alert('Successfully enrolled in tournament!');
@@ -1281,8 +1392,14 @@ export default function Chess() {
     try {
       setTournamentsLoading(true);
 
+      // Get ChessOnChain contract with signer
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const chessContract = new ethers.Contract(CONTRACT_ADDRESS, CHESS_ABI, signer);
+
       // First check if this instance exists
-      const instanceCount = Number(await contract.INSTANCE_COUNTS(tierId));
+      const tierConfig = await chessContract.getTierConfig(tierId);
+      const instanceCount = Number(tierConfig.instanceCount);
       if (instanceId >= instanceCount) {
         alert(`Invalid instance ID. Tier ${tierId + 1} only has ${instanceCount} instances (1-${instanceCount})`);
         setTournamentsLoading(false);
@@ -1290,7 +1407,7 @@ export default function Chess() {
       }
 
       // Get tournament info to validate
-      const tournamentInfo = await contract.tournaments(tierId, instanceId);
+      const tournamentInfo = await chessContract.tournaments(tierId, instanceId);
       const enrolledCount = Number(tournamentInfo.enrolledCount);
       const status = Number(tournamentInfo.status);
       const enrollmentTimeout = tournamentInfo.enrollmentTimeout;
@@ -1338,7 +1455,7 @@ export default function Chess() {
       }
 
       // Check if user is enrolled
-      const isEnrolled = await contract.isEnrolled(tierId, instanceId, account);
+      const isEnrolled = await chessContract.isEnrolled(tierId, instanceId, account);
 
       // Only enrolled players can force start
       if (!isEnrolled) {
@@ -1372,7 +1489,7 @@ export default function Chess() {
         return;
       }
 
-      const tx = await contract.forceStartTournament(tierId, instanceId);
+      const tx = await chessContract.forceStartTournament(tierId, instanceId);
       await tx.wait();
 
       alert('Tournament force-started successfully!');
@@ -1410,6 +1527,64 @@ export default function Chess() {
     }
   };
 
+  // Handle initializing all instances (owner/deployer only)
+  const handleInitializeAllInstances = async () => {
+    if (!contract || !account) {
+      alert('Please connect your wallet first');
+      return;
+    }
+
+    try {
+      setInitializingInstances(true);
+
+      const confirmInit = window.confirm(
+        'Initialize all tier configurations and instances?\n\n' +
+        'This will register all tiers (2-player, 4-player, 8-player, etc.) ' +
+        'and create their tournament instances.\n\n' +
+        'This operation can only be done once by the contract owner.'
+      );
+
+      if (!confirmInit) {
+        setInitializingInstances(false);
+        return;
+      }
+
+      // Get contract with signer
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const chessContract = new ethers.Contract(CONTRACT_ADDRESS, CHESS_ABI, signer);
+
+      console.log('Calling initializeAllInstances()...');
+      const tx = await chessContract.initializeAllInstances();
+      console.log('Transaction submitted:', tx.hash);
+
+      await tx.wait();
+      console.log('All instances initialized successfully!');
+
+      alert('All instances initialized successfully! Refreshing data...');
+
+      // Update state
+      setAllInstancesInitialized(true);
+
+      // Reload all data
+      await loadContractData();
+
+      setInitializingInstances(false);
+    } catch (error) {
+      console.error('Error initializing instances:', error);
+      let errorMessage = error.message || 'Unknown error';
+
+      if (error.message?.includes('AlreadyInitialized')) {
+        errorMessage = 'All instances have already been initialized';
+      } else if (error.message?.includes('Ownable')) {
+        errorMessage = 'Only the contract owner can initialize instances';
+      }
+
+      alert(`Error initializing instances: ${errorMessage}`);
+      setInitializingInstances(false);
+    }
+  };
+
   // Handle resetting enrollment window (EL1*)
   const handleResetEnrollmentWindow = useCallback(async (tierId, instanceId) => {
     if (!contract || !account) {
@@ -1433,8 +1608,13 @@ export default function Chess() {
         return;
       }
 
+      // Get ChessOnChain contract with signer
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const chessContract = new ethers.Contract(CONTRACT_ADDRESS, CHESS_ABI, signer);
+
       // Call contract function
-      const tx = await contract.resetEnrollmentWindow(tierId, instanceId);
+      const tx = await chessContract.resetEnrollmentWindow(tierId, instanceId);
       console.log('Reset enrollment window transaction submitted:', tx.hash);
       alert('Transaction submitted! Waiting for confirmation...');
 
@@ -1444,7 +1624,7 @@ export default function Chess() {
       alert('Enrollment window has been reset successfully! New players can now join.');
 
       // Refresh tournament data
-      await fetchTierInstances(tierId, null, null, null, true);
+      await fetchTierInstances(tierId, null, null, true);
 
       setTournamentsLoading(false);
     } catch (error) {
@@ -1478,8 +1658,13 @@ export default function Chess() {
     try {
       setTournamentsLoading(true);
 
+      // Get Core contract with signer
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const coreContract = getCoreContract(signer);
+
       // Get tournament info to validate
-      const tournamentInfo = await contract.tournaments(tierId, instanceId);
+      const tournamentInfo = await coreContract.tournaments(tierId, instanceId);
       const status = Number(tournamentInfo.status);
       const enrolledCount = Number(tournamentInfo.enrolledCount);
       const enrollmentTimeout = tournamentInfo.enrollmentTimeout;
@@ -1527,7 +1712,7 @@ export default function Chess() {
         }
       }
 
-      const tx = await contract.claimAbandonedEnrollmentPool(tierId, instanceId);
+      const tx = await coreContract.claimAbandonedEnrollmentPool(tierId, instanceId);
       await tx.wait();
 
       alert('Abandoned enrollment pool claimed successfully!');
@@ -1563,23 +1748,33 @@ export default function Chess() {
   // Refresh tournament bracket data
   const refreshTournamentBracket = useCallback(async (contractInstance, tierId, instanceId, totalMatchTime) => {
     try {
-      // Get tournament info
-      const tournamentInfo = await contractInstance.getTournamentInfo(tierId, instanceId);
-      const status = Number(tournamentInfo[0]);
-      const currentRound = Number(tournamentInfo[2]);
-      const enrolledCount = Number(tournamentInfo[3]);
-      const prizePool = tournamentInfo[4];
+      // Get Core contract for tournament/tier info
+      const coreContract = getCoreContract();
+
+      // Get read-only ChessOnChain contract
+      const readOnlyContract = getReadOnlyContract();
+
+      // Get tournament info from ChessOnChain contract
+      const tournamentInfo = await readOnlyContract.tournaments(tierId, instanceId);
+      const status = Number(tournamentInfo[2]); // status is at index 2
+      const currentRound = Number(tournamentInfo[4]); // currentRound is at index 4
+      const enrolledCount = Number(tournamentInfo[5]); // enrolledCount is at index 5
+      const prizePool = tournamentInfo[6]; // prizePool is at index 6
 
       // Get tier config for player count and entry fee
-      const tierConfig = await contractInstance.tierConfigs(tierId);
+      const tierConfig = await readOnlyContract.getTierConfig(tierId);
       const playerCount = Number(tierConfig.playerCount);
       const entryFee = tierConfig.entryFee;
 
       // Extract timeout config using shared utility function
-      const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, tierId, totalMatchTime);
+      const timeoutConfig = await fetchTierTimeoutConfig(coreContract, tierId, totalMatchTime);
 
-      // Get enrolled players
-      const enrolledPlayers = await contractInstance.getEnrolledPlayers(tierId, instanceId);
+      // Get enrolled players from ChessOnChain enrolledPlayers mapping
+      const enrolledPlayers = [];
+      for (let i = 0; i < enrolledCount; i++) {
+        const player = await readOnlyContract.enrolledPlayers(tierId, instanceId, i);
+        enrolledPlayers.push(player);
+      }
 
       // Get countdown data
       let firstEnrollmentTime = 0;
@@ -1602,8 +1797,9 @@ export default function Chess() {
 
       // Fetch all rounds and matches
       const rounds = [];
+      const matchesContract = getMatchesContract();
       for (let roundNum = 0; roundNum < totalRounds; roundNum++) {
-        const roundInfo = await contractInstance.getRoundInfo(tierId, instanceId, roundNum);
+        const roundInfo = await matchesContract.getRoundInfo(tierId, instanceId, roundNum);
         const totalMatches = Number(roundInfo[0]);
 
         const matches = [];
@@ -1691,8 +1887,9 @@ export default function Chess() {
             let escL2Available = false;
             let escL3Available = false;
             try {
-              escL2Available = await contractInstance.isMatchEscL2Available(tierId, instanceId, roundNum, matchNum);
-              escL3Available = await contractInstance.isMatchEscL3Available(tierId, instanceId, roundNum, matchNum);
+              const escalationContract = getEscalationContract();
+              escL2Available = await escalationContract.isMatchEscL2Available(tierId, instanceId, roundNum, matchNum);
+              escL3Available = await escalationContract.isMatchEscL3Available(tierId, instanceId, roundNum, matchNum);
             } catch (escCheckErr) {
               console.debug('Could not check escalation availability:', escCheckErr.message);
             }
@@ -2086,7 +2283,12 @@ export default function Chess() {
       setMatchLoading(true);
       const { tierId, instanceId, roundNumber, matchNumber } = match;
 
-      const tx = await contract.forceEliminateStalledMatch(tierId, instanceId, roundNumber, matchNumber);
+      // Get Escalation contract with signer
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const escalationContract = getEscalationContract(signer);
+
+      const tx = await escalationContract.forceEliminateStalledMatch(tierId, instanceId, roundNumber, matchNumber);
       await tx.wait();
 
       alert('Stalled match eliminated! Tournament can now continue.');
@@ -2125,7 +2327,12 @@ export default function Chess() {
       setMatchLoading(true);
       const { tierId, instanceId, roundNumber, matchNumber } = match;
 
-      const tx = await contract.claimMatchSlotByReplacement(tierId, instanceId, roundNumber, matchNumber);
+      // Get Escalation contract with signer
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const escalationContract = getEscalationContract(signer);
+
+      const tx = await escalationContract.claimMatchSlotByReplacement(tierId, instanceId, roundNumber, matchNumber);
       await tx.wait();
 
       alert('Match slot claimed! You have replaced both players and advanced.');
@@ -2158,11 +2365,14 @@ export default function Chess() {
     try {
       setMatchLoading(true);
 
-      // Fetch tournament info to get playerCount and prizePool
-      const tournamentInfo = await contract.getTournamentInfo(tierId, instanceId);
-      const tierConfig = await contract.tierConfigs(tierId);
+      // Get read-only ChessOnChain contract
+      const readOnlyContract = getReadOnlyContract();
+
+      // Fetch tournament info from ChessOnChain contract
+      const tournamentInfo = await readOnlyContract.tournaments(tierId, instanceId);
+      const tierConfig = await readOnlyContract.getTierConfig(tierId);
       const playerCount = Number(tierConfig.playerCount);
-      const prizePool = tournamentInfo[4]; // prizePool is at index 4
+      const prizePool = tournamentInfo[6]; // prizePool is at index 6
 
       // Chess uses getChessMatch instead of getMatch
       const matchData = await contract.getChessMatch(tierId, instanceId, roundNumber, matchNumber);
@@ -2175,10 +2385,11 @@ export default function Chess() {
       let actualPlayer2 = player2;
 
       if (player1.toLowerCase() === zeroAddress) {
-        const enrolledPlayers = await contract.getEnrolledPlayers(tierId, instanceId);
-        if (enrolledPlayers.length >= 2) {
-          actualPlayer1 = enrolledPlayers[0];
-          actualPlayer2 = enrolledPlayers[1];
+        // Get first two enrolled players from ChessOnChain
+        const enrolledCount = Number(tournamentInfo[5]);
+        if (enrolledCount >= 2) {
+          actualPlayer1 = await readOnlyContract.enrolledPlayers(tierId, instanceId, 0);
+          actualPlayer2 = await readOnlyContract.enrolledPlayers(tierId, instanceId, 1);
         }
       }
 
@@ -2319,7 +2530,7 @@ export default function Chess() {
         );
 
         setContract(readOnlyContract);
-        await loadContractData(readOnlyContract, true);
+        await loadContractData(true);
       } catch (error) {
         console.error('Error initializing read-only contract:', error);
         // Page should still load even if contract init fails
@@ -2394,7 +2605,7 @@ export default function Chess() {
     const pollHomePageData = async () => {
       try {
         // Fetch tier metadata silently (no loading indicators)
-        await fetchTierMetadata(null, true);
+        await fetchTierMetadata(true);
 
         // Re-fetch instances for expanded tiers silently
         const expandedTierIds = Object.keys(expandedTiers)
@@ -2402,7 +2613,7 @@ export default function Chess() {
           .map(id => parseInt(id));
 
         for (const tierId of expandedTierIds) {
-          await fetchTierInstances(tierId, null, null, null, true);
+          await fetchTierInstances(tierId, null, null, true);
         }
       } catch (err) {
         console.error('Error polling home page data:', err);
@@ -3039,7 +3250,25 @@ export default function Chess() {
                   <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-12 border border-purple-400/30 text-center">
                     <Trophy className="text-purple-400/50 mx-auto mb-4" size={64} />
                     <h3 className="text-2xl font-bold text-purple-300 mb-2">No Tournaments Available</h3>
-                    <p className="text-purple-200/70">Check back soon for new tournaments!</p>
+                    <p className="text-purple-200/70 mb-6">Check back soon for new tournaments!</p>
+
+                    {/* Initialize Button - only show if not initialized and wallet connected */}
+                    {account && !allInstancesInitialized && (
+                      <button
+                        onClick={handleInitializeAllInstances}
+                        disabled={initializingInstances}
+                        className="px-8 py-4 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-bold rounded-xl shadow-lg transition-all duration-200 transform hover:scale-105"
+                      >
+                        {initializingInstances ? (
+                          <span className="flex items-center gap-2">
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                            Initializing...
+                          </span>
+                        ) : (
+                          'Initialize All Instances'
+                        )}
+                      </button>
+                    )}
                   </div>
                 )}
 
@@ -3075,9 +3304,9 @@ export default function Chess() {
       </div>
 
       {/* User Manual Section */}
-      <div id="user-manual" className="max-w-7xl mx-auto px-6 pb-12" style={{ position: 'relative', zIndex: 10 }}>
+      {/* <div id="user-manual" className="max-w-7xl mx-auto px-6 pb-12" style={{ position: 'relative', zIndex: 10 }}>
         <UserManual contractInstance={contract} />
-      </div>
+      </div> */}
 
       {/* ============ FOOTER ============ */}
       <footer className="border-t border-slate-800/50 px-6 py-12" style={{ position: 'relative', zIndex: 10 }}>

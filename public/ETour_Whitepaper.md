@@ -102,7 +102,7 @@ This whitepaper explains ETour's philosophy and how it makes trustless competiti
 
 ### 1.1 The Problem with Web3 Gaming
 
-Web3 gaming has a credibility problem. The phrase "play games and earn crypto" has been used so many times by scams, rugpulls, and tokenomics that don't work that it makes people doubt it, rightfully so. **Players have learned that "earn" usually means "lose money slowly while enriching early adopters."**
+Web3 gaming has a credibility problem. The phrase "play and earn" has been used so many times by scams, rugpulls, and tokenomics that don't work that it makes people doubt it, rightfully so. **Players have learned that "earn" usually means "lose money slowly while enriching early adopters."**
 
 Most Web3 gaming projects make the same fundamental mistake: they lead with blockchain technology and financial incentives rather than compelling gameplay. They're selling infrastructure, tokens, and economic mechanisms to people who just want to play games.
 
