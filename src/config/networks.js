@@ -25,7 +25,7 @@ export const CURRENT_NETWORK = NETWORKS[networkKey] || NETWORKS.localhost;
 // Contract addresses - can be overridden via environment variables
 export const CONTRACT_ADDRESSES = {
   TicTacChain: import.meta.env.VITE_TICTACCHAIN_ADDRESS || '0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1',
-  ChessOnChain: import.meta.env.VITE_CHESS_ADDRESS || '0x610178dA211FEF7D417bC0e6FeD39F05609AD788',
+  ChessOnChain: import.meta.env.VITE_CHESS_ADDRESS || '0xa513E6E4b8f2a923D98304ec87F64353C4D5C853',
   ConnectFourOnChain: import.meta.env.VITE_CONNECTFOUR_ADDRESS || '0x59b670e9fA9D0A427751Af201D676719a970857b',
   // ETour Module Addresses
   ETour_Core: import.meta.env.VITE_ETOUR_CORE_ADDRESS || '0x5FbDB2315678afecb367f032d93F642f64180aa3',

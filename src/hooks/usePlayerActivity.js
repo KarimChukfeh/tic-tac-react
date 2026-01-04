@@ -58,7 +58,7 @@ export const usePlayerActivity = (contract, account, gameName) => {
       // Step 1: Get player stats (total earnings)
       let totalEarnings = 0n;
       try {
-        totalEarnings = await contract.getPlayerStats();
+        totalEarnings = await contract.getPlayerStats(account);
       } catch (err) {
         console.warn('[PlayerActivity] Could not fetch player stats:', err);
       }
@@ -75,7 +75,7 @@ export const usePlayerActivity = (contract, account, gameName) => {
       const unfilledTournaments = await Promise.all(
         enrollingTournaments.map(async (ref) => {
           const tournamentInfo = await contract.getTournamentInfo(ref.tierId, ref.instanceId);
-          const tierConfig = await contract.tierConfigs(ref.tierId);
+          const tierConfig = await contract.getTierConfig(ref.tierId);
 
           return {
             tierId: Number(ref.tierId),
@@ -116,28 +116,12 @@ export const usePlayerActivity = (contract, account, gameName) => {
         let hasActiveMatch = false;
         let playerRound = null; // Track which round the player is in
 
-        // Get player's round from contract using isPlayerInAdvancedRound
-        // Check up to currentRound + 1 to catch players who have advanced but round hasn't started yet
-        // Start from highest possible round and check backwards to find the highest round the player is in
-        const tierConfig = await contract.tierConfigs(tierId);
-        const totalRounds = Number(tierConfig.totalRounds);
-        const maxRoundToCheck = Math.min(currentRound + 1, totalRounds - 1);
-
-        for (let roundIdx = maxRoundToCheck; roundIdx >= 0; roundIdx--) {
-          try {
-            const isInRound = await contract.isPlayerInAdvancedRound(account, tierId, instanceId, roundIdx);
-            if (isInRound) {
-              playerRound = roundIdx;
-              break; // Found the player's round
-            }
-          } catch (err) {
-            console.warn(`[PlayerActivity] Error checking round ${roundIdx}:`, err);
-          }
-        }
+        // Note: isPlayerInAdvancedRound function doesn't exist in ChessOnChain
+        // We'll determine the player's round by checking matches directly
 
         // Check all rounds up to current for active matches
         for (let roundIdx = 0; roundIdx <= currentRound; roundIdx++) {
-          const roundInfo = await contract.getRoundInfo(tierId, instanceId, roundIdx);
+          const roundInfo = await contract.rounds(tierId, instanceId, roundIdx);
           const totalMatches = Number(roundInfo.totalMatches);
 
           // Check each match in the round
