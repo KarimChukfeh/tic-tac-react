@@ -86,62 +86,78 @@ export const parseConnectFourMatch = (matchData) => ({
  * @param {Object} matchData - Raw match data from Chess contract
  * @returns {Object} Parsed Chess match with all fields
  *
- * Note: Chess contract returns a FLAT structure, not nested with 'common' field
+ * Note: Chess contract can return either:
+ * - NESTED structure with 'common' field (from getMatch())
+ * - FLAT structure without 'common' field (legacy or from chessMatches mapping)
  */
-export const parseChessMatch = (matchData) => ({
-  // Player addresses
-  player1: matchData.player1,
-  player2: matchData.player2,
+export const parseChessMatch = (matchData) => {
+  // Check if data has nested 'common' structure
+  const hasCommon = matchData.common !== undefined;
 
-  // Match result
-  winner: matchData.winner,
-  loser: matchData.loser || '0x0000000000000000000000000000000000000000',
+  // Extract common fields based on structure type
+  const commonData = hasCommon ? {
+    player1: matchData.common.player1,
+    player2: matchData.common.player2,
+    winner: matchData.common.winner,
+    loser: matchData.common.loser || '0x0000000000000000000000000000000000000000',
+    matchStatus: Number(matchData.common.status),
+    isDraw: matchData.common.isDraw,
+    startTime: Number(matchData.common.startTime),
+    lastMoveTime: Number(matchData.common.lastMoveTime),
+    endTime: matchData.common.endTime ? Number(matchData.common.endTime) : 0,
+    tierId: Number(matchData.common.tierId),
+    instanceId: Number(matchData.common.instanceId),
+    roundNumber: Number(matchData.common.roundNumber),
+    matchNumber: Number(matchData.common.matchNumber),
+    isCached: matchData.common.isCached || false,
+  } : {
+    player1: matchData.player1,
+    player2: matchData.player2,
+    winner: matchData.winner,
+    loser: matchData.loser || '0x0000000000000000000000000000000000000000',
+    matchStatus: Number(matchData.status),
+    isDraw: matchData.isDraw,
+    startTime: Number(matchData.startTime),
+    lastMoveTime: Number(matchData.lastMoveTime),
+    endTime: matchData.endTime ? Number(matchData.endTime) : 0,
+    tierId: matchData.tierId !== undefined ? Number(matchData.tierId) : 0,
+    instanceId: matchData.instanceId !== undefined ? Number(matchData.instanceId) : 0,
+    roundNumber: matchData.roundNumber !== undefined ? Number(matchData.roundNumber) : 0,
+    matchNumber: matchData.matchNumber !== undefined ? Number(matchData.matchNumber) : 0,
+    isCached: matchData.isCached || false,
+  };
 
-  // Match status
-  matchStatus: Number(matchData.status),
-  isDraw: matchData.isDraw,
+  return {
+    ...commonData,
 
-  // Timestamps
-  startTime: Number(matchData.startTime),
-  lastMoveTime: Number(matchData.lastMoveTime),
-  endTime: matchData.endTime ? Number(matchData.endTime) : 0,
+    // Game-specific fields
+    currentTurn: matchData.currentTurn,
+    firstPlayer: matchData.firstPlayer,
 
-  // Tournament context (may not be in flat structure)
-  tierId: matchData.tierId !== undefined ? Number(matchData.tierId) : 0,
-  instanceId: matchData.instanceId !== undefined ? Number(matchData.instanceId) : 0,
-  roundNumber: matchData.roundNumber !== undefined ? Number(matchData.roundNumber) : 0,
-  matchNumber: matchData.matchNumber !== undefined ? Number(matchData.matchNumber) : 0,
+    // Chess-specific state
+    whiteInCheck: matchData.whiteInCheck,
+    blackInCheck: matchData.blackInCheck,
+    fullMoveNumber: Number(matchData.fullMoveNumber),
 
-  // Cache status
-  isCached: matchData.isCached || false,
+    // Board and chess-specific fields
+    board: matchData.board ? Array.from(matchData.board).map(cell => ({
+      pieceType: Number(cell.pieceType),
+      color: Number(cell.color)
+    })) : [],
+    enPassantSquare: matchData.enPassantSquare !== undefined ? Number(matchData.enPassantSquare) : 0,
+    halfMoveClock: matchData.halfMoveClock !== undefined ? Number(matchData.halfMoveClock) : 0,
+    whiteKingSideCastle: matchData.whiteKingSideCastle || false,
+    whiteQueenSideCastle: matchData.whiteQueenSideCastle || false,
+    blackKingSideCastle: matchData.blackKingSideCastle || false,
+    blackQueenSideCastle: matchData.blackQueenSideCastle || false,
+    moveHistory: matchData.moveHistory || [],
 
-  // Game-specific fields
-  currentTurn: matchData.currentTurn,
-  firstPlayer: matchData.firstPlayer,
-
-  // Chess-specific state
-  whiteInCheck: matchData.whiteInCheck,
-  blackInCheck: matchData.blackInCheck,
-  fullMoveNumber: Number(matchData.fullMoveNumber),
-
-  // Fields that may not exist in the flat structure
-  board: matchData.board ? Array.from(matchData.board).map(cell => ({
-    pieceType: Number(cell.pieceType),
-    color: Number(cell.color)
-  })) : [],
-  enPassantSquare: matchData.enPassantSquare !== undefined ? Number(matchData.enPassantSquare) : 0,
-  halfMoveClock: matchData.halfMoveClock !== undefined ? Number(matchData.halfMoveClock) : 0,
-  whiteKingSideCastle: matchData.whiteKingSideCastle || false,
-  whiteQueenSideCastle: matchData.whiteQueenSideCastle || false,
-  blackKingSideCastle: matchData.blackKingSideCastle || false,
-  blackQueenSideCastle: matchData.blackQueenSideCastle || false,
-  moveHistory: matchData.moveHistory || [],
-
-  // Time tracking fields
-  player1TimeRemaining: matchData.player1TimeRemaining !== undefined ? Number(matchData.player1TimeRemaining) : 300,
-  player2TimeRemaining: matchData.player2TimeRemaining !== undefined ? Number(matchData.player2TimeRemaining) : 300,
-  lastMoveTimestamp: matchData.lastMoveTimestamp !== undefined ? Number(matchData.lastMoveTimestamp) : 0,
-});
+    // Time tracking fields
+    player1TimeRemaining: matchData.player1TimeRemaining !== undefined ? Number(matchData.player1TimeRemaining) : 300,
+    player2TimeRemaining: matchData.player2TimeRemaining !== undefined ? Number(matchData.player2TimeRemaining) : 300,
+    lastMoveTimestamp: matchData.lastMoveTimestamp !== undefined ? Number(matchData.lastMoveTimestamp) : 0,
+  };
+};
 
 /**
  * Validate match result consistency

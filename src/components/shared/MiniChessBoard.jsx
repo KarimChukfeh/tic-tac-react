@@ -68,10 +68,10 @@ const MiniChessBoard = ({
 
   // Helper to flip board index (so player is always at bottom)
   // Contract board has indices 0-7 = rank 1 (white's back rank) at TOP of rendered grid
-  // We need to flip it so player is always at BOTTOM
+  // We need to flip it so white player sees their pieces at bottom
   const getDisplayIndex = (actualIndex) => {
     if (!matchData) return actualIndex;
-    const shouldFlip = matchData.isPlayer1; // Flip if player is white (player 1) so white is at bottom
+    const shouldFlip = matchData.isWhite; // Flip if player is white so white pieces are at bottom
     if (shouldFlip) {
       return 63 - actualIndex;
     }
@@ -80,7 +80,7 @@ const MiniChessBoard = ({
 
   const getActualIndex = (displayIndex) => {
     if (!matchData) return displayIndex;
-    const shouldFlip = matchData.isPlayer1; // Flip if player is white (player 1) so white is at bottom
+    const shouldFlip = matchData.isWhite; // Flip if player is white so white pieces are at bottom
     if (shouldFlip) {
       return 63 - displayIndex;
     }
@@ -104,11 +104,30 @@ const MiniChessBoard = ({
         match.matchIdx
       );
 
+      console.log('[MiniChessBoard] Raw data from getMatch:', {
+        firstPlayer: data.firstPlayer,
+        player1: data.common?.player1,
+        player2: data.common?.player2,
+        board: data.board ? 'exists' : 'missing',
+        hasCommonField: !!data.common
+      });
+
       const parsed = parseChessMatch(data);
+      console.log('[MiniChessBoard] Parsed data:', {
+        firstPlayer: parsed.firstPlayer,
+        player1: parsed.player1,
+        player2: parsed.player2,
+        board: parsed.board ? `${parsed.board.length} squares` : 'missing',
+        isWhite: parsed.isWhite
+      });
       // Compute isPlayer1 by comparing account to player1
       parsed.isPlayer1 = parsed.player1?.toLowerCase() === account?.toLowerCase();
       // Calculate isMyTurn based on current turn
       parsed.isMyTurn = parsed.currentTurn?.toLowerCase() === account?.toLowerCase();
+      // Calculate isWhite using firstPlayer (fallback to player1 if not set)
+      const zeroAddress = '0x0000000000000000000000000000000000000000';
+      const whitePlayer = (parsed.firstPlayer && parsed.firstPlayer.toLowerCase() !== zeroAddress) ? parsed.firstPlayer : parsed.player1;
+      parsed.isWhite = account && whitePlayer?.toLowerCase() === account?.toLowerCase();
 
       // Detect match end and show modal
       if (parsed.matchStatus === 2 && !showMatchEndModal) {
@@ -286,8 +305,8 @@ const MiniChessBoard = ({
 
   // Determine player color
   const isPlayer1 = matchData.isPlayer1;
-  const playerColor = isPlayer1 ? 'White' : 'Black';
-  const colorClass = isPlayer1 ? 'text-slate-200' : 'text-slate-400';
+  const playerColor = matchData.isWhite ? 'White' : 'Black';
+  const colorClass = matchData.isWhite ? 'text-slate-200' : 'text-slate-400';
 
   return (
     <div className="space-y-3">

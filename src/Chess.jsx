@@ -315,8 +315,13 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
 
   const isPlayer1 = account && player1?.toLowerCase() === account.toLowerCase();
   const isPlayer2 = account && player2?.toLowerCase() === account.toLowerCase();
+
   // firstPlayer is white, so check if current account is the firstPlayer
-  const isWhite = account && firstPlayer?.toLowerCase() === account.toLowerCase();
+  // Fallback to player1 if firstPlayer is not set (zero address or undefined)
+  const zeroAddress = '0x0000000000000000000000000000000000000000';
+  const whitePlayer = (firstPlayer && firstPlayer.toLowerCase() !== zeroAddress) ? firstPlayer : player1;
+  const isWhite = account && whitePlayer?.toLowerCase() === account.toLowerCase();
+
   const isMyTurn = account && currentTurn?.toLowerCase() === account.toLowerCase();
   // Flip board: white player needs flip to see their pieces at bottom
   // (board indices 0-7 are rank 1, but CSS grid renders 0 at top-left)
