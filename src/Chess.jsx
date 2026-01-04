@@ -23,18 +23,8 @@ import {
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import ChessABIData from './ChessOnChain-ABI-modular.json';
-import CoreABIData from './ETour_Core-ABI.json';
-import MatchesABIData from './ETour_Matches-ABI.json';
-import PrizesABIData from './ETour_Prizes-ABI.json';
-import RaffleABIData from './ETour_Raffle-ABI.json';
-import EscalationABIData from './ETour_Escalation-ABI.json';
 
 const CHESS_ABI = ChessABIData.abi;
-const CORE_ABI = CoreABIData.abi;
-const MATCHES_ABI = MatchesABIData.abi;
-const PRIZES_ABI = PrizesABIData.abi;
-const RAFFLE_ABI = RaffleABIData.abi;
-const ESCALATION_ABI = EscalationABIData.abi;
 
 import { CURRENT_NETWORK, CONTRACT_ADDRESSES, getAddressUrl, getExplorerHomeUrl } from './config/networks';
 import { shortenAddress, formatTime as formatTimeHMS, getTierName } from './utils/formatters';
@@ -497,47 +487,6 @@ export default function Chess() {
     return new ethers.Contract(CONTRACT_ADDRESS, CHESS_ABI, provider);
   }, [CONTRACT_ADDRESS, RPC_URL]);
 
-  // Module contract helpers
-  const getCoreContract = useCallback((signer = null) => {
-    if (signer) {
-      return new ethers.Contract(CONTRACT_ADDRESSES.ETour_Core, CORE_ABI, signer);
-    }
-    const provider = new ethers.JsonRpcProvider(RPC_URL);
-    return new ethers.Contract(CONTRACT_ADDRESSES.ETour_Core, CORE_ABI, provider);
-  }, [RPC_URL]);
-
-  const getMatchesContract = useCallback((signer = null) => {
-    if (signer) {
-      return new ethers.Contract(CONTRACT_ADDRESSES.ETour_Matches, MATCHES_ABI, signer);
-    }
-    const provider = new ethers.JsonRpcProvider(RPC_URL);
-    return new ethers.Contract(CONTRACT_ADDRESSES.ETour_Matches, MATCHES_ABI, provider);
-  }, [RPC_URL]);
-
-  const getPrizesContract = useCallback((signer = null) => {
-    if (signer) {
-      return new ethers.Contract(CONTRACT_ADDRESSES.ETour_Prizes, PRIZES_ABI, signer);
-    }
-    const provider = new ethers.JsonRpcProvider(RPC_URL);
-    return new ethers.Contract(CONTRACT_ADDRESSES.ETour_Prizes, PRIZES_ABI, provider);
-  }, [RPC_URL]);
-
-  const getRaffleContract = useCallback((signer = null) => {
-    if (signer) {
-      return new ethers.Contract(CONTRACT_ADDRESSES.ETour_Raffle, RAFFLE_ABI, signer);
-    }
-    const provider = new ethers.JsonRpcProvider(RPC_URL);
-    return new ethers.Contract(CONTRACT_ADDRESSES.ETour_Raffle, RAFFLE_ABI, provider);
-  }, [RPC_URL]);
-
-  const getEscalationContract = useCallback((signer = null) => {
-    if (signer) {
-      return new ethers.Contract(CONTRACT_ADDRESSES.ETour_Escalation, ESCALATION_ABI, signer);
-    }
-    const provider = new ethers.JsonRpcProvider(RPC_URL);
-    return new ethers.Contract(CONTRACT_ADDRESSES.ETour_Escalation, ESCALATION_ABI, provider);
-  }, [RPC_URL]);
-
   // Wallet & Contract State
   const [account, setAccount] = useState(null);
   const [contract, setContract] = useState(null); // This contract has signer for write ops
@@ -921,10 +870,10 @@ export default function Chess() {
         setLeaderboardError(false);
       }
 
-      // Use read-only Prizes module contract
-      const prizesContract = getPrizesContract();
+      // Use read-only ChessOnChain contract
+      const readOnlyContract = getReadOnlyContract();
 
-      const leaderboardData = await prizesContract.getLeaderboard();
+      const leaderboardData = await readOnlyContract.getLeaderboard();
       // Convert to plain array with player and earnings, sorted by earnings descending
       const entries = Array.from(leaderboardData).map(entry => ({
         player: entry.player,
@@ -944,16 +893,16 @@ export default function Chess() {
         setLeaderboardLoading(false);
       }
     }
-  }, [getPrizesContract]);
+  }, [getReadOnlyContract]);
 
   // Fetch raffle info (view function)
   const fetchRaffleInfo = useCallback(async () => {
     try {
       setRaffleSyncing(true);
-      const raffleContract = getRaffleContract();
+      const readOnlyContract = getReadOnlyContract();
 
       const [raffleIndex, isReady, currentAccumulated, threshold, reserve, raffleAmount, ownerShare, winnerShare, eligiblePlayerCount] =
-        await raffleContract.getRaffleInfo();
+        await readOnlyContract.getRaffleInfo();
 
       setRaffleInfo({
         raffleIndex,
@@ -982,7 +931,7 @@ export default function Chess() {
     } finally {
       setRaffleSyncing(false);
     }
-  }, [getRaffleContract]);
+  }, [getReadOnlyContract]);
 
   // LAZY LOADING: Fetch tier metadata only (fast initial load)
   // This gets basic tier info without detailed instance data
@@ -1883,9 +1832,8 @@ export default function Chess() {
             let escL2Available = false;
             let escL3Available = false;
             try {
-              const escalationContract = getEscalationContract();
-              escL2Available = await escalationContract.isMatchEscL2Available(tierId, instanceId, roundNum, matchNum);
-              escL3Available = await escalationContract.isMatchEscL3Available(tierId, instanceId, roundNum, matchNum);
+              escL2Available = await readOnlyContract.isMatchEscL2Available(tierId, instanceId, roundNum, matchNum);
+              escL3Available = await readOnlyContract.isMatchEscL3Available(tierId, instanceId, roundNum, matchNum);
             } catch (escCheckErr) {
               console.debug('Could not check escalation availability:', escCheckErr.message);
             }
