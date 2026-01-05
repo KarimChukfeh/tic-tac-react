@@ -55,8 +55,8 @@ const GAME_THEMES = {
     headerBg: 'from-slate-900/50 to-purple-900/30',
     headerBorder: 'border-purple-400/30',
     textMuted: 'text-purple-300',
-    player1Color: 'red',
-    player2Color: 'blue',
+    player1Color: 'neonred',
+    player2Color: 'neonblue',
     moveTimeout: 60, // Legacy: Now uses total match time (300s per player)
     completeText: 'Match Complete!'
   }

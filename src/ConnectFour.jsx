@@ -45,7 +45,7 @@ import PlayerActivity from './components/shared/PlayerActivity';
 import CommunityRaffleCard from './components/shared/CommunityRaffleCard';
 import { usePlayerActivity } from './hooks/usePlayerActivity';
 
-// ConnectFour particle symbols (matching landing page style)
+// ConnectFour particle symbols (SVG circles with darker colors)
 const CONNECTFOUR_SYMBOLS = ['🔴', '🔵'];
 
 // Hardcoded tier configuration (matches ConnectFourOnChain.sol deployment)
@@ -117,22 +117,46 @@ const AnimatedDisc = ({ delay = 0, size = 'large' }) => {
     return () => clearInterval(interval);
   }, [started]);
 
-  const sizeClass = size === 'large' ? 'text-8xl' : 'text-2xl';
+  const svgSize = size === 'large' ? 128 : 32;
 
   return (
-    <span className={`relative inline-block ${sizeClass}`}>
-      <span
-        className="absolute inset-0 transition-opacity duration-1000 ease-in-out"
-        style={{ opacity: showRed ? 1 : 0 }}
-      >
-        🔴
-      </span>
-      <span
-        className="transition-opacity duration-1000 ease-in-out"
-        style={{ opacity: showRed ? 0 : 1 }}
-      >
-        🔵
-      </span>
+    <span className="relative inline-block">
+      <svg width={svgSize} height={svgSize} viewBox="0 0 128 128" style={{ position: 'absolute' }}>
+        <circle
+          cx="64"
+          cy="64"
+          r="58"
+          fill="url(#redAnimGradient)"
+          style={{
+            opacity: showRed ? 1 : 0,
+            transition: 'opacity 1s ease-in-out'
+          }}
+        />
+        <defs>
+          <radialGradient id="redAnimGradient" cx="30%" cy="30%">
+            <stop offset="0%" stopColor="#ff0044" />
+            <stop offset="100%" stopColor="#bb0033" />
+          </radialGradient>
+        </defs>
+      </svg>
+      <svg width={svgSize} height={svgSize} viewBox="0 0 128 128">
+        <circle
+          cx="64"
+          cy="64"
+          r="58"
+          fill="url(#blueAnimGradient)"
+          style={{
+            opacity: showRed ? 0 : 1,
+            transition: 'opacity 1s ease-in-out'
+          }}
+        />
+        <defs>
+          <radialGradient id="blueAnimGradient" cx="30%" cy="30%">
+            <stop offset="0%" stopColor="#0077ff" />
+            <stop offset="100%" stopColor="#0055aa" />
+          </radialGradient>
+        </defs>
+      </svg>
     </span>
   );
 };
@@ -265,9 +289,16 @@ const ConnectFourBoard = ({
               }}
             >
               {hoveredColumn === col && isMyTurn && !isColumnFull && (
-                <span className="text-2xl animate-bounce">
-                  {myColor === 1 ? '🔴' : '🔵'}
-                </span>
+                <div className="animate-bounce">
+                  <svg width="24" height="24" viewBox="0 0 24 24">
+                    <circle
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      fill={myColor === 1 ? '#ff0044' : '#0066ff'}
+                    />
+                  </svg>
+                </div>
               )}
             </div>
           );
@@ -318,11 +349,9 @@ const ConnectFourBoard = ({
                           width: cellSize - 8,
                           height: cellSize - 8,
                           background: cell === 1
-                            ? 'radial-gradient(circle at 30% 30%, #ff6b6b, #c92a2a)'
-                            : 'radial-gradient(circle at 30% 30%, #60a5fa, #2563eb)',
-                          boxShadow: cell === 1
-                            ? 'inset 0 -4px 8px rgba(0,0,0,0.3), 0 0 10px rgba(255,107,107,0.5)'
-                            : 'inset 0 -4px 8px rgba(0,0,0,0.3), 0 0 10px rgba(96,165,250,0.5)'
+                            ? 'radial-gradient(circle at 30% 30%, #ff0044, #bb0033)'
+                            : 'radial-gradient(circle at 30% 30%, #0077ff, #0055aa)',
+                          boxShadow: 'inset 0 -4px 8px rgba(0,0,0,0.3)'
                         }}
                       />
                     ) : isPreview ? (
@@ -332,8 +361,8 @@ const ConnectFourBoard = ({
                           width: cellSize - 8,
                           height: cellSize - 8,
                           background: myColor === 1
-                            ? 'radial-gradient(circle at 30% 30%, #ff6b6b, #c92a2a)'
-                            : 'radial-gradient(circle at 30% 30%, #60a5fa, #2563eb)'
+                            ? 'radial-gradient(circle at 30% 30%, #ff0044, #bb0033)'
+                            : 'radial-gradient(circle at 30% 30%, #0077ff, #0055aa)'
                         }}
                       />
                     ) : null}
@@ -771,10 +800,10 @@ export default function ConnectFour() {
   }, [viewingTournament, contract]);
 
 
-  // Theme colors (Connect Four - matches ConnectFour.jsx)
+  // Theme colors (matches TicTacToe - purple background with deep neon red/blue)
   const currentTheme = {
-    gradient: 'linear-gradient(135deg, #0a0020 0%, #1a0050 50%, #0a0030 100%)',
-    particleColors: ['#00ffff', '#8a2be2'],  // cyan + purple
+    gradient: 'linear-gradient(135deg, #0a0015 0%, #1a0030 50%, #0f001a 100%)',
+    particleColors: ['#0066ff', '#ff0044'],  // deep neon blue + deep neon red
     heroGlow: 'from-blue-500 via-cyan-500 to-blue-500',
     heroTitle: 'from-blue-400 via-cyan-400 to-blue-400',
     heroText: 'text-blue-200',
@@ -2895,18 +2924,69 @@ export default function ConnectFour() {
             tournamentRounds={viewingTournament?.rounds || null}
             currentRoundNumber={currentMatch.roundNumber}
             playerConfig={{
-              player1: { icon: '🔴', label: 'Red' },
-              player2: { icon: '🔵', label: 'Blue' }
+              player1: {
+                icon: (
+                  <svg width="40" height="40" viewBox="0 0 40 40">
+                    <circle
+                      cx="20"
+                      cy="20"
+                      r="18"
+                      fill="url(#magentaGradient)"
+                    />
+                    <defs>
+                      <radialGradient id="magentaGradient" cx="30%" cy="30%">
+                        <stop offset="0%" stopColor="#ff0044" />
+                        <stop offset="100%" stopColor="#bb0033" />
+                      </radialGradient>
+                    </defs>
+                  </svg>
+                ),
+                label: 'Red'
+              },
+              player2: {
+                icon: (
+                  <svg width="40" height="40" viewBox="0 0 40 40">
+                    <circle
+                      cx="20"
+                      cy="20"
+                      r="18"
+                      fill="url(#cyanGradient)"
+                    />
+                    <defs>
+                      <radialGradient id="cyanGradient" cx="30%" cy="30%">
+                        <stop offset="0%" stopColor="#0077ff" />
+                        <stop offset="100%" stopColor="#0055aa" />
+                      </radialGradient>
+                    </defs>
+                  </svg>
+                ),
+                label: 'Blue'
+              }
             }}
             layout="three-column"
             renderPlayer1Stats={() => (
               <>
                 <div className="bg-black/20 rounded-lg p-3">
-                  <div className="text-blue-300 text-sm mb-1">Symbol</div>
-                  <div className="text-white font-bold text-2xl">X</div>
+                  <div className="text-red-300 text-sm mb-1">Symbol</div>
+                  <div className="flex justify-center">
+                    <svg width="32" height="32" viewBox="0 0 32 32">
+                      <circle
+                        cx="16"
+                        cy="16"
+                        r="14"
+                        fill="url(#magentaGradientStat)"
+                      />
+                      <defs>
+                        <radialGradient id="magentaGradientStat" cx="30%" cy="30%">
+                          <stop offset="0%" stopColor="#ff0044" />
+                          <stop offset="100%" stopColor="#bb0033" />
+                        </radialGradient>
+                      </defs>
+                    </svg>
+                  </div>
                 </div>
                 <div className="bg-black/20 rounded-lg p-3">
-                  <div className="text-blue-300 text-sm mb-1">Moves Made</div>
+                  <div className="text-red-300 text-sm mb-1">Pieces Played</div>
                   <div className="text-white font-bold text-xl">
                     {currentMatch.board.filter(c => c === 1).length}
                   </div>
@@ -2916,11 +2996,26 @@ export default function ConnectFour() {
             renderPlayer2Stats={() => (
               <>
                 <div className="bg-black/20 rounded-lg p-3">
-                  <div className="text-pink-300 text-sm mb-1">Symbol</div>
-                  <div className="text-white font-bold text-2xl">O</div>
+                  <div className="text-blue-300 text-sm mb-1">Symbol</div>
+                  <div className="flex justify-center">
+                    <svg width="32" height="32" viewBox="0 0 32 32">
+                      <circle
+                        cx="16"
+                        cy="16"
+                        r="14"
+                        fill="url(#cyanGradientStat)"
+                      />
+                      <defs>
+                        <radialGradient id="cyanGradientStat" cx="30%" cy="30%">
+                          <stop offset="0%" stopColor="#0077ff" />
+                          <stop offset="100%" stopColor="#0055aa" />
+                        </radialGradient>
+                      </defs>
+                    </svg>
+                  </div>
                 </div>
                 <div className="bg-black/20 rounded-lg p-3">
-                  <div className="text-pink-300 text-sm mb-1">Moves Made</div>
+                  <div className="text-blue-300 text-sm mb-1">Pieces Played</div>
                   <div className="text-white font-bold text-xl">
                     {currentMatch.board.filter(c => c === 2).length}
                   </div>

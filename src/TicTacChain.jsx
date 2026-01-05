@@ -462,7 +462,7 @@ export default function TicTacChain() {
   const currentTheme = {
     primary: 'rgba(0, 255, 255, 0.5)',
     secondary: 'rgba(255, 0, 255, 0.5)',
-    gradient: 'linear-gradient(135deg, #0a0015 0%, #1a0030 50%, #0f001a 100%)',
+    gradient: 'linear-gradient(135deg, #0f0020 0%, #1f0038 50%, #140023 100%)',
     border: 'rgba(0, 255, 255, 0.3)',
     glow: 'rgba(0, 255, 255, 0.3)',
     particleColors: ['#00ffff', '#ff00ff'],

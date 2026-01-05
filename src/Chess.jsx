@@ -717,14 +717,14 @@ export default function Chess() {
     updateDisplayConfig();
   }, [viewingTournament, contract]);
 
-  // Theme colors - Single "dream" theme from Chess.jsx
+  // Theme colors (slightly darker purple background with cyan/magenta neon)
   const currentTheme = {
-    primary: 'rgba(0, 191, 255, 0.5)',
-    secondary: 'rgba(138, 43, 226, 0.5)',
-    gradient: 'linear-gradient(135deg, #0a0020 0%, #1a0050 50%, #0a0030 100%)',
+    primary: 'rgba(0, 255, 255, 0.5)',
+    secondary: 'rgba(255, 0, 255, 0.5)',
+    gradient: 'linear-gradient(135deg, #05000f 0%, #130028 50%, #090013 100%)',
     border: 'rgba(0, 255, 255, 0.3)',
     glow: 'rgba(0, 255, 255, 0.3)',
-    particleColors: ['#00ffff', '#8a2be2'],
+    particleColors: ['#00ffff', '#ff00ff'],
     heroGlow: 'from-blue-500 via-cyan-500 to-blue-500',
     heroIcon: 'text-blue-400',
     heroTitle: 'from-blue-400 via-cyan-400 to-blue-400',
