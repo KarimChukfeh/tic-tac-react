@@ -2119,10 +2119,21 @@ export default function Chess() {
       const matchData = await contractInstance.getMatch(tierId, instanceId, roundNumber, matchNumber);
 
       // Unpack the chess board from packedBoard (4 bits per square, 64 squares)
+      // Encoding: 0=empty, 1-6=white pieces (pawn..king), 7-12=black pieces (pawn..king)
       const board = [];
       let packed = BigInt(matchData.packedBoard);
       for (let i = 0; i < 64; i++) {
-        board.push(Number(packed & 0xFn));
+        const value = Number(packed & 0xFn);
+        let pieceType = 0;
+        let color = 0;
+        if (value >= 1 && value <= 6) {
+          pieceType = value;  // white: 1-6
+          color = 1;
+        } else if (value >= 7 && value <= 12) {
+          pieceType = value - 6;  // black: 7-12 → pieceType 1-6
+          color = 2;
+        }
+        board.push({ pieceType, color });
         packed = packed >> 4n;
       }
 
@@ -2774,7 +2785,9 @@ export default function Chess() {
           let moveDetected = false;
           if (prevBoard && updatedMatch.board) {
             for (let i = 0; i < updatedMatch.board.length; i++) {
-              if (prevBoard[i] === 0 && updatedMatch.board[i] !== 0) {
+              const prevPiece = prevBoard[i]?.pieceType ?? prevBoard[i];
+              const currPiece = updatedMatch.board[i]?.pieceType ?? updatedMatch.board[i];
+              if (prevPiece === 0 && currPiece !== 0) {
                 moveDetected = true;
                 break;
               }

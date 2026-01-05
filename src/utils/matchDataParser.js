@@ -116,6 +116,32 @@ export const parseConnectFourMatch = (matchData) => ({
 });
 
 /**
+ * Unpack Chess board from packedBoard (4 bits per square, 64 squares)
+ * Encoding: 0=empty, 1-6=white pieces (pawn..king), 7-12=black pieces (pawn..king)
+ * @param {BigInt|number} packedBoard - Packed board data
+ * @returns {Array<{pieceType: number, color: number}>} Array of 64 piece objects
+ */
+const unpackChessBoard = (packedBoard) => {
+  const board = [];
+  let packed = BigInt(packedBoard);
+  for (let i = 0; i < 64; i++) {
+    const value = Number(packed & 0xFn);
+    let pieceType = 0;
+    let color = 0;
+    if (value >= 1 && value <= 6) {
+      pieceType = value;  // white: 1-6
+      color = 1;
+    } else if (value >= 7 && value <= 12) {
+      pieceType = value - 6;  // black: 7-12 → pieceType 1-6
+      color = 2;
+    }
+    board.push({ pieceType, color });
+    packed = packed >> 4n;
+  }
+  return board;
+};
+
+/**
  * Parse Chess match data
  * @param {Object} matchData - Raw match data from Chess contract
  * @returns {Object} Parsed Chess match with all fields
@@ -173,11 +199,8 @@ export const parseChessMatch = (matchData) => {
     blackInCheck: matchData.blackInCheck,
     fullMoveNumber: Number(matchData.fullMoveNumber),
 
-    // Board and chess-specific fields
-    board: matchData.board ? Array.from(matchData.board).map(cell => ({
-      pieceType: Number(cell.pieceType),
-      color: Number(cell.color)
-    })) : [],
+    // Board - unpack from packedBoard (4 bits per square)
+    board: matchData.packedBoard ? unpackChessBoard(matchData.packedBoard) : [],
     enPassantSquare: matchData.enPassantSquare !== undefined ? Number(matchData.enPassantSquare) : 0,
     halfMoveClock: matchData.halfMoveClock !== undefined ? Number(matchData.halfMoveClock) : 0,
     whiteKingSideCastle: matchData.whiteKingSideCastle || false,

@@ -219,8 +219,9 @@ const MiniChessBoard = ({
     if (selectedSquare === null) {
       // First click: Select piece
       if (piece && piece.pieceType !== 0) {
-        const isMyPiece = (piece.color === 1 && matchData.isPlayer1) ||
-                         (piece.color === 2 && !matchData.isPlayer1);
+        // White pieces have color=1, black pieces have color=2
+        const isMyPiece = (piece.color === 1 && matchData.isWhite) ||
+                         (piece.color === 2 && !matchData.isWhite);
         if (isMyPiece) {
           setSelectedSquare(displayIndex);
         } else {
