@@ -1210,14 +1210,6 @@ export default function TicTacChain() {
     try {
       setTournamentsLoading(true);
 
-      // First check if this instance exists
-      const instanceCount = Number(await contract.INSTANCE_COUNTS(tierId));
-      if (instanceId >= instanceCount) {
-        alert(`Invalid instance ID. Tier ${tierId + 1} only has ${instanceCount} instances (1-${instanceCount})`);
-        setTournamentsLoading(false);
-        return;
-      }
-
       // Get tournament info to validate
       const tournamentInfo = await contract.tournaments(tierId, instanceId);
       const enrolledCount = Number(tournamentInfo.enrolledCount);
