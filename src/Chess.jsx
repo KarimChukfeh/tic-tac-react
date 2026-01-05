@@ -1808,7 +1808,6 @@ export default function Chess() {
       // Get tier config from HARDCODED data (matches TicTacChain pattern)
       const tierConfig = TIER_CONFIG[tierId];
       const playerCount = tierConfig.playerCount;
-      const entryFeeWei = ethers.parseEther(tierConfig.entryFee);
 
       // Extract timeout config using shared utility function
       const timeoutConfig = await fetchTierTimeoutConfig(readOnlyContract, tierId, totalMatchTime, tierConfig);
@@ -3140,7 +3139,7 @@ export default function Chess() {
                   loading={tournamentsLoading}
                   syncDots={bracketSyncDots}
                   isEnrolled={viewingTournament?.enrolledPlayers?.some(addr => addr.toLowerCase() === account?.toLowerCase())}
-                  entryFee={viewingTournament?.entryFee ? ethers.formatEther(viewingTournament.entryFee) : '0'}
+                  entryFee={viewingTournament?.entryFee || '0'}
                   isFull={viewingTournament?.enrolledCount >= viewingTournament?.playerCount}
                   contract={contract}
                 />
