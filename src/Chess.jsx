@@ -1841,8 +1841,8 @@ export default function Chess() {
       // Fetch all rounds and matches
       const rounds = [];
       for (let roundNum = 0; roundNum < totalRounds; roundNum++) {
-        const roundInfo = await readOnlyContract.rounds(tierId, instanceId, roundNum);
-        const totalMatches = Number(roundInfo.totalMatches);
+        const roundInfo = await contractInstance.getRoundInfo(tierId, instanceId, roundNum);
+        const totalMatches = Number(roundInfo[0]);
 
         const matches = [];
         for (let matchNum = 0; matchNum < totalMatches; matchNum++) {
@@ -2651,7 +2651,7 @@ export default function Chess() {
     const pollHomePageData = async () => {
       try {
         // Fetch tier metadata silently (no loading indicators)
-        await fetchTierMetadata(true);
+        await fetchTierMetadata(null, true);
 
         // Re-fetch instances for expanded tiers silently
         const expandedTierIds = Object.keys(expandedTiers)
@@ -3208,7 +3208,7 @@ export default function Chess() {
                               <span className="text-sm font-normal text-purple-300">• {metadata.playerCount} players total</span>
                               <span className="text-sm font-normal text-purple-300">• {metadata.entryFee} ETH entry</span>
                               <span className="text-sm font-normal text-purple-300">• {totalPrizePool} ETH prize pool</span>
-                              <span className="text-sm font-normal text-purple-300 ml-auto">{activePlayersCount} active players</span>
+                              <span className="text-sm font-normal text-purple-300 ml-auto">{activePlayersCount} active enrollments</span>
                               <ChevronDown
                                 size={24}
                                 className={`transition-transform duration-200 ${expandedTiers[tierId] ? 'rotate-180' : ''}`}
@@ -3352,7 +3352,22 @@ export default function Chess() {
 
       {/* User Manual Section */}
       <div id="user-manual" className="max-w-7xl mx-auto px-6 pb-12" style={{ position: 'relative', zIndex: 10 }}>
-        <UserManual contractInstance={contract} />
+        <UserManual
+          contractInstance={contract}
+          tierConfigurations={Object.entries(TIER_CONFIG).map(([tierId, config]) => ({
+            tierId: Number(tierId),
+            playerCount: config.playerCount,
+            instanceCount: config.instanceCount,
+            entryFee: config.entryFee,
+            matchTimePerPlayer: config.timeouts.matchTimePerPlayer,
+            timeIncrementPerMove: config.timeouts.timeIncrementPerMove,
+            matchLevel2Delay: config.timeouts.matchLevel2Delay,
+            matchLevel3Delay: config.timeouts.matchLevel3Delay,
+            enrollmentWindow: config.timeouts.enrollmentWindow,
+            enrollmentLevel2Delay: config.timeouts.enrollmentLevel2Delay
+          }))}
+          raffleThresholds={['0.1', '0.2', '0.4', '1.0', '1.0', '1.0']}
+        />
       </div>
 
       {/* ============ FOOTER ============ */}

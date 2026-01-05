@@ -3114,7 +3114,7 @@ export default function ConnectFour() {
                               <span className="text-sm font-normal text-purple-300">• {metadata.playerCount} players total</span>
                               <span className="text-sm font-normal text-purple-300">• {metadata.entryFee} ETH entry</span>
                               <span className="text-sm font-normal text-purple-300">• {totalPrizePool} ETH prize pool</span>
-                              <span className="text-sm font-normal text-purple-300 ml-auto">{activePlayersCount} active players</span>
+                              <span className="text-sm font-normal text-purple-300 ml-auto">{activePlayersCount} active enrollments</span>
                               <ChevronDown
                                 size={24}
                                 className={`transition-transform duration-200 ${expandedTiers[tierId] ? 'rotate-180' : ''}`}
