@@ -368,6 +368,7 @@ const UserManual = ({
                 <thead>
                   <tr className="border-b border-blue-500/30">
                     <th className="text-left py-3 px-4 text-blue-200 font-semibold">Format</th>
+                    <th className="text-left py-3 px-4 text-blue-200 font-semibold">Entry Fee</th>
                     <th className="text-left py-3 px-4 text-blue-200 font-semibold">Enrollment Window</th>
                   </tr>
                 </thead>
@@ -378,6 +379,7 @@ const UserManual = ({
                         <td className="py-3 px-4 text-gray-300">
                           {tier.playerCount === 2 ? '1v1 Duels' : `${tier.playerCount}-Player Tournaments`}
                         </td>
+                        <td className="py-3 px-4 text-gray-300 font-mono">{tier.entryFee} ETH</td>
                         <td className="py-3 px-4 text-gray-300 font-mono">{formatTime(tier.enrollmentWindow)}</td>
                       </tr>
                     ))
@@ -385,14 +387,17 @@ const UserManual = ({
                     <>
                       <tr className="hover:bg-blue-500/5 transition-colors">
                         <td className="py-3 px-4 text-gray-300">1v1 Duels</td>
+                        <td className="py-3 px-4 text-gray-300 font-mono">0.001 ETH</td>
                         <td className="py-3 px-4 text-gray-300 font-mono">5 minutes</td>
                       </tr>
                       <tr className="hover:bg-blue-500/5 transition-colors">
                         <td className="py-3 px-4 text-gray-300">4-Player Tournaments</td>
+                        <td className="py-3 px-4 text-gray-300 font-mono">0.002 ETH</td>
                         <td className="py-3 px-4 text-gray-300 font-mono">10 minutes</td>
                       </tr>
                       <tr className="hover:bg-blue-500/5 transition-colors">
                         <td className="py-3 px-4 text-gray-300">8-Player Tournaments</td>
+                        <td className="py-3 px-4 text-gray-300 font-mono">0.004 ETH</td>
                         <td className="py-3 px-4 text-gray-300 font-mono">20 minutes</td>
                       </tr>
                     </>
