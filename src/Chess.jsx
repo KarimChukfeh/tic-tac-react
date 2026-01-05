@@ -1795,28 +1795,30 @@ export default function Chess() {
   // Refresh tournament bracket data
   const refreshTournamentBracket = useCallback(async (contractInstance, tierId, instanceId, totalMatchTime) => {
     try {
-      // Get read-only ChessOnChain contract
-      const readOnlyContract = getReadOnlyContract();
+      // Get tournament info using getTournamentInfo() view function (matches TicTacChain pattern)
+      const tournamentInfo = await contractInstance.getTournamentInfo(tierId, instanceId);
+      const status = Number(tournamentInfo[0]);
+      const currentRound = Number(tournamentInfo[2]);
+      const enrolledCount = Number(tournamentInfo[3]);
+      const prizePool = tournamentInfo[4];
 
-      // Get tournament info from ChessOnChain contract
-      const tournamentInfo = await readOnlyContract.tournaments(tierId, instanceId);
-      const status = Number(tournamentInfo[2]); // status is at index 2
-      const currentRound = Number(tournamentInfo[4]); // currentRound is at index 4
-      const enrolledCount = Number(tournamentInfo[5]); // enrolledCount is at index 5
-      const prizePool = tournamentInfo[6]; // prizePool is at index 6
-
-      // Get tier config from HARDCODED data (matches TicTacChain pattern)
+      // Get tier config from hardcoded data
       const tierConfig = TIER_CONFIG[tierId];
       const playerCount = tierConfig.playerCount;
 
       // Extract timeout config using shared utility function
-      const timeoutConfig = await fetchTierTimeoutConfig(readOnlyContract, tierId, totalMatchTime, tierConfig);
+      const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, tierId, totalMatchTime, tierConfig);
 
-      // Get enrolled players from ChessOnChain enrolledPlayers mapping
+      // Get enrolled players by iterating through enrolledPlayers mapping
       const enrolledPlayers = [];
       for (let i = 0; i < enrolledCount; i++) {
-        const player = await readOnlyContract.enrolledPlayers(tierId, instanceId, i);
-        enrolledPlayers.push(player);
+        try {
+          const player = await contractInstance.enrolledPlayers(tierId, instanceId, i);
+          enrolledPlayers.push(player);
+        } catch (err) {
+          console.warn(`Could not fetch enrolled player ${i}:`, err);
+          break;
+        }
       }
 
       // Get countdown data
@@ -1860,6 +1862,13 @@ export default function Chess() {
             // Get loser from common data
             const loser = matchData.common.loser || zeroAddress;
 
+            // Extract check status and move number from packedState
+            // Bit 12: whiteInCheck, Bit 13: blackInCheck, Bits 22-31: fullMoveNumber
+            const packedState = BigInt(matchData.packedState);
+            const whiteInCheck = ((packedState >> 12n) & 1n) === 1n;
+            const blackInCheck = ((packedState >> 13n) & 1n) === 1n;
+            const fullMoveNumber = Number((packedState >> 22n) & 0x3FFn);
+
             const parsedMatch = {
               player1,
               player2,
@@ -1868,11 +1877,11 @@ export default function Chess() {
               loser,
               matchStatus,
               isDraw,
-              startTime: Number(matchData[6]),
-              lastMoveTime: Number(matchData[7]),
-              fullMoveNumber: Number(matchData[8]),
-              whiteInCheck: matchData[9],
-              blackInCheck: matchData[10]
+              startTime: Number(matchData.common.startTime),
+              lastMoveTime: Number(matchData.common.lastMoveTime),
+              fullMoveNumber,
+              whiteInCheck,
+              blackInCheck
             };
 
             // Calculate time remaining client-side (contract stores time at last move)
@@ -1933,8 +1942,8 @@ export default function Chess() {
             let escL2Available = false;
             let escL3Available = false;
             try {
-              escL2Available = await readOnlyContract.isMatchEscL2Available(tierId, instanceId, roundNum, matchNum);
-              escL3Available = await readOnlyContract.isMatchEscL3Available(tierId, instanceId, roundNum, matchNum);
+              escL2Available = await contractInstance.isMatchEscL2Available(tierId, instanceId, roundNum, matchNum);
+              escL3Available = await contractInstance.isMatchEscL3Available(tierId, instanceId, roundNum, matchNum);
             } catch (escCheckErr) {
               console.debug('Could not check escalation availability:', escCheckErr.message);
             }
@@ -2109,8 +2118,13 @@ export default function Chess() {
 
       const matchData = await contractInstance.getMatch(tierId, instanceId, roundNumber, matchNumber);
 
-      // Board and firstPlayer are included in getMatch response
-      const board = matchData.board;
+      // Unpack the chess board from packedBoard (4 bits per square, 64 squares)
+      const board = [];
+      let packed = BigInt(matchData.packedBoard);
+      for (let i = 0; i < 64; i++) {
+        board.push(Number(packed & 0xFn));
+        packed = packed >> 4n;
+      }
 
       // Fetch per-tier timeout config to get correct match time
       const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, tierId, totalMatchTime);
@@ -2151,9 +2165,13 @@ export default function Chess() {
       const isDraw = matchData.common.isDraw;
       const startTime = Number(matchData.common.startTime);
       const lastMoveTime = Number(matchData.common.lastMoveTime);
-      const fullMoveNumber = Number(matchData.fullMoveNumber);
-      const whiteInCheck = matchData.whiteInCheck;
-      const blackInCheck = matchData.blackInCheck;
+
+      // Extract check status and move number from packedState
+      // Bit 12: whiteInCheck, Bit 13: blackInCheck, Bits 22-31: fullMoveNumber
+      const packedState = BigInt(matchData.packedState);
+      const whiteInCheck = ((packedState >> 12n) & 1n) === 1n;
+      const blackInCheck = ((packedState >> 13n) & 1n) === 1n;
+      const fullMoveNumber = Number((packedState >> 22n) & 0x3FFn);
 
       const zeroAddress = '0x0000000000000000000000000000000000000000';
       const isMatchInitialized =
@@ -2411,15 +2429,12 @@ export default function Chess() {
     try {
       setMatchLoading(true);
 
-      // Get read-only ChessOnChain contract
-      const readOnlyContract = getReadOnlyContract();
-
-      // Fetch tournament info from ChessOnChain contract
-      const tournamentInfo = await readOnlyContract.tournaments(tierId, instanceId);
-      // Get tier config from HARDCODED data (matches TicTacChain pattern)
+      // Fetch tournament info using getTournamentInfo() view function (matches TicTacChain pattern)
+      const tournamentInfo = await contract.getTournamentInfo(tierId, instanceId);
+      // Get tier config from hardcoded data
       const tierConfig = TIER_CONFIG[tierId];
       const playerCount = tierConfig.playerCount;
-      const prizePool = tournamentInfo[6]; // prizePool is at index 6
+      const prizePool = tournamentInfo[4]; // prizePool at index 4 in getTournamentInfo
 
       const matchData = await contract.getMatch(tierId, instanceId, roundNumber, matchNumber);
 
@@ -2431,11 +2446,11 @@ export default function Chess() {
       let actualPlayer2 = player2;
 
       if (player1.toLowerCase() === zeroAddress) {
-        // Get first two enrolled players from ChessOnChain
-        const enrolledCount = Number(tournamentInfo[5]);
+        // Get first two enrolled players
+        const enrolledCount = Number(tournamentInfo[3]); // enrolledCount at index 3 in getTournamentInfo
         if (enrolledCount >= 2) {
-          actualPlayer1 = await readOnlyContract.enrolledPlayers(tierId, instanceId, 0);
-          actualPlayer2 = await readOnlyContract.enrolledPlayers(tierId, instanceId, 1);
+          actualPlayer1 = await contract.enrolledPlayers(tierId, instanceId, 0);
+          actualPlayer2 = await contract.enrolledPlayers(tierId, instanceId, 1);
         }
       }
 

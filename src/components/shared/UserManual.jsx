@@ -5,7 +5,7 @@
  * system works, including escalation levels, time settings, and rules.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { BookOpen, Shield } from 'lucide-react';
 import { ethers } from 'ethers';
 
@@ -19,6 +19,9 @@ const UserManual = ({
   // Format: [{ tierId, playerCount, instanceCount, entryFee, timeouts: { matchTimePerPlayer, timeIncrementPerMove, matchLevel2Delay, matchLevel3Delay, enrollmentWindow, enrollmentLevel2Delay } }]
   tierConfigurations = null
 }) => {
+  // Track if config has been loaded to prevent re-fetching
+  const hasLoadedConfig = useRef(false);
+
   // State for contract-fetched values
   const [contractConfig, setContractConfig] = useState({
     basisPoints: 10000,
@@ -33,10 +36,13 @@ const UserManual = ({
 
   // Fetch contract configuration on mount (or use hardcoded values)
   useEffect(() => {
+    // Only fetch once
+    if (hasLoadedConfig.current) return;
+
     const fetchContractConfig = async () => {
       // If hardcoded tierConfigurations provided, use them directly (skip contract calls)
       if (tierConfigurations && tierConfigurations.length > 0) {
-        console.log('[UserManual] Using hardcoded tier configurations:', tierConfigurations);
+        hasLoadedConfig.current = true;
         setContractConfig(prev => ({
           ...prev,
           tierConfigurations: tierConfigurations.sort((a, b) => a.playerCount - b.playerCount),
@@ -142,7 +148,8 @@ const UserManual = ({
           ? raffleThresholdsData.thresholds.map(t => ethers.formatEther(t))
           : [];
 
-        const newConfig = {
+        hasLoadedConfig.current = true;
+        setContractConfig({
           basisPoints: Number(basisPoints),
           protocolShareBps: Number(protocolShareBps),
           tierConfigurations: fetchedTierConfigurations,
@@ -151,9 +158,7 @@ const UserManual = ({
           raffleWinnerSharePercentage: raffleConfig ? Number(raffleConfig.winnerSharePercentage) : 80,
           currentRaffleThreshold: raffleInfo ? ethers.formatEther(raffleInfo.threshold) : null,
           isLoading: false
-        };
-        console.log('[UserManual] Setting contract config state:', newConfig);
-        setContractConfig(newConfig);
+        });
       } catch (error) {
         console.error('Error fetching contract config:', error);
         setContractConfig(prev => ({ ...prev, isLoading: false }));
@@ -185,10 +190,6 @@ const UserManual = ({
   const matchTimePerPlayer = contractConfig.tierConfigurations.length > 0
     ? contractConfig.tierConfigurations[0].matchTimePerPlayer
     : 300;
-
-  // Debug logging
-  console.log('[UserManual] Rendering with tierConfigurations:', contractConfig.tierConfigurations);
-  console.log('[UserManual] Calculated matchTimePerPlayer:', matchTimePerPlayer, 'seconds =', Math.floor(matchTimePerPlayer / 60), 'minutes');
 
   // Handle hash navigation and trigger highlight animation
   useEffect(() => {    const handleHashChange = () => {
