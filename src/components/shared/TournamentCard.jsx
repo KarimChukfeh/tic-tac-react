@@ -134,14 +134,37 @@ const TournamentCard = ({
       if ((canStartEscalation1 || canStartEscalation2) && isEnrolled && contract) {
         try {
           const canReset = await contract.canResetEnrollmentWindow(tierId, instanceId);
+          console.log(`[TournamentCard T${tierId}I${instanceId}] canResetEnrollmentWindow:`, canReset, {
+            currentEnrolled,
+            maxPlayers,
+            canStartEscalation1,
+            canStartEscalation2,
+            isEnrolled,
+            hasContract: !!contract,
+            escalation1Start: escalation1Start,
+            escalation2Start: escalation2Start,
+            now,
+            activeEscalation
+          });
           setCanResetWindow(canReset);
         } catch (error) {
-          console.error('Error checking canResetEnrollmentWindow:', error);
+          console.error(`[TournamentCard T${tierId}I${instanceId}] Error checking canResetEnrollmentWindow:`, error);
           setCanResetWindow(false);
         }
-      } else if (!canStartEscalation1 && !canStartEscalation2) {
-        // Reset the flag only when both escalation windows are cleared
-        setCanResetWindow(false);
+      } else {
+        if (!canStartEscalation1 && !canStartEscalation2) {
+          // Reset the flag only when both escalation windows are cleared
+          setCanResetWindow(false);
+        }
+        // Debug: log why we're not checking
+        if (canStartEscalation1 || canStartEscalation2) {
+          console.log(`[TournamentCard T${tierId}I${instanceId}] Not checking canResetEnrollmentWindow:`, {
+            canStartEscalation1,
+            canStartEscalation2,
+            isEnrolled,
+            hasContract: !!contract
+          });
+        }
       }
     };
 
@@ -297,7 +320,7 @@ const TournamentCard = ({
 
       {/* Action Buttons */}
       {/* EL1*: Reset Enrollment Window - Solo player can extend enrollment */}
-      {tournamentStatus === 0 && canResetWindow && isEnrolled && onResetEnrollmentWindow && (
+      {tournamentStatus === 0 && currentEnrolled === 1 && isEnrolled && escalationState.canStartEscalation1 && onResetEnrollmentWindow && (
         <div className="mb-4">
           <button
             onClick={() => onResetEnrollmentWindow(tierId, instanceId)}
