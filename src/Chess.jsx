@@ -3350,7 +3350,7 @@ export default function Chess() {
             enrollmentWindow: config.timeouts.enrollmentWindow,
             enrollmentLevel2Delay: config.timeouts.enrollmentLevel2Delay
           }))}
-          raffleThresholds={['0.5', '1', '2', '3']}
+          raffleThresholds={['0.5', '1', '2']}
         />
       </div>
 

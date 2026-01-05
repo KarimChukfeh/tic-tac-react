@@ -3246,7 +3246,7 @@ export default function ConnectFour() {
             enrollmentWindow: config.timeouts.enrollmentWindow,
             enrollmentLevel2Delay: config.timeouts.enrollmentLevel2Delay
           }))}
-          raffleThresholds={['0.4', '0.75', '1', '2']}
+          raffleThresholds={['0.4', '0.75', '1']}
         />
       </div>
 
