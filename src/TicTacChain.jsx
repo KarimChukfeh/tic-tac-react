@@ -2648,10 +2648,10 @@ export default function TicTacChain() {
             <div className="bg-gradient-to-br from-yellow-500/20 to-amber-500/20 border border-yellow-400/30 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Clock className="text-yellow-400" size={20} />
-                <span className="font-bold text-yellow-300">{Math.floor(displayTimeoutConfig.matchTimePerPlayer / 60)} {Math.floor(displayTimeoutConfig.matchTimePerPlayer / 60) === 1 ? 'minute' : 'minutes'} per match</span>
+                <span className="font-bold text-yellow-300">2 minutes per match</span>
               </div>
               <p className="text-sm text-yellow-200">
-                Each player gets {Math.floor(displayTimeoutConfig.matchTimePerPlayer / 60)} {Math.floor(displayTimeoutConfig.matchTimePerPlayer / 60) === 1 ? 'minute' : 'minutes'} total for all their moves in the match.
+                Each player gets 2 minutes total for all their moves in the match.
               </p>
             </div>
             <div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-xl p-4">
