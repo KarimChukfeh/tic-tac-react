@@ -382,7 +382,7 @@ const MiniChessBoard = ({
               onClick={() => handleSquareClick(displayIdx)}
               disabled={!matchData.isMyTurn || makingMove || matchData.matchStatus === 2}
               className={`
-                aspect-square flex items-center justify-center text-xl md:text-2xl font-bold transition-all
+                aspect-square flex items-center justify-center text-[1.375rem] md:text-[1.65rem] font-bold transition-all
                 ${isLight ? 'bg-stone-300' : 'bg-stone-700'}
                 ${isSelected ? 'ring-2 ring-yellow-400 ring-inset' : ''}
                 ${!matchData.isMyTurn || makingMove || matchData.matchStatus === 2 ? 'cursor-not-allowed' : 'cursor-pointer hover:opacity-80'}
