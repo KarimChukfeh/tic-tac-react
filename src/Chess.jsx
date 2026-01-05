@@ -977,106 +977,29 @@ export default function Chess() {
     }
   }, [getReadOnlyContract]);
 
-  // LAZY LOADING: Fetch tier metadata only (fast initial load)
-  // This gets basic tier info without detailed instance data
-  const fetchTierMetadata = useCallback(async (contractInstance = null, silentUpdate = false) => {
-    const readContract = contractInstance || getReadOnlyContract();
-    if (!readContract) {
-      setConnectionError('Unable to connect to blockchain. Please check your network connection.');
-      if (!silentUpdate) setMetadataLoading(false);
-      return;
-    }
-
+  // LAZY LOADING: Fetch tier metadata from hardcoded TIER_CONFIG (no RPC calls)
+  // Active enrollment counts come from tierInstances when tiers are expanded
+  const fetchTierMetadata = useCallback(async (_contractInstance = null, silentUpdate = false) => {
     if (!silentUpdate) setMetadataLoading(true);
     if (!silentUpdate) setConnectionError(null);
+
+    // Build metadata directly from TIER_CONFIG - zero RPC calls
     const metadata = {};
-    let successfulFetches = 0;
-    let totalAttempts = 0;
-
-    // Fetch tier count from contract
-    let tierCount = 0;
-    try {
-      tierCount = Number(await readContract.tierCount());
-    } catch (error) {
-      console.warn('Could not fetch tier count:', error.message);
-    }
-
-    if (tierCount === 0) {
-      console.log('No tiers available');
-      setTierMetadata({});
-      if (!silentUpdate) setMetadataLoading(false);
-      return;
-    }
-
-    const tierIds = Array.from({ length: tierCount }, (_, i) => i);
-
-    for (const tierId of tierIds) {
-      totalAttempts++;
-      try {
-        // Get tier config from HARDCODED data (matches TicTacChain pattern)
-        const tierConfig = TIER_CONFIG[tierId];
-        if (!tierConfig) continue;
-
-        const { playerCount, instanceCount, entryFee } = tierConfig;
-
-        // Fetch tournament data for each instance
-        const statuses = [];
-        const enrolledCounts = [];
-        const prizePools = [];
-
-        for (let instanceId = 0; instanceId < instanceCount; instanceId++) {
-          try {
-            const tournament = await readContract.tournaments(tierId, instanceId);
-            statuses.push(Number(tournament.status));
-            enrolledCounts.push(Number(tournament.enrolledCount));
-            prizePools.push(tournament.prizePool);
-          } catch (error) {
-            // Instance not initialized yet, stop checking further instances
-            break;
-          }
-        }
-
-        if (statuses.length === 0) continue;
-
-        successfulFetches++;
-
-        metadata[tierId] = {
-          playerCount,
-          instanceCount: statuses.length,
-          entryFee,
-          statuses,
-          enrolledCounts,
-          prizePools
-        };
-      } catch (error) {
-        console.log(`Could not fetch tier ${tierId} metadata:`, error.message);
-        // Check for GF error pattern (matches TicTacChain)
-        const isGFError = error.reason === 'GF' ||
-                         error.revert?.args?.[0] === 'GF' ||
-                         error.message?.includes('"GF"') ||
-                         error.message?.includes('execution reverted: "GF"');
-        if (isGFError) {
-          console.log('Contract not initialized (GF error). Owner needs to initialize.');
-          break;
-        }
-      }
-    }
-
-    if (successfulFetches === 0 && totalAttempts > 0) {
-      const hasGFError = Object.keys(metadata).length === 0;
-      if (hasGFError && !silentUpdate) {
-        console.log('Contract not initialized yet. Owner needs to call initializeAllInstances()');
-        setConnectionError(null);
-      } else if (!silentUpdate) {
-        setConnectionError('Unable to load tournament data. Please check your connection and try again.');
-      }
-    } else if (successfulFetches > 0 && !silentUpdate) {
-      setConnectionError(null);
+    for (const [tierId, tierConfig] of Object.entries(TIER_CONFIG)) {
+      const { playerCount, instanceCount, entryFee } = tierConfig;
+      metadata[tierId] = {
+        playerCount,
+        instanceCount,
+        entryFee,
+        statuses: [],
+        enrolledCounts: [],
+        prizePools: []
+      };
     }
 
     setTierMetadata(metadata);
     if (!silentUpdate) setMetadataLoading(false);
-  }, [getReadOnlyContract]);
+  }, []);
 
   // LAZY LOADING: Fetch detailed instances for a specific tier (called on expand)
   // Note: Uses functional state updates to avoid dependency on tierInstances/tierMetadata
@@ -3248,11 +3171,10 @@ export default function Chess() {
                       // Calculate prize pool per tournament
                       const totalPrizePool = (parseFloat(metadata.entryFee) * metadata.playerCount * 0.9).toFixed(4);
 
-                      // Calculate currently active players (enrolling + in progress)
-                      const activePlayersCount = metadata.enrolledCounts.reduce((sum, enrolledCount, index) => {
-                        const status = metadata.statuses[index];
-                        if (status === 0 || status === 1) {
-                          return sum + enrolledCount;
+                      // Calculate currently active players from tierInstances (enrolling + in progress)
+                      const activePlayersCount = allInstances.reduce((sum, instance) => {
+                        if (instance.status === 0 || instance.status === 1) {
+                          return sum + instance.enrolledCount;
                         }
                         return sum;
                       }, 0);
@@ -3268,11 +3190,13 @@ export default function Chess() {
                               <span className="text-sm font-normal text-purple-300">• {metadata.playerCount} players total</span>
                               <span className="text-sm font-normal text-purple-300">• {metadata.entryFee} ETH entry</span>
                               <span className="text-sm font-normal text-purple-300">• {totalPrizePool} ETH prize pool</span>
-                              <span className="text-sm font-normal text-purple-300 ml-auto">{activePlayersCount} active enrollments</span>
-                              <ChevronDown
-                                size={24}
-                                className={`transition-transform duration-200 ${expandedTiers[tierId] ? 'rotate-180' : ''}`}
-                              />
+                              <span className="ml-auto flex items-center gap-2">
+                                {allInstances.length > 0 && <span className="text-sm font-normal text-purple-300">{activePlayersCount} active enrollments</span>}
+                                <ChevronDown
+                                  size={24}
+                                  className={`transition-transform duration-200 ${expandedTiers[tierId] ? 'rotate-180' : ''}`}
+                                />
+                              </span>
                             </h3>
                           </button>
 
