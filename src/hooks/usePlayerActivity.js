@@ -75,9 +75,9 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
 
       const unfilledTournaments = await Promise.all(
         enrollingTournaments.map(async (ref) => {
-          // getTournamentInfo returns: (status, mode, currentRound, enrolledCount, prizePool, winner)
+          // getTournamentInfo returns: (status, currentRound, enrolledCount, prizePool, winner)
           const tournamentInfo = await contract.getTournamentInfo(ref.tierId, ref.instanceId);
-          const enrolledCount = Number(tournamentInfo[3]); // enrolledCount at index 3
+          const enrolledCount = Number(tournamentInfo[2]); // enrolledCount at index 2
 
           // Get player count from tierConfig if provided, otherwise try contract
           let playerCount;
@@ -119,11 +119,11 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
         const tierId = Number(ref.tierId);
         const instanceId = Number(ref.instanceId);
 
-        // getTournamentInfo returns: (status, mode, currentRound, enrolledCount, prizePool, winner)
+        // getTournamentInfo returns: (status, currentRound, enrolledCount, prizePool, winner)
         const tournamentInfo = await contract.getTournamentInfo(tierId, instanceId);
         const tournamentStatus = Number(tournamentInfo[0]); // status at index 0
-        const currentRound = Number(tournamentInfo[2]);     // currentRound at index 2
-        const enrolledCount = Number(tournamentInfo[3]);    // enrolledCount at index 3
+        const currentRound = Number(tournamentInfo[1]);     // currentRound at index 1
+        const enrolledCount = Number(tournamentInfo[2]);    // enrolledCount at index 2
 
         console.log(`[PlayerActivity] Processing tournament T${tierId}I${instanceId}:`, {
           status: tournamentStatus,

@@ -1439,9 +1439,9 @@ export default function TicTacChain() {
       // Get tournament info
       const tournamentInfo = await contractInstance.getTournamentInfo(tierId, instanceId);
       const status = Number(tournamentInfo[0]);
-      const currentRound = Number(tournamentInfo[2]);
-      const enrolledCount = Number(tournamentInfo[3]);
-      const prizePool = tournamentInfo[4];
+      const currentRound = Number(tournamentInfo[1]);
+      const enrolledCount = Number(tournamentInfo[2]);
+      const prizePool = tournamentInfo[3];
 
       // Get tier config from hardcoded data
       const tierConfig = TIER_CONFIG[tierId];
@@ -1979,7 +1979,7 @@ export default function TicTacChain() {
       const tournamentInfo = await contract.getTournamentInfo(tierId, instanceId);
       const tierConfig = TIER_CONFIG[tierId];
       const playerCount = tierConfig.playerCount;
-      const prizePool = tournamentInfo[4]; // prizePool is at index 4
+      const prizePool = tournamentInfo[3]; // prizePool is at index 3
 
       const matchData = await contract.getMatch(tierId, instanceId, roundNumber, matchNumber);
       const parsedMatch = parseTicTacToeMatch(matchData);
@@ -1993,7 +1993,7 @@ export default function TicTacChain() {
 
       if (player1.toLowerCase() === zeroAddress) {
         // Get enrolled players by iterating through enrolledPlayers mapping
-        const enrolledCount = Number(tournamentInfo[3]);
+        const enrolledCount = Number(tournamentInfo[2]);
         const enrolledPlayers = [];
         for (let i = 0; i < Math.min(2, enrolledCount); i++) {
           try {
