@@ -48,11 +48,50 @@ import { usePlayerActivity } from './hooks/usePlayerActivity';
 // ConnectFour particle symbols (matching landing page style)
 const CONNECTFOUR_SYMBOLS = ['🔴', '🔵'];
 
-// Hardcoded tier configuration (matches contract deployment)
+// Hardcoded tier configuration (matches ConnectFourOnChain.sol deployment)
+// Tier 0: _registerTier0() -> 2 players, 100 instances, 0.002 ETH
+// Tier 1: _registerTier1() -> 4 players, 50 instances, 0.004 ETH
+// Tier 2: _registerTier2() -> 8 players, 30 instances, 0.008 ETH
 const TIER_CONFIG = {
-  0: { playerCount: 2, instanceCount: 100, entryFee: '0.001' },
-  1: { playerCount: 4, instanceCount: 50, entryFee: '0.002' },
-  2: { playerCount: 8, instanceCount: 25, entryFee: '0.004' },
+  0: {
+    playerCount: 2,
+    instanceCount: 100,
+    entryFee: '0.002',
+    timeouts: {
+      matchTimePerPlayer: 300,
+      timeIncrementPerMove: 15,
+      matchLevel2Delay: 120,
+      matchLevel3Delay: 240,
+      enrollmentWindow: 300,
+      enrollmentLevel2Delay: 600
+    }
+  },
+  1: {
+    playerCount: 4,
+    instanceCount: 50,
+    entryFee: '0.004',
+    timeouts: {
+      matchTimePerPlayer: 300,
+      timeIncrementPerMove: 15,
+      matchLevel2Delay: 120,
+      matchLevel3Delay: 240,
+      enrollmentWindow: 600,
+      enrollmentLevel2Delay: 1200
+    }
+  },
+  2: {
+    playerCount: 8,
+    instanceCount: 30,
+    entryFee: '0.008',
+    timeouts: {
+      matchTimePerPlayer: 300,
+      timeIncrementPerMove: 15,
+      matchLevel2Delay: 120,
+      matchLevel3Delay: 240,
+      enrollmentWindow: 900,
+      enrollmentLevel2Delay: 1800
+    }
+  }
 };
 
 // Animated disc that fades between red and blue
@@ -706,9 +745,9 @@ export default function ConnectFour() {
       if (!contract) return;
 
       if (viewingTournament?.tierId !== undefined) {
-        // Fetch timeout config for the viewing tournament's tier
+        // Fetch timeout config for the viewing tournament's tier (using hardcoded TIER_CONFIG)
         try {
-          const timeoutConfig = await fetchTierTimeoutConfig(contract, viewingTournament.tierId, 300);
+          const timeoutConfig = await fetchTierTimeoutConfig(contract, viewingTournament.tierId, 300, TIER_CONFIG[viewingTournament.tierId]);
           if (timeoutConfig?.matchTimePerPlayer) {
             setDisplayTimeoutConfig(timeoutConfig);
           }
@@ -716,9 +755,9 @@ export default function ConnectFour() {
           console.warn(`Could not fetch timeout config for tier ${viewingTournament.tierId}:`, err);
         }
       } else {
-        // No tournament viewing, reset to tier 0 (default)
+        // No tournament viewing, reset to tier 0 (default) using hardcoded TIER_CONFIG
         try {
-          const timeoutConfig = await fetchTierTimeoutConfig(contract, 0, 300);
+          const timeoutConfig = await fetchTierTimeoutConfig(contract, 0, 300, TIER_CONFIG[0]);
           if (timeoutConfig?.matchTimePerPlayer) {
             setDisplayTimeoutConfig(timeoutConfig);
           }
@@ -893,9 +932,9 @@ export default function ConnectFour() {
       await fetchTierMetadata(contractInstance);
       await fetchLeaderboard(false);
 
-      // Fetch match time from first tier for display in Game Info Cards
+      // Fetch match time from first tier for display in Game Info Cards (using hardcoded TIER_CONFIG)
       try {
-        const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, 0, 300);
+        const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, 0, 300, TIER_CONFIG[0]);
         if (timeoutConfig?.matchTimePerPlayer) {
           setMatchTimePerPlayer(timeoutConfig.matchTimePerPlayer);
           setDisplayTimeoutConfig(timeoutConfig);
@@ -1385,16 +1424,17 @@ export default function ConnectFour() {
     try {
       setTournamentsLoading(true);
 
-      // Fetch actual entry fee from contract to ensure it matches
-      const tierConfig = await contract.tierConfigs(tierId);
-      const contractEntryFee = tierConfig.entryFee;
-      console.log('[handleEnroll] Contract entry fee:', ethers.formatEther(contractEntryFee), 'ETH');
-      console.log('[handleEnroll] Passed entry fee:', entryFee, 'ETH');
-
-      // Use the contract's entry fee to avoid mismatches
-      const feeInWei = contractEntryFee;
-
-      console.log('[handleEnroll] Enrolling in tier', tierId, 'instance', instanceId, 'with fee:', ethers.formatEther(feeInWei), 'ETH');
+      // Use hardcoded tier config (tierConfigs removed from contract ABI)
+      const tierConfig = TIER_CONFIG[tierId];
+      if (!tierConfig) {
+        alert(`Invalid tier ID: ${tierId}`);
+        setTournamentsLoading(false);
+        return;
+      }
+      const feeInWei = ethers.parseEther(tierConfig.entryFee);
+      console.log('[handleEnroll] Using hardcoded entry fee:', tierConfig.entryFee, 'ETH');
+      console.log('[handleEnroll] Passed entry fee (ignored):', entryFee, 'ETH');
+      console.log('[handleEnroll] Enrolling in tier', tierId, 'instance', instanceId, 'with fee:', tierConfig.entryFee, 'ETH');
 
       // Call enrollInTournament function with entry fee as value
       const tx = await contract.enrollInTournament(tierId, instanceId, { value: feeInWei });
@@ -1724,13 +1764,13 @@ export default function ConnectFour() {
       const enrolledCount = Number(tournamentInfo[3]);
       const prizePool = tournamentInfo[4];
 
-      // Get tier config for player count and entry fee
-      const tierConfig = await contractInstance.tierConfigs(tierId);
-      const playerCount = Number(tierConfig.playerCount);
-      const entryFee = tierConfig.entryFee;
+      // Get tier config from hardcoded values (tierConfigs removed from contract ABI)
+      const tierConfig = TIER_CONFIG[tierId];
+      const playerCount = tierConfig.playerCount;
+      const entryFee = ethers.parseEther(tierConfig.entryFee);
 
-      // Extract timeout config using shared utility function
-      const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, tierId, totalMatchTime);
+      // Extract timeout config using shared utility function (with hardcoded TIER_CONFIG fallback)
+      const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, tierId, totalMatchTime, tierConfig);
 
       // Get enrolled players by iterating through enrolledPlayers mapping (matches TicTacChain)
       const enrolledPlayers = [];
@@ -1988,8 +2028,8 @@ export default function ConnectFour() {
       const matchData = await contractInstance.getMatch(tierId, instanceId, roundNumber, matchNumber);
       const parsedMatch = parseConnectFourMatch(matchData);
 
-      // Fetch per-tier timeout config to get correct match time
-      const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, tierId, totalMatchTime);
+      // Fetch per-tier timeout config to get correct match time (with hardcoded TIER_CONFIG fallback)
+      const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, tierId, totalMatchTime, TIER_CONFIG[tierId]);
       const tierMatchTime = timeoutConfig?.matchTimePerPlayer ?? totalMatchTime;
 
       const {

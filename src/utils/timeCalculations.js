@@ -12,9 +12,10 @@
  * @param {Object} contractInstance - Ethers contract instance
  * @param {number} tierId - Tournament tier ID
  * @param {number} fallbackMatchTime - Default match time if config unavailable (default 300s)
+ * @param {Object} hardcodedTierConfig - Optional hardcoded tier config (for contracts that removed tierConfigs)
  * @returns {Promise<Object>} Timeout configuration with matchTimePerPlayer and escalation delays
  */
-export const fetchTierTimeoutConfig = async (contractInstance, tierId, fallbackMatchTime = 300) => {
+export const fetchTierTimeoutConfig = async (contractInstance, tierId, fallbackMatchTime = 300, hardcodedTierConfig = null) => {
   try {
     // Try ConnectFour approach first: getTierTimeouts(tierId)
     if (contractInstance.getTierTimeouts) {
@@ -51,10 +52,24 @@ export const fetchTierTimeoutConfig = async (contractInstance, tierId, fallbackM
       return config;
     }
   } catch (error) {
-    console.warn('tierConfigs() failed, using fallback values:', error.message);
+    console.warn('tierConfigs() failed, checking hardcoded config:', error.message);
   }
 
-  // Fallback if both methods fail
+  // Use hardcoded tier config if provided (for modular contracts that removed tierConfigs)
+  if (hardcodedTierConfig && hardcodedTierConfig.timeouts) {
+    const timeouts = hardcodedTierConfig.timeouts;
+    console.log(`Using hardcoded timeout config for tier ${tierId}:`, timeouts);
+    return {
+      matchTimePerPlayer: timeouts.matchTimePerPlayer,
+      timeIncrementPerMove: timeouts.timeIncrementPerMove,
+      matchLevel2Delay: timeouts.matchLevel2Delay,
+      matchLevel3Delay: timeouts.matchLevel3Delay,
+      enrollmentWindow: timeouts.enrollmentWindow,
+      enrollmentLevel2Delay: timeouts.enrollmentLevel2Delay
+    };
+  }
+
+  // Fallback if all methods fail
   console.warn('No timeout config available, using fallback values');
   return {
     matchTimePerPlayer: fallbackMatchTime,

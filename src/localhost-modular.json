@@ -2,19 +2,17 @@
   "network": "localhost",
   "chainId": "412346",
   "deployer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-  "timestamp": "2026-01-05T01:31:51.166Z",
-  "blockNumber": 166,
+  "timestamp": "2026-01-05T10:51:57.406Z",
+  "blockNumber": 6003,
   "modules": {
-    "ETour_Core": "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9",
-    "ETour_Matches": "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9",
-    "ETour_Prizes": "0x0165878A594ca255338adfa4d48449f69242Eb8F",
-    "ETour_Raffle": "0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6",
-    "ETour_Escalation": "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318",
-    "GameCacheModule": "0x610178dA211FEF7D417bC0e6FeD39F05609AD788",
-    "PlayerTrackingModule": "0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e",
-    "TicTacToeGameModule": "0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0"
+    "ETour_Core": "0x322813Fd9A801c5507c9de605d63CEA4f2CE6c44",
+    "ETour_Matches": "0xa85233C63b9Ee964Add6F2cffe00Fd84eb32338f",
+    "ETour_Prizes": "0x4A679253410272dd5232B3Ff7cF5dbB88f295319",
+    "ETour_Raffle": "0x7a2088a1bFc9d81c55368AE168C2C02570cB814F",
+    "ETour_Escalation": "0x09635F643e140090A9A8Dcd712eD6285858ceBef",
+    "GameCacheModule": "0xc5a5C42992dECbae36851359345FE25997F5C42d"
   },
   "contracts": {
-    "TicTacChain": "0x0B306BF915C4d645ff596e518fAf3F9669b97016"
+    "TicTacChain": "0xE6E340D132b5f46d1e472DebcD681B2aBc16e57E"
   }
 }
