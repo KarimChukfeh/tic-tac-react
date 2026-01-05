@@ -78,6 +78,23 @@ export const parseTicTacToeMatch = (matchData) => ({
 });
 
 /**
+ * Unpack ConnectFour board from packed uint256
+ * Board is packed as 2 bits per cell (0=empty, 1=player1, 2=player2)
+ * 42 cells (6 rows x 7 columns) = 84 bits total
+ * @param {BigInt|number} packedBoard - Packed board data
+ * @returns {Array<number>} Array of 42 cell values (0, 1, or 2)
+ */
+const unpackConnectFourBoard = (packedBoard) => {
+  const board = [];
+  let packed = BigInt(packedBoard);
+  for (let i = 0; i < 42; i++) {
+    board.push(Number(packed & 3n)); // Extract 2 bits
+    packed = packed >> 2n; // Shift right by 2 bits
+  }
+  return board;
+};
+
+/**
  * Parse ConnectFour match data
  * @param {Object} matchData - Raw match data from ConnectFour contract
  * @returns {Object} Parsed ConnectFour match with all fields
@@ -86,7 +103,7 @@ export const parseConnectFourMatch = (matchData) => ({
   ...parseCommonMatchData(matchData),
 
   // Game-specific fields
-  board: Array.from(matchData.board).map(cell => Number(cell)),
+  board: unpackConnectFourBoard(matchData.packedBoard),
   currentTurn: matchData.currentTurn,
   firstPlayer: matchData.firstPlayer,
   moveCount: Number(matchData.moveCount),

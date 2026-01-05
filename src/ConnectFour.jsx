@@ -22,8 +22,10 @@ import {
   CheckCircle, AlertCircle, ChevronDown, ArrowLeft, HelpCircle
 } from 'lucide-react';
 import { ethers } from 'ethers';
-import ConnectFourABIData from './CFOCABI.json';
+import ConnectFourABIData from './ConnectFourABI-modular.json';
 const CONNECTFOUR_ABI = ConnectFourABIData.abi;
+const CONTRACT_ADDRESS = ConnectFourABIData.address;
+const MODULE_ADDRESSES = ConnectFourABIData.modules;
 import { CURRENT_NETWORK, CONTRACT_ADDRESSES, getAddressUrl, getExplorerHomeUrl } from './config/networks';
 import { shortenAddress, formatTime as formatTimeHMS, getTierName } from './utils/formatters';
 import { parseTournamentParams } from './utils/urlHelpers';
@@ -45,6 +47,13 @@ import { usePlayerActivity } from './hooks/usePlayerActivity';
 
 // ConnectFour particle symbols (matching landing page style)
 const CONNECTFOUR_SYMBOLS = ['🔴', '🔵'];
+
+// Hardcoded tier configuration (matches contract deployment)
+const TIER_CONFIG = {
+  0: { playerCount: 2, instanceCount: 100, entryFee: '0.001' },
+  1: { playerCount: 4, instanceCount: 50, entryFee: '0.002' },
+  2: { playerCount: 8, instanceCount: 25, entryFee: '0.004' },
+};
 
 // Animated disc that fades between red and blue
 // delay: initial delay in ms before starting animation (for staggered effect)
@@ -523,8 +532,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
 };
 
 export default function ConnectFour() {
-  // Use network config instead of hardcoded values
-  const CONTRACT_ADDRESS = CONTRACT_ADDRESSES.ConnectFourOnChain;
+  // Use modular ABI configuration (CONTRACT_ADDRESS from import, not network config)
   const EXPECTED_CHAIN_ID = CURRENT_NETWORK.chainId;
   const RPC_URL = import.meta.env.VITE_RPC_URL || CURRENT_NETWORK.rpcUrl;
   const EXPLORER_URL = getAddressUrl(CONTRACT_ADDRESS);
@@ -533,7 +541,7 @@ export default function ConnectFour() {
   const getReadOnlyContract = useCallback(() => {
     const provider = new ethers.JsonRpcProvider(RPC_URL);
     return new ethers.Contract(CONTRACT_ADDRESS, CONNECTFOUR_ABI, provider);
-  }, [CONTRACT_ADDRESS, RPC_URL]);
+  }, [RPC_URL]); // CONTRACT_ADDRESS now const from import
 
   // Wallet & Contract State
   const [account, setAccount] = useState(null);
@@ -562,6 +570,8 @@ export default function ConnectFour() {
   const [bracketSyncDots, setBracketSyncDots] = useState(1);
   const [expandedTiers, setExpandedTiers] = useState({});
   const [visibleInstancesCount, setVisibleInstancesCount] = useState({}); // { [tierId]: number } - tracks how many instances to show per tier
+  const [allInstancesInitialized, setAllInstancesInitialized] = useState(false); // Track if contract initialized
+  const [initializingInstances, setInitializingInstances] = useState(false); // Loading state for initialization
 
   // URL Parameters State for shareable tournament links
   const [searchParams, setSearchParams] = useSearchParams();
@@ -867,6 +877,18 @@ export default function ConnectFour() {
   // Uses lazy loading: only fetch tier metadata initially, instances load on expand
   const loadContractData = async (contractInstance, isInitialLoad = false) => {
     try {
+      // Fetch allInstancesInitialized status using tierCount (matches TicTacChain)
+      try {
+        const tierCount = await contractInstance.tierCount();
+        const initialized = tierCount > 0;
+        console.log('[loadContractData] tierCount:', tierCount.toString(), '- allInstancesInitialized (tierCount > 0):', initialized);
+        setAllInstancesInitialized(initialized);
+      } catch (err) {
+        console.warn('[loadContractData] Could not fetch tierCount:', err);
+        // If we can't read it, assume false (not initialized)
+        setAllInstancesInitialized(false);
+      }
+
       // Fetch tier metadata only (fast) - instances load on tier expand
       await fetchTierMetadata(contractInstance);
       await fetchLeaderboard(false);
@@ -980,41 +1002,63 @@ export default function ConnectFour() {
     let successfulFetches = 0;
     let totalAttempts = 0;
 
-    // Fetch all valid tier IDs from contract
-    let tierIds = [];
+    // Fetch tier count from contract (matches TicTacChain pattern)
+    let tierCount = 0;
     try {
-      const tierIdsRaw = await readContract.getAllTierIds();
-      // Convert ethers Result object to plain array manually
-      for (let i = 0; i < tierIdsRaw.length; i++) {
-        tierIds.push(tierIdsRaw[i]);
-      }
+      tierCount = Number(await readContract.tierCount());
     } catch (error) {
-      console.warn('Could not fetch tier IDs, using default range:', error.message);
-      tierIds = [0, 1, 2, 3]; // ConnectFour default: 4 tiers
+      console.warn('Could not fetch tier count:', error.message);
     }
+
+    // If no tiers, show empty state
+    if (tierCount === 0) {
+      console.log('No tiers available');
+      setTierMetadata({});
+      if (!silentUpdate) setMetadataLoading(false);
+      return;
+    }
+
+    // Get tier IDs: sequential from 0 to tierCount-1
+    const tierIds = Array.from({ length: tierCount }, (_, i) => i);
 
     // Fetch metadata for each tier
     for (const tierId of tierIds) {
       totalAttempts++;
       try {
-        // Parallel fetch tier config, entry fee, and overview
-        const [tierConfig, fee, tierOverview] = await Promise.all([
-          readContract.tierConfigs(tierId),
-          readContract.ENTRY_FEES(tierId),
-          readContract.getTierOverview(tierId)
-        ]);
+        // Get tier config from hardcoded data (matches TicTacChain)
+        const tierConfig = TIER_CONFIG[tierId];
+        if (!tierConfig) continue;
+
+        const { playerCount, instanceCount, entryFee } = tierConfig;
+
+        // Fetch tournament data for each instance individually (matches TicTacChain)
+        const statuses = [];
+        const enrolledCounts = [];
+        const prizePools = [];
+
+        for (let instanceId = 0; instanceId < instanceCount; instanceId++) {
+          try {
+            const tournament = await readContract.tournaments(tierId, instanceId);
+            statuses.push(Number(tournament.status));
+            enrolledCounts.push(Number(tournament.enrolledCount));
+            prizePools.push(tournament.prizePool);
+          } catch (error) {
+            // Instance not initialized yet, stop checking further instances
+            break;
+          }
+        }
+
+        if (statuses.length === 0) continue;
 
         successfulFetches++;
-        const instanceCount = tierOverview[0].length;
-        if (instanceCount === 0) continue;
 
         metadata[tierId] = {
-          playerCount: Number(tierConfig.playerCount),
-          instanceCount,
-          entryFee: ethers.formatEther(fee),
-          statuses: tierOverview[0].map(s => Number(s)),
-          enrolledCounts: tierOverview[1].map(c => Number(c)),
-          prizePools: tierOverview[2]
+          playerCount,
+          instanceCount: statuses.length,
+          entryFee,
+          statuses,
+          enrolledCounts,
+          prizePools
         };
       } catch (error) {
         console.log(`Could not fetch tier ${tierId} metadata:`, error.message);
@@ -1043,17 +1087,36 @@ export default function ConnectFour() {
       // Get metadata from override or fetch fresh
       let metadata = metadataOverride;
       if (!metadata) {
-        const [tierConfig, fee, tierOverview] = await Promise.all([
-          readContract.tierConfigs(tierId),
-          readContract.ENTRY_FEES(tierId),
-          readContract.getTierOverview(tierId)
-        ]);
+        // Get tier config from hardcoded data (matches TicTacChain)
+        const tierConfig = TIER_CONFIG[tierId];
+        if (!tierConfig) {
+          if (!silentUpdate) setTierLoading(prev => ({ ...prev, [tierId]: false }));
+          return;
+        }
+
+        const { playerCount, instanceCount, entryFee } = tierConfig;
+
+        // Fetch tournament data for each instance individually (matches TicTacChain)
+        const statuses = [];
+        const enrolledCounts = [];
+
+        for (let instanceId = 0; instanceId < instanceCount; instanceId++) {
+          try {
+            const tournament = await readContract.tournaments(tierId, instanceId);
+            statuses.push(Number(tournament.status));
+            enrolledCounts.push(Number(tournament.enrolledCount));
+          } catch (error) {
+            // Instance not initialized yet, stop checking further instances
+            break;
+          }
+        }
+
         metadata = {
-          playerCount: Number(tierConfig.playerCount),
-          instanceCount: tierOverview[0].length,
-          entryFee: ethers.formatEther(fee),
-          statuses: tierOverview[0].map(s => Number(s)),
-          enrolledCounts: tierOverview[1].map(c => Number(c))
+          playerCount,
+          instanceCount: statuses.length,
+          entryFee,
+          statuses,
+          enrolledCounts
         };
       }
 
@@ -1280,6 +1343,38 @@ export default function ConnectFour() {
     }
   }, [getReadOnlyContract, account, fetchTierMetadata, fetchTierInstances]);
 
+  // Handle initializing all instances (owner/deployer only)
+  const handleInitializeAllInstances = async () => {
+    if (!contract || !account) {
+      alert('Please connect your wallet first');
+      return;
+    }
+
+    try {
+      setInitializingInstances(true);
+
+      console.log('Initializing all tournament instances...');
+      const tx = await contract.initializeAllInstances();
+      console.log('Transaction submitted:', tx.hash);
+
+      const receipt = await tx.wait();
+      console.log('Transaction receipt:', receipt);
+      console.log('All instances initialized successfully!');
+
+      alert('All tournament instances initialized successfully!');
+      setAllInstancesInitialized(true);
+
+      // Refresh tier data
+      await fetchTierMetadata(contract, false);
+
+      setInitializingInstances(false);
+    } catch (error) {
+      console.error('Error initializing instances:', error);
+      alert(`Error: ${error.message}`);
+      setInitializingInstances(false);
+    }
+  };
+
   // Handle tournament enrollment
   const handleEnroll = async (tierId, instanceId, entryFee) => {
     if (!contract || !account) {
@@ -1290,8 +1385,16 @@ export default function ConnectFour() {
     try {
       setTournamentsLoading(true);
 
-      // Convert entry fee to wei
-      const feeInWei = ethers.parseEther(entryFee);
+      // Fetch actual entry fee from contract to ensure it matches
+      const tierConfig = await contract.tierConfigs(tierId);
+      const contractEntryFee = tierConfig.entryFee;
+      console.log('[handleEnroll] Contract entry fee:', ethers.formatEther(contractEntryFee), 'ETH');
+      console.log('[handleEnroll] Passed entry fee:', entryFee, 'ETH');
+
+      // Use the contract's entry fee to avoid mismatches
+      const feeInWei = contractEntryFee;
+
+      console.log('[handleEnroll] Enrolling in tier', tierId, 'instance', instanceId, 'with fee:', ethers.formatEther(feeInWei), 'ETH');
 
       // Call enrollInTournament function with entry fee as value
       const tx = await contract.enrollInTournament(tierId, instanceId, { value: feeInWei });
@@ -1326,10 +1429,16 @@ export default function ConnectFour() {
     try {
       setTournamentsLoading(true);
 
-      // First check if this instance exists
-      const instanceCount = Number(await contract.INSTANCE_COUNTS(tierId));
+      // First check if this instance exists using hardcoded config
+      const tierConfig = TIER_CONFIG[tierId];
+      if (!tierConfig) {
+        alert(`Invalid tier ID: ${tierId}`);
+        setTournamentsLoading(false);
+        return;
+      }
+      const instanceCount = tierConfig.instanceCount;
       if (instanceId >= instanceCount) {
-        alert(`Invalid instance ID. Tier ${tierId + 1} only has ${instanceCount} instances (1-${instanceCount})`);
+        alert(`Invalid instance ID. Tier ${tierId + 1} only has ${instanceCount} instances (0-${instanceCount - 1})`);
         setTournamentsLoading(false);
         return;
       }
@@ -1623,8 +1732,17 @@ export default function ConnectFour() {
       // Extract timeout config using shared utility function
       const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, tierId, totalMatchTime);
 
-      // Get enrolled players
-      const enrolledPlayers = await contractInstance.getEnrolledPlayers(tierId, instanceId);
+      // Get enrolled players by iterating through enrolledPlayers mapping (matches TicTacChain)
+      const enrolledPlayers = [];
+      for (let i = 0; i < enrolledCount; i++) {
+        try {
+          const player = await contractInstance.enrolledPlayers(tierId, instanceId, i);
+          enrolledPlayers.push(player);
+        } catch (err) {
+          console.warn(`Could not fetch enrolled player ${i}:`, err);
+          break;
+        }
+      }
 
       // Get countdown data
       let firstEnrollmentTime = 0;
@@ -2132,8 +2250,8 @@ export default function ConnectFour() {
 
       // Fetch tournament info to get playerCount and prizePool
       const tournamentInfo = await contract.getTournamentInfo(tierId, instanceId);
-      const tierConfig = await contract.tierConfigs(tierId);
-      const playerCount = Number(tierConfig.playerCount);
+      const tierConfig = TIER_CONFIG[tierId];
+      const playerCount = tierConfig.playerCount;
       const prizePool = tournamentInfo[4]; // prizePool is at index 4
 
       const matchData = await contract.getMatch(tierId, instanceId, roundNumber, matchNumber);
@@ -2147,7 +2265,18 @@ export default function ConnectFour() {
       let actualPlayer2 = player2;
 
       if (player1.toLowerCase() === zeroAddress) {
-        const enrolledPlayers = await contract.getEnrolledPlayers(tierId, instanceId);
+        // Get enrolled players by iterating through enrolledPlayers mapping (matches TicTacChain)
+        const enrolledCount = Number(tournamentInfo[3]);
+        const enrolledPlayers = [];
+        for (let i = 0; i < Math.min(2, enrolledCount); i++) {
+          try {
+            const player = await contract.enrolledPlayers(tierId, instanceId, i);
+            enrolledPlayers.push(player);
+          } catch (err) {
+            console.warn(`Could not fetch enrolled player ${i}:`, err);
+            break;
+          }
+        }
         if (enrolledPlayers.length >= 2) {
           actualPlayer1 = enrolledPlayers[0];
           actualPlayer2 = enrolledPlayers[1];
@@ -3022,22 +3151,77 @@ export default function ConnectFour() {
                   <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-12 border border-purple-400/30 text-center">
                     <Trophy className="text-purple-400/50 mx-auto mb-4" size={64} />
                     <h3 className="text-2xl font-bold text-purple-300 mb-2">No Tournaments Available</h3>
-                    <p className="text-purple-200/70">Check back soon for new tournaments!</p>
+                    <p className="text-purple-200/70 mb-6">Check back soon for new tournaments!</p>
+
+                    {/* Initialize button for owner */}
+                    {account && !allInstancesInitialized && (
+                      <button
+                        onClick={handleInitializeAllInstances}
+                        disabled={initializingInstances}
+                        className="px-8 py-4 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-bold rounded-xl shadow-lg transition-all duration-200 transform hover:scale-105"
+                      >
+                        {initializingInstances ? (
+                          <span className="flex items-center gap-2">
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                            Initializing Tournaments...
+                          </span>
+                        ) : (
+                          'Initialize Tournaments'
+                        )}
+                      </button>
+                    )}
                   </div>
                 )}
 
                 {/* User Info Footer - Only show when wallet is connected */}
                 {account && (
-                  <div className="mt-8 flex justify-center gap-4">
-                    <div className="bg-purple-500/20 border border-purple-400/50 rounded-xl p-4">
-                      <div className="text-purple-300 text-sm mb-1">Your Address</div>
-                      <div className="font-mono text-purple-100 font-bold">{account.slice(0, 6)}...{account.slice(-4)}</div>
+                  <>
+                    <div className="mt-8 flex justify-center gap-4 flex-wrap">
+                      <div className="bg-purple-500/20 border border-purple-400/50 rounded-xl p-4">
+                        <div className="text-purple-300 text-sm mb-1">Your Address</div>
+                        <div className="font-mono text-purple-100 font-bold">{account.slice(0, 6)}...{account.slice(-4)}</div>
+                      </div>
+                      <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-4">
+                        <div className="text-blue-300 text-sm mb-1">Network</div>
+                        <div className="font-bold text-blue-100">{networkInfo?.name || 'Connected'}</div>
+                      </div>
+                      <div className="bg-green-500/20 border border-green-400/50 rounded-xl p-4">
+                        <div className="text-green-300 text-sm mb-1">Main Contract</div>
+                        <div className="font-mono text-green-100 font-bold">{shortenAddress(CONTRACT_ADDRESS)}</div>
+                      </div>
                     </div>
-                    <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-4">
-                      <div className="text-blue-300 text-sm mb-1">Network</div>
-                      <div className="font-bold text-blue-100">{networkInfo?.name || 'Connected'}</div>
+
+                    {/* Module Addresses Display */}
+                    <div className="mt-4 bg-slate-800/50 border border-slate-600/50 rounded-xl p-4 max-w-3xl mx-auto">
+                      <h3 className="font-bold text-purple-300 mb-3 text-center">Modular Contracts</h3>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                        <div>
+                          <div className="text-slate-400">Core</div>
+                          <div className="font-mono text-slate-200">{shortenAddress(MODULE_ADDRESSES.core)}</div>
+                        </div>
+                        <div>
+                          <div className="text-slate-400">Matches</div>
+                          <div className="font-mono text-slate-200">{shortenAddress(MODULE_ADDRESSES.matches)}</div>
+                        </div>
+                        <div>
+                          <div className="text-slate-400">Prizes</div>
+                          <div className="font-mono text-slate-200">{shortenAddress(MODULE_ADDRESSES.prizes)}</div>
+                        </div>
+                        <div>
+                          <div className="text-slate-400">Escalation</div>
+                          <div className="font-mono text-slate-200">{shortenAddress(MODULE_ADDRESSES.escalation)}</div>
+                        </div>
+                        <div>
+                          <div className="text-slate-400">Raffle</div>
+                          <div className="font-mono text-slate-200">{shortenAddress(MODULE_ADDRESSES.raffle)}</div>
+                        </div>
+                        <div>
+                          <div className="text-slate-400">GameCache</div>
+                          <div className="font-mono text-slate-200">{shortenAddress(MODULE_ADDRESSES.gameCache)}</div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  </>
                 )}
               </div>
             )}
