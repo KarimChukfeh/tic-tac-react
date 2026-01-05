@@ -1786,16 +1786,24 @@ export default function Chess() {
               blackInCheck: matchData[10]
             };
 
-            // Use per-tier match time from contract tier configuration
-            let player1TimeRemaining = tierMatchTime;
-            let player2TimeRemaining = tierMatchTime;
+            // Calculate time remaining client-side (contract stores time at last move)
+            // Formula: current player's time = stored time - elapsed since last move
+            const now = Math.floor(Date.now() / 1000);
+            const elapsed = parsedMatch.lastMoveTime > 0 ? now - parsedMatch.lastMoveTime : 0;
 
-            try {
-              const timeData = await contractInstance.getCurrentTimeRemaining(tierId, instanceId, roundNum, matchNum);
-              player1TimeRemaining = Number(timeData[0]);
-              player2TimeRemaining = Number(timeData[1]);
-            } catch (timeErr) {
-              console.warn(`Could not fetch time for match ${matchNum}:`, timeErr);
+            let player1TimeRemaining = matchData.player1TimeRemaining !== undefined
+              ? Number(matchData.player1TimeRemaining) : tierMatchTime;
+            let player2TimeRemaining = matchData.player2TimeRemaining !== undefined
+              ? Number(matchData.player2TimeRemaining) : tierMatchTime;
+
+            // Only subtract elapsed time from the current player's clock (if match is active)
+            if (parsedMatch.matchStatus === 1 && parsedMatch.currentTurn && elapsed > 0) {
+              const isPlayer1Turn = parsedMatch.currentTurn.toLowerCase() === parsedMatch.player1.toLowerCase();
+              if (isPlayer1Turn) {
+                player1TimeRemaining = Math.max(0, player1TimeRemaining - elapsed);
+              } else {
+                player2TimeRemaining = Math.max(0, player2TimeRemaining - elapsed);
+              }
             }
 
             // Fetch escalation state and firstPlayer using chessMatches mapping
@@ -2071,16 +2079,24 @@ export default function Chess() {
         actualPlayer2 = matchInfo.player2;
       }
 
-      // Use per-tier match time from contract config
-      let player1TimeRemaining = tierMatchTime;
-      let player2TimeRemaining = tierMatchTime;
+      // Calculate time remaining client-side (contract stores time at last move)
+      // Formula: current player's time = stored time - elapsed since last move
+      const now = Math.floor(Date.now() / 1000);
+      const elapsed = lastMoveTime > 0 ? now - lastMoveTime : 0;
 
-      try {
-        const timeData = await contractInstance.getCurrentTimeRemaining(tierId, instanceId, roundNumber, matchNumber);
-        player1TimeRemaining = Number(timeData[0]); // player1Time from contract
-        player2TimeRemaining = Number(timeData[1]); // player2Time from contract
-      } catch (timeErr) {
-        // Using default values (match may not be initialized)
+      let player1TimeRemaining = matchData.player1TimeRemaining !== undefined
+        ? Number(matchData.player1TimeRemaining) : tierMatchTime;
+      let player2TimeRemaining = matchData.player2TimeRemaining !== undefined
+        ? Number(matchData.player2TimeRemaining) : tierMatchTime;
+
+      // Only subtract elapsed time from the current player's clock (if match is active)
+      if (matchStatus === 1 && currentTurn && elapsed > 0) {
+        const isPlayer1Turn = currentTurn.toLowerCase() === player1.toLowerCase();
+        if (isPlayer1Turn) {
+          player1TimeRemaining = Math.max(0, player1TimeRemaining - elapsed);
+        } else {
+          player2TimeRemaining = Math.max(0, player2TimeRemaining - elapsed);
+        }
       }
 
       const boardState = Array.from(board);
