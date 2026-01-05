@@ -63,7 +63,7 @@ const TIER_CONFIG = {
       matchLevel2Delay: 120,
       matchLevel3Delay: 240,
       enrollmentWindow: 300,
-      enrollmentLevel2Delay: 600
+      enrollmentLevel2Delay: 300
     }
   },
   1: {
@@ -76,7 +76,7 @@ const TIER_CONFIG = {
       matchLevel2Delay: 120,
       matchLevel3Delay: 240,
       enrollmentWindow: 600,
-      enrollmentLevel2Delay: 1200
+      enrollmentLevel2Delay: 300
     }
   },
   2: {
@@ -89,7 +89,7 @@ const TIER_CONFIG = {
       matchLevel2Delay: 120,
       matchLevel3Delay: 240,
       enrollmentWindow: 900,
-      enrollmentLevel2Delay: 1800
+      enrollmentLevel2Delay: 300
     }
   }
 };
@@ -3246,7 +3246,7 @@ export default function ConnectFour() {
             enrollmentWindow: config.timeouts.enrollmentWindow,
             enrollmentLevel2Delay: config.timeouts.enrollmentLevel2Delay
           }))}
-          raffleThresholds={['0.02', '0.04', '0.08', '0.05', '0.05', '0.05']}
+          raffleThresholds={['0.4', '0.75', '1', '2']}
         />
       </div>
 

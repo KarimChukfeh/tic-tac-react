@@ -40,7 +40,18 @@ const UserManual = ({
     if (hasLoadedConfig.current) return;
 
     const fetchContractConfig = async () => {
-      // If hardcoded tierConfigurations provided, use them directly (skip contract calls)
+      // If hardcoded tierConfigurations and raffleThresholds provided, use them directly (skip contract calls)
+      if (tierConfigurations && tierConfigurations.length > 0 && raffleThresholds) {
+        hasLoadedConfig.current = true;
+        setContractConfig(prev => ({
+          ...prev,
+          tierConfigurations: tierConfigurations.sort((a, b) => a.playerCount - b.playerCount),
+          isLoading: false
+        }));
+        return;
+      }
+
+      // If only tierConfigurations provided, use them directly (skip contract calls)
       if (tierConfigurations && tierConfigurations.length > 0) {
         hasLoadedConfig.current = true;
         setContractConfig(prev => ({
@@ -166,7 +177,7 @@ const UserManual = ({
     };
 
     fetchContractConfig();
-  }, [contractInstance, tierConfigurations]);
+  }, [contractInstance, tierConfigurations, raffleThresholds]);
 
   // Calculate protocol fee percentage from basis points
   const protocolFee = protocolFeePercent ?? (contractConfig.protocolShareBps / contractConfig.basisPoints * 100);
@@ -182,9 +193,11 @@ const UserManual = ({
   };
 
   // Use provided raffle thresholds or contract values
-  const finalRaffleThresholds = raffleThresholds || contractConfig.raffleThresholds.length > 0
-    ? contractConfig.raffleThresholds
-    : ['0.5', '1.0', '1.5', '2.0', '2.5', '3.0'];
+  const finalRaffleThresholds = raffleThresholds
+    ? raffleThresholds
+    : (contractConfig.raffleThresholds.length > 0
+        ? contractConfig.raffleThresholds
+        : ['0.5', '1.0', '1.5', '2.0', '2.5', '3.0']);
 
   // Get match time per player from first tier (should be consistent across tiers)
   const matchTimePerPlayer = contractConfig.tierConfigurations.length > 0
@@ -699,18 +712,16 @@ const UserManual = ({
                 <tbody className="divide-y divide-blue-500/20">
                   {finalRaffleThresholds.length > 0 ? (
                     <>
-                      {finalRaffleThresholds.slice(0, 5).map((threshold, index) => (
+                      {finalRaffleThresholds.slice(0, -1).map((threshold, index) => (
                         <tr key={index} className="hover:bg-blue-500/5 transition-colors">
                           <td className="py-3 px-4 text-gray-300">{index + 1}{index === 0 ? 'st' : index === 1 ? 'nd' : index === 2 ? 'rd' : 'th'} Raffle</td>
                           <td className="py-3 px-4 text-gray-300 font-mono">{threshold} ETH</td>
                         </tr>
                       ))}
-                      {finalRaffleThresholds.length > 5 && (
-                        <tr className="hover:bg-blue-500/5 transition-colors">
-                          <td className="py-3 px-4 text-gray-300">6th+ Raffle</td>
-                          <td className="py-3 px-4 text-gray-300 font-mono">{finalRaffleThresholds[5]} ETH</td>
-                        </tr>
-                      )}
+                      <tr className="hover:bg-blue-500/5 transition-colors">
+                        <td className="py-3 px-4 text-gray-300">{finalRaffleThresholds.length}{finalRaffleThresholds.length === 1 ? 'st' : finalRaffleThresholds.length === 2 ? 'nd' : finalRaffleThresholds.length === 3 ? 'rd' : 'th'}+ Raffle</td>
+                        <td className="py-3 px-4 text-gray-300 font-mono">{finalRaffleThresholds[finalRaffleThresholds.length - 1]} ETH</td>
+                      </tr>
                     </>
                   ) : (
                     <>

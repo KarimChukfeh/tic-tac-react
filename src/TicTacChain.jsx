@@ -60,12 +60,12 @@ const TIER_CONFIG = {
     instanceCount: 100,
     entryFee: '0.001',
     timeouts: {
-      matchTimePerPlayer: 60,
+      matchTimePerPlayer: 120,
       timeIncrementPerMove: 15,
-      matchLevel2Delay: 60,
-      matchLevel3Delay: 60,
-      enrollmentWindow: 60,
-      enrollmentLevel2Delay: 60
+      matchLevel2Delay: 120,
+      matchLevel3Delay: 240,
+      enrollmentWindow: 300,
+      enrollmentLevel2Delay: 300
     }
   },
   1: {
@@ -78,7 +78,7 @@ const TIER_CONFIG = {
       matchLevel2Delay: 120,
       matchLevel3Delay: 240,
       enrollmentWindow: 300,
-      enrollmentLevel2Delay: 600
+      enrollmentLevel2Delay: 300
     }
   },
   2: {
@@ -90,8 +90,8 @@ const TIER_CONFIG = {
       timeIncrementPerMove: 15,
       matchLevel2Delay: 120,
       matchLevel3Delay: 240,
-      enrollmentWindow: 300,
-      enrollmentLevel2Delay: 600
+      enrollmentWindow: 600,
+      enrollmentLevel2Delay: 300
     }
   }
 };
@@ -2961,7 +2961,7 @@ export default function TicTacChain() {
             enrollmentWindow: config.timeouts.enrollmentWindow,
             enrollmentLevel2Delay: config.timeouts.enrollmentLevel2Delay
           }))}
-          raffleThresholds={['0.1', '0.2', '0.4', '1.0', '1.0', '1.0']}
+          raffleThresholds={['0.25', '0.5', '0.75', '1']}
         />
       </div>
 
