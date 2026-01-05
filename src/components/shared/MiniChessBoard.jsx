@@ -5,10 +5,11 @@
  * Allows players to make moves directly without navigating to full match view
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { parseChessMatch } from '../../utils/matchDataParser';
 import { Loader2 } from 'lucide-react';
 import MiniMatchEndModal from './MiniMatchEndModal';
+import { ethers } from 'ethers';
 
 // Chess piece Unicode symbols
 // Use filled pieces for both colors, style them with CSS
@@ -51,6 +52,8 @@ const MiniChessBoard = ({
   const [showMatchEndModal, setShowMatchEndModal] = useState(false);
   const [matchEndResult, setMatchEndResult] = useState(null);
   const [hasNotifiedCompletion, setHasNotifiedCompletion] = useState(false);
+  const [lastMove, setLastMove] = useState(null); // { from, to, isMyMove } for highlighting
+  const previousBoardRef = useRef(null);
 
   // Helper to extract user-friendly error message
   const getUserFriendlyError = (err) => {
@@ -86,6 +89,36 @@ const MiniChessBoard = ({
     }
     return displayIndex;
   };
+
+  // Fetch last move from contract events (persists after page refresh)
+  const fetchLastMoveFromEvents = useCallback(async () => {
+    if (!contract) return null;
+
+    try {
+      const matchKey = ethers.keccak256(
+        ethers.AbiCoder.defaultAbiCoder().encode(
+          ['uint8', 'uint8', 'uint8', 'uint8'],
+          [match.tierId, match.instanceId, match.roundIdx, match.matchIdx]
+        )
+      );
+
+      const filter = contract.filters.MoveMade(matchKey);
+      const events = await contract.queryFilter(filter);
+
+      if (events.length > 0) {
+        // Get the most recent event (last move)
+        const lastEvent = events[events.length - 1];
+        return {
+          from: Number(lastEvent.args.from),
+          to: Number(lastEvent.args.to),
+          player: lastEvent.args.player
+        };
+      }
+    } catch (err) {
+      console.debug('Could not fetch move events:', err.message);
+    }
+    return null;
+  }, [contract, match.tierId, match.instanceId, match.roundIdx, match.matchIdx]);
 
   // Extract fetch logic into reusable function
   const fetchMatchData = useCallback(async (isInitialLoad = false) => {
@@ -135,6 +168,52 @@ const MiniChessBoard = ({
       const whitePlayer = (parsed.firstPlayer && parsed.firstPlayer.toLowerCase() !== zeroAddress) ? parsed.firstPlayer : parsed.player1;
       parsed.isWhite = account && whitePlayer?.toLowerCase() === account?.toLowerCase();
 
+      // On initial load, fetch last move from events (persists after page refresh)
+      // On subsequent polls, detect moves by comparing board states (faster)
+      if (isInitialLoad) {
+        const eventLastMove = await fetchLastMoveFromEvents();
+        if (eventLastMove) {
+          const isMyMove = eventLastMove.player?.toLowerCase() === account?.toLowerCase();
+          setLastMove({ from: eventLastMove.from, to: eventLastMove.to, isMyMove });
+        }
+      } else if (previousBoardRef.current && parsed.board) {
+        // Detect opponent's move by comparing board states
+        const prevBoard = previousBoardRef.current;
+        const newBoard = parsed.board;
+
+        // Find the square that became empty (from) and the square that gained a piece (to)
+        let fromSquare = null;
+        let toSquare = null;
+
+        for (let i = 0; i < 64; i++) {
+          const prevPiece = prevBoard[i]?.pieceType || 0;
+          const newPiece = newBoard[i]?.pieceType || 0;
+
+          // Square that had a piece but now empty (or different piece due to capture)
+          if (prevPiece !== 0 && newPiece === 0) {
+            fromSquare = i;
+          }
+          // Square that was empty (or had different piece) but now has piece that moved
+          if (prevPiece === 0 && newPiece !== 0) {
+            toSquare = i;
+          }
+          // Handle captures: square had one piece, now has different piece
+          if (prevPiece !== 0 && newPiece !== 0 &&
+              (prevBoard[i]?.color !== newBoard[i]?.color || prevPiece !== newPiece)) {
+            // This could be a capture destination
+            toSquare = i;
+          }
+        }
+
+        // If we detected a move, it's opponent's move (we clear lastMove after our own moves)
+        if (fromSquare !== null && toSquare !== null) {
+          setLastMove({ from: fromSquare, to: toSquare, isMyMove: false });
+        }
+      }
+
+      // Update the previous board ref
+      previousBoardRef.current = parsed.board;
+
       // Detect match end and show modal
       if (parsed.matchStatus === 2 && !showMatchEndModal) {
         // Determine result
@@ -165,7 +244,7 @@ const MiniChessBoard = ({
       setError('Failed to load board');
       setLoading(false);
     }
-  }, [contract, account, match.tierId, match.instanceId, match.roundIdx, match.matchIdx]);
+  }, [contract, account, match.tierId, match.instanceId, match.roundIdx, match.matchIdx, fetchLastMoveFromEvents]);
 
   // Fetch match data on mount
   useEffect(() => {
@@ -269,6 +348,12 @@ const MiniChessBoard = ({
       parsed.isPlayer1 = parsed.player1?.toLowerCase() === account?.toLowerCase();
       // Calculate isMyTurn based on current turn
       parsed.isMyTurn = parsed.currentTurn?.toLowerCase() === account?.toLowerCase();
+
+      // Show my move highlighting (purple->blue)
+      setLastMove({ from, to, isMyMove: true });
+      // Update board ref to prevent false move detection
+      previousBoardRef.current = parsed.board;
+
       setMatchData(parsed);
 
       // Check if this move completed the match
@@ -370,11 +455,29 @@ const MiniChessBoard = ({
           const col = actualIdx % 8;
           const isLight = (row + col) % 2 === 1;
           const isSelected = selectedSquare === displayIdx;
+          const isLastMoveFrom = lastMove && lastMove.from === actualIdx;
+          const isLastMoveTo = lastMove && lastMove.to === actualIdx;
           const pieceColor = piece?.color ? Number(piece.color) : 0;
           const pieceColorClass = pieceColor === 1 ? 'text-white' : 'text-black drop-shadow-[0_0_3px_rgba(255,255,255,0.6)]';
           const pieceStyle = pieceColor === 1
             ? { textShadow: '0 0 8px rgba(0,0,0,0.8), 0 2px 4px rgba(0,0,0,0.6)' }
             : {};
+
+          // Determine background and ring colors based on move ownership
+          // My move: purple (from) -> blue (to)
+          // Opponent move: yellow (from) -> red (to)
+          const isMyMove = lastMove?.isMyMove;
+          const getBgClass = () => {
+            if (isLastMoveTo) return isMyMove ? 'bg-blue-500/60' : 'bg-red-500/60';
+            if (isLastMoveFrom) return isMyMove ? 'bg-purple-500/60' : 'bg-yellow-500/60';
+            return isLight ? 'bg-stone-300' : 'bg-stone-700';
+          };
+          const getRingClass = () => {
+            if (isSelected) return 'ring-2 ring-green-400 ring-inset';
+            if (isLastMoveTo) return isMyMove ? 'ring-2 ring-blue-400 ring-inset' : 'ring-2 ring-red-400 ring-inset';
+            if (isLastMoveFrom) return isMyMove ? 'ring-2 ring-purple-400 ring-inset' : 'ring-2 ring-yellow-400 ring-inset';
+            return '';
+          };
 
           return (
             <button
@@ -383,8 +486,8 @@ const MiniChessBoard = ({
               disabled={!matchData.isMyTurn || makingMove || matchData.matchStatus === 2}
               className={`
                 aspect-square flex items-center justify-center text-[1.375rem] md:text-[1.65rem] font-bold transition-all
-                ${isLight ? 'bg-stone-300' : 'bg-stone-700'}
-                ${isSelected ? 'ring-2 ring-yellow-400 ring-inset' : ''}
+                ${getBgClass()}
+                ${getRingClass()}
                 ${!matchData.isMyTurn || makingMove || matchData.matchStatus === 2 ? 'cursor-not-allowed' : 'cursor-pointer hover:opacity-80'}
                 ${pieceColorClass}
               `}

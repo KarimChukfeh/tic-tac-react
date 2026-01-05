@@ -311,6 +311,8 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
 
 // Chess Board Component - copied from Chess.jsx
 const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, firstPlayer, matchStatus, loading, whiteInCheck, blackInCheck, lastMoveTime, startTime, lastMove }) => {
+  // Debug: Log lastMove prop
+  console.log('[ChessBoard] lastMove prop:', lastMove);
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [promotionSquare, setPromotionSquare] = useState(null);
   const [pendingMove, setPendingMove] = useState(null);
@@ -336,7 +338,7 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
     if (lastMove && prevBoardRef.current && (prevLastMoveRef.current?.from !== lastMove.from || prevLastMoveRef.current?.to !== lastMove.to)) {
       const piece = board[lastMove.to];
       if (piece && Number(piece.pieceType) !== 0) {
-        setAnimatingMove({ from: lastMove.from, to: lastMove.to, piece: piece });
+        setAnimatingMove({ from: lastMove.from, to: lastMove.to, piece: piece, isMyMove: lastMove.isMyMove });
         const timer = setTimeout(() => setAnimatingMove(null), 450);
         return () => clearTimeout(timer);
       }
@@ -455,9 +457,8 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
       const isSelected = selectedSquare === displayIdx;
       const isLastMoveFrom = lastMove && lastMove.from === actualIdx;
       const isLastMoveTo = lastMove && lastMove.to === actualIdx;
-      const movedPiece = lastMove && board[lastMove.to];
-      const movedPieceColor = movedPiece ? Number(movedPiece.color) : 0;
-      const isMyMove = lastMove && ((movedPieceColor === 1 && isPlayer1) || (movedPieceColor === 2 && isPlayer2));
+      // Use isMyMove from lastMove object (set based on player address from event)
+      const isMyMove = lastMove?.isMyMove;
       const hideForAnimation = animatingMove && actualIdx === animatingMove.to;
       const pieceType = piece ? Number(piece.pieceType) : 0;
       const pieceColor = piece ? Number(piece.color) : 0;
@@ -471,23 +472,25 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
       const rankLabel = 8 - actualRow;
       const fileLabel = String.fromCharCode(97 + actualCol);
 
+      // My move: purple (from) -> blue (to)
+      // Opponent move: yellow (from) -> red (to)
       const getLastMoveFromClass = () => {
         if (!isLastMoveFrom || isSelected || isKingInCheck) return '';
-        return isMyMove ? 'bg-emerald-500/50 ring-2 ring-emerald-400 ring-inset' : 'bg-orange-500/50 ring-2 ring-orange-400 ring-inset';
+        return isMyMove ? 'bg-purple-500/50 ring-2 ring-purple-400 ring-inset' : 'bg-yellow-500/50 ring-2 ring-yellow-400 ring-inset';
       };
       const getLastMoveToClass = () => {
         if (!isLastMoveTo || isSelected || isKingInCheck) return '';
-        return isMyMove ? 'bg-yellow-400/50 ring-2 ring-yellow-300 ring-inset' : 'bg-red-500/50 ring-2 ring-red-400 ring-inset';
+        return isMyMove ? 'bg-blue-500/50 ring-2 ring-blue-400 ring-inset' : 'bg-red-500/50 ring-2 ring-red-400 ring-inset';
       };
       const getLastMoveShadow = () => {
         if (isSelected) return '0 0 20px rgba(6, 182, 212, 0.3)';
-        if (isLastMoveTo && !isKingInCheck) return isMyMove ? 'inset 0 0 20px rgba(234, 179, 8, 0.5)' : 'inset 0 0 20px rgba(239, 68, 68, 0.5)';
-        if (isLastMoveFrom && !isKingInCheck) return isMyMove ? 'inset 0 0 15px rgba(16, 185, 129, 0.4)' : 'inset 0 0 15px rgba(249, 115, 22, 0.4)';
+        if (isLastMoveTo && !isKingInCheck) return isMyMove ? 'inset 0 0 20px rgba(59, 130, 246, 0.5)' : 'inset 0 0 20px rgba(239, 68, 68, 0.5)';
+        if (isLastMoveFrom && !isKingInCheck) return isMyMove ? 'inset 0 0 15px rgba(168, 85, 247, 0.4)' : 'inset 0 0 15px rgba(234, 179, 8, 0.4)';
         return 'none';
       };
       const getPieceGlow = () => {
         if (!isLastMoveTo || hideForAnimation || pieceType === 0) return undefined;
-        return isMyMove ? 'drop-shadow(0 0 10px rgba(234, 179, 8, 0.8))' : 'drop-shadow(0 0 10px rgba(239, 68, 68, 0.8))';
+        return isMyMove ? 'drop-shadow(0 0 10px rgba(59, 130, 246, 0.8))' : 'drop-shadow(0 0 10px rgba(239, 68, 68, 0.8))';
       };
       const isPotentialTarget = selectedSquare !== null && !isSelected && !isMyPiece(piece);
 
@@ -506,8 +509,8 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
     const toPos = getDisplayPosition(animatingMove.to);
     const squareSize = boardSize / 8;
     const pieceColor = animatingMove.piece ? Number(animatingMove.piece.color) : 0;
-    const isMyAnimatedMove = (pieceColor === 1 && isPlayer1) || (pieceColor === 2 && isPlayer2);
-    const animationGlow = isMyAnimatedMove ? 'rgba(234, 179, 8, 0.8)' : 'rgba(239, 68, 68, 0.8)';
+    const isMyAnimatedMove = animatingMove.isMyMove;
+    const animationGlow = isMyAnimatedMove ? 'rgba(59, 130, 246, 0.8)' : 'rgba(239, 68, 68, 0.8)'; // blue for my move, red for opponent
     return (<div className="absolute pointer-events-none z-20" style={{ width: squareSize, height: squareSize, transform: 'translate(' + (toPos.col * squareSize) + 'px, ' + (toPos.row * squareSize) + 'px)' }}><div className="w-full h-full flex items-center justify-center" style={{ '--from-x': ((fromPos.col - toPos.col) * squareSize) + 'px', '--from-y': ((fromPos.row - toPos.row) * squareSize) + 'px' }}><span className={'text-3xl md:text-4xl lg:text-5xl select-none ' + (pieceColor === 1 ? 'text-white' : 'text-black')} style={{ transform: 'translate(var(--from-x), var(--from-y))', animation: 'pieceMove 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards', filter: 'drop-shadow(0 0 12px ' + animationGlow + ')', textShadow: pieceColor === 1 ? '0 0 8px rgba(0,0,0,0.8), 0 2px 4px rgba(0,0,0,0.6)' : 'none' }}>{getPieceSymbol(animatingMove.piece)}</span></div></div>);
   };
 
@@ -2062,7 +2065,7 @@ export default function Chess() {
           )
         );
 
-        const filter = contractInstance.filters.ChessMoveMade(matchKey);
+        const filter = contractInstance.filters.MoveMade(matchKey);
         const events = await contractInstance.queryFilter(filter);
 
         if (events.length > 0) {
@@ -2071,7 +2074,7 @@ export default function Chess() {
             const player = event.args.player;
             const from = Number(event.args.from);
             const to = Number(event.args.to);
-            const promotion = Number(event.args.promotion);
+            const promotion = 0; // MoveMade event doesn't include promotion
             const isPlayer1 = player.toLowerCase() === player1.toLowerCase();
             return {
               player: isPlayer1 ? 'X' : 'O',
@@ -2228,6 +2231,34 @@ export default function Chess() {
       // A match is timed out if it completed with an active timeout state
       const isTimedOut = matchStatus === 2 && timeoutState?.timeoutActive === true;
 
+      // Fetch last move from MoveMade events (persists after page refresh)
+      let lastMove = null;
+      try {
+        const matchKey = ethers.keccak256(
+          ethers.AbiCoder.defaultAbiCoder().encode(
+            ['uint8', 'uint8', 'uint8', 'uint8'],
+            [tierId, instanceId, roundNumber, matchNumber]
+          )
+        );
+        console.log('[refreshMatchData] Fetching MoveMade events for matchKey:', matchKey);
+        const filter = contractInstance.filters.MoveMade(matchKey);
+        const events = await contractInstance.queryFilter(filter);
+        console.log('[refreshMatchData] Found', events.length, 'MoveMade events');
+        if (events.length > 0) {
+          const lastEvent = events[events.length - 1];
+          const movePlayer = lastEvent.args.player;
+          lastMove = {
+            from: Number(lastEvent.args.from),
+            to: Number(lastEvent.args.to),
+            player: movePlayer,
+            isMyMove: movePlayer?.toLowerCase() === userAccount?.toLowerCase()
+          };
+          console.log('[refreshMatchData] lastMove:', lastMove);
+        }
+      } catch (err) {
+        console.error('[refreshMatchData] Error fetching MoveMade events:', err.message);
+      }
+
       return {
         ...matchInfo,
         player1: actualPlayer1,
@@ -2254,7 +2285,8 @@ export default function Chess() {
         player2TimeRemaining,
         lastMoveTimestamp: lastMoveTime, // Use lastMoveTime as timestamp
         matchTimePerPlayer: tierMatchTime, // Pass through per-tier value for UI components
-        timeoutConfig // Pass timeout config to UI components
+        timeoutConfig, // Pass timeout config to UI components
+        lastMove // Last move for highlighting (from events)
       };
     } catch (error) {
       console.error('Error refreshing match:', error);
