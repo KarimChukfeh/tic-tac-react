@@ -3276,8 +3276,8 @@ export default function Chess() {
                   </div>
                 )}
 
-                {/* Empty State - only show when no connection error */}
-                {!metadataLoading && !connectionError && Object.keys(tierMetadata).length === 0 && (
+                {/* Empty State - show when contract not initialized */}
+                {!metadataLoading && !connectionError && !allInstancesInitialized && (
                   <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-12 border border-purple-400/30 text-center">
                     <Trophy className="text-purple-400/50 mx-auto mb-4" size={64} />
                     <h3 className="text-2xl font-bold text-purple-300 mb-2">No Tournaments Available</h3>
