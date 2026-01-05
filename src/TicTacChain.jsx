@@ -50,11 +50,50 @@ import { usePlayerActivity } from './hooks/usePlayerActivity';
 // TicTacToe particle symbols (matching landing page style)
 const TICTACTOE_SYMBOLS = ['✕', '○'];
 
-// Hardcoded tier configuration (matches contract deployment)
+// Hardcoded tier configuration (matches TicTacChain.sol deployment)
+// Tier 0: _registerTier0() -> 2 players, 100 instances, 0.001 ETH
+// Tier 1: _registerTier1() -> 4 players, 50 instances, 0.002 ETH
+// Tier 2: _registerTier2() -> 8 players, 25 instances, 0.004 ETH
 const TIER_CONFIG = {
-  0: { playerCount: 2, instanceCount: 100, entryFee: '0.001' },
-  1: { playerCount: 4, instanceCount: 50, entryFee: '0.002' },
-  2: { playerCount: 8, instanceCount: 25, entryFee: '0.004' },
+  0: {
+    playerCount: 2,
+    instanceCount: 100,
+    entryFee: '0.001',
+    timeouts: {
+      matchTimePerPlayer: 60,
+      timeIncrementPerMove: 15,
+      matchLevel2Delay: 60,
+      matchLevel3Delay: 60,
+      enrollmentWindow: 60,
+      enrollmentLevel2Delay: 60
+    }
+  },
+  1: {
+    playerCount: 4,
+    instanceCount: 50,
+    entryFee: '0.002',
+    timeouts: {
+      matchTimePerPlayer: 60,
+      timeIncrementPerMove: 15,
+      matchLevel2Delay: 120,
+      matchLevel3Delay: 240,
+      enrollmentWindow: 300,
+      enrollmentLevel2Delay: 600
+    }
+  },
+  2: {
+    playerCount: 8,
+    instanceCount: 25,
+    entryFee: '0.004',
+    timeouts: {
+      matchTimePerPlayer: 60,
+      timeIncrementPerMove: 15,
+      matchLevel2Delay: 120,
+      matchLevel3Delay: 240,
+      enrollmentWindow: 300,
+      enrollmentLevel2Delay: 600
+    }
+  }
 };
 
 // Tournament Bracket Component
@@ -2994,7 +3033,22 @@ export default function TicTacChain() {
 
       {/* User Manual Section */}
       <div id="user-manual" className="max-w-7xl mx-auto px-6 pb-12" style={{ position: 'relative', zIndex: 10 }}>
-        <UserManual contractInstance={contract} />
+        <UserManual
+          contractInstance={contract}
+          tierConfigurations={Object.entries(TIER_CONFIG).map(([tierId, config]) => ({
+            tierId: Number(tierId),
+            playerCount: config.playerCount,
+            instanceCount: config.instanceCount,
+            entryFee: config.entryFee,
+            matchTimePerPlayer: config.timeouts.matchTimePerPlayer,
+            timeIncrementPerMove: config.timeouts.timeIncrementPerMove,
+            matchLevel2Delay: config.timeouts.matchLevel2Delay,
+            matchLevel3Delay: config.timeouts.matchLevel3Delay,
+            enrollmentWindow: config.timeouts.enrollmentWindow,
+            enrollmentLevel2Delay: config.timeouts.enrollmentLevel2Delay
+          }))}
+          raffleThresholds={['0.1', '0.2', '0.4', '1.0', '1.0', '1.0']}
+        />
       </div>
 
       {/* ============ FOOTER ============ */}

@@ -14,7 +14,10 @@ const UserManual = ({
   // Optional overrides for configuration values
   enrollmentWindows = null, // e.g., { '2': 300, '4': 600, '8': 1200 } in seconds
   raffleThresholds = null, // e.g., ['0.5', '1.0', '1.5', '2.0', '2.5', '3.0'] in ETH
-  protocolFeePercent = null
+  protocolFeePercent = null,
+  // Hardcoded tier configurations (for modular contracts that removed tierConfigs)
+  // Format: [{ tierId, playerCount, instanceCount, entryFee, timeouts: { matchTimePerPlayer, timeIncrementPerMove, matchLevel2Delay, matchLevel3Delay, enrollmentWindow, enrollmentLevel2Delay } }]
+  tierConfigurations = null
 }) => {
   // State for contract-fetched values
   const [contractConfig, setContractConfig] = useState({
@@ -28,9 +31,20 @@ const UserManual = ({
     isLoading: true
   });
 
-  // Fetch contract configuration on mount
+  // Fetch contract configuration on mount (or use hardcoded values)
   useEffect(() => {
     const fetchContractConfig = async () => {
+      // If hardcoded tierConfigurations provided, use them directly (skip contract calls)
+      if (tierConfigurations && tierConfigurations.length > 0) {
+        console.log('[UserManual] Using hardcoded tier configurations:', tierConfigurations);
+        setContractConfig(prev => ({
+          ...prev,
+          tierConfigurations: tierConfigurations.sort((a, b) => a.playerCount - b.playerCount),
+          isLoading: false
+        }));
+        return;
+      }
+
       if (!contractInstance) {
         setContractConfig(prev => ({ ...prev, isLoading: false }));
         return;
@@ -64,7 +78,7 @@ const UserManual = ({
         ]);
 
         // Fetch configuration for each tier
-        const tierConfigurations = [];
+        const fetchedTierConfigurations = [];
         for (const tierId of tierIds) {
           try {
             // Fetch basic tier info and prize distribution (all contracts have these)
@@ -101,7 +115,7 @@ const UserManual = ({
               console.warn(`[UserManual] No timeouts found for tier ${tierId}, using defaults`);
             }
 
-            tierConfigurations.push({
+            fetchedTierConfigurations.push({
               tierId: Number(tierId),
               playerCount: Number(tierInfo.playerCount),
               instanceCount: Number(tierInfo.instanceCount),
@@ -120,8 +134,8 @@ const UserManual = ({
         }
 
         // Sort tier configurations by player count for consistent display
-        tierConfigurations.sort((a, b) => a.playerCount - b.playerCount);
-        console.log('[UserManual] Final tier configurations:', tierConfigurations);
+        fetchedTierConfigurations.sort((a, b) => a.playerCount - b.playerCount);
+        console.log('[UserManual] Final tier configurations:', fetchedTierConfigurations);
 
         // Parse raffle thresholds
         const thresholds = raffleThresholdsData
@@ -131,7 +145,7 @@ const UserManual = ({
         const newConfig = {
           basisPoints: Number(basisPoints),
           protocolShareBps: Number(protocolShareBps),
-          tierConfigurations,
+          tierConfigurations: fetchedTierConfigurations,
           raffleThresholds: thresholds,
           raffleOwnerSharePercentage: raffleConfig ? Number(raffleConfig.ownerSharePercentage) : 20,
           raffleWinnerSharePercentage: raffleConfig ? Number(raffleConfig.winnerSharePercentage) : 80,
@@ -147,7 +161,7 @@ const UserManual = ({
     };
 
     fetchContractConfig();
-  }, [contractInstance]);
+  }, [contractInstance, tierConfigurations]);
 
   // Calculate protocol fee percentage from basis points
   const protocolFee = protocolFeePercent ?? (contractConfig.protocolShareBps / contractConfig.basisPoints * 100);

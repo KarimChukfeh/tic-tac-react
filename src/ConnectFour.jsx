@@ -3295,7 +3295,22 @@ export default function ConnectFour() {
 
       {/* User Manual Section */}
       <div id="user-manual" className="max-w-7xl mx-auto px-6 pb-12" style={{ position: 'relative', zIndex: 10 }}>
-        <UserManual contractInstance={contract} />
+        <UserManual
+          contractInstance={contract}
+          tierConfigurations={Object.entries(TIER_CONFIG).map(([tierId, config]) => ({
+            tierId: Number(tierId),
+            playerCount: config.playerCount,
+            instanceCount: config.instanceCount,
+            entryFee: config.entryFee,
+            matchTimePerPlayer: config.timeouts.matchTimePerPlayer,
+            timeIncrementPerMove: config.timeouts.timeIncrementPerMove,
+            matchLevel2Delay: config.timeouts.matchLevel2Delay,
+            matchLevel3Delay: config.timeouts.matchLevel3Delay,
+            enrollmentWindow: config.timeouts.enrollmentWindow,
+            enrollmentLevel2Delay: config.timeouts.enrollmentLevel2Delay
+          }))}
+          raffleThresholds={['0.02', '0.04', '0.08', '0.05', '0.05', '0.05']}
+        />
       </div>
 
       {/* ============ FOOTER ============ */}
