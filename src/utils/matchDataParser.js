@@ -42,6 +42,23 @@ export const parseCommonMatchData = (matchData) => {
 };
 
 /**
+ * Unpack TicTacToe board from packed uint256
+ * Board is packed as 2 bits per cell (0=empty, 1=player1, 2=player2)
+ * 9 cells = 18 bits total
+ * @param {BigInt|number} packedBoard - Packed board data
+ * @returns {Array<number>} Array of 9 cell values (0, 1, or 2)
+ */
+const unpackTicTacToeBoard = (packedBoard) => {
+  const board = [];
+  let packed = BigInt(packedBoard);
+  for (let i = 0; i < 9; i++) {
+    board.push(Number(packed & 3n)); // Extract 2 bits
+    packed = packed >> 2n; // Shift right by 2 bits
+  }
+  return board;
+};
+
+/**
  * Parse TicTacToe match data
  * @param {Object} matchData - Raw match data from TicTacToe contract
  * @returns {Object} Parsed TicTacToe match with all fields
@@ -50,7 +67,7 @@ export const parseTicTacToeMatch = (matchData) => ({
   ...parseCommonMatchData(matchData),
 
   // Game-specific fields
-  board: Array.from(matchData.board).map(cell => Number(cell)),
+  board: unpackTicTacToeBoard(matchData.packedBoard),
   currentTurn: matchData.currentTurn,
   firstPlayer: matchData.firstPlayer,
 

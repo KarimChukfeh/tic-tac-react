@@ -22,10 +22,13 @@ import {
   CheckCircle, AlertCircle, ChevronDown, ArrowLeft, HelpCircle
 } from 'lucide-react';
 import { ethers } from 'ethers';
-import TicTacChainABIData from './TicTacChainABI.json';
+import TicTacChainABIData from './TTTABI-modular.json';
 
 const TICTACCHAIN_ABI = TicTacChainABIData.abi;
-import { CURRENT_NETWORK, CONTRACT_ADDRESSES, getAddressUrl, getExplorerHomeUrl } from './config/networks';
+const CONTRACT_ADDRESS = TicTacChainABIData.address;
+const MODULE_ADDRESSES = TicTacChainABIData.modules;
+
+import { CURRENT_NETWORK, getAddressUrl, getExplorerHomeUrl } from './config/networks';
 import { shortenAddress, formatTime as formatTimeHMS, getTierName } from './utils/formatters';
 import { parseTournamentParams } from './utils/urlHelpers';
 import { parseTicTacToeMatch } from './utils/matchDataParser';
@@ -46,6 +49,13 @@ import { usePlayerActivity } from './hooks/usePlayerActivity';
 
 // TicTacToe particle symbols (matching landing page style)
 const TICTACTOE_SYMBOLS = ['✕', '○'];
+
+// Hardcoded tier configuration (matches contract deployment)
+const TIER_CONFIG = {
+  0: { playerCount: 2, instanceCount: 100, entryFee: '0.001' },
+  1: { playerCount: 4, instanceCount: 50, entryFee: '0.002' },
+  2: { playerCount: 8, instanceCount: 25, entryFee: '0.004' },
+};
 
 // Tournament Bracket Component
 const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceEliminate, onClaimReplacement, onManualStart, onClaimAbandonedPool, onResetEnrollmentWindow, onEnroll, account, loading, syncDots, isEnrolled, entryFee, isFull, contract }) => {
@@ -205,8 +215,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
 };
 
 export default function TicTacChain() {
-  // Use network config instead of hardcoded values
-  const CONTRACT_ADDRESS = CONTRACT_ADDRESSES.TicTacChain;
+  // Use network config and ABI data
   const EXPECTED_CHAIN_ID = CURRENT_NETWORK.chainId;
   const RPC_URL = import.meta.env.VITE_RPC_URL || CURRENT_NETWORK.rpcUrl;
   const EXPLORER_URL = getAddressUrl(CONTRACT_ADDRESS);
@@ -614,19 +623,13 @@ export default function TicTacChain() {
 
       // Verify initialization worked
       try {
-        const isInitialized = await ticTacChainContract.allInstancesInitialized();
-        console.log('allInstancesInitialized status:', isInitialized);
-
         const tierCount = await ticTacChainContract.tierCount();
         console.log('tierCount:', tierCount.toString());
+        const isInitialized = tierCount > 0;
+        console.log('allInstancesInitialized status (tierCount > 0):', isInitialized);
 
         if (tierCount > 0) {
-          const tierInfo = await ticTacChainContract.getTierInfo(0);
-          console.log('Tier 0 info:', {
-            playerCount: tierInfo.playerCount.toString(),
-            instanceCount: tierInfo.instanceCount.toString(),
-            entryFee: tierInfo.entryFee.toString()
-          });
+          console.log('Tier 0 config from TIER_CONFIG:', TIER_CONFIG[0]);
         }
       } catch (verifyErr) {
         console.error('Verification error:', verifyErr);
@@ -663,13 +666,14 @@ export default function TicTacChain() {
   // Uses lazy loading: only fetch tier metadata initially, instances load on expand
   const loadContractData = async (contractInstance, isInitialLoad = false) => {
     try {
-      // Fetch allInstancesInitialized status
+      // Fetch allInstancesInitialized status using tierCount
       try {
-        const initialized = await contractInstance.allInstancesInitialized();
-        console.log('[loadContractData] allInstancesInitialized from contract:', initialized);
+        const tierCount = await contractInstance.tierCount();
+        const initialized = tierCount > 0;
+        console.log('[loadContractData] tierCount:', tierCount.toString(), '- allInstancesInitialized (tierCount > 0):', initialized);
         setAllInstancesInitialized(initialized);
       } catch (err) {
-        console.warn('[loadContractData] Could not fetch allInstancesInitialized:', err);
+        console.warn('[loadContractData] Could not fetch tierCount:', err);
         // If we can't read it, assume false (not initialized)
         setAllInstancesInitialized(false);
       }
@@ -809,24 +813,40 @@ export default function TicTacChain() {
     for (const tierId of tierIds) {
       totalAttempts++;
       try {
-        // Parallel fetch tier config and overview
-        const [tierInfo, tierOverview] = await Promise.all([
-          readContract.getTierInfo(tierId),
-          readContract.getTierOverview(tierId)
-        ]);
+        // Get tier config from hardcoded data
+        const tierConfig = TIER_CONFIG[tierId];
+        if (!tierConfig) continue;
 
-        const instanceCount = tierOverview[0].length;
-        if (instanceCount === 0) continue;
+        const { playerCount, instanceCount, entryFee } = tierConfig;
+
+        // Fetch tournament data for each instance
+        const statuses = [];
+        const enrolledCounts = [];
+        const prizePools = [];
+
+        for (let instanceId = 0; instanceId < instanceCount; instanceId++) {
+          try {
+            const tournament = await readContract.tournaments(tierId, instanceId);
+            statuses.push(Number(tournament.status));
+            enrolledCounts.push(Number(tournament.enrolledCount));
+            prizePools.push(tournament.prizePool);
+          } catch (error) {
+            // Instance not initialized yet, stop checking further instances
+            break;
+          }
+        }
+
+        if (statuses.length === 0) continue;
 
         successfulFetches++;
 
         metadata[tierId] = {
-          playerCount: Number(tierInfo.playerCount),
-          instanceCount,
-          entryFee: ethers.formatEther(tierInfo.entryFee),
-          statuses: tierOverview[0].map(s => Number(s)),
-          enrolledCounts: tierOverview[1].map(c => Number(c)),
-          prizePools: tierOverview[2]
+          playerCount,
+          instanceCount: statuses.length,
+          entryFee,
+          statuses,
+          enrolledCounts,
+          prizePools
         };
       } catch (error) {
         console.log(`Could not fetch tier ${tierId} metadata:`, error.message);
@@ -878,16 +898,36 @@ export default function TicTacChain() {
       // Get metadata from override or fetch fresh
       let metadata = metadataOverride;
       if (!metadata) {
-        const [tierInfo, tierOverview] = await Promise.all([
-          readContract.getTierInfo(tierId),
-          readContract.getTierOverview(tierId)
-        ]);
+        // Get tier config from hardcoded data
+        const tierConfig = TIER_CONFIG[tierId];
+        if (!tierConfig) {
+          if (!silentUpdate) setTierLoading(prev => ({ ...prev, [tierId]: false }));
+          return;
+        }
+
+        const { playerCount, instanceCount, entryFee } = tierConfig;
+
+        // Fetch tournament data for each instance
+        const statuses = [];
+        const enrolledCounts = [];
+
+        for (let instanceId = 0; instanceId < instanceCount; instanceId++) {
+          try {
+            const tournament = await readContract.tournaments(tierId, instanceId);
+            statuses.push(Number(tournament.status));
+            enrolledCounts.push(Number(tournament.enrolledCount));
+          } catch (error) {
+            // Instance not initialized yet, stop checking further instances
+            break;
+          }
+        }
+
         metadata = {
-          playerCount: Number(tierInfo.playerCount),
-          instanceCount: tierOverview[0].length,
-          entryFee: ethers.formatEther(tierInfo.entryFee),
-          statuses: tierOverview[0].map(s => Number(s)),
-          enrolledCounts: tierOverview[1].map(c => Number(c))
+          playerCount,
+          instanceCount: statuses.length,
+          entryFee,
+          statuses,
+          enrolledCounts
         };
       }
 
@@ -1459,16 +1499,25 @@ export default function TicTacChain() {
       const enrolledCount = Number(tournamentInfo[3]);
       const prizePool = tournamentInfo[4];
 
-      // Get tier config for player count and entry fee
-      const tierInfo = await contractInstance.getTierInfo(tierId);
-      const playerCount = Number(tierInfo.playerCount);
-      const entryFee = tierInfo.entryFee;
+      // Get tier config from hardcoded data
+      const tierConfig = TIER_CONFIG[tierId];
+      const playerCount = tierConfig.playerCount;
+      const entryFee = ethers.parseEther(tierConfig.entryFee);
 
       // Extract timeout config using shared utility function
       const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, tierId, totalMatchTime);
 
-      // Get enrolled players
-      const enrolledPlayers = await contractInstance.getEnrolledPlayers(tierId, instanceId);
+      // Get enrolled players by iterating through enrolledPlayers mapping
+      const enrolledPlayers = [];
+      for (let i = 0; i < enrolledCount; i++) {
+        try {
+          const player = await contractInstance.enrolledPlayers(tierId, instanceId, i);
+          enrolledPlayers.push(player);
+        } catch (err) {
+          console.warn(`Could not fetch enrolled player ${i}:`, err);
+          break;
+        }
+      }
 
       // Get countdown data
       let firstEnrollmentTime = 0;
@@ -1972,8 +2021,8 @@ export default function TicTacChain() {
 
       // Fetch tournament info to get playerCount and prizePool
       const tournamentInfo = await contract.getTournamentInfo(tierId, instanceId);
-      const tierInfo = await contract.getTierInfo(tierId);
-      const playerCount = Number(tierInfo.playerCount);
+      const tierConfig = TIER_CONFIG[tierId];
+      const playerCount = tierConfig.playerCount;
       const prizePool = tournamentInfo[4]; // prizePool is at index 4
 
       const matchData = await contract.getMatch(tierId, instanceId, roundNumber, matchNumber);
@@ -1987,7 +2036,18 @@ export default function TicTacChain() {
       let actualPlayer2 = player2;
 
       if (player1.toLowerCase() === zeroAddress) {
-        const enrolledPlayers = await contract.getEnrolledPlayers(tierId, instanceId);
+        // Get enrolled players by iterating through enrolledPlayers mapping
+        const enrolledCount = Number(tournamentInfo[3]);
+        const enrolledPlayers = [];
+        for (let i = 0; i < Math.min(2, enrolledCount); i++) {
+          try {
+            const player = await contract.enrolledPlayers(tierId, instanceId, i);
+            enrolledPlayers.push(player);
+          } catch (err) {
+            console.warn(`Could not fetch enrolled player ${i}:`, err);
+            break;
+          }
+        }
         if (enrolledPlayers.length >= 2) {
           actualPlayer1 = enrolledPlayers[0];
           actualPlayer2 = enrolledPlayers[1];

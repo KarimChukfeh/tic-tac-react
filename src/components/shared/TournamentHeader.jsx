@@ -159,7 +159,8 @@ const TournamentHeader = ({
       // Continue checking even when EL2 is active - solo player can still reset
       if ((canStartEscalation1 || canStartEscalation2) && isEnrolled && contract) {
         try {
-          const canReset = await contract.canResetEnrollmentWindow(tierId, instanceId);
+          // Use staticCall to ensure this is a read-only call even if contract has signer
+          const canReset = await contract.canResetEnrollmentWindow.staticCall(tierId, instanceId);
           setCanResetWindow(canReset);
         } catch (error) {
           console.error('Error checking canResetEnrollmentWindow:', error);
