@@ -1,9 +1,9 @@
 {
   "contractName": "GameCacheModule",
-  "address": "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707",
+  "address": "0x0DCd1Bf9A1b36cE34237eEaFef220932846BCD82",
   "network": "localhost",
   "chainId": "412346",
-  "deployedAt": "2026-01-04T18:47:54.483Z",
+  "deployedAt": "2026-01-05T01:20:19.170Z",
   "abi": [
     {
       "inputs": [],
@@ -2231,6 +2231,35 @@
           "internalType": "address",
           "name": "",
           "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "name": "playerActiveTournaments",
+      "outputs": [
+        {
+          "internalType": "uint8",
+          "name": "tierId",
+          "type": "uint8"
+        },
+        {
+          "internalType": "uint8",
+          "name": "instanceId",
+          "type": "uint8"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
         }
       ],
       "name": "playerEarnings",
@@ -2239,6 +2268,35 @@
           "internalType": "int256",
           "name": "",
           "type": "int256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "name": "playerEnrollingTournaments",
+      "outputs": [
+        {
+          "internalType": "uint8",
+          "name": "tierId",
+          "type": "uint8"
+        },
+        {
+          "internalType": "uint8",
+          "name": "instanceId",
+          "type": "uint8"
         }
       ],
       "stateMutability": "view",

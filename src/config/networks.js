@@ -24,15 +24,19 @@ export const CURRENT_NETWORK = NETWORKS[networkKey] || NETWORKS.localhost;
 
 // Contract addresses - can be overridden via environment variables
 export const CONTRACT_ADDRESSES = {
-  TicTacChain: import.meta.env.VITE_TICTACCHAIN_ADDRESS || '0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1',
-  ChessOnChain: import.meta.env.VITE_CHESS_ADDRESS || '0xa513E6E4b8f2a923D98304ec87F64353C4D5C853',
+  TicTacChain: import.meta.env.VITE_TICTACCHAIN_ADDRESS || '0x59b670e9fA9D0A427751Af201D676719a970857b',
+  ChessOnChain: import.meta.env.VITE_CHESS_ADDRESS || '0x322813Fd9A801c5507c9de605d63CEA4f2CE6c44',
   ConnectFourOnChain: import.meta.env.VITE_CONNECTFOUR_ADDRESS || '0x59b670e9fA9D0A427751Af201D676719a970857b',
-  // ETour Module Addresses
-  ETour_Core: import.meta.env.VITE_ETOUR_CORE_ADDRESS || '0x5FbDB2315678afecb367f032d93F642f64180aa3',
-  ETour_Matches: import.meta.env.VITE_ETOUR_MATCHES_ADDRESS || '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512',
-  ETour_Prizes: import.meta.env.VITE_ETOUR_PRIZES_ADDRESS || '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0',
-  ETour_Raffle: import.meta.env.VITE_ETOUR_RAFFLE_ADDRESS || '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9',
-  ETour_Escalation: import.meta.env.VITE_ETOUR_ESCALATION_ADDRESS || '0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9',
+  // ETour Module Addresses (shared across games)
+  ETour_Core: import.meta.env.VITE_ETOUR_CORE_ADDRESS || '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9',
+  ETour_Matches: import.meta.env.VITE_ETOUR_MATCHES_ADDRESS || '0x5FC8d32690cc91D4c39d9d3abcBD16989F875707',
+  ETour_Prizes: import.meta.env.VITE_ETOUR_PRIZES_ADDRESS || '0x0165878A594ca255338adfa4d48449f69242Eb8F',
+  ETour_Raffle: import.meta.env.VITE_ETOUR_RAFFLE_ADDRESS || '0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6',
+  ETour_Escalation: import.meta.env.VITE_ETOUR_ESCALATION_ADDRESS || '0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e',
+  ETour_GameCache: import.meta.env.VITE_ETOUR_GAMECACHE_ADDRESS || '0x0DCd1Bf9A1b36cE34237eEaFef220932846BCD82',
+  // TicTacToe-specific modules
+  ETour_PlayerTracking: import.meta.env.VITE_ETOUR_PLAYERTRACKING_ADDRESS || '0x0B306BF915C4d645ff596e518fAf3F9669b97016',
+  ETour_TicTacToeGame: import.meta.env.VITE_ETOUR_TICTACTOEGAME_ADDRESS || '0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1',
 };
 
 // Helper to get explorer URL for a transaction

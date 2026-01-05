@@ -23,7 +23,8 @@ import {
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import TicTacChainABIData from './TicTacChainABI.json';
-const DUMMY_ABI = TicTacChainABIData.abi;
+
+const TICTACCHAIN_ABI = TicTacChainABIData.abi;
 import { CURRENT_NETWORK, CONTRACT_ADDRESSES, getAddressUrl, getExplorerHomeUrl } from './config/networks';
 import { shortenAddress, formatTime as formatTimeHMS, getTierName } from './utils/formatters';
 import { parseTournamentParams } from './utils/urlHelpers';
@@ -213,7 +214,7 @@ export default function TicTacChain() {
   // Helper to get read-only contract (bypasses MetaMask for read operations)
   const getReadOnlyContract = useCallback(() => {
     const provider = new ethers.JsonRpcProvider(RPC_URL);
-    return new ethers.Contract(CONTRACT_ADDRESS, DUMMY_ABI, provider);
+    return new ethers.Contract(CONTRACT_ADDRESS, TICTACCHAIN_ABI, provider);
   }, [CONTRACT_ADDRESS, RPC_URL]);
 
   // Wallet & Contract State
@@ -256,6 +257,8 @@ export default function TicTacChain() {
   const [bracketSyncDots, setBracketSyncDots] = useState(1);
   const [expandedTiers, setExpandedTiers] = useState({});
   const [visibleInstancesCount, setVisibleInstancesCount] = useState({}); // { [tierId]: number } - tracks how many instances to show per tier
+  const [allInstancesInitialized, setAllInstancesInitialized] = useState(false); // Whether all tier instances have been initialized by owner
+  const [initializingInstances, setInitializingInstances] = useState(false); // Loading state for initialization
 
   // URL Parameters State for shareable tournament links
   const [searchParams, setSearchParams] = useSearchParams();
@@ -523,7 +526,7 @@ export default function TicTacChain() {
       // Create contract with signer for write operations
       const contractInstance = new ethers.Contract(
         CONTRACT_ADDRESS,
-        DUMMY_ABI,
+        TICTACCHAIN_ABI,
         web3Signer
       );
 
@@ -554,11 +557,123 @@ export default function TicTacChain() {
     }
   };
 
+  // Handle initializing all instances (owner/deployer only)
+  const handleInitializeAllInstances = async () => {
+    if (!contract || !account) {
+      alert('Please connect your wallet first');
+      return;
+    }
+
+    try {
+      setInitializingInstances(true);
+
+      const confirmInit = window.confirm(
+        'Initialize all tier configurations and instances?\n\n' +
+        'This will register all tiers (2-player, 4-player, 8-player, etc.) ' +
+        'and create their tournament instances.\n\n' +
+        'This operation can only be done once by the contract owner.'
+      );
+
+      if (!confirmInit) {
+        setInitializingInstances(false);
+        return;
+      }
+
+      // Get contract with signer (matches Chess pattern)
+      const provider = new ethers.BrowserProvider(window.ethereum);
+
+      // Get signer - handle ENS errors on local networks
+      let signer;
+      try {
+        signer = await provider.getSigner();
+      } catch (ensError) {
+        if (ensError.code === 'UNSUPPORTED_OPERATION' && ensError.message?.includes('ENS')) {
+          // ENS not supported on this network, but we can still get the signer
+          // Get the accounts directly from window.ethereum
+          const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+          if (!accounts || accounts.length === 0) {
+            throw new Error('No wallet account found. Please connect your wallet.');
+          }
+          // Create a signer without ENS resolution
+          signer = await provider.getSigner(accounts[0]);
+        } else {
+          throw ensError;
+        }
+      }
+
+      const ticTacChainContract = new ethers.Contract(CONTRACT_ADDRESS, TICTACCHAIN_ABI, signer);
+
+      console.log('Contract address being initialized:', await ticTacChainContract.getAddress());
+      console.log('Calling initializeAllInstances()...');
+      const tx = await ticTacChainContract.initializeAllInstances();
+      console.log('Transaction submitted:', tx.hash);
+
+      const receipt = await tx.wait();
+      console.log('Transaction receipt:', receipt);
+      console.log('All instances initialized successfully!');
+
+      // Verify initialization worked
+      try {
+        const isInitialized = await ticTacChainContract.allInstancesInitialized();
+        console.log('allInstancesInitialized status:', isInitialized);
+
+        const tierCount = await ticTacChainContract.tierCount();
+        console.log('tierCount:', tierCount.toString());
+
+        if (tierCount > 0) {
+          const tierInfo = await ticTacChainContract.getTierInfo(0);
+          console.log('Tier 0 info:', {
+            playerCount: tierInfo.playerCount.toString(),
+            instanceCount: tierInfo.instanceCount.toString(),
+            entryFee: tierInfo.entryFee.toString()
+          });
+        }
+      } catch (verifyErr) {
+        console.error('Verification error:', verifyErr);
+      }
+
+      alert('All instances initialized successfully! Refreshing data...');
+
+      // Update contract in state
+      setContract(ticTacChainContract);
+
+      // Reload all data (this will also update allInstancesInitialized based on contract state)
+      await loadContractData(ticTacChainContract);
+
+      setInitializingInstances(false);
+    } catch (error) {
+      console.error('Error initializing instances:', error);
+      let errorMessage = error.message || 'Unknown error';
+
+      if (error.message?.includes('AlreadyInitialized')) {
+        errorMessage = 'All instances have already been initialized';
+      } else if (error.message?.includes('Ownable')) {
+        errorMessage = 'Only the contract owner can initialize instances';
+      } else if (error.message?.includes('ENS') || error.code === 'UNSUPPORTED_OPERATION') {
+        errorMessage = 'Network configuration error. Try refreshing and reconnecting your wallet.';
+      }
+
+      alert(`Error initializing instances: ${errorMessage}`);
+      setInitializingInstances(false);
+    }
+  };
+
 
   // Load contract data (simplified - matches ConnectFour pattern)
   // Uses lazy loading: only fetch tier metadata initially, instances load on expand
   const loadContractData = async (contractInstance, isInitialLoad = false) => {
     try {
+      // Fetch allInstancesInitialized status
+      try {
+        const initialized = await contractInstance.allInstancesInitialized();
+        console.log('[loadContractData] allInstancesInitialized from contract:', initialized);
+        setAllInstancesInitialized(initialized);
+      } catch (err) {
+        console.warn('[loadContractData] Could not fetch allInstancesInitialized:', err);
+        // If we can't read it, assume false (not initialized)
+        setAllInstancesInitialized(false);
+      }
+
       // Fetch tier metadata only (fast) - instances load on tier expand
       await fetchTierMetadata(contractInstance);
       await fetchLeaderboard(false);
@@ -671,50 +786,79 @@ export default function TicTacChain() {
     let successfulFetches = 0;
     let totalAttempts = 0;
 
-    // Fetch all valid tier IDs from contract
-    let tierIds = [];
+    // Fetch tier count from TicTacChain contract
+    let tierCount = 0;
     try {
-      const tierIdsRaw = await readContract.getAllTierIds();
-      // Convert ethers Result object to plain array manually
-      for (let i = 0; i < tierIdsRaw.length; i++) {
-        tierIds.push(tierIdsRaw[i]);
-      }
+      tierCount = Number(await readContract.tierCount());
     } catch (error) {
-      console.warn('Could not fetch tier IDs, using default range:', error.message);
-      tierIds = [0, 1, 2]; // TicTacChain default: 3 tiers
+      console.warn('Could not fetch tier count:', error.message);
     }
+
+    // If no tiers, show empty state
+    if (tierCount === 0) {
+      console.log('No tiers available');
+      setTierMetadata({});
+      if (!silentUpdate) setMetadataLoading(false);
+      return;
+    }
+
+    // Get tier IDs: sequential from 0 to tierCount-1
+    const tierIds = Array.from({ length: tierCount }, (_, i) => i);
 
     // Fetch metadata for each tier
     for (const tierId of tierIds) {
       totalAttempts++;
       try {
-        // Parallel fetch tier config, entry fee, and overview
-        const [tierConfig, fee, tierOverview] = await Promise.all([
-          readContract.tierConfigs(tierId),
-          readContract.ENTRY_FEES(tierId),
+        // Parallel fetch tier config and overview
+        const [tierInfo, tierOverview] = await Promise.all([
+          readContract.getTierInfo(tierId),
           readContract.getTierOverview(tierId)
         ]);
 
-        successfulFetches++;
         const instanceCount = tierOverview[0].length;
         if (instanceCount === 0) continue;
 
+        successfulFetches++;
+
         metadata[tierId] = {
-          playerCount: Number(tierConfig.playerCount),
+          playerCount: Number(tierInfo.playerCount),
           instanceCount,
-          entryFee: ethers.formatEther(fee),
+          entryFee: ethers.formatEther(tierInfo.entryFee),
           statuses: tierOverview[0].map(s => Number(s)),
           enrolledCounts: tierOverview[1].map(c => Number(c)),
           prizePools: tierOverview[2]
         };
       } catch (error) {
         console.log(`Could not fetch tier ${tierId} metadata:`, error.message);
+        // Check if this is a "GF" (Game Frozen/Not Initialized) error
+        // Error can have: error.reason, error.revert?.args[0], or in error.message
+        const isGFError = error.reason === 'GF' ||
+                         error.revert?.args?.[0] === 'GF' ||
+                         error.message?.includes('"GF"') ||
+                         error.message?.includes('execution reverted: "GF"');
+        if (isGFError) {
+          // Contract not initialized - this is expected, not an error
+          // The initialize button will be shown to the owner
+          console.log('Contract not initialized (GF error). Owner needs to initialize.');
+          break; // Stop trying other tiers
+        }
       }
     }
 
-    // If no fetches succeeded, we have a connection problem
+    // If no fetches succeeded and it's not a GF error, we have a connection problem
     if (successfulFetches === 0 && totalAttempts > 0) {
-      if (!silentUpdate) setConnectionError('Unable to load tournament data. Please check your connection and try again.');
+      // Check if any tier returned a GF error (contract not initialized)
+      const hasGFError = Object.keys(metadata).length === 0;
+      if (hasGFError && !silentUpdate) {
+        // Don't show connection error - contract just needs initialization
+        console.log('Contract not initialized yet. Owner needs to call initializeAllInstances()');
+        setConnectionError(null); // Clear any previous connection error
+      } else if (!silentUpdate) {
+        setConnectionError('Unable to load tournament data. Please check your connection and try again.');
+      }
+    } else if (successfulFetches > 0 && !silentUpdate) {
+      // Successfully fetched some data, clear any previous connection error
+      setConnectionError(null);
     }
 
     setTierMetadata(metadata);
@@ -734,15 +878,14 @@ export default function TicTacChain() {
       // Get metadata from override or fetch fresh
       let metadata = metadataOverride;
       if (!metadata) {
-        const [tierConfig, fee, tierOverview] = await Promise.all([
-          readContract.tierConfigs(tierId),
-          readContract.ENTRY_FEES(tierId),
+        const [tierInfo, tierOverview] = await Promise.all([
+          readContract.getTierInfo(tierId),
           readContract.getTierOverview(tierId)
         ]);
         metadata = {
-          playerCount: Number(tierConfig.playerCount),
+          playerCount: Number(tierInfo.playerCount),
           instanceCount: tierOverview[0].length,
-          entryFee: ethers.formatEther(fee),
+          entryFee: ethers.formatEther(tierInfo.entryFee),
           statuses: tierOverview[0].map(s => Number(s)),
           enrolledCounts: tierOverview[1].map(c => Number(c))
         };
@@ -1002,7 +1145,17 @@ export default function TicTacChain() {
       setTournamentsLoading(false);
     } catch (error) {
       console.error('Error enrolling:', error);
-      alert(`Error enrolling: ${error.message}`);
+      let errorMessage = error.message || 'Unknown error';
+
+      if (error.message?.includes('"TE"') || error.reason === 'TE') {
+        errorMessage = 'Tournament enrollment tracking failed. This may be a contract configuration issue. Please contact support.';
+      } else if (error.message?.includes('insufficient funds')) {
+        errorMessage = 'Insufficient funds to cover entry fee and gas';
+      } else if (error.message?.includes('user rejected')) {
+        errorMessage = 'Transaction rejected';
+      }
+
+      alert(`Error enrolling: ${errorMessage}`);
       setTournamentsLoading(false);
     }
   };
@@ -1307,9 +1460,9 @@ export default function TicTacChain() {
       const prizePool = tournamentInfo[4];
 
       // Get tier config for player count and entry fee
-      const tierConfig = await contractInstance.tierConfigs(tierId);
-      const playerCount = Number(tierConfig.playerCount);
-      const entryFee = tierConfig.entryFee;
+      const tierInfo = await contractInstance.getTierInfo(tierId);
+      const playerCount = Number(tierInfo.playerCount);
+      const entryFee = tierInfo.entryFee;
 
       // Extract timeout config using shared utility function
       const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, tierId, totalMatchTime);
@@ -1819,8 +1972,8 @@ export default function TicTacChain() {
 
       // Fetch tournament info to get playerCount and prizePool
       const tournamentInfo = await contract.getTournamentInfo(tierId, instanceId);
-      const tierConfig = await contract.tierConfigs(tierId);
-      const playerCount = Number(tierConfig.playerCount);
+      const tierInfo = await contract.getTierInfo(tierId);
+      const playerCount = Number(tierInfo.playerCount);
       const prizePool = tournamentInfo[4]; // prizePool is at index 4
 
       const matchData = await contract.getMatch(tierId, instanceId, roundNumber, matchNumber);
@@ -1973,7 +2126,7 @@ export default function TicTacChain() {
         const provider = new ethers.JsonRpcProvider(RPC_URL);
         const readOnlyContract = new ethers.Contract(
           CONTRACT_ADDRESS,
-          DUMMY_ABI,
+          TICTACCHAIN_ABI,
           provider
         );
 
@@ -2722,7 +2875,25 @@ export default function TicTacChain() {
                   <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-12 border border-purple-400/30 text-center">
                     <Trophy className="text-purple-400/50 mx-auto mb-4" size={64} />
                     <h3 className="text-2xl font-bold text-purple-300 mb-2">No Tournaments Available</h3>
-                    <p className="text-purple-200/70">Check back soon for new tournaments!</p>
+                    <p className="text-purple-200/70 mb-6">Check back soon for new tournaments!</p>
+
+                    {/* Initialize Button - only show if not initialized and wallet connected */}
+                    {account && !allInstancesInitialized && (
+                      <button
+                        onClick={handleInitializeAllInstances}
+                        disabled={initializingInstances}
+                        className="px-8 py-4 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-bold rounded-xl shadow-lg transition-all duration-200 transform hover:scale-105"
+                      >
+                        {initializingInstances ? (
+                          <span className="flex items-center gap-2">
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                            Initializing...
+                          </span>
+                        ) : (
+                          'Initialize All Instances'
+                        )}
+                      </button>
+                    )}
                   </div>
                 )}
 
