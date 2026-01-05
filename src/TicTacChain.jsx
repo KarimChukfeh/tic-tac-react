@@ -296,7 +296,7 @@ export default function TicTacChain() {
   const [leaderboardError, setLeaderboardError] = useState(false);
 
   // Player Activity Hook
-  const playerActivity = usePlayerActivity(contract, account, 'tictactoe');
+  const playerActivity = usePlayerActivity(contract, account, 'tictactoe', TIER_CONFIG);
 
   // Player Activity Height State (for positioning CommunityRaffleCard)
   const [playerActivityHeight, setPlayerActivityHeight] = useState(0);

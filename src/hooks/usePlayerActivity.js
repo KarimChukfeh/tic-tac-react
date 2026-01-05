@@ -16,9 +16,10 @@ import { useState, useEffect, useCallback } from 'react';
  * @param {Object} contract - Contract instance (with signer or read-only)
  * @param {string} account - Player's wallet address
  * @param {string} gameName - Game name ('tictactoe', 'chess', 'connect4') - for logging only
+ * @param {Object} tierConfig - Optional tier configuration object { 0: {playerCount, instanceCount, entryFee}, ... }
  * @returns {Object} { data, loading, syncing, error, refetch }
  */
-export const usePlayerActivity = (contract, account, gameName) => {
+export const usePlayerActivity = (contract, account, gameName, tierConfig = null) => {
   const [data, setData] = useState({
     activeMatches: [],
     inProgressTournaments: [],
@@ -58,9 +59,9 @@ export const usePlayerActivity = (contract, account, gameName) => {
       // Step 1: Get player stats (total earnings)
       let totalEarnings = 0n;
       try {
-        totalEarnings = await contract.getPlayerStats(account);
+        totalEarnings = await contract.playerEarnings(account);
       } catch (err) {
-        console.warn('[PlayerActivity] Could not fetch player stats:', err);
+        console.warn('[PlayerActivity] Could not fetch player earnings:', err);
       }
 
       // Step 2: Get enrolling tournaments (unfilled)
@@ -75,13 +76,26 @@ export const usePlayerActivity = (contract, account, gameName) => {
       const unfilledTournaments = await Promise.all(
         enrollingTournaments.map(async (ref) => {
           const tournamentInfo = await contract.getTournamentInfo(ref.tierId, ref.instanceId);
-          const tierConfig = await contract.getTierConfig(ref.tierId);
+
+          // Get player count from tierConfig if provided, otherwise try contract
+          let playerCount;
+          if (tierConfig && tierConfig[ref.tierId]) {
+            playerCount = tierConfig[ref.tierId].playerCount;
+          } else {
+            try {
+              const config = await contract.getTierConfig(ref.tierId);
+              playerCount = Number(config.playerCount);
+            } catch (err) {
+              console.warn(`[PlayerActivity] Could not fetch tier ${ref.tierId} config:`, err);
+              playerCount = 2; // Default fallback
+            }
+          }
 
           return {
             tierId: Number(ref.tierId),
             instanceId: Number(ref.instanceId),
             enrolledCount: Number(tournamentInfo.enrolledCount),
-            playerCount: Number(tierConfig.playerCount),
+            playerCount,
           };
         })
       );
@@ -264,7 +278,7 @@ export const usePlayerActivity = (contract, account, gameName) => {
       setLoading(false);
       setSyncing(false);
     }
-  }, [contract, account, gameName, dismissedMatches, completedMatchTimestamps]);
+  }, [contract, account, gameName, tierConfig, dismissedMatches, completedMatchTimestamps]);
 
   // Initial fetch
   useEffect(() => {
