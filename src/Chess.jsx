@@ -74,9 +74,87 @@ const TIER_CONFIG = {
     }
   },
   1: {
+    playerCount: 2,
+    instanceCount: 100,
+    entryFee: '0.02',
+    timeouts: {
+      matchTimePerPlayer: 600,
+      timeIncrementPerMove: 15,
+      matchLevel2Delay: 180,
+      matchLevel3Delay: 360,
+      enrollmentWindow: 600,
+      enrollmentLevel2Delay: 300
+    }
+  },
+  2: {
+    playerCount: 2,
+    instanceCount: 100,
+    entryFee: '0.03',
+    timeouts: {
+      matchTimePerPlayer: 600,
+      timeIncrementPerMove: 15,
+      matchLevel2Delay: 180,
+      matchLevel3Delay: 360,
+      enrollmentWindow: 600,
+      enrollmentLevel2Delay: 300
+    }
+  },
+  3: {
+    playerCount: 2,
+    instanceCount: 100,
+    entryFee: '0.1',
+    timeouts: {
+      matchTimePerPlayer: 600,
+      timeIncrementPerMove: 15,
+      matchLevel2Delay: 180,
+      matchLevel3Delay: 360,
+      enrollmentWindow: 600,
+      enrollmentLevel2Delay: 300
+    }
+  },
+  4: {
     playerCount: 4,
     instanceCount: 50,
-    entryFee: '0.02',
+    entryFee: '0.015',
+    timeouts: {
+      matchTimePerPlayer: 600,
+      timeIncrementPerMove: 15,
+      matchLevel2Delay: 180,
+      matchLevel3Delay: 360,
+      enrollmentWindow: 1800,
+      enrollmentLevel2Delay: 300
+    }
+  },
+  5: {
+    playerCount: 4,
+    instanceCount: 50,
+    entryFee: '0.025',
+    timeouts: {
+      matchTimePerPlayer: 600,
+      timeIncrementPerMove: 15,
+      matchLevel2Delay: 180,
+      matchLevel3Delay: 360,
+      enrollmentWindow: 1800,
+      enrollmentLevel2Delay: 300
+    }
+  },
+  6: {
+    playerCount: 4,
+    instanceCount: 50,
+    entryFee: '0.035',
+    timeouts: {
+      matchTimePerPlayer: 600,
+      timeIncrementPerMove: 15,
+      matchLevel2Delay: 180,
+      matchLevel3Delay: 360,
+      enrollmentWindow: 1800,
+      enrollmentLevel2Delay: 300
+    }
+  },
+  7: {
+    playerCount: 4,
+    instanceCount: 50,
+    entryFee: '0.15',
     timeouts: {
       matchTimePerPlayer: 600,
       timeIncrementPerMove: 15,
@@ -3158,7 +3236,7 @@ export default function Chess() {
                 {/* Tournament Cards Grid - Grouped by Tier (Lazy Loading) */}
                 {!metadataLoading && Object.keys(tierMetadata).length > 0 && (
                   <>
-                    {[0, 6, 1, 2, 3, 4, 5].map((tierId) => {
+                    {[0, 4, 1, 5, 2, 6, 3, 7].map((tierId) => {
                       const metadata = tierMetadata[tierId];
                       if (!metadata) return null;
 
@@ -3179,19 +3257,27 @@ export default function Chess() {
                         return sum;
                       }, 0);
 
+                      const isElite = tierId === 3 || tierId === 7;
+
                       return (
                         <div key={tierId} className="mb-6">
                           <button
                             onClick={() => toggleTier(tierId)}
-                            className="w-full bg-gradient-to-r from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-xl p-4 border border-purple-400/40 hover:border-purple-400/60 transition-all cursor-pointer"
+                            className={`w-full backdrop-blur-lg rounded-xl p-4 border transition-all cursor-pointer ${
+                              isElite
+                                ? 'bg-gradient-to-r from-amber-600/40 via-yellow-500/40 to-amber-600/40 border-amber-400/70 hover:border-amber-300 shadow-[0_0_30px_rgba(251,191,36,0.5),0_0_60px_rgba(251,191,36,0.3),inset_0_0_20px_rgba(251,191,36,0.1)] hover:shadow-[0_0_40px_rgba(251,191,36,0.7),0_0_80px_rgba(251,191,36,0.4),inset_0_0_30px_rgba(251,191,36,0.15)] animate-[pulse_3s_ease-in-out_infinite]'
+                                : 'bg-gradient-to-r from-purple-600/20 to-blue-600/20 border-purple-400/40 hover:border-purple-400/60'
+                            }`}
                           >
-                            <h3 className="text-2xl font-bold text-purple-400 flex items-center gap-2 flex-wrap">
-                              ♔ {getTierName(metadata.playerCount)}s
-                              <span className="text-sm font-normal text-purple-300">• {metadata.playerCount} players total</span>
-                              <span className="text-sm font-normal text-purple-300">• {metadata.entryFee} ETH entry</span>
-                              <span className="text-sm font-normal text-purple-300">• {totalPrizePool} ETH prize pool</span>
+                            <h3 className={`text-2xl font-bold flex items-center gap-2 flex-wrap ${
+                              isElite ? 'text-amber-300 drop-shadow-[0_0_10px_rgba(251,191,36,0.8)]' : 'text-purple-400'
+                            }`}>
+                              ♔ {getTierName(metadata.playerCount, tierId)}
+                              <span className={`text-sm font-normal ${isElite ? 'text-amber-200/90' : 'text-purple-300'}`}>• {metadata.playerCount} players total</span>
+                              <span className={`text-sm font-normal ${isElite ? 'text-amber-200/90' : 'text-purple-300'}`}>• {metadata.entryFee} ETH entry</span>
+                              <span className={`text-sm font-normal ${isElite ? 'text-amber-200/90' : 'text-purple-300'}`}>• {totalPrizePool} ETH prize pool</span>
                               <span className="ml-auto flex items-center gap-2">
-                                {allInstances.length > 0 && <span className="text-sm font-normal text-purple-300">{activePlayersCount} active enrollments</span>}
+                                {allInstances.length > 0 && <span className={`text-sm font-normal ${isElite ? 'text-amber-200/90' : 'text-purple-300'}`}>{activePlayersCount} active enrollments</span>}
                                 <ChevronDown
                                   size={24}
                                   className={`transition-transform duration-200 ${expandedTiers[tierId] ? 'rotate-180' : ''}`}
@@ -3204,35 +3290,55 @@ export default function Chess() {
                             <div className="mt-6">
                               {isLoading ? (
                                 <div className="text-center py-8">
-                                  <div className="w-10 h-10 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-3"></div>
-                                  <p className="text-purple-300 text-sm">Loading {getTierName(metadata.playerCount)} instances...</p>
+                                  <div className={`w-10 h-10 border-4 rounded-full animate-spin mx-auto mb-3 ${
+                                    isElite ? 'border-amber-500/30 border-t-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.6)]' : 'border-purple-500/30 border-t-purple-500'
+                                  }`}></div>
+                                  <p className={`text-sm ${isElite ? 'text-amber-200 drop-shadow-[0_0_8px_rgba(251,191,36,0.6)]' : 'text-purple-300'}`}>Loading {getTierName(metadata.playerCount, tierId)} instances...</p>
                                 </div>
                               ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                                  {instances.map((tournament) => (
-                                    <TournamentCard
-                                      key={`${tournament.tierId}-${tournament.instanceId}`}
-                                      tierId={tournament.tierId}
-                                      instanceId={tournament.instanceId}
-                                      maxPlayers={tournament.maxPlayers}
-                                      currentEnrolled={tournament.enrolledCount}
-                                      entryFee={tournament.entryFee}
-                                      prizePool={tournament.prizePool}
-                                      isEnrolled={tournament.isEnrolled}
-                                      onEnroll={() => handleEnroll(tournament.tierId, tournament.instanceId, tournament.entryFee)}
-                                      onEnter={() => handleEnterTournament(tournament.tierId, tournament.instanceId)}
-                                      loading={tournamentsLoading}
-                                      tierName={getTierName(tournament.maxPlayers)}
-                                      enrollmentTimeout={tournament.enrollmentTimeout}
-                                      hasStartedViaTimeout={tournament.hasStartedViaTimeout}
-                                      tournamentStatus={tournament.tournamentStatus}
-                                      onManualStart={handleManualStart}
-                                      onClaimAbandonedPool={handleClaimAbandonedPool}
-                                      onResetEnrollmentWindow={handleResetEnrollmentWindow}
-                                      account={account}
-                                      contract={contract}
-                                    />
-                                  ))}
+                                  {instances.map((tournament) => {
+                                    const isEliteCard = tournament.tierId === 3 || tournament.tierId === 7;
+                                    const eliteColors = isEliteCard ? {
+                                      cardBg: 'from-amber-600/25 to-yellow-500/25',
+                                      cardBorder: 'border-amber-400/50 hover:border-amber-400/70',
+                                      cardShadow: 'hover:shadow-[0_0_15px_rgba(251,191,36,0.3)]',
+                                      icon: 'text-amber-400',
+                                      text: 'text-amber-300',
+                                      textMuted: 'text-amber-300/70',
+                                      progress: 'from-amber-500 to-yellow-500',
+                                      buttonEnter: 'from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600',
+                                      fullBadgeBg: 'bg-red-500/20',
+                                      fullBadgeBorder: 'border-red-400',
+                                      fullBadgeText: 'text-red-300',
+                                    } : undefined;
+
+                                    return (
+                                      <TournamentCard
+                                        key={`${tournament.tierId}-${tournament.instanceId}`}
+                                        tierId={tournament.tierId}
+                                        instanceId={tournament.instanceId}
+                                        maxPlayers={tournament.maxPlayers}
+                                        currentEnrolled={tournament.enrolledCount}
+                                        entryFee={tournament.entryFee}
+                                        prizePool={tournament.prizePool}
+                                        isEnrolled={tournament.isEnrolled}
+                                        onEnroll={() => handleEnroll(tournament.tierId, tournament.instanceId, tournament.entryFee)}
+                                        onEnter={() => handleEnterTournament(tournament.tierId, tournament.instanceId)}
+                                        loading={tournamentsLoading}
+                                        tierName={getTierName(tournament.maxPlayers, tournament.tierId)}
+                                        enrollmentTimeout={tournament.enrollmentTimeout}
+                                        hasStartedViaTimeout={tournament.hasStartedViaTimeout}
+                                        tournamentStatus={tournament.tournamentStatus}
+                                        onManualStart={handleManualStart}
+                                        onClaimAbandonedPool={handleClaimAbandonedPool}
+                                        onResetEnrollmentWindow={handleResetEnrollmentWindow}
+                                        account={account}
+                                        contract={contract}
+                                        colors={eliteColors}
+                                      />
+                                    );
+                                  })}
                                 </div>
                               )}
 
