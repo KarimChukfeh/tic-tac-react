@@ -2914,6 +2914,28 @@ export default function Chess() {
       overflow: 'hidden',
       transition: 'background 0.8s ease-in-out'
     }}>
+      {/* Animation keyframes */}
+      <style>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+        @keyframes fadeInSlideUp {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
+
       {/* Particle Background */}
       <ParticleBackground colors={currentTheme.particleColors} symbols={CHESS_PIECES} fontSize="40px" />
 
@@ -3236,7 +3258,7 @@ export default function Chess() {
 
                 {/* Mode Selection: Duels vs Tournaments */}
                 {!metadataLoading && Object.keys(tierMetadata).length > 0 && !selectedMode && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto mb-12">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto mb-12 animate-[fadeIn_0.5s_ease-out]">
                     {/* Duels Card */}
                     <button
                       onClick={() => setSelectedMode('duels')}
@@ -3289,18 +3311,18 @@ export default function Chess() {
 
                 {/* Tournament Cards Grid - Grouped by Tier (Lazy Loading) */}
                 {!metadataLoading && Object.keys(tierMetadata).length > 0 && selectedMode && (
-                  <>
+                  <div className="animate-[fadeInSlideUp_0.6s_ease-out]">
                     {/* Back to Mode Selection */}
-                    <div className="mb-6">
+                    <div className="mb-6 animate-[fadeIn_0.8s_ease-out]">
                       <button
                         onClick={() => setSelectedMode(null)}
-                        className="text-purple-400 hover:text-purple-300 flex items-center gap-2 transition-colors"
+                        className="text-purple-400 hover:text-purple-300 flex items-center gap-2 transition-all hover:translate-x-[-4px]"
                       >
                         <span>←</span> Back to mode selection
                       </button>
                     </div>
 
-                    {(selectedMode === 'duels' ? [0, 1, 2, 3] : [4, 5, 6, 7]).map((tierId) => {
+                    {(selectedMode === 'duels' ? [0, 1, 2, 3] : [4, 5, 6, 7]).map((tierId, index) => {
                       const metadata = tierMetadata[tierId];
                       if (!metadata) return null;
 
@@ -3324,7 +3346,11 @@ export default function Chess() {
                       const isElite = tierId === 3 || tierId === 7;
 
                       return (
-                        <div key={tierId} className="mb-6">
+                        <div
+                          key={tierId}
+                          className="mb-6 animate-[fadeInSlideUp_0.6s_ease-out]"
+                          style={{ animationDelay: `${index * 0.1}s`, opacity: 0, animationFillMode: 'forwards' }}
+                        >
                           <button
                             onClick={() => toggleTier(tierId)}
                             className={`w-full backdrop-blur-lg rounded-xl p-4 border transition-all cursor-pointer ${
@@ -3423,7 +3449,7 @@ export default function Chess() {
                         </div>
                       );
                     })}
-                  </>
+                  </div>
                 )}
 
                 {/* Connection Error State */}
