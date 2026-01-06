@@ -434,7 +434,7 @@ export default function TicTacChain() {
       if (viewingTournament?.tierId !== undefined) {
         // Fetch timeout config for the viewing tournament's tier
         try {
-          const timeoutConfig = await fetchTierTimeoutConfig(contract, viewingTournament.tierId, 300);
+          const timeoutConfig = await fetchTierTimeoutConfig(contract, viewingTournament.tierId, 300, TIER_CONFIG[viewingTournament.tierId]);
           if (timeoutConfig?.matchTimePerPlayer) {
             setDisplayTimeoutConfig(timeoutConfig);
           }
@@ -444,7 +444,7 @@ export default function TicTacChain() {
       } else {
         // No tournament viewing, reset to tier 0 (default)
         try {
-          const timeoutConfig = await fetchTierTimeoutConfig(contract, 0, 300);
+          const timeoutConfig = await fetchTierTimeoutConfig(contract, 0, 300, TIER_CONFIG[0]);
           if (timeoutConfig?.matchTimePerPlayer) {
             setDisplayTimeoutConfig(timeoutConfig);
           }
@@ -723,7 +723,7 @@ export default function TicTacChain() {
 
       // Fetch match time from first tier for display in Game Info Cards
       try {
-        const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, 0, 300);
+        const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, 0, 300, TIER_CONFIG[0]);
         if (timeoutConfig?.matchTimePerPlayer) {
           setMatchTimePerPlayer(timeoutConfig.matchTimePerPlayer);
           setDisplayTimeoutConfig(timeoutConfig);
@@ -1449,7 +1449,7 @@ export default function TicTacChain() {
       const entryFee = ethers.parseEther(tierConfig.entryFee);
 
       // Extract timeout config using shared utility function
-      const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, tierId, totalMatchTime);
+      const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, tierId, totalMatchTime, tierConfig);
 
       // Get enrolled players by iterating through enrolledPlayers mapping
       const enrolledPlayers = [];
@@ -1714,7 +1714,7 @@ export default function TicTacChain() {
       const parsedMatch = parseTicTacToeMatch(matchData);
 
       // Fetch per-tier timeout config to get correct match time
-      const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, tierId, totalMatchTime);
+      const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, tierId, totalMatchTime, TIER_CONFIG[tierId]);
       const tierMatchTime = timeoutConfig?.matchTimePerPlayer ?? totalMatchTime;
 
       const {

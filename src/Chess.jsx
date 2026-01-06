@@ -694,7 +694,7 @@ export default function Chess() {
       if (viewingTournament?.tierId !== undefined) {
         // Fetch timeout config for the viewing tournament's tier
         try {
-          const timeoutConfig = await fetchTierTimeoutConfig(contract, viewingTournament.tierId, 300);
+          const timeoutConfig = await fetchTierTimeoutConfig(contract, viewingTournament.tierId, 300, TIER_CONFIG[viewingTournament.tierId]);
           if (timeoutConfig?.matchTimePerPlayer) {
             setDisplayTimeoutConfig(timeoutConfig);
           }
@@ -704,7 +704,7 @@ export default function Chess() {
       } else {
         // No tournament viewing, reset to tier 0 (default)
         try {
-          const timeoutConfig = await fetchTierTimeoutConfig(contract, 0, 300);
+          const timeoutConfig = await fetchTierTimeoutConfig(contract, 0, 300, TIER_CONFIG[0]);
           if (timeoutConfig?.matchTimePerPlayer) {
             setDisplayTimeoutConfig(timeoutConfig);
           }
@@ -2064,7 +2064,7 @@ export default function Chess() {
       }
 
       // Fetch per-tier timeout config to get correct match time
-      const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, tierId, totalMatchTime);
+      const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, tierId, totalMatchTime, TIER_CONFIG[tierId]);
       const tierMatchTime = timeoutConfig?.matchTimePerPlayer ?? totalMatchTime;
 
       // Fetch escalation state using chessMatches mapping
