@@ -1123,6 +1123,9 @@ export default function TicTacChain() {
       const tx = await contract.enrollInTournament(tierId, instanceId, { value: feeInWei });
       await tx.wait();
 
+      // Refresh player activity panel immediately after enrollment
+      playerActivity.refetch();
+
       alert('Successfully enrolled in tournament!');
 
       // Navigate to tournament bracket view
