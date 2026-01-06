@@ -177,7 +177,7 @@ const getPieceSymbol = (piece) => {
 };
 
 // Tournament Bracket Component
-const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceEliminate, onClaimReplacement, onManualStart, onClaimAbandonedPool, onResetEnrollmentWindow, onEnroll, account, loading, syncDots, isEnrolled, entryFee, isFull, contract }) => {
+const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceEliminate, onClaimReplacement, onManualStart, onClaimAbandonedPool, onResetEnrollmentWindow, onEnroll, account, loading, syncDots, isEnrolled, entryFee, isFull, contract, isEnrolledInElite }) => {
   const { tierId, instanceId, status, currentRound, enrolledCount, prizePool, rounds, playerCount, enrolledPlayers, firstEnrollmentTime, countdownActive, enrollmentTimeout } = tournamentData;
 
   // Calculate total rounds based on player count
@@ -248,16 +248,6 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
       }
       if (userActiveMatch) break;
     }
-
-    // Scroll to the active match if found (happens after every sync)
-    if (userActiveMatch && activeMatchRef.current) {
-      setTimeout(() => {
-        activeMatchRef.current?.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center'
-        });
-      }, 300); // Small delay to ensure render is complete
-    }
   }, [account, rounds, status, syncDots]); // Include syncDots to trigger on every sync
 
   // Chess-specific options for match status display
@@ -291,6 +281,16 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
         entryFee={entryFee}
         onEnroll={onEnroll}
         loading={loading}
+        colors={isEnrolledInElite ? {
+          headerBg: 'from-[#fbbf24]/30 to-[#f59e0b]/30',
+          headerBorder: 'border-[#d4a012]/30',
+          text: 'text-[#f5e6c8]',
+          textHover: 'hover:text-[#fff8e7]',
+          textMuted: 'text-[#d4b866]/70',
+          icon: 'text-[#fbbf24]',
+          buttonGradient: 'from-[#fbbf24] to-[#f59e0b]',
+          buttonHover: 'hover:from-[#f59e0b] hover:to-[#d4a012]'
+        } : null}
         renderCountdown={countdownActive && status === 0 ? () => (
           <div className="mt-4 bg-orange-500/20 border border-orange-400/50 rounded-lg p-4">
             <div className="flex items-center justify-between">
@@ -801,26 +801,46 @@ export default function Chess() {
     [...playerActivity.data.activeMatches, ...playerActivity.data.inProgressTournaments, ...playerActivity.data.unfilledTournaments]
       .some((activity) => activity.tierId === 3 || activity.tierId === 7);
 
-  // Elite gold theme
+  // Elite gold theme - comprehensive gold palette
   const eliteTheme = {
     primary: 'rgba(251, 191, 36, 0.5)',
     secondary: 'rgba(245, 158, 11, 0.5)',
     gradient: 'linear-gradient(135deg, #1a0f00 0%, #2d1a00 50%, #1f1200 100%)',
-    border: 'rgba(251, 191, 36, 0.3)',
+    border: 'rgba(212, 160, 18, 0.3)',
     glow: 'rgba(251, 191, 36, 0.4)',
     particleColors: ['#fbbf24', '#f59e0b'],
-    heroGlow: 'from-amber-500 via-yellow-500 to-amber-500',
-    heroIcon: 'text-amber-400',
-    heroTitle: 'from-amber-400 via-yellow-400 to-amber-400',
-    heroText: 'text-amber-200',
-    heroSubtext: 'text-amber-300',
-    buttonGradient: 'from-amber-500 to-yellow-500',
-    buttonHover: 'hover:from-amber-600 hover:to-yellow-600',
-    infoCard: 'from-amber-500/20 to-yellow-500/20',
-    infoBorder: 'border-amber-400/30',
-    infoIcon: 'text-amber-400',
-    infoTitle: 'text-amber-300',
-    infoText: 'text-amber-200'
+    heroGlow: 'from-[#fbbf24] via-[#f59e0b] to-[#d4a012]',
+    heroIcon: 'text-[#fbbf24]',
+    heroTitle: 'from-[#fff8e7] via-[#fbbf24] to-[#f59e0b]',
+    heroText: 'text-[#f5e6c8]',
+    heroSubtext: 'text-[#d4b866]',
+    buttonGradient: 'from-[#fbbf24] to-[#f59e0b]',
+    buttonHover: 'hover:from-[#f59e0b] hover:to-[#d4a012]',
+    infoCard: 'from-[#fbbf24]/20 to-[#f59e0b]/20',
+    infoBorder: 'border-[#d4a012]/30',
+    infoIcon: 'text-[#fbbf24]',
+    infoTitle: 'text-[#fff8e7]',
+    infoText: 'text-[#f5e6c8]',
+    // State colors
+    success: '#22c55e',
+    successBg: 'bg-[#2d4a1c]',
+    successText: 'text-[#22c55e]',
+    successBorder: 'border-[#22c55e]/40',
+    error: '#ef4444',
+    errorBg: 'bg-[#4a1c1c]',
+    errorText: 'text-[#ef4444]',
+    errorBorder: 'border-[#ef4444]/40',
+    info: '#3b82f6',
+    infoBgColor: 'bg-[#1c2d4a]',
+    infoText: 'text-[#3b82f6]',
+    // Text hierarchy
+    heading: 'text-[#fff8e7]',
+    bodyText: 'text-[#f5e6c8]',
+    secondaryText: 'text-[#d4b866]',
+    tertiaryText: 'text-[#a8935a]',
+    mutedText: 'text-[#a8935a]',
+    disabledText: 'text-[#7a6a42]',
+    placeholder: 'text-[#6b5d3a]'
   };
 
   // Default theme (purple/cyan)
@@ -2972,14 +2992,18 @@ export default function Chess() {
       {/* Tournament Invitation Banner - shown when URL params present but not connected */}
       {urlTournamentParams && !account && (
         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 max-w-2xl mx-4 w-full">
-          <div className="bg-gradient-to-r from-purple-600/90 to-blue-600/90 backdrop-blur-lg rounded-xl p-4 border border-purple-400/50 shadow-2xl">
+          <div className={`bg-gradient-to-r backdrop-blur-lg rounded-xl p-4 border shadow-2xl ${
+            isEnrolledInElite
+              ? 'from-[#fbbf24]/90 to-[#f59e0b]/90 border-[#d4a012]/50'
+              : 'from-purple-600/90 to-blue-600/90 border-purple-400/50'
+          }`}>
             <div className="flex items-start gap-3">
-              <Trophy className="text-yellow-400 shrink-0 mt-1" size={24} />
+              <Trophy className={isEnrolledInElite ? 'text-[#fff8e7]' : 'text-yellow-400'} size={24} />
               <div className="flex-1 min-w-0">
-                <p className="text-white font-semibold mb-1">
+                <p className={`font-semibold mb-1 ${isEnrolledInElite ? 'text-[#fff8e7]' : 'text-white'}`}>
                   Tournament Invitation
                 </p>
-                <p className="text-purple-100 text-sm mb-3">
+                <p className={`text-sm mb-3 ${isEnrolledInElite ? 'text-[#f5e6c8]' : 'text-purple-100'}`}>
                   You've been invited to Tournament T{urlTournamentParams.tierId + 1}-I{urlTournamentParams.instanceId + 1}.
                   Connect your wallet to view and join!
                 </p>
@@ -3012,6 +3036,7 @@ export default function Chess() {
           gameEmoji="♔"
           onHeightChange={setPlayerActivityHeight}
           onCollapse={(collapseFn) => { collapseActivityPanelRef.current = collapseFn; }}
+          isElite={isEnrolledInElite}
         />
       )}
 
@@ -3028,7 +3053,7 @@ export default function Chess() {
 
       {/* Trust Banner */}
       <div style={{
-        background: 'rgba(0, 100, 200, 0.2)',
+        background: isEnrolledInElite ? 'rgba(251, 191, 36, 0.15)' : 'rgba(0, 100, 200, 0.2)',
         borderBottom: `1px solid ${currentTheme.border}`,
         backdropFilter: 'blur(10px)',
         position: 'relative',
@@ -3038,20 +3063,20 @@ export default function Chess() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-4 text-xs md:text-sm">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 md:gap-6 justify-center md:justify-start">
               <div className="flex items-center gap-2">
-                <Shield className="text-blue-400" size={16} />
-                <span className="text-blue-100 font-medium">100% On-Chain</span>
+                <Shield className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-blue-400'} size={16} />
+                <span className={`font-medium ${isEnrolledInElite ? 'text-[#fff8e7]' : 'text-blue-100'}`}>100% On-Chain</span>
               </div>
               <div className="flex items-center gap-2">
-                <Lock className="text-blue-400" size={16} />
-                <span className="text-blue-100 font-medium">Immutable Rules</span>
+                <Lock className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-blue-400'} size={16} />
+                <span className={`font-medium ${isEnrolledInElite ? 'text-[#fff8e7]' : 'text-blue-100'}`}>Immutable Rules</span>
               </div>
               <div className="flex items-center gap-2">
-                <Eye className="text-blue-400" size={16} />
-                <span className="text-blue-100 font-medium">Every Move Verifiable</span>
+                <Eye className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-blue-400'} size={16} />
+                <span className={`font-medium ${isEnrolledInElite ? 'text-[#fff8e7]' : 'text-blue-100'}`}>Every Move Verifiable</span>
               </div>
               <div className="flex items-center gap-2">
-                <CheckCircle className="text-blue-400" size={16} />
-                <span className="text-blue-100 font-medium">Zero Trackers</span>
+                <CheckCircle className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-blue-400'} size={16} />
+                <span className={`font-medium ${isEnrolledInElite ? 'text-[#fff8e7]' : 'text-blue-100'}`}>Zero Trackers</span>
               </div>
             </div>
             {EXPLORER_URL && (
@@ -3059,7 +3084,11 @@ export default function Chess() {
                 href={EXPLORER_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 text-blue-300 hover:text-blue-200 transition-colors justify-center md:justify-end"
+                className={`flex items-center gap-2 transition-colors justify-center md:justify-end ${
+                  isEnrolledInElite
+                    ? 'text-[#d4b866] hover:text-[#fbbf24]'
+                    : 'text-blue-300 hover:text-blue-200'
+                }`}
               >
                 <Code size={16} />
                 <span className="font-mono text-xs">{shortenAddress(CONTRACT_ADDRESS)}</span>
@@ -3096,18 +3125,26 @@ export default function Chess() {
 
           {/* Game Info Cards */}
           <div className="grid md:grid-cols-3 gap-4 max-w-4xl mx-auto mb-8">
-            <div className="bg-gradient-to-br from-yellow-500/20 to-amber-500/20 border border-yellow-400/30 rounded-xl p-4">
+            <div className={`bg-gradient-to-br rounded-xl p-4 border ${
+              isEnrolledInElite
+                ? 'from-[#fbbf24]/20 to-[#f59e0b]/20 border-[#d4a012]/30'
+                : 'from-yellow-500/20 to-amber-500/20 border-yellow-400/30'
+            }`}>
               <div className="flex items-center gap-2 mb-2">
-                <Clock className="text-yellow-400" size={20} />
-                <span className="font-bold text-yellow-300">10 minutes per match</span>
+                <Clock className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-yellow-400'} size={20} />
+                <span className={`font-bold ${isEnrolledInElite ? 'text-[#fff8e7]' : 'text-yellow-300'}`}>10 minutes per match</span>
               </div>
-              <p className="text-sm text-yellow-200">
+              <p className={`text-sm ${isEnrolledInElite ? 'text-[#f5e6c8]' : 'text-yellow-200'}`}>
                 Each player gets 10 minutes total for all their moves in the match.
               </p>
             </div>
-            <div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-xl p-4">
+            <div className={`bg-gradient-to-br rounded-xl p-4 border ${
+              isEnrolledInElite
+                ? `${currentTheme.successBg} ${currentTheme.successBorder}`
+                : 'from-green-500/20 to-emerald-500/20 border-green-400/30'
+            }`}>
               <div className="flex items-center gap-2 mb-2">
-                <svg width="20" height="20" viewBox="0 0 256 417" xmlns="http://www.w3.org/2000/svg" className="text-green-400" fill="currentColor">
+                <svg width="20" height="20" viewBox="0 0 256 417" xmlns="http://www.w3.org/2000/svg" className={isEnrolledInElite ? currentTheme.successText : 'text-green-400'} fill="currentColor">
                   <path d="M127.961 0l-2.795 9.5v275.668l2.795 2.79 127.962-75.638z" fillOpacity="0.6"/>
                   <path d="M127.962 0L0 212.32l127.962 75.639V154.158z"/>
                   <path d="M127.961 312.187l-1.575 1.92v98.199l1.575 4.6L256 236.587z" fillOpacity="0.6"/>
@@ -3115,25 +3152,33 @@ export default function Chess() {
                   <path d="M127.961 287.958l127.96-75.637-127.96-58.162z" fillOpacity="0.2"/>
                   <path d="M0 212.32l127.96 75.638v-133.8z" fillOpacity="0.6"/>
                 </svg>
-                <span className="font-bold text-green-300">Instant ETH Payouts</span>
+                <span className={`font-bold ${isEnrolledInElite ? 'text-[#fff8e7]' : 'text-green-300'}`}>Instant ETH Payouts</span>
               </div>
-              <p className="text-sm text-green-200">
+              <p className={`text-sm ${isEnrolledInElite ? 'text-[#f5e6c8]' : 'text-green-200'}`}>
                 Winners paid automatically on-chain. No delays, no middlemen.
               </p>
             </div>
-            <div className="relative bg-gradient-to-br from-purple-500/20 to-violet-500/20 border border-purple-400/30 rounded-xl p-4">
+            <div className={`relative bg-gradient-to-br rounded-xl p-4 border ${
+              isEnrolledInElite
+                ? 'from-[#fbbf24]/20 to-[#f59e0b]/20 border-[#d4a012]/30'
+                : 'from-purple-500/20 to-violet-500/20 border-purple-400/30'
+            }`}>
               <div className="flex items-center gap-2 mb-2">
-                <Shield className="text-purple-400" size={20} />
-                <span className="font-bold text-purple-300">Impossible to grief</span>
+                <Shield className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-purple-400'} size={20} />
+                <span className={`font-bold ${isEnrolledInElite ? 'text-[#fff8e7]' : 'text-purple-300'}`}>Impossible to grief</span>
               </div>
               <a
                 href="#user-manual"
-                className="absolute top-3 right-3 text-purple-400 hover:text-purple-300 transition-colors"
+                className={`absolute top-3 right-3 transition-colors ${
+                  isEnrolledInElite
+                    ? 'text-[#d4b866] hover:text-[#fbbf24]'
+                    : 'text-purple-400 hover:text-purple-300'
+                }`}
                 title="Learn more about anti-griefing"
               >
                 <HelpCircle size={16} />
               </a>
-              <p className="text-sm text-purple-200">
+              <p className={`text-sm ${isEnrolledInElite ? 'text-[#f5e6c8]' : 'text-purple-200'}`}>
                 Anti-stalling mechanisms ensure every match completes. No admin required.
               </p>
             </div>
@@ -3151,9 +3196,17 @@ export default function Chess() {
               {loading ? 'Connecting...' : 'Connect Wallet to Enter'}
             </button>
           ) : (
-            <div className="inline-flex items-center gap-4 bg-green-500/20 border border-green-400/50 px-8 py-4 rounded-2xl">
-              <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-              <span className="font-mono text-lg">{shortenAddress(account)}</span>
+            <div className={`inline-flex items-center gap-4 px-8 py-4 rounded-2xl ${
+              isEnrolledInElite
+                ? `${currentTheme.successBg} ${currentTheme.successBorder} border`
+                : 'bg-green-500/20 border border-green-400/50'
+            }`}>
+              <div className={`w-3 h-3 rounded-full animate-pulse ${
+                isEnrolledInElite ? 'bg-[#22c55e]' : 'bg-green-400'
+              }`}></div>
+              <span className={`font-mono text-lg ${isEnrolledInElite ? 'text-[#fff8e7]' : 'text-white'}`}>
+                {shortenAddress(account)}
+              </span>
             </div>
           )}
 
@@ -3256,6 +3309,7 @@ export default function Chess() {
                   entryFee={viewingTournament?.entryFee || '0'}
                   isFull={viewingTournament?.enrolledCount >= viewingTournament?.playerCount}
                   contract={contract}
+                  isEnrolledInElite={isEnrolledInElite}
                 />
               </div>
             ) : (
@@ -3280,8 +3334,12 @@ export default function Chess() {
                 {metadataLoading && (
                   <div className="text-center py-12">
                     <div className="inline-block">
-                      <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
-                      <p className="text-purple-300">Loading tournaments...</p>
+                      <div className={`w-16 h-16 border-4 rounded-full animate-spin mx-auto mb-4 ${
+                        isEnrolledInElite
+                          ? 'border-[#f59e0b]/30 border-t-[#fbbf24]'
+                          : 'border-purple-500/30 border-t-purple-500'
+                      }`}></div>
+                      <p className={isEnrolledInElite ? 'text-[#d4b866]' : 'text-purple-300'}>Loading tournaments...</p>
                     </div>
                   </div>
                 )}
@@ -3406,18 +3464,32 @@ export default function Chess() {
                             className={`w-full backdrop-blur-lg rounded-xl p-4 border transition-all cursor-pointer ${
                               isElite
                                 ? 'bg-gradient-to-r from-amber-600/40 via-yellow-500/40 to-amber-600/40 border-amber-400/70 hover:border-amber-300 shadow-[0_0_30px_rgba(251,191,36,0.5),0_0_60px_rgba(251,191,36,0.3),inset_0_0_20px_rgba(251,191,36,0.1)] hover:shadow-[0_0_40px_rgba(251,191,36,0.7),0_0_80px_rgba(251,191,36,0.4),inset_0_0_30px_rgba(251,191,36,0.15)] animate-[pulse_3s_ease-in-out_infinite]'
-                                : 'bg-gradient-to-r from-purple-600/20 to-blue-600/20 border-purple-400/40 hover:border-purple-400/60'
+                                : isEnrolledInElite
+                                  ? 'bg-gradient-to-r from-[#fbbf24]/20 to-[#f59e0b]/20 border-[#d4a012]/40 hover:border-[#d4a012]/60'
+                                  : 'bg-gradient-to-r from-purple-600/20 to-blue-600/20 border-purple-400/40 hover:border-purple-400/60'
                             }`}
                           >
                             <h3 className={`text-2xl font-bold flex items-center gap-2 flex-wrap ${
-                              isElite ? 'text-amber-300 drop-shadow-[0_0_10px_rgba(251,191,36,0.8)]' : 'text-purple-400'
+                              isElite
+                                ? 'text-amber-300 drop-shadow-[0_0_10px_rgba(251,191,36,0.8)]'
+                                : isEnrolledInElite
+                                  ? 'text-[#fff8e7]'
+                                  : 'text-purple-400'
                             }`}>
                               ♔ {getTierName(metadata.playerCount, tierId)}
-                              <span className={`text-sm font-normal ${isElite ? 'text-amber-200/90' : 'text-purple-300'}`}>• {metadata.playerCount} players total</span>
-                              <span className={`text-sm font-normal ${isElite ? 'text-amber-200/90' : 'text-purple-300'}`}>• {metadata.entryFee} ETH entry</span>
-                              <span className={`text-sm font-normal ${isElite ? 'text-amber-200/90' : 'text-purple-300'}`}>• {totalPrizePool} ETH prize pool</span>
+                              <span className={`text-sm font-normal ${
+                                isElite ? 'text-amber-200/90' : isEnrolledInElite ? 'text-[#d4b866]' : 'text-purple-300'
+                              }`}>• {metadata.playerCount} players total</span>
+                              <span className={`text-sm font-normal ${
+                                isElite ? 'text-amber-200/90' : isEnrolledInElite ? 'text-[#d4b866]' : 'text-purple-300'
+                              }`}>• {metadata.entryFee} ETH entry</span>
+                              <span className={`text-sm font-normal ${
+                                isElite ? 'text-amber-200/90' : isEnrolledInElite ? 'text-[#d4b866]' : 'text-purple-300'
+                              }`}>• {totalPrizePool} ETH prize pool</span>
                               <span className="ml-auto flex items-center gap-2">
-                                {allInstances.length > 0 && <span className={`text-sm font-normal ${isElite ? 'text-amber-200/90' : 'text-purple-300'}`}>{activePlayersCount} active enrollments</span>}
+                                {allInstances.length > 0 && <span className={`text-sm font-normal ${
+                                  isElite ? 'text-amber-200/90' : isEnrolledInElite ? 'text-[#d4b866]' : 'text-purple-300'
+                                }`}>{activePlayersCount} active enrollments</span>}
                                 <ChevronDown
                                   size={24}
                                   className={`transition-transform duration-200 ${expandedTiers[tierId] ? 'rotate-180' : ''}`}
@@ -3431,9 +3503,19 @@ export default function Chess() {
                               {isLoading ? (
                                 <div className="text-center py-8">
                                   <div className={`w-10 h-10 border-4 rounded-full animate-spin mx-auto mb-3 ${
-                                    isElite ? 'border-amber-500/30 border-t-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.6)]' : 'border-purple-500/30 border-t-purple-500'
+                                    isElite
+                                      ? 'border-amber-500/30 border-t-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.6)]'
+                                      : isEnrolledInElite
+                                        ? 'border-[#f59e0b]/30 border-t-[#fbbf24]'
+                                        : 'border-purple-500/30 border-t-purple-500'
                                   }`}></div>
-                                  <p className={`text-sm ${isElite ? 'text-amber-200 drop-shadow-[0_0_8px_rgba(251,191,36,0.6)]' : 'text-purple-300'}`}>Loading {getTierName(metadata.playerCount, tierId)} instances...</p>
+                                  <p className={`text-sm ${
+                                    isElite
+                                      ? 'text-amber-200 drop-shadow-[0_0_8px_rgba(251,191,36,0.6)]'
+                                      : isEnrolledInElite
+                                        ? 'text-[#d4b866]'
+                                        : 'text-purple-300'
+                                  }`}>Loading {getTierName(metadata.playerCount, tierId)} instances...</p>
                                 </div>
                               ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -3487,7 +3569,11 @@ export default function Chess() {
                                 <div className="mt-6 text-center">
                                   <button
                                     onClick={() => showMoreInstances(tierId)}
-                                    className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-semibold py-3 px-8 rounded-xl transition-all transform hover:scale-105 flex items-center gap-2 mx-auto"
+                                    className={`bg-gradient-to-r text-white font-semibold py-3 px-8 rounded-xl transition-all transform hover:scale-105 flex items-center gap-2 mx-auto ${
+                                      isEnrolledInElite
+                                        ? 'from-[#fbbf24] to-[#f59e0b] hover:from-[#f59e0b] hover:to-[#d4a012]'
+                                        : 'from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600'
+                                    }`}
                                   >
                                     <ChevronDown size={20} />
                                     Show More ({allInstances.length - visibleCount} remaining)
@@ -3524,17 +3610,27 @@ export default function Chess() {
 
                 {/* Empty State - show when contract not initialized */}
                 {!metadataLoading && !connectionError && !allInstancesInitialized && (
-                  <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-12 border border-purple-400/30 text-center">
-                    <Trophy className="text-purple-400/50 mx-auto mb-4" size={64} />
-                    <h3 className="text-2xl font-bold text-purple-300 mb-2">No Tournaments Available</h3>
-                    <p className="text-purple-200/70 mb-6">Check back soon for new tournaments!</p>
+                  <div className={`bg-gradient-to-r backdrop-blur-lg rounded-2xl p-12 border text-center ${
+                    isEnrolledInElite
+                      ? 'from-[#fbbf24]/20 to-[#f59e0b]/20 border-[#d4a012]/30'
+                      : 'from-purple-600/20 to-blue-600/20 border-purple-400/30'
+                  }`}>
+                    <Trophy className={`mx-auto mb-4 ${isEnrolledInElite ? 'text-[#fbbf24]/50' : 'text-purple-400/50'}`} size={64} />
+                    <h3 className={`text-2xl font-bold mb-2 ${isEnrolledInElite ? 'text-[#fff8e7]' : 'text-purple-300'}`}>No Tournaments Available</h3>
+                    <p className={`mb-6 ${isEnrolledInElite ? 'text-[#d4b866]/70' : 'text-purple-200/70'}`}>Check back soon for new tournaments!</p>
 
                     {/* Initialize Button - only show if not initialized and wallet connected */}
                     {account && !allInstancesInitialized && (
                       <button
                         onClick={handleInitializeAllInstances}
                         disabled={initializingInstances}
-                        className="px-8 py-4 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-bold rounded-xl shadow-lg transition-all duration-200 transform hover:scale-105"
+                        className={`px-8 py-4 bg-gradient-to-r text-white font-bold rounded-xl shadow-lg transition-all duration-200 transform hover:scale-105 ${
+                          initializingInstances
+                            ? 'from-gray-600 to-gray-700 cursor-not-allowed'
+                            : isEnrolledInElite
+                              ? 'from-[#fbbf24] to-[#f59e0b] hover:from-[#f59e0b] hover:to-[#d4a012]'
+                              : 'from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600'
+                        }`}
                       >
                         {initializingInstances ? (
                           <span className="flex items-center gap-2">
@@ -3597,6 +3693,7 @@ export default function Chess() {
             enrollmentLevel2Delay: config.timeouts.enrollmentLevel2Delay
           }))}
           raffleThresholds={['0.5', '1', '2']}
+          isElite={isEnrolledInElite}
         />
       </div>
 

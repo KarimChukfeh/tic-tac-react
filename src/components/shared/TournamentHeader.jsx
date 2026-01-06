@@ -91,10 +91,13 @@ const TournamentHeader = ({
   onManualStart,
   onClaimAbandonedPool,
   onResetEnrollmentWindow,
-  contract
+  contract,
+
+  // Optional: Custom colors override
+  colors: customColors
 }) => {
   const config = GAME_CONFIGS[gameType] || GAME_CONFIGS.tictactoe;
-  const { colors } = config;
+  const colors = customColors || config.colors;
   const totalRounds = Math.ceil(Math.log2(playerCount));
 
   // State for copy feedback

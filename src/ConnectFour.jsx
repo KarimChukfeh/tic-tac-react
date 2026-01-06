@@ -461,16 +461,6 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
       }
       if (userActiveMatch) break;
     }
-
-    // Scroll to the active match if found (happens after every sync)
-    if (userActiveMatch && activeMatchRef.current) {
-      setTimeout(() => {
-        activeMatchRef.current?.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center'
-        });
-      }, 300); // Small delay to ensure render is complete
-    }
   }, [account, rounds, status, syncDots]); // Include syncDots to trigger on every sync
 
   // TicTacToe-specific options for match status display

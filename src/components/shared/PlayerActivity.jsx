@@ -30,6 +30,7 @@ const PlayerActivity = ({
   gameEmoji,
   onHeightChange,
   onCollapse,
+  isElite = false,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const expandedPanelRef = useRef(null);
@@ -163,7 +164,11 @@ const PlayerActivity = ({
       {!isExpanded && (
         <button
           onClick={() => setIsExpanded(true)}
-          className="bg-gradient-to-br from-purple-600/90 to-blue-600/90 backdrop-blur-lg rounded-full p-2 md:p-4 border-2 border-purple-400/40 hover:border-purple-400/70 transition-all hover:scale-110 shadow-xl relative group"
+          className={`bg-gradient-to-br backdrop-blur-lg rounded-full p-2 md:p-4 border-2 transition-all hover:scale-110 shadow-xl relative group ${
+            isElite
+              ? 'from-[#fbbf24]/90 to-[#f59e0b]/90 border-[#d4a012]/40 hover:border-[#d4a012]/70'
+              : 'from-purple-600/90 to-blue-600/90 border-purple-400/40 hover:border-purple-400/70'
+          }`}
           aria-label="Open player activity"
         >
           <Users size={16} className="text-white md:w-6 md:h-6" />
@@ -227,8 +232,8 @@ const PlayerActivity = ({
             {/* Wallet Address & Earnings */}
             <div className="space-y-1">
               <div className="text-xs">
-                <span className="text-blue-400">You are: </span>
-                <span className="text-blue-400 font-mono font-bold">{shortenAddress(account)}</span>
+                <span className={isElite ? 'text-[#fbbf24]' : 'text-blue-400'}>You are: </span>
+                <span className={`font-mono font-bold ${isElite ? 'text-[#fbbf24]' : 'text-blue-400'}`}>{shortenAddress(account)}</span>
               </div>
               {!loading && activity?.totalEarnings !== undefined && (
                 <div className="flex items-center gap-1.5 text-xs">
@@ -245,7 +250,7 @@ const PlayerActivity = ({
           {/* Loading State */}
           {loading ? (
             <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-400 mx-auto"></div>
+              <div className={`animate-spin rounded-full h-8 w-8 border-b-2 mx-auto ${isElite ? 'border-[#fbbf24]' : 'border-purple-400'}`}></div>
               <p className="text-slate-400 mt-2 text-sm">Loading activity...</p>
             </div>
           ) : !hasActivity ? (
@@ -259,7 +264,7 @@ const PlayerActivity = ({
               {/* Priority 1: Active Matches */}
               {displayMatches && displayMatches.length > 0 && (
                 <div className="mb-6">
-                  <h4 className="text-purple-300 font-semibold text-sm mb-3 flex items-center gap-2 uppercase">
+                  <h4 className={`font-semibold text-sm mb-3 flex items-center gap-2 uppercase ${isElite ? 'text-[#fff8e7]' : 'text-purple-300'}`}>
                     <Zap size={16} className="text-yellow-400" />
                     Active Matches ({displayMatches.length})
                   </h4>
@@ -408,7 +413,7 @@ const PlayerActivity = ({
               {/* Priority 2: In-Progress Tournaments (Waiting) */}
               {activity.inProgressTournaments && activity.inProgressTournaments.length > 0 && (
                 <div className="mb-6">
-                  <h4 className="text-purple-300 font-semibold text-sm mb-3 flex items-center gap-2 uppercase">
+                  <h4 className={`font-semibold text-sm mb-3 flex items-center gap-2 uppercase ${isElite ? 'text-[#fff8e7]' : 'text-purple-300'}`}>
                     <Trophy size={16} className="text-cyan-400" />
                     Tournaments In Progress ({activity.inProgressTournaments.length})
                   </h4>
@@ -433,7 +438,11 @@ const PlayerActivity = ({
                         )}
                         <button
                           onClick={() => onEnterTournament(tournament.tierId, tournament.instanceId)}
-                          className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition-all flex items-center justify-center gap-2 text-sm"
+                          className={`w-full bg-gradient-to-r text-white font-semibold py-2 px-4 rounded-lg transition-all flex items-center justify-center gap-2 text-sm ${
+                            isElite
+                              ? 'from-[#fbbf24] to-[#f59e0b] hover:from-[#f59e0b] hover:to-[#d4a012]'
+                              : 'from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600'
+                          }`}
                         >
                           <Eye size={16} />
                           View Bracket
@@ -447,7 +456,7 @@ const PlayerActivity = ({
               {/* Priority 3: Unfilled Tournaments (Enrollment) */}
               {activity.unfilledTournaments && activity.unfilledTournaments.length > 0 && (
                 <div>
-                  <h4 className="text-purple-300 font-semibold text-sm mb-3 flex items-center gap-2 uppercase">
+                  <h4 className={`font-semibold text-sm mb-3 flex items-center gap-2 uppercase ${isElite ? 'text-[#fff8e7]' : 'text-purple-300'}`}>
                     <Clock size={16} className="text-orange-400" />
                     Waiting for Players ({activity.unfilledTournaments.length})
                   </h4>
