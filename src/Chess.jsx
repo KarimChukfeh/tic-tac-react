@@ -177,7 +177,7 @@ const getPieceSymbol = (piece) => {
 };
 
 // Tournament Bracket Component
-const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceEliminate, onClaimReplacement, onManualStart, onClaimAbandonedPool, onResetEnrollmentWindow, onEnroll, account, loading, syncDots, isEnrolled, entryFee, isFull, contract, isEnrolledInElite }) => {
+const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onSpectateMatch, onForceEliminate, onClaimReplacement, onManualStart, onClaimAbandonedPool, onResetEnrollmentWindow, onEnroll, account, loading, syncDots, isEnrolled, entryFee, isFull, contract, isEnrolledInElite }) => {
   const { tierId, instanceId, status, currentRound, enrolledCount, prizePool, rounds, playerCount, enrolledPlayers, firstEnrollmentTime, countdownActive, enrollmentTimeout } = tournamentData;
 
   // Calculate total rounds based on player count
@@ -358,6 +358,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
                         account={account}
                         loading={loading}
                         onEnterMatch={onEnterMatch}
+                        onSpectateMatch={onSpectateMatch}
                         onForceEliminate={onForceEliminate}
                         onClaimReplacement={onClaimReplacement}
                         playerIcons={{ player1: '♔', player2: '♚' }}
@@ -648,6 +649,7 @@ export default function Chess() {
   const [matchLoading, setMatchLoading] = useState(false);
   const [moveHistory, setMoveHistory] = useState([]);
   const [syncDots, setSyncDots] = useState(1);
+  const [isSpectator, setIsSpectator] = useState(false); // Track if user is spectating (not a participant)
   const [matchEndResult, setMatchEndResult] = useState(null); // 'win' | 'lose' | 'draw' | 'forfeit_win' | 'forfeit_lose' | 'double_forfeit'
   const [matchEndWinnerLabel, setMatchEndWinnerLabel] = useState('');
   const [matchEndWinner, setMatchEndWinner] = useState(null); // Winner address for modal display
@@ -2583,6 +2585,82 @@ export default function Chess() {
     }
   };
 
+  // Handle spectating a match (for non-participants)
+  const handleSpectateMatch = async (tierId, instanceId, roundNumber, matchNumber) => {
+    if (!contract) {
+      alert('Contract not loaded');
+      return;
+    }
+
+    try {
+      setMatchLoading(true);
+      setIsSpectator(true); // Mark as spectator mode
+
+      // Fetch tournament info using getTournamentInfo() view function
+      const tournamentInfo = await contract.getTournamentInfo(tierId, instanceId);
+      // Get tier config from hardcoded data
+      const tierConfig = TIER_CONFIG[tierId];
+      const playerCount = tierConfig.playerCount;
+      const prizePool = tournamentInfo[3]; // prizePool at index 3 in getTournamentInfo
+
+      const matchData = await contract.getMatch(tierId, instanceId, roundNumber, matchNumber);
+
+      const player1 = matchData.common.player1;
+      const player2 = matchData.common.player2;
+
+      const zeroAddress = '0x0000000000000000000000000000000000000000';
+      let actualPlayer1 = player1;
+      let actualPlayer2 = player2;
+
+      if (player1.toLowerCase() === zeroAddress) {
+        // Get first two enrolled players
+        const enrolledCount = Number(tournamentInfo[2]); // enrolledCount at index 2 in getTournamentInfo
+        if (enrolledCount >= 2) {
+          actualPlayer1 = await contract.enrolledPlayers(tierId, instanceId, 0);
+          actualPlayer2 = await contract.enrolledPlayers(tierId, instanceId, 1);
+        }
+      }
+
+      // Use a dummy account for refreshMatchData if user not connected
+      const viewerAccount = account || zeroAddress;
+
+      const updated = await refreshMatchData(contract, viewerAccount, {
+        tierId, instanceId, roundNumber, matchNumber,
+        player1: actualPlayer1,
+        player2: actualPlayer2,
+        playerCount, // Add tournament context
+        prizePool    // Add tournament context
+      }, matchTimePerPlayer);
+
+      if (updated) {
+        setCurrentMatch(updated);
+        // Initialize board ref for move detection
+        previousBoardRef.current = [...updated.board];
+        // Fetch move history from blockchain events
+        const history = await fetchMoveHistory(contract, tierId, instanceId, roundNumber, matchNumber);
+        setMoveHistory(history);
+
+        // Scroll to match view after rendering
+        setTimeout(() => {
+          if (matchViewRef.current) {
+            matchViewRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+          // Collapse activity panel after scrolling
+          if (collapseActivityPanelRef.current) {
+            collapseActivityPanelRef.current();
+          }
+        }, 100);
+      }
+
+      setMatchLoading(false);
+    } catch (error) {
+      console.error('Error loading match for spectating:', error);
+      alert(`Error loading match: ${error.message}`);
+      setMatchLoading(false);
+      setIsSpectator(false);
+    }
+  };
+
   // Close match view and refresh tournament bracket
   const closeMatch = async () => {
     const tournamentInfo = currentMatch ? {
@@ -2595,6 +2673,7 @@ export default function Chess() {
 
     setCurrentMatch(null);
     setMoveHistory([]);
+    setIsSpectator(false); // Reset spectator mode
     previousBoardRef.current = null;
 
     // Refresh tournament bracket and cached stats (with loading indicator)
@@ -3212,8 +3291,8 @@ export default function Chess() {
           <WhyArbitrum variant="blue" />
         </div>
 
-        {/* Match View - Shows when player enters a match */}
-        {account && contract && currentMatch && (
+        {/* Match View - Shows when player enters a match or spectates */}
+        {contract && currentMatch && (
           <div ref={matchViewRef}>
             <GameMatchLayout
             gameType="chess"
@@ -3222,9 +3301,9 @@ export default function Chess() {
             loading={matchLoading}
             syncDots={syncDots}
             onClose={closeMatch}
-            onClaimTimeoutWin={handleClaimTimeoutWin}
-            onForceEliminate={handleForceEliminateStalledMatch}
-            onClaimReplacement={handleClaimMatchSlotByReplacement}
+            onClaimTimeoutWin={isSpectator ? null : handleClaimTimeoutWin}
+            onForceEliminate={isSpectator ? null : handleForceEliminateStalledMatch}
+            onClaimReplacement={isSpectator ? null : handleClaimMatchSlotByReplacement}
             tournamentRounds={viewingTournament?.rounds || null}
             currentRoundNumber={currentMatch.roundNumber}
             playerConfig={{
@@ -3232,6 +3311,7 @@ export default function Chess() {
               player2: { icon: '♚', label: 'Black' }
             }}
             layout="sidebar"
+            isSpectator={isSpectator}
             renderPlayer1Extra={currentMatch.whiteInCheck ? () => (
               <div className="bg-red-500/20 border border-red-400 rounded-lg p-2 text-center mt-2">
                 <span className="text-red-300 text-xs font-bold">⚠️ CHECK</span>
@@ -3263,9 +3343,9 @@ export default function Chess() {
             {/* Chess Board Component */}
             <ChessBoard
               board={currentMatch.board}
-              onMove={handleMakeMove}
+              onMove={isSpectator ? null : handleMakeMove}
               currentTurn={currentMatch.currentTurn}
-              account={account}
+              account={isSpectator ? null : account}
               player1={currentMatch.player1}
               player2={currentMatch.player2}
               firstPlayer={currentMatch.firstPlayer}
@@ -3294,6 +3374,7 @@ export default function Chess() {
                   tournamentData={viewingTournament}
                   onBack={handleBackToTournaments}
                   onEnterMatch={handlePlayMatch}
+                  onSpectateMatch={handleSpectateMatch}
                   onForceEliminate={handleForceEliminateStalledMatch}
                   onClaimReplacement={handleClaimMatchSlotByReplacement}
                   onManualStart={handleManualStart}

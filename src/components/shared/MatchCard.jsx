@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { Play, Award, Clock, HelpCircle, Zap, Users } from 'lucide-react';
+import { Play, Award, Clock, HelpCircle, Zap, Users, Eye } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
 import { getMatchStatusText, getMatchStatusColor } from '../../utils/matchStatus';
 import { calculatePlayerTimes } from '../../utils/timeCalculations';
@@ -189,6 +189,7 @@ const getBorderClass = (isUserMatch, escalation, defaultBorder = 'border-purple-
  * @param {string|null} props.account - Current user's address
  * @param {boolean} props.loading - Loading state
  * @param {Function} props.onEnterMatch - Handler for entering a match
+ * @param {Function} [props.onSpectateMatch] - Handler for spectating a match
  * @param {Function} [props.onForceEliminate] - Handler for force elimination (escalation 2)
  * @param {Function} [props.onClaimReplacement] - Handler for claiming replacement (escalation 3)
  * @param {Object} [props.playerIcons] - Custom player icons { player1: string, player2: string }
@@ -207,6 +208,7 @@ const MatchCard = ({
   account,
   loading,
   onEnterMatch,
+  onSpectateMatch,
   onForceEliminate,
   onClaimReplacement,
   playerIcons,
@@ -449,6 +451,18 @@ const MatchCard = ({
           >
             <Play size={16} />
             {match.matchStatus === 0 ? 'Waiting to Start' : 'Enter Match'}
+          </button>
+        )}
+
+        {/* Spectate Button for non-participants (active matches only) */}
+        {!isUserMatch && match.matchStatus === 1 && onSpectateMatch && (
+          <button
+            onClick={() => onSpectateMatch(tierId, instanceId, roundIdx, matchIdx)}
+            disabled={loading}
+            className="w-full mt-2 bg-gradient-to-r from-blue-500/80 to-purple-500/80 hover:from-blue-600/90 hover:to-purple-600/90 disabled:from-gray-500 disabled:to-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
+          >
+            <Eye size={16} />
+            Spectate Match
           </button>
         )}
 

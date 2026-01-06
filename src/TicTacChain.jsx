@@ -97,7 +97,7 @@ const TIER_CONFIG = {
 };
 
 // Tournament Bracket Component
-const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceEliminate, onClaimReplacement, onManualStart, onClaimAbandonedPool, onResetEnrollmentWindow, onEnroll, account, loading, syncDots, isEnrolled, entryFee, isFull, contract }) => {
+const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onSpectateMatch, onForceEliminate, onClaimReplacement, onManualStart, onClaimAbandonedPool, onResetEnrollmentWindow, onEnroll, account, loading, syncDots, isEnrolled, entryFee, isFull, contract }) => {
   const { tierId, instanceId, status, currentRound, enrolledCount, prizePool, rounds, playerCount, enrolledPlayers, firstEnrollmentTime, countdownActive, enrollmentTimeout } = tournamentData;
 
   // Calculate total rounds based on player count
@@ -225,6 +225,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
                         account={account}
                         loading={loading}
                         onEnterMatch={onEnterMatch}
+                        onSpectateMatch={onSpectateMatch}
                         onForceEliminate={onForceEliminate}
                         onClaimReplacement={onClaimReplacement}
                         matchStatusOptions={matchStatusOptions}
@@ -318,6 +319,7 @@ export default function TicTacChain() {
   const [matchLoading, setMatchLoading] = useState(false);
   const [moveHistory, setMoveHistory] = useState([]);
   const [syncDots, setSyncDots] = useState(1);
+  const [isSpectator, setIsSpectator] = useState(false); // Track if user is spectating (not a participant)
   const [matchEndResult, setMatchEndResult] = useState(null); // 'win' | 'lose' | 'draw' | 'forfeit_win' | 'forfeit_lose' | 'double_forfeit'
   const [matchEndWinnerLabel, setMatchEndWinnerLabel] = useState('');
   const [matchEndWinner, setMatchEndWinner] = useState(null); // Winner address for modal display
@@ -2049,6 +2051,92 @@ export default function TicTacChain() {
     }
   };
 
+  const handleSpectateMatch = async (tierId, instanceId, roundNumber, matchNumber) => {
+    if (!contract) {
+      alert('Contract not loaded');
+      return;
+    }
+
+    try {
+      setMatchLoading(true);
+      setIsSpectator(true); // Mark as spectator mode
+
+      // Fetch tournament info using getTournamentInfo() view function
+      const tournamentInfo = await contract.getTournamentInfo(tierId, instanceId);
+      // Get tier config from hardcoded data
+      const tierConfig = TIER_CONFIG[tierId];
+      const playerCount = tierConfig.playerCount;
+      const prizePool = tournamentInfo[3]; // prizePool at index 3 in getTournamentInfo
+
+      const matchData = await contract.getMatch(tierId, instanceId, roundNumber, matchNumber);
+      const parsedMatch = parseTicTacToeMatch(matchData);
+
+      const player1 = parsedMatch.player1;
+      const player2 = parsedMatch.player2;
+
+      const zeroAddress = '0x0000000000000000000000000000000000000000';
+      let actualPlayer1 = player1;
+      let actualPlayer2 = player2;
+
+      if (player1.toLowerCase() === zeroAddress) {
+        // Get enrolled players by iterating through enrolledPlayers mapping
+        const enrolledCount = Number(tournamentInfo[2]); // enrolledCount at index 2 in getTournamentInfo
+        const enrolledPlayers = [];
+        for (let i = 0; i < Math.min(2, enrolledCount); i++) {
+          try {
+            const player = await contract.enrolledPlayers(tierId, instanceId, i);
+            enrolledPlayers.push(player);
+          } catch (err) {
+            console.warn(`Could not fetch enrolled player ${i}:`, err);
+            break;
+          }
+        }
+        if (enrolledPlayers.length >= 2) {
+          actualPlayer1 = enrolledPlayers[0];
+          actualPlayer2 = enrolledPlayers[1];
+        }
+      }
+
+      // Use a dummy account for refreshMatchData if user not connected
+      const viewerAccount = account || zeroAddress;
+
+      const updated = await refreshMatchData(contract, viewerAccount, {
+        tierId, instanceId, roundNumber, matchNumber,
+        player1: actualPlayer1,
+        player2: actualPlayer2,
+        playerCount, // Add tournament context
+        prizePool    // Add tournament context
+      }, matchTimePerPlayer);
+
+      if (updated) {
+        setCurrentMatch(updated);
+        // Initialize board ref for move detection
+        previousBoardRef.current = [...updated.board];
+        // Fetch move history from blockchain events
+        const history = await fetchMoveHistory(contract, tierId, instanceId, roundNumber, matchNumber);
+        setMoveHistory(history);
+
+        // Scroll to match view after rendering
+        setTimeout(() => {
+          if (matchViewRef.current) {
+            matchViewRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+          // Collapse activity panel after scrolling
+          if (collapseActivityPanelRef.current) {
+            collapseActivityPanelRef.current();
+          }
+        }, 100);
+      }
+
+      setMatchLoading(false);
+    } catch (error) {
+      console.error('Error loading match for spectating:', error);
+      alert(`Error loading match: ${error.message}`);
+      setMatchLoading(false);
+      setIsSpectator(false);
+    }
+  };
+
   // Close match view and refresh tournament bracket
   const closeMatch = async () => {
     const tournamentInfo = currentMatch ? {
@@ -2061,6 +2149,7 @@ export default function TicTacChain() {
 
     setCurrentMatch(null);
     setMoveHistory([]);
+    setIsSpectator(false); // Reset spectator mode
     previousBoardRef.current = null;
 
     // Refresh tournament bracket and cached stats (with loading indicator)
@@ -2626,8 +2715,8 @@ export default function TicTacChain() {
           <WhyArbitrum variant="blue" />
         </div>
 
-        {/* Match View - Shows when player enters a match */}
-        {account && contract && currentMatch && (
+        {/* Match View - Shows when player enters a match or spectates */}
+        {contract && currentMatch && (
           <div ref={matchViewRef}>
             <GameMatchLayout
             gameType="tictactoe"
@@ -2636,9 +2725,9 @@ export default function TicTacChain() {
             loading={matchLoading}
             syncDots={syncDots}
             onClose={closeMatch}
-            onClaimTimeoutWin={handleClaimTimeoutWin}
-            onForceEliminate={handleForceEliminateStalledMatch}
-            onClaimReplacement={handleClaimMatchSlotByReplacement}
+            onClaimTimeoutWin={isSpectator ? null : handleClaimTimeoutWin}
+            onForceEliminate={isSpectator ? null : handleForceEliminateStalledMatch}
+            onClaimReplacement={isSpectator ? null : handleClaimMatchSlotByReplacement}
             tournamentRounds={viewingTournament?.rounds || null}
             currentRoundNumber={currentMatch.roundNumber}
             playerConfig={{
@@ -2646,6 +2735,7 @@ export default function TicTacChain() {
               player2: { icon: 'O', label: 'Player 2' }
             }}
             layout="three-column"
+            isSpectator={isSpectator}
             renderPlayer1Stats={() => (
               <>
                 <div className="bg-black/20 rounded-lg p-3">
@@ -2697,8 +2787,8 @@ export default function TicTacChain() {
               {currentMatch.board.map((cell, idx) => (
                 <button
                   key={idx}
-                  onClick={() => handleCellClick(idx)}
-                  disabled={matchLoading || currentMatch.matchStatus === 2 || !currentMatch.isYourTurn}
+                  onClick={isSpectator ? null : () => handleCellClick(idx)}
+                  disabled={isSpectator || matchLoading || currentMatch.matchStatus === 2 || !currentMatch.isYourTurn}
                   className={`aspect-square rounded-xl flex items-center justify-center text-4xl font-bold transition-all transform hover:scale-105 disabled:cursor-not-allowed ${
                     cell === 0
                       ? 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-200'
@@ -2726,6 +2816,7 @@ export default function TicTacChain() {
                   tournamentData={viewingTournament}
                   onBack={handleBackToTournaments}
                   onEnterMatch={handlePlayMatch}
+                  onSpectateMatch={handleSpectateMatch}
                   onForceEliminate={handleForceEliminateStalledMatch}
                   onClaimReplacement={handleClaimMatchSlotByReplacement}
                   onManualStart={handleManualStart}

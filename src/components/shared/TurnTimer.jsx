@@ -17,7 +17,9 @@ const TurnTimer = ({
   account,
   onClaimTimeoutWin,
   loading,
-  syncDots = 1
+  syncDots = 1,
+  isSpectator = false,
+  playerConfig = null // { player1: { icon, label }, player2: { icon, label } }
 }) => {
   // Client-side ticking state
   const [player1TimeLeft, setPlayer1TimeLeft] = useState(match.player1TimeRemaining ?? match.matchTimePerPlayer ?? 300);
@@ -83,6 +85,22 @@ const TurnTimer = ({
   const yourTimeLeft = isPlayer1You ? player1TimeLeft : player2TimeLeft;
   const opponentTimeLeft = isPlayer1You ? player2TimeLeft : player1TimeLeft;
 
+  // Determine labels for spectator mode
+  const player1Label = isSpectator && playerConfig
+    ? playerConfig.player1?.label || 'Player 1'
+    : (isPlayer1You ? 'YOU' : 'OPPONENT');
+  const player2Label = isSpectator && playerConfig
+    ? playerConfig.player2?.label || 'Player 2'
+    : (isPlayer2You ? 'YOU' : 'OPPONENT');
+
+  // When spectating or when not a participant, show player 1 on left, player 2 on right
+  const leftPlayerLabel = isSpectator || (!isPlayer1You && !isPlayer2You) ? player1Label : (isPlayer1You ? player1Label : player2Label);
+  const rightPlayerLabel = isSpectator || (!isPlayer1You && !isPlayer2You) ? player2Label : (isPlayer1You ? player2Label : player1Label);
+  const leftPlayerTimeLeft = isSpectator || (!isPlayer1You && !isPlayer2You) ? player1TimeLeft : yourTimeLeft;
+  const rightPlayerTimeLeft = isSpectator || (!isPlayer1You && !isPlayer2You) ? player2TimeLeft : opponentTimeLeft;
+  const leftPlayerTurn = isSpectator || (!isPlayer1You && !isPlayer2You) ? isPlayer1Turn : isYourTurn;
+  const rightPlayerTurn = isSpectator || (!isPlayer1You && !isPlayer2You) ? isPlayer2Turn : !isYourTurn;
+
   // Determine if you or opponent has timed out
   const youTimedOut = isExpired && (
     (isPlayer1You && expiredPlayer?.toLowerCase() === match.player1?.toLowerCase()) ||
@@ -93,10 +111,14 @@ const TurnTimer = ({
   // Get color schemes based on remaining time
   const yourColors = getTimeColorScheme(yourTimeLeft);
   const opponentColors = getTimeColorScheme(opponentTimeLeft);
+  const leftPlayerColors = getTimeColorScheme(leftPlayerTimeLeft);
+  const rightPlayerColors = getTimeColorScheme(rightPlayerTimeLeft);
 
   // Calculate progress percentages (how much time has been used)
   const yourProgress = ((totalTime - yourTimeLeft) / totalTime) * 100;
   const opponentProgress = ((totalTime - opponentTimeLeft) / totalTime) * 100;
+  const leftPlayerProgress = ((totalTime - leftPlayerTimeLeft) / totalTime) * 100;
+  const rightPlayerProgress = ((totalTime - rightPlayerTimeLeft) / totalTime) * 100;
 
   return (
     <div className="border border-purple-400/30 rounded-xl p-4 bg-gradient-to-br from-purple-600/10 to-blue-600/10 backdrop-blur-lg">
@@ -112,21 +134,21 @@ const TurnTimer = ({
 
       {/* Dual Clock Display */}
       <div className="grid grid-cols-2 gap-4 mb-4">
-        {/* Your Time Column */}
+        {/* Left Player Time Column */}
         <div className={`border-2 rounded-lg p-3 transition-all ${
-          isYourTurn ? `${yourColors.border} ${yourColors.bg} ring-2 ring-purple-400/50` : 'border-gray-600/50 bg-gray-800/30 opacity-60'
-        } ${yourColors.pulse && isYourTurn ? 'animate-pulse' : ''}`}>
-          <div className="text-sm font-bold text-purple-300 mb-2">YOU</div>
+          leftPlayerTurn ? `${leftPlayerColors.border} ${leftPlayerColors.bg} ring-2 ring-purple-400/50` : 'border-gray-600/50 bg-gray-800/30 opacity-60'
+        } ${leftPlayerColors.pulse && leftPlayerTurn ? 'animate-pulse' : ''}`}>
+          <div className="text-sm font-bold text-purple-300 mb-2">{leftPlayerLabel}</div>
 
           <div className="space-y-2">
             <div className="flex justify-between text-xs text-gray-400">
               <span>Total Time:</span>
               <span className="font-mono">{formatTime(totalTime)}</span>
             </div>
-            <div className={`flex justify-between font-bold ${yourColors.text}`}>
+            <div className={`flex justify-between font-bold ${leftPlayerColors.text}`}>
               <span className="text-sm">Time Left:</span>
-              <span className={`font-mono ${yourTimeLeft > 0 ? 'text-2xl' : 'text-sm'}`}>
-                {yourTimeLeft > 0 ? formatTime(yourTimeLeft) : 'TIMEOUT'}
+              <span className={`font-mono ${leftPlayerTimeLeft > 0 ? 'text-2xl' : 'text-sm'}`}>
+                {leftPlayerTimeLeft > 0 ? formatTime(leftPlayerTimeLeft) : 'TIMEOUT'}
               </span>
             </div>
           </div>
@@ -134,33 +156,33 @@ const TurnTimer = ({
           {/* Progress Bar */}
           <div className="mt-3 h-2 bg-gray-700 rounded-full overflow-hidden">
             <div
-              className={`h-full ${yourColors.barColor} transition-all duration-500`}
-              style={{ width: `${Math.min(yourProgress, 100)}%` }}
+              className={`h-full ${leftPlayerColors.barColor} transition-all duration-500`}
+              style={{ width: `${Math.min(leftPlayerProgress, 100)}%` }}
             />
           </div>
 
-          {isYourTurn && yourTimeLeft > 0 && (
+          {leftPlayerTurn && leftPlayerTimeLeft > 0 && (
             <div className="text-xs text-purple-300/70 mt-2 text-center">
-              ⚡ Your turn
+              {isSpectator || (!isPlayer1You && !isPlayer2You) ? '⚡ Active' : '⚡ Your turn'}
             </div>
           )}
         </div>
 
-        {/* Opponent's Time Column */}
+        {/* Right Player Time Column */}
         <div className={`border-2 rounded-lg p-3 transition-all ${
-          !isYourTurn && match.currentTurn ? `${opponentColors.border} ${opponentColors.bg} ring-2 ring-pink-400/50` : 'border-gray-600/50 bg-gray-800/30 opacity-60'
-        } ${opponentColors.pulse && !isYourTurn ? 'animate-pulse' : ''}`}>
-          <div className="text-sm font-bold text-pink-300 mb-2">OPPONENT</div>
+          rightPlayerTurn ? `${rightPlayerColors.border} ${rightPlayerColors.bg} ring-2 ring-pink-400/50` : 'border-gray-600/50 bg-gray-800/30 opacity-60'
+        } ${rightPlayerColors.pulse && rightPlayerTurn ? 'animate-pulse' : ''}`}>
+          <div className="text-sm font-bold text-pink-300 mb-2">{rightPlayerLabel}</div>
 
           <div className="space-y-2">
             <div className="flex justify-between text-xs text-gray-400">
               <span>Total Time:</span>
               <span className="font-mono">{formatTime(totalTime)}</span>
             </div>
-            <div className={`flex justify-between font-bold ${opponentColors.text}`}>
+            <div className={`flex justify-between font-bold ${rightPlayerColors.text}`}>
               <span className="text-sm">Time Left:</span>
-              <span className={`font-mono ${opponentTimeLeft > 0 ? 'text-2xl' : 'text-sm'}`}>
-                {opponentTimeLeft > 0 ? formatTime(opponentTimeLeft) : 'TIMEOUT'}
+              <span className={`font-mono ${rightPlayerTimeLeft > 0 ? 'text-2xl' : 'text-sm'}`}>
+                {rightPlayerTimeLeft > 0 ? formatTime(rightPlayerTimeLeft) : 'TIMEOUT'}
               </span>
             </div>
           </div>
@@ -168,21 +190,21 @@ const TurnTimer = ({
           {/* Progress Bar */}
           <div className="mt-3 h-2 bg-gray-700 rounded-full overflow-hidden">
             <div
-              className={`h-full ${opponentColors.barColor} transition-all duration-500`}
-              style={{ width: `${Math.min(opponentProgress, 100)}%` }}
+              className={`h-full ${rightPlayerColors.barColor} transition-all duration-500`}
+              style={{ width: `${Math.min(rightPlayerProgress, 100)}%` }}
             />
           </div>
 
-          {!isYourTurn && match.currentTurn && opponentTimeLeft > 0 && (
+          {rightPlayerTurn && rightPlayerTimeLeft > 0 && (
             <div className="text-xs text-pink-300/70 mt-2 text-center">
-              ⏳ Thinking...
+              {isSpectator || (!isPlayer1You && !isPlayer2You) ? '⚡ Active' : '⏳ Thinking...'}
             </div>
           )}
         </div>
       </div>
 
-      {/* Turn Indicator */}
-      {match.matchStatus === 1 && (
+      {/* Turn Indicator - only for participants */}
+      {!isSpectator && match.matchStatus === 1 && (
         <div className="text-center mb-3">
           {isYourTurn ? (
             <div className="text-sm text-green-300 font-semibold">
@@ -196,15 +218,15 @@ const TurnTimer = ({
         </div>
       )}
 
-      {/* Timeout Warnings */}
-      {youTimedOut && (
+      {/* Timeout Warnings - only for participants */}
+      {!isSpectator && youTimedOut && (
         <div className="text-xs text-red-300 text-center p-2 bg-red-500/20 rounded border border-red-400/30 mb-3">
           Time's up! Your opponent can claim victory...
         </div>
       )}
 
       {/* Claim Timeout Victory Button - only show when opponent timed out while it's their turn */}
-      {opponentTimedOut && !isYourTurn && (
+      {!isSpectator && opponentTimedOut && !isYourTurn && (
         <div>
           <button
             onClick={onClaimTimeoutWin}

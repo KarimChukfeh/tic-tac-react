@@ -86,6 +86,9 @@ const GameMatchLayout = ({
   // Layout
   layout = 'three-column', // 'three-column' | 'sidebar' | 'centered'
 
+  // Spectator mode
+  isSpectator = false,
+
   // Optional render props for game-specific content
   renderMoveHistory, // () => <MoveHistory />
   renderMatchInfo, // () => <MatchInfoGrid />
@@ -158,6 +161,8 @@ const GameMatchLayout = ({
               onClaimTimeoutWin={onClaimTimeoutWin}
               loading={loading}
               syncDots={syncDots}
+              isSpectator={isSpectator}
+              playerConfig={playerConfig}
             />
           )}
 
@@ -236,6 +241,8 @@ const GameMatchLayout = ({
               onClaimTimeoutWin={onClaimTimeoutWin}
               loading={loading}
               syncDots={syncDots}
+              isSpectator={isSpectator}
+              playerConfig={playerConfig}
             />
           </div>
         )}
@@ -340,6 +347,8 @@ const GameMatchLayout = ({
             onClaimTimeoutWin={onClaimTimeoutWin}
             loading={loading}
             syncDots={syncDots}
+            isSpectator={isSpectator}
+            playerConfig={playerConfig}
           />
         </div>
       )}
