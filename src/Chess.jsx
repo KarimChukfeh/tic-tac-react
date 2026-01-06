@@ -625,6 +625,7 @@ export default function Chess() {
   // Tournament State - Lazy Loading Architecture
   // tierMetadata: Basic tier info loaded on initial page load (fast)
   // tierInstances: Detailed tournament instances loaded on tier expand (lazy)
+  const [selectedMode, setSelectedMode] = useState(null); // null = mode selection view, 'duels' = 1v1 tiers, 'tournaments' = 4-player tiers
   const [tierMetadata, setTierMetadata] = useState({}); // { [tierId]: { playerCount, instanceCount, entryFee, statuses, enrolledCounts } }
   const [tierInstances, setTierInstances] = useState({}); // { [tierId]: [tournament instances] }
   const [tierLoading, setTierLoading] = useState({}); // { [tierId]: boolean }
@@ -3233,10 +3234,73 @@ export default function Chess() {
                   </div>
                 )}
 
+                {/* Mode Selection: Duels vs Tournaments */}
+                {!metadataLoading && Object.keys(tierMetadata).length > 0 && !selectedMode && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto mb-12">
+                    {/* Duels Card */}
+                    <button
+                      onClick={() => setSelectedMode('duels')}
+                      className="bg-gradient-to-br from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-8 border-2 border-purple-400/40 hover:border-purple-400/70 transition-all hover:shadow-xl hover:shadow-purple-500/20 cursor-pointer text-left group"
+                    >
+                      <div className="flex flex-col items-center text-center space-y-4">
+                        <div className="text-6xl mb-2 group-hover:scale-110 transition-transform flex items-center gap-3">
+                          <span>♔</span>
+                          <span className="text-2xl text-purple-400/60">vs</span>
+                          <span>♚</span>
+                        </div>
+                        <h2 className="text-3xl font-bold text-purple-300 group-hover:text-purple-200 transition-colors">
+                          1v1 Duels
+                        </h2>
+                        <p className="text-purple-300/80 text-sm leading-relaxed">
+                          Compete 1v1 against strangers or invite friends to challenge them.
+                          Stakes range from 0.01 ETH for Casual duels to 0.1 ETH for Elite showdowns.
+                        </p>
+                        <div className="flex items-center gap-2 text-purple-400 text-xs">
+                          <span className="bg-purple-500/20 px-3 py-1 rounded-full">2 Players</span>
+                          <span className="bg-purple-500/20 px-3 py-1 rounded-full">Quick Matches</span>
+                        </div>
+                      </div>
+                    </button>
+
+                    {/* Tournaments Card */}
+                    <button
+                      onClick={() => setSelectedMode('tournaments')}
+                      className="bg-gradient-to-br from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-8 border-2 border-purple-400/40 hover:border-purple-400/70 transition-all hover:shadow-xl hover:shadow-purple-500/20 cursor-pointer text-left group"
+                    >
+                      <div className="flex flex-col items-center text-center space-y-4">
+                        <div className="text-6xl mb-2 group-hover:scale-110 transition-transform">
+                          🏆
+                        </div>
+                        <h2 className="text-3xl font-bold text-purple-300 group-hover:text-purple-200 transition-colors">
+                          Tournaments
+                        </h2>
+                        <p className="text-purple-300/80 text-sm leading-relaxed">
+                          Battle through brackets to claim victory. Compete against 4 players in elimination-style tournaments.
+                          Entry fees range from 0.015 ETH to 0.15 ETH.
+                        </p>
+                        <div className="flex items-center gap-2 text-purple-400 text-xs">
+                          <span className="bg-purple-500/20 px-3 py-1 rounded-full">4 Players</span>
+                          <span className="bg-purple-500/20 px-3 py-1 rounded-full">Bracket Style</span>
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                )}
+
                 {/* Tournament Cards Grid - Grouped by Tier (Lazy Loading) */}
-                {!metadataLoading && Object.keys(tierMetadata).length > 0 && (
+                {!metadataLoading && Object.keys(tierMetadata).length > 0 && selectedMode && (
                   <>
-                    {[0, 4, 1, 5, 2, 6, 3, 7].map((tierId) => {
+                    {/* Back to Mode Selection */}
+                    <div className="mb-6">
+                      <button
+                        onClick={() => setSelectedMode(null)}
+                        className="text-purple-400 hover:text-purple-300 flex items-center gap-2 transition-colors"
+                      >
+                        <span>←</span> Back to mode selection
+                      </button>
+                    </div>
+
+                    {(selectedMode === 'duels' ? [0, 1, 2, 3] : [4, 5, 6, 7]).map((tierId) => {
                       const metadata = tierMetadata[tierId];
                       if (!metadata) return null;
 
