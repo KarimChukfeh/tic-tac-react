@@ -796,8 +796,35 @@ export default function Chess() {
     updateDisplayConfig();
   }, [viewingTournament, contract]);
 
-  // Theme colors (slightly darker purple background with cyan/magenta neon)
-  const currentTheme = {
+  // Check if player is enrolled in elite tiers (3 or 7) using activity panel data
+  const isEnrolledInElite = playerActivity.data &&
+    [...playerActivity.data.activeMatches, ...playerActivity.data.inProgressTournaments, ...playerActivity.data.unfilledTournaments]
+      .some((activity) => activity.tierId === 3 || activity.tierId === 7);
+
+  // Elite gold theme
+  const eliteTheme = {
+    primary: 'rgba(251, 191, 36, 0.5)',
+    secondary: 'rgba(245, 158, 11, 0.5)',
+    gradient: 'linear-gradient(135deg, #1a0f00 0%, #2d1a00 50%, #1f1200 100%)',
+    border: 'rgba(251, 191, 36, 0.3)',
+    glow: 'rgba(251, 191, 36, 0.4)',
+    particleColors: ['#fbbf24', '#f59e0b'],
+    heroGlow: 'from-amber-500 via-yellow-500 to-amber-500',
+    heroIcon: 'text-amber-400',
+    heroTitle: 'from-amber-400 via-yellow-400 to-amber-400',
+    heroText: 'text-amber-200',
+    heroSubtext: 'text-amber-300',
+    buttonGradient: 'from-amber-500 to-yellow-500',
+    buttonHover: 'hover:from-amber-600 hover:to-yellow-600',
+    infoCard: 'from-amber-500/20 to-yellow-500/20',
+    infoBorder: 'border-amber-400/30',
+    infoIcon: 'text-amber-400',
+    infoTitle: 'text-amber-300',
+    infoText: 'text-amber-200'
+  };
+
+  // Default theme (purple/cyan)
+  const defaultTheme = {
     primary: 'rgba(0, 255, 255, 0.5)',
     secondary: 'rgba(255, 0, 255, 0.5)',
     gradient: 'linear-gradient(135deg, #05000f 0%, #130028 50%, #090013 100%)',
@@ -817,6 +844,9 @@ export default function Chess() {
     infoTitle: 'text-blue-300',
     infoText: 'text-blue-200'
   };
+
+  // Theme colors - dynamically switch based on elite enrollment
+  const currentTheme = isEnrolledInElite ? eliteTheme : defaultTheme;
 
   // Switch to Local Network (Chain ID 412346)
   const switchToArbitrum = async () => {
@@ -3262,24 +3292,32 @@ export default function Chess() {
                     {/* Duels Card */}
                     <button
                       onClick={() => setSelectedMode('duels')}
-                      className="bg-gradient-to-br from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-8 border-2 border-purple-400/40 hover:border-purple-400/70 transition-all hover:shadow-xl hover:shadow-purple-500/20 cursor-pointer text-left group"
+                      className={`backdrop-blur-lg rounded-2xl p-8 border-2 transition-all hover:shadow-xl cursor-pointer text-left group ${
+                        isEnrolledInElite
+                          ? 'bg-gradient-to-br from-amber-600/20 to-yellow-600/20 border-amber-400/40 hover:border-amber-400/70 hover:shadow-amber-500/20'
+                          : 'bg-gradient-to-br from-purple-600/20 to-blue-600/20 border-purple-400/40 hover:border-purple-400/70 hover:shadow-purple-500/20'
+                      }`}
                     >
                       <div className="flex flex-col items-center text-center space-y-4">
                         <div className="text-6xl mb-2 group-hover:scale-110 transition-transform flex items-center gap-3">
                           <span>♔</span>
-                          <span className="text-2xl text-purple-400/60">vs</span>
+                          <span className={`text-2xl ${isEnrolledInElite ? 'text-amber-400/60' : 'text-purple-400/60'}`}>vs</span>
                           <span>♚</span>
                         </div>
-                        <h2 className="text-3xl font-bold text-purple-300 group-hover:text-purple-200 transition-colors">
+                        <h2 className={`text-3xl font-bold transition-colors ${
+                          isEnrolledInElite
+                            ? 'text-amber-300 group-hover:text-amber-200'
+                            : 'text-purple-300 group-hover:text-purple-200'
+                        }`}>
                           1v1 Duels
                         </h2>
-                        <p className="text-purple-300/80 text-sm leading-relaxed">
+                        <p className={`text-sm leading-relaxed ${isEnrolledInElite ? 'text-amber-300/80' : 'text-purple-300/80'}`}>
                           Compete 1v1 against strangers or invite friends to challenge them.
                           Stakes range from 0.01 ETH for Casual duels to 0.1 ETH for Elite showdowns.
                         </p>
-                        <div className="flex items-center gap-2 text-purple-400 text-xs">
-                          <span className="bg-purple-500/20 px-3 py-1 rounded-full">2 Players</span>
-                          <span className="bg-purple-500/20 px-3 py-1 rounded-full">Quick Matches</span>
+                        <div className={`flex items-center gap-2 text-xs ${isEnrolledInElite ? 'text-amber-400' : 'text-purple-400'}`}>
+                          <span className={`px-3 py-1 rounded-full ${isEnrolledInElite ? 'bg-amber-500/20' : 'bg-purple-500/20'}`}>2 Players</span>
+                          <span className={`px-3 py-1 rounded-full ${isEnrolledInElite ? 'bg-amber-500/20' : 'bg-purple-500/20'}`}>Quick Matches</span>
                         </div>
                       </div>
                     </button>
@@ -3287,22 +3325,30 @@ export default function Chess() {
                     {/* Tournaments Card */}
                     <button
                       onClick={() => setSelectedMode('tournaments')}
-                      className="bg-gradient-to-br from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-8 border-2 border-purple-400/40 hover:border-purple-400/70 transition-all hover:shadow-xl hover:shadow-purple-500/20 cursor-pointer text-left group"
+                      className={`backdrop-blur-lg rounded-2xl p-8 border-2 transition-all hover:shadow-xl cursor-pointer text-left group ${
+                        isEnrolledInElite
+                          ? 'bg-gradient-to-br from-amber-600/20 to-yellow-600/20 border-amber-400/40 hover:border-amber-400/70 hover:shadow-amber-500/20'
+                          : 'bg-gradient-to-br from-purple-600/20 to-blue-600/20 border-purple-400/40 hover:border-purple-400/70 hover:shadow-purple-500/20'
+                      }`}
                     >
                       <div className="flex flex-col items-center text-center space-y-4">
                         <div className="text-6xl mb-2 group-hover:scale-110 transition-transform">
                           🏆
                         </div>
-                        <h2 className="text-3xl font-bold text-purple-300 group-hover:text-purple-200 transition-colors">
+                        <h2 className={`text-3xl font-bold transition-colors ${
+                          isEnrolledInElite
+                            ? 'text-amber-300 group-hover:text-amber-200'
+                            : 'text-purple-300 group-hover:text-purple-200'
+                        }`}>
                           Tournaments
                         </h2>
-                        <p className="text-purple-300/80 text-sm leading-relaxed">
+                        <p className={`text-sm leading-relaxed ${isEnrolledInElite ? 'text-amber-300/80' : 'text-purple-300/80'}`}>
                           Battle through brackets to claim victory. Compete against 4 players in elimination-style tournaments.
                           Entry fees range from 0.015 ETH to 0.15 ETH.
                         </p>
-                        <div className="flex items-center gap-2 text-purple-400 text-xs">
-                          <span className="bg-purple-500/20 px-3 py-1 rounded-full">4 Players</span>
-                          <span className="bg-purple-500/20 px-3 py-1 rounded-full">Bracket Style</span>
+                        <div className={`flex items-center gap-2 text-xs ${isEnrolledInElite ? 'text-amber-400' : 'text-purple-400'}`}>
+                          <span className={`px-3 py-1 rounded-full ${isEnrolledInElite ? 'bg-amber-500/20' : 'bg-purple-500/20'}`}>4 Players</span>
+                          <span className={`px-3 py-1 rounded-full ${isEnrolledInElite ? 'bg-amber-500/20' : 'bg-purple-500/20'}`}>Bracket Style</span>
                         </div>
                       </div>
                     </button>
@@ -3316,7 +3362,11 @@ export default function Chess() {
                     <div className="mb-6 animate-[fadeIn_0.8s_ease-out]">
                       <button
                         onClick={() => setSelectedMode(null)}
-                        className="text-purple-400 hover:text-purple-300 flex items-center gap-2 transition-all hover:translate-x-[-4px]"
+                        className={`flex items-center gap-2 transition-all hover:translate-x-[-4px] ${
+                          isEnrolledInElite
+                            ? 'text-amber-400 hover:text-amber-300'
+                            : 'text-purple-400 hover:text-purple-300'
+                        }`}
                       >
                         <span>←</span> Back to mode selection
                       </button>
