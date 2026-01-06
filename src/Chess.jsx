@@ -2104,6 +2104,15 @@ export default function Chess() {
     }
   };
 
+  // Helper function to convert board index to chess notation (e.g., 0 → "a1", 63 → "h8")
+  const indexToChessNotation = useCallback((index) => {
+    const row = Math.floor(index / 8);
+    const col = index % 8;
+    const file = String.fromCharCode(97 + col); // 'a' to 'h'
+    const rank = row + 1; // 1 to 8
+    return `${file}${rank}`;
+  }, []);
+
   // Fetch move history from blockchain events with fallback to board state reconstruction
   const fetchMoveHistory = useCallback(async (contractInstance, tierId, instanceId, roundNumber, matchNumber) => {
     try {
@@ -2113,27 +2122,28 @@ export default function Chess() {
 
       // Try to query ChessMoveMade events for this match
       try {
-        const matchKey = ethers.keccak256(
-          ethers.AbiCoder.defaultAbiCoder().encode(
-            ['uint8', 'uint8', 'uint8', 'uint8'],
-            [tierId, instanceId, roundNumber, matchNumber]
-          )
+        // Use solidityPackedKeccak256 to match Solidity's keccak256(abi.encodePacked(...))
+        const matchKey = ethers.solidityPackedKeccak256(
+          ['uint8', 'uint8', 'uint8', 'uint8'],
+          [tierId, instanceId, roundNumber, matchNumber]
         );
 
         const filter = contractInstance.filters.MoveMade(matchKey);
         const events = await contractInstance.queryFilter(filter);
 
         if (events.length > 0) {
-          // Convert events to move history
+          // Convert events to move history with proper chess notation
           const history = events.map(event => {
             const player = event.args.player;
             const from = Number(event.args.from);
             const to = Number(event.args.to);
             const promotion = 0; // MoveMade event doesn't include promotion
             const isPlayer1 = player.toLowerCase() === player1.toLowerCase();
+            const fromNotation = indexToChessNotation(from);
+            const toNotation = indexToChessNotation(to);
             return {
-              player: isPlayer1 ? 'X' : 'O',
-              cell: `${from}→${to}${promotion ? ' (promoted)' : ''}`,
+              player: isPlayer1 ? '♔' : '♚', // White king or black king symbols
+              move: `${fromNotation}→${toNotation}${promotion ? ' ♕' : ''}`, // e.g., "e2→e4"
               from,
               to,
               promotion,
@@ -2147,27 +2157,16 @@ export default function Chess() {
           return history;
         }
       } catch (eventError) {
-        console.warn('Event query failed, falling back to board reconstruction:', eventError);
+        console.warn('Event query failed, falling back to empty history:', eventError);
       }
 
-      // Fallback: Reconstruct from board state (loses move order but shows current state)
-      const history = [];
-      const boardArray = Array.from(board);
-      for (let i = 0; i < boardArray.length; i++) {
-        const cell = Number(boardArray[i]);
-        if (cell !== 0) {
-          history.push({
-            player: cell === 1 ? 'X' : 'O',
-            cell: i
-          });
-        }
-      }
-      return history;
+      // No events found - return empty array
+      return [];
     } catch (error) {
       console.error('Error fetching move history:', error);
       return [];
     }
-  }, []);
+  }, [indexToChessNotation]);
 
   // Refresh match data from contract
   const refreshMatchData = useCallback(async (contractInstance, userAccount, matchInfo, totalMatchTime) => {
@@ -2289,16 +2288,13 @@ export default function Chess() {
       // Fetch last move from MoveMade events (persists after page refresh)
       let lastMove = null;
       try {
-        const matchKey = ethers.keccak256(
-          ethers.AbiCoder.defaultAbiCoder().encode(
-            ['uint8', 'uint8', 'uint8', 'uint8'],
-            [tierId, instanceId, roundNumber, matchNumber]
-          )
+        // Use solidityPackedKeccak256 to match Solidity's keccak256(abi.encodePacked(...))
+        const matchKey = ethers.solidityPackedKeccak256(
+          ['uint8', 'uint8', 'uint8', 'uint8'],
+          [tierId, instanceId, roundNumber, matchNumber]
         );
-        console.log('[refreshMatchData] Fetching MoveMade events for matchKey:', matchKey);
         const filter = contractInstance.filters.MoveMade(matchKey);
         const events = await contractInstance.queryFilter(filter);
-        console.log('[refreshMatchData] Found', events.length, 'MoveMade events');
         if (events.length > 0) {
           const lastEvent = events[events.length - 1];
           const movePlayer = lastEvent.args.player;
@@ -2308,10 +2304,9 @@ export default function Chess() {
             player: movePlayer,
             isMyMove: movePlayer?.toLowerCase() === userAccount?.toLowerCase()
           };
-          console.log('[refreshMatchData] lastMove:', lastMove);
         }
       } catch (err) {
-        console.error('[refreshMatchData] Error fetching MoveMade events:', err.message);
+        console.error('Error fetching MoveMade events:', err.message);
       }
 
       return {
@@ -3256,9 +3251,9 @@ export default function Chess() {
                 <div className="space-y-2 max-h-48 overflow-y-auto">
                   {moveHistory.map((move, idx) => (
                     <div key={idx} className="flex items-center gap-3 text-sm bg-purple-500/10 p-2 rounded">
-                      <span className="text-purple-300">Move {idx + 1}:</span>
-                      <span className="text-white font-bold">{move.player}</span>
-                      <span className="text-purple-400">→ Cell {move.cell}</span>
+                      <span className="text-purple-300 font-semibold">#{idx + 1}</span>
+                      <span className="text-white font-bold text-lg">{move.player}</span>
+                      <span className="text-purple-200 font-mono">{move.move}</span>
                     </div>
                   ))}
                 </div>
