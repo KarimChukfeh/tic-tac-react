@@ -5,13 +5,14 @@
  * Shows trigger button when raffle is ready to be executed. The card glows when ready.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, RefreshCw, Zap } from 'lucide-react';
 import { ethers } from 'ethers';
 
-const CommunityRaffleCard = ({ raffleInfo, playerActivityHeight, onRefresh, onTriggerRaffle, syncing }) => {
+const CommunityRaffleCard = ({ raffleInfo, playerActivityHeight, onRefresh, onTriggerRaffle, syncing, onHeightChange }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
+  const expandedPanelRef = useRef(null);
 
   // Track screen size for responsive positioning
   useEffect(() => {
@@ -22,6 +23,28 @@ const CommunityRaffleCard = ({ raffleInfo, playerActivityHeight, onRefresh, onTr
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Measure and report height whenever content changes
+  useEffect(() => {
+    if (isExpanded && expandedPanelRef.current && onHeightChange) {
+      const observer = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const height = entry.target.offsetHeight;
+          onHeightChange(height);
+        }
+      });
+
+      observer.observe(expandedPanelRef.current);
+
+      // Report initial height immediately
+      onHeightChange(expandedPanelRef.current.offsetHeight);
+
+      return () => observer.disconnect();
+    } else if (!isExpanded && onHeightChange) {
+      // When collapsed, report 0
+      onHeightChange(0);
+    }
+  }, [isExpanded, raffleInfo, onHeightChange]);
 
   const thresholdETH = parseFloat(ethers.formatEther(raffleInfo.threshold || 0n));
   const currentETH = parseFloat(ethers.formatEther(raffleInfo.currentAccumulated || 0n));
@@ -109,6 +132,7 @@ const CommunityRaffleCard = ({ raffleInfo, playerActivityHeight, onRefresh, onTr
       {/* Expanded State */}
       {isExpanded && (
         <div
+          ref={expandedPanelRef}
           className={`bg-gradient-to-br from-yellow-600/20 to-amber-600/20 backdrop-blur-lg rounded-xl p-4 border-2 transition-all shadow-2xl w-[calc(100vw-2rem)] md:w-[464px] ${
             isFull
               ? 'border-yellow-400 shadow-yellow-500/50 animate-pulse'

@@ -707,6 +707,7 @@ export default function Chess() {
   // Player Activity Hook
   const playerActivity = usePlayerActivity(contract, account, 'chess', TIER_CONFIG);
   const [playerActivityHeight, setPlayerActivityHeight] = useState(0);
+  const [raffleCardHeight, setRaffleCardHeight] = useState(0);
 
   // Player Activity Collapse Function Ref
   const collapseActivityPanelRef = useRef(null);
@@ -3394,6 +3395,7 @@ export default function Chess() {
           onRefresh={fetchRaffleInfo}
           onTriggerRaffle={executeRaffle}
           syncing={raffleSyncing}
+          onHeightChange={setRaffleCardHeight}
         />
       )}
 
@@ -3402,6 +3404,7 @@ export default function Chess() {
         <EliteMatchesCard
           eliteMatches={eliteMatches}
           playerActivityHeight={playerActivityHeight}
+          raffleCardHeight={raffleCardHeight}
           onRefresh={fetchEliteMatches}
           syncing={eliteMatchesSyncing}
           account={account}

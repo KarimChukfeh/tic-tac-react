@@ -14,6 +14,7 @@ import { shortenAddress } from '../../utils/formatters';
 const EliteMatchesCard = ({
   eliteMatches,
   playerActivityHeight,
+  raffleCardHeight,
   onRefresh,
   syncing,
   account,
@@ -88,8 +89,10 @@ const EliteMatchesCard = ({
     ? playerActivityHeight + SPACING
     : collapsedButtonHeight + SPACING;
 
-  // Add offset for CommunityRaffle card (always collapsed button height since we don't track its expanded state)
-  const raffleOffset = collapsedButtonHeight + SPACING;
+  // Add offset for CommunityRaffle card (use actual height when expanded, collapsed button height otherwise)
+  const raffleOffset = raffleCardHeight > 0
+    ? raffleCardHeight + SPACING
+    : collapsedButtonHeight + SPACING;
 
   const topPosition = baseTop + activityOffset + raffleOffset;
 
