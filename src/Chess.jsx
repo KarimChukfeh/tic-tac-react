@@ -836,7 +836,7 @@ export default function Chess() {
     errorBorder: 'border-[#ef4444]/40',
     info: '#3b82f6',
     infoBgColor: 'bg-[#1c2d4a]',
-    infoText: 'text-[#3b82f6]',
+    infoTextColor: 'text-[#3b82f6]',
     // Text hierarchy
     heading: 'text-[#fff8e7]',
     bodyText: 'text-[#f5e6c8]',
@@ -2434,13 +2434,26 @@ export default function Chess() {
     } catch (error) {
       console.error('Error making chess move:', error);
 
-      // Show user-friendly error message
-      let errorMsg = 'Error making move';
-      if (error.message) {
-        errorMsg += ': ' + error.message;
-      }
-      alert(errorMsg);
+      // Parse error message for user-friendly display
+      let errorMsg = 'Invalid Move';
 
+      // Check for common contract revert patterns
+      const errorString = error.message || error.toString();
+
+      if (errorString.includes('user rejected') || errorString.includes('User denied')) {
+        errorMsg = 'Transaction cancelled';
+      } else if (errorString.includes('insufficient funds')) {
+        errorMsg = 'Insufficient funds for gas';
+      } else if (errorString.includes('Not your turn') || errorString.includes('not your turn')) {
+        errorMsg = 'Not your turn';
+      } else if (errorString.includes('Match not active') || errorString.includes('match not active')) {
+        errorMsg = 'Match is not active';
+      } else if (errorString.includes('execution reverted')) {
+        // Generic contract revert - likely an invalid move
+        errorMsg = 'Invalid Move - This move is not allowed by chess rules';
+      }
+
+      alert(errorMsg);
       setMatchLoading(false);
     }
   };

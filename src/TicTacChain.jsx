@@ -1929,7 +1929,29 @@ export default function TicTacChain() {
       setMatchLoading(false);
     } catch (error) {
       console.error('Error making move:', error);
-      alert(`Error making move: ${error.message}`);
+
+      // Parse error message for user-friendly display
+      let errorMsg = 'Invalid Move';
+
+      // Check for common contract revert patterns
+      const errorString = error.message || error.toString();
+
+      if (errorString.includes('user rejected') || errorString.includes('User denied')) {
+        errorMsg = 'Transaction cancelled';
+      } else if (errorString.includes('insufficient funds')) {
+        errorMsg = 'Insufficient funds for gas';
+      } else if (errorString.includes('Not your turn') || errorString.includes('not your turn')) {
+        errorMsg = 'Not your turn';
+      } else if (errorString.includes('Match not active') || errorString.includes('match not active')) {
+        errorMsg = 'Match is not active';
+      } else if (errorString.includes('Cell already taken') || errorString.includes('cell already taken')) {
+        errorMsg = 'Invalid Move - Cell already taken';
+      } else if (errorString.includes('execution reverted')) {
+        // Generic contract revert - likely an invalid move
+        errorMsg = 'Invalid Move - This move is not allowed';
+      }
+
+      alert(errorMsg);
       setMatchLoading(false);
     }
   };
