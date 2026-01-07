@@ -1818,6 +1818,49 @@ export default function TicTacChain() {
       // A match is timed out if it completed with an active timeout state
       const isTimedOut = matchStatus === 2 && timeoutState?.timeoutActive === true;
 
+      // Fetch last move from MoveMade events (persists after page refresh)
+      let lastMove = null;
+      try {
+        const matchKey = ethers.keccak256(
+          ethers.AbiCoder.defaultAbiCoder().encode(
+            ['uint8', 'uint8', 'uint8', 'uint8'],
+            [tierId, instanceId, roundNumber, matchNumber]
+          )
+        );
+        const filter = contractInstance.filters.MoveMade(matchKey);
+        const events = await contractInstance.queryFilter(filter);
+        if (events.length > 0) {
+          // Filter events to only include those from current match instance
+          const matchStartTime = Number(matchData.common.startTime);
+          const eventsWithTimestamps = await Promise.all(
+            events.map(async (event) => {
+              const block = await event.getBlock();
+              return {
+                event,
+                timestamp: block.timestamp
+              };
+            })
+          );
+
+          // Only include events that occurred at or after the match started
+          const currentMatchEvents = eventsWithTimestamps
+            .filter(({ timestamp }) => timestamp >= matchStartTime)
+            .map(({ event }) => event);
+
+          if (currentMatchEvents.length > 0) {
+            const lastEvent = currentMatchEvents[currentMatchEvents.length - 1];
+            const movePlayer = lastEvent.args.player;
+            lastMove = {
+              cellIndex: Number(lastEvent.args.cellIndex),
+              player: movePlayer,
+              isMyMove: movePlayer?.toLowerCase() === userAccount?.toLowerCase()
+            };
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching MoveMade events for lastMove:', err.message);
+      }
+
       return {
         ...matchInfo,
         player1: actualPlayer1,
@@ -1841,7 +1884,8 @@ export default function TicTacChain() {
         player2TimeRemaining,
         lastMoveTimestamp,
         matchTimePerPlayer: tierMatchTime, // Pass through per-tier value for UI components
-        timeoutConfig // Pass timeout config to UI components
+        timeoutConfig, // Pass timeout config to UI components
+        lastMove // Last move for highlighting (from events)
       };
     } catch (error) {
       console.error('Error refreshing match:', error);

@@ -2094,6 +2094,47 @@ export default function ConnectFour() {
       // A match is timed out if it completed with an active timeout state
       const isTimedOut = matchStatus === 2 && timeoutState?.timeoutActive === true;
 
+      // Fetch last move for highlighting (with timestamp filtering)
+      let lastColumn = null;
+      try {
+        const matchStartTime = Number(matchData.common.startTime);
+        const matchKey = ethers.keccak256(
+          ethers.AbiCoder.defaultAbiCoder().encode(
+            ['uint8', 'uint8', 'uint8', 'uint8'],
+            [tierId, instanceId, roundNumber, matchNumber]
+          )
+        );
+
+        const filter = contractInstance.filters.MoveMade(matchKey);
+        const events = await contractInstance.queryFilter(filter);
+
+        if (events.length > 0) {
+          // Get block timestamps for each event
+          const eventsWithTimestamps = await Promise.all(
+            events.map(async (event) => {
+              const block = await event.getBlock();
+              return {
+                event,
+                timestamp: block.timestamp
+              };
+            })
+          );
+
+          // Filter events to only include those from the current match instance
+          const currentMatchEvents = eventsWithTimestamps
+            .filter(({ timestamp }) => timestamp >= matchStartTime)
+            .map(({ event }) => event);
+
+          // Get the last move from the filtered events
+          if (currentMatchEvents.length > 0) {
+            const lastEvent = currentMatchEvents[currentMatchEvents.length - 1];
+            lastColumn = Number(lastEvent.args.cellIndex);
+          }
+        }
+      } catch (lastMoveErr) {
+        console.debug('Could not fetch last move for highlighting:', lastMoveErr.message);
+      }
+
       return {
         ...matchInfo,
         player1: actualPlayer1,
@@ -2117,7 +2158,8 @@ export default function ConnectFour() {
         player2TimeRemaining,
         lastMoveTimestamp,
         matchTimePerPlayer: tierMatchTime, // Pass through per-tier value for UI components
-        timeoutConfig // Pass timeout config to UI components
+        timeoutConfig, // Pass timeout config to UI components
+        lastColumn // Last move column for highlighting (filtered by match start time)
       };
     } catch (error) {
       console.error('Error refreshing match:', error);

@@ -2322,14 +2322,33 @@ export default function Chess() {
         const filter = contractInstance.filters.MoveMade(matchKey);
         const events = await contractInstance.queryFilter(filter);
         if (events.length > 0) {
-          const lastEvent = events[events.length - 1];
-          const movePlayer = lastEvent.args.player;
-          lastMove = {
-            from: Number(lastEvent.args.from),
-            to: Number(lastEvent.args.to),
-            player: movePlayer,
-            isMyMove: movePlayer?.toLowerCase() === userAccount?.toLowerCase()
-          };
+          // Filter events to only include those from current match instance
+          const matchStartTime = Number(matchData.common.startTime);
+          const eventsWithTimestamps = await Promise.all(
+            events.map(async (event) => {
+              const block = await event.getBlock();
+              return {
+                event,
+                timestamp: block.timestamp
+              };
+            })
+          );
+
+          // Only include events that occurred at or after the match started
+          const currentMatchEvents = eventsWithTimestamps
+            .filter(({ timestamp }) => timestamp >= matchStartTime)
+            .map(({ event }) => event);
+
+          if (currentMatchEvents.length > 0) {
+            const lastEvent = currentMatchEvents[currentMatchEvents.length - 1];
+            const movePlayer = lastEvent.args.player;
+            lastMove = {
+              from: Number(lastEvent.args.from),
+              to: Number(lastEvent.args.to),
+              player: movePlayer,
+              isMyMove: movePlayer?.toLowerCase() === userAccount?.toLowerCase()
+            };
+          }
         }
       } catch (err) {
         console.error('Error fetching MoveMade events:', err.message);
