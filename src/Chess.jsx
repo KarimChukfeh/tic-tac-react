@@ -3595,7 +3595,7 @@ export default function Chess() {
               player1: { icon: '♚', label: 'White' },
               player2: { icon: '♔', label: 'Black' }
             }}
-            layout="sidebar"
+            layout="players-board-history"
             isSpectator={isSpectator}
             renderPlayer1Extra={currentMatch.whiteInCheck ? () => (
               <div className="bg-red-500/20 border border-red-400 rounded-lg p-2 text-center mt-2">
@@ -3608,21 +3608,21 @@ export default function Chess() {
               </div>
             ) : undefined}
             renderMoveHistory={moveHistory.length > 0 ? () => (
-              <div className="bg-slate-900/50 rounded-xl p-6 border border-purple-500/30">
+              <>
                 <h3 className="text-xl font-bold text-purple-300 mb-4 flex items-center gap-2">
                   <History size={20} />
                   Move History
                 </h3>
-                <div className="space-y-2 max-h-48 overflow-y-auto">
+                <div className="space-y-2">
                   {moveHistory.map((move, idx) => (
-                    <div key={idx} className="flex items-center gap-3 text-sm bg-purple-500/10 p-2 rounded">
-                      <span className="text-purple-300 font-semibold">#{idx + 1}</span>
+                    <div key={idx} className="flex items-center gap-3 text-sm bg-purple-500/10 p-3 rounded-lg hover:bg-purple-500/20 transition-colors">
+                      <span className="text-purple-300 font-semibold min-w-[2rem]">#{idx + 1}</span>
                       <span className="text-white font-bold text-lg">{move.player}</span>
                       <span className="text-purple-200 font-mono">{move.move}</span>
                     </div>
                   ))}
                 </div>
-              </div>
+              </>
             ) : undefined}
           >
             {/* Chess Board Component */}
@@ -3645,6 +3645,7 @@ export default function Chess() {
               player2TimeRemaining={currentMatch.player2TimeRemaining}
               lastMoveTimestamp={currentMatch.lastMoveTimestamp}
               matchTimePerPlayer={matchTimePerPlayer}
+              maxSize={750}
             />
           </GameMatchLayout>
           </div>
