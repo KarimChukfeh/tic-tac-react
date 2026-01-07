@@ -379,7 +379,7 @@ const GameMatchLayout = ({
   const renderPlayersBoardHistoryLayout = () => (
     <div className="grid grid-cols-1 xl:grid-cols-[20%_60%_20%] gap-4 items-start">
       {/* Left Column - Both Player Panels */}
-      <div className="space-y-4 max-h-[80vh] overflow-y-auto pr-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-slate-800/50 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-purple-500/60 [&::-webkit-scrollbar-thumb]:to-pink-500/60 [&::-webkit-scrollbar-thumb]:rounded-full">
+      <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-slate-800/50 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-purple-500/60 [&::-webkit-scrollbar-thumb]:to-pink-500/60 [&::-webkit-scrollbar-thumb]:rounded-full">
         <PlayerPanel
           playerAddress={player1}
           currentAccount={account}
@@ -455,7 +455,7 @@ const GameMatchLayout = ({
       </div>
 
       {/* Right Column - Move History or Match Info */}
-      <div className="bg-slate-900/50 rounded-xl p-6 border border-purple-500/30 max-h-[80vh] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-slate-800/50 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-purple-500/60 [&::-webkit-scrollbar-thumb]:to-pink-500/60 [&::-webkit-scrollbar-thumb]:rounded-full">
+      <div className="bg-slate-900/50 rounded-xl p-6 border border-purple-500/30 max-h-[600px] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-slate-800/50 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-purple-500/60 [&::-webkit-scrollbar-thumb]:to-pink-500/60 [&::-webkit-scrollbar-thumb]:rounded-full">
         {renderMoveHistory ? (
           renderMoveHistory()
         ) : (
