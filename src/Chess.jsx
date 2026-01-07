@@ -106,7 +106,7 @@ const TIER_CONFIG = {
     instanceCount: 100,
     entryFee: '0.1',
     timeouts: {
-      matchTimePerPlayer: 600,
+      matchTimePerPlayer: 1200,
       timeIncrementPerMove: 15,
       matchLevel2Delay: 180,
       matchLevel3Delay: 360,
@@ -158,7 +158,7 @@ const TIER_CONFIG = {
     instanceCount: 50,
     entryFee: '0.15',
     timeouts: {
-      matchTimePerPlayer: 600,
+      matchTimePerPlayer: 1200,
       timeIncrementPerMove: 15,
       matchLevel2Delay: 180,
       matchLevel3Delay: 360,
