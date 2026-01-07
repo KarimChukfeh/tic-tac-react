@@ -44,6 +44,7 @@ import GameMatchLayout from './components/shared/GameMatchLayout';
 import TournamentHeader from './components/shared/TournamentHeader';
 import PlayerActivity from './components/shared/PlayerActivity';
 import CommunityRaffleCard from './components/shared/CommunityRaffleCard';
+import EliteMatchesCard from './components/shared/EliteMatchesCard';
 import { usePlayerActivity } from './hooks/usePlayerActivity';
 
 // Chess piece symbols for particles
@@ -469,7 +470,17 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
     return mins + ':' + secs.toString().padStart(2, '0');
   };
 
-  const getActualIndex = (displayIdx) => shouldFlip ? 63 - displayIdx : displayIdx;
+  // Flip vertically (rows only) for white's view - preserves a-h left-to-right
+  // White view: a1 at bottom-left, h1 at bottom-right, a8 at top-left, h8 at top-right
+  // Black view: a1 at top-left, h8 at bottom-right (standard array order)
+  const getActualIndex = (displayIdx) => {
+    if (shouldFlip) {
+      const displayRow = Math.floor(displayIdx / 8);
+      const displayCol = displayIdx % 8;
+      return (7 - displayRow) * 8 + displayCol;
+    }
+    return displayIdx;
+  };
 
   const getSquareColor = (actualIdx) => {
     const row = Math.floor(actualIdx / 8);
@@ -523,8 +534,12 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
   };
 
   const getDisplayPosition = (actualIdx) => {
-    const displayIdx = shouldFlip ? 63 - actualIdx : actualIdx;
-    return { row: Math.floor(displayIdx / 8), col: displayIdx % 8 };
+    const actualRow = Math.floor(actualIdx / 8);
+    const actualCol = actualIdx % 8;
+    if (shouldFlip) {
+      return { row: 7 - actualRow, col: actualCol };
+    }
+    return { row: actualRow, col: actualCol };
   };
 
   const renderBoard = () => {
@@ -681,6 +696,10 @@ export default function Chess() {
     eligiblePlayerCount: 0n
   });
   const [raffleSyncing, setRaffleSyncing] = useState(false);
+
+  // Elite Matches State
+  const [eliteMatches, setEliteMatches] = useState([]);
+  const [eliteMatchesSyncing, setEliteMatchesSyncing] = useState(false);
 
   // Player Activity Hook
   const playerActivity = usePlayerActivity(contract, account, 'chess', TIER_CONFIG);
@@ -1107,6 +1126,58 @@ export default function Chess() {
       // Keep previous state on error
     } finally {
       setRaffleSyncing(false);
+    }
+  }, [getReadOnlyContract]);
+
+  // Fetch elite matches from the contract
+  const fetchEliteMatches = useCallback(async () => {
+    try {
+      setEliteMatchesSyncing(true);
+      const readOnlyContract = getReadOnlyContract();
+
+      const matches = [];
+      let index = 0;
+      const MAX_MATCHES = 50; // Safety limit
+
+      while (index < MAX_MATCHES) {
+        try {
+          const match = await readOnlyContract.eliteMatches(index);
+          const zeroAddress = '0x0000000000000000000000000000000000000000';
+
+          // Check if this is a valid match (has at least one player)
+          if (!match.player1 || match.player1 === zeroAddress) {
+            break;
+          }
+
+          matches.push({
+            player1: match.player1,
+            player2: match.player2,
+            winner: match.winner,
+            currentTurn: match.currentTurn,
+            firstPlayer: match.firstPlayer,
+            status: Number(match.status),
+            isDraw: match.isDraw,
+            startTime: match.startTime,
+            lastMoveTime: match.lastMoveTime,
+            player1TimeRemaining: match.player1TimeRemaining,
+            player2TimeRemaining: match.player2TimeRemaining
+          });
+
+          index++;
+        } catch (e) {
+          // Array index out of bounds - we've read all matches
+          break;
+        }
+      }
+
+      // Reverse to show newest first
+      setEliteMatches(matches.reverse());
+
+      console.log('Elite Matches fetched:', matches.length);
+    } catch (error) {
+      console.error('Error fetching elite matches:', error);
+    } finally {
+      setEliteMatchesSyncing(false);
     }
   }, [getReadOnlyContract]);
 
@@ -2874,6 +2945,14 @@ export default function Chess() {
     return () => clearInterval(pollInterval);
   }, [account, fetchRaffleInfo]);
 
+  // Poll elite matches every 30 seconds (runs globally when wallet connected)
+  useEffect(() => {
+    if (!account) return;
+    fetchEliteMatches();
+    const pollInterval = setInterval(fetchEliteMatches, 30000);
+    return () => clearInterval(pollInterval);
+  }, [account, fetchEliteMatches]);
+
   // Poll leaderboard every 1 minute (runs globally)
   useEffect(() => {
     if (!contract) return;
@@ -3181,6 +3260,17 @@ export default function Chess() {
           onRefresh={fetchRaffleInfo}
           onTriggerRaffle={executeRaffle}
           syncing={raffleSyncing}
+        />
+      )}
+
+      {/* Elite Matches Card - Below Community Raffle Card */}
+      {account && (
+        <EliteMatchesCard
+          eliteMatches={eliteMatches}
+          playerActivityHeight={playerActivityHeight}
+          onRefresh={fetchEliteMatches}
+          syncing={eliteMatchesSyncing}
+          account={account}
         />
       )}
 

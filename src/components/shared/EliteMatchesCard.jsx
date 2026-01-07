@@ -1,0 +1,270 @@
+/**
+ * EliteMatchesCard - Collapsible component showing elite matches history
+ *
+ * Displays a list of elite (high-tier) matches with:
+ * - When the match happened
+ * - Who were the players
+ * - Who won and who lost
+ */
+
+import { useState, useEffect } from 'react';
+import { X, RefreshCw, Trophy, Crown, Clock, Swords } from 'lucide-react';
+import { shortenAddress } from '../../utils/formatters';
+
+const EliteMatchesCard = ({
+  eliteMatches,
+  playerActivityHeight,
+  onRefresh,
+  syncing,
+  account
+}) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
+
+  // Track screen size for responsive positioning
+  useEffect(() => {
+    const handleResize = () => {
+      setIsDesktop(window.innerWidth >= 768);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Format timestamp to readable date
+  const formatDate = (timestamp) => {
+    if (!timestamp || timestamp === 0n) return 'Unknown';
+    const date = new Date(Number(timestamp) * 1000);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffMins < 60) {
+      return `${diffMins}m ago`;
+    } else if (diffHours < 24) {
+      return `${diffHours}h ago`;
+    } else if (diffDays < 7) {
+      return `${diffDays}d ago`;
+    } else {
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+  };
+
+  // Get the loser from a match
+  const getLoser = (match) => {
+    const zeroAddress = '0x0000000000000000000000000000000000000000';
+    if (!match.winner || match.winner === zeroAddress) return null;
+    if (match.winner.toLowerCase() === match.player1.toLowerCase()) {
+      return match.player2;
+    }
+    return match.player1;
+  };
+
+  // Check if address is the connected user
+  const isUser = (address) => {
+    if (!account || !address) return false;
+    return address.toLowerCase() === account.toLowerCase();
+  };
+
+  // Dynamic positioning - stack below PlayerActivity and CommunityRaffle cards
+  // PlayerActivity base positions: top-4 (16px) mobile, md:top-20 (80px) desktop
+  // Each collapsed button: ~32px mobile, ~64px desktop (with padding)
+  // CommunityRaffle is positioned below PlayerActivity with SPACING gap
+  // EliteMatches is positioned below both with SPACING gap
+  const BASE_TOP_MOBILE = 16; // top-4 in pixels
+  const BASE_TOP_DESKTOP = 80; // md:top-20 in pixels
+  const COLLAPSED_BUTTON_HEIGHT_MOBILE = 32;
+  const COLLAPSED_BUTTON_HEIGHT_DESKTOP = 64;
+  const SPACING = 32;
+
+  const baseTop = isDesktop ? BASE_TOP_DESKTOP : BASE_TOP_MOBILE;
+  const collapsedButtonHeight = isDesktop ? COLLAPSED_BUTTON_HEIGHT_DESKTOP : COLLAPSED_BUTTON_HEIGHT_MOBILE;
+
+  // Position below PlayerActivity
+  const activityOffset = playerActivityHeight > 0
+    ? playerActivityHeight + SPACING
+    : collapsedButtonHeight + SPACING;
+
+  // Add offset for CommunityRaffle card (always collapsed button height since we don't track its expanded state)
+  const raffleOffset = collapsedButtonHeight + SPACING;
+
+  const topPosition = baseTop + activityOffset + raffleOffset;
+
+  const hasMatches = eliteMatches && eliteMatches.length > 0;
+
+  return (
+    <div
+      className="fixed left-4 md:left-16 z-50 transition-all duration-300"
+      style={{
+        top: `${topPosition}px`
+      }}
+    >
+      {/* Collapsed State - Gold Crown Circle Button */}
+      {!isExpanded && (
+        <button
+          onClick={() => setIsExpanded(true)}
+          className="bg-gradient-to-br from-amber-500/90 to-yellow-600/90 backdrop-blur-lg rounded-full p-2 md:p-4 border-2 border-amber-400/40 hover:border-amber-400/70 transition-all hover:scale-110 shadow-xl relative group"
+          aria-label="Open elite matches"
+        >
+          <Crown size={16} className="text-white md:w-6 md:h-6" />
+
+          {/* Sync Circle Animation */}
+          {syncing && (
+            <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-cyan-400 animate-spin"></div>
+          )}
+
+          {/* Match Count Badge */}
+          {hasMatches && (
+            <div className="absolute -top-1 -right-1 bg-amber-700 rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center">
+              <span className="text-white text-[11px] md:text-xs font-bold">{eliteMatches.length}</span>
+            </div>
+          )}
+
+          {/* Tooltip */}
+          <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+            Elite Matches
+          </div>
+        </button>
+      )}
+
+      {/* Expanded State */}
+      {isExpanded && (
+        <div className="bg-gradient-to-br from-amber-600/20 to-yellow-600/20 backdrop-blur-lg rounded-xl p-4 border-2 border-amber-400/40 shadow-2xl w-[calc(100vw-2rem)] md:w-[464px] max-h-[60vh] overflow-hidden flex flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Crown size={20} className="text-amber-400" />
+              <h3 className="text-white font-bold text-sm">Elite Matches</h3>
+              {hasMatches && (
+                <span className="text-amber-300 text-xs bg-amber-500/20 px-2 py-0.5 rounded-full">
+                  {eliteMatches.length} matches
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-1">
+              {/* Refresh Button */}
+              <button
+                onClick={onRefresh}
+                disabled={syncing}
+                className="text-amber-300 hover:text-amber-100 transition-colors p-1 hover:bg-amber-700/30 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label="Refresh"
+                title="Refresh elite matches"
+              >
+                <RefreshCw size={18} className={syncing ? 'animate-spin' : ''} />
+              </button>
+              {/* Close Button */}
+              <button
+                onClick={() => setIsExpanded(false)}
+                className="text-amber-300 hover:text-amber-100 transition-colors p-1 hover:bg-amber-700/30 rounded"
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+          </div>
+
+          {/* Matches List */}
+          <div className="overflow-y-auto flex-1 space-y-2 pr-1 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-slate-800/50 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-amber-500/60 [&::-webkit-scrollbar-thumb]:to-yellow-500/60 [&::-webkit-scrollbar-thumb]:rounded-full">
+            {!hasMatches ? (
+              <div className="text-center py-8 text-amber-300/60">
+                <Swords size={32} className="mx-auto mb-2 opacity-50" />
+                <p className="text-sm">No elite matches yet</p>
+                <p className="text-xs mt-1">High-tier tournament finals will appear here</p>
+              </div>
+            ) : (
+              eliteMatches.map((match, idx) => {
+                const loser = getLoser(match);
+                const zeroAddress = '0x0000000000000000000000000000000000000000';
+                const hasWinner = match.winner && match.winner !== zeroAddress;
+                const matchTime = match.lastMoveTime > 0n ? match.lastMoveTime : match.startTime;
+
+                return (
+                  <div
+                    key={idx}
+                    className="bg-black/20 border border-amber-400/20 rounded-lg p-3 hover:border-amber-400/40 transition-colors"
+                  >
+                    {/* Match Header - Time */}
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-1 text-amber-300/60 text-xs">
+                        <Clock size={12} />
+                        <span>{formatDate(matchTime)}</span>
+                      </div>
+                      {match.isDraw && (
+                        <span className="text-xs bg-gray-500/30 text-gray-300 px-2 py-0.5 rounded">
+                          Draw
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Players */}
+                    <div className="space-y-1.5">
+                      {/* Winner */}
+                      {hasWinner && !match.isDraw && (
+                        <div className="flex items-center gap-2">
+                          <Trophy size={14} className="text-amber-400" />
+                          <span className={`text-sm font-semibold ${isUser(match.winner) ? 'text-green-400' : 'text-amber-200'}`}>
+                            {isUser(match.winner) ? 'You' : shortenAddress(match.winner)}
+                          </span>
+                          <span className="text-[10px] text-amber-400/60 uppercase">Winner</span>
+                        </div>
+                      )}
+
+                      {/* Loser */}
+                      {loser && !match.isDraw && (
+                        <div className="flex items-center gap-2 ml-5">
+                          <span className={`text-sm ${isUser(loser) ? 'text-red-400' : 'text-amber-300/70'}`}>
+                            {isUser(loser) ? 'You' : shortenAddress(loser)}
+                          </span>
+                          <span className="text-[10px] text-amber-400/40 uppercase">Lost</span>
+                        </div>
+                      )}
+
+                      {/* Draw case - show both players */}
+                      {match.isDraw && (
+                        <>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-amber-300/70">
+                              {isUser(match.player1) ? 'You' : shortenAddress(match.player1)}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-amber-300/70">
+                              {isUser(match.player2) ? 'You' : shortenAddress(match.player2)}
+                            </span>
+                          </div>
+                        </>
+                      )}
+
+                      {/* In Progress - no winner yet */}
+                      {!hasWinner && !match.isDraw && (
+                        <>
+                          <div className="flex items-center gap-2">
+                            <Swords size={14} className="text-amber-400/60" />
+                            <span className={`text-sm ${isUser(match.player1) ? 'text-green-400' : 'text-amber-300/70'}`}>
+                              {isUser(match.player1) ? 'You' : shortenAddress(match.player1)}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 ml-5">
+                            <span className="text-xs text-amber-400/60">vs</span>
+                            <span className={`text-sm ${isUser(match.player2) ? 'text-green-400' : 'text-amber-300/70'}`}>
+                              {isUser(match.player2) ? 'You' : shortenAddress(match.player2)}
+                            </span>
+                          </div>
+                          <div className="text-[10px] text-orange-400 mt-1">In Progress</div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default EliteMatchesCard;
