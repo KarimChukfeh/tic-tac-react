@@ -19,7 +19,9 @@ const UserManual = ({
   // Format: [{ tierId, playerCount, instanceCount, entryFee, timeouts: { matchTimePerPlayer, timeIncrementPerMove, matchLevel2Delay, matchLevel3Delay, enrollmentWindow, enrollmentLevel2Delay } }]
   tierConfigurations = null,
   // Elite theme flag
-  isElite = false
+  isElite = false,
+  // Game-specific content to render between Match Escalation and Community Raffles
+  gameSpecificContent = null
 }) => {
   // Color scheme based on elite status
   const colors = isElite ? {
@@ -548,6 +550,14 @@ const UserManual = ({
         </div>
 
         <hr className={colors.borderDark} />
+
+        {/* Game-Specific Content (e.g., Chess Tournament Specifics) */}
+        {gameSpecificContent && (
+          <>
+            {gameSpecificContent}
+            <hr className={colors.borderDark} />
+          </>
+        )}
 
         {/* Community Raffles Section */}
         <div>
