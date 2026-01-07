@@ -19,7 +19,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import {
   Wallet, Grid, Clock, Shield, Lock, Eye, Code, ExternalLink,
   Trophy, Zap, Coins, History,
-  CheckCircle, AlertCircle, ChevronDown, ArrowLeft, HelpCircle
+  CheckCircle, AlertCircle, ChevronDown, ArrowLeft, HelpCircle, Calendar
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import ChessABIData from './ChessOnChain-ABI-modular.json';
@@ -613,6 +613,258 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
   return (<div className="relative flex flex-col items-center">{matchStatus === 1 && (<div className={'mb-4 text-center py-2 px-6 rounded-full font-mono text-base font-semibold backdrop-blur-sm ' + (timeRemaining !== null && timeRemaining < 60 ? 'bg-red-500/20 text-red-300 border border-red-500/40 animate-pulse' : 'bg-slate-800/60 text-cyan-300 border border-cyan-500/30')}><Clock className="inline-block mr-2" size={16} />{formatTime(timeRemaining)}</div>)}<div ref={containerRef} className="w-full flex justify-center"><div className="relative rounded-xl overflow-hidden" style={{ width: boardSize || 400, height: boardSize || 400, minWidth: 280, minHeight: 280, background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.9))', border: '1px solid rgba(148, 163, 184, 0.2)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(6, 182, 212, 0.1), inset 0 1px 0 rgba(255,255,255,0.05)' }}><div className="grid gap-0 w-full h-full" style={{ gridTemplateColumns: 'repeat(8, 1fr)', gridTemplateRows: 'repeat(8, 1fr)' }}>{renderBoard()}</div>{renderAnimatedPiece()}</div></div><style>{'@keyframes pieceMove { 0% { transform: translate(var(--from-x), var(--from-y)) scale(1); } 50% { transform: translate(calc(var(--from-x) * 0.3), calc(var(--from-y) * 0.3)) scale(1.15); } 100% { transform: translate(0, 0) scale(1); } }'}</style>{promotionSquare !== null && (<div className="absolute inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center rounded-xl"><div className="p-6 rounded-2xl" style={{ background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.95))', border: '1px solid rgba(168, 85, 247, 0.4)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 30px rgba(168, 85, 247, 0.2)' }}><h3 className="text-slate-100 font-bold text-lg mb-4 text-center">Promote Pawn</h3><div className="flex gap-3">{[5, 4, 3, 2].map((pt) => (<button key={pt} onClick={() => handlePromotion(pt)} className="w-14 h-14 md:w-16 md:h-16 rounded-xl flex items-center justify-center text-3xl md:text-4xl transition-all duration-200 hover:scale-110" style={{ background: 'rgba(51, 65, 85, 0.6)', border: '1px solid rgba(148, 163, 184, 0.3)' }} onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(6, 182, 212, 0.2)'; e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.5)'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(51, 65, 85, 0.6)'; e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.3)'; }}><span className={isWhite ? 'text-white' : 'text-black'} style={{ textShadow: isWhite ? '0 0 8px rgba(0,0,0,0.8), 0 2px 4px rgba(0,0,0,0.6)' : 'none' }}>{PIECE_SYMBOLS[isWhite ? 'white' : 'black'][PIECE_TYPES[pt]]}</span></button>))}</div></div></div>)}{matchStatus === 1 && (<div className={'mt-4 text-center py-3 px-6 rounded-xl font-semibold text-base backdrop-blur-sm ' + (isMyTurn ? 'text-cyan-300' : 'text-slate-400')} style={{ ...(boardSize ? { width: boardSize } : { maxWidth: '100%' }), background: isMyTurn ? 'linear-gradient(135deg, rgba(6, 182, 212, 0.15), rgba(59, 130, 246, 0.15))' : 'rgba(30, 41, 59, 0.6)', border: isMyTurn ? '1px solid rgba(6, 182, 212, 0.4)' : '1px solid rgba(148, 163, 184, 0.2)', boxShadow: isMyTurn ? '0 0 20px rgba(6, 182, 212, 0.15)' : 'none' }}>{isMyTurn ? (<div className="space-y-1"><div className="text-lg flex items-center justify-center gap-2"><span className="inline-block w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>Your Move</div><div className="text-sm text-slate-400">Playing as {isWhite ? 'White' : 'Black'}</div></div>) : (<div className="space-y-1"><div className="flex items-center justify-center gap-2"><span className="inline-block w-2 h-2 rounded-full bg-slate-500 animate-pulse"></span>Opponent's Turn</div><div className="text-sm text-slate-500">Waiting for their move...</div></div>)}</div>)}{(whiteInCheck || blackInCheck) && matchStatus === 1 && (<div className="mt-3 text-center py-2 px-6 rounded-full text-red-300 font-semibold text-sm animate-pulse" style={{ ...(boardSize ? { width: boardSize } : { maxWidth: '100%' }), background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.4)', boxShadow: '0 0 20px rgba(239, 68, 68, 0.2)' }}>{whiteInCheck ? 'White' : 'Black'} King in Check</div>)}</div>);
 };
 
+// Read-only board for viewing archived elite matches
+const ArchivedChessBoard = ({ match, onBack }) => {
+  const [boardSize, setBoardSize] = useState(null);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    const updateSize = () => {
+      const vh60 = window.innerHeight * 0.60;
+      const containerWidth = containerRef.current?.offsetWidth || window.innerWidth * 0.9;
+      const size = Math.min(vh60, containerWidth, 520);
+      setBoardSize(size);
+    };
+    updateSize();
+    window.addEventListener('resize', updateSize);
+    return () => window.removeEventListener('resize', updateSize);
+  }, []);
+
+  const shouldFlip = true; // Always show from white's perspective
+
+  const getActualIndex = (displayIdx) => {
+    if (shouldFlip) {
+      const displayRow = Math.floor(displayIdx / 8);
+      const displayCol = displayIdx % 8;
+      return (7 - displayRow) * 8 + displayCol;
+    }
+    return displayIdx;
+  };
+
+  const getSquareColor = (actualIdx) => {
+    const row = Math.floor(actualIdx / 8);
+    const col = actualIdx % 8;
+    return (row + col) % 2 === 1;
+  };
+
+  const formatDate = (timestamp) => {
+    if (!timestamp || timestamp === 0n) return 'Unknown';
+    const date = new Date(Number(timestamp) * 1000);
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const zeroAddress = '0x0000000000000000000000000000000000000000';
+  const whitePlayer = (match.firstPlayer && match.firstPlayer !== zeroAddress) ? match.firstPlayer : match.player1;
+  const blackPlayer = whitePlayer.toLowerCase() === match.player1.toLowerCase() ? match.player2 : match.player1;
+
+  const renderBoard = () => {
+    const squares = [];
+    for (let displayIdx = 0; displayIdx < 64; displayIdx++) {
+      const actualIdx = getActualIndex(displayIdx);
+      const piece = match.board[actualIdx];
+      const isLight = getSquareColor(actualIdx);
+      const pieceType = piece ? Number(piece.pieceType) : 0;
+      const pieceColor = piece ? Number(piece.color) : 0;
+      const displayRow = Math.floor(displayIdx / 8);
+      const displayCol = displayIdx % 8;
+      const showRankLabel = displayCol === 0;
+      const showFileLabel = displayRow === 7;
+      const actualRow = Math.floor(actualIdx / 8);
+      const actualCol = actualIdx % 8;
+      const rankLabel = actualRow + 1;
+      const fileLabel = String.fromCharCode(97 + actualCol);
+
+      squares.push(
+        <div
+          key={displayIdx}
+          className={`relative flex items-center justify-center ${
+            isLight ? 'bg-stone-300' : 'bg-stone-700'
+          }`}
+        >
+          <span
+            className={`text-3xl md:text-4xl lg:text-5xl select-none ${
+              pieceColor === 1 ? 'text-white' : 'text-black drop-shadow-[0_0_3px_rgba(255,255,255,0.6)]'
+            }`}
+            style={{
+              textShadow: pieceColor === 1 ? '0 0 8px rgba(0,0,0,0.8), 0 2px 4px rgba(0,0,0,0.6)' : 'none'
+            }}
+          >
+            {getPieceSymbol(piece)}
+          </span>
+          {showRankLabel && (
+            <span className={`absolute left-1 top-0.5 text-[10px] font-medium ${isLight ? 'text-slate-500' : 'text-slate-600'}`}>
+              {rankLabel}
+            </span>
+          )}
+          {showFileLabel && (
+            <span className={`absolute right-1 bottom-0.5 text-[10px] font-medium ${isLight ? 'text-slate-500' : 'text-slate-600'}`}>
+              {fileLabel}
+            </span>
+          )}
+        </div>
+      );
+    }
+    return squares;
+  };
+
+  return (
+    <div className="w-full max-w-7xl mx-auto px-4 py-8">
+      {/* Back Button */}
+      <button
+        onClick={onBack}
+        className="mb-6 flex items-center gap-2 px-4 py-2 bg-slate-800/60 backdrop-blur-lg text-cyan-300 rounded-lg hover:bg-slate-700/60 transition-all border border-cyan-500/30"
+      >
+        <ArrowLeft size={20} />
+        Back to Matches
+      </button>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Board */}
+        <div className="lg:col-span-2">
+          <div className="bg-slate-800/40 backdrop-blur-lg rounded-2xl p-6 border border-slate-700/50">
+            <div className="relative flex flex-col items-center">
+              <div ref={containerRef} className="w-full flex justify-center">
+                <div
+                  className="relative rounded-xl overflow-hidden"
+                  style={{
+                    width: boardSize || 400,
+                    height: boardSize || 400,
+                    minWidth: 280,
+                    minHeight: 280,
+                    background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.9))',
+                    border: '1px solid rgba(148, 163, 184, 0.2)',
+                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(6, 182, 212, 0.1), inset 0 1px 0 rgba(255,255,255,0.05)'
+                  }}
+                >
+                  <div
+                    className="grid gap-0 w-full h-full"
+                    style={{ gridTemplateColumns: 'repeat(8, 1fr)', gridTemplateRows: 'repeat(8, 1fr)' }}
+                  >
+                    {renderBoard()}
+                  </div>
+                </div>
+              </div>
+
+              {/* Match Result */}
+              <div
+                className="mt-4 text-center py-3 px-6 rounded-xl font-semibold text-base backdrop-blur-sm"
+                style={{
+                  ...(boardSize ? { width: boardSize } : { maxWidth: '100%' }),
+                  background: match.isDraw
+                    ? 'rgba(100, 116, 139, 0.2)'
+                    : 'linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(22, 163, 74, 0.15))',
+                  border: match.isDraw ? '1px solid rgba(100, 116, 139, 0.4)' : '1px solid rgba(34, 197, 94, 0.4)'
+                }}
+              >
+                {match.isDraw ? (
+                  <div className="text-slate-300">Match ended in a draw</div>
+                ) : match.winner && match.winner !== zeroAddress ? (
+                  <div className="space-y-1">
+                    <div className="text-green-300 flex items-center justify-center gap-2">
+                      <Trophy size={18} />
+                      {match.winner.toLowerCase() === whitePlayer.toLowerCase() ? 'White' : 'Black'} wins
+                    </div>
+                    <div className="text-sm text-slate-400">{shortenAddress(match.winner)}</div>
+                  </div>
+                ) : (
+                  <div className="text-slate-400">Match in progress</div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Match Info */}
+        <div className="space-y-4">
+          {/* Players */}
+          <div className="bg-slate-800/40 backdrop-blur-lg rounded-2xl p-6 border border-slate-700/50">
+            <h2 className="text-xl font-bold mb-4 text-cyan-300">Players</h2>
+
+            {/* White Player */}
+            <div className="mb-4 p-3 bg-slate-700/30 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center">
+                  <span className="text-black text-xs font-bold">W</span>
+                </div>
+                <span className="text-sm text-slate-400">White</span>
+              </div>
+              <a
+                href={getAddressUrl(whitePlayer)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-white hover:text-cyan-300 transition-colors font-mono text-sm"
+              >
+                {shortenAddress(whitePlayer)}
+              </a>
+              {match.winner && !match.isDraw && match.winner.toLowerCase() === whitePlayer.toLowerCase() && (
+                <div className="mt-2 flex items-center gap-1 text-green-400 text-sm">
+                  <Trophy size={14} />
+                  Winner
+                </div>
+              )}
+            </div>
+
+            {/* Black Player */}
+            <div className="p-3 bg-slate-700/30 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-6 h-6 rounded-full bg-slate-900 border border-slate-600 flex items-center justify-center">
+                  <span className="text-white text-xs font-bold">B</span>
+                </div>
+                <span className="text-sm text-slate-400">Black</span>
+              </div>
+              <a
+                href={getAddressUrl(blackPlayer)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-white hover:text-cyan-300 transition-colors font-mono text-sm"
+              >
+                {shortenAddress(blackPlayer)}
+              </a>
+              {match.winner && !match.isDraw && match.winner.toLowerCase() === blackPlayer.toLowerCase() && (
+                <div className="mt-2 flex items-center gap-1 text-green-400 text-sm">
+                  <Trophy size={14} />
+                  Winner
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Timestamps */}
+          <div className="bg-slate-800/40 backdrop-blur-lg rounded-2xl p-6 border border-slate-700/50">
+            <h2 className="text-xl font-bold mb-4 text-cyan-300">Timeline</h2>
+
+            <div className="space-y-3">
+              <div className="flex items-start gap-3">
+                <Calendar size={18} className="text-slate-400 mt-0.5" />
+                <div>
+                  <div className="text-sm text-slate-400">Started</div>
+                  <div className="text-white">{formatDate(match.startTime)}</div>
+                </div>
+              </div>
+
+              {match.lastMoveTime > 0n && (
+                <div className="flex items-start gap-3">
+                  <Clock size={18} className="text-slate-400 mt-0.5" />
+                  <div>
+                    <div className="text-sm text-slate-400">Last Move</div>
+                    <div className="text-white">{formatDate(match.lastMoveTime)}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function Chess() {
   // Use network config instead of hardcoded values
   const EXPECTED_CHAIN_ID = CURRENT_NETWORK.chainId;
@@ -700,6 +952,7 @@ export default function Chess() {
   // Elite Matches State
   const [eliteMatches, setEliteMatches] = useState([]);
   const [eliteMatchesSyncing, setEliteMatchesSyncing] = useState(false);
+  const [viewingArchivedMatch, setViewingArchivedMatch] = useState(null);
 
   // Player Activity Hook
   const playerActivity = usePlayerActivity(contract, account, 'chess', TIER_CONFIG);
@@ -1180,6 +1433,57 @@ export default function Chess() {
       setEliteMatchesSyncing(false);
     }
   }, [getReadOnlyContract]);
+
+  // Handler to view an archived elite match
+  const handleViewArchivedMatch = useCallback(async (matchIndex) => {
+    try {
+      const readOnlyContract = getReadOnlyContract();
+      const matchData = await readOnlyContract.eliteMatches(matchIndex);
+
+      const zeroAddress = '0x0000000000000000000000000000000000000000';
+      if (!matchData.player1 || matchData.player1 === zeroAddress) {
+        console.error('Match not found at index:', matchIndex);
+        return;
+      }
+
+      // Unpack the chess board from packedBoard
+      const board = [];
+      let packed = BigInt(matchData.packedBoard);
+      for (let i = 0; i < 64; i++) {
+        const val = Number(packed & 0xFn);
+        if (val === 0) {
+          board.push({ pieceType: 0, color: 0 });
+        } else if (val >= 1 && val <= 6) {
+          board.push({ pieceType: val, color: 1 });
+        } else {
+          board.push({ pieceType: val - 6, color: 2 });
+        }
+        packed = packed >> 4n;
+      }
+
+      setViewingArchivedMatch({
+        player1: matchData.player1,
+        player2: matchData.player2,
+        winner: matchData.winner,
+        currentTurn: matchData.currentTurn,
+        firstPlayer: matchData.firstPlayer,
+        status: Number(matchData.status),
+        isDraw: matchData.isDraw,
+        startTime: matchData.startTime,
+        lastMoveTime: matchData.lastMoveTime,
+        player1TimeRemaining: matchData.player1TimeRemaining,
+        player2TimeRemaining: matchData.player2TimeRemaining,
+        board
+      });
+    } catch (error) {
+      console.error('Error fetching archived match:', error);
+    }
+  }, [getReadOnlyContract]);
+
+  // Handler to go back from archived match view
+  const handleBackFromArchived = useCallback(() => {
+    setViewingArchivedMatch(null);
+  }, []);
 
   // LAZY LOADING: Fetch tier metadata from hardcoded TIER_CONFIG (no RPC calls)
   // Active enrollment counts come from tierInstances when tiers are expanded
@@ -3167,6 +3471,23 @@ export default function Chess() {
     );
   }
 
+  // Show archived match view
+  if (viewingArchivedMatch) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: currentTheme.gradient,
+        color: '#fff',
+        position: 'relative',
+        overflow: 'hidden',
+        transition: 'background 0.8s ease-in-out'
+      }}>
+        <ParticleBackground colors={[currentTheme.primary, currentTheme.secondary]} symbols={CHESS_PIECES} />
+        <ArchivedChessBoard match={viewingArchivedMatch} onBack={handleBackFromArchived} />
+      </div>
+    );
+  }
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -3271,6 +3592,7 @@ export default function Chess() {
           onRefresh={fetchEliteMatches}
           syncing={eliteMatchesSyncing}
           account={account}
+          onViewMatch={handleViewArchivedMatch}
         />
       )}
 

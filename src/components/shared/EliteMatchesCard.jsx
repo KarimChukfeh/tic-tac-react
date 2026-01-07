@@ -8,7 +8,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { X, RefreshCw, Trophy, Crown, Clock, Swords } from 'lucide-react';
+import { X, RefreshCw, Trophy, Crown, Clock, Swords, Eye } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
 
 const EliteMatchesCard = ({
@@ -16,7 +16,8 @@ const EliteMatchesCard = ({
   playerActivityHeight,
   onRefresh,
   syncing,
-  account
+  account,
+  onViewMatch
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
@@ -256,6 +257,15 @@ const EliteMatchesCard = ({
                         </>
                       )}
                     </div>
+
+                    {/* View Match Button */}
+                    <button
+                      onClick={() => onViewMatch(eliteMatches.length - 1 - idx)}
+                      className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 hover:from-amber-500/30 hover:to-yellow-500/30 text-amber-300 rounded-lg transition-all border border-amber-400/30 hover:border-amber-400/50 text-sm"
+                    >
+                      <Eye size={14} />
+                      View Match
+                    </button>
                   </div>
                 );
               })
