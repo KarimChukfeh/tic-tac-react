@@ -76,9 +76,7 @@ const GameMatchLayout = ({
   onForceEliminate,
   onClaimReplacement,
 
-  // Tournament data for advanced player checks
-  tournamentRounds = null,
-  currentRoundNumber = 0,
+  // Tournament metadata
   playerCount = null, // Optional: player count for tournament type label
 
   // Player configuration
@@ -176,9 +174,9 @@ const GameMatchLayout = ({
               onForceEliminate={onForceEliminate}
               onClaimReplacement={onClaimReplacement}
               loading={loading}
-              tournamentRounds={tournamentRounds}
-              currentAccount={account}
-              currentRoundNumber={currentRoundNumber}
+              escL2Available={match.escL2Available}
+              escL3Available={match.escL3Available}
+              isUserAdvancedForRound={match.isUserAdvancedForRound}
             />
           )}
 
@@ -258,9 +256,9 @@ const GameMatchLayout = ({
               onForceEliminate={onForceEliminate}
               onClaimReplacement={onClaimReplacement}
               loading={loading}
-              tournamentRounds={tournamentRounds}
-              currentAccount={account}
-              currentRoundNumber={currentRoundNumber}
+              escL2Available={match.escL2Available}
+              escL3Available={match.escL3Available}
+              isUserAdvancedForRound={match.isUserAdvancedForRound}
             />
           </div>
         )}
@@ -433,9 +431,9 @@ const GameMatchLayout = ({
               onForceEliminate={onForceEliminate}
               onClaimReplacement={onClaimReplacement}
               loading={loading}
-              tournamentRounds={tournamentRounds}
-              currentAccount={account}
-              currentRoundNumber={currentRoundNumber}
+              escL2Available={match.escL2Available}
+              escL3Available={match.escL3Available}
+              isUserAdvancedForRound={match.isUserAdvancedForRound}
             />
           </div>
         )}

@@ -30,7 +30,6 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState(null);
   const [dismissedMatches, setDismissedMatches] = useState(new Set());
-  const [completedMatchTimestamps, setCompletedMatchTimestamps] = useState({});
 
   const fetchActivity = useCallback(async (isInitialLoad = false) => {
     // Don't fetch if contract or account not available
@@ -171,25 +170,9 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
               continue;
             }
 
-            // Include in-progress matches (status === 1) or recently completed matches (status === 2)
-            if (matchStatus === 1 || matchStatus === 2) {
-              // If match just completed, record timestamp
-              if (matchStatus === 2 && !completedMatchTimestamps[matchKey]) {
-                setCompletedMatchTimestamps(prev => ({
-                  ...prev,
-                  [matchKey]: Date.now()
-                }));
-              }
-
-              // Filter out completed matches older than 10 seconds
-              if (matchStatus === 2 && completedMatchTimestamps[matchKey]) {
-                const elapsed = Date.now() - completedMatchTimestamps[matchKey];
-                if (elapsed > 10000) {
-                  console.log(`[PlayerActivity] Skipping completed match ${matchKey} (elapsed: ${elapsed}ms)`);
-                  continue; // Skip this match, it's been completed for more than 10 seconds
-                }
-              }
-
+            // Only include in-progress matches (status === 1)
+            // Completed matches (status === 2) should not appear as "active"
+            if (matchStatus === 1) {
               hasActiveMatch = true;
 
               // Determine opponent
@@ -212,8 +195,7 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
               console.log(`[PlayerActivity] Adding match ${matchKey} to activeMatches`, {
                 opponent,
                 timeRemaining,
-                isMyTurn,
-                isCompleted: matchStatus === 2
+                isMyTurn
               });
 
               activeMatches.push({
@@ -223,11 +205,10 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
                 matchIdx,
                 opponent,
                 timeRemaining,
-                isMyTurn, // Add flag to indicate if it's player's turn
-                isCompleted: matchStatus === 2, // Add flag to indicate if match is completed
+                isMyTurn,
               });
             } else {
-              console.log(`[PlayerActivity] Skipping match ${matchKey} - status not 1 or 2 (status: ${matchStatus})`);
+              console.log(`[PlayerActivity] Skipping match ${matchKey} - status not 1 (status: ${matchStatus})`);
             }
           }
         }
@@ -282,7 +263,7 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
       setLoading(false);
       setSyncing(false);
     }
-  }, [contract, account, gameName, tierConfig, dismissedMatches, completedMatchTimestamps]);
+  }, [contract, account, gameName, tierConfig, dismissedMatches]);
 
   // Initial fetch
   useEffect(() => {

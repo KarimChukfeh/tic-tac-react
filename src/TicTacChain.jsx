@@ -234,7 +234,6 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onSpectateMat
                         matchStatusOptions={matchStatusOptions}
                         showEscalation={true}
                         showThisIsYou={true}
-                        tournamentRounds={rounds}
                       />
                     </div>
                   );
@@ -1439,14 +1438,63 @@ export default function TicTacChain() {
               console.debug('No escalation state for match (normal for non-stalled matches):', escalationErr.message);
             }
 
-            // Check escalation availability using contract functions (more reliable than client calculation)
+            // Detect timeout client-side (contract only tracks after escalation is triggered)
+            // A player is timed out if their remaining time <= 0
+            const isTimedOut = player1TimeRemaining <= 0 || player2TimeRemaining <= 0;
+            const isMatchActive = parsedMatch.matchStatus === 1;
+
+            // Check escalation availability using contract functions
+            // NOTE: These functions REVERT when match isn't stalled, so we only call if we detect timeout
             let escL2Available = false;
             let escL3Available = false;
-            try {
-              escL2Available = await contractInstance.isMatchEscL2Available(tierId, instanceId, roundNum, matchNum);
-              escL3Available = await contractInstance.isMatchEscL3Available(tierId, instanceId, roundNum, matchNum);
-            } catch (escCheckErr) {
-              console.debug('Could not check escalation availability:', escCheckErr.message);
+            let isUserAdvancedForRound = false;
+
+            if (isMatchActive && isTimedOut) {
+              // Client detected timeout - try to check contract escalation functions
+              try {
+                escL2Available = await contractInstance.isMatchEscL2Available(tierId, instanceId, roundNum, matchNum);
+                console.log(`[Bracket R${roundNum}M${matchNum}] escL2Available:`, escL2Available);
+              } catch (escCheckErr) {
+                // Contract reverted - L2 not available yet (expected if not enough time passed)
+                console.debug(`[Bracket R${roundNum}M${matchNum}] L2 not available:`, escCheckErr.reason || 'reverted');
+              }
+
+              try {
+                escL3Available = await contractInstance.isMatchEscL3Available(tierId, instanceId, roundNum, matchNum);
+                console.log(`[Bracket R${roundNum}M${matchNum}] escL3Available:`, escL3Available);
+              } catch (escCheckErr) {
+                // Contract reverted - L3 not available yet
+                console.debug(`[Bracket R${roundNum}M${matchNum}] L3 not available:`, escCheckErr.reason || 'reverted');
+              }
+
+              // Check if current user is an advanced player for this round
+              if (account) {
+                try {
+                  isUserAdvancedForRound = await contractInstance.isPlayerInAdvancedRound(tierId, instanceId, roundNum, account);
+                  console.log(`[Bracket R${roundNum}] isUserAdvancedForRound:`, isUserAdvancedForRound);
+                } catch (advErr) {
+                  console.debug('[Bracket] Advanced player check failed:', advErr.reason || advErr.message);
+                }
+              }
+
+              // Create client-side timeout state if contract doesn't have it
+              if (!timeoutState) {
+                const timeoutOccurred = parsedMatch.lastMoveTime + (player1TimeRemaining <= 0
+                  ? (parsedMatch.player1TimeRemaining ?? tierMatchTime)
+                  : (parsedMatch.player2TimeRemaining ?? tierMatchTime));
+                const matchLevel2Delay = timeoutConfig?.matchLevel2Delay || 120;
+                const matchLevel3Delay = timeoutConfig?.matchLevel3Delay || 240;
+
+                timeoutState = {
+                  escalation1Start: timeoutOccurred + matchLevel2Delay,
+                  escalation2Start: timeoutOccurred + matchLevel3Delay,
+                  activeEscalation: 0,
+                  timeoutActive: true, // We detected a timeout
+                  forfeitAmount: 0,
+                  clientDetected: true // Flag to indicate this was detected client-side
+                };
+                console.log(`[Bracket R${roundNum}M${matchNum}] Client-detected timeout state:`, timeoutState);
+              }
             }
 
             matches.push({
@@ -1455,10 +1503,10 @@ export default function TicTacChain() {
               // Override with contract's real-time values
               player1TimeRemaining,
               player2TimeRemaining,
-              matchTimePerPlayer: tierMatchTime, // Pass through per-tier value for UI
-              timeoutConfig, // Add tier timeout config for escalation calculations
-              escL2Available, // Contract says Level 2 is available
-              escL3Available  // Contract says Level 3 is available
+              matchTimePerPlayer: tierMatchTime,
+              escL2Available,
+              escL3Available,
+              isUserAdvancedForRound // Contract says if user is advanced for this round
             });
           } catch (err) {
             // Match might not exist yet - create placeholder with all required fields
@@ -1479,9 +1527,9 @@ export default function TicTacChain() {
               player1TimeRemaining: tierMatchTime,
               player2TimeRemaining: tierMatchTime,
               matchTimePerPlayer: tierMatchTime,
-              timeoutConfig, // Add tier timeout config for placeholder matches too
-              escL2Available: false, // Placeholder: no escalations available
-              escL3Available: false  // Placeholder: no escalations available
+              escL2Available: false,
+              escL3Available: false,
+              isUserAdvancedForRound: false
             });
           }
         }
@@ -1509,7 +1557,7 @@ export default function TicTacChain() {
       console.error('Error refreshing tournament bracket:', error);
       return null;
     }
-  }, [escalationInterval]);
+  }, [escalationInterval, account]);
 
   // Handle entering tournament (fetch and display bracket)
   const handleEnterTournament = async (tierId, instanceId) => {
@@ -1703,6 +1751,26 @@ export default function TicTacChain() {
         console.debug('No escalation state for match (normal for non-stalled matches):', escalationErr.message);
       }
 
+      // Check escalation availability using contract functions
+      let escL2Available = false;
+      let escL3Available = false;
+      let isUserAdvancedForRound = false;
+      try {
+        escL2Available = await contractInstance.isMatchEscL2Available(tierId, instanceId, roundNumber, matchNumber);
+        escL3Available = await contractInstance.isMatchEscL3Available(tierId, instanceId, roundNumber, matchNumber);
+      } catch (escCheckErr) {
+        console.debug('Could not check escalation availability:', escCheckErr.message);
+      }
+
+      // Check if current user is an advanced player for this round (from contract)
+      if (userAccount) {
+        try {
+          isUserAdvancedForRound = await contractInstance.isPlayerInAdvancedRound(tierId, instanceId, roundNumber, userAccount);
+        } catch (advErr) {
+          console.debug('Could not check advanced player status:', advErr.message);
+        }
+      }
+
       const boardState = Array.from(board).map(cell => Number(cell));
       const isPlayer1 = actualPlayer1.toLowerCase() === userAccount.toLowerCase();
       const isYourTurn = currentTurn.toLowerCase() === userAccount.toLowerCase();
@@ -1778,7 +1846,11 @@ export default function TicTacChain() {
         lastMoveTimestamp,
         matchTimePerPlayer: tierMatchTime, // Pass through per-tier value for UI components
         timeoutConfig, // Pass timeout config to UI components
-        lastMove // Last move for highlighting (from events)
+        lastMove, // Last move for highlighting (from events)
+        // Escalation data from contract
+        escL2Available,
+        escL3Available,
+        isUserAdvancedForRound
       };
     } catch (error) {
       console.error('Error refreshing match:', error);
@@ -2709,8 +2781,6 @@ export default function TicTacChain() {
             onClaimTimeoutWin={isSpectator ? null : handleClaimTimeoutWin}
             onForceEliminate={isSpectator ? null : handleForceEliminateStalledMatch}
             onClaimReplacement={isSpectator ? null : handleClaimMatchSlotByReplacement}
-            tournamentRounds={viewingTournament?.rounds || null}
-            currentRoundNumber={currentMatch.roundNumber}
             playerCount={viewingTournament?.playerCount || null}
             playerConfig={{
               player1: { icon: 'X', label: 'Player 1' },

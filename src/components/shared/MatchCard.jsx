@@ -3,6 +3,12 @@
  *
  * Displays an individual match within a tournament bracket.
  * Supports escalation display, player icons, and various color themes.
+ *
+ * ESCALATION LOGIC (simplified - uses contract data directly):
+ * - ML2 Timer: isStalled && !escL2Available && isUserAdvanced
+ * - ML2 CTA: escL2Available && isUserAdvanced
+ * - ML3 Timer: escL2Available && !escL3Available && !isUserAdvanced
+ * - ML3 CTA: escL3Available && !isUserAdvanced
  */
 
 import { useState, useEffect, useRef } from 'react';
@@ -10,7 +16,6 @@ import { Play, Award, Clock, HelpCircle, Zap, Users, Eye } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
 import { getMatchStatusText, getMatchStatusColor } from '../../utils/matchStatus';
 import { calculatePlayerTimes } from '../../utils/timeCalculations';
-import { isAdvancedPlayer } from '../../utils/tournamentHelpers';
 
 /**
  * Format seconds into MM:SS display
@@ -23,158 +28,23 @@ const formatEscalationTime = (seconds) => {
 };
 
 /**
- * Calculate escalation state using contract data (NO client-side calculations)
- */
-const calculateEscalationState = (match, account, timeoutConfig, isUserAdvancedPlayer) => {
-  // Use contract-provided time data (no calculations)
-  const times = calculatePlayerTimes(match, account, match.matchTimePerPlayer);
-
-  // Determine if either player has timed out (contract says <= 0)
-  const isTimeout = times.isExpired;
-
-  // Determine which player's turn it is and show their time
-  const isPlayer1Turn = match.currentTurn?.toLowerCase() === match.player1?.toLowerCase();
-  const activePlayerTime = isPlayer1Turn ? times.player1.remaining : times.player2.remaining;
-
-  // For compact display, show the active player's remaining time
-  const timeRemaining = match.matchStatus === 1 ? activePlayerTime : null;
-
-  // Use escalation status from contract (authoritative source)
-  const contractIsStalled = match.timeoutState && match.timeoutState.timeoutActive;
-  const effectiveEscalation = match.timeoutState?.activeEscalation || 0; // Result field (history), not status
-
-  const now = Math.floor(Date.now() / 1000);
-  let timeToEscalation1 = null;
-  let timeToEscalation2 = null;
-  let timeToEscalation3 = null;
-  let canForceEliminate = false;
-  let canReplace = false;
-  let isStalled = contractIsStalled;
-  let clientCalculated = false;
-
-  // If contract has escalation data, use it
-  if (match.timeoutState && contractIsStalled) {
-    const esc1Start = match.timeoutState.escalation1Start || 0;
-    const esc2Start = match.timeoutState.escalation2Start || 0;
-
-    // Calculate countdown timers
-    if (esc1Start > 0 && now < esc1Start) {
-      timeToEscalation1 = esc1Start - now;
-    }
-    if (esc2Start > 0 && now < esc2Start) {
-      timeToEscalation2 = esc2Start - now;
-    }
-
-      // Use contract-provided escalation availability flags (more reliable than time calculations)
-    // If contract provides the flags, use them; otherwise fall back to time-based logic
-    if (match.escL2Available !== undefined) {
-      canForceEliminate = match.escL2Available;
-    } else {
-      // Fallback: Level 2 active from esc1Start onwards (never expires)
-      canForceEliminate = esc1Start > 0 && now >= esc1Start;
-    }
-
-    if (match.escL3Available !== undefined) {
-      // Level 3: Use contract flag, but still respect advanced player restriction
-      // RESTRICTION: Not available to advanced players (they can only use Level 2)
-      canReplace = match.escL3Available && !isUserAdvancedPlayer;
-    } else {
-      // Fallback: Level 3 active from esc2Start onwards (never expires)
-      // RESTRICTION: Not available to advanced players (they can only use Level 2)
-      canReplace = esc2Start > 0 && now >= esc2Start && !isUserAdvancedPlayer;
-    }
-  }
-  // Otherwise, calculate client-side if player has timed out
-  else if (match.matchStatus === 1 && match.lastMoveTime > 0) {
-    clientCalculated = true;
-    const timeSinceLastMove = now - match.lastMoveTime;
-
-    // Determine whose turn it is and their remaining time
-    const isPlayer1Turn = match.currentTurn?.toLowerCase() === match.player1?.toLowerCase();
-    const currentPlayerTime = isPlayer1Turn ? match.player1TimeRemaining : match.player2TimeRemaining;
-
-    // Check if current player has timed out
-    const hasTimedOut = currentPlayerTime <= 0 || timeSinceLastMove >= currentPlayerTime;
-
-    if (hasTimedOut) {
-      isStalled = true;
-
-      // Calculate when timeout occurred
-      const timeoutOccurred = match.lastMoveTime + currentPlayerTime;
-
-      // Use tier-specific delays with fallbacks for backwards compatibility
-      const matchLevel2Delay = timeoutConfig?.matchLevel2Delay || 60;
-      const matchLevel3Delay = timeoutConfig?.matchLevel3Delay || 120;
-
-      // Calculate escalation start times using tier-specific delays
-      // escalation1Start = when Level 2 (Force Eliminate) becomes available
-      // escalation2Start = when Level 3 (Replace Players) becomes available
-      const esc1Start = timeoutOccurred + matchLevel2Delay;
-      const esc2Start = timeoutOccurred + matchLevel3Delay;
-
-      // Calculate countdowns
-      if (now < esc1Start) {
-        timeToEscalation1 = esc1Start - now;
-      }
-      if (now < esc2Start) {
-        timeToEscalation2 = esc2Start - now;
-      }
-
-      // Use contract-provided escalation availability flags if available
-      if (match.escL2Available !== undefined) {
-        canForceEliminate = match.escL2Available;
-      } else {
-        // Fallback: Level 2 active from esc1Start onwards (never expires)
-        canForceEliminate = now >= esc1Start;
-      }
-
-      if (match.escL3Available !== undefined) {
-        // Level 3: Use contract flag, but still respect advanced player restriction
-        // RESTRICTION: Not available to advanced players (they can only use Level 2)
-        canReplace = match.escL3Available && !isUserAdvancedPlayer;
-      } else {
-        // Fallback: Level 3 active from esc2Start onwards (never expires)
-        // RESTRICTION: Not available to advanced players (they can only use Level 2)
-        canReplace = now >= esc2Start && !isUserAdvancedPlayer;
-      }
-    }
-  }
-
-  const hasEscalation = isStalled;
-
-  return {
-    timeRemaining,
-    isTimeout,
-    hasEscalation,
-    effectiveEscalation, // Keep for debug display
-    isStalled,
-    clientCalculated,
-    canForceEliminate,
-    canReplace,
-    timeToEscalation1,
-    timeToEscalation2,
-    timeToEscalation3,
-  };
-};
-
-/**
  * Get border class based on match state
  */
-const getBorderClass = (isUserMatch, escalation, defaultBorder = 'border-purple-400/30 hover:border-purple-400/50') => {
+const getBorderClass = (isUserMatch, isStalled, escL2Available, escL3Available, isUserAdvanced, defaultBorder = 'border-purple-400/30 hover:border-purple-400/50') => {
   if (isUserMatch) {
     return 'border-green-400/70 bg-green-900/20';
   }
-  if (escalation.canReplace) {
+  // ML3 available for non-advanced players
+  if (escL3Available && !isUserAdvanced) {
     return 'border-red-400 bg-red-900/20 animate-pulse';
   }
-  if (escalation.canForceEliminate) {
+  // ML2 available for advanced players
+  if (escL2Available && isUserAdvanced) {
     return 'border-yellow-400 bg-yellow-900/20';
   }
-  if (escalation.hasEscalation) {
+  // Match is stalled but escalation not yet available
+  if (isStalled) {
     return 'border-orange-400 bg-orange-900/20';
-  }
-  if (escalation.isTimeout) {
-    return 'border-orange-400/60 bg-orange-900/10';
   }
   return defaultBorder;
 };
@@ -190,14 +60,13 @@ const getBorderClass = (isUserMatch, escalation, defaultBorder = 'border-purple-
  * @param {boolean} props.loading - Loading state
  * @param {Function} props.onEnterMatch - Handler for entering a match
  * @param {Function} [props.onSpectateMatch] - Handler for spectating a match
- * @param {Function} [props.onForceEliminate] - Handler for force elimination (escalation 2)
- * @param {Function} [props.onClaimReplacement] - Handler for claiming replacement (escalation 3)
+ * @param {Function} [props.onForceEliminate] - Handler for force elimination (ML2)
+ * @param {Function} [props.onClaimReplacement] - Handler for claiming replacement (ML3)
  * @param {Object} [props.playerIcons] - Custom player icons { player1: string, player2: string }
  * @param {Object} [props.matchStatusOptions] - Options for match status display
  * @param {boolean} [props.showEscalation=true] - Whether to show escalation features
  * @param {boolean} [props.showThisIsYou=false] - Whether to show "THIS IS YOU" label
  * @param {Object} [props.colors] - Color theme overrides
- * @param {Array} [props.tournamentRounds] - Tournament rounds data for advanced player check
  */
 const MatchCard = ({
   match,
@@ -216,7 +85,6 @@ const MatchCard = ({
   showEscalation = true,
   showThisIsYou = false,
   colors = {},
-  tournamentRounds = null,
 }) => {
   const isUserMatch =
     match.player1?.toLowerCase() === account?.toLowerCase() ||
@@ -225,38 +93,59 @@ const MatchCard = ({
   const isPlayer1 = match.player1?.toLowerCase() === account?.toLowerCase();
   const isPlayer2 = match.player2?.toLowerCase() === account?.toLowerCase();
 
-  // Check if current user is an advanced player (for Level 2 escalation, Level 3 restriction)
-  const isUserAdvancedPlayer = tournamentRounds && account
-    ? isAdvancedPlayer(tournamentRounds, account, roundIdx)
-    : false;
+  // ===== ESCALATION DATA =====
+  const isStalled = match.timeoutState?.timeoutActive || false;
+  const isUserAdvanced = match.isUserAdvancedForRound || false;
 
-  // Calculate escalation state (pass account for player-specific time and timeoutConfig for tier delays)
-  const escalation = showEscalation ? calculateEscalationState(match, account, match.timeoutConfig, isUserAdvancedPlayer) : {
-    timeRemaining: null,
-    isTimeout: false,
-    hasEscalation: false,
-    effectiveEscalation: 0,
-    canForceEliminate: false,
-    canReplace: false,
-  };
+  // Calculate time-based escalation availability
+  const now = Math.floor(Date.now() / 1000);
+  const esc1Start = match.timeoutState?.escalation1Start || 0;
+  const esc2Start = match.timeoutState?.escalation2Start || 0;
+
+  // Time-based availability (contract functions may not work until explicitly triggered)
+  // ML2 available when: stalled AND now >= esc1Start
+  const escL2Available = isStalled && esc1Start > 0 && now >= esc1Start;
+  // ML3 available when: stalled AND now >= esc2Start
+  const escL3Available = isStalled && esc2Start > 0 && now >= esc2Start;
+
+  // ML2 countdown (time until escL2 becomes available)
+  const timeToML2 = (isStalled && esc1Start > 0 && now < esc1Start) ? esc1Start - now : null;
+  // ML3 countdown (time until escL3 becomes available)
+  const timeToML3 = (isStalled && esc2Start > 0 && now < esc2Start) ? esc2Start - now : null;
+
+  // Derived display conditions
+  // ML2 Timer: Stalled, ML2 not yet available, user is advanced
+  const showML2Timer = isStalled && !escL2Available && isUserAdvanced && timeToML2 !== null && timeToML2 > 0;
+  // ML2 CTA: ML2 available, user is advanced
+  const showML2CTA = escL2Available && isUserAdvanced;
+  // ML3 Timer: ML2 available, ML3 not yet available, user is NOT advanced
+  const showML3Timer = escL2Available && !escL3Available && !isUserAdvanced && timeToML3 !== null && timeToML3 > 0;
+  // ML3 CTA: ML3 available, user is NOT advanced
+  const showML3CTA = escL3Available && !isUserAdvanced;
+
+  // Player time display
+  const times = calculatePlayerTimes(match, account, match.matchTimePerPlayer);
+  const isPlayer1Turn = match.currentTurn?.toLowerCase() === match.player1?.toLowerCase();
+  const activePlayerTime = isPlayer1Turn ? times.player1.remaining : times.player2.remaining;
+  const timeRemaining = match.matchStatus === 1 ? activePlayerTime : null;
 
   // Client-side countdown ticking for smoother UI
-  const [tickingTimeRemaining, setTickingTimeRemaining] = useState(escalation.timeRemaining);
-  const lastServerTimeRef = useRef(escalation.timeRemaining);
+  const [tickingTimeRemaining, setTickingTimeRemaining] = useState(timeRemaining);
+  const lastServerTimeRef = useRef(timeRemaining);
   const lastUpdateRef = useRef(Date.now());
 
   // Update ticking time when server data changes (on poll)
   useEffect(() => {
-    if (escalation.timeRemaining !== lastServerTimeRef.current) {
-      setTickingTimeRemaining(escalation.timeRemaining);
-      lastServerTimeRef.current = escalation.timeRemaining;
+    if (timeRemaining !== lastServerTimeRef.current) {
+      setTickingTimeRemaining(timeRemaining);
+      lastServerTimeRef.current = timeRemaining;
       lastUpdateRef.current = Date.now();
     }
-  }, [escalation.timeRemaining]);
+  }, [timeRemaining]);
 
   // Tick down the countdown every second
   useEffect(() => {
-    if (match.matchStatus !== 1 || !showEscalation || escalation.timeRemaining === null) {
+    if (match.matchStatus !== 1 || !showEscalation || timeRemaining === null) {
       return;
     }
 
@@ -268,33 +157,40 @@ const MatchCard = ({
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [match.matchStatus, showEscalation, escalation.timeRemaining]);
+  }, [match.matchStatus, showEscalation, timeRemaining]);
 
-  // Use ticking time for display instead of static server time
-  const displayTimeRemaining = tickingTimeRemaining !== null ? tickingTimeRemaining : escalation.timeRemaining;
+  const displayTimeRemaining = tickingTimeRemaining !== null ? tickingTimeRemaining : timeRemaining;
 
-  // Debug logging for escalation issues
-  if (showEscalation && match.matchStatus === 1 && !isUserMatch && escalation.hasEscalation) {
-    console.log(`[MatchCard R${roundIdx}M${matchIdx}] Escalation State:`, {
-      account: account?.slice(0, 10),
-      isUserAdvancedPlayer,
-      canForceEliminate: escalation.canForceEliminate,
-      canReplace: escalation.canReplace,
-      escL2Available: match.escL2Available,
-      escL3Available: match.escL3Available,
-      timeToEscalation1: escalation.timeToEscalation1,
-      timeToEscalation2: escalation.timeToEscalation2,
-      showingML2Timer: escalation.timeToEscalation1 > 0 && !escalation.canForceEliminate && isUserAdvancedPlayer,
-      showingML3Timer: escalation.canForceEliminate && escalation.timeToEscalation2 > 0 && !escalation.canReplace && !isUserAdvancedPlayer,
-      showingML2CTA: escalation.canForceEliminate && isUserAdvancedPlayer,
-      showingML3CTA: escalation.canReplace && !isUserAdvancedPlayer,
-      hasOnClaimReplacement: !!onClaimReplacement,
+  // Debug logging for escalation issues - always log for active matches we're not in
+  if (showEscalation && match.matchStatus === 1 && !isUserMatch) {
+    console.log(`[MatchCard R${roundIdx}M${matchIdx}] Escalation Debug:`, {
+      // Raw contract data
+      'match.timeoutState': match.timeoutState,
+      'match.escL2Available': match.escL2Available,
+      'match.escL3Available': match.escL3Available,
+      'match.isUserAdvancedForRound': match.isUserAdvancedForRound,
+      // Derived state
+      isStalled,
+      escL2Available,
+      escL3Available,
+      isUserAdvanced,
+      // Timestamps
+      esc1Start,
+      esc2Start,
+      now,
+      timeToML2,
+      timeToML3,
+      // Display conditions
+      showML2Timer,
+      showML2CTA,
+      showML3Timer,
+      showML3CTA,
     });
   }
 
   // Get border class
   const borderClass = showEscalation
-    ? getBorderClass(isUserMatch, escalation, colors.defaultBorder)
+    ? getBorderClass(isUserMatch, isStalled, escL2Available, escL3Available, isUserAdvanced, colors.defaultBorder)
     : isUserMatch
     ? 'border-green-400/70 bg-green-900/20'
     : colors.defaultBorder || 'border-purple-400/30 hover:border-purple-400/50';
@@ -329,18 +225,8 @@ const MatchCard = ({
           Match {matchIdx + 1}
         </span>
         <div className="flex items-center gap-2">
-          {/* Escalation badge in header */}
-          {showEscalation && escalation.effectiveEscalation > 0 && (
-            <span className={`text-xs font-bold px-2 py-1 rounded ${
-              escalation.canReplace ? 'bg-red-500/30 text-red-300' :
-              escalation.canForceEliminate ? 'bg-yellow-500/30 text-yellow-300' :
-              'bg-orange-500/30 text-orange-300'
-            }`}>
-              ESC {escalation.effectiveEscalation}
-            </span>
-          )}
           {/* Move timer */}
-          {showEscalation && escalation.effectiveEscalation === 0 && displayTimeRemaining !== null && match.matchStatus === 1 && (
+          {showEscalation && displayTimeRemaining !== null && match.matchStatus === 1 && (
             <span className={`text-xs font-bold px-2 py-1 rounded font-mono ${
               displayTimeRemaining === 0 ? 'bg-red-500/30 text-red-300 animate-pulse' :
               displayTimeRemaining <= 10 ? 'bg-red-500/20 text-red-300' :
@@ -358,16 +244,16 @@ const MatchCard = ({
       </div>
 
       {/* Escalation countdown timers - show only the next pending timer */}
-      {showEscalation && match.matchStatus === 1 && escalation.hasEscalation && !isUserMatch && (
+      {showEscalation && match.matchStatus === 1 && isStalled && !isUserMatch && (
         <div className="mb-3">
-          {/* Show ML2 timer if it's pending (timeToEscalation1 = ML2 timer) - Advanced Players Only */}
-          {escalation.timeToEscalation1 !== null && escalation.timeToEscalation1 > 0 && !escalation.canForceEliminate && isUserAdvancedPlayer && (
+          {/* ML2 Timer: Stalled but ML2 not yet available - Advanced Players Only */}
+          {showML2Timer && (
             <div className="relative bg-gradient-to-r from-yellow-500/20 to-orange-600/20 border border-yellow-400/50 rounded-lg p-3">
               <div className="flex items-center justify-between pr-6">
                 <div className="flex items-center gap-2">
                   <Clock className="text-yellow-400" size={16} />
                   <span className="text-yellow-300 text-xs font-semibold">
-                    ML2: Force Eliminate in {formatEscalationTime(escalation.timeToEscalation1)}
+                    ML2: Force Eliminate in {formatEscalationTime(timeToML2)}
                   </span>
                 </div>
               </div>
@@ -380,14 +266,14 @@ const MatchCard = ({
               </a>
             </div>
           )}
-          {/* Show ML3 timer if ML2 is active and ML3 is pending (timeToEscalation2 = ML3 timer) - Non-Advanced Players Only */}
-          {escalation.canForceEliminate && escalation.timeToEscalation2 !== null && escalation.timeToEscalation2 > 0 && !escalation.canReplace && !isUserAdvancedPlayer && (
+          {/* ML3 Timer: ML2 available but ML3 not yet - Non-Advanced Players Only */}
+          {showML3Timer && (
             <div className="relative bg-gradient-to-r from-red-500/20 to-red-600/20 border border-red-400/50 rounded-lg p-3">
               <div className="flex items-center justify-between pr-6">
                 <div className="flex items-center gap-2">
                   <Clock className="text-red-400" size={16} />
                   <span className="text-red-300 text-xs font-semibold">
-                    ML3: Replace Players in {formatEscalationTime(escalation.timeToEscalation2)}
+                    ML3: Replace Players in {formatEscalationTime(timeToML3)}
                   </span>
                 </div>
               </div>
@@ -469,8 +355,8 @@ const MatchCard = ({
         {/* Escalation CTAs for outsiders */}
         {showEscalation && !isUserMatch && match.matchStatus !== 2 && (
           <>
-            {/* Escalation 2: Force Eliminate (Advanced Players Only) */}
-            {escalation.canForceEliminate && isUserAdvancedPlayer && onForceEliminate && (
+            {/* ML2: Force Eliminate (Advanced Players Only) */}
+            {showML2CTA && onForceEliminate && (
               <div className="mt-2">
                 <button
                   onClick={() => onForceEliminate({
@@ -494,8 +380,8 @@ const MatchCard = ({
               </div>
             )}
 
-            {/* Escalation 3: Replace Both Players (Non-Advanced Players Only) */}
-            {escalation.canReplace && !isUserAdvancedPlayer && onClaimReplacement && (
+            {/* ML3: Replace Both Players (Non-Advanced Players Only) */}
+            {showML3CTA && onClaimReplacement && (
               <div className="mt-2">
                 <button
                   onClick={() => onClaimReplacement({
