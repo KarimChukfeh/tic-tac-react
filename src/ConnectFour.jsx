@@ -1974,9 +1974,11 @@ export default function ConnectFour() {
             const player = event.args.player;
             const cellIndex = Number(event.args.cellIndex);
             const isPlayer1 = player.toLowerCase() === player1.toLowerCase();
+            const column = cellIndex % 7; // Convert cell index to column (0-6)
             return {
-              player: isPlayer1 ? 'X' : 'O',
-              cell: cellIndex,
+              player: isPlayer1 ? 'Red' : 'Blue',
+              column: column + 1, // Display as 1-7 for users
+              cellIndex: cellIndex, // Keep for reference
               address: player,
               blockNumber: event.blockNumber
             };
@@ -1996,9 +1998,11 @@ export default function ConnectFour() {
       for (let i = 0; i < boardArray.length; i++) {
         const cell = Number(boardArray[i]);
         if (cell !== 0) {
+          const column = i % 7; // Convert cell index to column (0-6)
           history.push({
-            player: cell === 1 ? 'X' : 'O',
-            cell: i
+            player: cell === 1 ? 'Red' : 'Blue',
+            column: column + 1, // Display as 1-7 for users
+            cellIndex: i
           });
         }
       }
@@ -3180,8 +3184,8 @@ export default function ConnectFour() {
                   {moveHistory.map((move, idx) => (
                     <div key={idx} className="flex items-center gap-3 text-sm bg-purple-500/10 p-2 rounded">
                       <span className="text-purple-300">Move {idx + 1}:</span>
-                      <span className="text-white font-bold">{move.player}</span>
-                      <span className="text-purple-400">→ Cell {move.cell}</span>
+                      <span className={`font-bold ${move.player === 'Red' ? 'text-red-400' : 'text-blue-400'}`}>{move.player}</span>
+                      <span className="text-purple-400">→ Column {move.column}</span>
                     </div>
                   ))}
                 </div>
