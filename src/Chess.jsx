@@ -362,7 +362,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onSpectateMat
                         onSpectateMatch={onSpectateMatch}
                         onForceEliminate={onForceEliminate}
                         onClaimReplacement={onClaimReplacement}
-                        playerIcons={{ player1: '♔', player2: '♚' }}
+                        playerIcons={{ player1: '♚', player2: '♔' }}
                         matchStatusOptions={matchStatusOptions}
                         showEscalation={true}
                         showThisIsYou={true}
@@ -702,6 +702,7 @@ export default function Chess() {
   const [eliteMatches, setEliteMatches] = useState([]);
   const [eliteMatchesSyncing, setEliteMatchesSyncing] = useState(false);
   const [viewingArchivedMatch, setViewingArchivedMatch] = useState(null);
+  const [moveHistoryLoading, setMoveHistoryLoading] = useState(false);
 
   // Player Activity Hook
   const playerActivity = usePlayerActivity(contract, account, 'chess', TIER_CONFIG);
@@ -1162,7 +1163,8 @@ export default function Chess() {
             startTime: match.startTime,
             lastMoveTime: match.lastMoveTime,
             player1TimeRemaining: match.player1TimeRemaining,
-            player2TimeRemaining: match.player2TimeRemaining
+            player2TimeRemaining: match.player2TimeRemaining,
+            moves: match.moves || '' // New moves string field
           });
 
           index++;
@@ -1233,34 +1235,76 @@ export default function Chess() {
 
       setViewingArchivedMatch(archivedMatch);
 
-      // Fetch move history for archived match
-      // Try to fetch events (will likely be limited for very old matches)
+      // Parse move history from the moves string
+      // The moves string contains concatenated uint8 pairs (from, to)
+      // Format: abi.encodePacked(m.moves, from, to) for each move
+      setMoveHistoryLoading(true);
+      setMoveHistory([]); // Clear previous history
       try {
-        const filter = readOnlyContract.filters.ChessMoveMade();
-        const events = await readOnlyContract.queryFilter(filter, -10000); // Last 10k blocks
+        const movesString = matchData.moves || '';
+        console.log('Parsing moves string:', movesString);
 
-        // Filter to this match's moves (if we can identify them)
-        const player1 = matchData.player1;
-        const matchEvents = events.filter(event =>
-          event.args.player.toLowerCase() === player1.toLowerCase() ||
-          event.args.player.toLowerCase() === matchData.player2.toLowerCase()
-        );
+        if (movesString && movesString.length > 0) {
+          console.log('Moves string length:', movesString.length);
 
-        if (matchEvents.length > 0) {
-          const history = matchEvents.map(event => ({
-            player: event.args.player.toLowerCase() === player1.toLowerCase() ? '♔' : '♚',
-            move: `${String.fromCharCode(97 + event.args.from % 8)}${Math.floor(event.args.from / 8) + 1} → ${String.fromCharCode(97 + event.args.to % 8)}${Math.floor(event.args.to / 8) + 1}`
-          }));
+          // The moves string is NOT hex - it's a raw string where each character is a byte
+          // abi.encodePacked creates bytes, then cast to string treats bytes as characters
+          // So we need to read character codes (bytes) directly
+          const moves = [];
+
+          // Each move is 2 bytes (2 characters in the string)
+          for (let i = 0; i < movesString.length - 1; i += 2) {
+            // Get the byte values from character codes
+            const fromByte = movesString.charCodeAt(i);
+            const toByte = movesString.charCodeAt(i + 1);
+
+            console.log(`Move ${moves.length + 1}: from=${fromByte} (char: "${movesString[i]}") to=${toByte} (char: "${movesString[i + 1]}")`);
+
+            // Validate that these are valid board positions (0-63)
+            if (fromByte >= 0 && fromByte < 64 && toByte >= 0 && toByte < 64) {
+              moves.push({
+                from: fromByte,
+                to: toByte
+              });
+            } else {
+              console.warn(`Invalid move data: from=${fromByte} to=${toByte}`);
+            }
+          }
+
+          console.log('Parsed moves:', moves);
+
+          // Convert to display format
+          // White moves first (index 0), then alternates
+          const history = moves.map((move, idx) => {
+            const isWhiteMove = idx % 2 === 0; // Even indices (0, 2, 4...) are white moves
+            const fromFile = String.fromCharCode(97 + (move.from % 8));
+            const fromRank = Math.floor(move.from / 8) + 1;
+            const toFile = String.fromCharCode(97 + (move.to % 8));
+            const toRank = Math.floor(move.to / 8) + 1;
+
+            console.log(`  Move ${idx + 1}: isWhiteMove=${isWhiteMove}, icon=${isWhiteMove ? '♚' : '♔'}`);
+
+            return {
+              player: isWhiteMove ? '♚' : '♔', // ♚ for white, ♔ for black
+              move: `${fromFile}${fromRank} → ${toFile}${toRank}`
+            };
+          });
+
+          console.log('Move history:', history);
           setMoveHistory(history);
         } else {
+          console.log('No moves in moves string');
           setMoveHistory([]);
         }
       } catch (err) {
-        console.log('Could not fetch move history for archived match:', err);
+        console.error('Error parsing move history:', err);
         setMoveHistory([]);
+      } finally {
+        setMoveHistoryLoading(false);
       }
     } catch (error) {
       console.error('Error fetching archived match:', error);
+      setMoveHistoryLoading(false);
     }
   }, [getReadOnlyContract]);
 
@@ -1268,6 +1312,7 @@ export default function Chess() {
   const handleBackFromArchived = useCallback(() => {
     setViewingArchivedMatch(null);
     setMoveHistory([]);
+    setMoveHistoryLoading(false);
   }, []);
 
   // LAZY LOADING: Fetch tier metadata from hardcoded TIER_CONFIG (no RPC calls)
@@ -2328,7 +2373,7 @@ export default function Chess() {
             const fromNotation = indexToChessNotation(from);
             const toNotation = indexToChessNotation(to);
             return {
-              player: isPlayer1 ? '♔' : '♚', // White king or black king symbols
+              player: isPlayer1 ? '♚' : '♔', // ♚ for white (player1), ♔ for black (player2)
               move: `${fromNotation}→${toNotation}${promotion ? ' ♕' : ''}`, // e.g., "e2→e4"
               from,
               to,
@@ -3334,7 +3379,7 @@ export default function Chess() {
           onRefresh={playerActivity.refetch}
           onDismissMatch={playerActivity.dismissMatch}
           gameName="chess"
-          gameEmoji="♔"
+          gameEmoji="♚"
           onHeightChange={setPlayerActivityHeight}
           onCollapse={(collapseFn) => { collapseActivityPanelRef.current = collapseFn; }}
           isElite={isEnrolledInElite}
@@ -3418,7 +3463,7 @@ export default function Chess() {
           <div className="inline-block mb-6">
             <div className="relative">
               <div className={`absolute -inset-4 bg-gradient-to-r ${currentTheme.heroGlow} rounded-full blur-xl opacity-50 animate-pulse`}></div>
-              <span className="relative text-8xl">♔</span>
+              <span className="relative text-8xl">♚</span>
             </div>
           </div>
 
@@ -3543,7 +3588,7 @@ export default function Chess() {
                 Viewing Archived Elite Match
               </h2>
               <p className="text-amber-200 text-sm">
-                This match has been completed and archived. Move history may be limited based on blockchain event availability.
+                This match has been completed and archived. Complete move history is stored on-chain.
               </p>
             </div>
 
@@ -3560,28 +3605,45 @@ export default function Chess() {
             tournamentRounds={null}
             currentRoundNumber={0}
             playerConfig={{
-              player1: { icon: '♔', label: 'White' },
-              player2: { icon: '♚', label: 'Black' }
+              player1: { icon: '♚', label: 'White' },
+              player2: { icon: '♔', label: 'Black' }
             }}
             layout="sidebar"
             isSpectator={true}
-            renderMoveHistory={moveHistory.length > 0 ? () => (
+            renderMoveHistory={() => (
               <div className="bg-slate-900/50 rounded-xl p-6 border border-purple-500/30">
                 <h3 className="text-xl font-bold text-purple-300 mb-4 flex items-center gap-2">
                   <History size={20} />
                   Move History
                 </h3>
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {moveHistory.map((move, idx) => (
-                    <div key={idx} className="flex items-center gap-3 text-sm bg-purple-500/10 p-2 rounded">
-                      <span className="text-purple-300 font-semibold">#{idx + 1}</span>
-                      <span className="text-white font-bold text-lg">{move.player}</span>
-                      <span className="text-purple-200 font-mono">{move.move}</span>
-                    </div>
-                  ))}
-                </div>
+                {moveHistoryLoading ? (
+                  <div className="text-center py-8 text-purple-300/60">
+                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-purple-400 mb-2"></div>
+                    <p className="text-sm">Loading move history...</p>
+                    <p className="text-xs mt-2 text-purple-400/40">
+                      Fetching events from blockchain
+                    </p>
+                  </div>
+                ) : moveHistory.length > 0 ? (
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {moveHistory.map((move, idx) => (
+                      <div key={idx} className="flex items-center gap-3 text-sm bg-purple-500/10 p-2 rounded">
+                        <span className="text-purple-300 font-semibold">#{idx + 1}</span>
+                        <span className="text-white font-bold text-lg">{move.player}</span>
+                        <span className="text-purple-200 font-mono">{move.move}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-purple-300/60">
+                    <p className="text-sm">No move history available</p>
+                    <p className="text-xs mt-2 text-purple-400/40">
+                      Events may not be available for this match
+                    </p>
+                  </div>
+                )}
               </div>
-            ) : undefined}
+            )}
           >
             {/* Chess Board Component - Read-only for archived matches */}
             <ChessBoard
@@ -3624,8 +3686,8 @@ export default function Chess() {
             tournamentRounds={viewingTournament?.rounds || null}
             currentRoundNumber={currentMatch.roundNumber}
             playerConfig={{
-              player1: { icon: '♔', label: 'White' },
-              player2: { icon: '♚', label: 'Black' }
+              player1: { icon: '♚', label: 'White' },
+              player2: { icon: '♔', label: 'Black' }
             }}
             layout="sidebar"
             isSpectator={isSpectator}
@@ -3754,9 +3816,9 @@ export default function Chess() {
                     >
                       <div className="flex flex-col items-center text-center space-y-4">
                         <div className="text-6xl mb-2 group-hover:scale-110 transition-transform flex items-center gap-3">
-                          <span>♔</span>
-                          <span className={`text-2xl ${isEnrolledInElite ? 'text-amber-400/60' : 'text-purple-400/60'}`}>vs</span>
                           <span>♚</span>
+                          <span className={`text-2xl ${isEnrolledInElite ? 'text-amber-400/60' : 'text-purple-400/60'}`}>vs</span>
+                          <span>♔</span>
                         </div>
                         <h2 className={`text-3xl font-bold transition-colors ${
                           isEnrolledInElite
@@ -3872,7 +3934,7 @@ export default function Chess() {
                                   ? 'text-[#fff8e7]'
                                   : 'text-purple-400'
                             }`}>
-                              ♔ {getTierName(metadata.playerCount, tierId)}
+                              ♚ {getTierName(metadata.playerCount, tierId)}
                               <span className={`text-sm font-normal ${
                                 isElite ? 'text-amber-200/90' : isEnrolledInElite ? 'text-[#d4b866]' : 'text-purple-300'
                               }`}>• {metadata.playerCount} players total</span>
