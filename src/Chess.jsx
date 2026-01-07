@@ -45,6 +45,7 @@ import TournamentHeader from './components/shared/TournamentHeader';
 import PlayerActivity from './components/shared/PlayerActivity';
 import CommunityRaffleCard from './components/shared/CommunityRaffleCard';
 import EliteMatchesCard from './components/shared/EliteMatchesCard';
+import PlayerPanel from './components/shared/PlayerPanel';
 import { usePlayerActivity } from './hooks/usePlayerActivity';
 
 // Chess piece symbols for particles
@@ -390,7 +391,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onSpectateMat
 };
 
 // Chess Board Component - copied from Chess.jsx
-const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, firstPlayer, matchStatus, loading, whiteInCheck, blackInCheck, lastMoveTime, startTime, lastMove }) => {
+const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, firstPlayer, matchStatus, loading, whiteInCheck, blackInCheck, lastMoveTime, startTime, lastMove, maxSize = 520 }) => {
   // Debug: Log lastMove prop
   console.log('[ChessBoard] lastMove prop:', lastMove);
   const [selectedSquare, setSelectedSquare] = useState(null);
@@ -406,13 +407,13 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
     const updateSize = () => {
       const vh60 = window.innerHeight * 0.60;
       const containerWidth = containerRef.current?.offsetWidth || window.innerWidth * 0.9;
-      const size = Math.min(vh60, containerWidth, 520);
+      const size = Math.min(vh60, containerWidth, maxSize);
       setBoardSize(size);
     };
     updateSize();
     window.addEventListener('resize', updateSize);
     return () => window.removeEventListener('resize', updateSize);
-  }, []);
+  }, [maxSize]);
 
   useEffect(() => {
     if (lastMove && prevBoardRef.current && (prevLastMoveRef.current?.from !== lastMove.from || prevLastMoveRef.current?.to !== lastMove.to)) {
@@ -3595,26 +3596,59 @@ export default function Chess() {
               </p>
             </div>
 
-            <GameMatchLayout
-            gameType="chess"
-            match={viewingArchivedMatch}
-            account={null}
-            loading={false}
-            syncDots={1}
-            onClose={handleBackFromArchived}
-            onClaimTimeoutWin={null}
-            onForceEliminate={null}
-            onClaimReplacement={null}
-            tournamentRounds={null}
-            currentRoundNumber={0}
-            playerConfig={{
-              player1: { icon: '♚', label: 'White' },
-              player2: { icon: '♔', label: 'Black' }
-            }}
-            layout="sidebar"
-            isSpectator={true}
-            renderMoveHistory={() => (
-              <div className="bg-slate-900/50 rounded-xl p-6 border border-purple-500/30">
+            {/* Custom 3-column layout for archived matches: Players | Board | History */}
+            <div className="grid grid-cols-1 xl:grid-cols-[20%_60%_20%] gap-4 items-start">
+              {/* Left Column - Both Player Panels */}
+              <div className="space-y-4">
+                <PlayerPanel
+                  playerAddress={viewingArchivedMatch.player1}
+                  currentAccount={null}
+                  isCurrentTurn={false}
+                  isGameOver={true}
+                  icon="♚"
+                  label="White"
+                  colorScheme="white"
+                  variant="full"
+                />
+                <PlayerPanel
+                  playerAddress={viewingArchivedMatch.player2}
+                  currentAccount={null}
+                  isCurrentTurn={false}
+                  isGameOver={true}
+                  icon="♔"
+                  label="Black"
+                  colorScheme="black"
+                  variant="full"
+                />
+              </div>
+
+              {/* Center Column - Larger Chess Board */}
+              <div className="flex flex-col items-center w-full">
+                <ChessBoard
+                  board={viewingArchivedMatch.board}
+                  onMove={null}
+                  currentTurn={viewingArchivedMatch.currentTurn}
+                  account={null}
+                  player1={viewingArchivedMatch.player1}
+                  player2={viewingArchivedMatch.player2}
+                  firstPlayer={viewingArchivedMatch.firstPlayer}
+                  matchStatus={viewingArchivedMatch.matchStatus}
+                  loading={false}
+                  whiteInCheck={false}
+                  blackInCheck={false}
+                  lastMoveTime={viewingArchivedMatch.lastMoveTime}
+                  startTime={viewingArchivedMatch.startTime}
+                  lastMove={null}
+                  player1TimeRemaining={viewingArchivedMatch.player1TimeRemaining}
+                  player2TimeRemaining={viewingArchivedMatch.player2TimeRemaining}
+                  lastMoveTimestamp={viewingArchivedMatch.lastMoveTime}
+                  matchTimePerPlayer={matchTimePerPlayer}
+                  maxSize={750}
+                />
+              </div>
+
+              {/* Right Column - Move History */}
+              <div className="bg-slate-900/50 rounded-xl p-6 border border-purple-500/30 h-full">
                 <h3 className="text-xl font-bold text-purple-300 mb-4 flex items-center gap-2">
                   <History size={20} />
                   Move History
@@ -3624,14 +3658,14 @@ export default function Chess() {
                     <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-purple-400 mb-2"></div>
                     <p className="text-sm">Loading move history...</p>
                     <p className="text-xs mt-2 text-purple-400/40">
-                      Fetching events from blockchain
+                      Fetching moves from blockchain
                     </p>
                   </div>
                 ) : moveHistory.length > 0 ? (
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                  <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-slate-800/50 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-purple-500/60 [&::-webkit-scrollbar-thumb]:to-pink-500/60 [&::-webkit-scrollbar-thumb]:rounded-full">
                     {moveHistory.map((move, idx) => (
-                      <div key={idx} className="flex items-center gap-3 text-sm bg-purple-500/10 p-2 rounded">
-                        <span className="text-purple-300 font-semibold">#{idx + 1}</span>
+                      <div key={idx} className="flex items-center gap-3 text-sm bg-purple-500/10 p-3 rounded-lg hover:bg-purple-500/20 transition-colors">
+                        <span className="text-purple-300 font-semibold min-w-[2rem]">#{idx + 1}</span>
                         <span className="text-white font-bold text-lg">{move.player}</span>
                         <span className="text-purple-200 font-mono">{move.move}</span>
                       </div>
@@ -3641,35 +3675,12 @@ export default function Chess() {
                   <div className="text-center py-8 text-purple-300/60">
                     <p className="text-sm">No move history available</p>
                     <p className="text-xs mt-2 text-purple-400/40">
-                      Events may not be available for this match
+                      No moves recorded for this match
                     </p>
                   </div>
                 )}
               </div>
-            )}
-          >
-            {/* Chess Board Component - Read-only for archived matches */}
-            <ChessBoard
-              board={viewingArchivedMatch.board}
-              onMove={null}
-              currentTurn={viewingArchivedMatch.currentTurn}
-              account={null}
-              player1={viewingArchivedMatch.player1}
-              player2={viewingArchivedMatch.player2}
-              firstPlayer={viewingArchivedMatch.firstPlayer}
-              matchStatus={viewingArchivedMatch.matchStatus}
-              loading={false}
-              whiteInCheck={false}
-              blackInCheck={false}
-              lastMoveTime={viewingArchivedMatch.lastMoveTime}
-              startTime={viewingArchivedMatch.startTime}
-              lastMove={null}
-              player1TimeRemaining={viewingArchivedMatch.player1TimeRemaining}
-              player2TimeRemaining={viewingArchivedMatch.player2TimeRemaining}
-              lastMoveTimestamp={viewingArchivedMatch.lastMoveTime}
-              matchTimePerPlayer={matchTimePerPlayer}
-            />
-          </GameMatchLayout>
+            </div>
           </div>
         )}
 
