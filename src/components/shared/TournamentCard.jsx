@@ -9,7 +9,7 @@ import { useState, useEffect } from 'react';
 import { Trophy, Play, Users, Zap, Coins, Eye, RefreshCw } from 'lucide-react';
 import { ethers } from 'ethers';
 import EscalationTimer from './EscalationTimer';
-import { formatTime } from '../../utils/formatters';
+import { formatTime, getTournamentTypeLabel } from '../../utils/formatters';
 
 // Default color theme (purple/blue - TicTacToe style)
 const DEFAULT_COLORS = {
@@ -74,6 +74,9 @@ const TournamentCard = ({
 
   // Merge custom colors with defaults
   const colors = { ...DEFAULT_COLORS, ...customColors };
+
+  // Determine tournament type label (Duel vs Tournament)
+  const tournamentTypeLabel = getTournamentTypeLabel(maxPlayers);
 
   // Escalation system state (for enrollment force-start)
   const [escalationState, setEscalationState] = useState({
@@ -380,7 +383,7 @@ const TournamentCard = ({
           className={`w-full bg-gradient-to-r ${colors.buttonEnter} text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2`}
         >
           <Play size={18} />
-          {loading ? 'Loading...' : !account ? 'Connect Wallet to Enter' : 'Enter Tournament'}
+          {loading ? 'Loading...' : !account ? 'Connect Wallet to Enter' : `Enter ${tournamentTypeLabel}`}
         </button>
       ) : (
         <>
@@ -403,7 +406,7 @@ const TournamentCard = ({
             className={`w-full ${tournamentStatus === 0 && !isFull ? 'mt-2' : ''} bg-gradient-to-r ${colors.buttonEnter} text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 border ${colors.cardBorder}`}
           >
             <Eye size={18} />
-            {loading ? 'Loading...' : 'View Tournament'}
+            {loading ? 'Loading...' : `View ${tournamentTypeLabel}`}
           </button>
         </>
       )}

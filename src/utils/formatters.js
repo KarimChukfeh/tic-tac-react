@@ -100,3 +100,13 @@ export const countInstancesByStatus = (statuses, enrolledCounts = []) => {
     return acc;
   }, { enrolling: 0, inProgress: 0, completed: 0 });
 };
+
+/**
+ * Get tournament type label based on player count
+ * Returns "Duel" for 2-player tournaments, "Tournament" otherwise
+ * @param {number} playerCount - Number of players in the tournament
+ * @returns {string} - "Duel" or "Tournament"
+ */
+export const getTournamentTypeLabel = (playerCount) => {
+  return playerCount === 2 ? 'Duel' : 'Tournament';
+};

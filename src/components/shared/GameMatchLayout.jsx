@@ -79,6 +79,7 @@ const GameMatchLayout = ({
   // Tournament data for advanced player checks
   tournamentRounds = null,
   currentRoundNumber = 0,
+  playerCount = null, // Optional: player count for tournament type label
 
   // Player configuration
   playerConfig, // { player1: { icon, label }, player2: { icon, label } }
@@ -496,7 +497,8 @@ const GameMatchLayout = ({
           tierId: match.tierId,
           instanceId: match.instanceId,
           roundNumber: match.roundNumber,
-          matchNumber: match.matchNumber
+          matchNumber: match.matchNumber,
+          playerCount: playerCount
         }}
         theme={theme}
       />

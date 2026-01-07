@@ -27,7 +27,7 @@ const CONNECTFOUR_ABI = ConnectFourABIData.abi;
 const CONTRACT_ADDRESS = ConnectFourABIData.address;
 const MODULE_ADDRESSES = ConnectFourABIData.modules;
 import { CURRENT_NETWORK, CONTRACT_ADDRESSES, getAddressUrl, getExplorerHomeUrl } from './config/networks';
-import { shortenAddress, formatTime as formatTimeHMS, getTierName } from './utils/formatters';
+import { shortenAddress, formatTime as formatTimeHMS, getTierName, getTournamentTypeLabel } from './utils/formatters';
 import { parseTournamentParams } from './utils/urlHelpers';
 import { parseConnectFourMatch } from './utils/matchDataParser';
 import { determineMatchResult } from './utils/matchCompletionHandler';
@@ -396,6 +396,9 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onSpectateMat
   // Calculate total rounds based on player count
   const totalRounds = Math.ceil(Math.log2(playerCount));
 
+  // Determine tournament type label (Duel vs Tournament)
+  const tournamentTypeLabel = getTournamentTypeLabel(playerCount);
+
   // Ref for active match scrolling
   const activeMatchRef = useRef(null);
 
@@ -525,7 +528,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onSpectateMat
       <div className={`bg-gradient-to-br from-slate-900/50 to-purple-900/30 backdrop-blur-lg rounded-2xl p-8 border ${colors.headerBorder}`}>
         <h3 className={`text-2xl font-bold ${colors.text} mb-6 flex items-center gap-2`}>
           <Grid size={24} />
-          Tournament Bracket
+          {tournamentTypeLabel} Bracket
         </h3>
 
         {rounds && rounds.length > 0 ? (
@@ -3052,6 +3055,7 @@ export default function ConnectFour() {
             onClaimReplacement={isSpectator ? null : handleClaimMatchSlotByReplacement}
             tournamentRounds={viewingTournament?.rounds || null}
             currentRoundNumber={currentMatch.roundNumber}
+            playerCount={viewingTournament?.playerCount || null}
             isSpectator={isSpectator}
             playerConfig={{
               player1: {
