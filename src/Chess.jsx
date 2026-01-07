@@ -3694,8 +3694,19 @@ export default function Chess() {
                       </h2>
                     </div>
                   </div>
-                  <p className="text-xl text-blue-200">
-                    Compete in on-chain with real ETH stakes
+                  <p className="text-xl text-blue-200 items-center gap-2">
+                    Classic chess with real ETH stakes&nbsp;&nbsp;&nbsp;
+                    <a
+                      href="#chess-specifics"
+                      className={`inline-flex items-center justify-center w-10 h-10 rounded-full border transition-all hover:scale-110 ${
+                        isEnrolledInElite
+                          ? 'border-[#d4a012]/50 text-[#fbbf24] hover:bg-[#fbbf24]/20'
+                          : 'border-purple-400/50 text-purple-400 hover:bg-purple-400/20'
+                      }`}
+                      title="Learn about Chess rules and Elite tier"
+                    >
+                      <HelpCircle size={12} />
+                    </a>
                   </p>
                 </div>
 
@@ -4028,7 +4039,7 @@ export default function Chess() {
           isElite={isEnrolledInElite}
           gameSpecificContent={
             <div>
-              <h2 className={`text-2xl font-bold ${isEnrolledInElite ? 'text-[#fff8e7]' : 'text-purple-200'} mb-6`}>Chess Tournament Specifics</h2>
+              <h2 id="chess-specifics" className={`text-2xl font-bold ${isEnrolledInElite ? 'text-[#fff8e7]' : 'text-purple-200'} mb-6 scroll-mt-24`}>Chess Specifics</h2>
 
               {/* Elite Tier Pricing Structure */}
               <div className="mb-8">
