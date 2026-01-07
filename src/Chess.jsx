@@ -548,8 +548,10 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
       const showFileLabel = displayRow === 7;
       const actualRow = Math.floor(actualIdx / 8);
       const actualCol = actualIdx % 8;
-      const rankLabel = 8 - actualRow;
-      const fileLabel = String.fromCharCode(97 + actualCol);
+      // Chess notation always from White's perspective: a1 = bottom-left, h8 = top-right
+      // Index 0 = a1 (rank 1), Index 63 = h8 (rank 8)
+      const rankLabel = actualRow + 1; // 1 to 8
+      const fileLabel = String.fromCharCode(97 + actualCol); // 'a' to 'h'
 
       // My move: purple (from) -> blue (to)
       // Opponent move: yellow (from) -> red (to)
