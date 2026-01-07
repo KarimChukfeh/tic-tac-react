@@ -2123,6 +2123,7 @@ export default function Chess() {
       // Chess move history - get match data using chess functions
       const matchData = await contractInstance.getMatch(tierId, instanceId, roundNumber, matchNumber);
       const player1 = matchData.common.player1;
+      const matchStartTime = Number(matchData.common.startTime);
 
       // Try to query ChessMoveMade events for this match
       try {
@@ -2136,8 +2137,29 @@ export default function Chess() {
         const events = await contractInstance.queryFilter(filter);
 
         if (events.length > 0) {
+          // Filter events to only include those from the current match instance
+          // Get block timestamps and filter by match start time
+          const eventsWithTimestamps = await Promise.all(
+            events.map(async (event) => {
+              const block = await event.getBlock();
+              return {
+                event,
+                timestamp: block.timestamp
+              };
+            })
+          );
+
+          // Only include events that occurred at or after the match started
+          const currentMatchEvents = eventsWithTimestamps
+            .filter(({ timestamp }) => timestamp >= matchStartTime)
+            .map(({ event }) => event);
+
+          if (currentMatchEvents.length === 0) {
+            return [];
+          }
+
           // Convert events to move history with proper chess notation
-          const history = events.map(event => {
+          const history = currentMatchEvents.map(event => {
             const player = event.args.player;
             const from = Number(event.args.from);
             const to = Number(event.args.to);

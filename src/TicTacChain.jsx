@@ -1657,6 +1657,7 @@ export default function TicTacChain() {
       const parsedMatch = parseTicTacToeMatch(matchData);
       const player1 = parsedMatch.player1;
       const board = parsedMatch.board;
+      const matchStartTime = Number(matchData.common.startTime);
 
       // Try to query MoveMade events for this match
       try {
@@ -1671,8 +1672,29 @@ export default function TicTacChain() {
         const events = await contractInstance.queryFilter(filter);
 
         if (events.length > 0) {
+          // Filter events to only include those from the current match instance
+          // Get block timestamps and filter by match start time
+          const eventsWithTimestamps = await Promise.all(
+            events.map(async (event) => {
+              const block = await event.getBlock();
+              return {
+                event,
+                timestamp: block.timestamp
+              };
+            })
+          );
+
+          // Only include events that occurred at or after the match started
+          const currentMatchEvents = eventsWithTimestamps
+            .filter(({ timestamp }) => timestamp >= matchStartTime)
+            .map(({ event }) => event);
+
+          if (currentMatchEvents.length === 0) {
+            return [];
+          }
+
           // Convert events to move history
-          const history = events.map(event => {
+          const history = currentMatchEvents.map(event => {
             const player = event.args.player;
             const cellIndex = Number(event.args.cellIndex);
             const isPlayer1 = player.toLowerCase() === player1.toLowerCase();
