@@ -65,7 +65,7 @@ const TIER_CONFIG = {
   0: {
     playerCount: 2,
     instanceCount: 100,
-    entryFee: '0.01',
+    entryFee: '0.003',
     timeouts: {
       matchTimePerPlayer: 600,
       timeIncrementPerMove: 15,
@@ -78,7 +78,7 @@ const TIER_CONFIG = {
   1: {
     playerCount: 2,
     instanceCount: 100,
-    entryFee: '0.02',
+    entryFee: '0.008',
     timeouts: {
       matchTimePerPlayer: 600,
       timeIncrementPerMove: 15,
@@ -91,7 +91,7 @@ const TIER_CONFIG = {
   2: {
     playerCount: 2,
     instanceCount: 100,
-    entryFee: '0.03',
+    entryFee: '0.015',
     timeouts: {
       matchTimePerPlayer: 600,
       timeIncrementPerMove: 15,
@@ -117,7 +117,7 @@ const TIER_CONFIG = {
   4: {
     playerCount: 4,
     instanceCount: 50,
-    entryFee: '0.015',
+    entryFee: '0.004',
     timeouts: {
       matchTimePerPlayer: 600,
       timeIncrementPerMove: 15,
@@ -130,7 +130,7 @@ const TIER_CONFIG = {
   5: {
     playerCount: 4,
     instanceCount: 50,
-    entryFee: '0.025',
+    entryFee: '0.009',
     timeouts: {
       matchTimePerPlayer: 600,
       timeIncrementPerMove: 15,
@@ -143,7 +143,7 @@ const TIER_CONFIG = {
   6: {
     playerCount: 4,
     instanceCount: 50,
-    entryFee: '0.035',
+    entryFee: '0.02',
     timeouts: {
       matchTimePerPlayer: 600,
       timeIncrementPerMove: 15,
@@ -655,8 +655,6 @@ export default function Chess() {
   const [bracketSyncDots, setBracketSyncDots] = useState(1);
   const [expandedTiers, setExpandedTiers] = useState({});
   const [visibleInstancesCount, setVisibleInstancesCount] = useState({}); // { [tierId]: number } - tracks how many instances to show per tier
-  const [allInstancesInitialized, setAllInstancesInitialized] = useState(false); // Whether all tier instances have been initialized by owner
-  const [initializingInstances, setInitializingInstances] = useState(false); // Loading state for initialization
 
   // URL Parameters State for shareable tournament links
   const [searchParams, setSearchParams] = useSearchParams();
@@ -1025,18 +1023,6 @@ export default function Chess() {
   // Uses lazy loading: only fetch tier metadata initially, instances load on expand
   const loadContractData = async (contractInstance, isInitialLoad = false) => {
     try {
-      // Fetch allInstancesInitialized status using tierCount (matches TicTacChain pattern)
-      try {
-        const tierCount = await contractInstance.tierCount();
-        const initialized = tierCount > 0;
-        console.log('[loadContractData] tierCount:', tierCount.toString(), '- allInstancesInitialized (tierCount > 0):', initialized);
-        setAllInstancesInitialized(initialized);
-      } catch (err) {
-        console.warn('[loadContractData] Could not fetch tierCount:', err);
-        // If we can't read it, assume false (not initialized)
-        setAllInstancesInitialized(false);
-      }
-
       // Fetch tier metadata only (fast) - instances load on tier expand
       await fetchTierMetadata(contractInstance);
       await fetchLeaderboard(false);
@@ -1804,100 +1790,6 @@ export default function Chess() {
 
       alert(`Error force-starting tournament: ${errorMessage}`);
       setTournamentsLoading(false);
-    }
-  };
-
-  // Handle initializing all instances (owner/deployer only)
-  const handleInitializeAllInstances = async () => {
-    if (!contract || !account) {
-      alert('Please connect your wallet first');
-      return;
-    }
-
-    try {
-      setInitializingInstances(true);
-
-      const confirmInit = window.confirm(
-        'Initialize all tier configurations and instances?\n\n' +
-        'This will register all tiers (2-player, 4-player, 8-player, etc.) ' +
-        'and create their tournament instances.\n\n' +
-        'This operation can only be done once by the contract owner.'
-      );
-
-      if (!confirmInit) {
-        setInitializingInstances(false);
-        return;
-      }
-
-      // Get contract with signer (matches TicTacChain pattern)
-      const provider = new ethers.BrowserProvider(window.ethereum);
-
-      // Get signer - handle ENS errors on local networks
-      let signer;
-      try {
-        signer = await provider.getSigner();
-      } catch (ensError) {
-        if (ensError.code === 'UNSUPPORTED_OPERATION' && ensError.message?.includes('ENS')) {
-          // ENS not supported on this network, but we can still get the signer
-          const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-          if (!accounts || accounts.length === 0) {
-            throw new Error('No wallet account found. Please connect your wallet.');
-          }
-          // Create a signer without ENS resolution
-          signer = await provider.getSigner(accounts[0]);
-        } else {
-          throw ensError;
-        }
-      }
-
-      const chessContract = new ethers.Contract(CONTRACT_ADDRESS, CHESS_ABI, signer);
-
-      console.log('Contract address being initialized:', await chessContract.getAddress());
-      console.log('Calling initializeAllInstances()...');
-      const tx = await chessContract.initializeAllInstances();
-      console.log('Transaction submitted:', tx.hash);
-
-      const receipt = await tx.wait();
-      console.log('Transaction receipt:', receipt);
-      console.log('All instances initialized successfully!');
-
-      // Verify initialization worked
-      try {
-        const tierCount = await chessContract.tierCount();
-        console.log('tierCount:', tierCount.toString());
-        const isInitialized = tierCount > 0;
-        console.log('allInstancesInitialized status (tierCount > 0):', isInitialized);
-
-        if (tierCount > 0) {
-          console.log('Tier 0 config from TIER_CONFIG:', TIER_CONFIG[0]);
-        }
-      } catch (verifyErr) {
-        console.error('Verification error:', verifyErr);
-      }
-
-      alert('All instances initialized successfully! Refreshing data...');
-
-      // Update contract in state
-      setContract(chessContract);
-
-      // Reload all data (this will also update allInstancesInitialized based on contract state)
-      await loadContractData(chessContract);
-
-      setInitializingInstances(false);
-    } catch (error) {
-      console.error('Error initializing instances:', error);
-      let errorMessage = error.message || 'Unknown error';
-
-      if (error.message?.includes('AlreadyInitialized')) {
-        errorMessage = 'All instances have already been initialized';
-      } else if (error.message?.includes('Ownable')) {
-        errorMessage = 'Only the contract owner can initialize instances';
-      } else if (error.message?.includes('ENS') || error.code === 'UNSUPPORTED_OPERATION') {
-        errorMessage = 'Network configuration error. Try refreshing and reconnecting your wallet.';
-      }
-
-      alert(`Error initializing instances: ${errorMessage}`);
-      setInitializingInstances(false);
     }
   };
 
@@ -4077,43 +3969,6 @@ export default function Chess() {
                     >
                       Retry Connection
                     </button>
-                  </div>
-                )}
-
-                {/* Empty State - show when contract not initialized */}
-                {!metadataLoading && !connectionError && !allInstancesInitialized && (
-                  <div className={`bg-gradient-to-r backdrop-blur-lg rounded-2xl p-12 border text-center ${
-                    isEnrolledInElite
-                      ? 'from-[#fbbf24]/20 to-[#f59e0b]/20 border-[#d4a012]/30'
-                      : 'from-purple-600/20 to-blue-600/20 border-purple-400/30'
-                  }`}>
-                    <Trophy className={`mx-auto mb-4 ${isEnrolledInElite ? 'text-[#fbbf24]/50' : 'text-purple-400/50'}`} size={64} />
-                    <h3 className={`text-2xl font-bold mb-2 ${isEnrolledInElite ? 'text-[#fff8e7]' : 'text-purple-300'}`}>No Tournaments Available</h3>
-                    <p className={`mb-6 ${isEnrolledInElite ? 'text-[#d4b866]/70' : 'text-purple-200/70'}`}>Check back soon for new tournaments!</p>
-
-                    {/* Initialize Button - only show if not initialized and wallet connected */}
-                    {account && !allInstancesInitialized && (
-                      <button
-                        onClick={handleInitializeAllInstances}
-                        disabled={initializingInstances}
-                        className={`px-8 py-4 bg-gradient-to-r text-white font-bold rounded-xl shadow-lg transition-all duration-200 transform hover:scale-105 ${
-                          initializingInstances
-                            ? 'from-gray-600 to-gray-700 cursor-not-allowed'
-                            : isEnrolledInElite
-                              ? 'from-[#fbbf24] to-[#f59e0b] hover:from-[#f59e0b] hover:to-[#d4a012]'
-                              : 'from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600'
-                        }`}
-                      >
-                        {initializingInstances ? (
-                          <span className="flex items-center gap-2">
-                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                            Initializing...
-                          </span>
-                        ) : (
-                          'Initialize All Instances'
-                        )}
-                      </button>
-                    )}
                   </div>
                 )}
 

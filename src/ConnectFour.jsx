@@ -49,14 +49,14 @@ import { usePlayerActivity } from './hooks/usePlayerActivity';
 const CONNECTFOUR_SYMBOLS = ['🔴', '🔵'];
 
 // Hardcoded tier configuration (matches ConnectFourOnChain.sol deployment)
-// Tier 0: _registerTier0() -> 2 players, 100 instances, 0.002 ETH
-// Tier 1: _registerTier1() -> 4 players, 50 instances, 0.004 ETH
-// Tier 2: _registerTier2() -> 8 players, 30 instances, 0.008 ETH
+// Tier 0: _registerTier0() -> 2 players, 100 instances, 0.001 ETH
+// Tier 1: _registerTier1() -> 4 players, 50 instances, 0.002 ETH
+// Tier 2: _registerTier2() -> 8 players, 25 instances, 0.004 ETH
 const TIER_CONFIG = {
   0: {
     playerCount: 2,
     instanceCount: 100,
-    entryFee: '0.002',
+    entryFee: '0.001',
     timeouts: {
       matchTimePerPlayer: 300,
       timeIncrementPerMove: 15,
@@ -69,7 +69,7 @@ const TIER_CONFIG = {
   1: {
     playerCount: 4,
     instanceCount: 50,
-    entryFee: '0.004',
+    entryFee: '0.002',
     timeouts: {
       matchTimePerPlayer: 300,
       timeIncrementPerMove: 15,
@@ -81,8 +81,8 @@ const TIER_CONFIG = {
   },
   2: {
     playerCount: 8,
-    instanceCount: 30,
-    entryFee: '0.008',
+    instanceCount: 25,
+    entryFee: '0.004',
     timeouts: {
       matchTimePerPlayer: 300,
       timeIncrementPerMove: 15,
@@ -629,8 +629,6 @@ export default function ConnectFour() {
   const [bracketSyncDots, setBracketSyncDots] = useState(1);
   const [expandedTiers, setExpandedTiers] = useState({});
   const [visibleInstancesCount, setVisibleInstancesCount] = useState({}); // { [tierId]: number } - tracks how many instances to show per tier
-  const [allInstancesInitialized, setAllInstancesInitialized] = useState(false); // Track if contract initialized
-  const [initializingInstances, setInitializingInstances] = useState(false); // Loading state for initialization
 
   // URL Parameters State for shareable tournament links
   const [searchParams, setSearchParams] = useSearchParams();
@@ -937,18 +935,6 @@ export default function ConnectFour() {
   // Uses lazy loading: only fetch tier metadata initially, instances load on expand
   const loadContractData = async (contractInstance, isInitialLoad = false) => {
     try {
-      // Fetch allInstancesInitialized status using tierCount (matches TicTacChain)
-      try {
-        const tierCount = await contractInstance.tierCount();
-        const initialized = tierCount > 0;
-        console.log('[loadContractData] tierCount:', tierCount.toString(), '- allInstancesInitialized (tierCount > 0):', initialized);
-        setAllInstancesInitialized(initialized);
-      } catch (err) {
-        console.warn('[loadContractData] Could not fetch tierCount:', err);
-        // If we can't read it, assume false (not initialized)
-        setAllInstancesInitialized(false);
-      }
-
       // Fetch tier metadata only (fast) - instances load on tier expand
       await fetchTierMetadata(contractInstance);
       await fetchLeaderboard(false);
@@ -1338,38 +1324,6 @@ export default function ConnectFour() {
       }
     }
   }, [getReadOnlyContract, account, fetchTierMetadata, fetchTierInstances]);
-
-  // Handle initializing all instances (owner/deployer only)
-  const handleInitializeAllInstances = async () => {
-    if (!contract || !account) {
-      alert('Please connect your wallet first');
-      return;
-    }
-
-    try {
-      setInitializingInstances(true);
-
-      console.log('Initializing all tournament instances...');
-      const tx = await contract.initializeAllInstances();
-      console.log('Transaction submitted:', tx.hash);
-
-      const receipt = await tx.wait();
-      console.log('Transaction receipt:', receipt);
-      console.log('All instances initialized successfully!');
-
-      alert('All tournament instances initialized successfully!');
-      setAllInstancesInitialized(true);
-
-      // Refresh tier data
-      await fetchTierMetadata(contract, false);
-
-      setInitializingInstances(false);
-    } catch (error) {
-      console.error('Error initializing instances:', error);
-      alert(`Error: ${error.message}`);
-      setInitializingInstances(false);
-    }
-  };
 
   // Handle tournament enrollment
   const handleEnroll = async (tierId, instanceId, entryFee) => {
@@ -3404,33 +3358,6 @@ export default function ConnectFour() {
                     >
                       Retry Connection
                     </button>
-                  </div>
-                )}
-
-                {/* Empty State - show when contract not initialized */}
-                {!metadataLoading && !connectionError && !allInstancesInitialized && (
-                  <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-12 border border-purple-400/30 text-center">
-                    <Trophy className="text-purple-400/50 mx-auto mb-4" size={64} />
-                    <h3 className="text-2xl font-bold text-purple-300 mb-2">No Tournaments Available</h3>
-                    <p className="text-purple-200/70 mb-6">Check back soon for new tournaments!</p>
-
-                    {/* Initialize button for owner */}
-                    {account && !allInstancesInitialized && (
-                      <button
-                        onClick={handleInitializeAllInstances}
-                        disabled={initializingInstances}
-                        className="px-8 py-4 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-bold rounded-xl shadow-lg transition-all duration-200 transform hover:scale-105"
-                      >
-                        {initializingInstances ? (
-                          <span className="flex items-center gap-2">
-                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                            Initializing Tournaments...
-                          </span>
-                        ) : (
-                          'Initialize Tournaments'
-                        )}
-                      </button>
-                    )}
                   </div>
                 )}
 
