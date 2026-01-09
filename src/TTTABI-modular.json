@@ -1,16 +1,16 @@
 {
   "contractName": "TicTacChain",
-  "address": "0x1c85638e118b37167e9298c2268758e058DdfDA0",
+  "address": "0x0165878A594ca255338adfa4d48449f69242Eb8F",
   "network": "localhost",
   "chainId": "412346",
-  "deployedAt": "2026-01-08T01:02:02.659Z",
+  "deployedAt": "2026-01-09T20:42:05.330Z",
   "modules": {
-    "core": "0xBEc49fA140aCaA83533fB00A2BB19bDdd0290f25",
-    "matches": "0xD84379CEae14AA33C123Af12424A37803F885889",
-    "prizes": "0x2B0d36FACD61B71CC05ab8F3D2355ec3631C0dd5",
-    "raffle": "0xfbC22278A96299D91d41C453234d97b4F5Eb9B2d",
-    "escalation": "0x46b142DD1E924FAb83eCc3c08e4D46E82f005e0E",
-    "gameCache": "0xC9a43158891282A2B1475592D5719c001986Aaec"
+    "core": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+    "matches": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
+    "prizes": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
+    "raffle": "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9",
+    "escalation": "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9",
+    "gameCache": "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707"
   },
   "abi": [
     {
@@ -1158,44 +1158,6 @@
     {
       "inputs": [
         {
-          "internalType": "uint8",
-          "name": "tierId",
-          "type": "uint8"
-        },
-        {
-          "internalType": "uint8",
-          "name": "instanceId",
-          "type": "uint8"
-        },
-        {
-          "internalType": "uint8",
-          "name": "roundNumber",
-          "type": "uint8"
-        },
-        {
-          "internalType": "uint8",
-          "name": "matchNumber",
-          "type": "uint8"
-        },
-        {
-          "internalType": "address",
-          "name": "winner",
-          "type": "address"
-        },
-        {
-          "internalType": "bool",
-          "name": "isDraw",
-          "type": "bool"
-        }
-      ],
-      "name": "_completeMatchWithResult",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
           "internalType": "bytes32",
           "name": "matchId",
           "type": "bytes32"
@@ -1591,29 +1553,6 @@
         }
       ],
       "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint8",
-          "name": "tierId",
-          "type": "uint8"
-        },
-        {
-          "internalType": "uint8",
-          "name": "instanceId",
-          "type": "uint8"
-        },
-        {
-          "internalType": "address[]",
-          "name": "players",
-          "type": "address[]"
-        }
-      ],
-      "name": "_onTournamentCompleted",
-      "outputs": [],
-      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
