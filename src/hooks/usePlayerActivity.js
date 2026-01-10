@@ -24,6 +24,7 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
     activeMatches: [],
     inProgressTournaments: [],
     unfilledTournaments: [],
+    terminatedMatches: [],
     totalEarnings: 0n,
   });
   const [loading, setLoading] = useState(true);
@@ -40,6 +41,7 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
         activeMatches: [],
         inProgressTournaments: [],
         unfilledTournaments: [],
+        terminatedMatches: [],
         totalEarnings: 0n,
       });
       return;
@@ -112,6 +114,7 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
 
       const activeMatches = [];
       const inProgressTournaments = [];
+      const terminatedMatches = [];
 
       // Step 4: For each active tournament, find matches where it's player's turn
       for (const ref of activeTournaments) {
@@ -129,6 +132,55 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
           currentRound,
           enrolledCount
         });
+
+        // Check if tournament has completed (status === 2)
+        if (tournamentStatus === 2) {
+          console.log(`[PlayerActivity] Tournament T${tierId}I${instanceId} is COMPLETED - checking for terminated matches`);
+
+          // Find player's active matches in this completed tournament
+          for (let roundIdx = 0; roundIdx <= currentRound; roundIdx++) {
+            const roundInfo = await contract.rounds(tierId, instanceId, roundIdx);
+            const totalMatches = Number(roundInfo.totalMatches);
+
+            for (let matchIdx = 0; matchIdx < totalMatches; matchIdx++) {
+              const matchData = await contract.getMatch(tierId, instanceId, roundIdx, matchIdx);
+
+              // Check if this is the player's match
+              const isPlayer1 = matchData.common.player1?.toLowerCase() === account.toLowerCase();
+              const isPlayer2 = matchData.common.player2?.toLowerCase() === account.toLowerCase();
+
+              if (!isPlayer1 && !isPlayer2) continue;
+
+              // Check if match was in progress when tournament ended
+              const matchStatus = Number(matchData.common.status);
+              const matchKey = `${tierId}-${instanceId}-${roundIdx}-${matchIdx}`;
+
+              // Skip dismissed matches
+              if (dismissedMatches.has(matchKey)) {
+                console.log(`[PlayerActivity] Skipping dismissed terminated match ${matchKey}`);
+                continue;
+              }
+
+              // If match was still in progress (status === 1), it was terminated by tournament completion
+              if (matchStatus === 1) {
+                const opponent = isPlayer1 ? matchData.common.player2 : matchData.common.player1;
+
+                console.log(`[PlayerActivity] Found terminated match ${matchKey}`);
+                terminatedMatches.push({
+                  tierId,
+                  instanceId,
+                  roundIdx,
+                  matchIdx,
+                  opponent,
+                  terminationReason: 'TOURNAMENT_COMPLETED',
+                });
+              }
+            }
+          }
+
+          // Skip to next tournament since this one is completed
+          continue;
+        }
 
         let hasActiveMatch = false;
         let playerRound = null; // Track which round the player is in
@@ -240,6 +292,9 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
       console.log('[PlayerActivity] Active Matches:', activeMatches.map(m =>
         `T${m.tierId}I${m.instanceId}R${m.roundIdx}M${m.matchIdx}`
       ));
+      console.log('[PlayerActivity] Terminated Matches:', terminatedMatches.map(m =>
+        `T${m.tierId}I${m.instanceId}R${m.roundIdx}M${m.matchIdx}`
+      ));
       console.log('[PlayerActivity] In Progress Tournaments:', inProgressTournaments.map(t =>
         `T${t.tierId}I${t.instanceId} (Round ${t.currentRound})`
       ));
@@ -253,6 +308,7 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
         activeMatches,
         inProgressTournaments,
         unfilledTournaments,
+        terminatedMatches,
         totalEarnings,
       });
       setLoading(false);

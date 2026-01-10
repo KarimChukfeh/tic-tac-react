@@ -8,7 +8,7 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { Users, X, Zap, Trophy, Clock, Play, Eye, RefreshCw, ChevronDown, ChevronUp, TrendingUp } from 'lucide-react';
+import { Users, X, Zap, Trophy, Clock, Play, Eye, RefreshCw, ChevronDown, ChevronUp, TrendingUp, AlertCircle } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
 import { formatTimeRemaining } from '../../utils/activityHelpers';
 import MiniTicTacToeBoard from './MiniTicTacToeBoard';
@@ -154,6 +154,7 @@ const PlayerActivity = ({
   const enrolledTournamentCount = (activity?.inProgressTournaments?.length || 0) + (activity?.unfilledTournaments?.length || 0);
   const hasActivity = activity && (
     displayMatches.length > 0 ||
+    (activity.terminatedMatches && activity.terminatedMatches.length > 0) ||
     activity.inProgressTournaments.length > 0 ||
     activity.unfilledTournaments.length > 0
   );
@@ -403,6 +404,67 @@ const PlayerActivity = ({
                               )}
                             </div>
                           )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Terminated Matches (Tournament Completed) */}
+              {activity.terminatedMatches && activity.terminatedMatches.length > 0 && (
+                <div className="mb-6">
+                  <h4 className={`font-semibold text-sm mb-3 flex items-center gap-2 uppercase ${isElite ? 'text-[#fff8e7]' : 'text-purple-300'}`}>
+                    <AlertCircle size={16} className="text-orange-400" />
+                    Terminated Matches ({activity.terminatedMatches.length})
+                  </h4>
+                  <div className="space-y-2">
+                    {activity.terminatedMatches.map((match) => {
+                      const matchKey = `${match.tierId}-${match.instanceId}-${match.roundIdx}-${match.matchIdx}`;
+
+                      return (
+                        <div
+                          key={matchKey}
+                          className="bg-gradient-to-br from-orange-500/20 to-red-500/20 border-2 border-orange-400/50 rounded-lg p-3"
+                        >
+                          {/* Tournament Completion Notice */}
+                          <div className="bg-orange-500/20 border border-orange-400/40 rounded-lg p-2 mb-3">
+                            <div className="flex items-start gap-2">
+                              <AlertCircle size={16} className="text-orange-400 flex-shrink-0 mt-0.5" />
+                              <div className="flex-1">
+                                <p className="text-orange-300 text-xs font-semibold">
+                                  Tournament Ended
+                                </p>
+                                <p className="text-orange-200/80 text-xs mt-0.5">
+                                  This match was terminated because the tournament completed.
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Match Info */}
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-white font-semibold text-sm">
+                                Tier {match.tierId + 1} Instance {match.instanceId + 1}
+                              </span>
+                              <span className="bg-orange-500/60 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase">
+                                Terminated
+                              </span>
+                            </div>
+                          </div>
+                          <div className="text-slate-300 text-xs mb-3">
+                            vs {shortenAddress(match.opponent)}
+                          </div>
+
+                          {/* Dismiss Button */}
+                          <button
+                            onClick={() => handleDismissMatch(match.tierId, match.instanceId, match.roundIdx, match.matchIdx)}
+                            className="w-full bg-orange-600/40 hover:bg-orange-600/60 text-orange-200 font-semibold py-2 px-4 rounded-lg transition-all flex items-center justify-center gap-2 text-sm border border-orange-400/30"
+                          >
+                            <X size={16} />
+                            Dismiss
+                          </button>
                         </div>
                       );
                     })}
