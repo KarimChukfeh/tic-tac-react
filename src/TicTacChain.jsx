@@ -2356,11 +2356,34 @@ export default function TicTacChain() {
 
     console.log('[TournamentCompleted] Setting up event listener for account:', account);
 
-    const handleTournamentCompleted = async (tierId, instanceId, winner, _prizeAmount, completionReason, enrolledPlayers) => {
+    const handleTournamentCompleted = async (tierId, instanceId, winner, _prizeAmount, completionReason, enrolledPlayers, event) => {
       console.log('[TournamentCompleted Event] ===== EVENT FIRED =====');
       console.log('[TournamentCompleted Event] Tournament:', Number(tierId), 'Instance:', Number(instanceId));
       console.log('[TournamentCompleted Event] Completion reason:', Number(completionReason));
       console.log('[TournamentCompleted Event] Winner:', winner);
+
+      // Time-gate: Only process events that occurred after current match/tournament started
+      if (event && currentMatch) {
+        try {
+          const block = await event.getBlock();
+          const eventTimestamp = block.timestamp;
+          const matchStartTime = currentMatch.startTime;
+
+          console.log('[TournamentCompleted Event] Timestamp check:', {
+            eventTimestamp,
+            matchStartTime,
+            isValidEvent: eventTimestamp >= matchStartTime
+          });
+
+          if (eventTimestamp < matchStartTime) {
+            console.log('[TournamentCompleted Event] Event is older than current match start time, ignoring');
+            return;
+          }
+        } catch (err) {
+          console.error('[TournamentCompleted Event] Error checking timestamp:', err);
+          // Don't return here - if timestamp check fails, proceed with other validation
+        }
+      }
 
       // 1. Check if player is the winner - if yes, DON'T show modal (they won!)
       const playerIsWinner = winner.toLowerCase() === account.toLowerCase();
@@ -2433,7 +2456,7 @@ export default function TicTacChain() {
           if (!processedTournaments.has(tournamentKey)) {
             processedTournaments.add(tournamentKey);
             const { tierId, instanceId, winner, completionReason, enrolledPlayers } = event.args;
-            handleTournamentCompleted(tierId, instanceId, winner, 0n, completionReason, enrolledPlayers);
+            handleTournamentCompleted(tierId, instanceId, winner, 0n, completionReason, enrolledPlayers, event);
           }
         });
       } catch (err) {
@@ -2457,16 +2480,37 @@ export default function TicTacChain() {
 
     // Generate matchId for event filtering
     const matchId = ethers.solidityPackedKeccak256(
-      ['uint256', 'uint256', 'uint256', 'uint256'],
+      ['uint8', 'uint8', 'uint8', 'uint8'],
       [tierId, instanceId, roundNumber, matchNumber]
     );
 
     // Handler for MoveMade events
-    const handleMoveMade = async (eventMatchId, player, cellIndex) => {
+    const handleMoveMade = async (eventMatchId, player, cellIndex, event) => {
       console.log('[MoveMade Event] Received:', { eventMatchId, player, cellIndex });
 
       // Only update if this event is for the current match
       if (eventMatchId !== matchId) return;
+
+      // Time-gate: Only process events that occurred after match started
+      try {
+        const block = await event.getBlock();
+        const eventTimestamp = block.timestamp;
+        const matchStartTime = currentMatch.startTime;
+
+        console.log('[MoveMade Event] Timestamp check:', {
+          eventTimestamp,
+          matchStartTime,
+          isValidEvent: eventTimestamp >= matchStartTime
+        });
+
+        if (eventTimestamp < matchStartTime) {
+          console.log('[MoveMade Event] Event is older than match start time, ignoring');
+          return;
+        }
+      } catch (err) {
+        console.error('[MoveMade Event] Error checking timestamp:', err);
+        return;
+      }
 
       // Update the board immediately
       setCurrentMatch(prev => {
@@ -2499,7 +2543,7 @@ export default function TicTacChain() {
     };
 
     // Handler for MatchCompleted events
-    const handleMatchCompleted = async (eventMatchId, winner, isDraw, reason) => {
+    const handleMatchCompleted = async (eventMatchId, winner, isDraw, reason, event) => {
       console.log('[MatchCompleted Event] Received:', { eventMatchId, winner, isDraw, reason });
       console.log('[MatchCompleted Event] Current matchId:', matchId);
       console.log('[MatchCompleted Event] Match comparison:', {
@@ -2512,6 +2556,27 @@ export default function TicTacChain() {
       // Only update if this event is for the current match
       if (eventMatchId !== matchId) {
         console.log('[MatchCompleted Event] Event not for current match, ignoring');
+        return;
+      }
+
+      // Time-gate: Only process events that occurred after match started
+      try {
+        const block = await event.getBlock();
+        const eventTimestamp = block.timestamp;
+        const matchStartTime = currentMatch.startTime;
+
+        console.log('[MatchCompleted Event] Timestamp check:', {
+          eventTimestamp,
+          matchStartTime,
+          isValidEvent: eventTimestamp >= matchStartTime
+        });
+
+        if (eventTimestamp < matchStartTime) {
+          console.log('[MatchCompleted Event] Event is older than match start time, ignoring');
+          return;
+        }
+      } catch (err) {
+        console.error('[MatchCompleted Event] Error checking timestamp:', err);
         return;
       }
 
@@ -2554,9 +2619,28 @@ export default function TicTacChain() {
         const isPlayer2 = player2.toLowerCase() === account.toLowerCase();
         const isParticipant = isPlayer1 || isPlayer2;
 
+        console.log('[MatchCompleted Event] Player check:', {
+          account,
+          player1,
+          player2,
+          isPlayer1,
+          isPlayer2,
+          isParticipant
+        });
+
         if (isParticipant) {
           const userWon = !isDraw && winner.toLowerCase() === account.toLowerCase();
           const opponent = isPlayer1 ? player2 : player1;
+
+          console.log('[MatchCompleted Event] Winner check:', {
+            winner,
+            account,
+            winnerLower: winner.toLowerCase(),
+            accountLower: account.toLowerCase(),
+            matches: winner.toLowerCase() === account.toLowerCase(),
+            isDraw,
+            userWon
+          });
 
           // Get reason-specific text
           const reasonNum = Number(reason);
@@ -2572,15 +2656,32 @@ export default function TicTacChain() {
             description
           });
 
-          setMatchEndResult({
-            show: true,
-            isWin: userWon,
-            isDraw: isDraw,
-            opponent: opponent,
-            completionReason: reasonNum,
-            reasonText: title,
-            reasonDescription: description
-          });
+          // Determine result type for modal
+          let resultType = 'lose'; // default
+          if (isDraw) {
+            resultType = 'draw';
+          } else if (userWon) {
+            // Check if it's a timeout win
+            if (reasonNum === 1 || reasonNum === 2 || reasonNum === 3) { // Timeout reasons
+              resultType = 'forfeit_win';
+            } else {
+              resultType = 'win';
+            }
+          } else {
+            // User lost - check if it's a timeout loss
+            if (reasonNum === 1 || reasonNum === 2 || reasonNum === 3) { // Timeout reasons
+              resultType = 'forfeit_lose';
+            } else {
+              resultType = 'lose';
+            }
+          }
+
+          console.log('[MatchCompleted Event] Setting result type:', resultType);
+
+          setMatchEndResult(resultType);
+          setMatchEndWinner(winner);
+          setMatchEndLoser(isDraw ? '0x0000000000000000000000000000000000000000' :
+            (winner.toLowerCase() === player1.toLowerCase() ? player2 : player1));
         }
       }
     };
@@ -2742,13 +2843,26 @@ export default function TicTacChain() {
             return;
           }
 
-          // Update for in-progress matches only
+          // Update for in-progress matches only - only update turn and timer fields
           setCurrentMatch(prev => {
+            if (!prev) return updatedMatch;
+
             // Preserve completed state set by events
-            if (prev?.matchStatus === 2) {
+            if (prev.matchStatus === 2) {
               return prev;
             }
-            return updatedMatch;
+
+            // Only update turn and timer fields, preserve board and game state from events
+            return {
+              ...prev,
+              currentTurn: updatedMatch.currentTurn,
+              isYourTurn: updatedMatch.isYourTurn,
+              player1TimeRemaining: updatedMatch.player1TimeRemaining,
+              player2TimeRemaining: updatedMatch.player2TimeRemaining,
+              lastMoveTime: updatedMatch.lastMoveTime,
+              lastMoveTimestamp: updatedMatch.lastMoveTimestamp,
+              // Board, matchStatus, winner, loser, isDraw are preserved from prev (event-driven)
+            };
           });
         }
       } catch (error) {
