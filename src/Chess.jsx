@@ -3070,6 +3070,129 @@ export default function Chess() {
     };
   }, [contract, account, currentMatch]);
 
+  // Listen for MoveMade and MatchCompleted events for real-time match updates
+  useEffect(() => {
+    if (!contract || !currentMatch) return;
+
+    const { tierId, instanceId, roundNumber, matchNumber } = currentMatch;
+
+    // Generate matchId for event filtering
+    const matchId = ethers.solidityPackedKeccak256(
+      ['uint256', 'uint256', 'uint256', 'uint256'],
+      [tierId, instanceId, roundNumber, matchNumber]
+    );
+
+    // Handler for MoveMade events (Chess uses from/to params)
+    const handleMoveMade = async (eventMatchId, player, from, to) => {
+      console.log('[MoveMade Event] Received:', { eventMatchId, player, from, to });
+
+      // Only update if this event is for the current match
+      if (eventMatchId !== matchId) return;
+
+      // Update the board immediately - move piece from 'from' to 'to'
+      setCurrentMatch(prev => {
+        if (!prev) return prev;
+
+        const newBoard = [...prev.board];
+        const piece = newBoard[from];
+        newBoard[to] = piece;
+        newBoard[from] = 0;
+
+        // Toggle turn
+        const newTurn = player.toLowerCase() === prev.player1.toLowerCase() ? prev.player2 : prev.player1;
+
+        console.log('[MoveMade Event] Updating chess board:', { from, to, piece, newTurn });
+
+        return {
+          ...prev,
+          board: newBoard,
+          currentTurn: newTurn,
+          isYourTurn: account ? newTurn.toLowerCase() === account.toLowerCase() : false,
+          fullMoveNumber: prev.fullMoveNumber + (player.toLowerCase() === prev.player2.toLowerCase() ? 1 : 0)
+        };
+      });
+
+      // Refresh move history
+      try {
+        const history = await fetchMoveHistory(contract, tierId, instanceId, roundNumber, matchNumber);
+        setMoveHistory(history);
+      } catch (err) {
+        console.error('[MoveMade Event] Error refreshing move history:', err);
+      }
+    };
+
+    // Handler for MatchCompleted events
+    const handleMatchCompleted = async (eventMatchId, winner, isDraw) => {
+      console.log('[MatchCompleted Event] Received:', { eventMatchId, winner, isDraw });
+
+      // Only update if this event is for the current match
+      if (eventMatchId !== matchId) return;
+
+      // Store player info before updating state
+      const player1 = currentMatch.player1;
+      const player2 = currentMatch.player2;
+
+      // Update match status and preserve board state
+      setCurrentMatch(prev => {
+        if (!prev) return prev;
+
+        const loser = isDraw ? '0x0000000000000000000000000000000000000000' :
+                     (winner.toLowerCase() === prev.player1.toLowerCase() ? prev.player2 : prev.player1);
+
+        console.log('[MatchCompleted Event] Match completed:', {
+          winner,
+          isDraw,
+          loser,
+          boardPreserved: prev.board?.length || 0
+        });
+
+        // Preserve the board state from the last MoveMade event
+        return {
+          ...prev,
+          matchStatus: 2,
+          winner: isDraw ? '0x0000000000000000000000000000000000000000' : winner,
+          loser,
+          isDraw,
+          isYourTurn: false
+        };
+      });
+
+      // Show match end modal using event data (not stale currentMatch)
+      if (account) {
+        const isPlayer1 = player1.toLowerCase() === account.toLowerCase();
+        const isPlayer2 = player2.toLowerCase() === account.toLowerCase();
+        const isParticipant = isPlayer1 || isPlayer2;
+
+        if (isParticipant) {
+          const userWon = !isDraw && winner.toLowerCase() === account.toLowerCase();
+          const opponent = isPlayer1 ? player2 : player1;
+
+          console.log('[MatchCompleted Event] Showing modal:', { userWon, isDraw, opponent });
+
+          setMatchEndResult({
+            show: true,
+            isWin: userWon,
+            isDraw: isDraw,
+            opponent: opponent
+          });
+        }
+      }
+    };
+
+    // Register event listeners (listen to all, filter inside handlers)
+    contract.on('MoveMade', handleMoveMade);
+    contract.on('MatchCompleted', handleMatchCompleted);
+
+    console.log('[Chess Match Events] Listeners registered for matchId:', matchId);
+
+    // Cleanup
+    return () => {
+      console.log('[Chess Match Events] Cleaning up event listeners for matchId:', matchId);
+      contract.off('MoveMade', handleMoveMade);
+      contract.off('MatchCompleted', handleMatchCompleted);
+    };
+  }, [contract, currentMatch, account, fetchMoveHistory]);
+
   // Refresh tier data when account changes (initial load handled by initReadOnlyContract)
   useEffect(() => {
     // Skip initial mount - initReadOnlyContract handles that via loadContractData

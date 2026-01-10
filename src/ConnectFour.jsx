@@ -2718,6 +2718,142 @@ export default function ConnectFour() {
     };
   }, [contract, account, currentMatch]);
 
+  // Listen for MoveMade and MatchCompleted events for real-time match updates
+  useEffect(() => {
+    if (!contract || !currentMatch) return;
+
+    const { tierId, instanceId, roundNumber, matchNumber } = currentMatch;
+
+    // Generate matchId for event filtering
+    const matchId = ethers.solidityPackedKeccak256(
+      ['uint256', 'uint256', 'uint256', 'uint256'],
+      [tierId, instanceId, roundNumber, matchNumber]
+    );
+
+    // Handler for MoveMade events (Connect4 uses column/row params)
+    const handleMoveMade = async (eventMatchId, player, column, row) => {
+      console.log('[MoveMade Event] Received:', { eventMatchId, player, column, row });
+
+      // Only update if this event is for the current match
+      if (eventMatchId !== matchId) return;
+
+      // Update the board immediately
+      setCurrentMatch(prev => {
+        if (!prev) return prev;
+
+        // Connect4 board is a 2D array (6 rows x 7 columns)
+        // Need to reconstruct as 2D from flat array if needed
+        let newBoard;
+        if (Array.isArray(prev.board[0])) {
+          // Already 2D
+          newBoard = prev.board.map(row => [...row]);
+        } else {
+          // Convert from flat to 2D
+          newBoard = [];
+          for (let r = 0; r < 6; r++) {
+            newBoard.push(prev.board.slice(r * 7, (r + 1) * 7));
+          }
+        }
+
+        const isPlayer1 = player.toLowerCase() === prev.player1.toLowerCase();
+        newBoard[row][column] = isPlayer1 ? 1 : 2;
+
+        // Toggle turn
+        const newTurn = isPlayer1 ? prev.player2 : prev.player1;
+
+        console.log('[MoveMade Event] Updating Connect4 board:', { column, row, value: newBoard[row][column], newTurn });
+
+        return {
+          ...prev,
+          board: newBoard,
+          currentTurn: newTurn,
+          isYourTurn: account ? newTurn.toLowerCase() === account.toLowerCase() : false,
+          lastColumn: column,
+          moveCount: (prev.moveCount || 0) + 1
+        };
+      });
+
+      // Refresh move history
+      try {
+        const history = await fetchMoveHistory(contract, tierId, instanceId, roundNumber, matchNumber);
+        setMoveHistory(history);
+      } catch (err) {
+        console.error('[MoveMade Event] Error refreshing move history:', err);
+      }
+    };
+
+    // Handler for MatchCompleted events
+    const handleMatchCompleted = async (eventMatchId, winner, isDraw) => {
+      console.log('[MatchCompleted Event] Received:', { eventMatchId, winner, isDraw });
+
+      // Only update if this event is for the current match
+      if (eventMatchId !== matchId) return;
+
+      // Store player info before updating state
+      const player1 = currentMatch.player1;
+      const player2 = currentMatch.player2;
+
+      // Update match status and preserve board state
+      setCurrentMatch(prev => {
+        if (!prev) return prev;
+
+        const loser = isDraw ? '0x0000000000000000000000000000000000000000' :
+                     (winner.toLowerCase() === prev.player1.toLowerCase() ? prev.player2 : prev.player1);
+
+        console.log('[MatchCompleted Event] Match completed:', {
+          winner,
+          isDraw,
+          loser,
+          boardPreserved: prev.board?.length || 0
+        });
+
+        // Preserve the board state from the last MoveMade event
+        return {
+          ...prev,
+          matchStatus: 2,
+          winner: isDraw ? '0x0000000000000000000000000000000000000000' : winner,
+          loser,
+          isDraw,
+          isYourTurn: false
+        };
+      });
+
+      // Show match end modal using event data (not stale currentMatch)
+      if (account) {
+        const isPlayer1 = player1.toLowerCase() === account.toLowerCase();
+        const isPlayer2 = player2.toLowerCase() === account.toLowerCase();
+        const isParticipant = isPlayer1 || isPlayer2;
+
+        if (isParticipant) {
+          const userWon = !isDraw && winner.toLowerCase() === account.toLowerCase();
+          const opponent = isPlayer1 ? player2 : player1;
+
+          console.log('[MatchCompleted Event] Showing modal:', { userWon, isDraw, opponent });
+
+          setMatchEndResult({
+            show: true,
+            isWin: userWon,
+            isDraw: isDraw,
+            opponent: opponent
+          });
+        }
+      }
+    };
+
+    // Register event listeners (listen to all, filter inside handlers)
+    contract.on('MoveMade', handleMoveMade);
+    contract.on('MatchCompleted', handleMatchCompleted);
+
+    console.log('[Connect4 Match Events] Listeners registered for matchId:', matchId);
+
+    // Cleanup
+    return () => {
+      console.log('[Connect4 Match Events] Cleaning up event listeners for matchId:', matchId);
+      contract.off('MoveMade', handleMoveMade);
+      contract.off('MatchCompleted', handleMatchCompleted);
+    };
+  }, [contract, currentMatch, account, fetchMoveHistory]);
+
   // Refresh tier data when account changes (initial load handled by initReadOnlyContract)
   useEffect(() => {
     // Skip initial mount - initReadOnlyContract handles that via loadContractData

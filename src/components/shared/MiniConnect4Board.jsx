@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { parseConnectFourMatch } from '../../utils/matchDataParser';
+import { reconstructMatchFromEvents } from '../../utils/eventReconstruction';
 import { Loader2 } from 'lucide-react';
 import MiniMatchEndModal from './MiniMatchEndModal';
 
@@ -62,7 +63,37 @@ const MiniConnect4Board = ({
         match.matchIdx
       );
 
-      const parsed = parseConnectFourMatch(data);
+      let parsed = parseConnectFourMatch(data);
+
+      // If match is completed, reconstruct board from events instead of cache
+      if (parsed.matchStatus === 2) {
+        try {
+          const reconstructed = await reconstructMatchFromEvents(
+            contract,
+            match.tierId,
+            match.instanceId,
+            match.roundIdx,
+            match.matchIdx,
+            parsed.player1,
+            parsed.player2,
+            'connect4'
+          );
+
+          // Use reconstructed board if available
+          if (reconstructed && reconstructed.board) {
+            parsed = {
+              ...parsed,
+              board: reconstructed.board,
+              winner: reconstructed.winner || parsed.winner,
+              isDraw: reconstructed.isDraw ?? parsed.isDraw
+            };
+            console.log('[MiniConnect4Board] Using reconstructed board from events');
+          }
+        } catch (err) {
+          console.warn('[MiniConnect4Board] Event reconstruction failed, using cached data:', err);
+          // Fall back to cached data from getMatch
+        }
+      }
       // Compute isPlayer1 by comparing account to player1
       parsed.isPlayer1 = parsed.player1?.toLowerCase() === account?.toLowerCase();
       // Calculate isMyTurn based on current turn

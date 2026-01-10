@@ -337,6 +337,29 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
     return () => clearInterval(interval);
   }, [contract, account, fetchActivity]);
 
+  // Listen for MatchCompleted events for instant updates
+  useEffect(() => {
+    if (!contract || !account) return;
+
+    // Handler for any MatchCompleted event
+    const handleMatchCompleted = (matchId, winner, isDraw) => {
+      console.log('[PlayerActivity] MatchCompleted event received:', { matchId, winner, isDraw });
+
+      // Trigger a refetch to update the player's active matches
+      fetchActivity(false);
+    };
+
+    // Register event listener (no filter - listen to all MatchCompleted events)
+    contract.on('MatchCompleted', handleMatchCompleted);
+    console.log('[PlayerActivity] MatchCompleted event listener registered');
+
+    // Cleanup
+    return () => {
+      console.log('[PlayerActivity] Cleaning up MatchCompleted event listener');
+      contract.off('MatchCompleted', handleMatchCompleted);
+    };
+  }, [contract, account, fetchActivity]);
+
   // Function to dismiss a completed match
   const dismissMatch = useCallback((tierId, instanceId, roundIdx, matchIdx) => {
     const matchKey = `${tierId}-${instanceId}-${roundIdx}-${matchIdx}`;

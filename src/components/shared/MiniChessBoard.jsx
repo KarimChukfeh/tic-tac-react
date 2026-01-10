@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { parseChessMatch } from '../../utils/matchDataParser';
+import { reconstructMatchFromEvents } from '../../utils/eventReconstruction';
 import { Loader2 } from 'lucide-react';
 import MiniMatchEndModal from './MiniMatchEndModal';
 import { ethers } from 'ethers';
@@ -153,7 +154,38 @@ const MiniChessBoard = ({
         allKeys: Object.keys(data)
       });
 
-      const parsed = parseChessMatch(data);
+      let parsed = parseChessMatch(data);
+
+      // If match is completed, reconstruct board from events instead of cache
+      if (parsed.matchStatus === 2) {
+        try {
+          const reconstructed = await reconstructMatchFromEvents(
+            contract,
+            match.tierId,
+            match.instanceId,
+            match.roundIdx,
+            match.matchIdx,
+            parsed.player1,
+            parsed.player2,
+            'chess'
+          );
+
+          // Use reconstructed board if available
+          if (reconstructed && reconstructed.board) {
+            parsed = {
+              ...parsed,
+              board: reconstructed.board.boardArray || reconstructed.board,
+              winner: reconstructed.winner || parsed.winner,
+              isDraw: reconstructed.isDraw ?? parsed.isDraw,
+              moveHistory: reconstructed.board.moveHistory || parsed.moveHistory
+            };
+            console.log('[MiniChessBoard] Using reconstructed board from events');
+          }
+        } catch (err) {
+          console.warn('[MiniChessBoard] Event reconstruction failed, using cached data:', err);
+          // Fall back to cached data from getMatch
+        }
+      }
       console.log('[MiniChessBoard] Parsed data:', {
         firstPlayer: parsed.firstPlayer,
         player1: parsed.player1,
