@@ -419,18 +419,19 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
     return () => window.removeEventListener('resize', updateSize);
   }, [maxSize]);
 
-  useEffect(() => {
-    if (lastMove && prevBoardRef.current && (prevLastMoveRef.current?.from !== lastMove.from || prevLastMoveRef.current?.to !== lastMove.to)) {
-      const piece = board[lastMove.to];
-      if (piece && Number(piece.pieceType) !== 0) {
-        setAnimatingMove({ from: lastMove.from, to: lastMove.to, piece: piece, isMyMove: lastMove.isMyMove });
-        const timer = setTimeout(() => setAnimatingMove(null), 450);
-        return () => clearTimeout(timer);
-      }
-    }
-    prevBoardRef.current = board;
-    prevLastMoveRef.current = lastMove;
-  }, [lastMove, board]);
+  // Disabled animation to fix disappearing pieces issue
+  // useEffect(() => {
+  //   if (lastMove && prevBoardRef.current && (prevLastMoveRef.current?.from !== lastMove.from || prevLastMoveRef.current?.to !== lastMove.to)) {
+  //     const piece = board[lastMove.to];
+  //     if (piece && Number(piece.pieceType) !== 0) {
+  //       setAnimatingMove({ from: lastMove.from, to: lastMove.to, piece: piece, isMyMove: lastMove.isMyMove });
+  //       const timer = setTimeout(() => setAnimatingMove(null), 450);
+  //       return () => clearTimeout(timer);
+  //     }
+  //   }
+  //   prevBoardRef.current = board;
+  //   prevLastMoveRef.current = lastMove;
+  // }, [lastMove, board]);
 
   const isPlayer1 = account && player1?.toLowerCase() === account.toLowerCase();
   const isPlayer2 = account && player2?.toLowerCase() === account.toLowerCase();
@@ -558,7 +559,7 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
       const isLastMoveTo = lastMove && lastMove.to === actualIdx;
       // Use isMyMove from lastMove object (set based on player address from event)
       const isMyMove = lastMove?.isMyMove;
-      const hideForAnimation = animatingMove && actualIdx === animatingMove.to;
+      const hideForAnimation = false; // Disabled animation to fix disappearing pieces
       const pieceType = piece ? Number(piece.pieceType) : 0;
       const pieceColor = piece ? Number(piece.color) : 0;
       const isKingInCheck = pieceType === 6 && ((pieceColor === 1 && whiteInCheck) || (pieceColor === 2 && blackInCheck));
@@ -604,15 +605,17 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
     return squares;
   };
 
+  // Disabled animation to fix disappearing pieces issue
   const renderAnimatedPiece = () => {
-    if (!animatingMove || !boardSize) return null;
-    const fromPos = getDisplayPosition(animatingMove.from);
-    const toPos = getDisplayPosition(animatingMove.to);
-    const squareSize = boardSize / 8;
-    const pieceColor = animatingMove.piece ? Number(animatingMove.piece.color) : 0;
-    const isMyAnimatedMove = animatingMove.isMyMove;
-    const animationGlow = isMyAnimatedMove ? 'rgba(59, 130, 246, 0.8)' : 'rgba(239, 68, 68, 0.8)'; // blue for my move, red for opponent
-    return (<div className="absolute pointer-events-none z-20" style={{ width: squareSize, height: squareSize, transform: 'translate(' + (toPos.col * squareSize) + 'px, ' + (toPos.row * squareSize) + 'px)' }}><div className="w-full h-full flex items-center justify-center" style={{ '--from-x': ((fromPos.col - toPos.col) * squareSize) + 'px', '--from-y': ((fromPos.row - toPos.row) * squareSize) + 'px' }}><span className={'text-3xl md:text-4xl lg:text-5xl select-none ' + (pieceColor === 1 ? 'text-white' : 'text-gray-900')} style={{ transform: 'translate(var(--from-x), var(--from-y))', animation: 'pieceMove 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards', textShadow: pieceColor === 1 ? '0 2px 4px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.7)' : '0 1px 2px rgba(255,255,255,0.8)' }}>{getPieceSymbol(animatingMove.piece)}</span></div></div>);
+    return null; // Animation disabled
+    // if (!animatingMove || !boardSize) return null;
+    // const fromPos = getDisplayPosition(animatingMove.from);
+    // const toPos = getDisplayPosition(animatingMove.to);
+    // const squareSize = boardSize / 8;
+    // const pieceColor = animatingMove.piece ? Number(animatingMove.piece.color) : 0;
+    // const isMyAnimatedMove = animatingMove.isMyMove;
+    // const animationGlow = isMyAnimatedMove ? 'rgba(59, 130, 246, 0.8)' : 'rgba(239, 68, 68, 0.8)'; // blue for my move, red for opponent
+    // return (<div className="absolute pointer-events-none z-20" style={{ width: squareSize, height: squareSize, transform: 'translate(' + (toPos.col * squareSize) + 'px, ' + (toPos.row * squareSize) + 'px)' }}><div className="w-full h-full flex items-center justify-center" style={{ '--from-x': ((fromPos.col - toPos.col) * squareSize) + 'px', '--from-y': ((fromPos.row - toPos.row) * squareSize) + 'px' }}><span className={'text-3xl md:text-4xl lg:text-5xl select-none ' + (pieceColor === 1 ? 'text-white' : 'text-gray-900')} style={{ transform: 'translate(var(--from-x), var(--from-y))', animation: 'pieceMove 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards', textShadow: pieceColor === 1 ? '0 2px 4px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.7)' : '0 1px 2px rgba(255,255,255,0.8)' }}>{getPieceSymbol(animatingMove.piece)}</span></div></div>);
   };
 
   return (<div className="relative flex flex-col items-center">{matchStatus === 1 && (<div className={'mb-4 text-center py-2 px-6 rounded-full font-mono text-base font-semibold backdrop-blur-sm ' + (timeRemaining !== null && timeRemaining < 60 ? 'bg-red-500/20 text-red-300 border border-red-500/40 animate-pulse' : 'bg-slate-800/60 text-cyan-300 border border-cyan-500/30')}><Clock className="inline-block mr-2" size={16} />{formatTime(timeRemaining)}</div>)}<div ref={containerRef} className="w-full flex justify-center"><div className="relative rounded-xl overflow-hidden" style={{ width: boardSize || 400, height: boardSize || 400, minWidth: 280, minHeight: 280, background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.9))', border: '1px solid rgba(148, 163, 184, 0.2)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(6, 182, 212, 0.1), inset 0 1px 0 rgba(255,255,255,0.05)' }}><div className="grid gap-0 w-full h-full" style={{ gridTemplateColumns: 'repeat(8, 1fr)', gridTemplateRows: 'repeat(8, 1fr)' }}>{renderBoard()}</div>{renderAnimatedPiece()}</div></div><style>{'@keyframes pieceMove { 0% { transform: translate(var(--from-x), var(--from-y)) scale(1); } 50% { transform: translate(calc(var(--from-x) * 0.3), calc(var(--from-y) * 0.3)) scale(1.15); } 100% { transform: translate(0, 0) scale(1); } }'}</style>{promotionSquare !== null && (<div className="absolute inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center rounded-xl"><div className="p-6 rounded-2xl" style={{ background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.95))', border: '1px solid rgba(168, 85, 247, 0.4)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 30px rgba(168, 85, 247, 0.2)' }}><h3 className="text-slate-100 font-bold text-lg mb-4 text-center">Promote Pawn</h3><div className="flex gap-3">{[5, 4, 3, 2].map((pt) => (<button key={pt} onClick={() => handlePromotion(pt)} className="w-14 h-14 md:w-16 md:h-16 rounded-xl flex items-center justify-center text-3xl md:text-4xl transition-all duration-200 hover:scale-110" style={{ background: 'rgba(51, 65, 85, 0.6)', border: '1px solid rgba(148, 163, 184, 0.3)' }} onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(6, 182, 212, 0.2)'; e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.5)'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(51, 65, 85, 0.6)'; e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.3)'; }}><span className={isWhite ? 'text-white' : 'text-gray-900'} style={{ textShadow: isWhite ? '0 2px 4px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.7)' : '0 1px 2px rgba(255,255,255,0.8)' }}>{PIECE_SYMBOLS[isWhite ? 'white' : 'black'][PIECE_TYPES[pt]]}</span></button>))}</div></div></div>)}{matchStatus === 1 && (<div className={'mt-4 text-center py-3 px-6 rounded-xl font-semibold text-base backdrop-blur-sm ' + (isMyTurn ? 'text-cyan-300' : 'text-slate-400')} style={{ ...(boardSize ? { width: boardSize } : { maxWidth: '100%' }), background: isMyTurn ? 'linear-gradient(135deg, rgba(6, 182, 212, 0.15), rgba(59, 130, 246, 0.15))' : 'rgba(30, 41, 59, 0.6)', border: isMyTurn ? '1px solid rgba(6, 182, 212, 0.4)' : '1px solid rgba(148, 163, 184, 0.2)', boxShadow: isMyTurn ? '0 0 20px rgba(6, 182, 212, 0.15)' : 'none' }}>{isMyTurn ? (<div className="space-y-1"><div className="text-lg flex items-center justify-center gap-2"><span className="inline-block w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>Your Move</div><div className="text-sm text-slate-400">Playing as {isWhite ? 'White' : 'Black'}</div></div>) : (<div className="space-y-1"><div className="flex items-center justify-center gap-2"><span className="inline-block w-2 h-2 rounded-full bg-slate-500 animate-pulse"></span>Opponent's Turn</div><div className="text-sm text-slate-500">Waiting for their move...</div></div>)}</div>)}{(whiteInCheck || blackInCheck) && matchStatus === 1 && (<div className="mt-3 text-center py-2 px-6 rounded-full text-red-300 font-semibold text-sm animate-pulse" style={{ ...(boardSize ? { width: boardSize } : { maxWidth: '100%' }), background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.4)', boxShadow: '0 0 20px rgba(239, 68, 68, 0.2)' }}>{whiteInCheck ? 'White' : 'Black'} King in Check</div>)}</div>);
@@ -3171,35 +3174,31 @@ export default function Chess() {
         return;
       }
 
-      // Update the board immediately - move piece from 'from' to 'to'
-      setCurrentMatch(prev => {
-        if (!prev) return prev;
-
-        const newBoard = [...prev.board];
-        const piece = newBoard[from];
-        newBoard[to] = piece;
-        newBoard[from] = 0;
-
-        // Toggle turn
-        const newTurn = player.toLowerCase() === prev.player1.toLowerCase() ? prev.player2 : prev.player1;
-
-        console.log('[MoveMade Event] Updating chess board:', { from, to, piece, newTurn });
-
-        return {
-          ...prev,
-          board: newBoard,
-          currentTurn: newTurn,
-          isYourTurn: account ? newTurn.toLowerCase() === account.toLowerCase() : false,
-          fullMoveNumber: prev.fullMoveNumber + (player.toLowerCase() === prev.player2.toLowerCase() ? 1 : 0)
-        };
-      });
-
-      // Refresh move history
+      // Fetch the full board state from contract for Chess (ensures accuracy)
+      console.log('[MoveMade Event] Fetching fresh board state from contract');
       try {
+        const updatedMatch = await refreshMatchData(
+          contract,
+          account,
+          currentMatch,
+          matchTimePerPlayer
+        );
+
+        if (updatedMatch) {
+          console.log('[MoveMade Event] Board updated from contract:', {
+            from,
+            to,
+            boardLength: updatedMatch.board?.length
+          });
+          setCurrentMatch(updatedMatch);
+          previousBoardRef.current = [...updatedMatch.board];
+        }
+
+        // Refresh move history
         const history = await fetchMoveHistory(contract, tierId, instanceId, roundNumber, matchNumber);
         setMoveHistory(history);
       } catch (err) {
-        console.error('[MoveMade Event] Error refreshing move history:', err);
+        console.error('[MoveMade Event] Error refreshing match data:', err);
       }
     };
 
