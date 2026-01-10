@@ -3471,7 +3471,7 @@ export default function TicTacChain() {
             enrollmentWindow: config.timeouts.enrollmentWindow,
             enrollmentLevel2Delay: config.timeouts.enrollmentLevel2Delay
           }))}
-          raffleThresholds={['0.05', '0.25', '0.5', '0.75', '1']}
+          raffleThresholds={['0.005', '0.02', '0.05', '0.25', '0.5', '0.75', '1']}
         />
       </div>
 

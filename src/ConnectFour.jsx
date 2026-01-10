@@ -1122,9 +1122,13 @@ export default function ConnectFour() {
 
         for (let instanceId = 0; instanceId < instanceCount; instanceId++) {
           try {
-            const tournament = await readContract.tournaments(tierId, instanceId);
-            statuses.push(Number(tournament.status));
-            enrolledCounts.push(Number(tournament.enrolledCount));
+            // Use getTournamentInfo instead of tournaments mapping
+            const tournamentInfo = await readContract.getTournamentInfo(tierId, instanceId);
+            const status = Number(tournamentInfo[0]); // status
+            const enrolledCount = Number(tournamentInfo[2]); // enrolledCount
+
+            statuses.push(status);
+            enrolledCounts.push(enrolledCount);
           } catch (error) {
             // Instance not initialized yet, stop checking further instances
             break;
@@ -3817,7 +3821,7 @@ export default function ConnectFour() {
             enrollmentWindow: config.timeouts.enrollmentWindow,
             enrollmentLevel2Delay: config.timeouts.enrollmentLevel2Delay
           }))}
-          raffleThresholds={['0.05', '0.4', '0.75', '1']}
+          raffleThresholds={['0.02', '0.05', '0.4', '0.75', '1']}
         />
       </div>
 
