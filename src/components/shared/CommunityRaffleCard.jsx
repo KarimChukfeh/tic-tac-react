@@ -99,8 +99,8 @@ const CommunityRaffleCard = ({ raffleInfo, raffleHistory = [], playerActivityHei
           onClick={() => setIsExpanded(true)}
           className={`rounded-full p-2 md:p-4 border-2 transition-all hover:scale-110 shadow-xl relative group ${
             isFull
-              ? 'bg-gradient-to-br from-yellow-500/90 to-amber-500/90 border-yellow-400/70 hover:border-yellow-400 animate-pulse'
-              : 'bg-gradient-to-br from-yellow-600/90 to-amber-600/90 backdrop-blur-lg border-yellow-400/40 hover:border-yellow-400/70'
+              ? 'bg-gradient-to-br from-yellow-500 to-amber-500 border-yellow-400/70 hover:border-yellow-400'
+              : 'bg-gradient-to-br from-yellow-600 to-amber-600 border-yellow-400/40 hover:border-yellow-400/70'
           }`}
           aria-label="Open contract pool"
         >
@@ -118,7 +118,7 @@ const CommunityRaffleCard = ({ raffleInfo, raffleHistory = [], playerActivityHei
 
           {/* Full Badge */}
           {isFull && (
-            <div className="absolute -top-1 -right-1 bg-green-500 rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center animate-pulse">
+            <div className="absolute -top-1 -right-1 bg-green-500 rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center">
               <span className="text-white text-[11px] md:text-xs font-bold">✓</span>
             </div>
           )}
@@ -134,9 +134,9 @@ const CommunityRaffleCard = ({ raffleInfo, raffleHistory = [], playerActivityHei
       {isExpanded && (
         <div
           ref={expandedPanelRef}
-          className={`bg-gradient-to-br from-yellow-600/20 to-amber-600/20 backdrop-blur-lg rounded-xl p-4 border-2 transition-all shadow-2xl w-[calc(100vw-2rem)] md:w-[464px] ${
+          className={`bg-gradient-to-br from-yellow-700 to-amber-800 rounded-xl p-4 border-2 transition-all shadow-2xl w-[calc(100vw-2rem)] md:w-[464px] ${
             isFull
-              ? 'border-yellow-400 shadow-yellow-500/50 animate-pulse'
+              ? 'border-yellow-400 shadow-yellow-500/50'
               : 'border-yellow-400/40'
           }`}
         >
@@ -194,7 +194,7 @@ const CommunityRaffleCard = ({ raffleInfo, raffleHistory = [], playerActivityHei
           </div>
 
           {/* Progress Bar */}
-          <div className="relative w-full bg-black/30 rounded-full h-3 overflow-hidden">
+          <div className="relative w-full bg-black/50 rounded-full h-3 overflow-hidden">
             <div
               className={`h-full transition-all duration-500 rounded-full ${
                 isFull
@@ -214,7 +214,7 @@ const CommunityRaffleCard = ({ raffleInfo, raffleHistory = [], playerActivityHei
 
           {/* Raffle Distribution Info - Only show when ready */}
           {isFull && raffleAmountETH > 0 && (
-            <div className="mt-3 p-3 bg-yellow-500/10 border border-yellow-400/30 rounded-lg">
+            <div className="mt-3 p-3 bg-yellow-800/80 border border-yellow-400/30 rounded-lg">
               <div className="text-xs text-yellow-300/80 mb-2">
                 <span className="font-semibold">Raffle Distribution:</span>
               </div>
@@ -269,7 +269,7 @@ const CommunityRaffleCard = ({ raffleInfo, raffleHistory = [], playerActivityHei
                 {raffleHistory.map((raffle) => (
                   <div
                     key={raffle.raffleNumber}
-                    className="bg-black/20 rounded-lg p-2.5 border border-yellow-400/10 hover:border-yellow-400/30 transition-colors"
+                    className="bg-yellow-900/60 rounded-lg p-2.5 border border-yellow-400/10 hover:border-yellow-400/30 transition-colors"
                   >
                     <div className="flex items-center justify-between mb-1.5">
                       <span className="text-yellow-300 font-semibold text-xs">
