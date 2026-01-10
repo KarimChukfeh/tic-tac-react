@@ -4362,13 +4362,13 @@ export default function Chess() {
                 <h3 className={`text-lg font-semibold ${isEnrolledInElite ? 'text-[#fff8e7]' : 'text-purple-100'} mb-3`}>Why are Elite tiers so expensive?</h3>
                 <div className="space-y-3 text-gray-300">
                   <p>
-                    Elite tiers are deliberately very high-stakes to serves a specific purpose. The Elite tier isn't just another tournament level - it's designed as an exclusive club for serious chess competitors.
+                    Elite tiers are high-stakes to serves a specific purpose. Elite chess on ETour isn't just another tournament level. It's as an exclusive club for serious chess competitors.
                   </p>
-                  <p className="font-semibold text-gray-200">Here's what makes Elite tier special:</p>
+                  <p className="font-semibold text-gray-200">Here's what makes Elite tiers special:</p>
                   <ul className="space-y-2 ml-4">
                     <li className="flex items-start gap-2">
                       <span className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-purple-400'}>•</span>
-                      <span><strong>Permanent Legacy</strong>: Every Elite tier match is stored permanently on-chain. Winners and their games become part of ETour's permanent record, viewable forever by anyone.</span>
+                      <span><strong>Permanent Legacy</strong>: Every Elite finals is stored permanently on-chain. Winners and their games become part of ETour's permanent record.</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <span className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-purple-400'}>•</span>
