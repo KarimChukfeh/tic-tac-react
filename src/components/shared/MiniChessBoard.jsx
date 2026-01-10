@@ -70,13 +70,16 @@ const MiniChessBoard = ({
   };
 
   // Helper to flip board index (so player is always at bottom)
-  // Contract board has indices 0-7 = rank 1 (white's back rank) at TOP of rendered grid
-  // We need to flip it so white player sees their pieces at bottom
+  // Flip vertically (rows only) for white's view - preserves a-h left-to-right
+  // White view: a1 at bottom-left, h1 at bottom-right, a8 at top-left, h8 at top-right
+  // Black view: a1 at top-left, h8 at bottom-right (standard array order)
   const getDisplayIndex = (actualIndex) => {
     if (!matchData) return actualIndex;
     const shouldFlip = matchData.isWhite; // Flip if player is white so white pieces are at bottom
     if (shouldFlip) {
-      return 63 - actualIndex;
+      const actualRow = Math.floor(actualIndex / 8);
+      const actualCol = actualIndex % 8;
+      return (7 - actualRow) * 8 + actualCol;
     }
     return actualIndex;
   };
@@ -85,7 +88,9 @@ const MiniChessBoard = ({
     if (!matchData) return displayIndex;
     const shouldFlip = matchData.isWhite; // Flip if player is white so white pieces are at bottom
     if (shouldFlip) {
-      return 63 - displayIndex;
+      const displayRow = Math.floor(displayIndex / 8);
+      const displayCol = displayIndex % 8;
+      return (7 - displayRow) * 8 + displayCol;
     }
     return displayIndex;
   };
