@@ -24,9 +24,16 @@ export const CURRENT_NETWORK = NETWORKS[networkKey] || NETWORKS.localhost;
 
 // Contract addresses - can be overridden via environment variables
 export const CONTRACT_ADDRESSES = {
-  TicTacChain: import.meta.env.VITE_TICTACCHAIN_ADDRESS || '0x5FbDB2315678afecb367f032d93F642f64180aa3',
-  ChessOnChain: import.meta.env.VITE_CHESS_ADDRESS || '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512',
-  ConnectFourOnChain: import.meta.env.VITE_CONNECTFOUR_ADDRESS || '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0',
+  TicTacChain: import.meta.env.VITE_TICTACCHAIN_ADDRESS || '0x67d269191c92Caf3cD7723F116c85e6E9bf55933',
+  ChessOnChain: import.meta.env.VITE_CHESS_ADDRESS || '0x9A676e781A523b5d0C0e43731313A708CB607508',
+  ConnectFourOnChain: import.meta.env.VITE_CONNECTFOUR_ADDRESS || '0x59b670e9fA9D0A427751Af201D676719a970857b',
+  // ETour Module Addresses (shared across games)
+  ETour_Core: import.meta.env.VITE_ETOUR_CORE_ADDRESS || '0x322813Fd9A801c5507c9de605d63CEA4f2CE6c44',
+  ETour_Matches: import.meta.env.VITE_ETOUR_MATCHES_ADDRESS || '0xa85233C63b9Ee964Add6F2cffe00Fd84eb32338f',
+  ETour_Prizes: import.meta.env.VITE_ETOUR_PRIZES_ADDRESS || '0x4A679253410272dd5232B3Ff7cF5dbB88f295319',
+  ETour_Raffle: import.meta.env.VITE_ETOUR_RAFFLE_ADDRESS || '0x7a2088a1bFc9d81c55368AE168C2C02570cB814F',
+  ETour_Escalation: import.meta.env.VITE_ETOUR_ESCALATION_ADDRESS || '0x09635F643e140090A9A8Dcd712eD6285858ceBef',
+  ETour_GameCache: import.meta.env.VITE_ETOUR_GAMECACHE_ADDRESS || '0xc5a5C42992dECbae36851359345FE25997F5C42d',
 };
 
 // Helper to get explorer URL for a transaction

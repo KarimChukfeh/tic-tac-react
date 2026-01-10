@@ -329,7 +329,7 @@ export default function Landing() {
     },
     {
       q: "Why play games on the blockchain?",
-      a: "Strategy games are perfect for blockchain: they're deterministic and impossible to cheat when moves are recorded on-chain. Unlike poker or casino games that require trusted randomness, our games are pure skill. Every move is recorded on-chain, and game outcomes are cryptographically secured."
+      a: "Strategy games are perfect for blockchain: they're deterministic and impossible to cheat when moves are recorded on-chain. Unlike poker or casino games that require trusted randomness, our games are pure skill. Every move is recorded on-chain, and game outcomes are secured by the blockchain."
     },
     {
       q: "What if my opponent doesn't move?",
@@ -576,7 +576,7 @@ export default function Landing() {
                 <h3 className="text-xl font-bold text-white mb-3">No Token</h3>
                 <p className="text-slate-400 leading-relaxed">
                   We're not selling you anything. No governance token. No "utility" coin. 
-                  ETH in, ETH out. The way crypto should be.
+                  ETH in, ETH out.
                 </p>
               </div>
               

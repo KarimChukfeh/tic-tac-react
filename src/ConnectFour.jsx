@@ -22,13 +22,17 @@ import {
   CheckCircle, AlertCircle, ChevronDown, ArrowLeft, HelpCircle
 } from 'lucide-react';
 import { ethers } from 'ethers';
-import CONNECTFOUR_ABI from './CFOCABI.json';
+import ConnectFourABIData from './ConnectFourABI-modular.json';
+const CONNECTFOUR_ABI = ConnectFourABIData.abi;
+const CONTRACT_ADDRESS = ConnectFourABIData.address;
+const MODULE_ADDRESSES = ConnectFourABIData.modules;
 import { CURRENT_NETWORK, CONTRACT_ADDRESSES, getAddressUrl, getExplorerHomeUrl } from './config/networks';
-import { shortenAddress, formatTime as formatTimeHMS, getTierName } from './utils/formatters';
+import { shortenAddress, formatTime as formatTimeHMS, getTierName, getTournamentTypeLabel } from './utils/formatters';
 import { parseTournamentParams } from './utils/urlHelpers';
 import { parseConnectFourMatch } from './utils/matchDataParser';
 import { determineMatchResult } from './utils/matchCompletionHandler';
 import { fetchTierTimeoutConfig } from './utils/timeCalculations';
+import { getCompletionReasonText, getCompletionReasonDescription } from './utils/completionReasons';
 import ParticleBackground from './components/shared/ParticleBackground';
 import MatchCard from './components/shared/MatchCard';
 import TournamentCard from './components/shared/TournamentCard';
@@ -42,8 +46,54 @@ import PlayerActivity from './components/shared/PlayerActivity';
 import CommunityRaffleCard from './components/shared/CommunityRaffleCard';
 import { usePlayerActivity } from './hooks/usePlayerActivity';
 
-// ConnectFour particle symbols (matching landing page style)
+// ConnectFour particle symbols (SVG circles with darker colors)
 const CONNECTFOUR_SYMBOLS = ['🔴', '🔵'];
+
+// Hardcoded tier configuration (matches ConnectFourOnChain.sol deployment)
+// Tier 0: _registerTier0() -> 2 players, 100 instances, 0.001 ETH
+// Tier 1: _registerTier1() -> 4 players, 50 instances, 0.002 ETH
+// Tier 2: _registerTier2() -> 8 players, 25 instances, 0.004 ETH
+const TIER_CONFIG = {
+  0: {
+    playerCount: 2,
+    instanceCount: 100,
+    entryFee: '0.001',
+    timeouts: {
+      matchTimePerPlayer: 300,
+      timeIncrementPerMove: 15,
+      matchLevel2Delay: 120,
+      matchLevel3Delay: 240,
+      enrollmentWindow: 300,
+      enrollmentLevel2Delay: 300
+    }
+  },
+  1: {
+    playerCount: 4,
+    instanceCount: 50,
+    entryFee: '0.002',
+    timeouts: {
+      matchTimePerPlayer: 300,
+      timeIncrementPerMove: 15,
+      matchLevel2Delay: 120,
+      matchLevel3Delay: 240,
+      enrollmentWindow: 600,
+      enrollmentLevel2Delay: 300
+    }
+  },
+  2: {
+    playerCount: 8,
+    instanceCount: 25,
+    entryFee: '0.004',
+    timeouts: {
+      matchTimePerPlayer: 300,
+      timeIncrementPerMove: 15,
+      matchLevel2Delay: 120,
+      matchLevel3Delay: 240,
+      enrollmentWindow: 900,
+      enrollmentLevel2Delay: 300
+    }
+  }
+};
 
 // Animated disc that fades between red and blue
 // delay: initial delay in ms before starting animation (for staggered effect)
@@ -68,22 +118,46 @@ const AnimatedDisc = ({ delay = 0, size = 'large' }) => {
     return () => clearInterval(interval);
   }, [started]);
 
-  const sizeClass = size === 'large' ? 'text-8xl' : 'text-2xl';
+  const svgSize = size === 'large' ? 128 : 32;
 
   return (
-    <span className={`relative inline-block ${sizeClass}`}>
-      <span
-        className="absolute inset-0 transition-opacity duration-1000 ease-in-out"
-        style={{ opacity: showRed ? 1 : 0 }}
-      >
-        🔴
-      </span>
-      <span
-        className="transition-opacity duration-1000 ease-in-out"
-        style={{ opacity: showRed ? 0 : 1 }}
-      >
-        🔵
-      </span>
+    <span className="relative inline-block">
+      <svg width={svgSize} height={svgSize} viewBox="0 0 128 128" style={{ position: 'absolute' }}>
+        <circle
+          cx="64"
+          cy="64"
+          r="58"
+          fill="url(#redAnimGradient)"
+          style={{
+            opacity: showRed ? 1 : 0,
+            transition: 'opacity 1s ease-in-out'
+          }}
+        />
+        <defs>
+          <radialGradient id="redAnimGradient" cx="30%" cy="30%">
+            <stop offset="0%" stopColor="#ff0044" />
+            <stop offset="100%" stopColor="#bb0033" />
+          </radialGradient>
+        </defs>
+      </svg>
+      <svg width={svgSize} height={svgSize} viewBox="0 0 128 128">
+        <circle
+          cx="64"
+          cy="64"
+          r="58"
+          fill="url(#blueAnimGradient)"
+          style={{
+            opacity: showRed ? 0 : 1,
+            transition: 'opacity 1s ease-in-out'
+          }}
+        />
+        <defs>
+          <radialGradient id="blueAnimGradient" cx="30%" cy="30%">
+            <stop offset="0%" stopColor="#0077ff" />
+            <stop offset="100%" stopColor="#0055aa" />
+          </radialGradient>
+        </defs>
+      </svg>
     </span>
   );
 };
@@ -216,9 +290,16 @@ const ConnectFourBoard = ({
               }}
             >
               {hoveredColumn === col && isMyTurn && !isColumnFull && (
-                <span className="text-2xl animate-bounce">
-                  {myColor === 1 ? '🔴' : '🔵'}
-                </span>
+                <div className="animate-bounce">
+                  <svg width="24" height="24" viewBox="0 0 24 24">
+                    <circle
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      fill={myColor === 1 ? '#ff0044' : '#0066ff'}
+                    />
+                  </svg>
+                </div>
               )}
             </div>
           );
@@ -269,11 +350,9 @@ const ConnectFourBoard = ({
                           width: cellSize - 8,
                           height: cellSize - 8,
                           background: cell === 1
-                            ? 'radial-gradient(circle at 30% 30%, #ff6b6b, #c92a2a)'
-                            : 'radial-gradient(circle at 30% 30%, #60a5fa, #2563eb)',
-                          boxShadow: cell === 1
-                            ? 'inset 0 -4px 8px rgba(0,0,0,0.3), 0 0 10px rgba(255,107,107,0.5)'
-                            : 'inset 0 -4px 8px rgba(0,0,0,0.3), 0 0 10px rgba(96,165,250,0.5)'
+                            ? 'radial-gradient(circle at 30% 30%, #ff0044, #bb0033)'
+                            : 'radial-gradient(circle at 30% 30%, #0077ff, #0055aa)',
+                          boxShadow: 'inset 0 -4px 8px rgba(0,0,0,0.3)'
                         }}
                       />
                     ) : isPreview ? (
@@ -283,8 +362,8 @@ const ConnectFourBoard = ({
                           width: cellSize - 8,
                           height: cellSize - 8,
                           background: myColor === 1
-                            ? 'radial-gradient(circle at 30% 30%, #ff6b6b, #c92a2a)'
-                            : 'radial-gradient(circle at 30% 30%, #60a5fa, #2563eb)'
+                            ? 'radial-gradient(circle at 30% 30%, #ff0044, #bb0033)'
+                            : 'radial-gradient(circle at 30% 30%, #0077ff, #0055aa)'
                         }}
                       />
                     ) : null}
@@ -312,11 +391,14 @@ const ConnectFourBoard = ({
 };
 
 // Tournament Bracket Component
-const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceEliminate, onClaimReplacement, onManualStart, onClaimAbandonedPool, onResetEnrollmentWindow, onEnroll, account, loading, syncDots, isEnrolled, entryFee, isFull, contract }) => {
+const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onSpectateMatch, onForceEliminate, onClaimReplacement, onManualStart, onClaimAbandonedPool, onResetEnrollmentWindow, onEnroll, account, loading, syncDots, isEnrolled, entryFee, isFull, contract }) => {
   const { tierId, instanceId, status, currentRound, enrolledCount, prizePool, rounds, playerCount, enrolledPlayers, firstEnrollmentTime, countdownActive, enrollmentTimeout } = tournamentData;
 
   // Calculate total rounds based on player count
   const totalRounds = Math.ceil(Math.log2(playerCount));
+
+  // Determine tournament type label (Duel vs Tournament)
+  const tournamentTypeLabel = getTournamentTypeLabel(playerCount);
 
   // Ref for active match scrolling
   const activeMatchRef = useRef(null);
@@ -383,16 +465,6 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
       }
       if (userActiveMatch) break;
     }
-
-    // Scroll to the active match if found (happens after every sync)
-    if (userActiveMatch && activeMatchRef.current) {
-      setTimeout(() => {
-        activeMatchRef.current?.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center'
-        });
-      }, 300); // Small delay to ensure render is complete
-    }
   }, [account, rounds, status, syncDots]); // Include syncDots to trigger on every sync
 
   // TicTacToe-specific options for match status display
@@ -457,7 +529,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
       <div className={`bg-gradient-to-br from-slate-900/50 to-purple-900/30 backdrop-blur-lg rounded-2xl p-8 border ${colors.headerBorder}`}>
         <h3 className={`text-2xl font-bold ${colors.text} mb-6 flex items-center gap-2`}>
           <Grid size={24} />
-          Tournament Bracket
+          {tournamentTypeLabel} Bracket
         </h3>
 
         {rounds && rounds.length > 0 ? (
@@ -493,6 +565,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
                         account={account}
                         loading={loading}
                         onEnterMatch={onEnterMatch}
+                        onSpectateMatch={onSpectateMatch}
                         onForceEliminate={onForceEliminate}
                         onClaimReplacement={onClaimReplacement}
                         matchStatusOptions={matchStatusOptions}
@@ -522,8 +595,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
 };
 
 export default function ConnectFour() {
-  // Use network config instead of hardcoded values
-  const CONTRACT_ADDRESS = CONTRACT_ADDRESSES.ConnectFourOnChain;
+  // Use modular ABI configuration (CONTRACT_ADDRESS from import, not network config)
   const EXPECTED_CHAIN_ID = CURRENT_NETWORK.chainId;
   const RPC_URL = import.meta.env.VITE_RPC_URL || CURRENT_NETWORK.rpcUrl;
   const EXPLORER_URL = getAddressUrl(CONTRACT_ADDRESS);
@@ -532,7 +604,7 @@ export default function ConnectFour() {
   const getReadOnlyContract = useCallback(() => {
     const provider = new ethers.JsonRpcProvider(RPC_URL);
     return new ethers.Contract(CONTRACT_ADDRESS, CONNECTFOUR_ABI, provider);
-  }, [CONTRACT_ADDRESS, RPC_URL]);
+  }, [RPC_URL]); // CONTRACT_ADDRESS now const from import
 
   // Wallet & Contract State
   const [account, setAccount] = useState(null);
@@ -572,10 +644,12 @@ export default function ConnectFour() {
   const [matchLoading, setMatchLoading] = useState(false);
   const [moveHistory, setMoveHistory] = useState([]);
   const [syncDots, setSyncDots] = useState(1);
+  const [isSpectator, setIsSpectator] = useState(false); // Track if user is spectating (not a participant)
   const [matchEndResult, setMatchEndResult] = useState(null); // 'win' | 'lose' | 'draw' | 'forfeit_win' | 'forfeit_lose' | 'double_forfeit'
   const [matchEndWinnerLabel, setMatchEndWinnerLabel] = useState('');
   const [matchEndWinner, setMatchEndWinner] = useState(null); // Winner address for modal display
   const [matchEndLoser, setMatchEndLoser] = useState(null); // Loser address for modal display
+  const [tournamentCompletionData, setTournamentCompletionData] = useState(null); // Tournament completion notification data
   const previousBoardRef = useRef(null); // Track previous board state for move history sync
   const tournamentBracketRef = useRef(null); // Ref for auto-scrolling to tournament after URL navigation
   const matchViewRef = useRef(null); // Ref for auto-scrolling to match view
@@ -695,9 +769,9 @@ export default function ConnectFour() {
       if (!contract) return;
 
       if (viewingTournament?.tierId !== undefined) {
-        // Fetch timeout config for the viewing tournament's tier
+        // Fetch timeout config for the viewing tournament's tier (using hardcoded TIER_CONFIG)
         try {
-          const timeoutConfig = await fetchTierTimeoutConfig(contract, viewingTournament.tierId, 300);
+          const timeoutConfig = await fetchTierTimeoutConfig(contract, viewingTournament.tierId, 300, TIER_CONFIG[viewingTournament.tierId]);
           if (timeoutConfig?.matchTimePerPlayer) {
             setDisplayTimeoutConfig(timeoutConfig);
           }
@@ -705,9 +779,9 @@ export default function ConnectFour() {
           console.warn(`Could not fetch timeout config for tier ${viewingTournament.tierId}:`, err);
         }
       } else {
-        // No tournament viewing, reset to tier 0 (default)
+        // No tournament viewing, reset to tier 0 (default) using hardcoded TIER_CONFIG
         try {
-          const timeoutConfig = await fetchTierTimeoutConfig(contract, 0, 300);
+          const timeoutConfig = await fetchTierTimeoutConfig(contract, 0, 300, TIER_CONFIG[0]);
           if (timeoutConfig?.matchTimePerPlayer) {
             setDisplayTimeoutConfig(timeoutConfig);
           }
@@ -721,10 +795,10 @@ export default function ConnectFour() {
   }, [viewingTournament, contract]);
 
 
-  // Theme colors (Connect Four - matches ConnectFour.jsx)
+  // Theme colors (matches TicTacToe - purple background with deep neon red/blue)
   const currentTheme = {
-    gradient: 'linear-gradient(135deg, #0a0020 0%, #1a0050 50%, #0a0030 100%)',
-    particleColors: ['#00ffff', '#8a2be2'],  // cyan + purple
+    gradient: 'linear-gradient(135deg, #0a0015 0%, #1a0030 50%, #0f001a 100%)',
+    particleColors: ['#0066ff', '#ff0044'],  // deep neon blue + deep neon red
     heroGlow: 'from-blue-500 via-cyan-500 to-blue-500',
     heroTitle: 'from-blue-400 via-cyan-400 to-blue-400',
     heroText: 'text-blue-200',
@@ -870,9 +944,9 @@ export default function ConnectFour() {
       await fetchTierMetadata(contractInstance);
       await fetchLeaderboard(false);
 
-      // Fetch match time from first tier for display in Game Info Cards
+      // Fetch match time from first tier for display in Game Info Cards (using hardcoded TIER_CONFIG)
       try {
-        const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, 0, 300);
+        const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, 0, 300, TIER_CONFIG[0]);
         if (timeoutConfig?.matchTimePerPlayer) {
           setMatchTimePerPlayer(timeoutConfig.matchTimePerPlayer);
           setDisplayTimeoutConfig(timeoutConfig);
@@ -963,58 +1037,29 @@ export default function ConnectFour() {
     }
   }, [getReadOnlyContract]);
 
-  // LAZY LOADING: Fetch tier metadata only (fast initial load)
-  // This gets basic tier info without detailed instance data
-  const fetchTierMetadata = useCallback(async (contractInstance = null, silentUpdate = false) => {
-    const readContract = contractInstance || getReadOnlyContract();
-    if (!readContract) {
-      setConnectionError('Unable to connect to blockchain. Please check your network connection.');
-      if (!silentUpdate) setMetadataLoading(false);
-      return;
-    }
-
+  // LAZY LOADING: Fetch tier metadata from hardcoded TIER_CONFIG (no RPC calls)
+  // Active enrollment counts come from tierInstances when tiers are expanded
+  const fetchTierMetadata = useCallback(async (_contractInstance = null, silentUpdate = false) => {
     if (!silentUpdate) setMetadataLoading(true);
-    if (!silentUpdate) setConnectionError(null); // Clear any previous error
+    if (!silentUpdate) setConnectionError(null);
+
+    // Build metadata directly from TIER_CONFIG - zero RPC calls
     const metadata = {};
-    let successfulFetches = 0;
-    let totalAttempts = 0;
-
-    // Fetch metadata for tiers 0-6
-    for (let tierId = 0; tierId <= 6; tierId++) {
-      totalAttempts++;
-      try {
-        // Parallel fetch tier config, entry fee, and overview
-        const [tierConfig, fee, tierOverview] = await Promise.all([
-          readContract.tierConfigs(tierId),
-          readContract.ENTRY_FEES(tierId),
-          readContract.getTierOverview(tierId)
-        ]);
-
-        successfulFetches++;
-        const instanceCount = tierOverview[0].length;
-        if (instanceCount === 0) continue;
-
-        metadata[tierId] = {
-          playerCount: Number(tierConfig.playerCount),
-          instanceCount,
-          entryFee: ethers.formatEther(fee),
-          statuses: tierOverview[0].map(s => Number(s)),
-          enrolledCounts: tierOverview[1].map(c => Number(c)),
-          prizePools: tierOverview[2]
-        };
-      } catch (error) {
-        console.log(`Could not fetch tier ${tierId} metadata:`, error.message);
-      }
-    }
-
-    // If no fetches succeeded, we have a connection problem
-    if (successfulFetches === 0 && totalAttempts > 0) {
-      if (!silentUpdate) setConnectionError('Unable to load tournament data. Please check your connection and try again.');
+    for (const [tierId, tierConfig] of Object.entries(TIER_CONFIG)) {
+      const { playerCount, instanceCount, entryFee } = tierConfig;
+      metadata[tierId] = {
+        playerCount,
+        instanceCount,
+        entryFee,
+        statuses: [],
+        enrolledCounts: [],
+        prizePools: []
+      };
     }
 
     setTierMetadata(metadata);
     if (!silentUpdate) setMetadataLoading(false);
-  }, [getReadOnlyContract]);
+  }, []);
 
   // LAZY LOADING: Fetch detailed instances for a specific tier (called on expand)
   // Note: Uses functional state updates to avoid dependency on tierInstances/tierMetadata
@@ -1029,17 +1074,36 @@ export default function ConnectFour() {
       // Get metadata from override or fetch fresh
       let metadata = metadataOverride;
       if (!metadata) {
-        const [tierConfig, fee, tierOverview] = await Promise.all([
-          readContract.tierConfigs(tierId),
-          readContract.ENTRY_FEES(tierId),
-          readContract.getTierOverview(tierId)
-        ]);
+        // Get tier config from hardcoded data (matches TicTacChain)
+        const tierConfig = TIER_CONFIG[tierId];
+        if (!tierConfig) {
+          if (!silentUpdate) setTierLoading(prev => ({ ...prev, [tierId]: false }));
+          return;
+        }
+
+        const { playerCount, instanceCount, entryFee } = tierConfig;
+
+        // Fetch tournament data for each instance individually (matches TicTacChain)
+        const statuses = [];
+        const enrolledCounts = [];
+
+        for (let instanceId = 0; instanceId < instanceCount; instanceId++) {
+          try {
+            const tournament = await readContract.tournaments(tierId, instanceId);
+            statuses.push(Number(tournament.status));
+            enrolledCounts.push(Number(tournament.enrolledCount));
+          } catch (error) {
+            // Instance not initialized yet, stop checking further instances
+            break;
+          }
+        }
+
         metadata = {
-          playerCount: Number(tierConfig.playerCount),
-          instanceCount: tierOverview[0].length,
-          entryFee: ethers.formatEther(fee),
-          statuses: tierOverview[0].map(s => Number(s)),
-          enrolledCounts: tierOverview[1].map(c => Number(c))
+          playerCount,
+          instanceCount: statuses.length,
+          entryFee,
+          statuses,
+          enrolledCounts
         };
       }
 
@@ -1276,12 +1340,24 @@ export default function ConnectFour() {
     try {
       setTournamentsLoading(true);
 
-      // Convert entry fee to wei
-      const feeInWei = ethers.parseEther(entryFee);
+      // Use hardcoded tier config (tierConfigs removed from contract ABI)
+      const tierConfig = TIER_CONFIG[tierId];
+      if (!tierConfig) {
+        alert(`Invalid tier ID: ${tierId}`);
+        setTournamentsLoading(false);
+        return;
+      }
+      const feeInWei = ethers.parseEther(tierConfig.entryFee);
+      console.log('[handleEnroll] Using hardcoded entry fee:', tierConfig.entryFee, 'ETH');
+      console.log('[handleEnroll] Passed entry fee (ignored):', entryFee, 'ETH');
+      console.log('[handleEnroll] Enrolling in tier', tierId, 'instance', instanceId, 'with fee:', tierConfig.entryFee, 'ETH');
 
       // Call enrollInTournament function with entry fee as value
       const tx = await contract.enrollInTournament(tierId, instanceId, { value: feeInWei });
       await tx.wait();
+
+      // Refresh player activity panel immediately after enrollment
+      playerActivity.refetch();
 
       alert('Successfully enrolled in tournament!');
 
@@ -1312,10 +1388,16 @@ export default function ConnectFour() {
     try {
       setTournamentsLoading(true);
 
-      // First check if this instance exists
-      const instanceCount = Number(await contract.INSTANCE_COUNTS(tierId));
+      // First check if this instance exists using hardcoded config
+      const tierConfig = TIER_CONFIG[tierId];
+      if (!tierConfig) {
+        alert(`Invalid tier ID: ${tierId}`);
+        setTournamentsLoading(false);
+        return;
+      }
+      const instanceCount = tierConfig.instanceCount;
       if (instanceId >= instanceCount) {
-        alert(`Invalid instance ID. Tier ${tierId + 1} only has ${instanceCount} instances (1-${instanceCount})`);
+        alert(`Invalid instance ID. Tier ${tierId + 1} only has ${instanceCount} instances (0-${instanceCount - 1})`);
         setTournamentsLoading(false);
         return;
       }
@@ -1597,20 +1679,29 @@ export default function ConnectFour() {
       // Get tournament info
       const tournamentInfo = await contractInstance.getTournamentInfo(tierId, instanceId);
       const status = Number(tournamentInfo[0]);
-      const currentRound = Number(tournamentInfo[2]);
-      const enrolledCount = Number(tournamentInfo[3]);
-      const prizePool = tournamentInfo[4];
+      const currentRound = Number(tournamentInfo[1]);
+      const enrolledCount = Number(tournamentInfo[2]);
+      const prizePool = tournamentInfo[3];
 
-      // Get tier config for player count and entry fee
-      const tierConfig = await contractInstance.tierConfigs(tierId);
-      const playerCount = Number(tierConfig.playerCount);
-      const entryFee = tierConfig.entryFee;
+      // Get tier config from hardcoded values (tierConfigs removed from contract ABI)
+      const tierConfig = TIER_CONFIG[tierId];
+      const playerCount = tierConfig.playerCount;
+      const entryFee = ethers.parseEther(tierConfig.entryFee);
 
-      // Extract timeout config using shared utility function
-      const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, tierId, totalMatchTime);
+      // Extract timeout config using shared utility function (with hardcoded TIER_CONFIG fallback)
+      const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, tierId, totalMatchTime, tierConfig);
 
-      // Get enrolled players
-      const enrolledPlayers = await contractInstance.getEnrolledPlayers(tierId, instanceId);
+      // Get enrolled players by iterating through enrolledPlayers mapping (matches TicTacChain)
+      const enrolledPlayers = [];
+      for (let i = 0; i < enrolledCount; i++) {
+        try {
+          const player = await contractInstance.enrolledPlayers(tierId, instanceId, i);
+          enrolledPlayers.push(player);
+        } catch (err) {
+          console.warn(`Could not fetch enrolled player ${i}:`, err);
+          break;
+        }
+      }
 
       // Get countdown data
       let firstEnrollmentTime = 0;
@@ -1643,16 +1734,22 @@ export default function ConnectFour() {
             const matchData = await contractInstance.getMatch(tierId, instanceId, roundNum, matchNum);
             const parsedMatch = parseConnectFourMatch(matchData);
 
-            // Use per-tier match time from contract config
-            let player1TimeRemaining = tierMatchTime;
-            let player2TimeRemaining = tierMatchTime;
+            // Calculate time remaining client-side (contract stores time at last move)
+            // Formula: current player's time = stored time - elapsed since last move
+            const now = Math.floor(Date.now() / 1000);
+            const elapsed = parsedMatch.lastMoveTime > 0 ? now - parsedMatch.lastMoveTime : 0;
 
-            try {
-              const timeData = await contractInstance.getCurrentTimeRemaining(tierId, instanceId, roundNum, matchNum);
-              player1TimeRemaining = Number(timeData[0]);
-              player2TimeRemaining = Number(timeData[1]);
-            } catch (timeErr) {
-              console.warn(`Could not fetch time for match ${matchNum}:`, timeErr);
+            let player1TimeRemaining = parsedMatch.player1TimeRemaining ?? tierMatchTime;
+            let player2TimeRemaining = parsedMatch.player2TimeRemaining ?? tierMatchTime;
+
+            // Only subtract elapsed time from the current player's clock (if match is active)
+            if (parsedMatch.matchStatus === 1 && parsedMatch.currentTurn && elapsed > 0) {
+              const isPlayer1Turn = parsedMatch.currentTurn.toLowerCase() === parsedMatch.player1.toLowerCase();
+              if (isPlayer1Turn) {
+                player1TimeRemaining = Math.max(0, player1TimeRemaining - elapsed);
+              } else {
+                player2TimeRemaining = Math.max(0, player2TimeRemaining - elapsed);
+              }
             }
 
             // Fetch escalation state using matchTimeouts function
@@ -1795,6 +1892,7 @@ export default function ConnectFour() {
       const parsedMatch = parseConnectFourMatch(matchData);
       const player1 = parsedMatch.player1;
       const board = parsedMatch.board;
+      const matchStartTime = Number(matchData.common.startTime);
 
       // Try to query MoveMade events for this match
       try {
@@ -1809,14 +1907,37 @@ export default function ConnectFour() {
         const events = await contractInstance.queryFilter(filter);
 
         if (events.length > 0) {
-          // Convert events to move history
-          const history = events.map(event => {
+          // Filter events to only include those from the current match instance
+          // Get block timestamps and filter by match start time
+          const eventsWithTimestamps = await Promise.all(
+            events.map(async (event) => {
+              const block = await event.getBlock();
+              return {
+                event,
+                timestamp: block.timestamp
+              };
+            })
+          );
+
+          // Only include events that occurred at or after the match started
+          const currentMatchEvents = eventsWithTimestamps
+            .filter(({ timestamp }) => timestamp >= matchStartTime)
+            .map(({ event }) => event);
+
+          if (currentMatchEvents.length === 0) {
+            return [];
+          }
+
+          // Convert filtered events to move history
+          const history = currentMatchEvents.map(event => {
             const player = event.args.player;
             const cellIndex = Number(event.args.cellIndex);
             const isPlayer1 = player.toLowerCase() === player1.toLowerCase();
+            const column = cellIndex % 7; // Convert cell index to column (0-6)
             return {
-              player: isPlayer1 ? 'X' : 'O',
-              cell: cellIndex,
+              player: isPlayer1 ? 'Red' : 'Blue',
+              column: column + 1, // Display as 1-7 for users
+              cellIndex: cellIndex, // Keep for reference
               address: player,
               blockNumber: event.blockNumber
             };
@@ -1836,9 +1957,11 @@ export default function ConnectFour() {
       for (let i = 0; i < boardArray.length; i++) {
         const cell = Number(boardArray[i]);
         if (cell !== 0) {
+          const column = i % 7; // Convert cell index to column (0-6)
           history.push({
-            player: cell === 1 ? 'X' : 'O',
-            cell: i
+            player: cell === 1 ? 'Red' : 'Blue',
+            column: column + 1, // Display as 1-7 for users
+            cellIndex: i
           });
         }
       }
@@ -1856,13 +1979,13 @@ export default function ConnectFour() {
       const matchData = await contractInstance.getMatch(tierId, instanceId, roundNumber, matchNumber);
       const parsedMatch = parseConnectFourMatch(matchData);
 
-      // Fetch per-tier timeout config to get correct match time
-      const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, tierId, totalMatchTime);
+      // Fetch per-tier timeout config to get correct match time (with hardcoded TIER_CONFIG fallback)
+      const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, tierId, totalMatchTime, TIER_CONFIG[tierId]);
       const tierMatchTime = timeoutConfig?.matchTimePerPlayer ?? totalMatchTime;
 
       const {
         player1, player2, currentTurn, winner, loser, board, matchStatus, isDraw,
-        startTime, lastMoveTime, lastMovedCell, lastMoveTimestamp
+        startTime, lastMoveTime, lastMoveTimestamp
       } = parsedMatch;
 
       const zeroAddress = '0x0000000000000000000000000000000000000000';
@@ -1878,16 +2001,22 @@ export default function ConnectFour() {
         actualPlayer2 = matchInfo.player2;
       }
 
-      // Use per-tier match time from contract config
-      let player1TimeRemaining = tierMatchTime;
-      let player2TimeRemaining = tierMatchTime;
+      // Calculate time remaining client-side (contract stores time at last move)
+      // Formula: current player's time = stored time - elapsed since last move
+      const now = Math.floor(Date.now() / 1000);
+      const elapsed = lastMoveTime > 0 ? now - lastMoveTime : 0;
 
-      try {
-        const timeData = await contractInstance.getCurrentTimeRemaining(tierId, instanceId, roundNumber, matchNumber);
-        player1TimeRemaining = Number(timeData[0]); // player1Time from contract
-        player2TimeRemaining = Number(timeData[1]); // player2Time from contract
-      } catch (timeErr) {
-        // Using default values (match may not be initialized)
+      let player1TimeRemaining = parsedMatch.player1TimeRemaining ?? tierMatchTime;
+      let player2TimeRemaining = parsedMatch.player2TimeRemaining ?? tierMatchTime;
+
+      // Only subtract elapsed time from the current player's clock (if match is active)
+      if (matchStatus === 1 && currentTurn && elapsed > 0) {
+        const isPlayer1Turn = currentTurn.toLowerCase() === player1.toLowerCase();
+        if (isPlayer1Turn) {
+          player1TimeRemaining = Math.max(0, player1TimeRemaining - elapsed);
+        } else {
+          player2TimeRemaining = Math.max(0, player2TimeRemaining - elapsed);
+        }
       }
 
       // Fetch escalation state using matchTimeouts function
@@ -1928,6 +2057,47 @@ export default function ConnectFour() {
       // A match is timed out if it completed with an active timeout state
       const isTimedOut = matchStatus === 2 && timeoutState?.timeoutActive === true;
 
+      // Fetch last move for highlighting (with timestamp filtering)
+      let lastColumn = null;
+      try {
+        const matchStartTime = Number(matchData.common.startTime);
+        const matchKey = ethers.keccak256(
+          ethers.AbiCoder.defaultAbiCoder().encode(
+            ['uint8', 'uint8', 'uint8', 'uint8'],
+            [tierId, instanceId, roundNumber, matchNumber]
+          )
+        );
+
+        const filter = contractInstance.filters.MoveMade(matchKey);
+        const events = await contractInstance.queryFilter(filter);
+
+        if (events.length > 0) {
+          // Get block timestamps for each event
+          const eventsWithTimestamps = await Promise.all(
+            events.map(async (event) => {
+              const block = await event.getBlock();
+              return {
+                event,
+                timestamp: block.timestamp
+              };
+            })
+          );
+
+          // Filter events to only include those from the current match instance
+          const currentMatchEvents = eventsWithTimestamps
+            .filter(({ timestamp }) => timestamp >= matchStartTime)
+            .map(({ event }) => event);
+
+          // Get the last move from the filtered events
+          if (currentMatchEvents.length > 0) {
+            const lastEvent = currentMatchEvents[currentMatchEvents.length - 1];
+            lastColumn = Number(lastEvent.args.cellIndex);
+          }
+        }
+      } catch (lastMoveErr) {
+        console.debug('Could not fetch last move for highlighting:', lastMoveErr.message);
+      }
+
       return {
         ...matchInfo,
         player1: actualPlayer1,
@@ -1942,7 +2112,6 @@ export default function ConnectFour() {
         isPlayer1,
         isYourTurn,
         userSymbol: isPlayer1 ? 'X' : 'O',
-        lastMovedCell,
         isMatchInitialized,
         timeoutState,
         lastMoveTime,
@@ -1952,7 +2121,8 @@ export default function ConnectFour() {
         player2TimeRemaining,
         lastMoveTimestamp,
         matchTimePerPlayer: tierMatchTime, // Pass through per-tier value for UI components
-        timeoutConfig // Pass timeout config to UI components
+        timeoutConfig, // Pass timeout config to UI components
+        lastColumn // Last move column for highlighting (filtered by match start time)
       };
     } catch (error) {
       console.error('Error refreshing match:', error);
@@ -2000,7 +2170,31 @@ export default function ConnectFour() {
       setMatchLoading(false);
     } catch (error) {
       console.error('Error making move:', error);
-      alert(`Error making move: ${error.message}`);
+
+      // Parse error message for user-friendly display
+      let errorMsg = 'Invalid Move';
+
+      // Check for common contract revert patterns
+      const errorString = error.message || error.toString();
+
+      if (errorString.includes('user rejected') || errorString.includes('User denied')) {
+        errorMsg = 'Transaction cancelled';
+      } else if (errorString.includes('insufficient funds')) {
+        errorMsg = 'Insufficient funds for gas';
+      } else if (errorString.includes('Not your turn') || errorString.includes('not your turn')) {
+        errorMsg = 'Not your turn';
+      } else if (errorString.includes('Match not active') || errorString.includes('match not active')) {
+        errorMsg = 'Match is not active';
+      } else if (errorString.includes('Column full') || errorString.includes('column full')) {
+        errorMsg = 'Invalid Move - Column is full';
+      } else if (errorString.includes('Invalid column') || errorString.includes('invalid column')) {
+        errorMsg = 'Invalid Move - Invalid column';
+      } else if (errorString.includes('execution reverted')) {
+        // Generic contract revert - likely an invalid move
+        errorMsg = 'Invalid Move - This move is not allowed';
+      }
+
+      alert(errorMsg);
       setMatchLoading(false);
     }
   };
@@ -2119,9 +2313,9 @@ export default function ConnectFour() {
 
       // Fetch tournament info to get playerCount and prizePool
       const tournamentInfo = await contract.getTournamentInfo(tierId, instanceId);
-      const tierConfig = await contract.tierConfigs(tierId);
-      const playerCount = Number(tierConfig.playerCount);
-      const prizePool = tournamentInfo[4]; // prizePool is at index 4
+      const tierConfig = TIER_CONFIG[tierId];
+      const playerCount = tierConfig.playerCount;
+      const prizePool = tournamentInfo[3]; // prizePool is at index 3
 
       const matchData = await contract.getMatch(tierId, instanceId, roundNumber, matchNumber);
       const parsedMatch = parseConnectFourMatch(matchData);
@@ -2134,7 +2328,18 @@ export default function ConnectFour() {
       let actualPlayer2 = player2;
 
       if (player1.toLowerCase() === zeroAddress) {
-        const enrolledPlayers = await contract.getEnrolledPlayers(tierId, instanceId);
+        // Get enrolled players by iterating through enrolledPlayers mapping (matches TicTacChain)
+        const enrolledCount = Number(tournamentInfo[2]);
+        const enrolledPlayers = [];
+        for (let i = 0; i < Math.min(2, enrolledCount); i++) {
+          try {
+            const player = await contract.enrolledPlayers(tierId, instanceId, i);
+            enrolledPlayers.push(player);
+          } catch (err) {
+            console.warn(`Could not fetch enrolled player ${i}:`, err);
+            break;
+          }
+        }
         if (enrolledPlayers.length >= 2) {
           actualPlayer1 = enrolledPlayers[0];
           actualPlayer2 = enrolledPlayers[1];
@@ -2177,6 +2382,93 @@ export default function ConnectFour() {
     }
   };
 
+  // Handle spectating a match (for non-participants)
+  const handleSpectateMatch = async (tierId, instanceId, roundNumber, matchNumber) => {
+    if (!contract) {
+      alert('Contract not loaded');
+      return;
+    }
+
+    try {
+      setMatchLoading(true);
+      setIsSpectator(true); // Mark as spectator mode
+
+      // Fetch tournament info using getTournamentInfo() view function
+      const tournamentInfo = await contract.getTournamentInfo(tierId, instanceId);
+      // Get tier config from hardcoded data
+      const tierConfig = TIER_CONFIG[tierId];
+      const playerCount = tierConfig.playerCount;
+      const prizePool = tournamentInfo[3]; // prizePool at index 3 in getTournamentInfo
+
+      const matchData = await contract.getMatch(tierId, instanceId, roundNumber, matchNumber);
+      const parsedMatch = parseConnectFourMatch(matchData);
+
+      const player1 = parsedMatch.player1;
+      const player2 = parsedMatch.player2;
+
+      const zeroAddress = '0x0000000000000000000000000000000000000000';
+      let actualPlayer1 = player1;
+      let actualPlayer2 = player2;
+
+      if (player1.toLowerCase() === zeroAddress) {
+        // Get enrolled players by iterating through enrolledPlayers mapping
+        const enrolledCount = Number(tournamentInfo[2]);
+        const enrolledPlayers = [];
+        for (let i = 0; i < Math.min(2, enrolledCount); i++) {
+          try {
+            const player = await contract.enrolledPlayers(tierId, instanceId, i);
+            enrolledPlayers.push(player);
+          } catch (err) {
+            console.warn(`Could not fetch enrolled player ${i}:`, err);
+            break;
+          }
+        }
+        if (enrolledPlayers.length >= 2) {
+          actualPlayer1 = enrolledPlayers[0];
+          actualPlayer2 = enrolledPlayers[1];
+        }
+      }
+
+      // Use a dummy account for refreshMatchData if user not connected
+      const viewerAccount = account || zeroAddress;
+
+      const updated = await refreshMatchData(contract, viewerAccount, {
+        tierId, instanceId, roundNumber, matchNumber,
+        player1: actualPlayer1,
+        player2: actualPlayer2,
+        playerCount, // Add tournament context
+        prizePool    // Add tournament context
+      }, matchTimePerPlayer);
+
+      if (updated) {
+        setCurrentMatch(updated);
+        // Initialize board ref for move detection
+        previousBoardRef.current = [...updated.board];
+        // Fetch move history from blockchain events
+        const history = await fetchMoveHistory(contract, tierId, instanceId, roundNumber, matchNumber);
+        setMoveHistory(history);
+
+        // Scroll to match view after rendering
+        setTimeout(() => {
+          if (matchViewRef.current) {
+            matchViewRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+          // Collapse activity panel after scrolling
+          if (collapseActivityPanelRef.current) {
+            collapseActivityPanelRef.current();
+          }
+        }, 100);
+      }
+
+      setMatchLoading(false);
+    } catch (error) {
+      console.error('Error loading match for spectating:', error);
+      alert(`Error loading match: ${error.message}`);
+      setMatchLoading(false);
+      setIsSpectator(false);
+    }
+  };
+
   // Close match view and refresh tournament bracket
   const closeMatch = async () => {
     const tournamentInfo = currentMatch ? {
@@ -2189,6 +2481,7 @@ export default function ConnectFour() {
 
     setCurrentMatch(null);
     setMoveHistory([]);
+    setIsSpectator(false); // Reset spectator mode
     previousBoardRef.current = null;
 
     // Refresh tournament bracket and cached stats (with loading indicator)
@@ -2253,6 +2546,23 @@ export default function ConnectFour() {
     }
   };
 
+  // Handle closing the tournament completion modal
+  const handleTournamentCompletionModalClose = async () => {
+    // Clear the modal state
+    setTournamentCompletionData(null);
+
+    // Refresh player activity to update terminated matches
+    if (playerActivity?.refetch) {
+      playerActivity.refetch();
+    }
+
+    // Refresh data
+    if (contract) {
+      await fetchLeaderboard(true);
+      await refreshAfterAction();
+    }
+  };
+
   // Go back from tournament bracket to tournaments list
   const handleBackToTournaments = async () => {
     setViewingTournament(null);
@@ -2309,6 +2619,340 @@ export default function ConnectFour() {
       });
     }
   }, []);
+
+  // Listen for TournamentCompleted events to notify players
+  useEffect(() => {
+    if (!contract || !account) return;
+
+    console.log('[TournamentCompleted] Setting up event listener for account:', account);
+
+    const handleTournamentCompleted = async (tierId, instanceId, winner, _prizeAmount, completionReason, enrolledPlayers, event) => {
+      console.log('[TournamentCompleted Event] ===== EVENT FIRED =====');
+      console.log('[TournamentCompleted Event] Tournament:', Number(tierId), 'Instance:', Number(instanceId));
+      console.log('[TournamentCompleted Event] Completion reason:', Number(completionReason));
+      console.log('[TournamentCompleted Event] Winner:', winner);
+
+      // Time-gate: Only process events that occurred after current match/tournament started
+      if (event && currentMatch) {
+        try {
+          const block = await event.getBlock();
+          const eventTimestamp = block.timestamp;
+          const matchStartTime = currentMatch.startTime;
+
+          console.log('[TournamentCompleted Event] Timestamp check:', {
+            eventTimestamp,
+            matchStartTime,
+            isValidEvent: eventTimestamp >= matchStartTime
+          });
+
+          if (eventTimestamp < matchStartTime) {
+            console.log('[TournamentCompleted Event] Event is older than current match start time, ignoring');
+            return;
+          }
+        } catch (err) {
+          console.error('[TournamentCompleted Event] Error checking timestamp:', err);
+          // Don't return here - if timestamp check fails, proceed with other validation
+        }
+      }
+
+      // 1. Check if player is the winner - if yes, DON'T show modal (they won!)
+      const playerIsWinner = winner.toLowerCase() === account.toLowerCase();
+      if (playerIsWinner) {
+        console.log('[TournamentCompleted Event] Player is the WINNER - no notification needed');
+        return;
+      }
+
+      // 2. Check if player was enrolled
+      const isEnrolled = enrolledPlayers.some(
+        addr => addr.toLowerCase() === account.toLowerCase()
+      );
+
+      if (!isEnrolled) {
+        console.log('[TournamentCompleted Event] Player not enrolled, ignoring');
+        return;
+      }
+
+      // 3. Check if player had an active tournament at time of completion
+      // (if not in playerActiveTournaments, they were already eliminated)
+      try {
+        const activeTournaments = await contract.getPlayerActiveTournaments(account);
+        const wasActive = activeTournaments.some(
+          ref => Number(ref.tierId) === Number(tierId) && Number(ref.instanceId) === Number(instanceId)
+        );
+
+        if (!wasActive) {
+          console.log('[TournamentCompleted Event] Player was already eliminated before tournament ended - no notification needed');
+          return;
+        }
+
+        console.log('[TournamentCompleted Event] ✓ Player had active match when tournament ended - SHOWING NOTIFICATION');
+
+        // Show modal - player was actively playing when tournament completed
+        setTournamentCompletionData({
+          tierId: Number(tierId),
+          instanceId: Number(instanceId),
+          winner,
+          completionReason: Number(completionReason)
+        });
+
+        // Clear current match view if in this tournament
+        if (currentMatch &&
+            currentMatch.tierId === Number(tierId) &&
+            currentMatch.instanceId === Number(instanceId)) {
+          console.log('[TournamentCompleted Event] Clearing current match view');
+          setCurrentMatch(null);
+          setMoveHistory([]);
+        }
+      } catch (error) {
+        console.error('[TournamentCompleted Event] Error checking playerActiveTournaments:', error);
+      }
+    };
+
+    // Register event listener
+    contract.on('TournamentCompleted', handleTournamentCompleted);
+    console.log('[TournamentCompleted] Event listener registered');
+
+    // Query recent events to catch any missed while page was loading
+    const checkRecentEvents = async () => {
+      try {
+        const filter = contract.filters.TournamentCompleted();
+        const events = await contract.queryFilter(filter, -50);
+        console.log('[TournamentCompleted] Found', events.length, 'recent events in last 50 blocks');
+
+        // Process only the most recent event per tournament
+        const processedTournaments = new Set();
+        events.reverse().forEach(event => {
+          const tournamentKey = `${event.args.tierId}-${event.args.instanceId}`;
+          if (!processedTournaments.has(tournamentKey)) {
+            processedTournaments.add(tournamentKey);
+            const { tierId, instanceId, winner, completionReason, enrolledPlayers } = event.args;
+            handleTournamentCompleted(tierId, instanceId, winner, 0n, completionReason, enrolledPlayers, event);
+          }
+        });
+      } catch (err) {
+        console.error('[TournamentCompleted] Error checking recent events:', err);
+      }
+    };
+
+    checkRecentEvents();
+
+    return () => {
+      console.log('[TournamentCompleted] Cleaning up event listener');
+      contract.off('TournamentCompleted', handleTournamentCompleted);
+    };
+  }, [contract, account, currentMatch]);
+
+  // Listen for MoveMade and MatchCompleted events for real-time match updates
+  useEffect(() => {
+    if (!contract || !currentMatch) return;
+
+    const { tierId, instanceId, roundNumber, matchNumber } = currentMatch;
+
+    // Generate matchId for event filtering
+    const matchId = ethers.solidityPackedKeccak256(
+      ['uint8', 'uint8', 'uint8', 'uint8'],
+      [tierId, instanceId, roundNumber, matchNumber]
+    );
+
+    // Handler for MoveMade events (Connect4 uses column/row params)
+    const handleMoveMade = async (eventMatchId, player, column, row, event) => {
+      console.log('[MoveMade Event] Received:', { eventMatchId, player, column, row });
+
+      // Only update if this event is for the current match
+      if (eventMatchId !== matchId) return;
+
+      // Time-gate: Only process events that occurred after match started
+      try {
+        const block = await event.getBlock();
+        const eventTimestamp = block.timestamp;
+        const matchStartTime = currentMatch.startTime;
+
+        console.log('[MoveMade Event] Timestamp check:', {
+          eventTimestamp,
+          matchStartTime,
+          isValidEvent: eventTimestamp >= matchStartTime
+        });
+
+        if (eventTimestamp < matchStartTime) {
+          console.log('[MoveMade Event] Event is older than match start time, ignoring');
+          return;
+        }
+      } catch (err) {
+        console.error('[MoveMade Event] Error checking timestamp:', err);
+        return;
+      }
+
+      // Update the board immediately
+      setCurrentMatch(prev => {
+        if (!prev) return prev;
+
+        // Connect4 board is a 2D array (6 rows x 7 columns)
+        // Need to reconstruct as 2D from flat array if needed
+        let newBoard;
+        if (Array.isArray(prev.board[0])) {
+          // Already 2D
+          newBoard = prev.board.map(row => [...row]);
+        } else {
+          // Convert from flat to 2D
+          newBoard = [];
+          for (let r = 0; r < 6; r++) {
+            newBoard.push(prev.board.slice(r * 7, (r + 1) * 7));
+          }
+        }
+
+        const isPlayer1 = player.toLowerCase() === prev.player1.toLowerCase();
+        newBoard[row][column] = isPlayer1 ? 1 : 2;
+
+        // Toggle turn
+        const newTurn = isPlayer1 ? prev.player2 : prev.player1;
+
+        console.log('[MoveMade Event] Updating Connect4 board:', { column, row, value: newBoard[row][column], newTurn });
+
+        return {
+          ...prev,
+          board: newBoard,
+          currentTurn: newTurn,
+          isYourTurn: account ? newTurn.toLowerCase() === account.toLowerCase() : false,
+          lastColumn: column,
+          moveCount: (prev.moveCount || 0) + 1
+        };
+      });
+
+      // Refresh move history
+      try {
+        const history = await fetchMoveHistory(contract, tierId, instanceId, roundNumber, matchNumber);
+        setMoveHistory(history);
+      } catch (err) {
+        console.error('[MoveMade Event] Error refreshing move history:', err);
+      }
+    };
+
+    // Handler for MatchCompleted events
+    const handleMatchCompleted = async (eventMatchId, winner, isDraw, reason, event) => {
+      console.log('[MatchCompleted Event] Received:', { eventMatchId, winner, isDraw, reason });
+
+      // Only update if this event is for the current match
+      if (eventMatchId !== matchId) return;
+
+      // Time-gate: Only process events that occurred after match started
+      try {
+        const block = await event.getBlock();
+        const eventTimestamp = block.timestamp;
+        const matchStartTime = currentMatch.startTime;
+
+        console.log('[MatchCompleted Event] Timestamp check:', {
+          eventTimestamp,
+          matchStartTime,
+          isValidEvent: eventTimestamp >= matchStartTime
+        });
+
+        if (eventTimestamp < matchStartTime) {
+          console.log('[MatchCompleted Event] Event is older than match start time, ignoring');
+          return;
+        }
+      } catch (err) {
+        console.error('[MatchCompleted Event] Error checking timestamp:', err);
+        return;
+      }
+
+      // Store player info before updating state
+      const player1 = currentMatch.player1;
+      const player2 = currentMatch.player2;
+
+      // Update match status and preserve board state
+      setCurrentMatch(prev => {
+        if (!prev) return prev;
+
+        const loser = isDraw ? '0x0000000000000000000000000000000000000000' :
+                     (winner.toLowerCase() === prev.player1.toLowerCase() ? prev.player2 : prev.player1);
+
+        console.log('[MatchCompleted Event] Match completed:', {
+          winner,
+          isDraw,
+          loser,
+          reason,
+          boardPreserved: prev.board?.length || 0
+        });
+
+        // Preserve the board state from the last MoveMade event
+        return {
+          ...prev,
+          matchStatus: 2,
+          winner: isDraw ? '0x0000000000000000000000000000000000000000' : winner,
+          loser,
+          isDraw,
+          completionReason: Number(reason),
+          isYourTurn: false
+        };
+      });
+
+      // Show match end modal using event data (not stale currentMatch)
+      if (account) {
+        const isPlayer1 = player1.toLowerCase() === account.toLowerCase();
+        const isPlayer2 = player2.toLowerCase() === account.toLowerCase();
+        const isParticipant = isPlayer1 || isPlayer2;
+
+        if (isParticipant) {
+          const userWon = !isDraw && winner.toLowerCase() === account.toLowerCase();
+          const opponent = isPlayer1 ? player2 : player1;
+
+          // Get reason-specific text
+          const reasonNum = Number(reason);
+          const title = getCompletionReasonText(reasonNum, userWon, isDraw, 'connect4');
+          const description = getCompletionReasonDescription(reasonNum, userWon, isDraw);
+
+          console.log('[MatchCompleted Event] Showing modal:', {
+            userWon,
+            isDraw,
+            opponent,
+            reason: reasonNum,
+            title,
+            description
+          });
+
+          // Determine result type for modal
+          let resultType = 'lose'; // default
+          if (isDraw) {
+            resultType = 'draw';
+          } else if (userWon) {
+            // Check if it's a timeout win
+            if (reasonNum === 1 || reasonNum === 2 || reasonNum === 3) { // Timeout reasons
+              resultType = 'forfeit_win';
+            } else {
+              resultType = 'win';
+            }
+          } else {
+            // User lost - check if it's a timeout loss
+            if (reasonNum === 1 || reasonNum === 2 || reasonNum === 3) { // Timeout reasons
+              resultType = 'forfeit_lose';
+            } else {
+              resultType = 'lose';
+            }
+          }
+
+          console.log('[MatchCompleted Event] Setting result type:', resultType);
+
+          setMatchEndResult(resultType);
+          setMatchEndWinner(winner);
+          setMatchEndLoser(isDraw ? '0x0000000000000000000000000000000000000000' :
+            (winner.toLowerCase() === player1.toLowerCase() ? player2 : player1));
+        }
+      }
+    };
+
+    // Register event listeners (listen to all, filter inside handlers)
+    contract.on('MoveMade', handleMoveMade);
+    contract.on('MatchCompleted', handleMatchCompleted);
+
+    console.log('[Connect4 Match Events] Listeners registered for matchId:', matchId);
+
+    // Cleanup
+    return () => {
+      console.log('[Connect4 Match Events] Cleaning up event listeners for matchId:', matchId);
+      contract.off('MoveMade', handleMoveMade);
+      contract.off('MatchCompleted', handleMatchCompleted);
+    };
+  }, [contract, currentMatch, account, fetchMoveHistory]);
 
   // Refresh tier data when account changes (initial load handled by initReadOnlyContract)
   useEffect(() => {
@@ -2418,6 +3062,7 @@ export default function ConnectFour() {
     accountRefForMatch.current = account;
   }, [currentMatch, contract, account]);
 
+  // Polling for turn tracking and time remaining - events handle moves/completion
   useEffect(() => {
     if (!currentMatch || !contract || !account) return;
 
@@ -2428,6 +3073,11 @@ export default function ConnectFour() {
 
       if (!match || !contractInstance || !userAccount) return;
 
+      // Skip polling if match is completed - events have set final state
+      if (match.matchStatus === 2) {
+        return;
+      }
+
       try {
         const updatedMatch = await refreshMatchData(
           contractInstance,
@@ -2435,64 +3085,47 @@ export default function ConnectFour() {
           match,
           matchTimePerPlayer
         );
+
         if (updatedMatch) {
-          // Use standardized match completion handler
-          const matchResult = determineMatchResult({
-            updatedMatch,
-            previousMatch: match,
-            userAccount,
-            gameType: 'connectfour'
-          });
-
-          if (matchResult) {
-            // Match just completed - set result state for modal
-            setMatchEndResult(matchResult.type);
-            setMatchEndWinnerLabel(matchResult.winnerLabel);
-            setMatchEndWinner(matchResult.winnerAddress);
-            setMatchEndLoser(matchResult.loserAddress);
-
-            // Update match to show final state, modal will handle the rest
-            setCurrentMatch(updatedMatch);
+          // If match just completed, let events handle it
+          if (updatedMatch.matchStatus === 2) {
             return;
           }
 
-          // Detect new moves by comparing board states
-          const prevBoard = previousBoardRef.current;
-          let moveDetected = false;
-          if (prevBoard && updatedMatch.board) {
-            for (let i = 0; i < updatedMatch.board.length; i++) {
-              if (prevBoard[i] === 0 && updatedMatch.board[i] !== 0) {
-                moveDetected = true;
-                break;
-              }
+          // Update for in-progress matches only - only update turn and timer fields
+          setCurrentMatch(prev => {
+            if (!prev) return updatedMatch;
+
+            // Preserve completed state set by events
+            if (prev.matchStatus === 2) {
+              return prev;
             }
-          }
 
-          // If a new move was detected, refresh history from blockchain
-          if (moveDetected) {
-            const history = await fetchMoveHistory(contractInstance, match.tierId, match.instanceId, match.roundNumber, match.matchNumber);
-            setMoveHistory(history);
-          }
-
-          // Update board ref for next comparison
-          previousBoardRef.current = [...updatedMatch.board];
-
-          // Normal match update (game still in progress)
-          setCurrentMatch(updatedMatch);
+            // Only update turn and timer fields, preserve board and game state from events
+            return {
+              ...prev,
+              currentTurn: updatedMatch.currentTurn,
+              isYourTurn: updatedMatch.isYourTurn,
+              player1TimeRemaining: updatedMatch.player1TimeRemaining,
+              player2TimeRemaining: updatedMatch.player2TimeRemaining,
+              lastMoveTime: updatedMatch.lastMoveTime,
+              lastMoveTimestamp: updatedMatch.lastMoveTimestamp,
+              // Board, matchStatus, winner, loser, isDraw are preserved from prev (event-driven)
+            };
+          });
         }
       } catch (error) {
-        console.error('Error syncing match:', error);
+        console.error('[Connect4 Polling] Error syncing match:', error);
       }
 
-      // Reset sync dots to 1 after sync completes
       setSyncDots(1);
     };
 
-    // Set up polling interval - runs every 2 seconds for responsive timers
+    // Poll every 2 seconds for turn/timer updates
     const matchPollInterval = setInterval(doMatchSync, 2000);
 
     return () => clearInterval(matchPollInterval);
-  }, [currentMatch?.tierId, currentMatch?.instanceId, currentMatch?.roundNumber, currentMatch?.matchNumber, account, refreshMatchData, fetchMoveHistory]);
+  }, [currentMatch?.tierId, currentMatch?.instanceId, currentMatch?.roundNumber, currentMatch?.matchNumber, account, refreshMatchData, fetchMoveHistory, matchTimePerPlayer]);
 
   // Increment match sync dots every second (1 -> 2 -> 3, resets on sync)
   useEffect(() => {
@@ -2687,10 +3320,10 @@ export default function ConnectFour() {
             <div className="bg-gradient-to-br from-yellow-500/20 to-amber-500/20 border border-yellow-400/30 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Clock className="text-yellow-400" size={20} />
-                <span className="font-bold text-yellow-300">{Math.floor(displayTimeoutConfig.matchTimePerPlayer / 60)} {Math.floor(displayTimeoutConfig.matchTimePerPlayer / 60) === 1 ? 'minute' : 'minutes'} per match</span>
+                <span className="font-bold text-yellow-300">5 minutes per match</span>
               </div>
               <p className="text-sm text-yellow-200">
-                Each player gets {Math.floor(displayTimeoutConfig.matchTimePerPlayer / 60)} {Math.floor(displayTimeoutConfig.matchTimePerPlayer / 60) === 1 ? 'minute' : 'minutes'} total for all their moves in the match.
+                Each player gets 5 minutes total for all their moves in the match.
               </p>
             </div>
             <div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-xl p-4">
@@ -2749,8 +3382,8 @@ export default function ConnectFour() {
           <WhyArbitrum variant="blue" />
         </div>
 
-        {/* Match View - Shows when player enters a match */}
-        {account && contract && currentMatch && (
+        {/* Match View - Shows when player enters a match or spectates */}
+        {contract && currentMatch && (
           <div ref={matchViewRef}>
             <GameMatchLayout
             gameType="connectfour"
@@ -2759,24 +3392,77 @@ export default function ConnectFour() {
             loading={matchLoading}
             syncDots={syncDots}
             onClose={closeMatch}
-            onClaimTimeoutWin={handleClaimTimeoutWin}
-            onForceEliminate={handleForceEliminateStalledMatch}
-            onClaimReplacement={handleClaimMatchSlotByReplacement}
+            onClaimTimeoutWin={isSpectator ? null : handleClaimTimeoutWin}
+            onForceEliminate={isSpectator ? null : handleForceEliminateStalledMatch}
+            onClaimReplacement={isSpectator ? null : handleClaimMatchSlotByReplacement}
             tournamentRounds={viewingTournament?.rounds || null}
             currentRoundNumber={currentMatch.roundNumber}
+            playerCount={viewingTournament?.playerCount || null}
+            isSpectator={isSpectator}
             playerConfig={{
-              player1: { icon: '🔴', label: 'Red' },
-              player2: { icon: '🔵', label: 'Blue' }
+              player1: {
+                icon: (
+                  <svg width="40" height="40" viewBox="0 0 40 40">
+                    <circle
+                      cx="20"
+                      cy="20"
+                      r="18"
+                      fill="url(#magentaGradient)"
+                    />
+                    <defs>
+                      <radialGradient id="magentaGradient" cx="30%" cy="30%">
+                        <stop offset="0%" stopColor="#ff0044" />
+                        <stop offset="100%" stopColor="#bb0033" />
+                      </radialGradient>
+                    </defs>
+                  </svg>
+                ),
+                label: 'Red'
+              },
+              player2: {
+                icon: (
+                  <svg width="40" height="40" viewBox="0 0 40 40">
+                    <circle
+                      cx="20"
+                      cy="20"
+                      r="18"
+                      fill="url(#cyanGradient)"
+                    />
+                    <defs>
+                      <radialGradient id="cyanGradient" cx="30%" cy="30%">
+                        <stop offset="0%" stopColor="#0077ff" />
+                        <stop offset="100%" stopColor="#0055aa" />
+                      </radialGradient>
+                    </defs>
+                  </svg>
+                ),
+                label: 'Blue'
+              }
             }}
             layout="three-column"
             renderPlayer1Stats={() => (
               <>
                 <div className="bg-black/20 rounded-lg p-3">
-                  <div className="text-blue-300 text-sm mb-1">Symbol</div>
-                  <div className="text-white font-bold text-2xl">X</div>
+                  <div className="text-red-300 text-sm mb-1">Symbol</div>
+                  <div className="flex justify-center">
+                    <svg width="32" height="32" viewBox="0 0 32 32">
+                      <circle
+                        cx="16"
+                        cy="16"
+                        r="14"
+                        fill="url(#magentaGradientStat)"
+                      />
+                      <defs>
+                        <radialGradient id="magentaGradientStat" cx="30%" cy="30%">
+                          <stop offset="0%" stopColor="#ff0044" />
+                          <stop offset="100%" stopColor="#bb0033" />
+                        </radialGradient>
+                      </defs>
+                    </svg>
+                  </div>
                 </div>
                 <div className="bg-black/20 rounded-lg p-3">
-                  <div className="text-blue-300 text-sm mb-1">Moves Made</div>
+                  <div className="text-red-300 text-sm mb-1">Pieces Played</div>
                   <div className="text-white font-bold text-xl">
                     {currentMatch.board.filter(c => c === 1).length}
                   </div>
@@ -2786,11 +3472,26 @@ export default function ConnectFour() {
             renderPlayer2Stats={() => (
               <>
                 <div className="bg-black/20 rounded-lg p-3">
-                  <div className="text-pink-300 text-sm mb-1">Symbol</div>
-                  <div className="text-white font-bold text-2xl">O</div>
+                  <div className="text-blue-300 text-sm mb-1">Symbol</div>
+                  <div className="flex justify-center">
+                    <svg width="32" height="32" viewBox="0 0 32 32">
+                      <circle
+                        cx="16"
+                        cy="16"
+                        r="14"
+                        fill="url(#cyanGradientStat)"
+                      />
+                      <defs>
+                        <radialGradient id="cyanGradientStat" cx="30%" cy="30%">
+                          <stop offset="0%" stopColor="#0077ff" />
+                          <stop offset="100%" stopColor="#0055aa" />
+                        </radialGradient>
+                      </defs>
+                    </svg>
+                  </div>
                 </div>
                 <div className="bg-black/20 rounded-lg p-3">
-                  <div className="text-pink-300 text-sm mb-1">Moves Made</div>
+                  <div className="text-blue-300 text-sm mb-1">Pieces Played</div>
                   <div className="text-white font-bold text-xl">
                     {currentMatch.board.filter(c => c === 2).length}
                   </div>
@@ -2807,8 +3508,8 @@ export default function ConnectFour() {
                   {moveHistory.map((move, idx) => (
                     <div key={idx} className="flex items-center gap-3 text-sm bg-purple-500/10 p-2 rounded">
                       <span className="text-purple-300">Move {idx + 1}:</span>
-                      <span className="text-white font-bold">{move.player}</span>
-                      <span className="text-purple-400">→ Cell {move.cell}</span>
+                      <span className={`font-bold ${move.player === 'Red' ? 'text-red-400' : 'text-blue-400'}`}>{move.player}</span>
+                      <span className="text-purple-400">→ Column {move.column}</span>
                     </div>
                   ))}
                 </div>
@@ -2818,9 +3519,9 @@ export default function ConnectFour() {
             {/* Connect Four Board */}
             <ConnectFourBoard
               board={currentMatch.board}
-              onColumnClick={handleColumnClick}
+              onColumnClick={isSpectator ? null : handleColumnClick}
               currentTurn={currentMatch.currentTurn}
-              account={account}
+              account={isSpectator ? null : account}
               player1={currentMatch.player1}
               player2={currentMatch.player2}
               matchStatus={currentMatch.matchStatus}
@@ -2841,6 +3542,7 @@ export default function ConnectFour() {
                   tournamentData={viewingTournament}
                   onBack={handleBackToTournaments}
                   onEnterMatch={handlePlayMatch}
+                  onSpectateMatch={handleSpectateMatch}
                   onForceEliminate={handleForceEliminateStalledMatch}
                   onClaimReplacement={handleClaimMatchSlotByReplacement}
                   onManualStart={handleManualStart}
@@ -2900,11 +3602,10 @@ export default function ConnectFour() {
                       // Calculate prize pool per tournament
                       const totalPrizePool = (parseFloat(metadata.entryFee) * metadata.playerCount * 0.9).toFixed(4);
 
-                      // Calculate currently active players (enrolling + in progress)
-                      const activePlayersCount = metadata.enrolledCounts.reduce((sum, enrolledCount, index) => {
-                        const status = metadata.statuses[index];
-                        if (status === 0 || status === 1) {
-                          return sum + enrolledCount;
+                      // Calculate currently active players from tierInstances (enrolling + in progress)
+                      const activePlayersCount = allInstances.reduce((sum, instance) => {
+                        if (instance.status === 0 || instance.status === 1) {
+                          return sum + instance.enrolledCount;
                         }
                         return sum;
                       }, 0);
@@ -2920,11 +3621,13 @@ export default function ConnectFour() {
                               <span className="text-sm font-normal text-purple-300">• {metadata.playerCount} players total</span>
                               <span className="text-sm font-normal text-purple-300">• {metadata.entryFee} ETH entry</span>
                               <span className="text-sm font-normal text-purple-300">• {totalPrizePool} ETH prize pool</span>
-                              <span className="text-sm font-normal text-purple-300 ml-auto">{activePlayersCount} active players</span>
-                              <ChevronDown
-                                size={24}
-                                className={`transition-transform duration-200 ${expandedTiers[tierId] ? 'rotate-180' : ''}`}
-                              />
+                              <span className="ml-auto flex items-center gap-2">
+                                {allInstances.length > 0 && <span className="text-sm font-normal text-purple-300">{activePlayersCount} active enrollments</span>}
+                                <ChevronDown
+                                  size={24}
+                                  className={`transition-transform duration-200 ${expandedTiers[tierId] ? 'rotate-180' : ''}`}
+                                />
+                              </span>
                             </h3>
                           </button>
 
@@ -3004,27 +3707,55 @@ export default function ConnectFour() {
                   </div>
                 )}
 
-                {/* Empty State - only show when no connection error */}
-                {!metadataLoading && !connectionError && Object.keys(tierMetadata).length === 0 && (
-                  <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-12 border border-purple-400/30 text-center">
-                    <Trophy className="text-purple-400/50 mx-auto mb-4" size={64} />
-                    <h3 className="text-2xl font-bold text-purple-300 mb-2">No Tournaments Available</h3>
-                    <p className="text-purple-200/70">Check back soon for new tournaments!</p>
-                  </div>
-                )}
-
                 {/* User Info Footer - Only show when wallet is connected */}
                 {account && (
-                  <div className="mt-8 flex justify-center gap-4">
-                    <div className="bg-purple-500/20 border border-purple-400/50 rounded-xl p-4">
-                      <div className="text-purple-300 text-sm mb-1">Your Address</div>
-                      <div className="font-mono text-purple-100 font-bold">{account.slice(0, 6)}...{account.slice(-4)}</div>
+                  <>
+                    <div className="mt-8 flex justify-center gap-4 flex-wrap">
+                      <div className="bg-purple-500/20 border border-purple-400/50 rounded-xl p-4">
+                        <div className="text-purple-300 text-sm mb-1">Your Address</div>
+                        <div className="font-mono text-purple-100 font-bold">{account.slice(0, 6)}...{account.slice(-4)}</div>
+                      </div>
+                      <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-4">
+                        <div className="text-blue-300 text-sm mb-1">Network</div>
+                        <div className="font-bold text-blue-100">{networkInfo?.name || 'Connected'}</div>
+                      </div>
+                      <div className="bg-green-500/20 border border-green-400/50 rounded-xl p-4">
+                        <div className="text-green-300 text-sm mb-1">Main Contract</div>
+                        <div className="font-mono text-green-100 font-bold">{shortenAddress(CONTRACT_ADDRESS)}</div>
+                      </div>
                     </div>
-                    <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-4">
-                      <div className="text-blue-300 text-sm mb-1">Network</div>
-                      <div className="font-bold text-blue-100">{networkInfo?.name || 'Connected'}</div>
+
+                    {/* Module Addresses Display */}
+                    <div className="mt-4 bg-slate-800/50 border border-slate-600/50 rounded-xl p-4 max-w-3xl mx-auto">
+                      <h3 className="font-bold text-purple-300 mb-3 text-center">Modular Contracts</h3>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                        <div>
+                          <div className="text-slate-400">Core</div>
+                          <div className="font-mono text-slate-200">{shortenAddress(MODULE_ADDRESSES.core)}</div>
+                        </div>
+                        <div>
+                          <div className="text-slate-400">Matches</div>
+                          <div className="font-mono text-slate-200">{shortenAddress(MODULE_ADDRESSES.matches)}</div>
+                        </div>
+                        <div>
+                          <div className="text-slate-400">Prizes</div>
+                          <div className="font-mono text-slate-200">{shortenAddress(MODULE_ADDRESSES.prizes)}</div>
+                        </div>
+                        <div>
+                          <div className="text-slate-400">Escalation</div>
+                          <div className="font-mono text-slate-200">{shortenAddress(MODULE_ADDRESSES.escalation)}</div>
+                        </div>
+                        <div>
+                          <div className="text-slate-400">Raffle</div>
+                          <div className="font-mono text-slate-200">{shortenAddress(MODULE_ADDRESSES.raffle)}</div>
+                        </div>
+                        <div>
+                          <div className="text-slate-400">GameCache</div>
+                          <div className="font-mono text-slate-200">{shortenAddress(MODULE_ADDRESSES.gameCache)}</div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  </>
                 )}
               </div>
             )}
@@ -3046,7 +3777,22 @@ export default function ConnectFour() {
 
       {/* User Manual Section */}
       <div id="user-manual" className="max-w-7xl mx-auto px-6 pb-12" style={{ position: 'relative', zIndex: 10 }}>
-        <UserManual contractInstance={contract} />
+        <UserManual
+          contractInstance={contract}
+          tierConfigurations={Object.entries(TIER_CONFIG).map(([tierId, config]) => ({
+            tierId: Number(tierId),
+            playerCount: config.playerCount,
+            instanceCount: config.instanceCount,
+            entryFee: config.entryFee,
+            matchTimePerPlayer: config.timeouts.matchTimePerPlayer,
+            timeIncrementPerMove: config.timeouts.timeIncrementPerMove,
+            matchLevel2Delay: config.timeouts.matchLevel2Delay,
+            matchLevel3Delay: config.timeouts.matchLevel3Delay,
+            enrollmentWindow: config.timeouts.enrollmentWindow,
+            enrollmentLevel2Delay: config.timeouts.enrollmentLevel2Delay
+          }))}
+          raffleThresholds={['0.4', '0.75', '1']}
+        />
       </div>
 
       {/* ============ FOOTER ============ */}
@@ -3299,6 +4045,19 @@ export default function ConnectFour() {
         totalRounds={currentMatch?.playerCount ? Math.ceil(Math.log2(currentMatch.playerCount)) : undefined}
         prizePool={currentMatch?.prizePool}
       />
+
+      {/* Tournament Completion Modal */}
+      {tournamentCompletionData && (
+        <MatchEndModal
+          result="tournament_ended"
+          onClose={handleTournamentCompletionModalClose}
+          completionReason={tournamentCompletionData.completionReason}
+          tournamentWinner={tournamentCompletionData.winner}
+          currentAccount={account}
+          gameType="connectfour"
+          isVisible={true}
+        />
+      )}
     </div>
   );
 }

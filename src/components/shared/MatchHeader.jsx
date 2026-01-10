@@ -6,6 +6,7 @@
  */
 
 import { ChevronDown } from 'lucide-react';
+import { getTournamentTypeLabel } from '../../utils/formatters';
 
 const MatchHeader = ({
   // gameType available for future game-specific customization
@@ -15,7 +16,7 @@ const MatchHeader = ({
   matchStatus,
   isDraw,
   onClose,
-  tournamentInfo, // { tierId, instanceId, roundNumber, matchNumber }
+  tournamentInfo, // { tierId, instanceId, roundNumber, matchNumber, playerCount }
   theme
 }) => {
   const getStatusBadge = () => {
@@ -33,6 +34,11 @@ const MatchHeader = ({
 
   const status = getStatusBadge();
 
+  // Determine tournament type label (Duel vs Tournament) if playerCount is available
+  const tournamentTypeLabel = tournamentInfo?.playerCount
+    ? getTournamentTypeLabel(tournamentInfo.playerCount)
+    : 'Tournament';
+
   return (
     <div className={`bg-gradient-to-r ${theme.headerBg} backdrop-blur-lg rounded-2xl p-6 border ${theme.headerBorder} mb-8`}>
       <button
@@ -40,7 +46,7 @@ const MatchHeader = ({
         className={`mb-4 flex items-center gap-2 ${theme.textMuted} hover:text-white transition-colors`}
       >
         <ChevronDown className="rotate-90" size={20} />
-        Back to Tournament
+        Back to {tournamentTypeLabel}
       </button>
 
       <div className="flex items-center justify-between mb-4">

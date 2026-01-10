@@ -16,20 +16,21 @@ import { useState, useEffect, useCallback } from 'react';
  * @param {Object} contract - Contract instance (with signer or read-only)
  * @param {string} account - Player's wallet address
  * @param {string} gameName - Game name ('tictactoe', 'chess', 'connect4') - for logging only
+ * @param {Object} tierConfig - Optional tier configuration object { 0: {playerCount, instanceCount, entryFee}, ... }
  * @returns {Object} { data, loading, syncing, error, refetch }
  */
-export const usePlayerActivity = (contract, account, gameName) => {
+export const usePlayerActivity = (contract, account, gameName, tierConfig = null) => {
   const [data, setData] = useState({
     activeMatches: [],
     inProgressTournaments: [],
     unfilledTournaments: [],
+    terminatedMatches: [],
     totalEarnings: 0n,
   });
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState(null);
   const [dismissedMatches, setDismissedMatches] = useState(new Set());
-  const [completedMatchTimestamps, setCompletedMatchTimestamps] = useState({});
 
   const fetchActivity = useCallback(async (isInitialLoad = false) => {
     // Don't fetch if contract or account not available
@@ -40,6 +41,7 @@ export const usePlayerActivity = (contract, account, gameName) => {
         activeMatches: [],
         inProgressTournaments: [],
         unfilledTournaments: [],
+        terminatedMatches: [],
         totalEarnings: 0n,
       });
       return;
@@ -58,9 +60,9 @@ export const usePlayerActivity = (contract, account, gameName) => {
       // Step 1: Get player stats (total earnings)
       let totalEarnings = 0n;
       try {
-        totalEarnings = await contract.getPlayerStats();
+        totalEarnings = await contract.playerEarnings(account);
       } catch (err) {
-        console.warn('[PlayerActivity] Could not fetch player stats:', err);
+        console.warn('[PlayerActivity] Could not fetch player earnings:', err);
       }
 
       // Step 2: Get enrolling tournaments (unfilled)
@@ -74,14 +76,29 @@ export const usePlayerActivity = (contract, account, gameName) => {
 
       const unfilledTournaments = await Promise.all(
         enrollingTournaments.map(async (ref) => {
+          // getTournamentInfo returns: (status, currentRound, enrolledCount, prizePool, winner)
           const tournamentInfo = await contract.getTournamentInfo(ref.tierId, ref.instanceId);
-          const tierConfig = await contract.tierConfigs(ref.tierId);
+          const enrolledCount = Number(tournamentInfo[2]); // enrolledCount at index 2
+
+          // Get player count from tierConfig if provided, otherwise try contract
+          let playerCount;
+          if (tierConfig && tierConfig[ref.tierId]) {
+            playerCount = tierConfig[ref.tierId].playerCount;
+          } else {
+            try {
+              const config = await contract.getTierConfig(ref.tierId);
+              playerCount = Number(config.playerCount);
+            } catch (err) {
+              console.warn(`[PlayerActivity] Could not fetch tier ${ref.tierId} config:`, err);
+              playerCount = 2; // Default fallback
+            }
+          }
 
           return {
             tierId: Number(ref.tierId),
             instanceId: Number(ref.instanceId),
-            enrolledCount: Number(tournamentInfo.enrolledCount),
-            playerCount: Number(tierConfig.playerCount),
+            enrolledCount,
+            playerCount,
           };
         })
       );
@@ -97,47 +114,83 @@ export const usePlayerActivity = (contract, account, gameName) => {
 
       const activeMatches = [];
       const inProgressTournaments = [];
+      const terminatedMatches = [];
 
       // Step 4: For each active tournament, find matches where it's player's turn
       for (const ref of activeTournaments) {
         const tierId = Number(ref.tierId);
         const instanceId = Number(ref.instanceId);
 
+        // getTournamentInfo returns: (status, currentRound, enrolledCount, prizePool, winner)
         const tournamentInfo = await contract.getTournamentInfo(tierId, instanceId);
-        const currentRound = Number(tournamentInfo.currentRound);
-        const tournamentStatus = Number(tournamentInfo.status);
+        const tournamentStatus = Number(tournamentInfo[0]); // status at index 0
+        const currentRound = Number(tournamentInfo[1]);     // currentRound at index 1
+        const enrolledCount = Number(tournamentInfo[2]);    // enrolledCount at index 2
 
         console.log(`[PlayerActivity] Processing tournament T${tierId}I${instanceId}:`, {
           status: tournamentStatus,
           currentRound,
-          enrolledCount: Number(tournamentInfo.enrolledCount)
+          enrolledCount
         });
+
+        // Check if tournament has completed (status === 2)
+        if (tournamentStatus === 2) {
+          console.log(`[PlayerActivity] Tournament T${tierId}I${instanceId} is COMPLETED - checking for terminated matches`);
+
+          // Find player's active matches in this completed tournament
+          for (let roundIdx = 0; roundIdx <= currentRound; roundIdx++) {
+            const roundInfo = await contract.rounds(tierId, instanceId, roundIdx);
+            const totalMatches = Number(roundInfo.totalMatches);
+
+            for (let matchIdx = 0; matchIdx < totalMatches; matchIdx++) {
+              const matchData = await contract.getMatch(tierId, instanceId, roundIdx, matchIdx);
+
+              // Check if this is the player's match
+              const isPlayer1 = matchData.common.player1?.toLowerCase() === account.toLowerCase();
+              const isPlayer2 = matchData.common.player2?.toLowerCase() === account.toLowerCase();
+
+              if (!isPlayer1 && !isPlayer2) continue;
+
+              // Check if match was in progress when tournament ended
+              const matchStatus = Number(matchData.common.status);
+              const matchKey = `${tierId}-${instanceId}-${roundIdx}-${matchIdx}`;
+
+              // Skip dismissed matches
+              if (dismissedMatches.has(matchKey)) {
+                console.log(`[PlayerActivity] Skipping dismissed terminated match ${matchKey}`);
+                continue;
+              }
+
+              // If match was still in progress (status === 1), it was terminated by tournament completion
+              if (matchStatus === 1) {
+                const opponent = isPlayer1 ? matchData.common.player2 : matchData.common.player1;
+
+                console.log(`[PlayerActivity] Found terminated match ${matchKey}`);
+                terminatedMatches.push({
+                  tierId,
+                  instanceId,
+                  roundIdx,
+                  matchIdx,
+                  opponent,
+                  terminationReason: 'TOURNAMENT_COMPLETED',
+                });
+              }
+            }
+          }
+
+          // Skip to next tournament since this one is completed
+          continue;
+        }
 
         let hasActiveMatch = false;
         let playerRound = null; // Track which round the player is in
 
-        // Get player's round from contract using isPlayerInAdvancedRound
-        // Check up to currentRound + 1 to catch players who have advanced but round hasn't started yet
-        // Start from highest possible round and check backwards to find the highest round the player is in
-        const tierConfig = await contract.tierConfigs(tierId);
-        const totalRounds = Number(tierConfig.totalRounds);
-        const maxRoundToCheck = Math.min(currentRound + 1, totalRounds - 1);
-
-        for (let roundIdx = maxRoundToCheck; roundIdx >= 0; roundIdx--) {
-          try {
-            const isInRound = await contract.isPlayerInAdvancedRound(account, tierId, instanceId, roundIdx);
-            if (isInRound) {
-              playerRound = roundIdx;
-              break; // Found the player's round
-            }
-          } catch (err) {
-            console.warn(`[PlayerActivity] Error checking round ${roundIdx}:`, err);
-          }
-        }
+        // Note: isPlayerInAdvancedRound function doesn't exist in ChessOnChain
+        // We'll determine the player's round by checking matches directly
 
         // Check all rounds up to current for active matches
         for (let roundIdx = 0; roundIdx <= currentRound; roundIdx++) {
-          const roundInfo = await contract.getRoundInfo(tierId, instanceId, roundIdx);
+          const roundInfo = await contract.rounds(tierId, instanceId, roundIdx);
           const totalMatches = Number(roundInfo.totalMatches);
 
           // Check each match in the round
@@ -169,25 +222,9 @@ export const usePlayerActivity = (contract, account, gameName) => {
               continue;
             }
 
-            // Include in-progress matches (status === 1) or recently completed matches (status === 2)
-            if (matchStatus === 1 || matchStatus === 2) {
-              // If match just completed, record timestamp
-              if (matchStatus === 2 && !completedMatchTimestamps[matchKey]) {
-                setCompletedMatchTimestamps(prev => ({
-                  ...prev,
-                  [matchKey]: Date.now()
-                }));
-              }
-
-              // Filter out completed matches older than 10 seconds
-              if (matchStatus === 2 && completedMatchTimestamps[matchKey]) {
-                const elapsed = Date.now() - completedMatchTimestamps[matchKey];
-                if (elapsed > 10000) {
-                  console.log(`[PlayerActivity] Skipping completed match ${matchKey} (elapsed: ${elapsed}ms)`);
-                  continue; // Skip this match, it's been completed for more than 10 seconds
-                }
-              }
-
+            // Only include in-progress matches (status === 1)
+            // Completed matches (status === 2) should not appear as "active"
+            if (matchStatus === 1) {
               hasActiveMatch = true;
 
               // Determine opponent
@@ -210,8 +247,7 @@ export const usePlayerActivity = (contract, account, gameName) => {
               console.log(`[PlayerActivity] Adding match ${matchKey} to activeMatches`, {
                 opponent,
                 timeRemaining,
-                isMyTurn,
-                isCompleted: matchStatus === 2
+                isMyTurn
               });
 
               activeMatches.push({
@@ -221,11 +257,10 @@ export const usePlayerActivity = (contract, account, gameName) => {
                 matchIdx,
                 opponent,
                 timeRemaining,
-                isMyTurn, // Add flag to indicate if it's player's turn
-                isCompleted: matchStatus === 2, // Add flag to indicate if match is completed
+                isMyTurn,
               });
             } else {
-              console.log(`[PlayerActivity] Skipping match ${matchKey} - status not 1 or 2 (status: ${matchStatus})`);
+              console.log(`[PlayerActivity] Skipping match ${matchKey} - status not 1 (status: ${matchStatus})`);
             }
           }
         }
@@ -257,6 +292,9 @@ export const usePlayerActivity = (contract, account, gameName) => {
       console.log('[PlayerActivity] Active Matches:', activeMatches.map(m =>
         `T${m.tierId}I${m.instanceId}R${m.roundIdx}M${m.matchIdx}`
       ));
+      console.log('[PlayerActivity] Terminated Matches:', terminatedMatches.map(m =>
+        `T${m.tierId}I${m.instanceId}R${m.roundIdx}M${m.matchIdx}`
+      ));
       console.log('[PlayerActivity] In Progress Tournaments:', inProgressTournaments.map(t =>
         `T${t.tierId}I${t.instanceId} (Round ${t.currentRound})`
       ));
@@ -270,6 +308,7 @@ export const usePlayerActivity = (contract, account, gameName) => {
         activeMatches,
         inProgressTournaments,
         unfilledTournaments,
+        terminatedMatches,
         totalEarnings,
       });
       setLoading(false);
@@ -280,7 +319,7 @@ export const usePlayerActivity = (contract, account, gameName) => {
       setLoading(false);
       setSyncing(false);
     }
-  }, [contract, account, gameName, dismissedMatches, completedMatchTimestamps]);
+  }, [contract, account, gameName, tierConfig, dismissedMatches]);
 
   // Initial fetch
   useEffect(() => {
@@ -296,6 +335,29 @@ export const usePlayerActivity = (contract, account, gameName) => {
     }, 30000); // 30 seconds
 
     return () => clearInterval(interval);
+  }, [contract, account, fetchActivity]);
+
+  // Listen for MatchCompleted events for instant updates
+  useEffect(() => {
+    if (!contract || !account) return;
+
+    // Handler for any MatchCompleted event
+    const handleMatchCompleted = (matchId, winner, isDraw) => {
+      console.log('[PlayerActivity] MatchCompleted event received:', { matchId, winner, isDraw });
+
+      // Trigger a refetch to update the player's active matches
+      fetchActivity(false);
+    };
+
+    // Register event listener (no filter - listen to all MatchCompleted events)
+    contract.on('MatchCompleted', handleMatchCompleted);
+    console.log('[PlayerActivity] MatchCompleted event listener registered');
+
+    // Cleanup
+    return () => {
+      console.log('[PlayerActivity] Cleaning up MatchCompleted event listener');
+      contract.off('MatchCompleted', handleMatchCompleted);
+    };
   }, [contract, account, fetchActivity]);
 
   // Function to dismiss a completed match

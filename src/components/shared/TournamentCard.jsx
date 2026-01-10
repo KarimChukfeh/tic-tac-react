@@ -9,7 +9,7 @@ import { useState, useEffect } from 'react';
 import { Trophy, Play, Users, Zap, Coins, Eye, RefreshCw } from 'lucide-react';
 import { ethers } from 'ethers';
 import EscalationTimer from './EscalationTimer';
-import { formatTime } from '../../utils/formatters';
+import { formatTime, getTournamentTypeLabel } from '../../utils/formatters';
 
 // Default color theme (purple/blue - TicTacToe style)
 const DEFAULT_COLORS = {
@@ -75,6 +75,9 @@ const TournamentCard = ({
   // Merge custom colors with defaults
   const colors = { ...DEFAULT_COLORS, ...customColors };
 
+  // Determine tournament type label (Duel vs Tournament)
+  const tournamentTypeLabel = getTournamentTypeLabel(maxPlayers);
+
   // Escalation system state (for enrollment force-start)
   const [escalationState, setEscalationState] = useState({
     activeEscalation: 0,
@@ -134,14 +137,37 @@ const TournamentCard = ({
       if ((canStartEscalation1 || canStartEscalation2) && isEnrolled && contract) {
         try {
           const canReset = await contract.canResetEnrollmentWindow(tierId, instanceId);
+          console.log(`[TournamentCard T${tierId}I${instanceId}] canResetEnrollmentWindow:`, canReset, {
+            currentEnrolled,
+            maxPlayers,
+            canStartEscalation1,
+            canStartEscalation2,
+            isEnrolled,
+            hasContract: !!contract,
+            escalation1Start: escalation1Start,
+            escalation2Start: escalation2Start,
+            now,
+            activeEscalation
+          });
           setCanResetWindow(canReset);
         } catch (error) {
-          console.error('Error checking canResetEnrollmentWindow:', error);
+          console.error(`[TournamentCard T${tierId}I${instanceId}] Error checking canResetEnrollmentWindow:`, error);
           setCanResetWindow(false);
         }
-      } else if (!canStartEscalation1 && !canStartEscalation2) {
-        // Reset the flag only when both escalation windows are cleared
-        setCanResetWindow(false);
+      } else {
+        if (!canStartEscalation1 && !canStartEscalation2) {
+          // Reset the flag only when both escalation windows are cleared
+          setCanResetWindow(false);
+        }
+        // Debug: log why we're not checking
+        if (canStartEscalation1 || canStartEscalation2) {
+          console.log(`[TournamentCard T${tierId}I${instanceId}] Not checking canResetEnrollmentWindow:`, {
+            canStartEscalation1,
+            canStartEscalation2,
+            isEnrolled,
+            hasContract: !!contract
+          });
+        }
       }
     };
 
@@ -297,7 +323,7 @@ const TournamentCard = ({
 
       {/* Action Buttons */}
       {/* EL1*: Reset Enrollment Window - Solo player can extend enrollment */}
-      {tournamentStatus === 0 && canResetWindow && isEnrolled && onResetEnrollmentWindow && (
+      {tournamentStatus === 0 && currentEnrolled === 1 && isEnrolled && escalationState.canStartEscalation1 && onResetEnrollmentWindow && (
         <div className="mb-4">
           <button
             onClick={() => onResetEnrollmentWindow(tierId, instanceId)}
@@ -357,7 +383,7 @@ const TournamentCard = ({
           className={`w-full bg-gradient-to-r ${colors.buttonEnter} text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2`}
         >
           <Play size={18} />
-          {loading ? 'Loading...' : !account ? 'Connect Wallet to Enter' : 'Enter Tournament'}
+          {loading ? 'Loading...' : !account ? 'Connect Wallet to Enter' : `Enter ${tournamentTypeLabel}`}
         </button>
       ) : (
         <>
@@ -380,7 +406,7 @@ const TournamentCard = ({
             className={`w-full ${tournamentStatus === 0 && !isFull ? 'mt-2' : ''} bg-gradient-to-r ${colors.buttonEnter} text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 border ${colors.cardBorder}`}
           >
             <Eye size={18} />
-            {loading ? 'Loading...' : 'View Tournament'}
+            {loading ? 'Loading...' : `View ${tournamentTypeLabel}`}
           </button>
         </>
       )}

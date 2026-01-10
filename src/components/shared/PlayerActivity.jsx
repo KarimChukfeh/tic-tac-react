@@ -8,7 +8,7 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { Users, X, Zap, Trophy, Clock, Play, Eye, RefreshCw, ChevronDown, ChevronUp, TrendingUp } from 'lucide-react';
+import { Users, X, Zap, Trophy, Clock, Play, Eye, RefreshCw, ChevronDown, ChevronUp, TrendingUp, AlertCircle } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
 import { formatTimeRemaining } from '../../utils/activityHelpers';
 import MiniTicTacToeBoard from './MiniTicTacToeBoard';
@@ -30,6 +30,7 @@ const PlayerActivity = ({
   gameEmoji,
   onHeightChange,
   onCollapse,
+  isElite = false,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const expandedPanelRef = useRef(null);
@@ -153,6 +154,7 @@ const PlayerActivity = ({
   const enrolledTournamentCount = (activity?.inProgressTournaments?.length || 0) + (activity?.unfilledTournaments?.length || 0);
   const hasActivity = activity && (
     displayMatches.length > 0 ||
+    (activity.terminatedMatches && activity.terminatedMatches.length > 0) ||
     activity.inProgressTournaments.length > 0 ||
     activity.unfilledTournaments.length > 0
   );
@@ -163,7 +165,11 @@ const PlayerActivity = ({
       {!isExpanded && (
         <button
           onClick={() => setIsExpanded(true)}
-          className="bg-gradient-to-br from-purple-600/90 to-blue-600/90 backdrop-blur-lg rounded-full p-2 md:p-4 border-2 border-purple-400/40 hover:border-purple-400/70 transition-all hover:scale-110 shadow-xl relative group"
+          className={`bg-gradient-to-br backdrop-blur-lg rounded-full p-2 md:p-4 border-2 transition-all hover:scale-110 shadow-xl relative group ${
+            isElite
+              ? 'from-[#fbbf24]/90 to-[#f59e0b]/90 border-[#d4a012]/40 hover:border-[#d4a012]/70'
+              : 'from-purple-600/90 to-blue-600/90 border-purple-400/40 hover:border-purple-400/70'
+          }`}
           aria-label="Open player activity"
         >
           <Users size={16} className="text-white md:w-6 md:h-6" />
@@ -227,8 +233,8 @@ const PlayerActivity = ({
             {/* Wallet Address & Earnings */}
             <div className="space-y-1">
               <div className="text-xs">
-                <span className="text-blue-400">You are: </span>
-                <span className="text-blue-400 font-mono font-bold">{shortenAddress(account)}</span>
+                <span className={isElite ? 'text-[#fbbf24]' : 'text-blue-400'}>You are: </span>
+                <span className={`font-mono font-bold ${isElite ? 'text-[#fbbf24]' : 'text-blue-400'}`}>{shortenAddress(account)}</span>
               </div>
               {!loading && activity?.totalEarnings !== undefined && (
                 <div className="flex items-center gap-1.5 text-xs">
@@ -245,7 +251,7 @@ const PlayerActivity = ({
           {/* Loading State */}
           {loading ? (
             <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-400 mx-auto"></div>
+              <div className={`animate-spin rounded-full h-8 w-8 border-b-2 mx-auto ${isElite ? 'border-[#fbbf24]' : 'border-purple-400'}`}></div>
               <p className="text-slate-400 mt-2 text-sm">Loading activity...</p>
             </div>
           ) : !hasActivity ? (
@@ -259,7 +265,7 @@ const PlayerActivity = ({
               {/* Priority 1: Active Matches */}
               {displayMatches && displayMatches.length > 0 && (
                 <div className="mb-6">
-                  <h4 className="text-purple-300 font-semibold text-sm mb-3 flex items-center gap-2 uppercase">
+                  <h4 className={`font-semibold text-sm mb-3 flex items-center gap-2 uppercase ${isElite ? 'text-[#fff8e7]' : 'text-purple-300'}`}>
                     <Zap size={16} className="text-yellow-400" />
                     Active Matches ({displayMatches.length})
                   </h4>
@@ -405,10 +411,71 @@ const PlayerActivity = ({
                 </div>
               )}
 
+              {/* Terminated Matches (Tournament Completed) */}
+              {activity.terminatedMatches && activity.terminatedMatches.length > 0 && (
+                <div className="mb-6">
+                  <h4 className={`font-semibold text-sm mb-3 flex items-center gap-2 uppercase ${isElite ? 'text-[#fff8e7]' : 'text-purple-300'}`}>
+                    <AlertCircle size={16} className="text-orange-400" />
+                    Terminated Matches ({activity.terminatedMatches.length})
+                  </h4>
+                  <div className="space-y-2">
+                    {activity.terminatedMatches.map((match) => {
+                      const matchKey = `${match.tierId}-${match.instanceId}-${match.roundIdx}-${match.matchIdx}`;
+
+                      return (
+                        <div
+                          key={matchKey}
+                          className="bg-gradient-to-br from-orange-500/20 to-red-500/20 border-2 border-orange-400/50 rounded-lg p-3"
+                        >
+                          {/* Tournament Completion Notice */}
+                          <div className="bg-orange-500/20 border border-orange-400/40 rounded-lg p-2 mb-3">
+                            <div className="flex items-start gap-2">
+                              <AlertCircle size={16} className="text-orange-400 flex-shrink-0 mt-0.5" />
+                              <div className="flex-1">
+                                <p className="text-orange-300 text-xs font-semibold">
+                                  Tournament Ended
+                                </p>
+                                <p className="text-orange-200/80 text-xs mt-0.5">
+                                  This match was terminated because the tournament completed.
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Match Info */}
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-white font-semibold text-sm">
+                                Tier {match.tierId + 1} Instance {match.instanceId + 1}
+                              </span>
+                              <span className="bg-orange-500/60 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase">
+                                Terminated
+                              </span>
+                            </div>
+                          </div>
+                          <div className="text-slate-300 text-xs mb-3">
+                            vs {shortenAddress(match.opponent)}
+                          </div>
+
+                          {/* Dismiss Button */}
+                          <button
+                            onClick={() => handleDismissMatch(match.tierId, match.instanceId, match.roundIdx, match.matchIdx)}
+                            className="w-full bg-orange-600/40 hover:bg-orange-600/60 text-orange-200 font-semibold py-2 px-4 rounded-lg transition-all flex items-center justify-center gap-2 text-sm border border-orange-400/30"
+                          >
+                            <X size={16} />
+                            Dismiss
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Priority 2: In-Progress Tournaments (Waiting) */}
               {activity.inProgressTournaments && activity.inProgressTournaments.length > 0 && (
                 <div className="mb-6">
-                  <h4 className="text-purple-300 font-semibold text-sm mb-3 flex items-center gap-2 uppercase">
+                  <h4 className={`font-semibold text-sm mb-3 flex items-center gap-2 uppercase ${isElite ? 'text-[#fff8e7]' : 'text-purple-300'}`}>
                     <Trophy size={16} className="text-cyan-400" />
                     Tournaments In Progress ({activity.inProgressTournaments.length})
                   </h4>
@@ -433,7 +500,11 @@ const PlayerActivity = ({
                         )}
                         <button
                           onClick={() => onEnterTournament(tournament.tierId, tournament.instanceId)}
-                          className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition-all flex items-center justify-center gap-2 text-sm"
+                          className={`w-full bg-gradient-to-r text-white font-semibold py-2 px-4 rounded-lg transition-all flex items-center justify-center gap-2 text-sm ${
+                            isElite
+                              ? 'from-[#fbbf24] to-[#f59e0b] hover:from-[#f59e0b] hover:to-[#d4a012]'
+                              : 'from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600'
+                          }`}
                         >
                           <Eye size={16} />
                           View Bracket
@@ -447,7 +518,7 @@ const PlayerActivity = ({
               {/* Priority 3: Unfilled Tournaments (Enrollment) */}
               {activity.unfilledTournaments && activity.unfilledTournaments.length > 0 && (
                 <div>
-                  <h4 className="text-purple-300 font-semibold text-sm mb-3 flex items-center gap-2 uppercase">
+                  <h4 className={`font-semibold text-sm mb-3 flex items-center gap-2 uppercase ${isElite ? 'text-[#fff8e7]' : 'text-purple-300'}`}>
                     <Clock size={16} className="text-orange-400" />
                     Waiting for Players ({activity.unfilledTournaments.length})
                   </h4>

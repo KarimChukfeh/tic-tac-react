@@ -12,31 +12,73 @@
  * @param {Object} contractInstance - Ethers contract instance
  * @param {number} tierId - Tournament tier ID
  * @param {number} fallbackMatchTime - Default match time if config unavailable (default 300s)
+ * @param {Object} hardcodedTierConfig - Optional hardcoded tier config (for contracts that removed tierConfigs)
  * @returns {Promise<Object>} Timeout configuration with matchTimePerPlayer and escalation delays
  */
-export const fetchTierTimeoutConfig = async (contractInstance, tierId, fallbackMatchTime = 300) => {
+export const fetchTierTimeoutConfig = async (contractInstance, tierId, fallbackMatchTime = 300, hardcodedTierConfig = null) => {
   try {
-    const rawTimeoutConfig = await contractInstance.getTimeoutConfig(tierId);
-    const config = {
-      matchTimePerPlayer: Number(rawTimeoutConfig.matchTimePerPlayer),
-      matchLevel2Delay: Number(rawTimeoutConfig.matchLevel2Delay),
-      matchLevel3Delay: Number(rawTimeoutConfig.matchLevel3Delay),
-      enrollmentWindow: Number(rawTimeoutConfig.enrollmentWindow),
-      enrollmentLevel2Delay: Number(rawTimeoutConfig.enrollmentLevel2Delay)
-    };
-    console.log(`Loaded timeout config for tier ${tierId}:`, config);
-    return config;
+    // Try ConnectFour approach first: getTierTimeouts(tierId)
+    if (contractInstance.getTierTimeouts) {
+      const rawTimeoutConfig = await contractInstance.getTierTimeouts(tierId);
+      const config = {
+        matchTimePerPlayer: Number(rawTimeoutConfig.matchTimePerPlayer),
+        timeIncrementPerMove: Number(rawTimeoutConfig.timeIncrementPerMove),
+        matchLevel2Delay: Number(rawTimeoutConfig.matchLevel2Delay),
+        matchLevel3Delay: Number(rawTimeoutConfig.matchLevel3Delay),
+        enrollmentWindow: Number(rawTimeoutConfig.enrollmentWindow),
+        enrollmentLevel2Delay: Number(rawTimeoutConfig.enrollmentLevel2Delay)
+      };
+      console.log(`Loaded timeout config for tier ${tierId}:`, config);
+      return config;
+    }
   } catch (error) {
-    // Older contract version or function unavailable - use fallback values
-    console.warn('getTimeoutConfig() not available, using fallback values:', error.message);
+    console.warn('getTierTimeouts() failed, trying tierConfigs:', error.message);
+  }
+
+  try {
+    // Try TicTacChain/Chess approach: tierConfigs(tierId).timeouts
+    if (contractInstance.tierConfigs) {
+      const tierConfig = await contractInstance.tierConfigs(tierId);
+      const timeouts = tierConfig.timeouts;
+      const config = {
+        matchTimePerPlayer: Number(timeouts.matchTimePerPlayer),
+        timeIncrementPerMove: Number(timeouts.timeIncrementPerMove),
+        matchLevel2Delay: Number(timeouts.matchLevel2Delay),
+        matchLevel3Delay: Number(timeouts.matchLevel3Delay),
+        enrollmentWindow: Number(timeouts.enrollmentWindow),
+        enrollmentLevel2Delay: Number(timeouts.enrollmentLevel2Delay)
+      };
+      console.log(`Loaded timeout config for tier ${tierId}:`, config);
+      return config;
+    }
+  } catch (error) {
+    console.warn('tierConfigs() failed, checking hardcoded config:', error.message);
+  }
+
+  // Use hardcoded tier config if provided (for modular contracts that removed tierConfigs)
+  if (hardcodedTierConfig && hardcodedTierConfig.timeouts) {
+    const timeouts = hardcodedTierConfig.timeouts;
+    console.log(`Using hardcoded timeout config for tier ${tierId}:`, timeouts);
     return {
-      matchTimePerPlayer: fallbackMatchTime, // Use provided fallback
-      matchLevel2Delay: 60,    // Default 60s to Level 2
-      matchLevel3Delay: 120,   // Default 120s to Level 3
-      enrollmentWindow: 60,    // Default 60s enrollment window
-      enrollmentLevel2Delay: 60 // Default 60s enrollment escalation
+      matchTimePerPlayer: timeouts.matchTimePerPlayer,
+      timeIncrementPerMove: timeouts.timeIncrementPerMove,
+      matchLevel2Delay: timeouts.matchLevel2Delay,
+      matchLevel3Delay: timeouts.matchLevel3Delay,
+      enrollmentWindow: timeouts.enrollmentWindow,
+      enrollmentLevel2Delay: timeouts.enrollmentLevel2Delay
     };
   }
+
+  // Fallback if all methods fail
+  console.warn('No timeout config available, using fallback values');
+  return {
+    matchTimePerPlayer: fallbackMatchTime,
+    timeIncrementPerMove: 0,
+    matchLevel2Delay: 60,
+    matchLevel3Delay: 120,
+    enrollmentWindow: 60,
+    enrollmentLevel2Delay: 60
+  };
 };
 
 /**

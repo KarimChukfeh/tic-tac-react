@@ -42,6 +42,41 @@ const COLOR_CONFIGS = {
     iconBg: 'bg-gray-900 text-white',
     text: 'text-pink-300',
     activeHighlight: 'bg-pink-500/30 border-pink-400'
+  },
+  magenta: {
+    bg: 'bg-gradient-to-br from-fuchsia-600/20 to-purple-600/20',
+    border: 'border-fuchsia-400/30',
+    iconBg: 'bg-fuchsia-500',
+    text: 'text-fuchsia-300',
+    activeHighlight: 'bg-fuchsia-500/30 border-fuchsia-400'
+  },
+  cyan: {
+    bg: 'bg-gradient-to-br from-cyan-600/20 to-blue-600/20',
+    border: 'border-cyan-400/30',
+    iconBg: 'bg-cyan-500',
+    text: 'text-cyan-300',
+    activeHighlight: 'bg-cyan-500/30 border-cyan-400'
+  },
+  purple: {
+    bg: 'bg-gradient-to-br from-purple-600/20 to-violet-600/20',
+    border: 'border-purple-400/30',
+    iconBg: 'bg-purple-500',
+    text: 'text-purple-300',
+    activeHighlight: 'bg-purple-500/30 border-purple-400'
+  },
+  neonblue: {
+    bg: 'bg-gradient-to-br from-blue-600/20 to-indigo-600/20',
+    border: 'border-blue-400/30',
+    iconBg: 'bg-blue-500',
+    text: 'text-blue-300',
+    activeHighlight: 'bg-blue-500/30 border-blue-400'
+  },
+  neonred: {
+    bg: 'bg-gradient-to-br from-red-600/20 to-rose-600/20',
+    border: 'border-red-400/30',
+    iconBg: 'bg-red-500',
+    text: 'text-red-300',
+    activeHighlight: 'bg-red-500/30 border-red-400'
   }
 };
 

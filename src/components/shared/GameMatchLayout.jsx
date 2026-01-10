@@ -55,8 +55,8 @@ const GAME_THEMES = {
     headerBg: 'from-slate-900/50 to-purple-900/30',
     headerBorder: 'border-purple-400/30',
     textMuted: 'text-purple-300',
-    player1Color: 'red',
-    player2Color: 'blue',
+    player1Color: 'neonred',
+    player2Color: 'neonblue',
     moveTimeout: 60, // Legacy: Now uses total match time (300s per player)
     completeText: 'Match Complete!'
   }
@@ -76,15 +76,17 @@ const GameMatchLayout = ({
   onForceEliminate,
   onClaimReplacement,
 
-  // Tournament data for advanced player checks
-  tournamentRounds = null,
-  currentRoundNumber = 0,
+  // Tournament metadata
+  playerCount = null, // Optional: player count for tournament type label
 
   // Player configuration
   playerConfig, // { player1: { icon, label }, player2: { icon, label } }
 
   // Layout
-  layout = 'three-column', // 'three-column' | 'sidebar' | 'centered'
+  layout = 'three-column', // 'three-column' | 'sidebar' | 'centered' | 'players-board-history'
+
+  // Spectator mode
+  isSpectator = false,
 
   // Optional render props for game-specific content
   renderMoveHistory, // () => <MoveHistory />
@@ -158,6 +160,8 @@ const GameMatchLayout = ({
               onClaimTimeoutWin={onClaimTimeoutWin}
               loading={loading}
               syncDots={syncDots}
+              isSpectator={isSpectator}
+              playerConfig={playerConfig}
             />
           )}
 
@@ -170,9 +174,9 @@ const GameMatchLayout = ({
               onForceEliminate={onForceEliminate}
               onClaimReplacement={onClaimReplacement}
               loading={loading}
-              tournamentRounds={tournamentRounds}
-              currentAccount={account}
-              currentRoundNumber={currentRoundNumber}
+              escL2Available={match.escL2Available}
+              escL3Available={match.escL3Available}
+              isUserAdvancedForRound={match.isUserAdvancedForRound}
             />
           )}
 
@@ -236,6 +240,8 @@ const GameMatchLayout = ({
               onClaimTimeoutWin={onClaimTimeoutWin}
               loading={loading}
               syncDots={syncDots}
+              isSpectator={isSpectator}
+              playerConfig={playerConfig}
             />
           </div>
         )}
@@ -250,9 +256,9 @@ const GameMatchLayout = ({
               onForceEliminate={onForceEliminate}
               onClaimReplacement={onClaimReplacement}
               loading={loading}
-              tournamentRounds={tournamentRounds}
-              currentAccount={account}
-              currentRoundNumber={currentRoundNumber}
+              escL2Available={match.escL2Available}
+              escL3Available={match.escL3Available}
+              isUserAdvancedForRound={match.isUserAdvancedForRound}
             />
           </div>
         )}
@@ -340,6 +346,8 @@ const GameMatchLayout = ({
             onClaimTimeoutWin={onClaimTimeoutWin}
             loading={loading}
             syncDots={syncDots}
+            isSpectator={isSpectator}
+            playerConfig={playerConfig}
           />
         </div>
       )}
@@ -366,6 +374,98 @@ const GameMatchLayout = ({
     </div>
   );
 
+  // Render players-board-history layout (Elite archive style)
+  const renderPlayersBoardHistoryLayout = () => (
+    <div className="grid grid-cols-1 xl:grid-cols-[20%_60%_20%] gap-4 items-start">
+      {/* Left Column - Both Player Panels */}
+      <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-slate-800/50 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-purple-500/60 [&::-webkit-scrollbar-thumb]:to-pink-500/60 [&::-webkit-scrollbar-thumb]:rounded-full">
+        <PlayerPanel
+          playerAddress={player1}
+          currentAccount={account}
+          isCurrentTurn={isPlayer1Turn && isPlayer1You}
+          isGameOver={isGameOver}
+          icon={playerConfig?.player1?.icon}
+          label={playerConfig?.player1?.label || 'Player 1'}
+          colorScheme={theme.player1Color}
+          variant="full"
+          extraContent={renderPlayer1Extra?.()}
+        />
+        <PlayerPanel
+          playerAddress={player2}
+          currentAccount={account}
+          isCurrentTurn={isPlayer2Turn && account?.toLowerCase() === player2?.toLowerCase()}
+          isGameOver={isGameOver}
+          icon={playerConfig?.player2?.icon}
+          label={playerConfig?.player2?.label || 'Player 2'}
+          colorScheme={theme.player2Color}
+          variant="full"
+          extraContent={renderPlayer2Extra?.()}
+        />
+      </div>
+
+      {/* Center Column - Board */}
+      <div className="flex flex-col items-center w-full">
+        {children}
+
+        {showTurnTimer && (
+          <div className="w-full max-w-md mt-4">
+            <TurnTimer
+              match={match}
+              account={account}
+              onClaimTimeoutWin={onClaimTimeoutWin}
+              loading={loading}
+              syncDots={syncDots}
+              isSpectator={isSpectator}
+              playerConfig={playerConfig}
+            />
+          </div>
+        )}
+
+        {timeoutState && (
+          <div className="w-full max-w-md mt-4">
+            <MatchTimeoutEscalation
+              timeoutState={timeoutState}
+              matchStatus={matchStatus}
+              isYourTurn={isYourTurn}
+              onClaimTimeoutWin={onClaimTimeoutWin}
+              onForceEliminate={onForceEliminate}
+              onClaimReplacement={onClaimReplacement}
+              loading={loading}
+              escL2Available={match.escL2Available}
+              escL3Available={match.escL3Available}
+              isUserAdvancedForRound={match.isUserAdvancedForRound}
+            />
+          </div>
+        )}
+
+        {renderGameControls?.()}
+
+        {isGameOver && (
+          <div className="w-full max-w-md mt-4">
+            <MatchComplete
+              isDraw={isDraw}
+              winner={winner}
+              loser={loser}
+              currentAccount={account}
+              gameSpecificText={!isDraw ? theme.completeText : undefined}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Right Column - Move History or Match Info */}
+      <div className="bg-slate-900/50 rounded-xl p-6 border border-purple-500/30 max-h-[600px] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-slate-800/50 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-purple-500/60 [&::-webkit-scrollbar-thumb]:to-pink-500/60 [&::-webkit-scrollbar-thumb]:rounded-full">
+        {renderMoveHistory ? (
+          renderMoveHistory()
+        ) : (
+          <div className="text-center py-8 text-purple-300/60">
+            <p className="text-sm">No move history available</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   // Select layout renderer
   const renderLayout = () => {
     switch (layout) {
@@ -373,6 +473,8 @@ const GameMatchLayout = ({
         return renderSidebarLayout();
       case 'centered':
         return renderCenteredLayout();
+      case 'players-board-history':
+        return renderPlayersBoardHistoryLayout();
       case 'three-column':
       default:
         return renderThreeColumnLayout();
@@ -393,7 +495,8 @@ const GameMatchLayout = ({
           tierId: match.tierId,
           instanceId: match.instanceId,
           roundNumber: match.roundNumber,
-          matchNumber: match.matchNumber
+          matchNumber: match.matchNumber,
+          playerCount: playerCount
         }}
         theme={theme}
       />
@@ -401,8 +504,8 @@ const GameMatchLayout = ({
       {/* Main Layout */}
       {renderLayout()}
 
-      {/* Move History (optional) */}
-      {renderMoveHistory && (
+      {/* Move History (optional) - Only show if NOT using players-board-history layout */}
+      {renderMoveHistory && layout !== 'players-board-history' && (
         <div className="mt-6">
           {renderMoveHistory()}
         </div>

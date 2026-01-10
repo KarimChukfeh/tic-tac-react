@@ -1,5 +1,5 @@
 import { useEffect, useCallback } from 'react';
-import { Trophy, Frown, Equal, X } from 'lucide-react';
+import { Trophy, Frown, Equal, X, AlertCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { ethers } from 'ethers';
 import { shortenAddress } from '../../utils/formatters';
@@ -8,7 +8,7 @@ import { shortenAddress } from '../../utils/formatters';
  * MatchEndModal - Shared component for displaying match end feedback
  *
  * @param {Object} props
- * @param {'win' | 'lose' | 'draw' | 'forfeit_win' | 'forfeit_lose' | 'double_forfeit'} props.result - The match result
+ * @param {'win' | 'lose' | 'draw' | 'forfeit_win' | 'forfeit_lose' | 'double_forfeit' | 'tournament_ended'} props.result - The match result
  * @param {Function} props.onClose - Callback when modal is closed
  * @param {string} props.winnerLabel - Custom label for winner (e.g., "White", "Player 1", or address)
  * @param {string} props.winnerAddress - Winner's wallet address
@@ -19,6 +19,8 @@ import { shortenAddress } from '../../utils/formatters';
  * @param {number} props.roundNumber - Current round number (0-indexed)
  * @param {number} props.totalRounds - Total number of rounds in tournament
  * @param {string} props.prizePool - Prize pool amount (in wei as BigInt string)
+ * @param {number} props.completionReason - Tournament completion reason enum value (for tournament_ended result)
+ * @param {string} props.tournamentWinner - Tournament winner address (for tournament_ended result)
  */
 const MatchEndModal = ({
   result,
@@ -31,7 +33,9 @@ const MatchEndModal = ({
   isVisible = true,
   roundNumber,
   totalRounds,
-  prizePool
+  prizePool,
+  completionReason,
+  tournamentWinner
 }) => {
   // Fire confetti for wins
   const fireConfetti = useCallback(() => {
@@ -112,6 +116,18 @@ const MatchEndModal = ({
     } else {
       return `Round ${nextRound}`;
     }
+  };
+
+  // Get tournament completion reason message
+  const getCompletionReasonMessage = (reason) => {
+    const reasons = {
+      0: `Tournament completed with a winner. Winner: ${tournamentWinner ? shortenAddress(tournamentWinner) : 'N/A'}`,
+      1: 'Tournament finals resulted in a draw. Prizes split between finalists.',
+      2: 'Tournament ended - all matches in the round resulted in draws. Prizes distributed equally.',
+      3: 'Tournament ended due to match escalation (Level 2). Stalled match was force-eliminated.',
+      4: 'Tournament ended due to match escalation (Level 3). Match slot was claimed by replacement player.'
+    };
+    return reasons[reason] || 'Tournament ended';
   };
 
   // Game-specific victory text
@@ -296,6 +312,41 @@ const MatchEndModal = ({
       iconColor: 'text-gray-400',
       titleColor: 'text-gray-300',
       glowColor: 'shadow-gray-500/30',
+      animation: ''
+    },
+    tournament_ended: {
+      icon: AlertCircle,
+      title: 'Tournament Ended',
+      subtitle: 'You Were Eliminated',
+      description: (
+        <div className="space-y-3">
+          <p className="text-white/90 font-semibold">
+            Your active match was terminated because the tournament completed.
+          </p>
+          {tournamentWinner && (
+            <div className="bg-orange-500/20 rounded-lg p-3 border border-orange-400/40">
+              <p className="text-orange-300 text-sm">
+                <span className="font-semibold">Tournament Winner: </span>
+                <span className="font-mono">{shortenAddress(tournamentWinner)}</span>
+              </p>
+            </div>
+          )}
+          <div className="bg-white/10 rounded-lg p-3 border border-white/20">
+            <p className="text-white/80 text-sm">
+              <span className="font-semibold text-orange-400">Completion Reason: </span>
+              {completionReason !== undefined ? getCompletionReasonMessage(completionReason, tournamentWinner) : 'Tournament ended'}
+            </p>
+          </div>
+          <p className="text-white/60 text-sm">
+            Your match did not finish before the tournament concluded.
+          </p>
+        </div>
+      ),
+      bgGradient: 'from-orange-500/20 via-yellow-500/20 to-red-500/20',
+      borderColor: 'border-orange-400/50',
+      iconColor: 'text-orange-400',
+      titleColor: 'text-orange-300',
+      glowColor: 'shadow-orange-500/30',
       animation: ''
     }
   };

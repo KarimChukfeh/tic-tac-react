@@ -2,13 +2,16 @@
  * MatchTimeoutEscalation - Shared component for in-match timeout escalation UI
  *
  * Displays timeout status and escalation buttons for stalled matches:
- * - Escalation 1: Opponent claims timeout win
- * - Escalation 2: Higher-ranked player force eliminates both
- * - Escalation 3: Anyone can replace both players and advance
+ * - Level 1: Opponent claims timeout win
+ * - Level 2: Advanced player force eliminates both (ML2)
+ * - Level 3: Non-advanced player replaces both and advances (ML3)
+ *
+ * ESCALATION LOGIC (uses contract data directly):
+ * - ML2 CTA: escL2Available && isUserAdvanced
+ * - ML3 CTA: escL3Available && !isUserAdvanced
  */
 
 import { Clock } from 'lucide-react';
-import { isAdvancedPlayer } from '../../utils/tournamentHelpers';
 
 const formatEscalationTime = (secs) => {
   const mins = Math.floor(secs / 60);
@@ -24,9 +27,10 @@ const MatchTimeoutEscalation = ({
   onForceEliminate,
   onClaimReplacement,
   loading,
-  tournamentRounds = null,
-  currentAccount = null,
-  currentRoundNumber = 0,
+  // Contract-provided escalation availability
+  escL2Available = false,
+  escL3Available = false,
+  isUserAdvancedForRound = false,
 }) => {
   // Only render when timeout is active and match is in progress
   if (!timeoutState || !timeoutState.timeoutActive || matchStatus !== 1) {
@@ -39,40 +43,25 @@ const MatchTimeoutEscalation = ({
   const timeToEsc1 = escalation1Start > 0 ? Math.max(0, escalation1Start - now) : 0;
   const timeToEsc2 = escalation2Start > 0 ? Math.max(0, escalation2Start - now) : 0;
 
-  // Check escalation availability based on time windows (not history)
-  // IMPORTANT: Contract naming is offset by one!
-  //   escalation1Start = when Level 2 becomes available
-  //   escalation2Start = when Level 3 becomes available
-
-  // Level 1 (Claim Timeout Victory): Available immediately when timeout occurs (before escalation1Start)
+  // Level 1 (Claim Timeout Victory): Available immediately when timeout occurs
   const canClaimTimeout = !isYourTurn;
 
-  // Level 2 (Force Eliminate): Active from escalation1Start onwards (never expires)
-  const canForceEliminate = escalation1Start > 0 && now >= escalation1Start;
+  // Level 2 (Force Eliminate): Use contract flag, only for advanced players
+  const canForceEliminate = escL2Available && isUserAdvancedForRound;
 
-  // Check if current user is an advanced player (for Level 2 escalation)
-  const isUserAdvancedPlayer = tournamentRounds && currentAccount
-    ? isAdvancedPlayer(tournamentRounds, currentAccount, currentRoundNumber)
-    : false;
-
-  // Level 3 (Replace Players): Active from escalation2Start onwards (never expires)
-  // RESTRICTION: Not available to advanced players (they can only use Level 2)
-  const canReplace = escalation2Start > 0 && now >= escalation2Start && !isUserAdvancedPlayer;
+  // Level 3 (Replace Players): Use contract flag, only for non-advanced players
+  const canReplace = escL3Available && !isUserAdvancedForRound;
 
   // Debug logging for escalation timing
-  console.log('MatchTimeoutEscalation Debug:', {
-    now: now,
-    nowDate: new Date(now * 1000).toLocaleString(),
-    escalation1Start: escalation1Start,
-    esc1Date: escalation1Start > 0 ? new Date(escalation1Start * 1000).toLocaleString() : 'N/A',
-    escalation2Start: escalation2Start,
-    esc2Date: escalation2Start > 0 ? new Date(escalation2Start * 1000).toLocaleString() : 'N/A',
-    timeToEsc1: timeToEsc1,
-    timeToEsc2: timeToEsc2,
-    canClaimTimeout: canClaimTimeout,
-    canForceEliminate: canForceEliminate,
-    canReplace: canReplace,
-    isUserAdvancedPlayer: isUserAdvancedPlayer
+  console.log('MatchTimeoutEscalation:', {
+    escL2Available,
+    escL3Available,
+    isUserAdvancedForRound,
+    canClaimTimeout,
+    canForceEliminate,
+    canReplace,
+    timeToEsc1,
+    timeToEsc2,
   });
 
   return (
@@ -82,21 +71,7 @@ const MatchTimeoutEscalation = ({
         <span className="text-orange-300 font-bold text-sm">Match Timeout Active</span>
       </div>
 
-      {/* Debug Panel */}
-      <div className="mb-3 text-xs bg-blue-500/10 border border-blue-400/30 rounded p-2 space-y-1">
-        <div className="text-blue-300 font-bold">🔍 Escalation Timing Debug</div>
-        <div className="text-blue-200">Now: {now} ({new Date(now * 1000).toLocaleString()})</div>
-        <div className="text-blue-200">Esc1Start (Level 2): {escalation1Start > 0 ? `${escalation1Start} (${new Date(escalation1Start * 1000).toLocaleString()})` : 'Not set'}</div>
-        <div className="text-blue-200">Esc2Start (Level 3): {escalation2Start > 0 ? `${escalation2Start} (${new Date(escalation2Start * 1000).toLocaleString()})` : 'Not set'}</div>
-        <div className="text-blue-200">Time to Level 2: {timeToEsc1 > 0 ? `${timeToEsc1}s` : 'Available or N/A'}</div>
-        <div className="text-blue-200">Time to Level 3: {timeToEsc2 > 0 ? `${timeToEsc2}s` : 'Available or N/A'}</div>
-        <div className="text-blue-100 font-semibold mt-1">Active Levels:</div>
-        <div className="text-blue-200">Level 1 (Claim): {canClaimTimeout ? '✅ YES' : '❌ NO'}</div>
-        <div className="text-blue-200">Level 2 (Force Eliminate): {canForceEliminate ? '✅ YES' : '❌ NO'}</div>
-        <div className="text-blue-200">Level 3 (Replace): {canReplace ? '✅ YES' : '❌ NO'}</div>
-      </div>
-
-      {/* Escalation 1 */}
+      {/* Escalation 1: Claim Timeout Victory */}
       {canClaimTimeout && (
         <button
           onClick={onClaimTimeoutWin}
@@ -109,36 +84,38 @@ const MatchTimeoutEscalation = ({
 
       {/* Countdown timers */}
       <div className="space-y-1 text-xs">
-        {timeToEsc1 > 0 && now < escalation1Start && (
-          <div className="text-orange-300">Level 2 in: {formatEscalationTime(timeToEsc1)}</div>
+        {timeToEsc1 > 0 && !escL2Available && (
+          <div className="text-orange-300">ML2 in: {formatEscalationTime(timeToEsc1)}</div>
         )}
-        {timeToEsc2 > 0 && now < escalation2Start && (
-          <div className="text-orange-300">Level 3 in: {formatEscalationTime(timeToEsc2)}</div>
+        {timeToEsc2 > 0 && !escL3Available && (
+          <div className="text-orange-300">ML3 in: {formatEscalationTime(timeToEsc2)}</div>
         )}
         {canClaimTimeout && <div className="text-green-400 font-bold">Level 1 Active - Opponent Can Claim</div>}
-        {canForceEliminate && <div className="text-yellow-400 font-bold">Level 2 Active - Advanced Players Can Eliminate</div>}
-        {canReplace && <div className="text-red-400 font-bold">Level 3 Active - Anyone Can Replace</div>}
+        {escL2Available && isUserAdvancedForRound && <div className="text-yellow-400 font-bold">ML2 Active - You Can Force Eliminate</div>}
+        {escL2Available && !isUserAdvancedForRound && <div className="text-yellow-400">ML2 Active (Advanced Players Only)</div>}
+        {escL3Available && !isUserAdvancedForRound && <div className="text-red-400 font-bold">ML3 Active - You Can Replace & Claim</div>}
+        {escL3Available && isUserAdvancedForRound && <div className="text-red-400">ML3 Active (Not Available to Advanced Players)</div>}
       </div>
 
-      {/* Escalation 2: Advanced Players Only */}
-      {canForceEliminate && isUserAdvancedPlayer && (
+      {/* ML2: Force Eliminate (Advanced Players Only) */}
+      {canForceEliminate && (
         <button
           onClick={onForceEliminate}
           disabled={loading}
           className="w-full mt-2 bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-all disabled:opacity-50"
         >
-          Force Eliminate Both (Higher Rank)
+          ML2: Force Eliminate Both
         </button>
       )}
 
-      {/* Escalation 3 */}
+      {/* ML3: Replace Both Players (Non-Advanced Players Only) */}
       {canReplace && (
         <button
           onClick={onClaimReplacement}
           disabled={loading}
           className="w-full mt-2 bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white font-bold py-2 px-4 rounded-lg transition-all disabled:opacity-50"
         >
-          Replace Both Players & Advance
+          ML3: Replace Both & Advance
         </button>
       )}
     </div>

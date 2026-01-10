@@ -19,15 +19,21 @@ import { Link, useSearchParams } from 'react-router-dom';
 import {
   Wallet, Grid, Clock, Shield, Lock, Eye, Code, ExternalLink,
   Trophy, Zap, Coins, History,
-  CheckCircle, AlertCircle, ChevronDown, ArrowLeft, HelpCircle
+  CheckCircle, AlertCircle, ChevronDown, ArrowLeft, HelpCircle, Calendar
 } from 'lucide-react';
 import { ethers } from 'ethers';
-import CHESS_ABI from './COCABI.json';
-import { CURRENT_NETWORK, CONTRACT_ADDRESSES, getAddressUrl, getExplorerHomeUrl } from './config/networks';
-import { shortenAddress, formatTime as formatTimeHMS, getTierName } from './utils/formatters';
+import ChessABIData from './ChessOnChain-ABI-modular.json';
+
+const CHESS_ABI = ChessABIData.abi;
+const CONTRACT_ADDRESS = ChessABIData.address;
+const MODULE_ADDRESSES = ChessABIData.modules;
+
+import { CURRENT_NETWORK, getAddressUrl, getExplorerHomeUrl } from './config/networks';
+import { shortenAddress, formatTime as formatTimeHMS, getTierName, getTournamentTypeLabel } from './utils/formatters';
 import { parseTournamentParams } from './utils/urlHelpers';
 import { determineMatchResult } from './utils/matchCompletionHandler';
 import { fetchTierTimeoutConfig } from './utils/timeCalculations';
+import { getCompletionReasonText, getCompletionReasonDescription } from './utils/completionReasons';
 import ParticleBackground from './components/shared/ParticleBackground';
 import MatchCard from './components/shared/MatchCard';
 import TournamentCard from './components/shared/TournamentCard';
@@ -39,6 +45,8 @@ import GameMatchLayout from './components/shared/GameMatchLayout';
 import TournamentHeader from './components/shared/TournamentHeader';
 import PlayerActivity from './components/shared/PlayerActivity';
 import CommunityRaffleCard from './components/shared/CommunityRaffleCard';
+import EliteMatchesCard from './components/shared/EliteMatchesCard';
+import PlayerPanel from './components/shared/PlayerPanel';
 import { usePlayerActivity } from './hooks/usePlayerActivity';
 
 // Chess piece symbols for particles
@@ -53,6 +61,114 @@ const PIECE_SYMBOLS = {
 
 const PIECE_TYPES = ['', 'pawn', 'knight', 'bishop', 'rook', 'queen', 'king'];
 
+// Hardcoded tier configuration (matches ChessOnChain.sol deployment)
+const TIER_CONFIG = {
+  0: {
+    playerCount: 2,
+    instanceCount: 100,
+    entryFee: '0.003',
+    timeouts: {
+      matchTimePerPlayer: 600,
+      timeIncrementPerMove: 15,
+      matchLevel2Delay: 180,
+      matchLevel3Delay: 360,
+      enrollmentWindow: 600,
+      enrollmentLevel2Delay: 300
+    }
+  },
+  1: {
+    playerCount: 2,
+    instanceCount: 100,
+    entryFee: '0.008',
+    timeouts: {
+      matchTimePerPlayer: 600,
+      timeIncrementPerMove: 15,
+      matchLevel2Delay: 180,
+      matchLevel3Delay: 360,
+      enrollmentWindow: 600,
+      enrollmentLevel2Delay: 300
+    }
+  },
+  2: {
+    playerCount: 2,
+    instanceCount: 100,
+    entryFee: '0.015',
+    timeouts: {
+      matchTimePerPlayer: 600,
+      timeIncrementPerMove: 15,
+      matchLevel2Delay: 180,
+      matchLevel3Delay: 360,
+      enrollmentWindow: 600,
+      enrollmentLevel2Delay: 300
+    }
+  },
+  3: {
+    playerCount: 2,
+    instanceCount: 100,
+    entryFee: '0.1',
+    timeouts: {
+      matchTimePerPlayer: 1200,
+      timeIncrementPerMove: 15,
+      matchLevel2Delay: 180,
+      matchLevel3Delay: 360,
+      enrollmentWindow: 600,
+      enrollmentLevel2Delay: 300
+    }
+  },
+  4: {
+    playerCount: 4,
+    instanceCount: 50,
+    entryFee: '0.004',
+    timeouts: {
+      matchTimePerPlayer: 600,
+      timeIncrementPerMove: 15,
+      matchLevel2Delay: 180,
+      matchLevel3Delay: 360,
+      enrollmentWindow: 1800,
+      enrollmentLevel2Delay: 300
+    }
+  },
+  5: {
+    playerCount: 4,
+    instanceCount: 50,
+    entryFee: '0.009',
+    timeouts: {
+      matchTimePerPlayer: 600,
+      timeIncrementPerMove: 15,
+      matchLevel2Delay: 180,
+      matchLevel3Delay: 360,
+      enrollmentWindow: 1800,
+      enrollmentLevel2Delay: 300
+    }
+  },
+  6: {
+    playerCount: 4,
+    instanceCount: 50,
+    entryFee: '0.02',
+    timeouts: {
+      matchTimePerPlayer: 600,
+      timeIncrementPerMove: 15,
+      matchLevel2Delay: 180,
+      matchLevel3Delay: 360,
+      enrollmentWindow: 1800,
+      enrollmentLevel2Delay: 300
+    }
+  },
+  7: {
+    playerCount: 4,
+    instanceCount: 50,
+    entryFee: '0.15',
+    timeouts: {
+      matchTimePerPlayer: 1200,
+      timeIncrementPerMove: 15,
+      matchLevel2Delay: 180,
+      matchLevel3Delay: 360,
+      enrollmentWindow: 1800,
+      enrollmentLevel2Delay: 300
+    }
+  }
+};
+
 // Get piece symbol from contract piece data
 const getPieceSymbol = (piece) => {
   if (!piece) return '';
@@ -64,11 +180,14 @@ const getPieceSymbol = (piece) => {
 };
 
 // Tournament Bracket Component
-const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceEliminate, onClaimReplacement, onManualStart, onClaimAbandonedPool, onResetEnrollmentWindow, onEnroll, account, loading, syncDots, isEnrolled, entryFee, isFull, contract }) => {
+const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onSpectateMatch, onForceEliminate, onClaimReplacement, onManualStart, onClaimAbandonedPool, onResetEnrollmentWindow, onEnroll, account, loading, syncDots, isEnrolled, entryFee, isFull, contract, isEnrolledInElite }) => {
   const { tierId, instanceId, status, currentRound, enrolledCount, prizePool, rounds, playerCount, enrolledPlayers, firstEnrollmentTime, countdownActive, enrollmentTimeout } = tournamentData;
 
   // Calculate total rounds based on player count
   const totalRounds = Math.ceil(Math.log2(playerCount));
+
+  // Determine tournament type label (Duel vs Tournament)
+  const tournamentTypeLabel = getTournamentTypeLabel(playerCount);
 
   // Ref for active match scrolling
   const activeMatchRef = useRef(null);
@@ -135,16 +254,6 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
       }
       if (userActiveMatch) break;
     }
-
-    // Scroll to the active match if found (happens after every sync)
-    if (userActiveMatch && activeMatchRef.current) {
-      setTimeout(() => {
-        activeMatchRef.current?.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center'
-        });
-      }, 300); // Small delay to ensure render is complete
-    }
   }, [account, rounds, status, syncDots]); // Include syncDots to trigger on every sync
 
   // Chess-specific options for match status display
@@ -178,6 +287,16 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
         entryFee={entryFee}
         onEnroll={onEnroll}
         loading={loading}
+        colors={isEnrolledInElite ? {
+          headerBg: 'from-[#fbbf24]/30 to-[#f59e0b]/30',
+          headerBorder: 'border-[#d4a012]/30',
+          text: 'text-[#f5e6c8]',
+          textHover: 'hover:text-[#fff8e7]',
+          textMuted: 'text-[#d4b866]/70',
+          icon: 'text-[#fbbf24]',
+          buttonGradient: 'from-[#fbbf24] to-[#f59e0b]',
+          buttonHover: 'hover:from-[#f59e0b] hover:to-[#d4a012]'
+        } : null}
         renderCountdown={countdownActive && status === 0 ? () => (
           <div className="mt-4 bg-orange-500/20 border border-orange-400/50 rounded-lg p-4">
             <div className="flex items-center justify-between">
@@ -209,7 +328,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
       <div className={`bg-gradient-to-br from-slate-900/50 to-purple-900/30 backdrop-blur-lg rounded-2xl p-8 border ${colors.headerBorder}`}>
         <h3 className={`text-2xl font-bold ${colors.text} mb-6 flex items-center gap-2`}>
           <Grid size={24} />
-          Tournament Bracket
+          {tournamentTypeLabel} Bracket
         </h3>
 
         {rounds && rounds.length > 0 ? (
@@ -245,9 +364,10 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
                         account={account}
                         loading={loading}
                         onEnterMatch={onEnterMatch}
+                        onSpectateMatch={onSpectateMatch}
                         onForceEliminate={onForceEliminate}
                         onClaimReplacement={onClaimReplacement}
-                        playerIcons={{ player1: '♔', player2: '♚' }}
+                        playerIcons={{ player1: '♚', player2: '♔' }}
                         matchStatusOptions={matchStatusOptions}
                         showEscalation={true}
                         showThisIsYou={true}
@@ -275,7 +395,9 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
 };
 
 // Chess Board Component - copied from Chess.jsx
-const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, matchStatus, loading, whiteInCheck, blackInCheck, lastMoveTime, startTime, lastMove }) => {
+const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, firstPlayer, matchStatus, loading, whiteInCheck, blackInCheck, lastMoveTime, startTime, lastMove, maxSize = 520 }) => {
+  // Debug: Log lastMove prop
+  console.log('[ChessBoard] lastMove prop:', lastMove);
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [promotionSquare, setPromotionSquare] = useState(null);
   const [pendingMove, setPendingMove] = useState(null);
@@ -289,19 +411,19 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, mat
     const updateSize = () => {
       const vh60 = window.innerHeight * 0.60;
       const containerWidth = containerRef.current?.offsetWidth || window.innerWidth * 0.9;
-      const size = Math.min(vh60, containerWidth, 520);
+      const size = Math.min(vh60, containerWidth, maxSize);
       setBoardSize(size);
     };
     updateSize();
     window.addEventListener('resize', updateSize);
     return () => window.removeEventListener('resize', updateSize);
-  }, []);
+  }, [maxSize]);
 
   useEffect(() => {
     if (lastMove && prevBoardRef.current && (prevLastMoveRef.current?.from !== lastMove.from || prevLastMoveRef.current?.to !== lastMove.to)) {
       const piece = board[lastMove.to];
       if (piece && Number(piece.pieceType) !== 0) {
-        setAnimatingMove({ from: lastMove.from, to: lastMove.to, piece: piece });
+        setAnimatingMove({ from: lastMove.from, to: lastMove.to, piece: piece, isMyMove: lastMove.isMyMove });
         const timer = setTimeout(() => setAnimatingMove(null), 450);
         return () => clearTimeout(timer);
       }
@@ -312,9 +434,17 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, mat
 
   const isPlayer1 = account && player1?.toLowerCase() === account.toLowerCase();
   const isPlayer2 = account && player2?.toLowerCase() === account.toLowerCase();
-  const isWhite = isPlayer1;
+
+  // firstPlayer is white, so check if current account is the firstPlayer
+  // Fallback to player1 if firstPlayer is not set (zero address or undefined)
+  const zeroAddress = '0x0000000000000000000000000000000000000000';
+  const whitePlayer = (firstPlayer && firstPlayer.toLowerCase() !== zeroAddress) ? firstPlayer : player1;
+  const isWhite = account && whitePlayer?.toLowerCase() === account.toLowerCase();
+
   const isMyTurn = account && currentTurn?.toLowerCase() === account.toLowerCase();
-  const shouldFlip = isPlayer1;
+  // Flip board: white player needs flip to see their pieces at bottom
+  // (board indices 0-7 are rank 1, but CSS grid renders 0 at top-left)
+  const shouldFlip = isWhite;
 
   const MOVE_TIMEOUT = 300;
   const [timeRemaining, setTimeRemaining] = useState(null);
@@ -345,7 +475,17 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, mat
     return mins + ':' + secs.toString().padStart(2, '0');
   };
 
-  const getActualIndex = (displayIdx) => shouldFlip ? 63 - displayIdx : displayIdx;
+  // Flip vertically (rows only) for white's view - preserves a-h left-to-right
+  // White view: a1 at bottom-left, h1 at bottom-right, a8 at top-left, h8 at top-right
+  // Black view: a1 at top-left, h8 at bottom-right (standard array order)
+  const getActualIndex = (displayIdx) => {
+    if (shouldFlip) {
+      const displayRow = Math.floor(displayIdx / 8);
+      const displayCol = displayIdx % 8;
+      return (7 - displayRow) * 8 + displayCol;
+    }
+    return displayIdx;
+  };
 
   const getSquareColor = (actualIdx) => {
     const row = Math.floor(actualIdx / 8);
@@ -399,8 +539,12 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, mat
   };
 
   const getDisplayPosition = (actualIdx) => {
-    const displayIdx = shouldFlip ? 63 - actualIdx : actualIdx;
-    return { row: Math.floor(displayIdx / 8), col: displayIdx % 8 };
+    const actualRow = Math.floor(actualIdx / 8);
+    const actualCol = actualIdx % 8;
+    if (shouldFlip) {
+      return { row: 7 - actualRow, col: actualCol };
+    }
+    return { row: actualRow, col: actualCol };
   };
 
   const renderBoard = () => {
@@ -412,9 +556,8 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, mat
       const isSelected = selectedSquare === displayIdx;
       const isLastMoveFrom = lastMove && lastMove.from === actualIdx;
       const isLastMoveTo = lastMove && lastMove.to === actualIdx;
-      const movedPiece = lastMove && board[lastMove.to];
-      const movedPieceColor = movedPiece ? Number(movedPiece.color) : 0;
-      const isMyMove = lastMove && ((movedPieceColor === 1 && isPlayer1) || (movedPieceColor === 2 && isPlayer2));
+      // Use isMyMove from lastMove object (set based on player address from event)
+      const isMyMove = lastMove?.isMyMove;
       const hideForAnimation = animatingMove && actualIdx === animatingMove.to;
       const pieceType = piece ? Number(piece.pieceType) : 0;
       const pieceColor = piece ? Number(piece.color) : 0;
@@ -425,26 +568,30 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, mat
       const showFileLabel = displayRow === 7;
       const actualRow = Math.floor(actualIdx / 8);
       const actualCol = actualIdx % 8;
-      const rankLabel = 8 - actualRow;
-      const fileLabel = String.fromCharCode(97 + actualCol);
+      // Chess notation always from White's perspective: a1 = bottom-left, h8 = top-right
+      // Index 0 = a1 (rank 1), Index 63 = h8 (rank 8)
+      const rankLabel = actualRow + 1; // 1 to 8
+      const fileLabel = String.fromCharCode(97 + actualCol); // 'a' to 'h'
 
+      // My move: purple (from) -> blue (to)
+      // Opponent move: yellow (from) -> red (to)
       const getLastMoveFromClass = () => {
         if (!isLastMoveFrom || isSelected || isKingInCheck) return '';
-        return isMyMove ? 'bg-emerald-500/50 ring-2 ring-emerald-400 ring-inset' : 'bg-orange-500/50 ring-2 ring-orange-400 ring-inset';
+        return isMyMove ? 'bg-purple-500/50 ring-2 ring-purple-400 ring-inset' : 'bg-yellow-500/50 ring-2 ring-yellow-400 ring-inset';
       };
       const getLastMoveToClass = () => {
         if (!isLastMoveTo || isSelected || isKingInCheck) return '';
-        return isMyMove ? 'bg-yellow-400/50 ring-2 ring-yellow-300 ring-inset' : 'bg-red-500/50 ring-2 ring-red-400 ring-inset';
+        return isMyMove ? 'bg-blue-500/50 ring-2 ring-blue-400 ring-inset' : 'bg-red-500/50 ring-2 ring-red-400 ring-inset';
       };
       const getLastMoveShadow = () => {
         if (isSelected) return '0 0 20px rgba(6, 182, 212, 0.3)';
-        if (isLastMoveTo && !isKingInCheck) return isMyMove ? 'inset 0 0 20px rgba(234, 179, 8, 0.5)' : 'inset 0 0 20px rgba(239, 68, 68, 0.5)';
-        if (isLastMoveFrom && !isKingInCheck) return isMyMove ? 'inset 0 0 15px rgba(16, 185, 129, 0.4)' : 'inset 0 0 15px rgba(249, 115, 22, 0.4)';
+        if (isLastMoveTo && !isKingInCheck) return isMyMove ? 'inset 0 0 20px rgba(59, 130, 246, 0.5)' : 'inset 0 0 20px rgba(239, 68, 68, 0.5)';
+        if (isLastMoveFrom && !isKingInCheck) return isMyMove ? 'inset 0 0 15px rgba(168, 85, 247, 0.4)' : 'inset 0 0 15px rgba(234, 179, 8, 0.4)';
         return 'none';
       };
       const getPieceGlow = () => {
         if (!isLastMoveTo || hideForAnimation || pieceType === 0) return undefined;
-        return isMyMove ? 'drop-shadow(0 0 10px rgba(234, 179, 8, 0.8))' : 'drop-shadow(0 0 10px rgba(239, 68, 68, 0.8))';
+        return isMyMove ? 'drop-shadow(0 0 10px rgba(59, 130, 246, 0.8))' : 'drop-shadow(0 0 10px rgba(239, 68, 68, 0.8))';
       };
       const isPotentialTarget = selectedSquare !== null && !isSelected && !isMyPiece(piece);
 
@@ -463,17 +610,17 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, mat
     const toPos = getDisplayPosition(animatingMove.to);
     const squareSize = boardSize / 8;
     const pieceColor = animatingMove.piece ? Number(animatingMove.piece.color) : 0;
-    const isMyAnimatedMove = (pieceColor === 1 && isPlayer1) || (pieceColor === 2 && isPlayer2);
-    const animationGlow = isMyAnimatedMove ? 'rgba(234, 179, 8, 0.8)' : 'rgba(239, 68, 68, 0.8)';
+    const isMyAnimatedMove = animatingMove.isMyMove;
+    const animationGlow = isMyAnimatedMove ? 'rgba(59, 130, 246, 0.8)' : 'rgba(239, 68, 68, 0.8)'; // blue for my move, red for opponent
     return (<div className="absolute pointer-events-none z-20" style={{ width: squareSize, height: squareSize, transform: 'translate(' + (toPos.col * squareSize) + 'px, ' + (toPos.row * squareSize) + 'px)' }}><div className="w-full h-full flex items-center justify-center" style={{ '--from-x': ((fromPos.col - toPos.col) * squareSize) + 'px', '--from-y': ((fromPos.row - toPos.row) * squareSize) + 'px' }}><span className={'text-3xl md:text-4xl lg:text-5xl select-none ' + (pieceColor === 1 ? 'text-white' : 'text-black')} style={{ transform: 'translate(var(--from-x), var(--from-y))', animation: 'pieceMove 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards', filter: 'drop-shadow(0 0 12px ' + animationGlow + ')', textShadow: pieceColor === 1 ? '0 0 8px rgba(0,0,0,0.8), 0 2px 4px rgba(0,0,0,0.6)' : 'none' }}>{getPieceSymbol(animatingMove.piece)}</span></div></div>);
   };
 
   return (<div className="relative flex flex-col items-center">{matchStatus === 1 && (<div className={'mb-4 text-center py-2 px-6 rounded-full font-mono text-base font-semibold backdrop-blur-sm ' + (timeRemaining !== null && timeRemaining < 60 ? 'bg-red-500/20 text-red-300 border border-red-500/40 animate-pulse' : 'bg-slate-800/60 text-cyan-300 border border-cyan-500/30')}><Clock className="inline-block mr-2" size={16} />{formatTime(timeRemaining)}</div>)}<div ref={containerRef} className="w-full flex justify-center"><div className="relative rounded-xl overflow-hidden" style={{ width: boardSize || 400, height: boardSize || 400, minWidth: 280, minHeight: 280, background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.9))', border: '1px solid rgba(148, 163, 184, 0.2)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(6, 182, 212, 0.1), inset 0 1px 0 rgba(255,255,255,0.05)' }}><div className="grid gap-0 w-full h-full" style={{ gridTemplateColumns: 'repeat(8, 1fr)', gridTemplateRows: 'repeat(8, 1fr)' }}>{renderBoard()}</div>{renderAnimatedPiece()}</div></div><style>{'@keyframes pieceMove { 0% { transform: translate(var(--from-x), var(--from-y)) scale(1); } 50% { transform: translate(calc(var(--from-x) * 0.3), calc(var(--from-y) * 0.3)) scale(1.15); } 100% { transform: translate(0, 0) scale(1); } }'}</style>{promotionSquare !== null && (<div className="absolute inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center rounded-xl"><div className="p-6 rounded-2xl" style={{ background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.95))', border: '1px solid rgba(168, 85, 247, 0.4)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 30px rgba(168, 85, 247, 0.2)' }}><h3 className="text-slate-100 font-bold text-lg mb-4 text-center">Promote Pawn</h3><div className="flex gap-3">{[5, 4, 3, 2].map((pt) => (<button key={pt} onClick={() => handlePromotion(pt)} className="w-14 h-14 md:w-16 md:h-16 rounded-xl flex items-center justify-center text-3xl md:text-4xl transition-all duration-200 hover:scale-110" style={{ background: 'rgba(51, 65, 85, 0.6)', border: '1px solid rgba(148, 163, 184, 0.3)' }} onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(6, 182, 212, 0.2)'; e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.5)'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(51, 65, 85, 0.6)'; e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.3)'; }}><span className={isWhite ? 'text-white' : 'text-black'} style={{ textShadow: isWhite ? '0 0 8px rgba(0,0,0,0.8), 0 2px 4px rgba(0,0,0,0.6)' : 'none' }}>{PIECE_SYMBOLS[isWhite ? 'white' : 'black'][PIECE_TYPES[pt]]}</span></button>))}</div></div></div>)}{matchStatus === 1 && (<div className={'mt-4 text-center py-3 px-6 rounded-xl font-semibold text-base backdrop-blur-sm ' + (isMyTurn ? 'text-cyan-300' : 'text-slate-400')} style={{ ...(boardSize ? { width: boardSize } : { maxWidth: '100%' }), background: isMyTurn ? 'linear-gradient(135deg, rgba(6, 182, 212, 0.15), rgba(59, 130, 246, 0.15))' : 'rgba(30, 41, 59, 0.6)', border: isMyTurn ? '1px solid rgba(6, 182, 212, 0.4)' : '1px solid rgba(148, 163, 184, 0.2)', boxShadow: isMyTurn ? '0 0 20px rgba(6, 182, 212, 0.15)' : 'none' }}>{isMyTurn ? (<div className="space-y-1"><div className="text-lg flex items-center justify-center gap-2"><span className="inline-block w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>Your Move</div><div className="text-sm text-slate-400">Playing as {isWhite ? 'White' : 'Black'}</div></div>) : (<div className="space-y-1"><div className="flex items-center justify-center gap-2"><span className="inline-block w-2 h-2 rounded-full bg-slate-500 animate-pulse"></span>Opponent's Turn</div><div className="text-sm text-slate-500">Waiting for their move...</div></div>)}</div>)}{(whiteInCheck || blackInCheck) && matchStatus === 1 && (<div className="mt-3 text-center py-2 px-6 rounded-full text-red-300 font-semibold text-sm animate-pulse" style={{ ...(boardSize ? { width: boardSize } : { maxWidth: '100%' }), background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.4)', boxShadow: '0 0 20px rgba(239, 68, 68, 0.2)' }}>{whiteInCheck ? 'White' : 'Black'} King in Check</div>)}</div>);
 };
 
+
 export default function Chess() {
   // Use network config instead of hardcoded values
-  const CONTRACT_ADDRESS = CONTRACT_ADDRESSES.ChessOnChain;
   const EXPECTED_CHAIN_ID = CURRENT_NETWORK.chainId;
   const RPC_URL = import.meta.env.VITE_RPC_URL || CURRENT_NETWORK.rpcUrl;
   const EXPLORER_URL = getAddressUrl(CONTRACT_ADDRESS);
@@ -482,7 +629,7 @@ export default function Chess() {
   const getReadOnlyContract = useCallback(() => {
     const provider = new ethers.JsonRpcProvider(RPC_URL);
     return new ethers.Contract(CONTRACT_ADDRESS, CHESS_ABI, provider);
-  }, [CONTRACT_ADDRESS, RPC_URL]);
+  }, [RPC_URL]);
 
   // Wallet & Contract State
   const [account, setAccount] = useState(null);
@@ -502,6 +649,7 @@ export default function Chess() {
   // Tournament State - Lazy Loading Architecture
   // tierMetadata: Basic tier info loaded on initial page load (fast)
   // tierInstances: Detailed tournament instances loaded on tier expand (lazy)
+  const [selectedMode, setSelectedMode] = useState(null); // null = mode selection view, 'duels' = 1v1 tiers, 'tournaments' = 4-player tiers
   const [tierMetadata, setTierMetadata] = useState({}); // { [tierId]: { playerCount, instanceCount, entryFee, statuses, enrolledCounts } }
   const [tierInstances, setTierInstances] = useState({}); // { [tierId]: [tournament instances] }
   const [tierLoading, setTierLoading] = useState({}); // { [tierId]: boolean }
@@ -522,10 +670,12 @@ export default function Chess() {
   const [matchLoading, setMatchLoading] = useState(false);
   const [moveHistory, setMoveHistory] = useState([]);
   const [syncDots, setSyncDots] = useState(1);
+  const [isSpectator, setIsSpectator] = useState(false); // Track if user is spectating (not a participant)
   const [matchEndResult, setMatchEndResult] = useState(null); // 'win' | 'lose' | 'draw' | 'forfeit_win' | 'forfeit_lose' | 'double_forfeit'
   const [matchEndWinnerLabel, setMatchEndWinnerLabel] = useState('');
   const [matchEndWinner, setMatchEndWinner] = useState(null); // Winner address for modal display
   const [matchEndLoser, setMatchEndLoser] = useState(null); // Loser address for modal display
+  const [tournamentCompletionData, setTournamentCompletionData] = useState(null); // Tournament completion notification data
   const previousBoardRef = useRef(null); // Track previous board state for move history sync
   const tournamentBracketRef = useRef(null); // Ref for auto-scrolling to tournament after URL navigation
   const matchViewRef = useRef(null); // Ref for auto-scrolling to match view
@@ -552,9 +702,16 @@ export default function Chess() {
   });
   const [raffleSyncing, setRaffleSyncing] = useState(false);
 
+  // Elite Matches State
+  const [eliteMatches, setEliteMatches] = useState([]);
+  const [eliteMatchesSyncing, setEliteMatchesSyncing] = useState(false);
+  const [viewingArchivedMatch, setViewingArchivedMatch] = useState(null);
+  const [moveHistoryLoading, setMoveHistoryLoading] = useState(false);
+
   // Player Activity Hook
-  const playerActivity = usePlayerActivity(contract, account, 'chess');
+  const playerActivity = usePlayerActivity(contract, account, 'chess', TIER_CONFIG);
   const [playerActivityHeight, setPlayerActivityHeight] = useState(0);
+  const [raffleCardHeight, setRaffleCardHeight] = useState(0);
 
   // Player Activity Collapse Function Ref
   const collapseActivityPanelRef = useRef(null);
@@ -647,7 +804,7 @@ export default function Chess() {
       if (viewingTournament?.tierId !== undefined) {
         // Fetch timeout config for the viewing tournament's tier
         try {
-          const timeoutConfig = await fetchTierTimeoutConfig(contract, viewingTournament.tierId, 300);
+          const timeoutConfig = await fetchTierTimeoutConfig(contract, viewingTournament.tierId, 300, TIER_CONFIG[viewingTournament.tierId]);
           if (timeoutConfig?.matchTimePerPlayer) {
             setDisplayTimeoutConfig(timeoutConfig);
           }
@@ -657,7 +814,7 @@ export default function Chess() {
       } else {
         // No tournament viewing, reset to tier 0 (default)
         try {
-          const timeoutConfig = await fetchTierTimeoutConfig(contract, 0, 300);
+          const timeoutConfig = await fetchTierTimeoutConfig(contract, 0, 300, TIER_CONFIG[0]);
           if (timeoutConfig?.matchTimePerPlayer) {
             setDisplayTimeoutConfig(timeoutConfig);
           }
@@ -670,14 +827,61 @@ export default function Chess() {
     updateDisplayConfig();
   }, [viewingTournament, contract]);
 
-  // Theme colors - Single "dream" theme from Chess.jsx
-  const currentTheme = {
-    primary: 'rgba(0, 191, 255, 0.5)',
-    secondary: 'rgba(138, 43, 226, 0.5)',
-    gradient: 'linear-gradient(135deg, #0a0020 0%, #1a0050 50%, #0a0030 100%)',
+  // Check if player is enrolled in elite tiers (3 or 7) using activity panel data
+  const isEnrolledInElite = playerActivity.data &&
+    [...playerActivity.data.activeMatches, ...playerActivity.data.inProgressTournaments, ...playerActivity.data.unfilledTournaments]
+      .some((activity) => activity.tierId === 3 || activity.tierId === 7);
+
+  // Elite gold theme - comprehensive gold palette
+  const eliteTheme = {
+    primary: 'rgba(251, 191, 36, 0.5)',
+    secondary: 'rgba(245, 158, 11, 0.5)',
+    gradient: 'linear-gradient(135deg, #1a0f00 0%, #2d1a00 50%, #1f1200 100%)',
+    border: 'rgba(212, 160, 18, 0.3)',
+    glow: 'rgba(251, 191, 36, 0.4)',
+    particleColors: ['#fbbf24', '#f59e0b'],
+    heroGlow: 'from-[#fbbf24] via-[#f59e0b] to-[#d4a012]',
+    heroIcon: 'text-[#fbbf24]',
+    heroTitle: 'from-[#fff8e7] via-[#fbbf24] to-[#f59e0b]',
+    heroText: 'text-[#f5e6c8]',
+    heroSubtext: 'text-[#d4b866]',
+    buttonGradient: 'from-[#fbbf24] to-[#f59e0b]',
+    buttonHover: 'hover:from-[#f59e0b] hover:to-[#d4a012]',
+    infoCard: 'from-[#fbbf24]/20 to-[#f59e0b]/20',
+    infoBorder: 'border-[#d4a012]/30',
+    infoIcon: 'text-[#fbbf24]',
+    infoTitle: 'text-[#fff8e7]',
+    infoText: 'text-[#f5e6c8]',
+    // State colors
+    success: '#22c55e',
+    successBg: 'bg-[#2d4a1c]',
+    successText: 'text-[#22c55e]',
+    successBorder: 'border-[#22c55e]/40',
+    error: '#ef4444',
+    errorBg: 'bg-[#4a1c1c]',
+    errorText: 'text-[#ef4444]',
+    errorBorder: 'border-[#ef4444]/40',
+    info: '#3b82f6',
+    infoBgColor: 'bg-[#1c2d4a]',
+    infoTextColor: 'text-[#3b82f6]',
+    // Text hierarchy
+    heading: 'text-[#fff8e7]',
+    bodyText: 'text-[#f5e6c8]',
+    secondaryText: 'text-[#d4b866]',
+    tertiaryText: 'text-[#a8935a]',
+    mutedText: 'text-[#a8935a]',
+    disabledText: 'text-[#7a6a42]',
+    placeholder: 'text-[#6b5d3a]'
+  };
+
+  // Default theme (purple/cyan)
+  const defaultTheme = {
+    primary: 'rgba(0, 255, 255, 0.5)',
+    secondary: 'rgba(255, 0, 255, 0.5)',
+    gradient: 'linear-gradient(135deg, #05000f 0%, #130028 50%, #090013 100%)',
     border: 'rgba(0, 255, 255, 0.3)',
     glow: 'rgba(0, 255, 255, 0.3)',
-    particleColors: ['#00ffff', '#8a2be2'],
+    particleColors: ['#00ffff', '#ff00ff'],
     heroGlow: 'from-blue-500 via-cyan-500 to-blue-500',
     heroIcon: 'text-blue-400',
     heroTitle: 'from-blue-400 via-cyan-400 to-blue-400',
@@ -691,6 +895,9 @@ export default function Chess() {
     infoTitle: 'text-blue-300',
     infoText: 'text-blue-200'
   };
+
+  // Theme colors - dynamically switch based on elite enrollment
+  const currentTheme = isEnrolledInElite ? eliteTheme : defaultTheme;
 
   // Switch to Local Network (Chain ID 412346)
   const switchToArbitrum = async () => {
@@ -817,7 +1024,7 @@ export default function Chess() {
   };
 
 
-  // Load contract data (simplified - matches ConnectFour pattern)
+  // Load contract data (simplified - matches ConnectFour/TicTacChain pattern)
   // Uses lazy loading: only fetch tier metadata initially, instances load on expand
   const loadContractData = async (contractInstance, isInitialLoad = false) => {
     try {
@@ -827,7 +1034,7 @@ export default function Chess() {
 
       // Fetch match time from first tier for display in Game Info Cards
       try {
-        const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, 0, 300);
+        const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, 0, 300, TIER_CONFIG[0]);
         if (timeoutConfig?.matchTimePerPlayer) {
           setMatchTimePerPlayer(timeoutConfig.matchTimePerPlayer);
           setDisplayTimeoutConfig(timeoutConfig);
@@ -855,10 +1062,10 @@ export default function Chess() {
         setLeaderboardError(false);
       }
 
-      // Use read-only contract to avoid MetaMask rate limiting
-      const readContract = getReadOnlyContract();
+      // Use read-only ChessOnChain contract
+      const readOnlyContract = getReadOnlyContract();
 
-      const leaderboardData = await readContract.getLeaderboard();
+      const leaderboardData = await readOnlyContract.getLeaderboard();
       // Convert to plain array with player and earnings, sorted by earnings descending
       const entries = Array.from(leaderboardData).map(entry => ({
         player: entry.player,
@@ -884,10 +1091,10 @@ export default function Chess() {
   const fetchRaffleInfo = useCallback(async () => {
     try {
       setRaffleSyncing(true);
-      const readContract = getReadOnlyContract();
+      const readOnlyContract = getReadOnlyContract();
 
       const [raffleIndex, isReady, currentAccumulated, threshold, reserve, raffleAmount, ownerShare, winnerShare, eligiblePlayerCount] =
-        await readContract.getRaffleInfo();
+        await readOnlyContract.getRaffleInfo();
 
       setRaffleInfo({
         raffleIndex,
@@ -918,58 +1125,212 @@ export default function Chess() {
     }
   }, [getReadOnlyContract]);
 
-  // LAZY LOADING: Fetch tier metadata only (fast initial load)
-  // This gets basic tier info without detailed instance data
-  const fetchTierMetadata = useCallback(async (contractInstance = null, silentUpdate = false) => {
-    const readContract = contractInstance || getReadOnlyContract();
-    if (!readContract) {
-      setConnectionError('Unable to connect to blockchain. Please check your network connection.');
-      if (!silentUpdate) setMetadataLoading(false);
-      return;
-    }
+  // Fetch elite matches from the contract
+  const fetchEliteMatches = useCallback(async () => {
+    try {
+      setEliteMatchesSyncing(true);
+      const readOnlyContract = getReadOnlyContract();
 
-    if (!silentUpdate) setMetadataLoading(true);
-    if (!silentUpdate) setConnectionError(null); // Clear any previous error
-    const metadata = {};
-    let successfulFetches = 0;
-    let totalAttempts = 0;
+      const matches = [];
+      let index = 0;
+      const MAX_MATCHES = 50; // Safety limit
 
-    // Fetch metadata for tiers 0-6
-    for (let tierId = 0; tierId <= 6; tierId++) {
-      totalAttempts++;
-      try {
-        // Parallel fetch tier config, entry fee, and overview
-        const [tierConfig, fee, tierOverview] = await Promise.all([
-          readContract.tierConfigs(tierId),
-          readContract.ENTRY_FEES(tierId),
-          readContract.getTierOverview(tierId)
-        ]);
+      while (index < MAX_MATCHES) {
+        try {
+          const match = await readOnlyContract.eliteMatches(index);
+          const zeroAddress = '0x0000000000000000000000000000000000000000';
 
-        successfulFetches++;
-        const instanceCount = tierOverview[0].length;
-        if (instanceCount === 0) continue;
+          // Check if this is a valid match (has at least one player)
+          if (!match.player1 || match.player1 === zeroAddress) {
+            break;
+          }
 
-        metadata[tierId] = {
-          playerCount: Number(tierConfig.playerCount),
-          instanceCount,
-          entryFee: ethers.formatEther(fee),
-          statuses: tierOverview[0].map(s => Number(s)),
-          enrolledCounts: tierOverview[1].map(c => Number(c)),
-          prizePools: tierOverview[2]
-        };
-      } catch (error) {
-        console.log(`Could not fetch tier ${tierId} metadata:`, error.message);
+          matches.push({
+            player1: match.player1,
+            player2: match.player2,
+            winner: match.winner,
+            currentTurn: match.currentTurn,
+            firstPlayer: match.firstPlayer,
+            status: Number(match.status),
+            isDraw: match.isDraw,
+            startTime: match.startTime,
+            lastMoveTime: match.lastMoveTime,
+            player1TimeRemaining: match.player1TimeRemaining,
+            player2TimeRemaining: match.player2TimeRemaining,
+            moves: match.moves || '' // New moves string field
+          });
+
+          index++;
+        } catch (e) {
+          // Array index out of bounds - we've read all matches
+          break;
+        }
       }
-    }
 
-    // If no fetches succeeded, we have a connection problem
-    if (successfulFetches === 0 && totalAttempts > 0) {
-      if (!silentUpdate) setConnectionError('Unable to load tournament data. Please check your connection and try again.');
+      // Reverse to show newest first
+      setEliteMatches(matches.reverse());
+
+      console.log('Elite Matches fetched:', matches.length);
+    } catch (error) {
+      console.error('Error fetching elite matches:', error);
+    } finally {
+      setEliteMatchesSyncing(false);
+    }
+  }, [getReadOnlyContract]);
+
+  // Handler to view an archived elite match
+  const handleViewArchivedMatch = useCallback(async (matchIndex) => {
+    try {
+      const readOnlyContract = getReadOnlyContract();
+      const matchData = await readOnlyContract.eliteMatches(matchIndex);
+
+      const zeroAddress = '0x0000000000000000000000000000000000000000';
+      if (!matchData.player1 || matchData.player1 === zeroAddress) {
+        console.error('Match not found at index:', matchIndex);
+        return;
+      }
+
+      // Unpack the chess board from packedBoard
+      const board = [];
+      let packed = BigInt(matchData.packedBoard);
+      for (let i = 0; i < 64; i++) {
+        const val = Number(packed & 0xFn);
+        if (val === 0) {
+          board.push({ pieceType: 0, color: 0 });
+        } else if (val >= 1 && val <= 6) {
+          board.push({ pieceType: val, color: 1 });
+        } else {
+          board.push({ pieceType: val - 6, color: 2 });
+        }
+        packed = packed >> 4n;
+      }
+
+      const archivedMatch = {
+        player1: matchData.player1,
+        player2: matchData.player2,
+        winner: matchData.winner,
+        currentTurn: matchData.currentTurn,
+        firstPlayer: matchData.firstPlayer,
+        matchStatus: Number(matchData.status),
+        isDraw: matchData.isDraw,
+        startTime: matchData.startTime,
+        lastMoveTime: matchData.lastMoveTime,
+        player1TimeRemaining: matchData.player1TimeRemaining,
+        player2TimeRemaining: matchData.player2TimeRemaining,
+        board,
+        // Archive-specific metadata
+        isArchived: true,
+        tierId: null,
+        instanceId: null,
+        roundNumber: null,
+        matchNumber: null
+      };
+
+      setViewingArchivedMatch(archivedMatch);
+
+      // Parse move history from the moves string
+      // The moves string contains concatenated uint8 pairs (from, to)
+      // Format: abi.encodePacked(m.moves, from, to) for each move
+      setMoveHistoryLoading(true);
+      setMoveHistory([]); // Clear previous history
+      try {
+        const movesString = matchData.moves || '';
+        console.log('Parsing moves string:', movesString);
+
+        if (movesString && movesString.length > 0) {
+          console.log('Moves string length:', movesString.length);
+
+          // The moves string is NOT hex - it's a raw string where each character is a byte
+          // abi.encodePacked creates bytes, then cast to string treats bytes as characters
+          // So we need to read character codes (bytes) directly
+          const moves = [];
+
+          // Each move is 2 bytes (2 characters in the string)
+          for (let i = 0; i < movesString.length - 1; i += 2) {
+            // Get the byte values from character codes
+            const fromByte = movesString.charCodeAt(i);
+            const toByte = movesString.charCodeAt(i + 1);
+
+            console.log(`Move ${moves.length + 1}: from=${fromByte} (char: "${movesString[i]}") to=${toByte} (char: "${movesString[i + 1]}")`);
+
+            // Validate that these are valid board positions (0-63)
+            if (fromByte >= 0 && fromByte < 64 && toByte >= 0 && toByte < 64) {
+              moves.push({
+                from: fromByte,
+                to: toByte
+              });
+            } else {
+              console.warn(`Invalid move data: from=${fromByte} to=${toByte}`);
+            }
+          }
+
+          console.log('Parsed moves:', moves);
+
+          // Convert to display format
+          // White moves first (index 0), then alternates
+          const history = moves.map((move, idx) => {
+            const isWhiteMove = idx % 2 === 0; // Even indices (0, 2, 4...) are white moves
+            const fromFile = String.fromCharCode(97 + (move.from % 8));
+            const fromRank = Math.floor(move.from / 8) + 1;
+            const toFile = String.fromCharCode(97 + (move.to % 8));
+            const toRank = Math.floor(move.to / 8) + 1;
+
+            console.log(`  Move ${idx + 1}: isWhiteMove=${isWhiteMove}, icon=${isWhiteMove ? '♚' : '♔'}`);
+
+            return {
+              player: isWhiteMove ? '♚' : '♔', // ♚ for white, ♔ for black
+              move: `${fromFile}${fromRank} → ${toFile}${toRank}`
+            };
+          });
+
+          console.log('Move history:', history);
+          setMoveHistory(history);
+        } else {
+          console.log('No moves in moves string');
+          setMoveHistory([]);
+        }
+      } catch (err) {
+        console.error('Error parsing move history:', err);
+        setMoveHistory([]);
+      } finally {
+        setMoveHistoryLoading(false);
+      }
+    } catch (error) {
+      console.error('Error fetching archived match:', error);
+      setMoveHistoryLoading(false);
+    }
+  }, [getReadOnlyContract]);
+
+  // Handler to go back from archived match view
+  const handleBackFromArchived = useCallback(() => {
+    setViewingArchivedMatch(null);
+    setMoveHistory([]);
+    setMoveHistoryLoading(false);
+  }, []);
+
+  // LAZY LOADING: Fetch tier metadata from hardcoded TIER_CONFIG (no RPC calls)
+  // Active enrollment counts come from tierInstances when tiers are expanded
+  const fetchTierMetadata = useCallback(async (_contractInstance = null, silentUpdate = false) => {
+    if (!silentUpdate) setMetadataLoading(true);
+    if (!silentUpdate) setConnectionError(null);
+
+    // Build metadata directly from TIER_CONFIG - zero RPC calls
+    const metadata = {};
+    for (const [tierId, tierConfig] of Object.entries(TIER_CONFIG)) {
+      const { playerCount, instanceCount, entryFee } = tierConfig;
+      metadata[tierId] = {
+        playerCount,
+        instanceCount,
+        entryFee,
+        statuses: [],
+        enrolledCounts: [],
+        prizePools: []
+      };
     }
 
     setTierMetadata(metadata);
     if (!silentUpdate) setMetadataLoading(false);
-  }, [getReadOnlyContract]);
+  }, []);
 
   // LAZY LOADING: Fetch detailed instances for a specific tier (called on expand)
   // Note: Uses functional state updates to avoid dependency on tierInstances/tierMetadata
@@ -981,20 +1342,36 @@ export default function Chess() {
     if (!silentUpdate) setTierLoading(prev => ({ ...prev, [tierId]: true }));
 
     try {
-      // Get metadata from override or fetch fresh
       let metadata = metadataOverride;
       if (!metadata) {
-        const [tierConfig, fee, tierOverview] = await Promise.all([
-          readContract.tierConfigs(tierId),
-          readContract.ENTRY_FEES(tierId),
-          readContract.getTierOverview(tierId)
-        ]);
+        // Get tier config from HARDCODED data (matches TicTacChain pattern)
+        const tierConfig = TIER_CONFIG[tierId];
+        if (!tierConfig) {
+          if (!silentUpdate) setTierLoading(prev => ({ ...prev, [tierId]: false }));
+          return;
+        }
+
+        const { playerCount, instanceCount, entryFee } = tierConfig;
+
+        const statuses = [];
+        const enrolledCounts = [];
+
+        for (let instanceId = 0; instanceId < instanceCount; instanceId++) {
+          try {
+            const tournament = await readContract.tournaments(tierId, instanceId);
+            statuses.push(Number(tournament.status));
+            enrolledCounts.push(Number(tournament.enrolledCount));
+          } catch (error) {
+            break;
+          }
+        }
+
         metadata = {
-          playerCount: Number(tierConfig.playerCount),
-          instanceCount: tierOverview[0].length,
-          entryFee: ethers.formatEther(fee),
-          statuses: tierOverview[0].map(s => Number(s)),
-          enrolledCounts: tierOverview[1].map(c => Number(c))
+          playerCount,
+          instanceCount: statuses.length,
+          entryFee,
+          statuses,
+          enrolledCounts
         };
       }
 
@@ -1036,12 +1413,6 @@ export default function Chess() {
       }
 
       // Sort instances by priority
-      // 1. In progress (status 1) + enrolled
-      // 2. Enrolling (status 0) + enrolled
-      // 3. Enrolling (status 0) + not enrolled + has players
-      // 4. Enrolling (status 0) + not enrolled + empty
-      // 5. In progress (status 1) + not enrolled
-      // 6. Everything else (completed, etc.)
       const getSortPriority = (instance) => {
         const { tournamentStatus, isEnrolled, enrolledCount } = instance;
 
@@ -1050,7 +1421,7 @@ export default function Chess() {
         if (tournamentStatus === 0 && !isEnrolled && enrolledCount > 0) return 3;
         if (tournamentStatus === 0 && !isEnrolled && enrolledCount === 0) return 4;
         if (tournamentStatus === 1 && !isEnrolled) return 5;
-        return 6; // Completed tournaments and others
+        return 6;
       };
 
       instances.sort((a, b) => getSortPriority(a) - getSortPriority(b));
@@ -1073,7 +1444,12 @@ export default function Chess() {
     try {
       setRaffleSyncing(true);
 
-      const tx = await contract.executeProtocolRaffle();
+      // Get ChessOnChain contract with signer
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const chessContract = new ethers.Contract(CONTRACT_ADDRESS, CHESS_ABI, signer);
+
+      const tx = await chessContract.executeProtocolRaffle();
       console.log('Raffle transaction submitted:', tx.hash);
       alert('Raffle transaction submitted! Waiting for confirmation...');
 
@@ -1087,7 +1463,7 @@ export default function Chess() {
 
       for (const log of receipt.logs) {
         try {
-          const parsedLog = contract.interface.parseLog({
+          const parsedLog = chessContract.interface.parseLog({
             topics: log.topics,
             data: log.data
           });
@@ -1231,12 +1607,27 @@ export default function Chess() {
     try {
       setTournamentsLoading(true);
 
-      // Convert entry fee to wei
-      const feeInWei = ethers.parseEther(entryFee);
+      // Use hardcoded entry fee from TIER_CONFIG (matches TicTacChain pattern)
+      const tierConfig = TIER_CONFIG[tierId];
+      if (!tierConfig) {
+        alert(`Invalid tier ID: ${tierId}`);
+        setTournamentsLoading(false);
+        return;
+      }
+      const feeInWei = ethers.parseEther(tierConfig.entryFee);
+      console.log('[handleEnroll] Using hardcoded entry fee:', tierConfig.entryFee, 'ETH');
+
+      // Get ChessOnChain contract with signer for enrollInTournament
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const chessContract = new ethers.Contract(CONTRACT_ADDRESS, CHESS_ABI, signer);
 
       // Call enrollInTournament function with entry fee as value
-      const tx = await contract.enrollInTournament(tierId, instanceId, { value: feeInWei });
+      const tx = await chessContract.enrollInTournament(tierId, instanceId, { value: feeInWei });
       await tx.wait();
+
+      // Refresh player activity panel immediately after enrollment
+      playerActivity.refetch();
 
       alert('Successfully enrolled in tournament!');
 
@@ -1267,8 +1658,19 @@ export default function Chess() {
     try {
       setTournamentsLoading(true);
 
-      // First check if this instance exists
-      const instanceCount = Number(await contract.INSTANCE_COUNTS(tierId));
+      // Get ChessOnChain contract with signer
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const chessContract = new ethers.Contract(CONTRACT_ADDRESS, CHESS_ABI, signer);
+
+      // First check if this instance exists using TIER_CONFIG
+      const tierConfig = TIER_CONFIG[tierId];
+      if (!tierConfig) {
+        alert(`Invalid tier ID: ${tierId}`);
+        setTournamentsLoading(false);
+        return;
+      }
+      const instanceCount = tierConfig.instanceCount;
       if (instanceId >= instanceCount) {
         alert(`Invalid instance ID. Tier ${tierId + 1} only has ${instanceCount} instances (1-${instanceCount})`);
         setTournamentsLoading(false);
@@ -1276,7 +1678,7 @@ export default function Chess() {
       }
 
       // Get tournament info to validate
-      const tournamentInfo = await contract.tournaments(tierId, instanceId);
+      const tournamentInfo = await chessContract.tournaments(tierId, instanceId);
       const enrolledCount = Number(tournamentInfo.enrolledCount);
       const status = Number(tournamentInfo.status);
       const enrollmentTimeout = tournamentInfo.enrollmentTimeout;
@@ -1324,7 +1726,7 @@ export default function Chess() {
       }
 
       // Check if user is enrolled
-      const isEnrolled = await contract.isEnrolled(tierId, instanceId, account);
+      const isEnrolled = await chessContract.isEnrolled(tierId, instanceId, account);
 
       // Only enrolled players can force start
       if (!isEnrolled) {
@@ -1358,7 +1760,7 @@ export default function Chess() {
         return;
       }
 
-      const tx = await contract.forceStartTournament(tierId, instanceId);
+      const tx = await chessContract.forceStartTournament(tierId, instanceId);
       await tx.wait();
 
       alert('Tournament force-started successfully!');
@@ -1419,8 +1821,13 @@ export default function Chess() {
         return;
       }
 
+      // Get ChessOnChain contract with signer
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const chessContract = new ethers.Contract(CONTRACT_ADDRESS, CHESS_ABI, signer);
+
       // Call contract function
-      const tx = await contract.resetEnrollmentWindow(tierId, instanceId);
+      const tx = await chessContract.resetEnrollmentWindow(tierId, instanceId);
       console.log('Reset enrollment window transaction submitted:', tx.hash);
       alert('Transaction submitted! Waiting for confirmation...');
 
@@ -1464,8 +1871,13 @@ export default function Chess() {
     try {
       setTournamentsLoading(true);
 
+      // Get ChessOnChain contract with signer
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const chessContract = new ethers.Contract(CONTRACT_ADDRESS, CHESS_ABI, signer);
+
       // Get tournament info to validate
-      const tournamentInfo = await contract.tournaments(tierId, instanceId);
+      const tournamentInfo = await chessContract.tournaments(tierId, instanceId);
       const status = Number(tournamentInfo.status);
       const enrolledCount = Number(tournamentInfo.enrolledCount);
       const enrollmentTimeout = tournamentInfo.enrollmentTimeout;
@@ -1513,7 +1925,7 @@ export default function Chess() {
         }
       }
 
-      const tx = await contract.claimAbandonedEnrollmentPool(tierId, instanceId);
+      const tx = await chessContract.claimAbandonedEnrollmentPool(tierId, instanceId);
       await tx.wait();
 
       alert('Abandoned enrollment pool claimed successfully!');
@@ -1549,23 +1961,31 @@ export default function Chess() {
   // Refresh tournament bracket data
   const refreshTournamentBracket = useCallback(async (contractInstance, tierId, instanceId, totalMatchTime) => {
     try {
-      // Get tournament info
+      // Get tournament info using getTournamentInfo() view function (matches TicTacChain pattern)
       const tournamentInfo = await contractInstance.getTournamentInfo(tierId, instanceId);
       const status = Number(tournamentInfo[0]);
-      const currentRound = Number(tournamentInfo[2]);
-      const enrolledCount = Number(tournamentInfo[3]);
-      const prizePool = tournamentInfo[4];
+      const currentRound = Number(tournamentInfo[1]);
+      const enrolledCount = Number(tournamentInfo[2]);
+      const prizePool = tournamentInfo[3];
 
-      // Get tier config for player count and entry fee
-      const tierConfig = await contractInstance.tierConfigs(tierId);
-      const playerCount = Number(tierConfig.playerCount);
-      const entryFee = tierConfig.entryFee;
+      // Get tier config from hardcoded data
+      const tierConfig = TIER_CONFIG[tierId];
+      const playerCount = tierConfig.playerCount;
 
       // Extract timeout config using shared utility function
-      const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, tierId, totalMatchTime);
+      const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, tierId, totalMatchTime, tierConfig);
 
-      // Get enrolled players
-      const enrolledPlayers = await contractInstance.getEnrolledPlayers(tierId, instanceId);
+      // Get enrolled players by iterating through enrolledPlayers mapping
+      const enrolledPlayers = [];
+      for (let i = 0; i < enrolledCount; i++) {
+        try {
+          const player = await contractInstance.enrolledPlayers(tierId, instanceId, i);
+          enrolledPlayers.push(player);
+        } catch (err) {
+          console.warn(`Could not fetch enrolled player ${i}:`, err);
+          break;
+        }
+      }
 
       // Get countdown data
       let firstEnrollmentTime = 0;
@@ -1595,62 +2015,73 @@ export default function Chess() {
         const matches = [];
         for (let matchNum = 0; matchNum < totalMatches; matchNum++) {
           try {
-            // Chess uses getChessMatch instead of getMatch
-            const matchData = await contractInstance.getChessMatch(tierId, instanceId, roundNum, matchNum);
+            const matchData = await contractInstance.getMatch(tierId, instanceId, roundNum, matchNum);
 
-            // Parse match data directly (chess contract returns array)
+            // Parse match data from nested structure
             const zeroAddress = '0x0000000000000000000000000000000000000000';
-            const player1 = matchData[0];
-            const player2 = matchData[1];
-            const winner = matchData[3];
-            const matchStatus = Number(matchData[4]);
-            const isDraw = matchData[5];
+            const player1 = matchData.common.player1;
+            const player2 = matchData.common.player2;
+            const winner = matchData.common.winner;
+            const matchStatus = Number(matchData.common.status);
+            const isDraw = matchData.common.isDraw;
 
-            // Compute loser field (not provided by getChessMatch)
-            let loser = zeroAddress;
-            if (matchStatus === 2 && !isDraw) {
-              if (winner.toLowerCase() === player1.toLowerCase()) {
-                loser = player2;
-              } else if (winner.toLowerCase() === player2.toLowerCase()) {
-                loser = player1;
-              }
-            }
+            // Get loser from common data
+            const loser = matchData.common.loser || zeroAddress;
+
+            // Extract check status and move number from packedState
+            // Bit 12: whiteInCheck, Bit 13: blackInCheck, Bits 22-31: fullMoveNumber
+            const packedState = BigInt(matchData.packedState);
+            const whiteInCheck = ((packedState >> 12n) & 1n) === 1n;
+            const blackInCheck = ((packedState >> 13n) & 1n) === 1n;
+            const fullMoveNumber = Number((packedState >> 22n) & 0x3FFn);
 
             const parsedMatch = {
               player1,
               player2,
-              currentTurn: matchData[2],
+              currentTurn: matchData.currentTurn,
               winner,
               loser,
               matchStatus,
               isDraw,
-              startTime: Number(matchData[6]),
-              lastMoveTime: Number(matchData[7]),
-              fullMoveNumber: Number(matchData[8]),
-              whiteInCheck: matchData[9],
-              blackInCheck: matchData[10]
+              startTime: Number(matchData.common.startTime),
+              lastMoveTime: Number(matchData.common.lastMoveTime),
+              fullMoveNumber,
+              whiteInCheck,
+              blackInCheck
             };
 
-            // Use per-tier match time from contract tier configuration
-            let player1TimeRemaining = tierMatchTime;
-            let player2TimeRemaining = tierMatchTime;
+            // Calculate time remaining client-side (contract stores time at last move)
+            // Formula: current player's time = stored time - elapsed since last move
+            const now = Math.floor(Date.now() / 1000);
+            const elapsed = parsedMatch.lastMoveTime > 0 ? now - parsedMatch.lastMoveTime : 0;
 
-            try {
-              const timeData = await contractInstance.getCurrentTimeRemaining(tierId, instanceId, roundNum, matchNum);
-              player1TimeRemaining = Number(timeData[0]);
-              player2TimeRemaining = Number(timeData[1]);
-            } catch (timeErr) {
-              console.warn(`Could not fetch time for match ${matchNum}:`, timeErr);
+            let player1TimeRemaining = matchData.player1TimeRemaining !== undefined
+              ? Number(matchData.player1TimeRemaining) : tierMatchTime;
+            let player2TimeRemaining = matchData.player2TimeRemaining !== undefined
+              ? Number(matchData.player2TimeRemaining) : tierMatchTime;
+
+            // Only subtract elapsed time from the current player's clock (if match is active)
+            if (parsedMatch.matchStatus === 1 && parsedMatch.currentTurn && elapsed > 0) {
+              const isPlayer1Turn = parsedMatch.currentTurn.toLowerCase() === parsedMatch.player1.toLowerCase();
+              if (isPlayer1Turn) {
+                player1TimeRemaining = Math.max(0, player1TimeRemaining - elapsed);
+              } else {
+                player2TimeRemaining = Math.max(0, player2TimeRemaining - elapsed);
+              }
             }
 
-            // Fetch escalation state using chessMatches mapping
+            // Fetch escalation state and firstPlayer using chessMatches mapping
             let timeoutState = null;
+            let firstPlayer = null;
             try {
               const matchKey = ethers.solidityPackedKeccak256(
                 ['uint8', 'uint8', 'uint8', 'uint8'],
                 [tierId, instanceId, roundNum, matchNum]
               );
               const chessMatchData = await contractInstance.chessMatches(matchKey);
+
+              // Extract firstPlayer (white player)
+              firstPlayer = chessMatchData.firstPlayer;
 
               // Chess contract has timeoutState nested structure
               const esc1Start = Number(chessMatchData.timeoutState.escalation1Start);
@@ -1688,6 +2119,7 @@ export default function Chess() {
 
             matches.push({
               ...parsedMatch,
+              firstPlayer, // White player
               timeoutState,
               isTimedOut,
               // Override with contract's real-time values
@@ -1735,7 +2167,7 @@ export default function Chess() {
         enrolledCount,
         prizePool,
         playerCount,
-        entryFee,
+        entryFee: tierConfig.entryFee,
         enrolledPlayers,
         rounds,
         firstEnrollmentTime,
@@ -1780,36 +2212,68 @@ export default function Chess() {
     }
   };
 
+  // Helper function to convert board index to chess notation (e.g., 0 → "a1", 63 → "h8")
+  const indexToChessNotation = useCallback((index) => {
+    const row = Math.floor(index / 8);
+    const col = index % 8;
+    const file = String.fromCharCode(97 + col); // 'a' to 'h'
+    const rank = row + 1; // 1 to 8
+    return `${file}${rank}`;
+  }, []);
+
   // Fetch move history from blockchain events with fallback to board state reconstruction
   const fetchMoveHistory = useCallback(async (contractInstance, tierId, instanceId, roundNumber, matchNumber) => {
     try {
       // Chess move history - get match data using chess functions
-      const matchData = await contractInstance.getChessMatch(tierId, instanceId, roundNumber, matchNumber);
-      const player1 = matchData[0];
+      const matchData = await contractInstance.getMatch(tierId, instanceId, roundNumber, matchNumber);
+      const player1 = matchData.common.player1;
+      const matchStartTime = Number(matchData.common.startTime);
 
       // Try to query ChessMoveMade events for this match
       try {
-        const matchKey = ethers.keccak256(
-          ethers.AbiCoder.defaultAbiCoder().encode(
-            ['uint8', 'uint8', 'uint8', 'uint8'],
-            [tierId, instanceId, roundNumber, matchNumber]
-          )
+        // Use solidityPackedKeccak256 to match Solidity's keccak256(abi.encodePacked(...))
+        const matchKey = ethers.solidityPackedKeccak256(
+          ['uint8', 'uint8', 'uint8', 'uint8'],
+          [tierId, instanceId, roundNumber, matchNumber]
         );
 
-        const filter = contractInstance.filters.ChessMoveMade(matchKey);
+        const filter = contractInstance.filters.MoveMade(matchKey);
         const events = await contractInstance.queryFilter(filter);
 
         if (events.length > 0) {
-          // Convert events to move history
-          const history = events.map(event => {
+          // Filter events to only include those from the current match instance
+          // Get block timestamps and filter by match start time
+          const eventsWithTimestamps = await Promise.all(
+            events.map(async (event) => {
+              const block = await event.getBlock();
+              return {
+                event,
+                timestamp: block.timestamp
+              };
+            })
+          );
+
+          // Only include events that occurred at or after the match started
+          const currentMatchEvents = eventsWithTimestamps
+            .filter(({ timestamp }) => timestamp >= matchStartTime)
+            .map(({ event }) => event);
+
+          if (currentMatchEvents.length === 0) {
+            return [];
+          }
+
+          // Convert events to move history with proper chess notation
+          const history = currentMatchEvents.map(event => {
             const player = event.args.player;
             const from = Number(event.args.from);
             const to = Number(event.args.to);
-            const promotion = Number(event.args.promotion);
+            const promotion = 0; // MoveMade event doesn't include promotion
             const isPlayer1 = player.toLowerCase() === player1.toLowerCase();
+            const fromNotation = indexToChessNotation(from);
+            const toNotation = indexToChessNotation(to);
             return {
-              player: isPlayer1 ? 'X' : 'O',
-              cell: `${from}→${to}${promotion ? ' (promoted)' : ''}`,
+              player: isPlayer1 ? '♚' : '♔', // ♚ for white (player1), ♔ for black (player2)
+              move: `${fromNotation}→${toNotation}${promotion ? ' ♕' : ''}`, // e.g., "e2→e4"
               from,
               to,
               promotion,
@@ -1823,45 +2287,50 @@ export default function Chess() {
           return history;
         }
       } catch (eventError) {
-        console.warn('Event query failed, falling back to board reconstruction:', eventError);
+        console.warn('Event query failed, falling back to empty history:', eventError);
       }
 
-      // Fallback: Reconstruct from board state (loses move order but shows current state)
-      const history = [];
-      const boardArray = Array.from(board);
-      for (let i = 0; i < boardArray.length; i++) {
-        const cell = Number(boardArray[i]);
-        if (cell !== 0) {
-          history.push({
-            player: cell === 1 ? 'X' : 'O',
-            cell: i
-          });
-        }
-      }
-      return history;
+      // No events found - return empty array
+      return [];
     } catch (error) {
       console.error('Error fetching move history:', error);
       return [];
     }
-  }, []);
+  }, [indexToChessNotation]);
 
   // Refresh match data from contract
   const refreshMatchData = useCallback(async (contractInstance, userAccount, matchInfo, totalMatchTime) => {
     try {
       const { tierId, instanceId, roundNumber, matchNumber } = matchInfo;
 
-      // Chess uses getChessMatch instead of getMatch
-      const matchData = await contractInstance.getChessMatch(tierId, instanceId, roundNumber, matchNumber);
+      const matchData = await contractInstance.getMatch(tierId, instanceId, roundNumber, matchNumber);
 
-      // Chess requires separate getBoard call
-      const board = await contractInstance.getBoard(tierId, instanceId, roundNumber, matchNumber);
+      // Unpack the chess board from packedBoard (4 bits per square, 64 squares)
+      // Encoding: 0=empty, 1-6=white pieces (pawn..king), 7-12=black pieces (pawn..king)
+      const board = [];
+      let packed = BigInt(matchData.packedBoard);
+      for (let i = 0; i < 64; i++) {
+        const value = Number(packed & 0xFn);
+        let pieceType = 0;
+        let color = 0;
+        if (value >= 1 && value <= 6) {
+          pieceType = value;  // white: 1-6
+          color = 1;
+        } else if (value >= 7 && value <= 12) {
+          pieceType = value - 6;  // black: 7-12 → pieceType 1-6
+          color = 2;
+        }
+        board.push({ pieceType, color });
+        packed = packed >> 4n;
+      }
 
       // Fetch per-tier timeout config to get correct match time
-      const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, tierId, totalMatchTime);
+      const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, tierId, totalMatchTime, TIER_CONFIG[tierId]);
       const tierMatchTime = timeoutConfig?.matchTimePerPlayer ?? totalMatchTime;
 
-      // Fetch escalation state using chessMatches mapping (not matchTimeouts)
+      // Fetch escalation state using chessMatches mapping
       let timeoutState = null;
+      let firstPlayer = matchData.firstPlayer; // Initialize from getMatch
       try {
         const matchKey = ethers.solidityPackedKeccak256(
           ['uint8', 'uint8', 'uint8', 'uint8'],
@@ -1885,18 +2354,22 @@ export default function Chess() {
         console.debug('No escalation state for match (normal for non-stalled matches):', escalationErr.message);
       }
 
-      // Parse match data - chess contract returns array with specific indices
-      const player1 = matchData[0];
-      const player2 = matchData[1];
-      const currentTurn = matchData[2];
-      const winner = matchData[3];
-      const matchStatus = Number(matchData[4]);
-      const isDraw = matchData[5];
-      const startTime = Number(matchData[6]);
-      const lastMoveTime = Number(matchData[7]);
-      const fullMoveNumber = Number(matchData[8]);
-      const whiteInCheck = matchData[9];
-      const blackInCheck = matchData[10];
+      // Parse match data from nested structure
+      const player1 = matchData.common.player1;
+      const player2 = matchData.common.player2;
+      const currentTurn = matchData.currentTurn;
+      const winner = matchData.common.winner;
+      const matchStatus = Number(matchData.common.status);
+      const isDraw = matchData.common.isDraw;
+      const startTime = Number(matchData.common.startTime);
+      const lastMoveTime = Number(matchData.common.lastMoveTime);
+
+      // Extract check status and move number from packedState
+      // Bit 12: whiteInCheck, Bit 13: blackInCheck, Bits 22-31: fullMoveNumber
+      const packedState = BigInt(matchData.packedState);
+      const whiteInCheck = ((packedState >> 12n) & 1n) === 1n;
+      const blackInCheck = ((packedState >> 13n) & 1n) === 1n;
+      const fullMoveNumber = Number((packedState >> 22n) & 0x3FFn);
 
       const zeroAddress = '0x0000000000000000000000000000000000000000';
       const isMatchInitialized =
@@ -1911,42 +2384,85 @@ export default function Chess() {
         actualPlayer2 = matchInfo.player2;
       }
 
-      // Use per-tier match time from contract config
-      let player1TimeRemaining = tierMatchTime;
-      let player2TimeRemaining = tierMatchTime;
+      // Calculate time remaining client-side (contract stores time at last move)
+      // Formula: current player's time = stored time - elapsed since last move
+      const now = Math.floor(Date.now() / 1000);
+      const elapsed = lastMoveTime > 0 ? now - lastMoveTime : 0;
 
-      try {
-        const timeData = await contractInstance.getCurrentTimeRemaining(tierId, instanceId, roundNumber, matchNumber);
-        player1TimeRemaining = Number(timeData[0]); // player1Time from contract
-        player2TimeRemaining = Number(timeData[1]); // player2Time from contract
-      } catch (timeErr) {
-        // Using default values (match may not be initialized)
+      let player1TimeRemaining = matchData.player1TimeRemaining !== undefined
+        ? Number(matchData.player1TimeRemaining) : tierMatchTime;
+      let player2TimeRemaining = matchData.player2TimeRemaining !== undefined
+        ? Number(matchData.player2TimeRemaining) : tierMatchTime;
+
+      // Only subtract elapsed time from the current player's clock (if match is active)
+      if (matchStatus === 1 && currentTurn && elapsed > 0) {
+        const isPlayer1Turn = currentTurn.toLowerCase() === player1.toLowerCase();
+        if (isPlayer1Turn) {
+          player1TimeRemaining = Math.max(0, player1TimeRemaining - elapsed);
+        } else {
+          player2TimeRemaining = Math.max(0, player2TimeRemaining - elapsed);
+        }
       }
 
       const boardState = Array.from(board);
       const isPlayer1 = actualPlayer1.toLowerCase() === userAccount.toLowerCase();
       const isYourTurn = currentTurn.toLowerCase() === userAccount.toLowerCase();
 
-      // Compute loser field (not provided by getChessMatch)
-      let loser = zeroAddress;
-      if (matchStatus === 2 && !isDraw) {
-        // Match completed and not a draw - determine loser
-        if (winner.toLowerCase() === actualPlayer1.toLowerCase()) {
-          loser = actualPlayer2;
-        } else if (winner.toLowerCase() === actualPlayer2.toLowerCase()) {
-          loser = actualPlayer1;
-        }
-        // If winner is zero address (double forfeit), loser stays zero address
-      }
+      // Get loser from match data
+      const loser = matchData.common.loser || zeroAddress;
 
       // Determine if match was completed by timeout
       // A match is timed out if it completed with an active timeout state
       const isTimedOut = matchStatus === 2 && timeoutState?.timeoutActive === true;
 
+      // Fetch last move from MoveMade events (persists after page refresh)
+      let lastMove = null;
+      try {
+        // Use solidityPackedKeccak256 to match Solidity's keccak256(abi.encodePacked(...))
+        const matchKey = ethers.solidityPackedKeccak256(
+          ['uint8', 'uint8', 'uint8', 'uint8'],
+          [tierId, instanceId, roundNumber, matchNumber]
+        );
+        const filter = contractInstance.filters.MoveMade(matchKey);
+        const events = await contractInstance.queryFilter(filter);
+        if (events.length > 0) {
+          // Filter events to only include those from current match instance
+          const matchStartTime = Number(matchData.common.startTime);
+          const eventsWithTimestamps = await Promise.all(
+            events.map(async (event) => {
+              const block = await event.getBlock();
+              return {
+                event,
+                timestamp: block.timestamp
+              };
+            })
+          );
+
+          // Only include events that occurred at or after the match started
+          const currentMatchEvents = eventsWithTimestamps
+            .filter(({ timestamp }) => timestamp >= matchStartTime)
+            .map(({ event }) => event);
+
+          if (currentMatchEvents.length > 0) {
+            const lastEvent = currentMatchEvents[currentMatchEvents.length - 1];
+            const movePlayer = lastEvent.args.player;
+            lastMove = {
+              from: Number(lastEvent.args.from),
+              to: Number(lastEvent.args.to),
+              player: movePlayer,
+              isMyMove: movePlayer?.toLowerCase() === userAccount?.toLowerCase()
+            };
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching MoveMade events:', err.message);
+      }
+
       return {
         ...matchInfo,
         player1: actualPlayer1,
         player2: actualPlayer2,
+        firstPlayer, // White player
         currentTurn,
         winner,
         loser,
@@ -1968,7 +2484,8 @@ export default function Chess() {
         player2TimeRemaining,
         lastMoveTimestamp: lastMoveTime, // Use lastMoveTime as timestamp
         matchTimePerPlayer: tierMatchTime, // Pass through per-tier value for UI components
-        timeoutConfig // Pass timeout config to UI components
+        timeoutConfig, // Pass timeout config to UI components
+        lastMove // Last move for highlighting (from events)
       };
     } catch (error) {
       console.error('Error refreshing match:', error);
@@ -2021,13 +2538,26 @@ export default function Chess() {
     } catch (error) {
       console.error('Error making chess move:', error);
 
-      // Show user-friendly error message
-      let errorMsg = 'Error making move';
-      if (error.message) {
-        errorMsg += ': ' + error.message;
-      }
-      alert(errorMsg);
+      // Parse error message for user-friendly display
+      let errorMsg = 'Invalid Move';
 
+      // Check for common contract revert patterns
+      const errorString = error.message || error.toString();
+
+      if (errorString.includes('user rejected') || errorString.includes('User denied')) {
+        errorMsg = 'Transaction cancelled';
+      } else if (errorString.includes('insufficient funds')) {
+        errorMsg = 'Insufficient funds for gas';
+      } else if (errorString.includes('Not your turn') || errorString.includes('not your turn')) {
+        errorMsg = 'Not your turn';
+      } else if (errorString.includes('Match not active') || errorString.includes('match not active')) {
+        errorMsg = 'Match is not active';
+      } else if (errorString.includes('execution reverted')) {
+        // Generic contract revert - likely an invalid move
+        errorMsg = 'Invalid Move - This move is not allowed by chess rules';
+      }
+
+      alert(errorMsg);
       setMatchLoading(false);
     }
   };
@@ -2072,7 +2602,12 @@ export default function Chess() {
       setMatchLoading(true);
       const { tierId, instanceId, roundNumber, matchNumber } = match;
 
-      const tx = await contract.forceEliminateStalledMatch(tierId, instanceId, roundNumber, matchNumber);
+      // Get ChessOnChain contract with signer
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const chessContract = new ethers.Contract(CONTRACT_ADDRESS, CHESS_ABI, signer);
+
+      const tx = await chessContract.forceEliminateStalledMatch(tierId, instanceId, roundNumber, matchNumber);
       await tx.wait();
 
       alert('Stalled match eliminated! Tournament can now continue.');
@@ -2111,7 +2646,12 @@ export default function Chess() {
       setMatchLoading(true);
       const { tierId, instanceId, roundNumber, matchNumber } = match;
 
-      const tx = await contract.claimMatchSlotByReplacement(tierId, instanceId, roundNumber, matchNumber);
+      // Get ChessOnChain contract with signer
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const chessContract = new ethers.Contract(CONTRACT_ADDRESS, CHESS_ABI, signer);
+
+      const tx = await chessContract.claimMatchSlotByReplacement(tierId, instanceId, roundNumber, matchNumber);
       await tx.wait();
 
       alert('Match slot claimed! You have replaced both players and advanced.');
@@ -2144,27 +2684,28 @@ export default function Chess() {
     try {
       setMatchLoading(true);
 
-      // Fetch tournament info to get playerCount and prizePool
+      // Fetch tournament info using getTournamentInfo() view function (matches TicTacChain pattern)
       const tournamentInfo = await contract.getTournamentInfo(tierId, instanceId);
-      const tierConfig = await contract.tierConfigs(tierId);
-      const playerCount = Number(tierConfig.playerCount);
-      const prizePool = tournamentInfo[4]; // prizePool is at index 4
+      // Get tier config from hardcoded data
+      const tierConfig = TIER_CONFIG[tierId];
+      const playerCount = tierConfig.playerCount;
+      const prizePool = tournamentInfo[3]; // prizePool at index 3 in getTournamentInfo
 
-      // Chess uses getChessMatch instead of getMatch
-      const matchData = await contract.getChessMatch(tierId, instanceId, roundNumber, matchNumber);
+      const matchData = await contract.getMatch(tierId, instanceId, roundNumber, matchNumber);
 
-      const player1 = matchData[0];
-      const player2 = matchData[1];
+      const player1 = matchData.common.player1;
+      const player2 = matchData.common.player2;
 
       const zeroAddress = '0x0000000000000000000000000000000000000000';
       let actualPlayer1 = player1;
       let actualPlayer2 = player2;
 
       if (player1.toLowerCase() === zeroAddress) {
-        const enrolledPlayers = await contract.getEnrolledPlayers(tierId, instanceId);
-        if (enrolledPlayers.length >= 2) {
-          actualPlayer1 = enrolledPlayers[0];
-          actualPlayer2 = enrolledPlayers[1];
+        // Get first two enrolled players
+        const enrolledCount = Number(tournamentInfo[2]); // enrolledCount at index 2 in getTournamentInfo
+        if (enrolledCount >= 2) {
+          actualPlayer1 = await contract.enrolledPlayers(tierId, instanceId, 0);
+          actualPlayer2 = await contract.enrolledPlayers(tierId, instanceId, 1);
         }
       }
 
@@ -2204,6 +2745,82 @@ export default function Chess() {
     }
   };
 
+  // Handle spectating a match (for non-participants)
+  const handleSpectateMatch = async (tierId, instanceId, roundNumber, matchNumber) => {
+    if (!contract) {
+      alert('Contract not loaded');
+      return;
+    }
+
+    try {
+      setMatchLoading(true);
+      setIsSpectator(true); // Mark as spectator mode
+
+      // Fetch tournament info using getTournamentInfo() view function
+      const tournamentInfo = await contract.getTournamentInfo(tierId, instanceId);
+      // Get tier config from hardcoded data
+      const tierConfig = TIER_CONFIG[tierId];
+      const playerCount = tierConfig.playerCount;
+      const prizePool = tournamentInfo[3]; // prizePool at index 3 in getTournamentInfo
+
+      const matchData = await contract.getMatch(tierId, instanceId, roundNumber, matchNumber);
+
+      const player1 = matchData.common.player1;
+      const player2 = matchData.common.player2;
+
+      const zeroAddress = '0x0000000000000000000000000000000000000000';
+      let actualPlayer1 = player1;
+      let actualPlayer2 = player2;
+
+      if (player1.toLowerCase() === zeroAddress) {
+        // Get first two enrolled players
+        const enrolledCount = Number(tournamentInfo[2]); // enrolledCount at index 2 in getTournamentInfo
+        if (enrolledCount >= 2) {
+          actualPlayer1 = await contract.enrolledPlayers(tierId, instanceId, 0);
+          actualPlayer2 = await contract.enrolledPlayers(tierId, instanceId, 1);
+        }
+      }
+
+      // Use a dummy account for refreshMatchData if user not connected
+      const viewerAccount = account || zeroAddress;
+
+      const updated = await refreshMatchData(contract, viewerAccount, {
+        tierId, instanceId, roundNumber, matchNumber,
+        player1: actualPlayer1,
+        player2: actualPlayer2,
+        playerCount, // Add tournament context
+        prizePool    // Add tournament context
+      }, matchTimePerPlayer);
+
+      if (updated) {
+        setCurrentMatch(updated);
+        // Initialize board ref for move detection
+        previousBoardRef.current = [...updated.board];
+        // Fetch move history from blockchain events
+        const history = await fetchMoveHistory(contract, tierId, instanceId, roundNumber, matchNumber);
+        setMoveHistory(history);
+
+        // Scroll to match view after rendering
+        setTimeout(() => {
+          if (matchViewRef.current) {
+            matchViewRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+          // Collapse activity panel after scrolling
+          if (collapseActivityPanelRef.current) {
+            collapseActivityPanelRef.current();
+          }
+        }, 100);
+      }
+
+      setMatchLoading(false);
+    } catch (error) {
+      console.error('Error loading match for spectating:', error);
+      alert(`Error loading match: ${error.message}`);
+      setMatchLoading(false);
+      setIsSpectator(false);
+    }
+  };
+
   // Close match view and refresh tournament bracket
   const closeMatch = async () => {
     const tournamentInfo = currentMatch ? {
@@ -2216,6 +2833,7 @@ export default function Chess() {
 
     setCurrentMatch(null);
     setMoveHistory([]);
+    setIsSpectator(false); // Reset spectator mode
     previousBoardRef.current = null;
 
     // Refresh tournament bracket and cached stats (with loading indicator)
@@ -2280,6 +2898,23 @@ export default function Chess() {
     }
   };
 
+  // Handle closing the tournament completion modal
+  const handleTournamentCompletionModalClose = async () => {
+    // Clear the modal state
+    setTournamentCompletionData(null);
+
+    // Refresh player activity to update terminated matches
+    if (playerActivity?.refetch) {
+      playerActivity.refetch();
+    }
+
+    // Refresh data
+    if (contract) {
+      await fetchLeaderboard(true);
+      await refreshAfterAction();
+    }
+  };
+
   // Go back from tournament bracket to tournaments list
   const handleBackToTournaments = async () => {
     setViewingTournament(null);
@@ -2337,6 +2972,327 @@ export default function Chess() {
     }
   }, []);
 
+  // Listen for TournamentCompleted events to notify players
+  useEffect(() => {
+    if (!contract || !account) return;
+
+    console.log('[TournamentCompleted] Setting up event listener for account:', account);
+
+    const handleTournamentCompleted = async (tierId, instanceId, winner, _prizeAmount, completionReason, enrolledPlayers, event) => {
+      console.log('[TournamentCompleted Event] ===== EVENT FIRED =====');
+      console.log('[TournamentCompleted Event] Tournament:', Number(tierId), 'Instance:', Number(instanceId));
+      console.log('[TournamentCompleted Event] Completion reason:', Number(completionReason));
+      console.log('[TournamentCompleted Event] Winner:', winner);
+
+      // Time-gate: Only process events that occurred after current match/tournament started
+      if (event && currentMatch) {
+        try {
+          const block = await event.getBlock();
+          const eventTimestamp = block.timestamp;
+          const matchStartTime = currentMatch.startTime;
+
+          console.log('[TournamentCompleted Event] Timestamp check:', {
+            eventTimestamp,
+            matchStartTime,
+            isValidEvent: eventTimestamp >= matchStartTime
+          });
+
+          if (eventTimestamp < matchStartTime) {
+            console.log('[TournamentCompleted Event] Event is older than current match start time, ignoring');
+            return;
+          }
+        } catch (err) {
+          console.error('[TournamentCompleted Event] Error checking timestamp:', err);
+          // Don't return here - if timestamp check fails, proceed with other validation
+        }
+      }
+
+      // 1. Check if player is the winner - if yes, DON'T show modal (they won!)
+      const playerIsWinner = winner.toLowerCase() === account.toLowerCase();
+      if (playerIsWinner) {
+        console.log('[TournamentCompleted Event] Player is the WINNER - no notification needed');
+        return;
+      }
+
+      // 2. Check if player was enrolled
+      const isEnrolled = enrolledPlayers.some(
+        addr => addr.toLowerCase() === account.toLowerCase()
+      );
+
+      if (!isEnrolled) {
+        console.log('[TournamentCompleted Event] Player not enrolled, ignoring');
+        return;
+      }
+
+      // 3. Check if player had an active tournament at time of completion
+      // (if not in playerActiveTournaments, they were already eliminated)
+      try {
+        const activeTournaments = await contract.getPlayerActiveTournaments(account);
+        const wasActive = activeTournaments.some(
+          ref => Number(ref.tierId) === Number(tierId) && Number(ref.instanceId) === Number(instanceId)
+        );
+
+        if (!wasActive) {
+          console.log('[TournamentCompleted Event] Player was already eliminated before tournament ended - no notification needed');
+          return;
+        }
+
+        console.log('[TournamentCompleted Event] ✓ Player had active match when tournament ended - SHOWING NOTIFICATION');
+
+        // Show modal - player was actively playing when tournament completed
+        setTournamentCompletionData({
+          tierId: Number(tierId),
+          instanceId: Number(instanceId),
+          winner,
+          completionReason: Number(completionReason)
+        });
+
+        // Clear current match view if in this tournament
+        if (currentMatch &&
+            currentMatch.tierId === Number(tierId) &&
+            currentMatch.instanceId === Number(instanceId)) {
+          console.log('[TournamentCompleted Event] Clearing current match view');
+          setCurrentMatch(null);
+          setMoveHistory([]);
+        }
+      } catch (error) {
+        console.error('[TournamentCompleted Event] Error checking playerActiveTournaments:', error);
+      }
+    };
+
+    // Register event listener
+    contract.on('TournamentCompleted', handleTournamentCompleted);
+    console.log('[TournamentCompleted] Event listener registered');
+
+    // Query recent events to catch any missed while page was loading
+    const checkRecentEvents = async () => {
+      try {
+        const filter = contract.filters.TournamentCompleted();
+        const events = await contract.queryFilter(filter, -50);
+        console.log('[TournamentCompleted] Found', events.length, 'recent events in last 50 blocks');
+
+        // Process only the most recent event per tournament
+        const processedTournaments = new Set();
+        events.reverse().forEach(event => {
+          const tournamentKey = `${event.args.tierId}-${event.args.instanceId}`;
+          if (!processedTournaments.has(tournamentKey)) {
+            processedTournaments.add(tournamentKey);
+            const { tierId, instanceId, winner, completionReason, enrolledPlayers } = event.args;
+            handleTournamentCompleted(tierId, instanceId, winner, 0n, completionReason, enrolledPlayers, event);
+          }
+        });
+      } catch (err) {
+        console.error('[TournamentCompleted] Error checking recent events:', err);
+      }
+    };
+
+    checkRecentEvents();
+
+    return () => {
+      console.log('[TournamentCompleted] Cleaning up event listener');
+      contract.off('TournamentCompleted', handleTournamentCompleted);
+    };
+  }, [contract, account, currentMatch]);
+
+  // Listen for MoveMade and MatchCompleted events for real-time match updates
+  useEffect(() => {
+    if (!contract || !currentMatch) return;
+
+    const { tierId, instanceId, roundNumber, matchNumber } = currentMatch;
+
+    // Generate matchId for event filtering
+    const matchId = ethers.solidityPackedKeccak256(
+      ['uint8', 'uint8', 'uint8', 'uint8'],
+      [tierId, instanceId, roundNumber, matchNumber]
+    );
+
+    // Handler for MoveMade events (Chess uses from/to params)
+    const handleMoveMade = async (eventMatchId, player, from, to, event) => {
+      console.log('[MoveMade Event] Received:', { eventMatchId, player, from, to });
+
+      // Only update if this event is for the current match
+      if (eventMatchId !== matchId) return;
+
+      // Time-gate: Only process events that occurred after match started
+      try {
+        const block = await event.getBlock();
+        const eventTimestamp = block.timestamp;
+        const matchStartTime = currentMatch.startTime;
+
+        console.log('[MoveMade Event] Timestamp check:', {
+          eventTimestamp,
+          matchStartTime,
+          isValidEvent: eventTimestamp >= matchStartTime
+        });
+
+        if (eventTimestamp < matchStartTime) {
+          console.log('[MoveMade Event] Event is older than match start time, ignoring');
+          return;
+        }
+      } catch (err) {
+        console.error('[MoveMade Event] Error checking timestamp:', err);
+        return;
+      }
+
+      // Update the board immediately - move piece from 'from' to 'to'
+      setCurrentMatch(prev => {
+        if (!prev) return prev;
+
+        const newBoard = [...prev.board];
+        const piece = newBoard[from];
+        newBoard[to] = piece;
+        newBoard[from] = 0;
+
+        // Toggle turn
+        const newTurn = player.toLowerCase() === prev.player1.toLowerCase() ? prev.player2 : prev.player1;
+
+        console.log('[MoveMade Event] Updating chess board:', { from, to, piece, newTurn });
+
+        return {
+          ...prev,
+          board: newBoard,
+          currentTurn: newTurn,
+          isYourTurn: account ? newTurn.toLowerCase() === account.toLowerCase() : false,
+          fullMoveNumber: prev.fullMoveNumber + (player.toLowerCase() === prev.player2.toLowerCase() ? 1 : 0)
+        };
+      });
+
+      // Refresh move history
+      try {
+        const history = await fetchMoveHistory(contract, tierId, instanceId, roundNumber, matchNumber);
+        setMoveHistory(history);
+      } catch (err) {
+        console.error('[MoveMade Event] Error refreshing move history:', err);
+      }
+    };
+
+    // Handler for MatchCompleted events
+    const handleMatchCompleted = async (eventMatchId, winner, isDraw, reason, event) => {
+      console.log('[MatchCompleted Event] Received:', { eventMatchId, winner, isDraw, reason });
+
+      // Only update if this event is for the current match
+      if (eventMatchId !== matchId) return;
+
+      // Time-gate: Only process events that occurred after match started
+      try {
+        const block = await event.getBlock();
+        const eventTimestamp = block.timestamp;
+        const matchStartTime = currentMatch.startTime;
+
+        console.log('[MatchCompleted Event] Timestamp check:', {
+          eventTimestamp,
+          matchStartTime,
+          isValidEvent: eventTimestamp >= matchStartTime
+        });
+
+        if (eventTimestamp < matchStartTime) {
+          console.log('[MatchCompleted Event] Event is older than match start time, ignoring');
+          return;
+        }
+      } catch (err) {
+        console.error('[MatchCompleted Event] Error checking timestamp:', err);
+        return;
+      }
+
+      // Store player info before updating state
+      const player1 = currentMatch.player1;
+      const player2 = currentMatch.player2;
+
+      // Update match status and preserve board state
+      setCurrentMatch(prev => {
+        if (!prev) return prev;
+
+        const loser = isDraw ? '0x0000000000000000000000000000000000000000' :
+                     (winner.toLowerCase() === prev.player1.toLowerCase() ? prev.player2 : prev.player1);
+
+        console.log('[MatchCompleted Event] Match completed:', {
+          winner,
+          isDraw,
+          loser,
+          reason,
+          boardPreserved: prev.board?.length || 0
+        });
+
+        // Preserve the board state from the last MoveMade event
+        return {
+          ...prev,
+          matchStatus: 2,
+          winner: isDraw ? '0x0000000000000000000000000000000000000000' : winner,
+          loser,
+          isDraw,
+          completionReason: Number(reason),
+          isYourTurn: false
+        };
+      });
+
+      // Show match end modal using event data (not stale currentMatch)
+      if (account) {
+        const isPlayer1 = player1.toLowerCase() === account.toLowerCase();
+        const isPlayer2 = player2.toLowerCase() === account.toLowerCase();
+        const isParticipant = isPlayer1 || isPlayer2;
+
+        if (isParticipant) {
+          const userWon = !isDraw && winner.toLowerCase() === account.toLowerCase();
+          const opponent = isPlayer1 ? player2 : player1;
+
+          // Get reason-specific text
+          const reasonNum = Number(reason);
+          const title = getCompletionReasonText(reasonNum, userWon, isDraw, 'chess');
+          const description = getCompletionReasonDescription(reasonNum, userWon, isDraw);
+
+          console.log('[MatchCompleted Event] Showing modal:', {
+            userWon,
+            isDraw,
+            opponent,
+            reason: reasonNum,
+            title,
+            description
+          });
+
+          // Determine result type for modal
+          let resultType = 'lose'; // default
+          if (isDraw) {
+            resultType = 'draw';
+          } else if (userWon) {
+            // Check if it's a timeout win
+            if (reasonNum === 1 || reasonNum === 2 || reasonNum === 3) { // Timeout reasons
+              resultType = 'forfeit_win';
+            } else {
+              resultType = 'win';
+            }
+          } else {
+            // User lost - check if it's a timeout loss
+            if (reasonNum === 1 || reasonNum === 2 || reasonNum === 3) { // Timeout reasons
+              resultType = 'forfeit_lose';
+            } else {
+              resultType = 'lose';
+            }
+          }
+
+          console.log('[MatchCompleted Event] Setting result type:', resultType);
+
+          setMatchEndResult(resultType);
+          setMatchEndWinner(winner);
+          setMatchEndLoser(isDraw ? '0x0000000000000000000000000000000000000000' :
+            (winner.toLowerCase() === player1.toLowerCase() ? player2 : player1));
+        }
+      }
+    };
+
+    // Register event listeners (listen to all, filter inside handlers)
+    contract.on('MoveMade', handleMoveMade);
+    contract.on('MatchCompleted', handleMatchCompleted);
+
+    console.log('[Chess Match Events] Listeners registered for matchId:', matchId);
+
+    // Cleanup
+    return () => {
+      console.log('[Chess Match Events] Cleaning up event listeners for matchId:', matchId);
+      contract.off('MoveMade', handleMoveMade);
+      contract.off('MatchCompleted', handleMatchCompleted);
+    };
+  }, [contract, currentMatch, account, fetchMoveHistory]);
+
   // Refresh tier data when account changes (initial load handled by initReadOnlyContract)
   useEffect(() => {
     // Skip initial mount - initReadOnlyContract handles that via loadContractData
@@ -2359,6 +3315,14 @@ export default function Chess() {
     const pollInterval = setInterval(fetchRaffleInfo, 10000);
     return () => clearInterval(pollInterval);
   }, [account, fetchRaffleInfo]);
+
+  // Poll elite matches every 30 seconds (runs globally when wallet connected)
+  useEffect(() => {
+    if (!account) return;
+    fetchEliteMatches();
+    const pollInterval = setInterval(fetchEliteMatches, 30000);
+    return () => clearInterval(pollInterval);
+  }, [account, fetchEliteMatches]);
 
   // Poll leaderboard every 1 minute (runs globally)
   useEffect(() => {
@@ -2445,6 +3409,7 @@ export default function Chess() {
     accountRefForMatch.current = account;
   }, [currentMatch, contract, account]);
 
+  // Polling for turn tracking and time remaining - events handle moves/completion
   useEffect(() => {
     if (!currentMatch || !contract || !account) return;
 
@@ -2455,6 +3420,11 @@ export default function Chess() {
 
       if (!match || !contractInstance || !userAccount) return;
 
+      // Skip polling if match is completed - events have set final state
+      if (match.matchStatus === 2) {
+        return;
+      }
+
       try {
         const updatedMatch = await refreshMatchData(
           contractInstance,
@@ -2462,64 +3432,47 @@ export default function Chess() {
           match,
           matchTimePerPlayer
         );
+
         if (updatedMatch) {
-          // Use standardized match completion handler
-          const matchResult = determineMatchResult({
-            updatedMatch,
-            previousMatch: match,
-            userAccount,
-            gameType: 'chess'
-          });
-
-          if (matchResult) {
-            // Match just completed - set result state for modal
-            setMatchEndResult(matchResult.type);
-            setMatchEndWinnerLabel(matchResult.winnerLabel);
-            setMatchEndWinner(matchResult.winnerAddress);
-            setMatchEndLoser(matchResult.loserAddress);
-
-            // Update match to show final state, modal will handle the rest
-            setCurrentMatch(updatedMatch);
+          // If match just completed, let events handle it
+          if (updatedMatch.matchStatus === 2) {
             return;
           }
 
-          // Detect new moves by comparing board states
-          const prevBoard = previousBoardRef.current;
-          let moveDetected = false;
-          if (prevBoard && updatedMatch.board) {
-            for (let i = 0; i < updatedMatch.board.length; i++) {
-              if (prevBoard[i] === 0 && updatedMatch.board[i] !== 0) {
-                moveDetected = true;
-                break;
-              }
+          // Update for in-progress matches only - only update turn and timer fields
+          setCurrentMatch(prev => {
+            if (!prev) return updatedMatch;
+
+            // Preserve completed state set by events
+            if (prev.matchStatus === 2) {
+              return prev;
             }
-          }
 
-          // If a new move was detected, refresh history from blockchain
-          if (moveDetected) {
-            const history = await fetchMoveHistory(contractInstance, match.tierId, match.instanceId, match.roundNumber, match.matchNumber);
-            setMoveHistory(history);
-          }
-
-          // Update board ref for next comparison
-          previousBoardRef.current = [...updatedMatch.board];
-
-          // Normal match update (game still in progress)
-          setCurrentMatch(updatedMatch);
+            // Only update turn and timer fields, preserve board and game state from events
+            return {
+              ...prev,
+              currentTurn: updatedMatch.currentTurn,
+              isYourTurn: updatedMatch.isYourTurn,
+              player1TimeRemaining: updatedMatch.player1TimeRemaining,
+              player2TimeRemaining: updatedMatch.player2TimeRemaining,
+              lastMoveTime: updatedMatch.lastMoveTime,
+              lastMoveTimestamp: updatedMatch.lastMoveTimestamp,
+              // Board, matchStatus, winner, loser, isDraw are preserved from prev (event-driven)
+            };
+          });
         }
       } catch (error) {
-        console.error('Error syncing match:', error);
+        console.error('[Chess Polling] Error syncing match:', error);
       }
 
-      // Reset sync dots to 1 after sync completes
       setSyncDots(1);
     };
 
-    // Set up polling interval - runs every 2 seconds for responsive timers
+    // Poll every 2 seconds for turn/timer updates
     const matchPollInterval = setInterval(doMatchSync, 2000);
 
     return () => clearInterval(matchPollInterval);
-  }, [currentMatch?.tierId, currentMatch?.instanceId, currentMatch?.roundNumber, currentMatch?.matchNumber, account, refreshMatchData, fetchMoveHistory]);
+  }, [currentMatch?.tierId, currentMatch?.instanceId, currentMatch?.roundNumber, currentMatch?.matchNumber, account, refreshMatchData, fetchMoveHistory, matchTimePerPlayer]);
 
   // Increment match sync dots every second (1 -> 2 -> 3, resets on sync)
   useEffect(() => {
@@ -2581,20 +3534,46 @@ export default function Chess() {
       overflow: 'hidden',
       transition: 'background 0.8s ease-in-out'
     }}>
+      {/* Animation keyframes */}
+      <style>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+        @keyframes fadeInSlideUp {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
+
       {/* Particle Background */}
       <ParticleBackground colors={currentTheme.particleColors} symbols={CHESS_PIECES} fontSize="40px" />
 
       {/* Tournament Invitation Banner - shown when URL params present but not connected */}
       {urlTournamentParams && !account && (
         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 max-w-2xl mx-4 w-full">
-          <div className="bg-gradient-to-r from-purple-600/90 to-blue-600/90 backdrop-blur-lg rounded-xl p-4 border border-purple-400/50 shadow-2xl">
+          <div className={`bg-gradient-to-r backdrop-blur-lg rounded-xl p-4 border shadow-2xl ${
+            isEnrolledInElite
+              ? 'from-[#fbbf24]/90 to-[#f59e0b]/90 border-[#d4a012]/50'
+              : 'from-purple-600/90 to-blue-600/90 border-purple-400/50'
+          }`}>
             <div className="flex items-start gap-3">
-              <Trophy className="text-yellow-400 shrink-0 mt-1" size={24} />
+              <Trophy className={isEnrolledInElite ? 'text-[#fff8e7]' : 'text-yellow-400'} size={24} />
               <div className="flex-1 min-w-0">
-                <p className="text-white font-semibold mb-1">
+                <p className={`font-semibold mb-1 ${isEnrolledInElite ? 'text-[#fff8e7]' : 'text-white'}`}>
                   Tournament Invitation
                 </p>
-                <p className="text-purple-100 text-sm mb-3">
+                <p className={`text-sm mb-3 ${isEnrolledInElite ? 'text-[#f5e6c8]' : 'text-purple-100'}`}>
                   You've been invited to Tournament T{urlTournamentParams.tierId + 1}-I{urlTournamentParams.instanceId + 1}.
                   Connect your wallet to view and join!
                 </p>
@@ -2624,9 +3603,10 @@ export default function Chess() {
           onRefresh={playerActivity.refetch}
           onDismissMatch={playerActivity.dismissMatch}
           gameName="chess"
-          gameEmoji="♔"
+          gameEmoji="♚"
           onHeightChange={setPlayerActivityHeight}
           onCollapse={(collapseFn) => { collapseActivityPanelRef.current = collapseFn; }}
+          isElite={isEnrolledInElite}
         />
       )}
 
@@ -2638,12 +3618,26 @@ export default function Chess() {
           onRefresh={fetchRaffleInfo}
           onTriggerRaffle={executeRaffle}
           syncing={raffleSyncing}
+          onHeightChange={setRaffleCardHeight}
+        />
+      )}
+
+      {/* Elite Matches Card - Below Community Raffle Card */}
+      {account && (
+        <EliteMatchesCard
+          eliteMatches={eliteMatches}
+          playerActivityHeight={playerActivityHeight}
+          raffleCardHeight={raffleCardHeight}
+          onRefresh={fetchEliteMatches}
+          syncing={eliteMatchesSyncing}
+          account={account}
+          onViewMatch={handleViewArchivedMatch}
         />
       )}
 
       {/* Trust Banner */}
       <div style={{
-        background: 'rgba(0, 100, 200, 0.2)',
+        background: isEnrolledInElite ? 'rgba(251, 191, 36, 0.15)' : 'rgba(0, 100, 200, 0.2)',
         borderBottom: `1px solid ${currentTheme.border}`,
         backdropFilter: 'blur(10px)',
         position: 'relative',
@@ -2653,20 +3647,20 @@ export default function Chess() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-4 text-xs md:text-sm">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 md:gap-6 justify-center md:justify-start">
               <div className="flex items-center gap-2">
-                <Shield className="text-blue-400" size={16} />
-                <span className="text-blue-100 font-medium">100% On-Chain</span>
+                <Shield className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-blue-400'} size={16} />
+                <span className={`font-medium ${isEnrolledInElite ? 'text-[#fff8e7]' : 'text-blue-100'}`}>100% On-Chain</span>
               </div>
               <div className="flex items-center gap-2">
-                <Lock className="text-blue-400" size={16} />
-                <span className="text-blue-100 font-medium">Immutable Rules</span>
+                <Lock className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-blue-400'} size={16} />
+                <span className={`font-medium ${isEnrolledInElite ? 'text-[#fff8e7]' : 'text-blue-100'}`}>Immutable Rules</span>
               </div>
               <div className="flex items-center gap-2">
-                <Eye className="text-blue-400" size={16} />
-                <span className="text-blue-100 font-medium">Every Move Verifiable</span>
+                <Eye className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-blue-400'} size={16} />
+                <span className={`font-medium ${isEnrolledInElite ? 'text-[#fff8e7]' : 'text-blue-100'}`}>Every Move Verifiable</span>
               </div>
               <div className="flex items-center gap-2">
-                <CheckCircle className="text-blue-400" size={16} />
-                <span className="text-blue-100 font-medium">Zero Trackers</span>
+                <CheckCircle className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-blue-400'} size={16} />
+                <span className={`font-medium ${isEnrolledInElite ? 'text-[#fff8e7]' : 'text-blue-100'}`}>Zero Trackers</span>
               </div>
             </div>
             {EXPLORER_URL && (
@@ -2674,7 +3668,11 @@ export default function Chess() {
                 href={EXPLORER_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 text-blue-300 hover:text-blue-200 transition-colors justify-center md:justify-end"
+                className={`flex items-center gap-2 transition-colors justify-center md:justify-end ${
+                  isEnrolledInElite
+                    ? 'text-[#d4b866] hover:text-[#fbbf24]'
+                    : 'text-blue-300 hover:text-blue-200'
+                }`}
               >
                 <Code size={16} />
                 <span className="font-mono text-xs">{shortenAddress(CONTRACT_ADDRESS)}</span>
@@ -2691,7 +3689,7 @@ export default function Chess() {
           <div className="inline-block mb-6">
             <div className="relative">
               <div className={`absolute -inset-4 bg-gradient-to-r ${currentTheme.heroGlow} rounded-full blur-xl opacity-50 animate-pulse`}></div>
-              <span className="relative text-8xl">♔</span>
+              <span className="relative text-8xl">♚</span>
             </div>
           </div>
 
@@ -2711,18 +3709,26 @@ export default function Chess() {
 
           {/* Game Info Cards */}
           <div className="grid md:grid-cols-3 gap-4 max-w-4xl mx-auto mb-8">
-            <div className="bg-gradient-to-br from-yellow-500/20 to-amber-500/20 border border-yellow-400/30 rounded-xl p-4">
+            <div className={`bg-gradient-to-br rounded-xl p-4 border ${
+              isEnrolledInElite
+                ? 'from-[#fbbf24]/20 to-[#f59e0b]/20 border-[#d4a012]/30'
+                : 'from-yellow-500/20 to-amber-500/20 border-yellow-400/30'
+            }`}>
               <div className="flex items-center gap-2 mb-2">
-                <Clock className="text-yellow-400" size={20} />
-                <span className="font-bold text-yellow-300">{Math.floor(displayTimeoutConfig.matchTimePerPlayer / 60)} {Math.floor(displayTimeoutConfig.matchTimePerPlayer / 60) === 1 ? 'minute' : 'minutes'} per match</span>
+                <Clock className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-yellow-400'} size={20} />
+                <span className={`font-bold ${isEnrolledInElite ? 'text-[#fff8e7]' : 'text-yellow-300'}`}>10 minutes per match</span>
               </div>
-              <p className="text-sm text-yellow-200">
-                Each player gets {Math.floor(displayTimeoutConfig.matchTimePerPlayer / 60)} {Math.floor(displayTimeoutConfig.matchTimePerPlayer / 60) === 1 ? 'minute' : 'minutes'} total for all their moves in the match.
+              <p className={`text-sm ${isEnrolledInElite ? 'text-[#f5e6c8]' : 'text-yellow-200'}`}>
+                Each player gets 10 minutes total for all their moves in the match.
               </p>
             </div>
-            <div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-xl p-4">
+            <div className={`bg-gradient-to-br rounded-xl p-4 border ${
+              isEnrolledInElite
+                ? `${currentTheme.successBg} ${currentTheme.successBorder}`
+                : 'from-green-500/20 to-emerald-500/20 border-green-400/30'
+            }`}>
               <div className="flex items-center gap-2 mb-2">
-                <svg width="20" height="20" viewBox="0 0 256 417" xmlns="http://www.w3.org/2000/svg" className="text-green-400" fill="currentColor">
+                <svg width="20" height="20" viewBox="0 0 256 417" xmlns="http://www.w3.org/2000/svg" className={isEnrolledInElite ? currentTheme.successText : 'text-green-400'} fill="currentColor">
                   <path d="M127.961 0l-2.795 9.5v275.668l2.795 2.79 127.962-75.638z" fillOpacity="0.6"/>
                   <path d="M127.962 0L0 212.32l127.962 75.639V154.158z"/>
                   <path d="M127.961 312.187l-1.575 1.92v98.199l1.575 4.6L256 236.587z" fillOpacity="0.6"/>
@@ -2730,25 +3736,33 @@ export default function Chess() {
                   <path d="M127.961 287.958l127.96-75.637-127.96-58.162z" fillOpacity="0.2"/>
                   <path d="M0 212.32l127.96 75.638v-133.8z" fillOpacity="0.6"/>
                 </svg>
-                <span className="font-bold text-green-300">Instant ETH Payouts</span>
+                <span className={`font-bold ${isEnrolledInElite ? 'text-[#fff8e7]' : 'text-green-300'}`}>Instant ETH Payouts</span>
               </div>
-              <p className="text-sm text-green-200">
+              <p className={`text-sm ${isEnrolledInElite ? 'text-[#f5e6c8]' : 'text-green-200'}`}>
                 Winners paid automatically on-chain. No delays, no middlemen.
               </p>
             </div>
-            <div className="relative bg-gradient-to-br from-purple-500/20 to-violet-500/20 border border-purple-400/30 rounded-xl p-4">
+            <div className={`relative bg-gradient-to-br rounded-xl p-4 border ${
+              isEnrolledInElite
+                ? 'from-[#fbbf24]/20 to-[#f59e0b]/20 border-[#d4a012]/30'
+                : 'from-purple-500/20 to-violet-500/20 border-purple-400/30'
+            }`}>
               <div className="flex items-center gap-2 mb-2">
-                <Shield className="text-purple-400" size={20} />
-                <span className="font-bold text-purple-300">Impossible to grief</span>
+                <Shield className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-purple-400'} size={20} />
+                <span className={`font-bold ${isEnrolledInElite ? 'text-[#fff8e7]' : 'text-purple-300'}`}>Impossible to grief</span>
               </div>
               <a
                 href="#user-manual"
-                className="absolute top-3 right-3 text-purple-400 hover:text-purple-300 transition-colors"
+                className={`absolute top-3 right-3 transition-colors ${
+                  isEnrolledInElite
+                    ? 'text-[#d4b866] hover:text-[#fbbf24]'
+                    : 'text-purple-400 hover:text-purple-300'
+                }`}
                 title="Learn more about anti-griefing"
               >
                 <HelpCircle size={16} />
               </a>
-              <p className="text-sm text-purple-200">
+              <p className={`text-sm ${isEnrolledInElite ? 'text-[#f5e6c8]' : 'text-purple-200'}`}>
                 Anti-stalling mechanisms ensure every match completes. No admin required.
               </p>
             </div>
@@ -2766,9 +3780,17 @@ export default function Chess() {
               {loading ? 'Connecting...' : 'Connect Wallet to Enter'}
             </button>
           ) : (
-            <div className="inline-flex items-center gap-4 bg-green-500/20 border border-green-400/50 px-8 py-4 rounded-2xl">
-              <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-              <span className="font-mono text-lg">{shortenAddress(account)}</span>
+            <div className={`inline-flex items-center gap-4 px-8 py-4 rounded-2xl ${
+              isEnrolledInElite
+                ? `${currentTheme.successBg} ${currentTheme.successBorder} border`
+                : 'bg-green-500/20 border border-green-400/50'
+            }`}>
+              <div className={`w-3 h-3 rounded-full animate-pulse ${
+                isEnrolledInElite ? 'bg-[#22c55e]' : 'bg-green-400'
+              }`}></div>
+              <span className={`font-mono text-lg ${isEnrolledInElite ? 'text-[#fff8e7]' : 'text-white'}`}>
+                {shortenAddress(account)}
+              </span>
             </div>
           )}
 
@@ -2776,8 +3798,116 @@ export default function Chess() {
           <WhyArbitrum variant="blue" />
         </div>
 
-        {/* Match View - Shows when player enters a match */}
-        {account && contract && currentMatch && (
+        {/* Archived Match View - Shows when viewing an elite match from history */}
+        {viewingArchivedMatch && (
+          <div className="mb-16">
+            <button
+              onClick={handleBackFromArchived}
+              className="mb-6 flex items-center gap-2 px-4 py-2 bg-slate-800/60 backdrop-blur-lg text-cyan-300 rounded-lg hover:bg-slate-700/60 transition-all border border-cyan-500/30"
+            >
+              <ArrowLeft size={20} />
+              Back to Matches
+            </button>
+
+            <div className="bg-amber-500/10 border border-amber-400/30 rounded-xl p-4 mb-6 text-center">
+              <h2 className="text-2xl font-bold text-amber-300 mb-2">
+                Viewing Archived Elite Match
+              </h2>
+              <p className="text-amber-200 text-sm">
+                This match has been completed and archived. Complete move history is stored on-chain.
+              </p>
+            </div>
+
+            {/* Custom 3-column layout for archived matches: Players | Board | History */}
+            <div className="grid grid-cols-1 xl:grid-cols-[20%_60%_20%] gap-4 items-start">
+              {/* Left Column - Both Player Panels */}
+              <div className="space-y-4">
+                <PlayerPanel
+                  playerAddress={viewingArchivedMatch.player1}
+                  currentAccount={null}
+                  isCurrentTurn={false}
+                  isGameOver={true}
+                  icon="♚"
+                  label="White"
+                  colorScheme="white"
+                  variant="full"
+                />
+                <PlayerPanel
+                  playerAddress={viewingArchivedMatch.player2}
+                  currentAccount={null}
+                  isCurrentTurn={false}
+                  isGameOver={true}
+                  icon="♔"
+                  label="Black"
+                  colorScheme="black"
+                  variant="full"
+                />
+              </div>
+
+              {/* Center Column - Larger Chess Board */}
+              <div className="flex flex-col items-center w-full">
+                <ChessBoard
+                  board={viewingArchivedMatch.board}
+                  onMove={null}
+                  currentTurn={viewingArchivedMatch.currentTurn}
+                  account={null}
+                  player1={viewingArchivedMatch.player1}
+                  player2={viewingArchivedMatch.player2}
+                  firstPlayer={viewingArchivedMatch.firstPlayer}
+                  matchStatus={viewingArchivedMatch.matchStatus}
+                  loading={false}
+                  whiteInCheck={false}
+                  blackInCheck={false}
+                  lastMoveTime={viewingArchivedMatch.lastMoveTime}
+                  startTime={viewingArchivedMatch.startTime}
+                  lastMove={null}
+                  player1TimeRemaining={viewingArchivedMatch.player1TimeRemaining}
+                  player2TimeRemaining={viewingArchivedMatch.player2TimeRemaining}
+                  lastMoveTimestamp={viewingArchivedMatch.lastMoveTime}
+                  matchTimePerPlayer={matchTimePerPlayer}
+                  maxSize={750}
+                />
+              </div>
+
+              {/* Right Column - Move History */}
+              <div className="bg-slate-900/50 rounded-xl p-6 border border-purple-500/30 h-full">
+                <h3 className="text-xl font-bold text-purple-300 mb-4 flex items-center gap-2">
+                  <History size={20} />
+                  Move History
+                </h3>
+                {moveHistoryLoading ? (
+                  <div className="text-center py-8 text-purple-300/60">
+                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-purple-400 mb-2"></div>
+                    <p className="text-sm">Loading move history...</p>
+                    <p className="text-xs mt-2 text-purple-400/40">
+                      Fetching moves from blockchain
+                    </p>
+                  </div>
+                ) : moveHistory.length > 0 ? (
+                  <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-slate-800/50 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-purple-500/60 [&::-webkit-scrollbar-thumb]:to-pink-500/60 [&::-webkit-scrollbar-thumb]:rounded-full">
+                    {moveHistory.map((move, idx) => (
+                      <div key={idx} className="flex items-center gap-3 text-sm bg-purple-500/10 p-3 rounded-lg hover:bg-purple-500/20 transition-colors">
+                        <span className="text-purple-300 font-semibold min-w-[2rem]">#{idx + 1}</span>
+                        <span className="text-white font-bold text-lg">{move.player}</span>
+                        <span className="text-purple-200 font-mono">{move.move}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-purple-300/60">
+                    <p className="text-sm">No move history available</p>
+                    <p className="text-xs mt-2 text-purple-400/40">
+                      No moves recorded for this match
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Match View - Shows when player enters a match or spectates */}
+        {contract && currentMatch && !viewingArchivedMatch && (
           <div ref={matchViewRef}>
             <GameMatchLayout
             gameType="chess"
@@ -2786,16 +3916,18 @@ export default function Chess() {
             loading={matchLoading}
             syncDots={syncDots}
             onClose={closeMatch}
-            onClaimTimeoutWin={handleClaimTimeoutWin}
-            onForceEliminate={handleForceEliminateStalledMatch}
-            onClaimReplacement={handleClaimMatchSlotByReplacement}
+            onClaimTimeoutWin={isSpectator ? null : handleClaimTimeoutWin}
+            onForceEliminate={isSpectator ? null : handleForceEliminateStalledMatch}
+            onClaimReplacement={isSpectator ? null : handleClaimMatchSlotByReplacement}
             tournamentRounds={viewingTournament?.rounds || null}
             currentRoundNumber={currentMatch.roundNumber}
+            playerCount={viewingTournament?.playerCount || null}
             playerConfig={{
-              player1: { icon: '♔', label: 'White' },
-              player2: { icon: '♚', label: 'Black' }
+              player1: { icon: '♚', label: 'White' },
+              player2: { icon: '♔', label: 'Black' }
             }}
-            layout="sidebar"
+            layout="players-board-history"
+            isSpectator={isSpectator}
             renderPlayer1Extra={currentMatch.whiteInCheck ? () => (
               <div className="bg-red-500/20 border border-red-400 rounded-lg p-2 text-center mt-2">
                 <span className="text-red-300 text-xs font-bold">⚠️ CHECK</span>
@@ -2807,31 +3939,32 @@ export default function Chess() {
               </div>
             ) : undefined}
             renderMoveHistory={moveHistory.length > 0 ? () => (
-              <div className="bg-slate-900/50 rounded-xl p-6 border border-purple-500/30">
+              <>
                 <h3 className="text-xl font-bold text-purple-300 mb-4 flex items-center gap-2">
                   <History size={20} />
                   Move History
                 </h3>
-                <div className="space-y-2 max-h-48 overflow-y-auto">
+                <div className="space-y-2">
                   {moveHistory.map((move, idx) => (
-                    <div key={idx} className="flex items-center gap-3 text-sm bg-purple-500/10 p-2 rounded">
-                      <span className="text-purple-300">Move {idx + 1}:</span>
-                      <span className="text-white font-bold">{move.player}</span>
-                      <span className="text-purple-400">→ Cell {move.cell}</span>
+                    <div key={idx} className="flex items-center gap-3 text-sm bg-purple-500/10 p-3 rounded-lg hover:bg-purple-500/20 transition-colors">
+                      <span className="text-purple-300 font-semibold min-w-[2rem]">#{idx + 1}</span>
+                      <span className="text-white font-bold text-lg">{move.player}</span>
+                      <span className="text-purple-200 font-mono">{move.move}</span>
                     </div>
                   ))}
                 </div>
-              </div>
+              </>
             ) : undefined}
           >
             {/* Chess Board Component */}
             <ChessBoard
               board={currentMatch.board}
-              onMove={handleMakeMove}
+              onMove={isSpectator ? null : handleMakeMove}
               currentTurn={currentMatch.currentTurn}
-              account={account}
+              account={isSpectator ? null : account}
               player1={currentMatch.player1}
               player2={currentMatch.player2}
+              firstPlayer={currentMatch.firstPlayer}
               matchStatus={currentMatch.matchStatus}
               loading={matchLoading}
               whiteInCheck={currentMatch.whiteInCheck}
@@ -2843,13 +3976,14 @@ export default function Chess() {
               player2TimeRemaining={currentMatch.player2TimeRemaining}
               lastMoveTimestamp={currentMatch.lastMoveTimestamp}
               matchTimePerPlayer={matchTimePerPlayer}
+              maxSize={750}
             />
           </GameMatchLayout>
           </div>
         )}
 
         {/* Tournaments Section */}
-        {contract && !currentMatch && (
+        {contract && !currentMatch && !viewingArchivedMatch && (
           <>
             {viewingTournament ? (
               <div ref={tournamentBracketRef}>
@@ -2857,6 +3991,7 @@ export default function Chess() {
                   tournamentData={viewingTournament}
                   onBack={handleBackToTournaments}
                   onEnterMatch={handlePlayMatch}
+                  onSpectateMatch={handleSpectateMatch}
                   onForceEliminate={handleForceEliminateStalledMatch}
                   onClaimReplacement={handleClaimMatchSlotByReplacement}
                   onManualStart={handleManualStart}
@@ -2867,9 +4002,10 @@ export default function Chess() {
                   loading={tournamentsLoading}
                   syncDots={bracketSyncDots}
                   isEnrolled={viewingTournament?.enrolledPlayers?.some(addr => addr.toLowerCase() === account?.toLowerCase())}
-                  entryFee={viewingTournament?.entryFee ? ethers.formatEther(viewingTournament.entryFee) : '0'}
+                  entryFee={viewingTournament?.entryFee || '0'}
                   isFull={viewingTournament?.enrolledCount >= viewingTournament?.playerCount}
                   contract={contract}
+                  isEnrolledInElite={isEnrolledInElite}
                 />
               </div>
             ) : (
@@ -2885,8 +4021,19 @@ export default function Chess() {
                       </h2>
                     </div>
                   </div>
-                  <p className="text-xl text-blue-200">
-                    Compete in on-chain with real ETH stakes
+                  <p className="text-xl text-blue-200 items-center gap-2">
+                    Classic chess with real ETH stakes&nbsp;&nbsp;&nbsp;
+                    <a
+                      href="#chess-specifics"
+                      className={`inline-flex items-center justify-center w-10 h-10 rounded-full border transition-all hover:scale-110 ${
+                        isEnrolledInElite
+                          ? 'border-[#d4a012]/50 text-[#fbbf24] hover:bg-[#fbbf24]/20'
+                          : 'border-purple-400/50 text-purple-400 hover:bg-purple-400/20'
+                      }`}
+                      title="Learn about Chess rules and Elite tier"
+                    >
+                      <HelpCircle size={12} />
+                    </a>
                   </p>
                 </div>
 
@@ -2894,16 +4041,103 @@ export default function Chess() {
                 {metadataLoading && (
                   <div className="text-center py-12">
                     <div className="inline-block">
-                      <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
-                      <p className="text-purple-300">Loading tournaments...</p>
+                      <div className={`w-16 h-16 border-4 rounded-full animate-spin mx-auto mb-4 ${
+                        isEnrolledInElite
+                          ? 'border-[#f59e0b]/30 border-t-[#fbbf24]'
+                          : 'border-purple-500/30 border-t-purple-500'
+                      }`}></div>
+                      <p className={isEnrolledInElite ? 'text-[#d4b866]' : 'text-purple-300'}>Loading tournaments...</p>
                     </div>
                   </div>
                 )}
 
+                {/* Mode Selection: Duels vs Tournaments */}
+                {!metadataLoading && Object.keys(tierMetadata).length > 0 && !selectedMode && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto mb-12 animate-[fadeIn_0.5s_ease-out]">
+                    {/* Duels Card */}
+                    <button
+                      onClick={() => setSelectedMode('duels')}
+                      className={`backdrop-blur-lg rounded-2xl p-8 border-2 transition-all hover:shadow-xl cursor-pointer text-left group ${
+                        isEnrolledInElite
+                          ? 'bg-gradient-to-br from-amber-600/20 to-yellow-600/20 border-amber-400/40 hover:border-amber-400/70 hover:shadow-amber-500/20'
+                          : 'bg-gradient-to-br from-purple-600/20 to-blue-600/20 border-purple-400/40 hover:border-purple-400/70 hover:shadow-purple-500/20'
+                      }`}
+                    >
+                      <div className="flex flex-col items-center text-center space-y-4">
+                        <div className="text-6xl mb-2 group-hover:scale-110 transition-transform flex items-center gap-3">
+                          <span>♚</span>
+                          <span className={`text-2xl ${isEnrolledInElite ? 'text-amber-400/60' : 'text-purple-400/60'}`}>vs</span>
+                          <span>♔</span>
+                        </div>
+                        <h2 className={`text-3xl font-bold transition-colors ${
+                          isEnrolledInElite
+                            ? 'text-amber-300 group-hover:text-amber-200'
+                            : 'text-purple-300 group-hover:text-purple-200'
+                        }`}>
+                          1v1 Duels
+                        </h2>
+                        <p className={`text-sm leading-relaxed ${isEnrolledInElite ? 'text-amber-300/80' : 'text-purple-300/80'}`}>
+                          Compete 1v1 against strangers or invite friends to challenge them.
+                          Stakes range from 0.01 ETH for Casual duels to 0.1 ETH for Elite showdowns.
+                        </p>
+                        <div className={`flex items-center gap-2 text-xs ${isEnrolledInElite ? 'text-amber-400' : 'text-purple-400'}`}>
+                          <span className={`px-3 py-1 rounded-full ${isEnrolledInElite ? 'bg-amber-500/20' : 'bg-purple-500/20'}`}>2 Players</span>
+                          <span className={`px-3 py-1 rounded-full ${isEnrolledInElite ? 'bg-amber-500/20' : 'bg-purple-500/20'}`}>Quick Matches</span>
+                        </div>
+                      </div>
+                    </button>
+
+                    {/* Tournaments Card */}
+                    <button
+                      onClick={() => setSelectedMode('tournaments')}
+                      className={`backdrop-blur-lg rounded-2xl p-8 border-2 transition-all hover:shadow-xl cursor-pointer text-left group ${
+                        isEnrolledInElite
+                          ? 'bg-gradient-to-br from-amber-600/20 to-yellow-600/20 border-amber-400/40 hover:border-amber-400/70 hover:shadow-amber-500/20'
+                          : 'bg-gradient-to-br from-purple-600/20 to-blue-600/20 border-purple-400/40 hover:border-purple-400/70 hover:shadow-purple-500/20'
+                      }`}
+                    >
+                      <div className="flex flex-col items-center text-center space-y-4">
+                        <div className="text-6xl mb-2 group-hover:scale-110 transition-transform">
+                          🏆
+                        </div>
+                        <h2 className={`text-3xl font-bold transition-colors ${
+                          isEnrolledInElite
+                            ? 'text-amber-300 group-hover:text-amber-200'
+                            : 'text-purple-300 group-hover:text-purple-200'
+                        }`}>
+                          Tournaments
+                        </h2>
+                        <p className={`text-sm leading-relaxed ${isEnrolledInElite ? 'text-amber-300/80' : 'text-purple-300/80'}`}>
+                          Battle through brackets to claim victory. Compete against 4 players in elimination-style tournaments.
+                          Entry fees range from 0.015 ETH to 0.15 ETH.
+                        </p>
+                        <div className={`flex items-center gap-2 text-xs ${isEnrolledInElite ? 'text-amber-400' : 'text-purple-400'}`}>
+                          <span className={`px-3 py-1 rounded-full ${isEnrolledInElite ? 'bg-amber-500/20' : 'bg-purple-500/20'}`}>4 Players</span>
+                          <span className={`px-3 py-1 rounded-full ${isEnrolledInElite ? 'bg-amber-500/20' : 'bg-purple-500/20'}`}>Bracket Style</span>
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                )}
+
                 {/* Tournament Cards Grid - Grouped by Tier (Lazy Loading) */}
-                {!metadataLoading && Object.keys(tierMetadata).length > 0 && (
-                  <>
-                    {[0, 6, 1, 2, 3, 4, 5].map((tierId) => {
+                {!metadataLoading && Object.keys(tierMetadata).length > 0 && selectedMode && (
+                  <div className="animate-[fadeInSlideUp_0.6s_ease-out]">
+                    {/* Back to Mode Selection */}
+                    <div className="mb-6 animate-[fadeIn_0.8s_ease-out]">
+                      <button
+                        onClick={() => setSelectedMode(null)}
+                        className={`flex items-center gap-2 transition-all hover:translate-x-[-4px] ${
+                          isEnrolledInElite
+                            ? 'text-amber-400 hover:text-amber-300'
+                            : 'text-purple-400 hover:text-purple-300'
+                        }`}
+                      >
+                        <span>←</span> Back to mode selection
+                      </button>
+                    </div>
+
+                    {(selectedMode === 'duels' ? [0, 1, 2, 3] : [4, 5, 6, 7]).map((tierId, index) => {
                       const metadata = tierMetadata[tierId];
                       if (!metadata) return null;
 
@@ -2916,31 +4150,58 @@ export default function Chess() {
                       // Calculate prize pool per tournament
                       const totalPrizePool = (parseFloat(metadata.entryFee) * metadata.playerCount * 0.9).toFixed(4);
 
-                      // Calculate currently active players (enrolling + in progress)
-                      const activePlayersCount = metadata.enrolledCounts.reduce((sum, enrolledCount, index) => {
-                        const status = metadata.statuses[index];
-                        if (status === 0 || status === 1) {
-                          return sum + enrolledCount;
+                      // Calculate currently active players from tierInstances (enrolling + in progress)
+                      const activePlayersCount = allInstances.reduce((sum, instance) => {
+                        if (instance.status === 0 || instance.status === 1) {
+                          return sum + instance.enrolledCount;
                         }
                         return sum;
                       }, 0);
 
+                      const isElite = tierId === 3 || tierId === 7;
+
                       return (
-                        <div key={tierId} className="mb-6">
+                        <div
+                          key={tierId}
+                          className="mb-6 animate-[fadeInSlideUp_0.6s_ease-out]"
+                          style={{ animationDelay: `${index * 0.1}s`, opacity: 0, animationFillMode: 'forwards' }}
+                        >
                           <button
                             onClick={() => toggleTier(tierId)}
-                            className="w-full bg-gradient-to-r from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-xl p-4 border border-purple-400/40 hover:border-purple-400/60 transition-all cursor-pointer"
+                            className={`w-full backdrop-blur-lg rounded-xl p-4 border transition-all cursor-pointer ${
+                              isElite
+                                ? 'bg-gradient-to-r from-amber-600/40 via-yellow-500/40 to-amber-600/40 border-amber-400/70 hover:border-amber-300 shadow-[0_0_30px_rgba(251,191,36,0.5),0_0_60px_rgba(251,191,36,0.3),inset_0_0_20px_rgba(251,191,36,0.1)] hover:shadow-[0_0_40px_rgba(251,191,36,0.7),0_0_80px_rgba(251,191,36,0.4),inset_0_0_30px_rgba(251,191,36,0.15)] animate-[pulse_3s_ease-in-out_infinite]'
+                                : isEnrolledInElite
+                                  ? 'bg-gradient-to-r from-[#fbbf24]/20 to-[#f59e0b]/20 border-[#d4a012]/40 hover:border-[#d4a012]/60'
+                                  : 'bg-gradient-to-r from-purple-600/20 to-blue-600/20 border-purple-400/40 hover:border-purple-400/60'
+                            }`}
                           >
-                            <h3 className="text-2xl font-bold text-purple-400 flex items-center gap-2 flex-wrap">
-                              ♔ {getTierName(metadata.playerCount)}s
-                              <span className="text-sm font-normal text-purple-300">• {metadata.playerCount} players total</span>
-                              <span className="text-sm font-normal text-purple-300">• {metadata.entryFee} ETH entry</span>
-                              <span className="text-sm font-normal text-purple-300">• {totalPrizePool} ETH prize pool</span>
-                              <span className="text-sm font-normal text-purple-300 ml-auto">{activePlayersCount} active players</span>
-                              <ChevronDown
-                                size={24}
-                                className={`transition-transform duration-200 ${expandedTiers[tierId] ? 'rotate-180' : ''}`}
-                              />
+                            <h3 className={`text-2xl font-bold flex items-center gap-2 flex-wrap ${
+                              isElite
+                                ? 'text-amber-300 drop-shadow-[0_0_10px_rgba(251,191,36,0.8)]'
+                                : isEnrolledInElite
+                                  ? 'text-[#fff8e7]'
+                                  : 'text-purple-400'
+                            }`}>
+                              ♚ {getTierName(metadata.playerCount, tierId)}
+                              <span className={`text-sm font-normal ${
+                                isElite ? 'text-amber-200/90' : isEnrolledInElite ? 'text-[#d4b866]' : 'text-purple-300'
+                              }`}>• {metadata.playerCount} players total</span>
+                              <span className={`text-sm font-normal ${
+                                isElite ? 'text-amber-200/90' : isEnrolledInElite ? 'text-[#d4b866]' : 'text-purple-300'
+                              }`}>• {metadata.entryFee} ETH entry</span>
+                              <span className={`text-sm font-normal ${
+                                isElite ? 'text-amber-200/90' : isEnrolledInElite ? 'text-[#d4b866]' : 'text-purple-300'
+                              }`}>• {totalPrizePool} ETH prize pool</span>
+                              <span className="ml-auto flex items-center gap-2">
+                                {allInstances.length > 0 && <span className={`text-sm font-normal ${
+                                  isElite ? 'text-amber-200/90' : isEnrolledInElite ? 'text-[#d4b866]' : 'text-purple-300'
+                                }`}>{activePlayersCount} active enrollments</span>}
+                                <ChevronDown
+                                  size={24}
+                                  className={`transition-transform duration-200 ${expandedTiers[tierId] ? 'rotate-180' : ''}`}
+                                />
+                              </span>
                             </h3>
                           </button>
 
@@ -2948,35 +4209,65 @@ export default function Chess() {
                             <div className="mt-6">
                               {isLoading ? (
                                 <div className="text-center py-8">
-                                  <div className="w-10 h-10 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-3"></div>
-                                  <p className="text-purple-300 text-sm">Loading {getTierName(metadata.playerCount)} instances...</p>
+                                  <div className={`w-10 h-10 border-4 rounded-full animate-spin mx-auto mb-3 ${
+                                    isElite
+                                      ? 'border-amber-500/30 border-t-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.6)]'
+                                      : isEnrolledInElite
+                                        ? 'border-[#f59e0b]/30 border-t-[#fbbf24]'
+                                        : 'border-purple-500/30 border-t-purple-500'
+                                  }`}></div>
+                                  <p className={`text-sm ${
+                                    isElite
+                                      ? 'text-amber-200 drop-shadow-[0_0_8px_rgba(251,191,36,0.6)]'
+                                      : isEnrolledInElite
+                                        ? 'text-[#d4b866]'
+                                        : 'text-purple-300'
+                                  }`}>Loading {getTierName(metadata.playerCount, tierId)} instances...</p>
                                 </div>
                               ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                                  {instances.map((tournament) => (
-                                    <TournamentCard
-                                      key={`${tournament.tierId}-${tournament.instanceId}`}
-                                      tierId={tournament.tierId}
-                                      instanceId={tournament.instanceId}
-                                      maxPlayers={tournament.maxPlayers}
-                                      currentEnrolled={tournament.enrolledCount}
-                                      entryFee={tournament.entryFee}
-                                      prizePool={tournament.prizePool}
-                                      isEnrolled={tournament.isEnrolled}
-                                      onEnroll={() => handleEnroll(tournament.tierId, tournament.instanceId, tournament.entryFee)}
-                                      onEnter={() => handleEnterTournament(tournament.tierId, tournament.instanceId)}
-                                      loading={tournamentsLoading}
-                                      tierName={getTierName(tournament.maxPlayers)}
-                                      enrollmentTimeout={tournament.enrollmentTimeout}
-                                      hasStartedViaTimeout={tournament.hasStartedViaTimeout}
-                                      tournamentStatus={tournament.tournamentStatus}
-                                      onManualStart={handleManualStart}
-                                      onClaimAbandonedPool={handleClaimAbandonedPool}
-                                      onResetEnrollmentWindow={handleResetEnrollmentWindow}
-                                      account={account}
-                                      contract={contract}
-                                    />
-                                  ))}
+                                  {instances.map((tournament) => {
+                                    const isEliteCard = tournament.tierId === 3 || tournament.tierId === 7;
+                                    const eliteColors = isEliteCard ? {
+                                      cardBg: 'from-amber-600/25 to-yellow-500/25',
+                                      cardBorder: 'border-amber-400/50 hover:border-amber-400/70',
+                                      cardShadow: 'hover:shadow-[0_0_15px_rgba(251,191,36,0.3)]',
+                                      icon: 'text-amber-400',
+                                      text: 'text-amber-300',
+                                      textMuted: 'text-amber-300/70',
+                                      progress: 'from-amber-500 to-yellow-500',
+                                      buttonEnter: 'from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600',
+                                      fullBadgeBg: 'bg-red-500/20',
+                                      fullBadgeBorder: 'border-red-400',
+                                      fullBadgeText: 'text-red-300',
+                                    } : undefined;
+
+                                    return (
+                                      <TournamentCard
+                                        key={`${tournament.tierId}-${tournament.instanceId}`}
+                                        tierId={tournament.tierId}
+                                        instanceId={tournament.instanceId}
+                                        maxPlayers={tournament.maxPlayers}
+                                        currentEnrolled={tournament.enrolledCount}
+                                        entryFee={tournament.entryFee}
+                                        prizePool={tournament.prizePool}
+                                        isEnrolled={tournament.isEnrolled}
+                                        onEnroll={() => handleEnroll(tournament.tierId, tournament.instanceId, tournament.entryFee)}
+                                        onEnter={() => handleEnterTournament(tournament.tierId, tournament.instanceId)}
+                                        loading={tournamentsLoading}
+                                        tierName={getTierName(tournament.maxPlayers, tournament.tierId)}
+                                        enrollmentTimeout={tournament.enrollmentTimeout}
+                                        hasStartedViaTimeout={tournament.hasStartedViaTimeout}
+                                        tournamentStatus={tournament.tournamentStatus}
+                                        onManualStart={handleManualStart}
+                                        onClaimAbandonedPool={handleClaimAbandonedPool}
+                                        onResetEnrollmentWindow={handleResetEnrollmentWindow}
+                                        account={account}
+                                        contract={contract}
+                                        colors={eliteColors}
+                                      />
+                                    );
+                                  })}
                                 </div>
                               )}
 
@@ -2985,7 +4276,11 @@ export default function Chess() {
                                 <div className="mt-6 text-center">
                                   <button
                                     onClick={() => showMoreInstances(tierId)}
-                                    className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-semibold py-3 px-8 rounded-xl transition-all transform hover:scale-105 flex items-center gap-2 mx-auto"
+                                    className={`bg-gradient-to-r text-white font-semibold py-3 px-8 rounded-xl transition-all transform hover:scale-105 flex items-center gap-2 mx-auto ${
+                                      isEnrolledInElite
+                                        ? 'from-[#fbbf24] to-[#f59e0b] hover:from-[#f59e0b] hover:to-[#d4a012]'
+                                        : 'from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600'
+                                    }`}
                                   >
                                     <ChevronDown size={20} />
                                     Show More ({allInstances.length - visibleCount} remaining)
@@ -2997,7 +4292,7 @@ export default function Chess() {
                         </div>
                       );
                     })}
-                  </>
+                  </div>
                 )}
 
                 {/* Connection Error State */}
@@ -3017,15 +4312,6 @@ export default function Chess() {
                     >
                       Retry Connection
                     </button>
-                  </div>
-                )}
-
-                {/* Empty State - only show when no connection error */}
-                {!metadataLoading && !connectionError && Object.keys(tierMetadata).length === 0 && (
-                  <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-12 border border-purple-400/30 text-center">
-                    <Trophy className="text-purple-400/50 mx-auto mb-4" size={64} />
-                    <h3 className="text-2xl font-bold text-purple-300 mb-2">No Tournaments Available</h3>
-                    <p className="text-purple-200/70">Check back soon for new tournaments!</p>
                   </div>
                 )}
 
@@ -3062,7 +4348,146 @@ export default function Chess() {
 
       {/* User Manual Section */}
       <div id="user-manual" className="max-w-7xl mx-auto px-6 pb-12" style={{ position: 'relative', zIndex: 10 }}>
-        <UserManual contractInstance={contract} />
+        <UserManual
+          contractInstance={contract}
+          tierConfigurations={Object.entries(TIER_CONFIG).map(([tierId, config]) => ({
+            tierId: Number(tierId),
+            playerCount: config.playerCount,
+            instanceCount: config.instanceCount,
+            entryFee: config.entryFee,
+            matchTimePerPlayer: config.timeouts.matchTimePerPlayer,
+            timeIncrementPerMove: config.timeouts.timeIncrementPerMove,
+            matchLevel2Delay: config.timeouts.matchLevel2Delay,
+            matchLevel3Delay: config.timeouts.matchLevel3Delay,
+            enrollmentWindow: config.timeouts.enrollmentWindow,
+            enrollmentLevel2Delay: config.timeouts.enrollmentLevel2Delay
+          }))}
+          raffleThresholds={['0.5', '1', '2']}
+          isElite={isEnrolledInElite}
+          gameSpecificContent={
+            <div>
+              <h2 id="chess-specifics" className={`text-2xl font-bold ${isEnrolledInElite ? 'text-[#fff8e7]' : 'text-purple-200'} mb-6 scroll-mt-24`}>Chess Specifics</h2>
+
+              {/* Elite Tier Pricing Structure */}
+              <div className="mb-8">
+                <h3 className={`text-lg font-semibold ${isEnrolledInElite ? 'text-[#fff8e7]' : 'text-purple-100'} mb-3`}>Why are Elite tiers so expensive?</h3>
+                <div className="space-y-3 text-gray-300">
+                  <p>
+                    Elite tiers are deliberately very high-stakes to serves a specific purpose. The Elite tier isn't just another tournament level - it's designed as an exclusive club for serious chess competitors.
+                  </p>
+                  <p className="font-semibold text-gray-200">Here's what makes Elite tier special:</p>
+                  <ul className="space-y-2 ml-4">
+                    <li className="flex items-start gap-2">
+                      <span className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-purple-400'}>•</span>
+                      <span><strong>Permanent Legacy</strong>: Every Elite tier match is stored permanently on-chain. Winners and their games become part of ETour's permanent record, viewable forever by anyone.</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-purple-400'}>•</span>
+                      <span><strong>High Stakes / High Rewards</strong>: The dramatic entry fee increase creates genuine high-stakes competition with proportional rewards.</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-purple-400'}>•</span>
+                      <span><strong>Exclusive Status</strong>: The price barrier ensures only the most confident players participate, creating a prestigious competitive environment.</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-purple-400'}>•</span>
+                      <span><strong>Bragging Rights</strong>: Elite tier victories carry significant bragging rights due to the skill and financial commitment required to participate.</span>
+                    </li>
+                  </ul>
+                  <div className={`${isEnrolledInElite ? 'bg-[#fbbf24]/20 border-[#d4a012]/40' : 'bg-purple-500/20 border-purple-400/40'} border rounded-lg p-3`}>
+                    <p className={isEnrolledInElite ? 'text-[#fff8e7]' : 'text-purple-100'}>
+                      This isn't a gradual progression, it's an intentional leap into elite territory where every victory is immortalized on chain.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <hr className={isEnrolledInElite ? 'border-[#d4a012]/20' : 'border-purple-400/20'} style={{ marginBottom: '2rem' }} />
+
+              {/* Chess Rules Implementation */}
+              <div className="mb-8">
+                <h3 className={`text-lg font-semibold ${isEnrolledInElite ? 'text-[#fff8e7]' : 'text-purple-100'} mb-3`}>What chess rules are supported?</h3>
+                <div className="space-y-3 text-gray-300">
+                  <p>ETour Chess implements the core competitive chess ruleset including:</p>
+                  <ul className="space-y-1 ml-4">
+                    <li className="flex items-start gap-2">
+                      <span className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-purple-400'}>•</span>
+                      <span>Standard piece movement and capture rules</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-purple-400'}>•</span>
+                      <span>Castling (both kingside and queenside)</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-purple-400'}>•</span>
+                      <span>En passant captures</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-purple-400'}>•</span>
+                      <span>Pawn promotion</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-purple-400'}>•</span>
+                      <span>Check and checkmate detection</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-purple-400'}>•</span>
+                      <span>Stalemate detection</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-purple-400'}>•</span>
+                      <span>Insufficient material draws (e.g., King vs King scenarios)</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+              <hr className={isEnrolledInElite ? 'border-[#d4a012]/20' : 'border-purple-400/20'} style={{ marginBottom: '2rem' }} />
+
+              {/* Rules NOT Implemented */}
+              <div className="mb-8">
+                <h3 className={`text-lg font-semibold ${isEnrolledInElite ? 'text-[#fff8e7]' : 'text-purple-100'} mb-3`}>What rules are NOT implemented?</h3>
+                <div className="space-y-3 text-gray-300">
+                  <p>Some traditional tournament rules are not supported:</p>
+                  <ul className="space-y-2 ml-4">
+                    <li className="flex items-start gap-2">
+                      <span className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-purple-400'}>•</span>
+                      <span><strong>50-move rule</strong>: Games do not automatically draw after 50 moves without a pawn move or capture</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-purple-400'}>•</span>
+                      <span><strong>Threefold repetition rule</strong>: Games do not automatically draw upon position repetition</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-purple-400'}>•</span>
+                      <span><strong>Draw by agreement</strong>: Players cannot mutually agree to draws mid-game</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+              <hr className={isEnrolledInElite ? 'border-[#d4a012]/20' : 'border-purple-400/20'} style={{ marginBottom: '2rem' }} />
+
+              {/* Why Are Some Rules Missing */}
+              <div className="mb-8">
+                <h3 className={`text-lg font-semibold ${isEnrolledInElite ? 'text-[#fff8e7]' : 'text-purple-100'} mb-3`}>Why are some rules missing?</h3>
+                <div className="space-y-3 text-gray-300">
+                  <p>
+                    This was a (tough) technical decision, but not an oversight. Smart contract bytecode has strict size limits on Arbitrum (24KB), and implementing every edge case rule would have exceeded these constraints.
+                  </p>
+                  <p>
+                    We chose to prioritize the core competitive experience over rarely-encountered rule scenarios. The missing rules affect less than 1% of typical chess games, while keeping our contracts efficient and cost-effective to deploy.
+                  </p>
+                  <div className="bg-gradient-to-r from-orange-500/15 to-red-500/15 border border-orange-400/40 rounded-lg p-3">
+                    <p className="text-orange-200 font-semibold">
+                      ETour Chess operates under this streamlined ruleset. All players compete under the same conditions, ensuring fairness within our system's constraints.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          }
+        />
       </div>
 
       {/* ============ FOOTER ============ */}
@@ -3315,6 +4740,19 @@ export default function Chess() {
         totalRounds={currentMatch?.playerCount ? Math.ceil(Math.log2(currentMatch.playerCount)) : undefined}
         prizePool={currentMatch?.prizePool}
       />
+
+      {/* Tournament Completion Modal */}
+      {tournamentCompletionData && (
+        <MatchEndModal
+          result="tournament_ended"
+          onClose={handleTournamentCompletionModalClose}
+          completionReason={tournamentCompletionData.completionReason}
+          tournamentWinner={tournamentCompletionData.winner}
+          currentAccount={account}
+          gameType="chess"
+          isVisible={true}
+        />
+      )}
     </div>
   );
 }

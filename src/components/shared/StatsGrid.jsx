@@ -92,7 +92,7 @@ const StatsGrid = ({ enrolledCount, playerCount, status, currentRound, totalRoun
       </div>
       <div className="bg-black/20 rounded-lg p-4">
         <div className={`${colors.text} text-sm mb-1`}>Current Round</div>
-        <div className="text-white font-bold text-xl">Round {currentRound + 1}</div>
+        <div className="text-white font-bold text-xl">Round {currentRound + 1}/{totalRounds}</div>
       </div>
     </div>
   );

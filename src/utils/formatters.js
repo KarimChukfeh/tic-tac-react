@@ -24,11 +24,28 @@ export const formatTime = (seconds) => {
 };
 
 /**
- * Get tier name based on player count
+ * Get tier name based on player count and tier ID
  * @param {number} playerCount - Number of players in the tournament tier
- * @returns {string} - The tier name (without "Tier" suffix)
+ * @param {number} tierId - The tier ID (0-7 for chess)
+ * @returns {string} - The tier name
  */
-export const getTierName = (playerCount) => {
+export const getTierName = (playerCount, tierId = null) => {
+  // Chess-specific 8-tier labeling
+  if (tierId !== null) {
+    const tierLabels = {
+      0: 'Casual Duels',
+      1: 'Beginner Duels',
+      2: 'Advanced Duels',
+      3: 'Elite Duels',
+      4: 'Casual Tournaments',
+      5: 'Beginner Tournaments',
+      6: 'Advanced Tournaments',
+      7: 'Elite Tournaments'
+    };
+    if (tierLabels[tierId]) return tierLabels[tierId];
+  }
+
+  // Fallback for other games or unknown tiers
   if (playerCount === 2) return '1v1 Duel';
   if (playerCount === 4) return 'Small Tournament';
   if (playerCount === 8) return 'Medium Tournament';
@@ -82,4 +99,14 @@ export const countInstancesByStatus = (statuses, enrolledCounts = []) => {
     else if (status >= 2) acc.completed++;
     return acc;
   }, { enrolling: 0, inProgress: 0, completed: 0 });
+};
+
+/**
+ * Get tournament type label based on player count
+ * Returns "Duel" for 2-player tournaments, "Tournament" otherwise
+ * @param {number} playerCount - Number of players in the tournament
+ * @returns {string} - "Duel" or "Tournament"
+ */
+export const getTournamentTypeLabel = (playerCount) => {
+  return playerCount === 2 ? 'Duel' : 'Tournament';
 };

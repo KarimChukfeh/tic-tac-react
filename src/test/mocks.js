@@ -128,18 +128,13 @@ export const createMockContract = (overrides = {}) => {
       wait: vi.fn().mockResolvedValue({ status: 1 }),
     }),
 
-    enterMatch: vi.fn().mockResolvedValue({
-      hash: '0xghi789',
-      wait: vi.fn().mockResolvedValue({ status: 1 }),
-    }),
-
     // Match actions
     makeMove: vi.fn().mockResolvedValue({
       hash: '0xjkl012',
       wait: vi.fn().mockResolvedValue({ status: 1 }),
     }),
 
-    claimTimeout: vi.fn().mockResolvedValue({
+    claimTimeoutWin: vi.fn().mockResolvedValue({
       hash: '0xmno345',
       wait: vi.fn().mockResolvedValue({ status: 1 }),
     }),

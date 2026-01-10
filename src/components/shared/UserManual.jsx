@@ -5,7 +5,7 @@
  * system works, including escalation levels, time settings, and rules.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { BookOpen, Shield } from 'lucide-react';
 import { ethers } from 'ethers';
 
@@ -14,8 +14,38 @@ const UserManual = ({
   // Optional overrides for configuration values
   enrollmentWindows = null, // e.g., { '2': 300, '4': 600, '8': 1200 } in seconds
   raffleThresholds = null, // e.g., ['0.5', '1.0', '1.5', '2.0', '2.5', '3.0'] in ETH
-  protocolFeePercent = null
+  protocolFeePercent = null,
+  // Hardcoded tier configurations (for modular contracts that removed tierConfigs)
+  // Format: [{ tierId, playerCount, instanceCount, entryFee, timeouts: { matchTimePerPlayer, timeIncrementPerMove, matchLevel2Delay, matchLevel3Delay, enrollmentWindow, enrollmentLevel2Delay } }]
+  tierConfigurations = null,
+  // Elite theme flag
+  isElite = false,
+  // Game-specific content to render between Match Escalation and Community Raffles
+  gameSpecificContent = null
 }) => {
+  // Color scheme based on elite status
+  const colors = isElite ? {
+    primary: 'text-[#fbbf24]',
+    secondary: 'text-[#fff8e7]',
+    muted: 'text-[#d4b866]',
+    bg: 'from-[#fbbf24]/10 to-[#f59e0b]/10',
+    border: 'border-[#d4a012]/30',
+    borderDark: 'border-[#d4a012]/20',
+    highlight: 'bg-[#fbbf24]/20 border-[#d4a012]/40',
+    highlightText: 'text-[#fff8e7]'
+  } : {
+    primary: 'text-purple-400',
+    secondary: 'text-purple-200',
+    muted: 'text-purple-300',
+    bg: 'from-blue-500/10 to-purple-500/10',
+    border: 'border-purple-400/30',
+    borderDark: 'border-purple-400/20',
+    highlight: 'bg-purple-500/20 border-purple-400/40',
+    highlightText: 'text-purple-100'
+  };
+  // Track if config has been loaded to prevent re-fetching
+  const hasLoadedConfig = useRef(false);
+
   // State for contract-fetched values
   const [contractConfig, setContractConfig] = useState({
     basisPoints: 10000,
@@ -28,9 +58,34 @@ const UserManual = ({
     isLoading: true
   });
 
-  // Fetch contract configuration on mount
+  // Fetch contract configuration on mount (or use hardcoded values)
   useEffect(() => {
+    // Only fetch once
+    if (hasLoadedConfig.current) return;
+
     const fetchContractConfig = async () => {
+      // If hardcoded tierConfigurations and raffleThresholds provided, use them directly (skip contract calls)
+      if (tierConfigurations && tierConfigurations.length > 0 && raffleThresholds) {
+        hasLoadedConfig.current = true;
+        setContractConfig(prev => ({
+          ...prev,
+          tierConfigurations: tierConfigurations.sort((a, b) => a.playerCount - b.playerCount),
+          isLoading: false
+        }));
+        return;
+      }
+
+      // If only tierConfigurations provided, use them directly (skip contract calls)
+      if (tierConfigurations && tierConfigurations.length > 0) {
+        hasLoadedConfig.current = true;
+        setContractConfig(prev => ({
+          ...prev,
+          tierConfigurations: tierConfigurations.sort((a, b) => a.playerCount - b.playerCount),
+          isLoading: false
+        }));
+        return;
+      }
+
       if (!contractInstance) {
         setContractConfig(prev => ({ ...prev, isLoading: false }));
         return;
@@ -38,7 +93,16 @@ const UserManual = ({
 
       try {
         // Fetch all tier IDs first
-        const tierIds = await contractInstance.getAllTierIds();
+        const tierIdsRaw = await contractInstance.getAllTierIds();
+        console.log('[UserManual] Raw tier IDs result:', tierIdsRaw);
+
+        // Convert ethers Result object to plain array
+        // ethers.js v6 Result objects need manual conversion
+        const tierIds = [];
+        for (let i = 0; i < tierIdsRaw.length; i++) {
+          tierIds.push(tierIdsRaw[i]);
+        }
+        console.log('[UserManual] Fetched tier IDs:', tierIds, `(${tierIds.length} tiers)`);
 
         const [
           basisPoints,
@@ -55,22 +119,55 @@ const UserManual = ({
         ]);
 
         // Fetch configuration for each tier
-        const tierConfigurations = [];
+        const fetchedTierConfigurations = [];
         for (const tierId of tierIds) {
           try {
-            const config = await contractInstance.getTierConfiguration(Number(tierId));
-            tierConfigurations.push({
+            // Fetch basic tier info and prize distribution (all contracts have these)
+            const [tierInfo, prizeDistribution] = await Promise.all([
+              contractInstance.getTierInfo(Number(tierId)),
+              contractInstance.getTierPrizeDistribution(Number(tierId))
+            ]);
+
+            // Fetch timeout config - different methods per contract
+            let timeouts = null;
+
+            // Try ConnectFour method: getTierTimeouts(tierId)
+            if (typeof contractInstance.getTierTimeouts === 'function') {
+              try {
+                timeouts = await contractInstance.getTierTimeouts(Number(tierId));
+                console.log(`[UserManual] Loaded timeouts via getTierTimeouts for tier ${tierId}:`, timeouts);
+              } catch (err) {
+                console.log(`[UserManual] getTierTimeouts failed for tier ${tierId}, trying tierConfigs:`, err.message);
+              }
+            }
+
+            // Try TicTacChain/Chess method: tierConfigs(tierId).timeouts
+            if (!timeouts && typeof contractInstance.tierConfigs === 'function') {
+              try {
+                const fullConfig = await contractInstance.tierConfigs(Number(tierId));
+                timeouts = fullConfig.timeouts;
+                console.log(`[UserManual] Loaded timeouts via tierConfigs for tier ${tierId}:`, timeouts);
+              } catch (err) {
+                console.warn(`[UserManual] tierConfigs failed for tier ${tierId}:`, err);
+              }
+            }
+
+            if (!timeouts) {
+              console.warn(`[UserManual] No timeouts found for tier ${tierId}, using defaults`);
+            }
+
+            fetchedTierConfigurations.push({
               tierId: Number(tierId),
-              playerCount: Number(config.playerCount),
-              instanceCount: Number(config.instanceCount),
-              entryFee: config.entryFee,
-              matchTimePerPlayer: Number(config.matchTimePerPlayer),
-              timeIncrementPerMove: Number(config.timeIncrementPerMove),
-              matchLevel2Delay: Number(config.matchLevel2Delay),
-              matchLevel3Delay: Number(config.matchLevel3Delay),
-              enrollmentWindow: Number(config.enrollmentWindow),
-              enrollmentLevel2Delay: Number(config.enrollmentLevel2Delay),
-              prizeDistribution: config.prizeDistribution
+              playerCount: Number(tierInfo.playerCount),
+              instanceCount: Number(tierInfo.instanceCount),
+              entryFee: tierInfo.entryFee,
+              matchTimePerPlayer: timeouts ? Number(timeouts.matchTimePerPlayer) : 300,
+              timeIncrementPerMove: timeouts ? Number(timeouts.timeIncrementPerMove) : 0,
+              matchLevel2Delay: timeouts ? Number(timeouts.matchLevel2Delay) : 60,
+              matchLevel3Delay: timeouts ? Number(timeouts.matchLevel3Delay) : 120,
+              enrollmentWindow: timeouts ? Number(timeouts.enrollmentWindow) : 60,
+              enrollmentLevel2Delay: timeouts ? Number(timeouts.enrollmentLevel2Delay) : 60,
+              prizeDistribution: prizeDistribution.percentages || prizeDistribution
             });
           } catch (err) {
             console.warn(`Could not fetch config for tier ${tierId}:`, err);
@@ -78,17 +175,19 @@ const UserManual = ({
         }
 
         // Sort tier configurations by player count for consistent display
-        tierConfigurations.sort((a, b) => a.playerCount - b.playerCount);
+        fetchedTierConfigurations.sort((a, b) => a.playerCount - b.playerCount);
+        console.log('[UserManual] Final tier configurations:', fetchedTierConfigurations);
 
         // Parse raffle thresholds
         const thresholds = raffleThresholdsData
           ? raffleThresholdsData.thresholds.map(t => ethers.formatEther(t))
           : [];
 
+        hasLoadedConfig.current = true;
         setContractConfig({
           basisPoints: Number(basisPoints),
           protocolShareBps: Number(protocolShareBps),
-          tierConfigurations,
+          tierConfigurations: fetchedTierConfigurations,
           raffleThresholds: thresholds,
           raffleOwnerSharePercentage: raffleConfig ? Number(raffleConfig.ownerSharePercentage) : 20,
           raffleWinnerSharePercentage: raffleConfig ? Number(raffleConfig.winnerSharePercentage) : 80,
@@ -102,7 +201,7 @@ const UserManual = ({
     };
 
     fetchContractConfig();
-  }, [contractInstance]);
+  }, [contractInstance, tierConfigurations, raffleThresholds]);
 
   // Calculate protocol fee percentage from basis points
   const protocolFee = protocolFeePercent ?? (contractConfig.protocolShareBps / contractConfig.basisPoints * 100);
@@ -118,9 +217,11 @@ const UserManual = ({
   };
 
   // Use provided raffle thresholds or contract values
-  const finalRaffleThresholds = raffleThresholds || contractConfig.raffleThresholds.length > 0
-    ? contractConfig.raffleThresholds
-    : ['0.5', '1.0', '1.5', '2.0', '2.5', '3.0'];
+  const finalRaffleThresholds = raffleThresholds
+    ? raffleThresholds
+    : (contractConfig.raffleThresholds.length > 0
+        ? contractConfig.raffleThresholds
+        : ['0.5', '1.0', '1.5', '2.0', '2.5', '3.0']);
 
   // Get match time per player from first tier (should be consistent across tiers)
   const matchTimePerPlayer = contractConfig.tierConfigurations.length > 0
@@ -161,11 +262,14 @@ const UserManual = ({
   }, []);
 
   return (
-    <div className="bg-gradient-to-br from-blue-500/10 to-purple-500/10 border border-blue-500/30 rounded-2xl p-6">
+    <div className={`bg-gradient-to-br ${colors.bg} border ${colors.border} rounded-2xl p-6`}>
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
-        <BookOpen className="text-blue-400" size={24} />
-        <h3 className="text-xl font-bold text-blue-300">How Does Anti-Griefing Work?</h3>
+        <BookOpen className={colors.primary} size={24} />
+        <h3 className={`text-xl font-bold ${colors.secondary}`}>How Does Anti-Griefing Work?</h3>
+        {contractConfig.isLoading && (
+          <span className="text-sm text-gray-400">(Loading contract config...)</span>
+        )}
       </div>
 
       {/* Introduction */}
@@ -180,10 +284,10 @@ const UserManual = ({
 
         <ol className="list-decimal list-inside space-y-2 text-gray-300 ml-2">
           <li>
-            <span className="font-semibold text-blue-300">Enrollment</span> - some players enroll, but not enough to start the tournament.
+            <span className={`font-semibold ${colors.secondary}`}>Enrollment</span> - some players enroll, but not enough to start the tournament.
           </li>
           <li>
-            <span className="font-semibold text-blue-300">Match Play</span> - one or both players in a match stop making moves.
+            <span className={`font-semibold ${colors.secondary}`}>Match Play</span> - one or both players in a match stop making moves.
           </li>
         </ol>
 
@@ -208,19 +312,19 @@ const UserManual = ({
         <div className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-400/30 rounded-lg p-4 !mt-10">
           <ul className="space-y-2 text-gray-200 font-medium mb-3">
             <li className="flex items-start gap-2">
-              <span className="text-purple-400 mt-0.5">•</span>
+              <span className={`${colors.primary} mt-0.5`}>•</span>
               <span>It's fair and simple, and follows common sense</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="text-purple-400 mt-0.5">•</span>
+              <span className={`${colors.primary} mt-0.5`}>•</span>
               <span>The closer you are to the prize, the sooner you get a chance to resolve a stall</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="text-purple-400 mt-0.5">•</span>
+              <span className={`${colors.primary} mt-0.5`}>•</span>
               <span>Payouts are instant and impossible to stop</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="text-purple-400 mt-0.5">•</span>
+              <span className={`${colors.primary} mt-0.5`}>•</span>
               <span><strong>Griefing is impossible when stallers lose and resolvers earn real ETH</strong></span>
             </li>
           </ul>
@@ -229,7 +333,7 @@ const UserManual = ({
        
       <br/>
 
-      <hr className="border-purple-500/20 mb-8" />
+      <hr className={`${colors.borderDark} mb-8`} />
 
       <br/>
 
@@ -237,7 +341,7 @@ const UserManual = ({
       <div className="space-y-8">
         {/* Timeout Events Header */}
         <div>
-          <h2 className="text-2xl font-bold text-blue-300 mb-4">Timeout Events</h2>
+          <h2 className={`text-2xl font-bold ${colors.secondary} mb-4`}>Timeout Events</h2>
           <p className="text-gray-300 mb-2">
             ETour gracefully handles all enrollment and match stalling scenarios.
           </p>
@@ -249,15 +353,15 @@ const UserManual = ({
           </p>
         </div>
 
-        <hr className="border-blue-500/20" />
+        <hr className={colors.borderDark} />
 
         {/* Enrollment Timeout Events */}
         <div>
-          <h2 className="text-xl font-bold text-purple-300 mb-6">Enrollment Timeout Events</h2>
+          <h2 className={`text-xl font-bold ${colors.muted} mb-6`}>Enrollment Timeout Events</h2>
 
           {/* EL1 */}
           <div className="mb-8">
-            <h3 id="el1" className="text-lg font-semibold text-purple-200 mb-3 scroll-mt-24">EL1: Force-Start Tournament After Enrollment Window Expires</h3>
+            <h3 id="el1" className={`text-lg font-semibold ${colors.highlightText} mb-3 scroll-mt-24`}>EL1: Force-Start Tournament After Enrollment Window Expires</h3>
             <div className="space-y-3 text-gray-300">
               <p>
                 Sometimes players enroll in a tournament but not enough join to fill all spots. Without intervention, these enrolled players would be stuck waiting indefinitely.
@@ -265,8 +369,8 @@ const UserManual = ({
               <p>
                 Once the enrollment window elapses, any enrolled player can start the tournament early with whoever has joined so far.
               </p>
-              <div className="bg-purple-500/20 border border-purple-400/40 rounded-lg p-3">
-                <p className="text-purple-200">
+              <div className={`${colors.highlight} border rounded-lg p-3`}>
+                <p className={colors.highlightText}>
                   This gives enrolled players the power to autonomously begin the tournament they paid to enter. No waiting on a full lobby, no relying on an admin.
                 </p>
               </div>
@@ -274,15 +378,15 @@ const UserManual = ({
           </div>
 
           <div className="mb-8">
-            <h3 id="el1x" className="text-lg font-semibold text-purple-200 mb-3 scroll-mt-24">EL1* : Extend Enrollment Window When Solo Enrolled</h3>
+            <h3 id="el1x" className={`text-lg font-semibold ${colors.highlightText} mb-3 scroll-mt-24`}>EL1* : Extend Enrollment Window When Solo Enrolled</h3>
             <div className="space-y-3 text-gray-300">
               <p>
                 Sometimes a player enrolls in a tournament but remains the only participant when the enrollment window expires.</p>
               <p>
                 Rather than being forced to start a solo tournament or lose their entry fee, enrolled players have the option to extend the enrollment period.
               </p>
-              <div className="bg-purple-500/20 border border-purple-400/40 rounded-lg p-3">
-                <p className="text-purple-200">
+              <div className={`${colors.highlight} border rounded-lg p-3`}>
+                <p className={colors.highlightText}>
                   This gives solo players the option to wait for competition without penalty or escalation consequences, just a fresh enrollment window to build a proper tournament.
                 </p>
               </div>
@@ -292,16 +396,17 @@ const UserManual = ({
 
 
 
-          <hr className="border-purple-500/20 mb-8" />
+          <hr className={`${colors.borderDark} mb-8`} />
 
           {/* Enrollment Windows Table */}
           <div className="mb-8">
-            <h5 className="text-md font-semibold text-blue-300 mb-3">Enrollment Windows</h5>
+            <h5 className={`text-md font-semibold ${colors.secondary} mb-3`}>Enrollment Windows</h5>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-blue-500/30">
+                  <tr className={`border-b ${colors.border}`}>
                     <th className="text-left py-3 px-4 text-blue-200 font-semibold">Format</th>
+                    <th className="text-left py-3 px-4 text-blue-200 font-semibold">Entry Fee</th>
                     <th className="text-left py-3 px-4 text-blue-200 font-semibold">Enrollment Window</th>
                   </tr>
                 </thead>
@@ -312,6 +417,7 @@ const UserManual = ({
                         <td className="py-3 px-4 text-gray-300">
                           {tier.playerCount === 2 ? '1v1 Duels' : `${tier.playerCount}-Player Tournaments`}
                         </td>
+                        <td className="py-3 px-4 text-gray-300 font-mono">{tier.entryFee} ETH</td>
                         <td className="py-3 px-4 text-gray-300 font-mono">{formatTime(tier.enrollmentWindow)}</td>
                       </tr>
                     ))
@@ -319,14 +425,17 @@ const UserManual = ({
                     <>
                       <tr className="hover:bg-blue-500/5 transition-colors">
                         <td className="py-3 px-4 text-gray-300">1v1 Duels</td>
+                        <td className="py-3 px-4 text-gray-300 font-mono">0.001 ETH</td>
                         <td className="py-3 px-4 text-gray-300 font-mono">5 minutes</td>
                       </tr>
                       <tr className="hover:bg-blue-500/5 transition-colors">
                         <td className="py-3 px-4 text-gray-300">4-Player Tournaments</td>
+                        <td className="py-3 px-4 text-gray-300 font-mono">0.002 ETH</td>
                         <td className="py-3 px-4 text-gray-300 font-mono">10 minutes</td>
                       </tr>
                       <tr className="hover:bg-blue-500/5 transition-colors">
                         <td className="py-3 px-4 text-gray-300">8-Player Tournaments</td>
+                        <td className="py-3 px-4 text-gray-300 font-mono">0.004 ETH</td>
                         <td className="py-3 px-4 text-gray-300 font-mono">20 minutes</td>
                       </tr>
                     </>
@@ -336,11 +445,11 @@ const UserManual = ({
             </div>
           </div>
 
-          <hr className="border-purple-500/20 mb-8" />
+          <hr className={`${colors.borderDark} mb-8`} />
 
           {/* EL2 */}
           <div className="mb-8 mt-4">
-            <h3 id="el2" className="text-lg font-semibold text-purple-200 mb-3 scroll-mt-24">EL2: Claim Abandoned Prize Pool When Tournament Never Started</h3>
+            <h3 id="el2" className={`text-lg font-semibold ${colors.highlightText} mb-3 scroll-mt-24`}>EL2: Claim Abandoned Prize Pool When Tournament Never Started</h3>
             <div className="space-y-3 text-gray-300">
               <p>
                 If EL1 is available but no enrolled player starts the tournament, the prize pool sits idle.
@@ -350,8 +459,8 @@ const UserManual = ({
                   ? formatTime(contractConfig.tierConfigurations[0].enrollmentLevel2Delay)
                   : '5 minutes'} after EL1, anyone (even someone who never enrolled) can claim the entire prize pool.
               </p>
-              <div className="bg-purple-500/20 border border-purple-400/40 rounded-lg p-3">
-                <p className="text-purple-200">
+              <div className={`${colors.highlight} border rounded-lg p-3`}>
+                <p className={colors.highlightText}>
                   This ensures no ETH ever gets trapped in an abandoned tournament. Someone will always have an incentive to resolve it.
                 </p>
               </div>
@@ -362,15 +471,15 @@ const UserManual = ({
           </div>
         </div>
 
-        <hr className="border-blue-500/20" />
+        <hr className={colors.borderDark} />
 
         {/* Match Timeout Events */}
         <div>
-          <h2 className="text-xl font-bold text-purple-300 mb-6">Match Timeout Events</h2>
+          <h2 className={`text-xl font-bold ${colors.muted} mb-6`}>Match Timeout Events</h2>
 
           {/* ML1 */}
           <div className="mb-8">
-            <h3 id="ml1" className="text-lg font-semibold text-purple-200 mb-3 scroll-mt-24">ML1: Claim Victory by Opponent Timeout</h3>
+            <h3 id="ml1" className={`text-lg font-semibold ${colors.highlightText} mb-3 scroll-mt-24`}>ML1: Claim Victory by Opponent Timeout</h3>
             <div className="space-y-3 text-gray-300">
               <p>
                 Each player gets {formatTime(matchTimePerPlayer)} per match to make all their moves. However during a match one player may run out of time on their clock.
@@ -381,19 +490,19 @@ const UserManual = ({
               <p>
                 When your opponent's clock hits zero, you can claim victory by forfeit.
               </p>
-              <div className="bg-purple-500/20 border border-purple-400/40 rounded-lg p-3">
-                <p className="text-purple-200">
+              <div className={`${colors.highlight} border rounded-lg p-3`}>
+                <p className={colors.highlightText}>
                   This protects active players from being held hostage by opponents who walk away mid-game.
                 </p>
               </div>
             </div>
           </div>
 
-          <hr className="border-purple-500/20 mb-8" />
+          <hr className={`${colors.borderDark} mb-8`} />
 
           {/* ML2 */}
           <div className="mb-8">
-            <h3 id="ml2" className="text-lg font-semibold text-purple-200 mb-3 scroll-mt-24">ML2: Eliminate Both Players in a Stalled Match</h3>
+            <h3 id="ml2" className={`text-lg font-semibold ${colors.highlightText} mb-3 scroll-mt-24`}>ML2: Eliminate Both Players in a Stalled Match</h3>
             <div className="space-y-3 text-gray-300">
               <p>
                 If ML1 is available but the winning player doesn't claim their victory, the match blocks the entire tournament from progressing.
@@ -403,8 +512,8 @@ const UserManual = ({
                   ? formatTime(contractConfig.tierConfigurations[0].matchLevel2Delay)
                   : '2 minutes'} after ML1, any player who has already advanced in the tournament can step in, eliminate both players, and keep things moving.
               </p>
-              <div className="bg-purple-500/20 border border-purple-400/40 rounded-lg p-3">
-                <p className="text-purple-200">
+              <div className={`${colors.highlight} border rounded-lg p-3`}>
+                <p className={colors.highlightText}>
                   This empowers players with skin in the game to protect their tournament investment by clearing stalled matches ahead of them.
                 </p>
               </div>
@@ -414,11 +523,11 @@ const UserManual = ({
             </div>
           </div>
 
-          <hr className="border-purple-500/20 mb-8" />
+          <hr className={`${colors.borderDark} mb-8`} />
 
           {/* ML3 */}
           <div className="mb-8">
-            <h3 id="ml3" className="text-lg font-semibold text-purple-200 mb-3 scroll-mt-24">ML3: Replace Players in Abandoned Match</h3>
+            <h3 id="ml3" className={`text-lg font-semibold ${colors.highlightText} mb-3 scroll-mt-24`}>ML3: Replace Players in Abandoned Match</h3>
             <div className="space-y-3 text-gray-300">
               <p>
                 If ML2 is available but no advanced player steps in, the match is considered fully abandoned.
@@ -428,8 +537,8 @@ const UserManual = ({
                   ? formatTime(contractConfig.tierConfigurations[0].matchLevel3Delay)
                   : '2 minutes'} after ML2, anyone (even someone outside the tournament) can replace both players and take their spot in the bracket.
               </p>
-              <div className="bg-purple-500/20 border border-purple-400/40 rounded-lg p-3">
-                <p className="text-purple-200">
+              <div className={`${colors.highlight} border rounded-lg p-3`}>
+                <p className={colors.highlightText}>
                   At this point, resolving the stall is risk-free profit. This final level guarantees that every match will eventually complete; someone will always claim the free ETH.
                 </p>
               </div>
@@ -440,15 +549,23 @@ const UserManual = ({
           </div>
         </div>
 
-        <hr className="border-blue-500/20" />
+        <hr className={colors.borderDark} />
+
+        {/* Game-Specific Content (e.g., Chess Tournament Specifics) */}
+        {gameSpecificContent && (
+          <>
+            {gameSpecificContent}
+            <hr className={colors.borderDark} />
+          </>
+        )}
 
         {/* Community Raffles Section */}
         <div>
-          <h2 id="community-raffles" className="text-2xl font-bold text-blue-300 mb-6 scroll-mt-24">Community Raffles</h2>
+          <h2 id="community-raffles" className={`text-2xl font-bold ${colors.secondary} mb-6 scroll-mt-24`}>Community Raffles</h2>
 
           {/* How Does the Community Raffle Work */}
           <div className="mb-8">
-            <h3 className="text-lg font-semibold text-purple-200 mb-3 scroll-mt-24">How Does the Community Raffle Work?</h3>
+            <h3 className={`text-lg font-semibold ${colors.highlightText} mb-3 scroll-mt-24`}>How Does the Community Raffle Work?</h3>
             <div className="space-y-3 text-gray-300">
               <p>
                 ETour keeps {protocolFee.toFixed(1)}% of every entry fee to ensure the protocol remains healthy and operational.
@@ -481,29 +598,29 @@ const UserManual = ({
             </div>
           </div>
 
-          <hr className="border-purple-500/20 mb-8" />
+          <hr className={`${colors.borderDark} mb-8`} />
 
           {/* Trigger Raffle When Threshold Reached */}
           <div className="mb-8">
-            <h3 className="text-lg font-semibold text-purple-200 mb-3 scroll-mt-24">Trigger the raffle when the threshold is reached</h3>
+            <h3 className={`text-lg font-semibold ${colors.highlightText} mb-3 scroll-mt-24`}>Trigger the raffle when the threshold is reached</h3>
             <div className="space-y-3 text-gray-300">
               <p>
                 When the contract's accumulated balance reaches the current threshold, any currently enrolled player can trigger the raffle. A randomly selected enrolled player wins the prize pool.
               </p>
 
-              <div className="bg-purple-500/20 border border-purple-400/40 rounded-lg p-3">
-                <p className="text-purple-200">
+              <div className={`${colors.highlight} border rounded-lg p-3`}>
+                <p className={colors.highlightText}>
                   This ensures accumulated ETH flows back to active community members.
                 </p>
               </div>
             </div>
           </div>
 
-          <hr className="border-purple-500/20 mb-8" />
+          <hr className={`${colors.borderDark} mb-8`} />
 
           {/* Weighted Odds by Active Enrollments */}
           <div className="mb-8">
-            <h3 className="text-lg font-semibold text-purple-200 mb-3 scroll-mt-24">Weighted odds by active enrollments</h3>
+            <h3 className={`text-lg font-semibold ${colors.highlightText} mb-3 scroll-mt-24`}>Weighted odds by active enrollments</h3>
             <div className="space-y-3 text-gray-300">
               <p>
                 Your odds of winning scale with how many tournaments you're currently enrolled in across all tiers.
@@ -512,7 +629,7 @@ const UserManual = ({
               <div className="overflow-x-auto mb-3">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-blue-500/30">
+                    <tr className={`border-b ${colors.border}`}>
                       <th className="text-left py-3 px-4 text-blue-200 font-semibold">Active Enrollments</th>
                       <th className="text-left py-3 px-4 text-blue-200 font-semibold">Odds Multiplier</th>
                     </tr>
@@ -534,19 +651,19 @@ const UserManual = ({
                 </table>
               </div>
 
-              <div className="bg-purple-500/20 border border-purple-400/40 rounded-lg p-3">
-                <p className="text-purple-200">
+              <div className={`${colors.highlight} border rounded-lg p-3`}>
+                <p className={colors.highlightText}>
                   This rewards committed players who actively participate across multiple tournaments.
                 </p>
               </div>
             </div>
           </div>
 
-          <hr className="border-purple-500/20 mb-8" />
+          <hr className={`${colors.borderDark} mb-8`} />
           
           {/* Prize Distribution */}
           <div className="mb-8">
-            <h3 className="text-lg font-semibold text-purple-200 mb-3 scroll-mt-24">Prize Distribution</h3>
+            <h3 className={`text-lg font-semibold ${colors.highlightText} mb-3 scroll-mt-24`}>Prize Distribution</h3>
             <div className="space-y-3 text-gray-300">
               <p>
                 The game always keeps 10% of the threshold to ensure continuous operation remains covered. The remaining accumulated pool is then split between the winner and owner.
@@ -555,7 +672,7 @@ const UserManual = ({
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-blue-500/30">
+                    <tr className={`border-b ${colors.border}`}>
                       <th className="text-left py-3 px-4 text-blue-200 font-semibold">Recipient</th>
                       <th className="text-left py-3 px-4 text-blue-200 font-semibold">Share</th>
                     </tr>
@@ -580,7 +697,7 @@ const UserManual = ({
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-blue-500/30">
+                    <tr className={`border-b ${colors.border}`}>
                       <th className="text-left py-3 px-4 text-blue-200 font-semibold">Allocation</th>
                       <th className="text-left py-3 px-4 text-blue-200 font-semibold">Amount</th>
                     </tr>
@@ -608,18 +725,18 @@ const UserManual = ({
             </div>
           </div>
 
-          <hr className="border-purple-500/20 mb-8" />
+          <hr className={`${colors.borderDark} mb-8`} />
 
           {/* Raffle Trigger Thresholds */}
           <div className="mb-8">
-            <h3 className="text-lg font-semibold text-purple-200 mb-3 scroll-mt-24">Raffle Thresholds</h3>
+            <h3 className={`text-lg font-semibold ${colors.highlightText} mb-3 scroll-mt-24`}>Raffle Thresholds</h3>
             <p>
               Early raffles have lower thresholds since the system doesn't expect heavy traffic at launch. As user adoption grows, subsequent raffles scale up with higher thresholds and bigger prizes.
             </p>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-blue-500/30">
+                  <tr className={`border-b ${colors.border}`}>
                     <th className="text-left py-3 px-4 text-blue-200 font-semibold">Raffle Number</th>
                     <th className="text-left py-3 px-4 text-blue-200 font-semibold">Threshold</th>
                   </tr>
@@ -627,18 +744,16 @@ const UserManual = ({
                 <tbody className="divide-y divide-blue-500/20">
                   {finalRaffleThresholds.length > 0 ? (
                     <>
-                      {finalRaffleThresholds.slice(0, 5).map((threshold, index) => (
+                      {finalRaffleThresholds.slice(0, -1).map((threshold, index) => (
                         <tr key={index} className="hover:bg-blue-500/5 transition-colors">
                           <td className="py-3 px-4 text-gray-300">{index + 1}{index === 0 ? 'st' : index === 1 ? 'nd' : index === 2 ? 'rd' : 'th'} Raffle</td>
                           <td className="py-3 px-4 text-gray-300 font-mono">{threshold} ETH</td>
                         </tr>
                       ))}
-                      {finalRaffleThresholds.length > 5 && (
-                        <tr className="hover:bg-blue-500/5 transition-colors">
-                          <td className="py-3 px-4 text-gray-300">6th+ Raffle</td>
-                          <td className="py-3 px-4 text-gray-300 font-mono">{finalRaffleThresholds[5]} ETH</td>
-                        </tr>
-                      )}
+                      <tr className="hover:bg-blue-500/5 transition-colors">
+                        <td className="py-3 px-4 text-gray-300">{finalRaffleThresholds.length}{finalRaffleThresholds.length === 1 ? 'st' : finalRaffleThresholds.length === 2 ? 'nd' : finalRaffleThresholds.length === 3 ? 'rd' : 'th'}+ Raffle</td>
+                        <td className="py-3 px-4 text-gray-300 font-mono">{finalRaffleThresholds[finalRaffleThresholds.length - 1]} ETH</td>
+                      </tr>
                     </>
                   ) : (
                     <>

@@ -11,12 +11,12 @@ import { useState, useEffect } from 'react';
 import { generateTournamentUrl, copyToClipboard } from '../../utils/urlHelpers';
 import StatsGrid from './StatsGrid';
 import EnrolledPlayersList from './EnrolledPlayersList';
-import { formatTime } from '../../utils/formatters';
+import { formatTime, getTournamentTypeLabel } from '../../utils/formatters';
 
 // Game-specific configurations
 const GAME_CONFIGS = {
   tictactoe: {
-    name: 'Tournament',
+    gameName: 'TicTacToe',
     icon: null,
     usesTrophyIcon: true,
     colors: {
@@ -31,7 +31,7 @@ const GAME_CONFIGS = {
     }
   },
   chess: {
-    name: 'Chess Tournament',
+    gameName: 'Chess',
     icon: null,
     usesTrophyIcon: true,
     colors: {
@@ -46,7 +46,7 @@ const GAME_CONFIGS = {
     }
   },
   connectfour: {
-    name: 'Connect Four',
+    gameName: 'Connect Four',
     icon: '🔴',
     usesTrophyIcon: false,
     colors: {
@@ -91,11 +91,17 @@ const TournamentHeader = ({
   onManualStart,
   onClaimAbandonedPool,
   onResetEnrollmentWindow,
-  contract
+  contract,
+
+  // Optional: Custom colors override
+  colors: customColors
 }) => {
   const config = GAME_CONFIGS[gameType] || GAME_CONFIGS.tictactoe;
-  const { colors } = config;
+  const colors = customColors || config.colors;
   const totalRounds = Math.ceil(Math.log2(playerCount));
+
+  // Determine tournament type label (Duel vs Tournament)
+  const tournamentTypeLabel = getTournamentTypeLabel(playerCount);
 
   // State for copy feedback
   const [copiedUrl, setCopiedUrl] = useState(false);
@@ -159,7 +165,8 @@ const TournamentHeader = ({
       // Continue checking even when EL2 is active - solo player can still reset
       if ((canStartEscalation1 || canStartEscalation2) && isEnrolled && contract) {
         try {
-          const canReset = await contract.canResetEnrollmentWindow(tierId, instanceId);
+          // Use staticCall to ensure this is a read-only call even if contract has signer
+          const canReset = await contract.canResetEnrollmentWindow.staticCall(tierId, instanceId);
           setCanResetWindow(canReset);
         } catch (error) {
           console.error('Error checking canResetEnrollmentWindow:', error);
@@ -197,7 +204,7 @@ const TournamentHeader = ({
         className={`mb-4 flex items-center gap-2 ${colors.text} ${colors.textHover} transition-colors`}
       >
         <ChevronDown className="rotate-90" size={20} />
-        Back to Tournaments
+        Back to {tournamentTypeLabel}s
       </button>
 
       {/* Title Row - stacks on mobile */}
@@ -211,10 +218,10 @@ const TournamentHeader = ({
 
           <div className="min-w-0">
             <h2 className="text-2xl md:text-4xl font-bold text-white truncate">
-              {config.name} T{tierId + 1}-I{instanceId + 1}
+              {config.gameName} {tournamentTypeLabel} T{tierId + 1}-I{instanceId + 1}
             </h2>
             <p className={colors.text}>
-              Round {currentRound + 1} of {totalRounds}
+              Round {currentRound + 1}/{totalRounds}
             </p>
           </div>
         </div>
@@ -247,10 +254,10 @@ const TournamentHeader = ({
             className={`w-full bg-gradient-to-r ${colors.buttonGradient} ${colors.buttonHover} text-white font-bold py-4 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2`}
           >
             <Trophy size={20} />
-            {loading ? 'Enrolling...' : `Enroll in Tournament (${entryFee} ETH)`}
+            {loading ? 'Enrolling...' : `Enroll in ${tournamentTypeLabel} (${entryFee} ETH)`}
           </button>
           <p className={`${colors.textMuted} text-xs text-center mt-2`}>
-            Join this tournament and compete for the prize pool
+            Join this {tournamentTypeLabel.toLowerCase()} and compete for the prize pool
           </p>
         </div>
       )}

@@ -42,6 +42,23 @@ export const parseCommonMatchData = (matchData) => {
 };
 
 /**
+ * Unpack TicTacToe board from packed uint256
+ * Board is packed as 2 bits per cell (0=empty, 1=player1, 2=player2)
+ * 9 cells = 18 bits total
+ * @param {BigInt|number} packedBoard - Packed board data
+ * @returns {Array<number>} Array of 9 cell values (0, 1, or 2)
+ */
+const unpackTicTacToeBoard = (packedBoard) => {
+  const board = [];
+  let packed = BigInt(packedBoard);
+  for (let i = 0; i < 9; i++) {
+    board.push(Number(packed & 3n)); // Extract 2 bits
+    packed = packed >> 2n; // Shift right by 2 bits
+  }
+  return board;
+};
+
+/**
  * Parse TicTacToe match data
  * @param {Object} matchData - Raw match data from TicTacToe contract
  * @returns {Object} Parsed TicTacToe match with all fields
@@ -50,20 +67,32 @@ export const parseTicTacToeMatch = (matchData) => ({
   ...parseCommonMatchData(matchData),
 
   // Game-specific fields
-  board: Array.from(matchData.board).map(cell => Number(cell)),
+  board: unpackTicTacToeBoard(matchData.packedBoard),
   currentTurn: matchData.currentTurn,
   firstPlayer: matchData.firstPlayer,
-  lastMovedCell: Number(matchData.lastMovedCell),
-  blockedPlayer: matchData.blockedPlayer,
-  blockedCell: Number(matchData.blockedCell),
-  player1UsedBlock: matchData.player1UsedBlock,
-  player2UsedBlock: matchData.player2UsedBlock,
 
-  // Total match time tracking fields (with defaults for backward compatibility)
+  // Total match time tracking fields
   player1TimeRemaining: matchData.player1TimeRemaining !== undefined ? Number(matchData.player1TimeRemaining) : 300,
   player2TimeRemaining: matchData.player2TimeRemaining !== undefined ? Number(matchData.player2TimeRemaining) : 300,
   lastMoveTimestamp: matchData.lastMoveTimestamp !== undefined ? Number(matchData.lastMoveTimestamp) : 0,
 });
+
+/**
+ * Unpack ConnectFour board from packed uint256
+ * Board is packed as 2 bits per cell (0=empty, 1=player1, 2=player2)
+ * 42 cells (6 rows x 7 columns) = 84 bits total
+ * @param {BigInt|number} packedBoard - Packed board data
+ * @returns {Array<number>} Array of 42 cell values (0, 1, or 2)
+ */
+const unpackConnectFourBoard = (packedBoard) => {
+  const board = [];
+  let packed = BigInt(packedBoard);
+  for (let i = 0; i < 42; i++) {
+    board.push(Number(packed & 3n)); // Extract 2 bits
+    packed = packed >> 2n; // Shift right by 2 bits
+  }
+  return board;
+};
 
 /**
  * Parse ConnectFour match data
@@ -74,45 +103,118 @@ export const parseConnectFourMatch = (matchData) => ({
   ...parseCommonMatchData(matchData),
 
   // Game-specific fields
-  board: Array.from(matchData.board).map(cell => Number(cell)),
+  board: unpackConnectFourBoard(matchData.packedBoard),
   currentTurn: matchData.currentTurn,
   firstPlayer: matchData.firstPlayer,
   moveCount: Number(matchData.moveCount),
   lastColumn: Number(matchData.lastColumn),
+
+  // Total match time tracking fields
+  player1TimeRemaining: matchData.player1TimeRemaining !== undefined ? Number(matchData.player1TimeRemaining) : 300,
+  player2TimeRemaining: matchData.player2TimeRemaining !== undefined ? Number(matchData.player2TimeRemaining) : 300,
+  lastMoveTimestamp: matchData.lastMoveTimestamp !== undefined ? Number(matchData.lastMoveTimestamp) : 0,
 });
+
+/**
+ * Unpack Chess board from packedBoard (4 bits per square, 64 squares)
+ * Encoding: 0=empty, 1-6=white pieces (pawn..king), 7-12=black pieces (pawn..king)
+ * @param {BigInt|number} packedBoard - Packed board data
+ * @returns {Array<{pieceType: number, color: number}>} Array of 64 piece objects
+ */
+const unpackChessBoard = (packedBoard) => {
+  const board = [];
+  let packed = BigInt(packedBoard);
+  for (let i = 0; i < 64; i++) {
+    const value = Number(packed & 0xFn);
+    let pieceType = 0;
+    let color = 0;
+    if (value >= 1 && value <= 6) {
+      pieceType = value;  // white: 1-6
+      color = 1;
+    } else if (value >= 7 && value <= 12) {
+      pieceType = value - 6;  // black: 7-12 → pieceType 1-6
+      color = 2;
+    }
+    board.push({ pieceType, color });
+    packed = packed >> 4n;
+  }
+  return board;
+};
 
 /**
  * Parse Chess match data
  * @param {Object} matchData - Raw match data from Chess contract
  * @returns {Object} Parsed Chess match with all fields
+ *
+ * Note: Chess contract can return either:
+ * - NESTED structure with 'common' field (from getMatch())
+ * - FLAT structure without 'common' field (legacy or from chessMatches mapping)
  */
-export const parseChessMatch = (matchData) => ({
-  ...parseCommonMatchData(matchData),
+export const parseChessMatch = (matchData) => {
+  // Check if data has nested 'common' structure
+  const hasCommon = matchData.common !== undefined;
 
-  // Game-specific fields
-  board: Array.from(matchData.board).map(cell => ({
-    pieceType: Number(cell.pieceType),
-    color: Number(cell.color)
-  })),
-  currentTurn: matchData.currentTurn,
-  firstPlayer: matchData.firstPlayer,
+  // Extract common fields based on structure type
+  const commonData = hasCommon ? {
+    player1: matchData.common.player1,
+    player2: matchData.common.player2,
+    winner: matchData.common.winner,
+    loser: matchData.common.loser || '0x0000000000000000000000000000000000000000',
+    matchStatus: Number(matchData.common.status),
+    isDraw: matchData.common.isDraw,
+    startTime: Number(matchData.common.startTime),
+    lastMoveTime: Number(matchData.common.lastMoveTime),
+    endTime: matchData.common.endTime ? Number(matchData.common.endTime) : 0,
+    tierId: Number(matchData.common.tierId),
+    instanceId: Number(matchData.common.instanceId),
+    roundNumber: Number(matchData.common.roundNumber),
+    matchNumber: Number(matchData.common.matchNumber),
+    isCached: matchData.common.isCached || false,
+  } : {
+    player1: matchData.player1,
+    player2: matchData.player2,
+    winner: matchData.winner,
+    loser: matchData.loser || '0x0000000000000000000000000000000000000000',
+    matchStatus: Number(matchData.status),
+    isDraw: matchData.isDraw,
+    startTime: Number(matchData.startTime),
+    lastMoveTime: Number(matchData.lastMoveTime),
+    endTime: matchData.endTime ? Number(matchData.endTime) : 0,
+    tierId: matchData.tierId !== undefined ? Number(matchData.tierId) : 0,
+    instanceId: matchData.instanceId !== undefined ? Number(matchData.instanceId) : 0,
+    roundNumber: matchData.roundNumber !== undefined ? Number(matchData.roundNumber) : 0,
+    matchNumber: matchData.matchNumber !== undefined ? Number(matchData.matchNumber) : 0,
+    isCached: matchData.isCached || false,
+  };
 
-  // Chess-specific state
-  whiteInCheck: matchData.whiteInCheck,
-  blackInCheck: matchData.blackInCheck,
-  enPassantSquare: Number(matchData.enPassantSquare),
-  halfMoveClock: Number(matchData.halfMoveClock),
-  fullMoveNumber: Number(matchData.fullMoveNumber),
+  return {
+    ...commonData,
 
-  // Castling rights
-  whiteKingSideCastle: matchData.whiteKingSideCastle,
-  whiteQueenSideCastle: matchData.whiteQueenSideCastle,
-  blackKingSideCastle: matchData.blackKingSideCastle,
-  blackQueenSideCastle: matchData.blackQueenSideCastle,
+    // Game-specific fields
+    currentTurn: matchData.currentTurn,
+    firstPlayer: matchData.firstPlayer,
 
-  // Move history
-  moveHistory: matchData.moveHistory,
-});
+    // Chess-specific state
+    whiteInCheck: matchData.whiteInCheck,
+    blackInCheck: matchData.blackInCheck,
+    fullMoveNumber: Number(matchData.fullMoveNumber),
+
+    // Board - unpack from packedBoard (4 bits per square)
+    board: matchData.packedBoard ? unpackChessBoard(matchData.packedBoard) : [],
+    enPassantSquare: matchData.enPassantSquare !== undefined ? Number(matchData.enPassantSquare) : 0,
+    halfMoveClock: matchData.halfMoveClock !== undefined ? Number(matchData.halfMoveClock) : 0,
+    whiteKingSideCastle: matchData.whiteKingSideCastle || false,
+    whiteQueenSideCastle: matchData.whiteQueenSideCastle || false,
+    blackKingSideCastle: matchData.blackKingSideCastle || false,
+    blackQueenSideCastle: matchData.blackQueenSideCastle || false,
+    moveHistory: matchData.moveHistory || [],
+
+    // Time tracking fields
+    player1TimeRemaining: matchData.player1TimeRemaining !== undefined ? Number(matchData.player1TimeRemaining) : 300,
+    player2TimeRemaining: matchData.player2TimeRemaining !== undefined ? Number(matchData.player2TimeRemaining) : 300,
+    lastMoveTimestamp: matchData.lastMoveTimestamp !== undefined ? Number(matchData.lastMoveTimestamp) : 0,
+  };
+};
 
 /**
  * Validate match result consistency
