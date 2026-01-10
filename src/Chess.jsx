@@ -4150,14 +4150,6 @@ export default function Chess() {
                       // Calculate prize pool per tournament
                       const totalPrizePool = (parseFloat(metadata.entryFee) * metadata.playerCount * 0.9).toFixed(4);
 
-                      // Calculate currently active players from tierInstances (enrolling + in progress)
-                      const activePlayersCount = allInstances.reduce((sum, instance) => {
-                        if (instance.status === 0 || instance.status === 1) {
-                          return sum + instance.enrolledCount;
-                        }
-                        return sum;
-                      }, 0);
-
                       const isElite = tierId === 3 || tierId === 7;
 
                       return (
@@ -4194,9 +4186,6 @@ export default function Chess() {
                                 isElite ? 'text-amber-200/90' : isEnrolledInElite ? 'text-[#d4b866]' : 'text-purple-300'
                               }`}>• {totalPrizePool} ETH prize pool</span>
                               <span className="ml-auto flex items-center gap-2">
-                                {allInstances.length > 0 && <span className={`text-sm font-normal ${
-                                  isElite ? 'text-amber-200/90' : isEnrolledInElite ? 'text-[#d4b866]' : 'text-purple-300'
-                                }`}>{activePlayersCount} active enrollments</span>}
                                 <ChevronDown
                                   size={24}
                                   className={`transition-transform duration-200 ${expandedTiers[tierId] ? 'rotate-180' : ''}`}

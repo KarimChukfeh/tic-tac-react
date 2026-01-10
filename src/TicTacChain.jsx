@@ -3293,14 +3293,6 @@ export default function TicTacChain() {
                       // Calculate prize pool per tournament
                       const totalPrizePool = (parseFloat(metadata.entryFee) * metadata.playerCount * 0.9).toFixed(4);
 
-                      // Calculate currently active players from tierInstances (enrolling + in progress)
-                      const activePlayersCount = allInstances.reduce((sum, instance) => {
-                        if (instance.status === 0 || instance.status === 1) {
-                          return sum + instance.enrolledCount;
-                        }
-                        return sum;
-                      }, 0);
-
                       return (
                         <div key={tierId} className="mb-6">
                           <button
@@ -3313,7 +3305,6 @@ export default function TicTacChain() {
                               <span className="text-sm font-normal text-purple-300">• {metadata.entryFee} ETH entry</span>
                               <span className="text-sm font-normal text-purple-300">• {totalPrizePool} ETH prize pool</span>
                               <span className="ml-auto flex items-center gap-2">
-                                {allInstances.length > 0 && <span className="text-sm font-normal text-purple-300">{activePlayersCount} active enrollments</span>}
                                 <ChevronDown
                                   size={24}
                                   className={`transition-transform duration-200 ${expandedTiers[tierId] ? 'rotate-180' : ''}`}
