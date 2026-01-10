@@ -2819,48 +2819,31 @@ export default function ConnectFour() {
         return;
       }
 
-      // Update the board immediately
-      setCurrentMatch(prev => {
-        if (!prev) return prev;
+      // Fetch the full board state from contract for Connect4 (ensures accuracy)
+      console.log('[MoveMade Event] Fetching fresh board state from contract');
+      try {
+        const updatedMatch = await refreshMatchData(
+          contract,
+          account,
+          currentMatch,
+          matchTimePerPlayer
+        );
 
-        // Connect4 board is a 2D array (6 rows x 7 columns)
-        // Need to reconstruct as 2D from flat array if needed
-        let newBoard;
-        if (Array.isArray(prev.board[0])) {
-          // Already 2D
-          newBoard = prev.board.map(row => [...row]);
-        } else {
-          // Convert from flat to 2D
-          newBoard = [];
-          for (let r = 0; r < 6; r++) {
-            newBoard.push(prev.board.slice(r * 7, (r + 1) * 7));
-          }
+        if (updatedMatch) {
+          console.log('[MoveMade Event] Board updated from contract:', {
+            column,
+            row,
+            boardLength: updatedMatch.board?.length
+          });
+          setCurrentMatch(updatedMatch);
+          previousBoardRef.current = updatedMatch.board;
         }
 
-        const isPlayer1 = player.toLowerCase() === prev.player1.toLowerCase();
-        newBoard[row][column] = isPlayer1 ? 1 : 2;
-
-        // Toggle turn
-        const newTurn = isPlayer1 ? prev.player2 : prev.player1;
-
-        console.log('[MoveMade Event] Updating Connect4 board:', { column, row, value: newBoard[row][column], newTurn });
-
-        return {
-          ...prev,
-          board: newBoard,
-          currentTurn: newTurn,
-          isYourTurn: account ? newTurn.toLowerCase() === account.toLowerCase() : false,
-          lastColumn: column,
-          moveCount: (prev.moveCount || 0) + 1
-        };
-      });
-
-      // Refresh move history
-      try {
+        // Refresh move history
         const history = await fetchMoveHistory(contract, tierId, instanceId, roundNumber, matchNumber);
         setMoveHistory(history);
       } catch (err) {
-        console.error('[MoveMade Event] Error refreshing move history:', err);
+        console.error('[MoveMade Event] Error refreshing match data:', err);
       }
     };
 
