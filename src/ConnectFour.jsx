@@ -2980,6 +2980,7 @@ export default function ConnectFour() {
     accountRefForMatch.current = account;
   }, [currentMatch, contract, account]);
 
+  // Polling for turn tracking and time remaining - events handle moves/completion
   useEffect(() => {
     if (!currentMatch || !contract || !account) return;
 
@@ -2990,6 +2991,11 @@ export default function ConnectFour() {
 
       if (!match || !contractInstance || !userAccount) return;
 
+      // Skip polling if match is completed - events have set final state
+      if (match.matchStatus === 2) {
+        return;
+      }
+
       try {
         const updatedMatch = await refreshMatchData(
           contractInstance,
@@ -2997,64 +3003,34 @@ export default function ConnectFour() {
           match,
           matchTimePerPlayer
         );
+
         if (updatedMatch) {
-          // Use standardized match completion handler
-          const matchResult = determineMatchResult({
-            updatedMatch,
-            previousMatch: match,
-            userAccount,
-            gameType: 'connectfour'
-          });
-
-          if (matchResult) {
-            // Match just completed - set result state for modal
-            setMatchEndResult(matchResult.type);
-            setMatchEndWinnerLabel(matchResult.winnerLabel);
-            setMatchEndWinner(matchResult.winnerAddress);
-            setMatchEndLoser(matchResult.loserAddress);
-
-            // Update match to show final state, modal will handle the rest
-            setCurrentMatch(updatedMatch);
+          // If match just completed, let events handle it
+          if (updatedMatch.matchStatus === 2) {
             return;
           }
 
-          // Detect new moves by comparing board states
-          const prevBoard = previousBoardRef.current;
-          let moveDetected = false;
-          if (prevBoard && updatedMatch.board) {
-            for (let i = 0; i < updatedMatch.board.length; i++) {
-              if (prevBoard[i] === 0 && updatedMatch.board[i] !== 0) {
-                moveDetected = true;
-                break;
-              }
+          // Update for in-progress matches only
+          setCurrentMatch(prev => {
+            // Preserve completed state set by events
+            if (prev?.matchStatus === 2) {
+              return prev;
             }
-          }
-
-          // If a new move was detected, refresh history from blockchain
-          if (moveDetected) {
-            const history = await fetchMoveHistory(contractInstance, match.tierId, match.instanceId, match.roundNumber, match.matchNumber);
-            setMoveHistory(history);
-          }
-
-          // Update board ref for next comparison
-          previousBoardRef.current = [...updatedMatch.board];
-
-          // Normal match update (game still in progress)
-          setCurrentMatch(updatedMatch);
+            return updatedMatch;
+          });
         }
       } catch (error) {
-        console.error('Error syncing match:', error);
+        console.error('[Connect4 Polling] Error syncing match:', error);
       }
 
-      // Reset sync dots to 1 after sync completes
       setSyncDots(1);
     };
 
-    // Set up polling interval - runs every 2 seconds for responsive timers
+    // Poll every 2 seconds for turn/timer updates
     const matchPollInterval = setInterval(doMatchSync, 2000);
 
     return () => clearInterval(matchPollInterval);
-  }, [currentMatch?.tierId, currentMatch?.instanceId, currentMatch?.roundNumber, currentMatch?.matchNumber, account, refreshMatchData, fetchMoveHistory]);
+  }, [currentMatch?.tierId, currentMatch?.instanceId, currentMatch?.roundNumber, currentMatch?.matchNumber, account, refreshMatchData, fetchMoveHistory, matchTimePerPlayer]);
 
   // Increment match sync dots every second (1 -> 2 -> 3, resets on sync)
   useEffect(() => {
