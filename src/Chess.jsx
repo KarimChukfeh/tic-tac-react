@@ -4390,7 +4390,7 @@ export default function Chess() {
             enrollmentWindow: config.timeouts.enrollmentWindow,
             enrollmentLevel2Delay: config.timeouts.enrollmentLevel2Delay
           }))}
-          raffleThresholds={['0.02', '0.05', '3']}
+          raffleThresholds={['0.005', '0.02', '0.05', '3']}
           isElite={isEnrolledInElite}
           gameSpecificContent={
             <div>
