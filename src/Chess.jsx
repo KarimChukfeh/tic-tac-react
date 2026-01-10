@@ -4395,42 +4395,6 @@ export default function Chess() {
             <div>
               <h2 id="chess-specifics" className={`text-2xl font-bold ${isEnrolledInElite ? 'text-[#fff8e7]' : 'text-purple-200'} mb-6 scroll-mt-24`}>Chess Specifics</h2>
 
-              {/* Elite Tier Pricing Structure */}
-              <div className="mb-8">
-                <h3 className={`text-lg font-semibold ${isEnrolledInElite ? 'text-[#fff8e7]' : 'text-purple-100'} mb-3`}>Why are Elite tiers so expensive?</h3>
-                <div className="space-y-3 text-gray-300">
-                  <p>
-                    Elite tiers are high-stakes to serves a specific purpose. Elite chess on ETour isn't just another tournament level. It's as an exclusive club for serious chess competitors.
-                  </p>
-                  <p className="font-semibold text-gray-200">Here's what makes Elite tiers special:</p>
-                  <ul className="space-y-2 ml-4">
-                    <li className="flex items-start gap-2">
-                      <span className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-purple-400'}>•</span>
-                      <span><strong>Permanent Legacy</strong>: Every Elite finals is stored permanently on-chain. Winners and their games become part of ETour's permanent record.</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-purple-400'}>•</span>
-                      <span><strong>High Stakes / High Rewards</strong>: The dramatic entry fee increase creates genuine high-stakes competition with proportional rewards.</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-purple-400'}>•</span>
-                      <span><strong>Exclusive Status</strong>: The price barrier ensures only the most confident players participate, creating a prestigious competitive environment.</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-purple-400'}>•</span>
-                      <span><strong>Bragging Rights</strong>: Elite tier victories carry significant bragging rights due to the skill and financial commitment required to participate.</span>
-                    </li>
-                  </ul>
-                  <div className={`${isEnrolledInElite ? 'bg-[#fbbf24]/20 border-[#d4a012]/40' : 'bg-purple-500/20 border-purple-400/40'} border rounded-lg p-3`}>
-                    <p className={isEnrolledInElite ? 'text-[#fff8e7]' : 'text-purple-100'}>
-                      This isn't a gradual progression, it's an intentional leap into elite territory where every victory is immortalized on chain.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <hr className={isEnrolledInElite ? 'border-[#d4a012]/20' : 'border-purple-400/20'} style={{ marginBottom: '2rem' }} />
-
               {/* Chess Rules Implementation */}
               <div className="mb-8">
                 <h3 className={`text-lg font-semibold ${isEnrolledInElite ? 'text-[#fff8e7]' : 'text-purple-100'} mb-3`}>What chess rules are supported?</h3>
@@ -4465,53 +4429,54 @@ export default function Chess() {
                       <span className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-purple-400'}>•</span>
                       <span>Insufficient material draws (e.g., King vs King scenarios)</span>
                     </li>
+                    <li className="flex items-start gap-2">
+                      <span className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-purple-400'}>•</span>
+                      <span><strong>50-move rule</strong>: Games automatically draw after 50 moves without a pawn move or capture</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-purple-400'}>•</span>
+                      <span><strong>Threefold repetition rule</strong>: Games automatically draw upon position repetition</span>
+                    </li>
                   </ul>
                 </div>
               </div>
 
               <hr className={isEnrolledInElite ? 'border-[#d4a012]/20' : 'border-purple-400/20'} style={{ marginBottom: '2rem' }} />
 
-              {/* Rules NOT Implemented */}
+              {/* Elite Tier Pricing Structure */}
               <div className="mb-8">
-                <h3 className={`text-lg font-semibold ${isEnrolledInElite ? 'text-[#fff8e7]' : 'text-purple-100'} mb-3`}>What rules are NOT implemented?</h3>
+                <h3 className={`text-lg font-semibold ${isEnrolledInElite ? 'text-[#fff8e7]' : 'text-purple-100'} mb-3`}>Why are Elite tiers so expensive?</h3>
                 <div className="space-y-3 text-gray-300">
-                  <p>Some traditional tournament rules are not supported:</p>
+                  <p>
+                    Elite tiers are high-stakes to serves a specific purpose. Elite chess on ETour isn't just another tournament level. It's as an exclusive club for serious chess competitors.
+                  </p>
+                  <p className="font-semibold text-gray-200">Here's what makes Elite tiers special:</p>
                   <ul className="space-y-2 ml-4">
                     <li className="flex items-start gap-2">
                       <span className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-purple-400'}>•</span>
-                      <span><strong>50-move rule</strong>: Games do not automatically draw after 50 moves without a pawn move or capture</span>
+                      <span><strong>Permanent Legacy</strong>: Every Elite finals is stored permanently on-chain. Winners and their games become part of ETour's permanent record.</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <span className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-purple-400'}>•</span>
-                      <span><strong>Threefold repetition rule</strong>: Games do not automatically draw upon position repetition</span>
+                      <span><strong>High Stakes / High Rewards</strong>: The dramatic entry fee increase creates genuine high-stakes competition with proportional rewards.</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <span className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-purple-400'}>•</span>
-                      <span><strong>Draw by agreement</strong>: Players cannot mutually agree to draws mid-game</span>
+                      <span><strong>Exclusive Status</strong>: The price barrier ensures only the most confident players participate, creating a prestigious competitive environment.</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-purple-400'}>•</span>
+                      <span><strong>Bragging Rights</strong>: Elite tier victories carry significant bragging rights due to the skill and financial commitment required to participate.</span>
                     </li>
                   </ul>
-                </div>
-              </div>
-
-              <hr className={isEnrolledInElite ? 'border-[#d4a012]/20' : 'border-purple-400/20'} style={{ marginBottom: '2rem' }} />
-
-              {/* Why Are Some Rules Missing */}
-              <div className="mb-8">
-                <h3 className={`text-lg font-semibold ${isEnrolledInElite ? 'text-[#fff8e7]' : 'text-purple-100'} mb-3`}>Why are some rules missing?</h3>
-                <div className="space-y-3 text-gray-300">
-                  <p>
-                    This was a (tough) technical decision, but not an oversight. Smart contract bytecode has strict size limits on Arbitrum (24KB), and implementing every edge case rule would have exceeded these constraints.
-                  </p>
-                  <p>
-                    We chose to prioritize the core competitive experience over rarely-encountered rule scenarios. The missing rules affect less than 1% of typical chess games, while keeping our contracts efficient and cost-effective to deploy.
-                  </p>
-                  <div className="bg-gradient-to-r from-orange-500/15 to-red-500/15 border border-orange-400/40 rounded-lg p-3">
-                    <p className="text-orange-200 font-semibold">
-                      ETour Chess operates under this streamlined ruleset. All players compete under the same conditions, ensuring fairness within our system's constraints.
+                  <div className={`${isEnrolledInElite ? 'bg-[#fbbf24]/20 border-[#d4a012]/40' : 'bg-purple-500/20 border-purple-400/40'} border rounded-lg p-3`}>
+                    <p className={isEnrolledInElite ? 'text-[#fff8e7]' : 'text-purple-100'}>
+                      This isn't a gradual progression, it's an intentional leap into elite territory where every victory is immortalized on chain.
                     </p>
                   </div>
                 </div>
               </div>
+
             </div>
           }
         />
