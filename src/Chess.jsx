@@ -700,6 +700,10 @@ export default function Chess() {
     winnerShare: 0n,
     eligiblePlayerCount: 0n
   });
+
+  // Raffle History State
+  const [raffleHistory, setRaffleHistory] = useState([]);
+
   const [raffleSyncing, setRaffleSyncing] = useState(false);
 
   // Elite Matches State
@@ -1122,6 +1126,35 @@ export default function Chess() {
       // Keep previous state on error
     } finally {
       setRaffleSyncing(false);
+    }
+  }, [getReadOnlyContract]);
+
+  // Fetch Raffle History - Called once on page load
+  const fetchRaffleHistory = useCallback(async () => {
+    try {
+      const readContract = getReadOnlyContract();
+
+      // Fetch all past raffle results using the getRaffleHistory function
+      const results = await readContract.getRaffleHistory();
+
+      // Format results and reverse to show newest first
+      const formattedHistory = results.map((result, index) => ({
+        raffleNumber: index,
+        executor: result.executor,
+        timestamp: Number(result.timestamp),
+        rafflePot: result.rafflePot,
+        winner: result.winner,
+        winnerPrize: result.winnerPrize,
+        protocolReserve: result.protocolReserve,
+        ownerShare: result.ownerShare
+      })).reverse(); // Newest first
+
+      setRaffleHistory(formattedHistory);
+
+      console.log('Chess Raffle History fetched:', formattedHistory.length, 'raffles');
+    } catch (error) {
+      console.error('Error fetching raffle history:', error);
+      setRaffleHistory([]);
     }
   }, [getReadOnlyContract]);
 
@@ -3312,9 +3345,10 @@ export default function Chess() {
   useEffect(() => {
     if (!account) return;
     fetchRaffleInfo();
+    fetchRaffleHistory(); // Fetch history once on mount
     const pollInterval = setInterval(fetchRaffleInfo, 10000);
     return () => clearInterval(pollInterval);
-  }, [account, fetchRaffleInfo]);
+  }, [account, fetchRaffleInfo, fetchRaffleHistory]);
 
   // Poll elite matches every 30 seconds (runs globally when wallet connected)
   useEffect(() => {
@@ -3614,6 +3648,7 @@ export default function Chess() {
       {account && (
         <CommunityRaffleCard
           raffleInfo={raffleInfo}
+          raffleHistory={raffleHistory}
           playerActivityHeight={playerActivityHeight}
           onRefresh={fetchRaffleInfo}
           onTriggerRaffle={executeRaffle}
@@ -4351,7 +4386,7 @@ export default function Chess() {
             enrollmentWindow: config.timeouts.enrollmentWindow,
             enrollmentLevel2Delay: config.timeouts.enrollmentLevel2Delay
           }))}
-          raffleThresholds={['0.5', '1', '2']}
+          raffleThresholds={['0.05', '3']}
           isElite={isEnrolledInElite}
           gameSpecificContent={
             <div>

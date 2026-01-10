@@ -674,6 +674,10 @@ export default function ConnectFour() {
     winnerShare: 0n,
     eligiblePlayerCount: 0n
   });
+
+  // Raffle History State
+  const [raffleHistory, setRaffleHistory] = useState([]);
+
   const [raffleSyncing, setRaffleSyncing] = useState(false);
 
   // Player Activity Hook
@@ -1034,6 +1038,35 @@ export default function ConnectFour() {
       // Keep previous state on error
     } finally {
       setRaffleSyncing(false);
+    }
+  }, [getReadOnlyContract]);
+
+  // Fetch Raffle History - Called once on page load
+  const fetchRaffleHistory = useCallback(async () => {
+    try {
+      const readContract = getReadOnlyContract();
+
+      // Fetch all past raffle results using the getRaffleHistory function
+      const results = await readContract.getRaffleHistory();
+
+      // Format results and reverse to show newest first
+      const formattedHistory = results.map((result, index) => ({
+        raffleNumber: index,
+        executor: result.executor,
+        timestamp: Number(result.timestamp),
+        rafflePot: result.rafflePot,
+        winner: result.winner,
+        winnerPrize: result.winnerPrize,
+        protocolReserve: result.protocolReserve,
+        ownerShare: result.ownerShare
+      })).reverse(); // Newest first
+
+      setRaffleHistory(formattedHistory);
+
+      console.log('ConnectFour Raffle History fetched:', formattedHistory.length, 'raffles');
+    } catch (error) {
+      console.error('Error fetching raffle history:', error);
+      setRaffleHistory([]);
     }
   }, [getReadOnlyContract]);
 
@@ -2973,9 +3006,10 @@ export default function ConnectFour() {
   useEffect(() => {
     if (!account) return;
     fetchRaffleInfo();
+    fetchRaffleHistory(); // Fetch history once on mount
     const pollInterval = setInterval(fetchRaffleInfo, 10000);
     return () => clearInterval(pollInterval);
-  }, [account, fetchRaffleInfo]);
+  }, [account, fetchRaffleInfo, fetchRaffleHistory]);
 
   // Poll leaderboard every 1 minute (runs globally)
   useEffect(() => {
@@ -3240,6 +3274,7 @@ export default function ConnectFour() {
       {account && (
         <CommunityRaffleCard
           raffleInfo={raffleInfo}
+          raffleHistory={raffleHistory}
           playerActivityHeight={playerActivityHeight}
           onRefresh={fetchRaffleInfo}
           onTriggerRaffle={executeRaffle}
@@ -3782,7 +3817,7 @@ export default function ConnectFour() {
             enrollmentWindow: config.timeouts.enrollmentWindow,
             enrollmentLevel2Delay: config.timeouts.enrollmentLevel2Delay
           }))}
-          raffleThresholds={['0.4', '0.75', '1']}
+          raffleThresholds={['0.05', '0.4', '0.75', '1']}
         />
       </div>
 

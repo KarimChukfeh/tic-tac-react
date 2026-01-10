@@ -286,6 +286,9 @@ export default function TicTacChain() {
     eligiblePlayerCount: 0n
   });
 
+  // Raffle History State
+  const [raffleHistory, setRaffleHistory] = useState([]);
+
   // Time Configuration from Contract
   const [matchTimePerPlayer, setMatchTimePerPlayer] = useState(300); // Default 5 minutes
   const [timeIncrement, setTimeIncrement] = useState(0); // Default no increment
@@ -709,6 +712,36 @@ export default function TicTacChain() {
       setRaffleSyncing(false);
     }
   }, [getReadOnlyContract]);
+
+  // Fetch Raffle History - Called once on page load
+  const fetchRaffleHistory = useCallback(async () => {
+    try {
+      const readContract = getReadOnlyContract();
+
+      // Fetch all past raffle results using the getRaffleHistory function
+      const results = await readContract.getRaffleHistory();
+
+      // Format results and reverse to show newest first
+      const formattedHistory = results.map((result, index) => ({
+        raffleNumber: index,
+        executor: result.executor,
+        timestamp: Number(result.timestamp),
+        rafflePot: result.rafflePot,
+        winner: result.winner,
+        winnerPrize: result.winnerPrize,
+        protocolReserve: result.protocolReserve,
+        ownerShare: result.ownerShare
+      })).reverse(); // Newest first
+
+      setRaffleHistory(formattedHistory);
+
+      console.log('Raffle History fetched:', formattedHistory.length, 'raffles');
+    } catch (error) {
+      console.error('Error fetching raffle history:', error);
+      setRaffleHistory([]);
+    }
+  }, [getReadOnlyContract]);
+
   // LAZY LOADING: Fetch tier metadata from hardcoded TIER_CONFIG (no RPC calls)
   // Active enrollment counts come from tierInstances when tiers are expanded
   const fetchTierMetadata = useCallback(async (_contractInstance = null, silentUpdate = false) => {
@@ -2750,12 +2783,13 @@ export default function TicTacChain() {
 
     // Initial fetch
     fetchRaffleInfo();
+    fetchRaffleHistory(); // Fetch history once on mount
 
-    // Set up polling interval - runs every 10 seconds
+    // Set up polling interval - runs every 10 seconds (only for current raffle info)
     const pollInterval = setInterval(fetchRaffleInfo, 10000);
 
     return () => clearInterval(pollInterval);
-  }, [account, fetchRaffleInfo]);
+  }, [account, fetchRaffleInfo, fetchRaffleHistory]);
 
   // Poll leaderboard every 1 minute (runs globally)
   useEffect(() => {
@@ -3035,6 +3069,7 @@ export default function TicTacChain() {
       {account && (
         <CommunityRaffleCard
           raffleInfo={raffleInfo}
+          raffleHistory={raffleHistory}
           playerActivityHeight={playerActivityHeight}
           onRefresh={fetchRaffleInfo}
           onTriggerRaffle={executeRaffle}
@@ -3436,7 +3471,7 @@ export default function TicTacChain() {
             enrollmentWindow: config.timeouts.enrollmentWindow,
             enrollmentLevel2Delay: config.timeouts.enrollmentLevel2Delay
           }))}
-          raffleThresholds={['0.25', '0.5', '0.75', '1']}
+          raffleThresholds={['0.05', '0.25', '0.5', '0.75', '1']}
         />
       </div>
 

@@ -6,10 +6,11 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { X, RefreshCw, Zap } from 'lucide-react';
+import { X, RefreshCw, Zap, Trophy } from 'lucide-react';
 import { ethers } from 'ethers';
+import { shortenAddress } from '../../utils/formatters';
 
-const CommunityRaffleCard = ({ raffleInfo, playerActivityHeight, onRefresh, onTriggerRaffle, syncing, onHeightChange }) => {
+const CommunityRaffleCard = ({ raffleInfo, raffleHistory = [], playerActivityHeight, onRefresh, onTriggerRaffle, syncing, onHeightChange }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
   const expandedPanelRef = useRef(null);
@@ -256,6 +257,53 @@ const CommunityRaffleCard = ({ raffleInfo, playerActivityHeight, onRefresh, onTr
           >
             What are Community Raffles?
           </a>
+
+          {/* Raffle History Section */}
+          {raffleHistory.length > 0 && (
+            <div className="mt-4 border-t border-yellow-400/20 pt-4">
+              <h4 className="text-yellow-300 font-semibold text-xs mb-2 flex items-center gap-1">
+                <Trophy size={14} />
+                Past Raffle Winners
+              </h4>
+              <div className="space-y-2 max-h-64 overflow-y-auto scrollbar-thin scrollbar-thumb-yellow-500/30 scrollbar-track-transparent">
+                {raffleHistory.map((raffle) => (
+                  <div
+                    key={raffle.raffleNumber}
+                    className="bg-black/20 rounded-lg p-2.5 border border-yellow-400/10 hover:border-yellow-400/30 transition-colors"
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-yellow-300 font-semibold text-xs">
+                        Raffle #{raffle.raffleNumber + 1}
+                      </span>
+                      <span className="text-yellow-300/50 text-[10px]">
+                        {new Date(raffle.timestamp * 1000).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <div className="space-y-1 text-[11px]">
+                      <div className="flex justify-between text-yellow-300/70">
+                        <span>Winner:</span>
+                        <span className="font-mono text-yellow-200">
+                          {shortenAddress(raffle.winner)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-yellow-300/70">
+                        <span>Prize:</span>
+                        <span className="font-mono text-green-400 font-semibold">
+                          {parseFloat(ethers.formatEther(raffle.winnerPrize)).toFixed(4)} ETH
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-yellow-300/50">
+                        <span>Total Pot:</span>
+                        <span className="font-mono">
+                          {parseFloat(ethers.formatEther(raffle.rafflePot)).toFixed(4)} ETH
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
