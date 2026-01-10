@@ -189,6 +189,7 @@ export const reconstructMatchFromEvents = async (
       board,
       winner: completedEvent?.args?.winner || null,
       isDraw: completedEvent?.args?.isDraw || false,
+      completionReason: completedEvent?.args?.reason ? Number(completedEvent.args.reason) : 0,
       events: moveEvents,
       completedEvent,
     };

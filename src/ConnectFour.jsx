@@ -32,6 +32,7 @@ import { parseTournamentParams } from './utils/urlHelpers';
 import { parseConnectFourMatch } from './utils/matchDataParser';
 import { determineMatchResult } from './utils/matchCompletionHandler';
 import { fetchTierTimeoutConfig } from './utils/timeCalculations';
+import { getCompletionReasonText, getCompletionReasonDescription } from './utils/completionReasons';
 import ParticleBackground from './components/shared/ParticleBackground';
 import MatchCard from './components/shared/MatchCard';
 import TournamentCard from './components/shared/TournamentCard';
@@ -2783,8 +2784,8 @@ export default function ConnectFour() {
     };
 
     // Handler for MatchCompleted events
-    const handleMatchCompleted = async (eventMatchId, winner, isDraw) => {
-      console.log('[MatchCompleted Event] Received:', { eventMatchId, winner, isDraw });
+    const handleMatchCompleted = async (eventMatchId, winner, isDraw, reason) => {
+      console.log('[MatchCompleted Event] Received:', { eventMatchId, winner, isDraw, reason });
 
       // Only update if this event is for the current match
       if (eventMatchId !== matchId) return;
@@ -2804,6 +2805,7 @@ export default function ConnectFour() {
           winner,
           isDraw,
           loser,
+          reason,
           boardPreserved: prev.board?.length || 0
         });
 
@@ -2814,6 +2816,7 @@ export default function ConnectFour() {
           winner: isDraw ? '0x0000000000000000000000000000000000000000' : winner,
           loser,
           isDraw,
+          completionReason: Number(reason),
           isYourTurn: false
         };
       });
@@ -2828,13 +2831,28 @@ export default function ConnectFour() {
           const userWon = !isDraw && winner.toLowerCase() === account.toLowerCase();
           const opponent = isPlayer1 ? player2 : player1;
 
-          console.log('[MatchCompleted Event] Showing modal:', { userWon, isDraw, opponent });
+          // Get reason-specific text
+          const reasonNum = Number(reason);
+          const title = getCompletionReasonText(reasonNum, userWon, isDraw, 'connect4');
+          const description = getCompletionReasonDescription(reasonNum, userWon, isDraw);
+
+          console.log('[MatchCompleted Event] Showing modal:', {
+            userWon,
+            isDraw,
+            opponent,
+            reason: reasonNum,
+            title,
+            description
+          });
 
           setMatchEndResult({
             show: true,
             isWin: userWon,
             isDraw: isDraw,
-            opponent: opponent
+            opponent: opponent,
+            completionReason: reasonNum,
+            reasonText: title,
+            reasonDescription: description
           });
         }
       }

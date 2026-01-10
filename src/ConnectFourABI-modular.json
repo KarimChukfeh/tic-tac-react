@@ -1,9 +1,9 @@
 {
   "contractName": "ConnectFourOnChain",
-  "address": "0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1",
+  "address": "0xa85233C63b9Ee964Add6F2cffe00Fd84eb32338f",
   "network": "localhost",
   "chainId": "412346",
-  "deployedAt": "2026-01-10T10:45:00.190Z",
+  "deployedAt": "2026-01-10T11:26:17.443Z",
   "modules": {
     "core": "0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6",
     "matches": "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318",
@@ -68,6 +68,12 @@
           "internalType": "bool",
           "name": "isDraw",
           "type": "bool"
+        },
+        {
+          "indexed": false,
+          "internalType": "enum ETour_Storage.CompletionReason",
+          "name": "reason",
+          "type": "uint8"
         }
       ],
       "name": "MatchCompleted",
@@ -188,8 +194,8 @@
         },
         {
           "indexed": false,
-          "internalType": "enum ETour_Storage.TournamentCompletionReason",
-          "name": "completionReason",
+          "internalType": "enum ETour_Storage.CompletionReason",
+          "name": "reason",
           "type": "uint8"
         },
         {
@@ -2029,7 +2035,7 @@
           "type": "uint8"
         },
         {
-          "internalType": "enum ETour_Storage.TournamentCompletionReason",
+          "internalType": "enum ETour_Storage.CompletionReason",
           "name": "completionReason",
           "type": "uint8"
         },
