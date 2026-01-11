@@ -1118,23 +1118,27 @@ export default function ConnectFour() {
 
         const { playerCount, instanceCount, entryFee } = tierConfig;
 
-        // Fetch tournament data for each instance individually (matches TicTacChain)
         const statuses = [];
         const enrolledCounts = [];
 
-        for (let instanceId = 0; instanceId < instanceCount; instanceId++) {
-          try {
-            // Use getTournamentInfo instead of tournaments mapping
-            const tournamentInfo = await readContract.getTournamentInfo(tierId, instanceId);
-            const status = Number(tournamentInfo[0]); // status
-            const enrolledCount = Number(tournamentInfo[2]); // enrolledCount
+        // OPTIMIZATION: Fetch all tournament instances in parallel
+        const tournamentPromises = Array.from({ length: instanceCount }, (_, instanceId) =>
+          readContract.getTournamentInfo(tierId, instanceId)
+            .then(tournamentInfo => ({
+              success: true,
+              status: Number(tournamentInfo[0]),
+              enrolledCount: Number(tournamentInfo[2])
+            }))
+            .catch(error => ({ success: false, error }))
+        );
 
-            statuses.push(status);
-            enrolledCounts.push(enrolledCount);
-          } catch (error) {
-            // Instance not initialized yet, stop checking further instances
-            break;
-          }
+        const results = await Promise.all(tournamentPromises);
+
+        // Process results - stop at first uninitialized instance
+        for (const result of results) {
+          if (!result.success) break; // Instance not initialized yet
+          statuses.push(result.status);
+          enrolledCounts.push(result.enrolledCount);
         }
 
         metadata = {
@@ -1767,10 +1771,23 @@ export default function ConnectFour() {
         const roundInfo = await contractInstance.getRoundInfo(tierId, instanceId, roundNum);
         const totalMatches = Number(roundInfo[0]);
 
+        // OPTIMIZATION: Fetch all matches for this round in parallel
+        const matchPromises = Array.from({ length: totalMatches }, (_, matchNum) =>
+          contractInstance.getMatch(tierId, instanceId, roundNum, matchNum)
+            .then(matchData => ({ matchNum, matchData, success: true }))
+            .catch(err => ({ matchNum, error: err, success: false }))
+        );
+
+        const matchResults = await Promise.all(matchPromises);
+
         const matches = [];
-        for (let matchNum = 0; matchNum < totalMatches; matchNum++) {
+        for (const result of matchResults) {
+          const matchNum = result.matchNum;
           try {
-            const matchData = await contractInstance.getMatch(tierId, instanceId, roundNum, matchNum);
+            if (!result.success) {
+              throw result.error;
+            }
+            const matchData = result.matchData;
             const parsedMatch = parseConnectFourMatch(matchData);
 
             // Calculate time remaining client-side (contract stores time at last move)

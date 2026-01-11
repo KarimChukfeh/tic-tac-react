@@ -790,19 +790,27 @@ export default function TicTacChain() {
 
         const { playerCount, instanceCount, entryFee } = tierConfig;
 
-        // Fetch tournament data for each instance
         const statuses = [];
         const enrolledCounts = [];
 
-        for (let instanceId = 0; instanceId < instanceCount; instanceId++) {
-          try {
-            const tournament = await readContract.tournaments(tierId, instanceId);
-            statuses.push(Number(tournament.status));
-            enrolledCounts.push(Number(tournament.enrolledCount));
-          } catch (error) {
-            // Instance not initialized yet, stop checking further instances
-            break;
-          }
+        // OPTIMIZATION: Fetch all tournament instances in parallel
+        const tournamentPromises = Array.from({ length: instanceCount }, (_, instanceId) =>
+          readContract.tournaments(tierId, instanceId)
+            .then(tournament => ({
+              success: true,
+              status: Number(tournament.status),
+              enrolledCount: Number(tournament.enrolledCount)
+            }))
+            .catch(error => ({ success: false, error }))
+        );
+
+        const results = await Promise.all(tournamentPromises);
+
+        // Process results - stop at first uninitialized instance
+        for (const result of results) {
+          if (!result.success) break; // Instance not initialized yet
+          statuses.push(result.status);
+          enrolledCounts.push(result.enrolledCount);
         }
 
         metadata = {
@@ -1422,10 +1430,23 @@ export default function TicTacChain() {
         const roundInfo = await contractInstance.getRoundInfo(tierId, instanceId, roundNum);
         const totalMatches = Number(roundInfo[0]);
 
+        // OPTIMIZATION: Fetch all matches for this round in parallel
+        const matchPromises = Array.from({ length: totalMatches }, (_, matchNum) =>
+          contractInstance.getMatch(tierId, instanceId, roundNum, matchNum)
+            .then(matchData => ({ matchNum, matchData, success: true }))
+            .catch(err => ({ matchNum, error: err, success: false }))
+        );
+
+        const matchResults = await Promise.all(matchPromises);
+
         const matches = [];
-        for (let matchNum = 0; matchNum < totalMatches; matchNum++) {
+        for (const result of matchResults) {
+          const matchNum = result.matchNum;
           try {
-            const matchData = await contractInstance.getMatch(tierId, instanceId, roundNum, matchNum);
+            if (!result.success) {
+              throw result.error;
+            }
+            const matchData = result.matchData;
             const parsedMatch = parseTicTacToeMatch(matchData);
 
             // Calculate time remaining client-side (contract stores time at last move)
