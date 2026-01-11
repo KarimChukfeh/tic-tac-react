@@ -260,9 +260,9 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onSpectateMat
 export default function TicTacChain() {
   // Use network config instead of hardcoded values
   // const EXPECTED_CHAIN_ID = CURRENT_NETWORK.chainId;
-  // const RPC_URL = import.meta.env.VITE_RPC_URL || CURRENT_NETWORK.rpcUrl;
   const EXPECTED_CHAIN_ID = 42161;
-  const RPC_URL = "https://arb1.arbitrum.io/rpc";
+  const RPC_URL = import.meta.env.VITE_RPC_URL || CURRENT_NETWORK.rpcUrl;
+  // const RPC_URL = "https://arb1.arbitrum.io/rpc";
   const EXPLORER_URL = getAddressUrl(CONTRACT_ADDRESS);
 
   // Helper to get read-only contract (bypasses MetaMask for read operations)
