@@ -85,7 +85,7 @@ const TIER_CONFIG = {
   2: {
     playerCount: 8,
     instanceCount: 25,
-    entryFee: '0.00013',
+    entryFee: '0.0013',
     timeouts: {
       matchTimePerPlayer: 60,
       timeIncrementPerMove: 15,
