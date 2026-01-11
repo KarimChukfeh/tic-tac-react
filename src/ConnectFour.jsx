@@ -2819,25 +2819,38 @@ export default function ConnectFour() {
         return;
       }
 
-      // Fetch the full board state from contract for Connect4 (ensures accuracy)
+      // Fetch fresh board state directly from contract (fast path for real-time updates)
       console.log('[MoveMade Event] Fetching fresh board state from contract');
       try {
-        const updatedMatch = await refreshMatchData(
-          contract,
-          account,
-          currentMatch,
-          matchTimePerPlayer
-        );
+        const matchData = await contract.getMatch(tierId, instanceId, roundNumber, matchNumber);
+        const parsedMatch = parseConnectFourMatch(matchData);
 
-        if (updatedMatch) {
-          console.log('[MoveMade Event] Board updated from contract:', {
-            column,
-            row,
-            boardLength: updatedMatch.board?.length
-          });
-          setCurrentMatch(updatedMatch);
-          previousBoardRef.current = updatedMatch.board;
-        }
+        // Convert board to number array
+        const boardState = Array.from(parsedMatch.board).map(cell => Number(cell));
+
+        // Update currentMatch with fresh board and turn data
+        setCurrentMatch(prev => ({
+          ...prev,
+          board: boardState,
+          currentTurn: parsedMatch.currentTurn,
+          matchStatus: parsedMatch.matchStatus,
+          winner: parsedMatch.winner,
+          loser: parsedMatch.loser,
+          isDraw: parsedMatch.isDraw,
+          lastMoveTime: parsedMatch.lastMoveTime,
+          lastColumn: Number(column), // Use column from event for highlighting
+          player1TimeRemaining: parsedMatch.player1TimeRemaining,
+          player2TimeRemaining: parsedMatch.player2TimeRemaining,
+          isYourTurn: parsedMatch.currentTurn?.toLowerCase() === account?.toLowerCase()
+        }));
+        previousBoardRef.current = boardState;
+
+        console.log('[MoveMade Event] Board updated from contract:', {
+          column,
+          row,
+          boardLength: boardState.length,
+          currentTurn: parsedMatch.currentTurn
+        });
 
         // Refresh move history
         const history = await fetchMoveHistory(contract, tierId, instanceId, roundNumber, matchNumber);
