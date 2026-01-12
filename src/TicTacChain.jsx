@@ -490,12 +490,12 @@ export default function TicTacChain() {
     infoText: 'text-blue-200'
   };
 
-  // Switch to Local Network (Chain ID 412346)
+  // Switch to Arbitrum One (Chain ID 42161)
   const switchToArbitrum = async () => {
     try {
       await window.ethereum.request({
         method: 'wallet_switchEthereumChain',
-        params: [{ chainId: '0x64aba' }], // 412346 in hex
+        params: [{ chainId: '0xa4b1' }], // 42161 in hex (Arbitrum One)
       });
     } catch (switchError) {
       // This error code indicates that the chain has not been added to MetaMask
@@ -505,22 +505,22 @@ export default function TicTacChain() {
             method: 'wallet_addEthereumChain',
             params: [
               {
-          chainId: '0x64aba', // 412346 in hex
-          chainName: 'Local Network',
+          chainId: '0xa4b1', // 42161 in hex (Arbitrum One)
+          chainName: 'Arbitrum One',
           nativeCurrency: {
-            name: 'Ethereum',
+            name: 'Ether',
             symbol: 'ETH',
             decimals: 18,
           },
-          rpcUrls: [RPC_URL],
-          blockExplorerUrls: [],
+          rpcUrls: ['https://arb1.arbitrum.io/rpc'],
+          blockExplorerUrls: ['https://arbiscan.io'],
               },
             ],
           });
-          alert('✅ Local network added! Please connect your wallet again.');
+          alert('✅ Arbitrum One network added! Please connect your wallet again.');
         } catch (addError) {
-          console.error('Error adding local network:', addError);
-          alert('Failed to add local network. Please add it manually in MetaMask.');
+          console.error('Error adding Arbitrum One:', addError);
+          alert('Failed to add Arbitrum One. Please add it manually in MetaMask.');
         }
       } else {
         console.error('Error switching network:', switchError);
@@ -560,12 +560,12 @@ export default function TicTacChain() {
 
       setNetworkInfo(networkData);
 
-      // Check if connected to expected network (chain ID 412346)
+      // Check if connected to expected network (chain ID 42161)
       if (network.chainId !== BigInt(EXPECTED_CHAIN_ID)) {
         const shouldSwitch = window.confirm(
           `⚠️ Wrong Network Detected\n\n` +
           `You're connected to: ${network.name || 'Unknown'} (Chain ID: ${network.chainId})\n` +
-          `Expected: Local Network (Chain ID: ${EXPECTED_CHAIN_ID})\n\n` +
+          `Expected: Arbitrum One (Chain ID: ${EXPECTED_CHAIN_ID})\n\n` +
           `Click OK to automatically switch networks, or Cancel to stay on current network.`
         );
 
