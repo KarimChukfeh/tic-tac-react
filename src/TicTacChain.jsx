@@ -292,10 +292,10 @@ export default function TicTacChain() {
   const [raffleHistory, setRaffleHistory] = useState([]);
 
   // Time Configuration from Contract
-  const [matchTimePerPlayer, setMatchTimePerPlayer] = useState(300); // Default 5 minutes
+  const [matchTimePerPlayer, setMatchTimePerPlayer] = useState(120); // Default 2 minutes for Tic-Tac-Toe
   const [timeIncrement, setTimeIncrement] = useState(0); // Default no increment
   const [escalationInterval, setEscalationInterval] = useState(60); // Default 60 seconds between escalations
-  const [displayTimeoutConfig, setDisplayTimeoutConfig] = useState({ matchTimePerPlayer: 300 }); // Dynamic timeout config for display
+  const [displayTimeoutConfig, setDisplayTimeoutConfig] = useState({ matchTimePerPlayer: 120 }); // Dynamic timeout config for display
 
   // Loading State
   const [loading, setLoading] = useState(false);
@@ -2900,7 +2900,7 @@ export default function TicTacChain() {
             return;
           }
 
-          // Update for in-progress matches only - only update turn and timer fields
+          // Update for in-progress matches only - update turn, timer, and board fields
           setCurrentMatch(prev => {
             if (!prev) return updatedMatch;
 
@@ -2909,16 +2909,17 @@ export default function TicTacChain() {
               return prev;
             }
 
-            // Only update turn and timer fields, preserve board and game state from events
+            // Update turn, timer, and board fields from contract (source of truth)
             return {
               ...prev,
+              board: updatedMatch.board,
               currentTurn: updatedMatch.currentTurn,
               isYourTurn: updatedMatch.isYourTurn,
               player1TimeRemaining: updatedMatch.player1TimeRemaining,
               player2TimeRemaining: updatedMatch.player2TimeRemaining,
               lastMoveTime: updatedMatch.lastMoveTime,
               lastMoveTimestamp: updatedMatch.lastMoveTimestamp,
-              // Board, matchStatus, winner, loser, isDraw are preserved from prev (event-driven)
+              // matchStatus, winner, loser, isDraw are preserved from prev (event-driven)
             };
           });
         }
