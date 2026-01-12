@@ -9,6 +9,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { parseTicTacToeMatch, parseChessMatch, parseConnectFourMatch } from '../utils/matchDataParser';
 
 /**
  * Custom hook to fetch player activity for a single game
@@ -45,6 +46,18 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
         totalEarnings: 0n,
       });
       return;
+    }
+
+    // Select the appropriate match parser based on game type
+    let parseMatch;
+    if (gameName === 'tictactoe') {
+      parseMatch = parseTicTacToeMatch;
+    } else if (gameName === 'chess') {
+      parseMatch = parseChessMatch;
+    } else if (gameName === 'connect4') {
+      parseMatch = parseConnectFourMatch;
+    } else {
+      parseMatch = parseTicTacToeMatch; // Default fallback
     }
 
     try {
@@ -156,7 +169,7 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
           const allMatchPromises = roundsInfo.flatMap(({ roundIdx, totalMatches }) =>
             Array.from({ length: totalMatches }, (_, matchIdx) =>
               contract.getMatch(tierId, instanceId, roundIdx, matchIdx)
-                .then(matchData => ({ roundIdx, matchIdx, matchData }))
+                .then(matchData => ({ roundIdx, matchIdx, matchData: parseMatch(matchData) }))
                 .catch(err => ({ roundIdx, matchIdx, error: err }))
             )
           );
@@ -166,14 +179,14 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
           for (const { roundIdx, matchIdx, matchData, error } of allMatches) {
             if (error) continue;
 
-            // Check if this is the player's match
-            const isPlayer1 = matchData.common.player1?.toLowerCase() === account.toLowerCase();
-            const isPlayer2 = matchData.common.player2?.toLowerCase() === account.toLowerCase();
+            // Check if this is the player's match (parsed match has flattened structure)
+            const isPlayer1 = matchData.player1?.toLowerCase() === account.toLowerCase();
+            const isPlayer2 = matchData.player2?.toLowerCase() === account.toLowerCase();
 
             if (!isPlayer1 && !isPlayer2) continue;
 
             // Check if match was in progress when tournament ended
-            const matchStatus = Number(matchData.common.status);
+            const matchStatus = matchData.matchStatus;
             const matchKey = `${tierId}-${instanceId}-${roundIdx}-${matchIdx}`;
 
             // Skip dismissed matches
@@ -184,7 +197,7 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
 
             // If match was still in progress (status === 1), it was terminated by tournament completion
             if (matchStatus === 1) {
-              const opponent = isPlayer1 ? matchData.common.player2 : matchData.common.player1;
+              const opponent = isPlayer1 ? matchData.player2 : matchData.player1;
 
               console.log(`[PlayerActivity] Found terminated match ${matchKey}`);
               terminatedMatches.push({
@@ -221,7 +234,7 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
         const allMatchPromises = roundsInfo.flatMap(({ roundIdx, totalMatches }) =>
           Array.from({ length: totalMatches }, (_, matchIdx) =>
             contract.getMatch(tierId, instanceId, roundIdx, matchIdx)
-              .then(matchData => ({ roundIdx, matchIdx, matchData }))
+              .then(matchData => ({ roundIdx, matchIdx, matchData: parseMatch(matchData) }))
               .catch(err => ({ roundIdx, matchIdx, error: err }))
           )
         );
@@ -230,7 +243,7 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
         console.log(`[PlayerActivity] Fetched ${allMatches.length} total matches for T${tierId}I${instanceId}`);
         console.log(`[PlayerActivity] Matches with errors: ${allMatches.filter(m => m.error).length}`);
 
-        // Collect active matches that need time remaining fetched
+        // Collect active matches that need time remaining calculated
         const activeMatchesToFetch = [];
 
         // Process all fetched matches
@@ -240,17 +253,17 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
             continue;
           }
 
-          // Check if this is the player's match
-          const isPlayer1 = matchData.common.player1?.toLowerCase() === account.toLowerCase();
-          const isPlayer2 = matchData.common.player2?.toLowerCase() === account.toLowerCase();
+          // Check if this is the player's match (parsed match has flattened structure)
+          const isPlayer1 = matchData.player1?.toLowerCase() === account.toLowerCase();
+          const isPlayer2 = matchData.player2?.toLowerCase() === account.toLowerCase();
 
           if (!isPlayer1 && !isPlayer2) {
-            console.log(`[PlayerActivity] Skipping match T${tierId}I${instanceId}R${roundIdx}M${matchIdx} - player not in match (p1: ${matchData.common.player1}, p2: ${matchData.common.player2}, account: ${account})`);
+            console.log(`[PlayerActivity] Skipping match T${tierId}I${instanceId}R${roundIdx}M${matchIdx} - player not in match (p1: ${matchData.player1}, p2: ${matchData.player2}, account: ${account})`);
             continue;
           }
 
           // Check if match is in progress OR recently completed
-          const matchStatus = Number(matchData.common.status);
+          const matchStatus = matchData.matchStatus;
           const isMyTurn = matchData.currentTurn?.toLowerCase() === account.toLowerCase();
           const matchKey = `${tierId}-${instanceId}-${roundIdx}-${matchIdx}`;
 
@@ -258,8 +271,11 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
             status: matchStatus,
             isMyTurn,
             isDismissed: dismissedMatches.has(matchKey),
-            player1: matchData.common.player1,
-            player2: matchData.common.player2
+            player1: matchData.player1,
+            player2: matchData.player2,
+            player1TimeRemaining: matchData.player1TimeRemaining,
+            player2TimeRemaining: matchData.player2TimeRemaining,
+            lastMoveTime: matchData.lastMoveTime
           });
 
           // Skip dismissed matches
@@ -274,9 +290,9 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
             hasActiveMatch = true;
 
             // Determine opponent
-            const opponent = isPlayer1 ? matchData.common.player2 : matchData.common.player1;
+            const opponent = isPlayer1 ? matchData.player2 : matchData.player1;
 
-            // Collect for time remaining fetch later
+            // Collect for time remaining calculation later
             activeMatchesToFetch.push({
               tierId,
               instanceId,
@@ -285,45 +301,65 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
               opponent,
               isMyTurn,
               isPlayer1,
-              matchData,
+              parsedMatch: matchData,
             });
           } else {
             console.log(`[PlayerActivity] Skipping match ${matchKey} - status not 1 (status: ${matchStatus})`);
           }
         }
 
-        // OPTIMIZATION: Fetch time remaining for all active matches in parallel (only if we have matches)
+        // OPTIMIZATION: Calculate time remaining for all active matches (same method as main board)
         if (activeMatchesToFetch.length > 0) {
-          // Check if contract has getCurrentTimeRemaining function (Chess/ConnectFour have it, TicTacToe doesn't)
-          const hasTimeRemainingFunction = typeof contract.getCurrentTimeRemaining === 'function';
+          // Calculate time remaining client-side (same as main board logic in TicTacChain.jsx lines 1454-1468)
+          const now = Math.floor(Date.now() / 1000);
 
-          let matchesWithTime;
-          if (hasTimeRemainingFunction) {
-            // For games with time controls (Chess, ConnectFour), fetch current time
-            const timeRemainingPromises = activeMatchesToFetch.map(match =>
-              contract.getCurrentTimeRemaining(match.tierId, match.instanceId, match.roundIdx, match.matchIdx)
-                .then(timeData => ({
-                  ...match,
-                  timeRemaining: match.isPlayer1 ? Number(timeData[0]) : Number(timeData[1])
-                }))
-                .catch(() => ({
-                  ...match,
-                  // Fallback to match data
-                  timeRemaining: match.isPlayer1
-                    ? Number(match.matchData.player1TimeRemaining || 300)
-                    : Number(match.matchData.player2TimeRemaining || 300)
-                }))
-            );
-            matchesWithTime = await Promise.all(timeRemainingPromises);
-          } else {
-            // For games without time controls (TicTacToe), use match data directly
-            matchesWithTime = activeMatchesToFetch.map(match => ({
+          const matchesWithTime = activeMatchesToFetch.map(match => {
+            const parsedMatch = match.parsedMatch;
+            const elapsed = parsedMatch.lastMoveTime > 0 ? now - parsedMatch.lastMoveTime : 0;
+
+            // Get tier config for default match time
+            const tierMatchTime = tierConfig?.[match.tierId]?.timeouts?.matchTimePerPlayer || 120;
+
+            console.log(`[PlayerActivity] TIME CALC DEBUG for T${match.tierId}I${match.instanceId}R${match.roundIdx}M${match.matchIdx}:`, {
+              now,
+              lastMoveTime: parsedMatch.lastMoveTime,
+              elapsed,
+              tierMatchTime,
+              contractPlayer1Time: parsedMatch.player1TimeRemaining,
+              contractPlayer2Time: parsedMatch.player2TimeRemaining,
+              currentTurn: parsedMatch.currentTurn,
+              matchStatus: parsedMatch.matchStatus
+            });
+
+            let player1TimeRemaining = parsedMatch.player1TimeRemaining ?? tierMatchTime;
+            let player2TimeRemaining = parsedMatch.player2TimeRemaining ?? tierMatchTime;
+
+            console.log(`[PlayerActivity] TIME CALC - Before elapsed subtraction:`, {
+              player1TimeRemaining,
+              player2TimeRemaining
+            });
+
+            // Only subtract elapsed time from the current player's clock (if match is active)
+            if (parsedMatch.matchStatus === 1 && parsedMatch.currentTurn && elapsed > 0) {
+              const isPlayer1Turn = parsedMatch.currentTurn.toLowerCase() === parsedMatch.player1.toLowerCase();
+              if (isPlayer1Turn) {
+                player1TimeRemaining = Math.max(0, player1TimeRemaining - elapsed);
+              } else {
+                player2TimeRemaining = Math.max(0, player2TimeRemaining - elapsed);
+              }
+            }
+
+            console.log(`[PlayerActivity] TIME CALC - After elapsed subtraction:`, {
+              player1TimeRemaining,
+              player2TimeRemaining,
+              finalTimeForPlayer: match.isPlayer1 ? player1TimeRemaining : player2TimeRemaining
+            });
+
+            return {
               ...match,
-              timeRemaining: match.isPlayer1
-                ? Number(match.matchData.player1TimeRemaining || 0)
-                : Number(match.matchData.player2TimeRemaining || 0)
-            }));
-          }
+              timeRemaining: match.isPlayer1 ? player1TimeRemaining : player2TimeRemaining
+            };
+          });
 
           // Add all matches to activeMatches array
           matchesWithTime.forEach(({ tierId, instanceId, roundIdx, matchIdx, opponent, timeRemaining, isMyTurn }) => {

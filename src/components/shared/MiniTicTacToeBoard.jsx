@@ -31,11 +31,11 @@ const MiniTicTacToeBoard = ({
   const [hasNotifiedCompletion, setHasNotifiedCompletion] = useState(false);
 
   // Client-side ticking timer state
-  const [player1TimeLeft, setPlayer1TimeLeft] = useState(300);
-  const [player2TimeLeft, setPlayer2TimeLeft] = useState(300);
+  const [player1TimeLeft, setPlayer1TimeLeft] = useState(0);
+  const [player2TimeLeft, setPlayer2TimeLeft] = useState(0);
   const lastSyncRef = useRef(Date.now());
-  const lastContractP1TimeRef = useRef(300);
-  const lastContractP2TimeRef = useRef(300);
+  const lastContractP1TimeRef = useRef(0);
+  const lastContractP2TimeRef = useRef(0);
 
   // Extract fetch logic into reusable function
   const fetchMatchData = useCallback(async (isInitialLoad = false) => {
@@ -115,9 +115,23 @@ const MiniTicTacToeBoard = ({
 
       setMatchData(parsed);
 
-      // Update timer state when contract data changes (on sync)
-      const contractP1Time = parsed.player1TimeRemaining ?? 300;
-      const contractP2Time = parsed.player2TimeRemaining ?? 300;
+      // Calculate time remaining client-side (same as main board logic)
+      // Formula: current player's time = stored time - elapsed since last move
+      const now = Math.floor(Date.now() / 1000);
+      const elapsed = parsed.lastMoveTime > 0 ? now - parsed.lastMoveTime : 0;
+
+      let contractP1Time = parsed.player1TimeRemaining;
+      let contractP2Time = parsed.player2TimeRemaining;
+
+      // Only subtract elapsed time from the current player's clock (if match is active)
+      if (parsed.matchStatus === 1 && parsed.currentTurn && elapsed > 0) {
+        const isPlayer1Turn = parsed.currentTurn.toLowerCase() === parsed.player1.toLowerCase();
+        if (isPlayer1Turn) {
+          contractP1Time = Math.max(0, contractP1Time - elapsed);
+        } else {
+          contractP2Time = Math.max(0, contractP2Time - elapsed);
+        }
+      }
 
       // Only update if contract values actually changed (real sync occurred)
       if (contractP1Time !== lastContractP1TimeRef.current || contractP2Time !== lastContractP2TimeRef.current) {
@@ -233,6 +247,30 @@ const MiniTicTacToeBoard = ({
       // Calculate isMyTurn based on current turn
       parsed.isMyTurn = parsed.currentTurn?.toLowerCase() === account?.toLowerCase();
       setMatchData(parsed);
+
+      // Calculate time remaining client-side (same as main board logic) after move
+      const now = Math.floor(Date.now() / 1000);
+      const elapsed = parsed.lastMoveTime > 0 ? now - parsed.lastMoveTime : 0;
+
+      let contractP1Time = parsed.player1TimeRemaining;
+      let contractP2Time = parsed.player2TimeRemaining;
+
+      // Only subtract elapsed time from the current player's clock (if match is active)
+      if (parsed.matchStatus === 1 && parsed.currentTurn && elapsed > 0) {
+        const isPlayer1Turn = parsed.currentTurn.toLowerCase() === parsed.player1.toLowerCase();
+        if (isPlayer1Turn) {
+          contractP1Time = Math.max(0, contractP1Time - elapsed);
+        } else {
+          contractP2Time = Math.max(0, contractP2Time - elapsed);
+        }
+      }
+
+      // Update timer state after move
+      setPlayer1TimeLeft(contractP1Time);
+      setPlayer2TimeLeft(contractP2Time);
+      lastSyncRef.current = Date.now();
+      lastContractP1TimeRef.current = contractP1Time;
+      lastContractP2TimeRef.current = contractP2Time;
 
       // Check if this move completed the match
       if (parsed.matchStatus === 2 && !hasNotifiedCompletion) {
