@@ -3145,7 +3145,7 @@ export default function ConnectFour() {
             return;
           }
 
-          // Update for in-progress matches only - only update turn and timer fields
+          // Update for in-progress matches only - update turn, timer, and board fields
           setCurrentMatch(prev => {
             if (!prev) return updatedMatch;
 
@@ -3154,16 +3154,17 @@ export default function ConnectFour() {
               return prev;
             }
 
-            // Only update turn and timer fields, preserve board and game state from events
+            // Update turn, timer, and board fields from contract (source of truth)
             return {
               ...prev,
+              board: updatedMatch.board,
               currentTurn: updatedMatch.currentTurn,
               isYourTurn: updatedMatch.isYourTurn,
               player1TimeRemaining: updatedMatch.player1TimeRemaining,
               player2TimeRemaining: updatedMatch.player2TimeRemaining,
               lastMoveTime: updatedMatch.lastMoveTime,
               lastMoveTimestamp: updatedMatch.lastMoveTimestamp,
-              // Board, matchStatus, winner, loser, isDraw are preserved from prev (event-driven)
+              // matchStatus, winner, loser, isDraw are preserved from prev (event-driven)
             };
           });
         }
