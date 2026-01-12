@@ -624,10 +624,10 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
 
 export default function Chess() {
   // Use network config instead of hardcoded values
-  const EXPECTED_CHAIN_ID = CURRENT_NETWORK.chainId;
-  // const EXPECTED_CHAIN_ID = 42161;
-  const RPC_URL = import.meta.env.VITE_RPC_URL || CURRENT_NETWORK.rpcUrl;
-  // const RPC_URL = "https://rpc.ankr.com/arbitrum/fa78359589ebb4ba1c97e306d5ad98192c1b897a76d2df05acf7ade04aa2687b";
+  // const EXPECTED_CHAIN_ID = CURRENT_NETWORK.chainId;
+  const EXPECTED_CHAIN_ID = 42161;
+  // const RPC_URL = import.meta.env.VITE_RPC_URL || CURRENT_NETWORK.rpcUrl;
+  const RPC_URL = "https://rpc.ankr.com/arbitrum/fa78359589ebb4ba1c97e306d5ad98192c1b897a76d2df05acf7ade04aa2687b";
   const EXPLORER_URL = getAddressUrl(CONTRACT_ADDRESS);
 
   // Helper to get read-only contract (bypasses MetaMask for read operations)
