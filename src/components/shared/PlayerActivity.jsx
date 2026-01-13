@@ -350,6 +350,10 @@ const PlayerActivity = ({
                                   href={`https://arbiscan.io/tx/${tx.txHash}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    window.open(`https://arbiscan.io/tx/${tx.txHash}`, '_blank', 'noopener,noreferrer');
+                                  }}
                                   className="text-blue-400 hover:text-blue-300 transition-colors flex-shrink-0"
                                   title="View on Arbiscan"
                                 >
