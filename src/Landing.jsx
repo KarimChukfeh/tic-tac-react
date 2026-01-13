@@ -315,6 +315,7 @@ function WhitepaperSection() {
 export default function Landing() {
   const [whitepaperExpanded, setWhitepaperExpanded] = useState(false);
   const [expandedFaq, setExpandedFaq] = useState(null);
+  const [contractsExpanded, setContractsExpanded] = useState(false);
 
   // Set page title
   useEffect(() => {
@@ -642,15 +643,15 @@ export default function Landing() {
         {/* ============ FOOTER ============ */}
         <footer className="border-t border-slate-800/50 px-6 py-16">
           <div className="max-w-6xl mx-auto">
-            
+
             {/* Main Footer Content */}
             <div className="flex flex-col md:flex-row justify-between items-center gap-8 mb-8">
-              
+
               {/* Left: Tech Credit */}
               <div className="text-center md:text-left">
                 <p className="text-slate-500 text-sm mb-2">
                   Powered by{' '}
-                  <span 
+                  <span
                     className="font-semibold bg-clip-text text-transparent"
                     style={{ background: 'linear-gradient(135deg, #06b6d4, #3b82f6)', WebkitBackgroundClip: 'text' }}
                   >
@@ -661,44 +662,137 @@ export default function Landing() {
                   Open-source perpetual tournament infrastructure on Arbitrum
                 </p>
               </div>
-              
+
               {/* Right: Links */}
               <div className="flex items-center gap-6">
-                <a 
-                  href="https://github.com/aspect-building/etour" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-slate-500 hover:text-white transition-colors text-sm"
+                <button
+                  onClick={() => setContractsExpanded(!contractsExpanded)}
+                  className="text-slate-500 hover:text-white transition-colors text-sm flex items-center gap-1"
                 >
-                  GitHub
-                </a>
-                <a 
-                  href="https://arbiscan.io" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-slate-500 hover:text-white transition-colors text-sm"
-                >
-                  Contracts
-                </a>
-                <a 
-                  href="https://reclaimweb3.com" 
-                  target="_blank" 
+                  Contracts {contractsExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </button>
+                <a
+                  href="https://reclaimweb3.com"
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="text-slate-500 hover:text-white transition-colors text-sm"
                 >
                   RW3 Manifesto
                 </a>
               </div>
-              
+
             </div>
-            
+
+            {/* Expandable Contracts Table */}
+            {contractsExpanded && (
+              <div className="mb-8 overflow-x-auto">
+                <table className="w-full border-collapse bg-slate-900/60 rounded-lg">
+                  <thead>
+                    <tr className="border-b border-slate-700/50">
+                      <th className="text-left p-4 text-cyan-300 font-semibold">ETour Modules</th>
+                      <th className="text-left p-4 text-cyan-300 font-semibold">Game Modules</th>
+                      <th className="text-left p-4 text-cyan-300 font-semibold">Game Contracts</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="p-4 align-top">
+                        <div className="space-y-2">
+                          <a
+                            href="https://arbiscan.io/address/0x50fA8Bc9622F7Cac110586a418F8731f17A9dbFE#code"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block text-slate-400 hover:text-cyan-400 transition-colors text-sm"
+                          >
+                            ETour_Core.sol
+                          </a>
+                          <a
+                            href="https://arbiscan.io/address/0xF3C194d0277Ee9F2F46cd17D78D377a9f04b4a9B#code"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block text-slate-400 hover:text-cyan-400 transition-colors text-sm"
+                          >
+                            ETour_Matches.sol
+                          </a>
+                          <a
+                            href="https://arbiscan.io/address/0x6828987b8684c5a4ec1353D38aE16D205238E46F#code"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block text-slate-400 hover:text-cyan-400 transition-colors text-sm"
+                          >
+                            ETour_Prizes.sol
+                          </a>
+                          <a
+                            href="https://arbiscan.io/address/0x7D00c716955B32375bef412078AD2B72cE8530B8#code"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block text-slate-400 hover:text-cyan-400 transition-colors text-sm"
+                          >
+                            ETour_Raffle.sol
+                          </a>
+                          <a
+                            href="https://arbiscan.io/address/0x8eF07467764b4B0baE5d4A481371d351c3b3c0DF#code"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block text-slate-400 hover:text-cyan-400 transition-colors text-sm"
+                          >
+                            ETour_Escalation.sol
+                          </a>
+                        </div>
+                      </td>
+                      <td className="p-4 align-top">
+                        <div className="space-y-2">
+                          <a
+                            href="https://arbiscan.io/address/0xE794752f489d0223a80114efA39BC520ceE38978#code"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block text-slate-400 hover:text-cyan-400 transition-colors text-sm"
+                          >
+                            ChessRules.sol
+                          </a>
+                        </div>
+                      </td>
+                      <td className="p-4 align-top">
+                        <div className="space-y-2">
+                          <a
+                            href="https://arbiscan.io/address/0xA98e643F2EE17781f1FDE5D740CB413b6d5DbDbe#code"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block text-slate-400 hover:text-cyan-400 transition-colors text-sm"
+                          >
+                            TicTacChain.sol
+                          </a>
+                          <a
+                            href="https://arbiscan.io/address/0x010b8790d9597D5E7800a44Ad24f76F0C45584e7#code"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block text-slate-400 hover:text-cyan-400 transition-colors text-sm"
+                          >
+                            ChessOnChain.sol
+                          </a>
+                          <a
+                            href="https://arbiscan.io/address/0x96855793ba805ffDEf910e77807604c33f9816Ae#code"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block text-slate-400 hover:text-cyan-400 transition-colors text-sm"
+                          >
+                            ConnectFourOnChain.sol
+                          </a>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            )}
+
             {/* Bottom Line */}
             <div className="text-center pt-8 border-t border-slate-800/30">
               <p className="text-slate-600 text-xs">
                 No company needed. No trust required. No servers to shutdown.
               </p>
             </div>
-            
+
           </div>
         </footer>
         
