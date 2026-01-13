@@ -131,82 +131,115 @@ const GameMatchLayout = ({
 
   // Render three-column layout (TicTacToe style)
   const renderThreeColumnLayout = () => (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {/* Left Panel - Player 1 */}
-      <PlayerPanel
-        playerAddress={player1}
-        currentAccount={account}
-        isCurrentTurn={isPlayer1Turn && isPlayer1You}
-        isGameOver={isGameOver}
-        icon={playerConfig?.player1?.icon}
-        label={playerConfig?.player1?.label || 'Player 1'}
-        colorScheme={theme.player1Color}
-        variant="full"
-        renderStats={renderPlayer1Stats}
-        extraContent={renderPlayer1Extra?.()}
-      />
-
-      {/* Center Panel - Board */}
-      <div className={`bg-gradient-to-br from-purple-600/20 to-pink-600/20 backdrop-blur-lg rounded-2xl p-6 border border-purple-400/30`}>
-        <h3 className="text-2xl font-bold text-center text-white mb-6">Game Board</h3>
-        {children}
-
-        {/* Game Controls */}
-        <div className="space-y-3 mt-6">
-          {showTurnTimer && (
-            <TurnTimer
-              match={match}
-              account={account}
-              onClaimTimeoutWin={onClaimTimeoutWin}
-              loading={loading}
-              syncDots={syncDots}
-              isSpectator={isSpectator}
-              playerConfig={playerConfig}
-            />
-          )}
-
-          {timeoutState && (
-            <MatchTimeoutEscalation
-              timeoutState={timeoutState}
-              matchStatus={matchStatus}
-              isYourTurn={isYourTurn}
-              onClaimTimeoutWin={onClaimTimeoutWin}
-              onForceEliminate={onForceEliminate}
-              onClaimReplacement={onClaimReplacement}
-              loading={loading}
-              escL2Available={match.escL2Available}
-              escL3Available={match.escL3Available}
-              isUserAdvancedForRound={match.isUserAdvancedForRound}
-            />
-          )}
-
-          {renderGameControls?.()}
-
-          {isGameOver && (
-            <MatchComplete
-              isDraw={isDraw}
-              winner={winner}
-              loser={loser}
-              currentAccount={account}
-              gameSpecificText={!isDraw ? theme.completeText : undefined}
-            />
-          )}
-        </div>
+    <div>
+      {/* Mobile: Both players side by side above board */}
+      <div className="lg:hidden grid grid-cols-2 gap-3 mb-6">
+        <PlayerPanel
+          playerAddress={player1}
+          currentAccount={account}
+          isCurrentTurn={isPlayer1Turn && isPlayer1You}
+          isGameOver={isGameOver}
+          icon={playerConfig?.player1?.icon}
+          label={playerConfig?.player1?.label || 'Player 1'}
+          colorScheme={theme.player1Color}
+          variant="compact"
+          extraContent={renderPlayer1Extra?.()}
+        />
+        <PlayerPanel
+          playerAddress={player2}
+          currentAccount={account}
+          isCurrentTurn={isPlayer2Turn && !isPlayer1You && account?.toLowerCase() === player2?.toLowerCase()}
+          isGameOver={isGameOver}
+          icon={playerConfig?.player2?.icon}
+          label={playerConfig?.player2?.label || 'Player 2'}
+          colorScheme={theme.player2Color}
+          variant="compact"
+          extraContent={renderPlayer2Extra?.()}
+        />
       </div>
 
-      {/* Right Panel - Player 2 */}
-      <PlayerPanel
-        playerAddress={player2}
-        currentAccount={account}
-        isCurrentTurn={isPlayer2Turn && !isPlayer1You && account?.toLowerCase() === player2?.toLowerCase()}
-        isGameOver={isGameOver}
-        icon={playerConfig?.player2?.icon}
-        label={playerConfig?.player2?.label || 'Player 2'}
-        colorScheme={theme.player2Color}
-        variant="full"
-        renderStats={renderPlayer2Stats}
-        extraContent={renderPlayer2Extra?.()}
-      />
+      {/* Desktop: Three column layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Panel - Player 1 (hidden on mobile) */}
+        <div className="hidden lg:block">
+          <PlayerPanel
+            playerAddress={player1}
+            currentAccount={account}
+            isCurrentTurn={isPlayer1Turn && isPlayer1You}
+            isGameOver={isGameOver}
+            icon={playerConfig?.player1?.icon}
+            label={playerConfig?.player1?.label || 'Player 1'}
+            colorScheme={theme.player1Color}
+            variant="full"
+            renderStats={renderPlayer1Stats}
+            extraContent={renderPlayer1Extra?.()}
+          />
+        </div>
+
+        {/* Center Panel - Board */}
+        <div className={`bg-gradient-to-br from-purple-600/20 to-pink-600/20 backdrop-blur-lg rounded-2xl p-6 border border-purple-400/30 lg:col-span-1`}>
+          <h3 className="text-2xl font-bold text-center text-white mb-6">Game Board</h3>
+          {children}
+
+          {/* Game Controls */}
+          <div className="space-y-3 mt-6">
+            {showTurnTimer && (
+              <TurnTimer
+                match={match}
+                account={account}
+                onClaimTimeoutWin={onClaimTimeoutWin}
+                loading={loading}
+                syncDots={syncDots}
+                isSpectator={isSpectator}
+                playerConfig={playerConfig}
+              />
+            )}
+
+            {timeoutState && (
+              <MatchTimeoutEscalation
+                timeoutState={timeoutState}
+                matchStatus={matchStatus}
+                isYourTurn={isYourTurn}
+                onClaimTimeoutWin={onClaimTimeoutWin}
+                onForceEliminate={onForceEliminate}
+                onClaimReplacement={onClaimReplacement}
+                loading={loading}
+                escL2Available={match.escL2Available}
+                escL3Available={match.escL3Available}
+                isUserAdvancedForRound={match.isUserAdvancedForRound}
+              />
+            )}
+
+            {renderGameControls?.()}
+
+            {isGameOver && (
+              <MatchComplete
+                isDraw={isDraw}
+                winner={winner}
+                loser={loser}
+                currentAccount={account}
+                gameSpecificText={!isDraw ? theme.completeText : undefined}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Right Panel - Player 2 (hidden on mobile) */}
+        <div className="hidden lg:block">
+          <PlayerPanel
+            playerAddress={player2}
+            currentAccount={account}
+            isCurrentTurn={isPlayer2Turn && !isPlayer1You && account?.toLowerCase() === player2?.toLowerCase()}
+            isGameOver={isGameOver}
+            icon={playerConfig?.player2?.icon}
+            label={playerConfig?.player2?.label || 'Player 2'}
+            colorScheme={theme.player2Color}
+            variant="full"
+            renderStats={renderPlayer2Stats}
+            extraContent={renderPlayer2Extra?.()}
+          />
+        </div>
+      </div>
     </div>
   );
 

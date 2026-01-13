@@ -98,20 +98,27 @@ const PlayerPanel = ({
   if (variant === 'compact') {
     // Compact variant for centered/inline layouts
     return (
-      <div className={`flex items-center gap-2 p-3 rounded-lg ${
+      <div className={`relative flex flex-col gap-2 p-3 rounded-lg ${
         isCurrentTurn && !isGameOver
-          ? `${colors.activeHighlight} border`
+          ? `${colors.activeHighlight} border-2 shadow-lg animate-pulse`
           : isYou
           ? 'bg-yellow-500/20 border border-yellow-400/50'
           : 'bg-black/30'
       } ${isYou ? 'ring-2 ring-yellow-400/30' : ''}`}>
-        <span className="text-2xl">{icon}</span>
-        <div>
-          <div className="text-xs text-gray-400">{label}</div>
-          <div className="font-mono text-sm">{shortenAddress(playerAddress)}</div>
-          {isYou && (
-            <div className="text-yellow-300 text-xs font-bold mt-1">YOU</div>
-          )}
+        {isCurrentTurn && !isGameOver && (
+          <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap shadow-lg animate-bounce">
+            YOUR TURN!
+          </div>
+        )}
+        <div className="flex items-center gap-2">
+          <span className="text-2xl">{icon}</span>
+          <div className="flex-1">
+            <div className="text-xs text-gray-400">{label}</div>
+            <div className="font-mono text-xs">{shortenAddress(playerAddress)}</div>
+            {isYou && (
+              <div className="text-yellow-300 text-xs font-bold mt-1">YOU</div>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -119,14 +126,31 @@ const PlayerPanel = ({
 
   // Full variant for sidebar/column layouts
   return (
-    <div className={`${colors.bg} backdrop-blur-lg rounded-2xl p-6 border ${isYou ? 'border-yellow-400 shadow-lg shadow-yellow-400/50 ring-2 ring-yellow-400/30' : colors.border} ${isYou ? 'animate-pulse-slow' : ''}`}>
-      {isYou && (
+    <div className={`relative ${colors.bg} backdrop-blur-lg rounded-2xl p-6 border-2 ${
+      isCurrentTurn && !isGameOver
+        ? 'border-green-400 shadow-2xl shadow-green-400/50 ring-4 ring-green-400/30 animate-pulse'
+        : isYou
+        ? 'border-yellow-400 shadow-lg shadow-yellow-400/50 ring-2 ring-yellow-400/30'
+        : colors.border
+    }`}>
+      {isCurrentTurn && !isGameOver && (
+        <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-green-400 to-emerald-500 text-white px-6 py-2 rounded-full text-center font-black text-lg shadow-2xl z-10 animate-bounce">
+          YOUR TURN!
+        </div>
+      )}
+      {isYou && !isCurrentTurn && (
         <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-black px-4 py-2 rounded-lg mb-4 text-center font-bold text-lg shadow-md flex items-center justify-center gap-2">
           YOU
         </div>
       )}
       <div className="flex items-center gap-3 mb-4">
-        <div className={`w-12 h-12 ${colors.iconBg} rounded-full flex items-center justify-center text-2xl font-bold border-2 ${isYou ? 'border-yellow-400 shadow-lg shadow-yellow-400/50' : colors.border}`}>
+        <div className={`w-12 h-12 ${colors.iconBg} rounded-full flex items-center justify-center text-2xl font-bold border-2 ${
+          isCurrentTurn && !isGameOver
+            ? 'border-green-400 shadow-lg shadow-green-400/50'
+            : isYou
+            ? 'border-yellow-400 shadow-lg shadow-yellow-400/50'
+            : colors.border
+        }`}>
           {icon}
         </div>
         <div>
@@ -140,12 +164,6 @@ const PlayerPanel = ({
       {renderStats && (
         <div className="space-y-2">
           {renderStats()}
-        </div>
-      )}
-
-      {isCurrentTurn && !isGameOver && (
-        <div className="bg-green-500/20 border border-green-400 rounded-lg p-3 text-center mt-2">
-          <span className="text-green-300 font-bold">Your Turn!</span>
         </div>
       )}
 
