@@ -7,9 +7,14 @@ import Chess from './Chess.jsx'
 import ConnectFour from './ConnectFour.jsx'
 import NotFound from './NotFound.jsx'
 import './index.css'
+import { useMetaMaskDeepLink } from './hooks/useMetaMaskDeepLink'
 
-ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
+// Wrapper component to handle MetaMask deep linking on mobile
+function App() {
+  // Attempt MetaMask deep link redirect for mobile devices
+  useMetaMaskDeepLink();
+
+  return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Landing />} />
@@ -19,5 +24,11 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <App />
   </React.StrictMode>,
 )
