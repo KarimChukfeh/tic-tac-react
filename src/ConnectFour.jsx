@@ -3312,8 +3312,8 @@ export default function ConnectFour() {
         zIndex: 10
       }}>
         <div className="max-w-7xl mx-auto px-6 py-3">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-4 text-xs md:text-sm">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 md:gap-6 justify-center md:justify-start">
+          <div className={`flex flex-col md:flex-row md:items-center ${EXPLORER_URL ? 'md:justify-between' : 'md:justify-center'} gap-3 md:gap-4 text-xs md:text-sm`}>
+            <div className={`flex flex-wrap items-center gap-x-4 gap-y-2 md:gap-6 justify-center ${EXPLORER_URL ? 'md:justify-start' : ''}`}>
               <div className="flex items-center gap-2">
                 <Shield className="text-blue-400" size={16} />
                 <span className="text-blue-100 font-medium">100% On-Chain</span>
