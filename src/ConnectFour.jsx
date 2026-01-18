@@ -2952,9 +2952,9 @@ export default function ConnectFour() {
         if (isDraw) {
           resultType = 'draw';
         } else if (userWon) {
-          resultType = (reasonNum === 1 || reasonNum === 2 || reasonNum === 3) ? 'forfeit_win' : 'win';
+          resultType = (reasonNum === 1 || reasonNum === 3 || reasonNum === 4) ? 'forfeit_win' : 'win';
         } else {
-          resultType = (reasonNum === 1 || reasonNum === 2 || reasonNum === 3) ? 'forfeit_lose' : 'lose';
+          resultType = (reasonNum === 1 || reasonNum === 3 || reasonNum === 4) ? 'forfeit_lose' : 'lose';
         }
 
         console.log('[MatchCompleted Event] Setting match end result:', resultType);
@@ -3170,9 +3170,9 @@ export default function ConnectFour() {
               if (updatedMatch.isDraw) {
                 resultType = 'draw';
               } else if (userWon) {
-                resultType = (reasonNum === 1 || reasonNum === 2 || reasonNum === 3) ? 'forfeit_win' : 'win';
+                resultType = (reasonNum === 1 || reasonNum === 3 || reasonNum === 4) ? 'forfeit_win' : 'win';
               } else {
-                resultType = (reasonNum === 1 || reasonNum === 2 || reasonNum === 3) ? 'forfeit_lose' : 'lose';
+                resultType = (reasonNum === 1 || reasonNum === 3 || reasonNum === 4) ? 'forfeit_lose' : 'lose';
               }
 
               console.log('[Connect4 Polling] Setting match end result:', resultType);

@@ -256,10 +256,12 @@ const PlayerActivity = ({
   // Helper to get completion reason text
   const getCompletionReasonText = (reason) => {
     const reasons = {
-      0: 'Normal',
-      1: 'Timeout',
-      2: 'Forfeit',
-      3: 'Force Elimination'
+      0: 'Normal Win',
+      1: 'Timeout Win (ML1)',
+      2: 'Draw',
+      3: 'Force Elimination (ML2)',
+      4: 'Abandoned Match Replacement (ML3)',
+      5: 'All Draw Scenario'
     };
     return reasons[reason] || `Unknown (${reason})`;
   };
@@ -872,7 +874,6 @@ const PlayerActivity = ({
                       <div className="space-y-2 max-h-96 overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-slate-800/50 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-purple-500/60 [&::-webkit-scrollbar-thumb]:to-blue-500/60 [&::-webkit-scrollbar-thumb]:rounded-full">
                         {recentMatches.map((match, index) => {
                           const isWinner = !match.isDraw && match.winner.toLowerCase() === account.toLowerCase();
-                          const isLoser = !match.isDraw && match.winner.toLowerCase() !== account.toLowerCase();
                           const opponent = match.player1.toLowerCase() === account.toLowerCase() ? match.player2 : match.player1;
                           const matchKey = `recent-${match.matchId}-${index}`;
                           const isExpanded = expandedRecentMatches.has(matchKey);
