@@ -3202,6 +3202,158 @@ export default function Chess() {
     };
   }, [contract, account, currentMatch]);
 
+  // Listen for MatchCompleted events to notify players and update match state
+  useEffect(() => {
+    if (!contract || !account || !currentMatch) return;
+
+    console.log('[MatchCompleted] Setting up event listener for current match:', {
+      tierId: currentMatch.tierId,
+      instanceId: currentMatch.instanceId,
+      roundNumber: currentMatch.roundNumber,
+      matchNumber: currentMatch.matchNumber
+    });
+
+    const handleMatchCompleted = async (matchId, winner, isDraw, reason, packedBoard, event) => {
+      console.log('[MatchCompleted Event] ===== EVENT FIRED =====');
+      console.log('[MatchCompleted Event] MatchId:', matchId);
+      console.log('[MatchCompleted Event] Winner:', winner, 'isDraw:', isDraw, 'reason:', Number(reason));
+
+      // Check if this event is for the current match being viewed
+      const currentMatchId = ethers.solidityPackedKeccak256(
+        ['uint8', 'uint8', 'uint8', 'uint8'],
+        [currentMatch.tierId, currentMatch.instanceId, currentMatch.roundNumber, currentMatch.matchNumber]
+      );
+
+      if (matchId !== currentMatchId) {
+        console.log('[MatchCompleted Event] Event is for different match, ignoring');
+        return;
+      }
+
+      // Time-gate: Only process events that occurred after current match started
+      if (event) {
+        try {
+          const block = await event.getBlock();
+          const eventTimestamp = block.timestamp;
+          const matchStartTime = currentMatch.startTime;
+
+          console.log('[MatchCompleted Event] Timestamp check:', {
+            eventTimestamp,
+            matchStartTime,
+            isValidEvent: eventTimestamp >= matchStartTime
+          });
+
+          if (eventTimestamp < matchStartTime) {
+            console.log('[MatchCompleted Event] Event is older than current match start time, ignoring');
+            return;
+          }
+        } catch (err) {
+          console.error('[MatchCompleted Event] Error checking timestamp:', err);
+          // Continue processing if timestamp check fails
+        }
+      }
+
+      console.log('[MatchCompleted Event] ✓ Event is for current match - processing completion');
+
+      // Unpack chess board state (4 packed uint256s)
+      const unpackChessBoard = (packed) => {
+        // Chess board is packed differently - implementation matches refreshMatchData
+        const boardArray = [];
+        let p = BigInt(packed);
+        for (let row = 0; row < 8; row++) {
+          for (let col = 0; col < 8; col++) {
+            const pieceData = Number(p & 0xFFn); // 8 bits per cell
+            const pieceType = pieceData & 0x0F;
+            const color = (pieceData >> 4) & 0x01;
+            boardArray.push({ pieceType, color });
+            p = p >> 8n;
+          }
+        }
+        return boardArray;
+      };
+      const eventBoard = unpackChessBoard(packedBoard);
+
+      // Determine loser
+      const zeroAddress = '0x0000000000000000000000000000000000000000';
+      const winnerLower = winner.toLowerCase();
+      const p1Lower = currentMatch.player1?.toLowerCase();
+      const eventLoser = isDraw ? zeroAddress : (winnerLower === p1Lower ? currentMatch.player2 : currentMatch.player1);
+
+      // Update match state with completion data
+      setCurrentMatch(prev => {
+        if (!prev || prev.matchStatus === 2) return prev; // Already completed
+
+        return {
+          ...prev,
+          matchStatus: 2,
+          winner,
+          loser: eventLoser,
+          isDraw,
+          board: eventBoard,
+          isYourTurn: false,
+          completionReason: Number(reason)
+        };
+      });
+
+      // Show winner/loser banner
+      const isPlayer1 = currentMatch.player1?.toLowerCase() === account.toLowerCase();
+      const isPlayer2 = currentMatch.player2?.toLowerCase() === account.toLowerCase();
+      const isParticipant = isPlayer1 || isPlayer2;
+
+      if (isParticipant) {
+        const userWon = !isDraw && winner.toLowerCase() === account.toLowerCase();
+        const reasonNum = Number(reason);
+
+        let resultType = 'lose';
+        if (isDraw) {
+          resultType = 'draw';
+        } else if (userWon) {
+          resultType = (reasonNum === 1 || reasonNum === 2 || reasonNum === 3) ? 'forfeit_win' : 'win';
+        } else {
+          resultType = (reasonNum === 1 || reasonNum === 2 || reasonNum === 3) ? 'forfeit_lose' : 'lose';
+        }
+
+        console.log('[MatchCompleted Event] Setting match end result:', resultType);
+        setMatchEndResult(resultType);
+        setMatchEndWinner(winner);
+        setMatchEndLoser(eventLoser);
+      }
+    };
+
+    // Register event listener (listen to all MatchCompleted events, filter in handler)
+    contract.on('MatchCompleted', handleMatchCompleted);
+    console.log('[MatchCompleted] Event listener registered');
+
+    // Query recent events to catch any missed while page was loading
+    const checkRecentEvents = async () => {
+      try {
+        const currentMatchId = ethers.solidityPackedKeccak256(
+          ['uint8', 'uint8', 'uint8', 'uint8'],
+          [currentMatch.tierId, currentMatch.instanceId, currentMatch.roundNumber, currentMatch.matchNumber]
+        );
+
+        const filter = contract.filters.MatchCompleted(currentMatchId);
+        const events = await contract.queryFilter(filter, -50);
+        console.log('[MatchCompleted] Found', events.length, 'recent events for current match in last 50 blocks');
+
+        // Process most recent event for this match
+        if (events.length > 0) {
+          const event = events[events.length - 1];
+          const { winner, isDraw, reason, board } = event.args;
+          handleMatchCompleted(currentMatchId, winner, isDraw, reason, board, event);
+        }
+      } catch (err) {
+        console.error('[MatchCompleted] Error checking recent events:', err);
+      }
+    };
+
+    checkRecentEvents();
+
+    return () => {
+      console.log('[MatchCompleted] Cleaning up event listener');
+      contract.off('MatchCompleted', handleMatchCompleted);
+    };
+  }, [contract, account, currentMatch]);
+
   // Refresh tier data when account changes (initial load handled by initReadOnlyContract)
   useEffect(() => {
     // Skip initial mount - initReadOnlyContract handles that via loadContractData
