@@ -938,6 +938,8 @@ const PlayerActivity = ({
                                 <span className="text-slate-400">Winner: </span>
                                 {match.isDraw ? (
                                   <span className="text-yellow-300 font-semibold">Draw</span>
+                                ) : match.winner === '0x0000000000000000000000000000000000000000' || !match.winner ? (
+                                  <span className="text-slate-500 font-semibold">No Winner</span>
                                 ) : (
                                   <span className={`font-mono ${isWinner ? 'text-green-400 font-semibold' : 'text-red-400'}`}>
                                     {shortenAddress(match.winner)}
