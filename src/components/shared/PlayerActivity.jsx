@@ -220,6 +220,20 @@ const PlayerActivity = ({
       const validMatches = matchesWithDetails.filter(match => match !== null);
 
       console.log('[RecentMatches] Found', validMatches.length, 'recent matches');
+      console.log('[RecentMatches] Match data:', validMatches.map((match, idx) => ({
+        index: idx,
+        matchId: match.matchId,
+        player1: match.player1,
+        player2: match.player2,
+        winner: match.winner,
+        isDraw: match.isDraw,
+        reason: match.reason,
+        board: match.board.toString(),
+        blockNumber: match.blockNumber,
+        txHash: match.txHash,
+        timestamp: match.timestamp,
+        timestampFormatted: new Date(match.timestamp * 1000).toLocaleString()
+      })));
       setRecentMatches(validMatches);
     } catch (err) {
       console.error('[RecentMatches] Error fetching recent matches:', err);
