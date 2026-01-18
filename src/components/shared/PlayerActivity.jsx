@@ -8,7 +8,7 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { Users, X, Zap, Trophy, Clock, Play, Eye, RefreshCw, ChevronDown, ChevronUp, TrendingUp, AlertCircle, ExternalLink } from 'lucide-react';
+import { Users, X, Zap, Trophy, Clock, Play, Eye, RefreshCw, ChevronDown, ChevronUp, TrendingUp, AlertCircle, ExternalLink, History } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
 import { formatTimeRemaining } from '../../utils/activityHelpers';
 import MiniTicTacToeBoard from './MiniTicTacToeBoard';
@@ -40,6 +40,11 @@ const PlayerActivity = ({
   const [showTransactionHistory, setShowTransactionHistory] = useState(false);
   const [transactionHistory, setTransactionHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  // Recent matches state
+  const [showRecentMatches, setShowRecentMatches] = useState(false);
+  const [recentMatches, setRecentMatches] = useState([]);
+  const [loadingRecentMatches, setLoadingRecentMatches] = useState(false);
+  const [expandedRecentMatches, setExpandedRecentMatches] = useState(new Set());
 
   // Expose collapse function via callback
   useEffect(() => {
@@ -151,6 +156,155 @@ const PlayerActivity = ({
     if (willShow && transactionHistory.length === 0) {
       fetchTransactionHistory();
     }
+  };
+
+  // Fetch MatchCompleted events for recent matches
+  const fetchRecentMatches = async () => {
+    if (!contract || !account) return;
+
+    setLoadingRecentMatches(true);
+    try {
+      console.log('[RecentMatches] Fetching MatchCompleted events for player:', account);
+
+      // Query MatchCompleted events where player is either player1 or player2
+      // Since player1 and player2 are now indexed, we can filter on them
+      const filterAsPlayer1 = contract.filters.MatchCompleted(null, account, null);
+      const filterAsPlayer2 = contract.filters.MatchCompleted(null, null, account);
+
+      // Query both filters
+      const [eventsAsPlayer1, eventsAsPlayer2] = await Promise.all([
+        contract.queryFilter(filterAsPlayer1),
+        contract.queryFilter(filterAsPlayer2)
+      ]);
+
+      // Combine and deduplicate events
+      const allEvents = [...eventsAsPlayer1, ...eventsAsPlayer2];
+      const uniqueEvents = Array.from(
+        new Map(allEvents.map(event => [event.transactionHash + event.logIndex, event])).values()
+      );
+
+      // Sort by block number (most recent first)
+      const sortedEvents = uniqueEvents.sort((a, b) => b.blockNumber - a.blockNumber);
+
+      // Process events to extract match data
+      const matchesWithDetails = await Promise.all(
+        sortedEvents.slice(0, 20).map(async (event) => {
+          try {
+            const { matchId, player1, player2, winner, isDraw, reason, board } = event.args;
+            const block = await event.getBlock();
+
+            // Decode matchId to get match coordinates (tierId, instanceId, roundNumber, matchNumber)
+            // Note: matchId is keccak256(tierId, instanceId, roundNumber, matchNumber)
+            // We can't directly decode it, but we can display the matchId
+
+            return {
+              matchId,
+              player1,
+              player2,
+              winner,
+              isDraw,
+              reason: Number(reason),
+              board,
+              blockNumber: event.blockNumber,
+              txHash: event.transactionHash,
+              timestamp: block.timestamp,
+            };
+          } catch (err) {
+            console.error('[RecentMatches] Error processing event:', err);
+            return null;
+          }
+        })
+      );
+
+      // Filter out any failed event processing
+      const validMatches = matchesWithDetails.filter(match => match !== null);
+
+      console.log('[RecentMatches] Found', validMatches.length, 'recent matches');
+      setRecentMatches(validMatches);
+    } catch (err) {
+      console.error('[RecentMatches] Error fetching recent matches:', err);
+    } finally {
+      setLoadingRecentMatches(false);
+    }
+  };
+
+  // Toggle recent matches and fetch if needed
+  const toggleRecentMatches = () => {
+    const willShow = !showRecentMatches;
+    setShowRecentMatches(willShow);
+
+    // Fetch recent matches when opening for the first time
+    if (willShow && recentMatches.length === 0) {
+      fetchRecentMatches();
+    }
+  };
+
+  // Helper to get completion reason text
+  const getCompletionReasonText = (reason) => {
+    const reasons = {
+      0: 'Normal',
+      1: 'Timeout',
+      2: 'Forfeit',
+      3: 'Force Elimination'
+    };
+    return reasons[reason] || `Unknown (${reason})`;
+  };
+
+  // Helper to format timestamp
+  const formatTimestamp = (timestamp) => {
+    const date = new Date(timestamp * 1000);
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+  };
+
+  // Toggle recent match card expansion
+  const toggleRecentMatchExpand = (matchKey) => {
+    setExpandedRecentMatches(prev => {
+      const next = new Set(prev);
+      if (next.has(matchKey)) {
+        next.delete(matchKey);
+      } else {
+        next.add(matchKey);
+      }
+      return next;
+    });
+  };
+
+  // Unpack board data based on game type
+  const unpackBoard = (packedBoard, gameType) => {
+    if (gameType === 'tictactoe') {
+      // TicTacToe: 9 cells, 2 bits per cell
+      const board = [];
+      let p = BigInt(packedBoard);
+      for (let i = 0; i < 9; i++) {
+        board.push(Number(p & 3n));
+        p = p >> 2n;
+      }
+      return board;
+    } else if (gameType === 'chess') {
+      // Chess: 64 cells, 8 bits per cell
+      const board = [];
+      let p = BigInt(packedBoard);
+      for (let row = 0; row < 8; row++) {
+        for (let col = 0; col < 8; col++) {
+          const pieceData = Number(p & 0xFFn);
+          const pieceType = pieceData & 0x0F;
+          const color = (pieceData >> 4) & 0x01;
+          board.push({ pieceType, color });
+          p = p >> 8n;
+        }
+      }
+      return board;
+    } else if (gameType === 'connect4') {
+      // Connect4: 42 cells (6x7), 2 bits per cell
+      const board = [];
+      let p = BigInt(packedBoard);
+      for (let i = 0; i < 42; i++) {
+        board.push(Number(p & 3n));
+        p = p >> 2n;
+      }
+      return board;
+    }
+    return [];
   };
 
   // Handler when a match completes - add it to completed matches to keep it visible
@@ -373,14 +527,17 @@ const PlayerActivity = ({
               <div className={`animate-spin rounded-full h-8 w-8 border-b-2 mx-auto ${isElite ? 'border-[#fbbf24]' : 'border-purple-400'}`}></div>
               <p className="text-slate-400 mt-2 text-sm">Loading activity...</p>
             </div>
-          ) : !hasActivity ? (
-            <div className="text-center py-8">
-              <Users className="text-slate-500 mx-auto mb-3" size={48} />
-              <p className="text-slate-400 text-sm mb-1">No Active Games</p>
-              <p className="text-slate-500 text-xs">Join a tournament to get started!</p>
-            </div>
           ) : (
             <>
+              {/* Active Activity Section */}
+              {!hasActivity ? (
+                <div className="text-center py-8">
+                  <Users className="text-slate-500 mx-auto mb-3" size={48} />
+                  <p className="text-slate-400 text-sm mb-1">No Active Games</p>
+                  <p className="text-slate-500 text-xs">Join a tournament to get started!</p>
+                </div>
+              ) : (
+                <>
               {/* Priority 1: Active Matches */}
               {displayMatches && displayMatches.length > 0 && (
                 <div className="mb-6">
@@ -668,6 +825,226 @@ const PlayerActivity = ({
                 </div>
               )}
             </>
+          )}
+
+            {/* Recent Matches Section - Always visible */}
+            <div className={hasActivity ? "mt-6 pt-6 border-t border-slate-700/50" : "mt-0"}>
+                <button
+                  onClick={toggleRecentMatches}
+                  className="w-full flex items-center justify-between text-slate-300 hover:text-white transition-colors group"
+                >
+                  <div className="flex items-center gap-2">
+                    <History size={16} className={isElite ? 'text-[#fbbf24]' : 'text-purple-400'} />
+                    <span className="font-semibold text-sm uppercase">Recent Matches</span>
+                  </div>
+                  {showRecentMatches ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </button>
+
+                {/* Recent Matches Content */}
+                {showRecentMatches && (
+                  <div className="mt-3">
+                    {loadingRecentMatches ? (
+                      <div className="text-center py-8">
+                        <div className={`animate-spin rounded-full h-6 w-6 border-b-2 mx-auto ${isElite ? 'border-[#fbbf24]' : 'border-purple-400'}`}></div>
+                        <p className="text-slate-400 mt-2 text-xs">Loading recent matches...</p>
+                      </div>
+                    ) : recentMatches.length === 0 ? (
+                      <div className="text-center py-6">
+                        <History className="text-slate-500 mx-auto mb-2" size={32} />
+                        <p className="text-slate-400 text-xs">No recent matches found</p>
+                        <p className="text-slate-500 text-xs mt-1">Events expire after ~50,000 blocks</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2 max-h-96 overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-slate-800/50 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-purple-500/60 [&::-webkit-scrollbar-thumb]:to-blue-500/60 [&::-webkit-scrollbar-thumb]:rounded-full">
+                        {recentMatches.map((match, index) => {
+                          const isWinner = !match.isDraw && match.winner.toLowerCase() === account.toLowerCase();
+                          const isLoser = !match.isDraw && match.winner.toLowerCase() !== account.toLowerCase();
+                          const opponent = match.player1.toLowerCase() === account.toLowerCase() ? match.player2 : match.player1;
+                          const matchKey = `recent-${match.matchId}-${index}`;
+                          const isExpanded = expandedRecentMatches.has(matchKey);
+
+                          return (
+                            <div
+                              key={matchKey}
+                              className={`border-2 rounded-lg p-3 transition-all ${
+                                match.isDraw
+                                  ? 'bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border-yellow-400/30'
+                                  : isWinner
+                                  ? 'bg-gradient-to-br from-green-500/10 to-emerald-500/10 border-green-400/30'
+                                  : 'bg-gradient-to-br from-red-500/10 to-rose-500/10 border-red-400/30'
+                              }`}
+                            >
+                              {/* Match Result Header */}
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                  {match.isDraw ? (
+                                    <span className="bg-yellow-500/60 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase">
+                                      Draw
+                                    </span>
+                                  ) : isWinner ? (
+                                    <span className="bg-green-500/60 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase">
+                                      Won
+                                    </span>
+                                  ) : (
+                                    <span className="bg-red-500/60 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase">
+                                      Lost
+                                    </span>
+                                  )}
+                                  <span className={`text-[10px] px-2 py-0.5 rounded ${
+                                    match.reason === 0
+                                      ? 'bg-blue-500/20 text-blue-300'
+                                      : 'bg-orange-500/20 text-orange-300'
+                                  }`}>
+                                    {getCompletionReasonText(match.reason)}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Opponent Info */}
+                              <div className="text-slate-300 text-xs mb-2">
+                                <span className="text-slate-400">vs </span>
+                                <span className="font-mono">{shortenAddress(opponent)}</span>
+                              </div>
+
+                              {/* Match Details */}
+                              <div className="space-y-1 text-[10px] text-slate-400 mb-2">
+                                <div className="flex items-center justify-between">
+                                  <span>Match ID:</span>
+                                  <span className="font-mono text-slate-300">{match.matchId.slice(0, 10)}...</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span>Time:</span>
+                                  <span className="text-slate-300">{formatTimestamp(match.timestamp)}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <a
+                                    href={`https://arbiscan.io/tx/${match.txHash}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1"
+                                  >
+                                    <span>View on Arbiscan</span>
+                                    <ExternalLink size={10} />
+                                  </a>
+                                </div>
+                              </div>
+
+                              {/* View Board Button */}
+                              <button
+                                onClick={() => toggleRecentMatchExpand(matchKey)}
+                                className={`w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg transition-all text-xs font-semibold ${
+                                  match.isDraw
+                                    ? 'bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 border border-yellow-400/30'
+                                    : isWinner
+                                    ? 'bg-green-500/20 hover:bg-green-500/30 text-green-300 border border-green-400/30'
+                                    : 'bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-400/30'
+                                }`}
+                              >
+                                <Eye size={14} />
+                                {isExpanded ? 'Hide Board' : 'View Match-End Board'}
+                              </button>
+
+                              {/* Board Display */}
+                              {isExpanded && (
+                                <div className="mt-3 pt-3 border-t border-slate-600/30">
+                                  {gameName === 'tictactoe' && (() => {
+                                    const board = unpackBoard(match.board, 'tictactoe');
+                                    return (
+                                      <div className="flex justify-center">
+                                        <div className="grid grid-cols-3 gap-1 w-32 h-32">
+                                          {board.map((cell, idx) => (
+                                            <div
+                                              key={idx}
+                                              className="bg-slate-800/50 border border-slate-600/50 rounded flex items-center justify-center text-xl font-bold"
+                                            >
+                                              {cell === 1 ? (
+                                                <span className="text-blue-400">X</span>
+                                              ) : cell === 2 ? (
+                                                <span className="text-red-400">O</span>
+                                              ) : null}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    );
+                                  })()}
+
+                                  {gameName === 'chess' && (() => {
+                                    const board = unpackBoard(match.board, 'chess');
+                                    const pieceSymbols = {
+                                      0: '',  // Empty
+                                      1: '♙', 2: '♘', 3: '♗', 4: '♖', 5: '♕', 6: '♔', // White pieces
+                                      11: '♟', 12: '♞', 13: '♝', 14: '♜', 15: '♛', 16: '♚' // Black pieces
+                                    };
+                                    return (
+                                      <div className="flex justify-center">
+                                        <div className="grid grid-cols-8 gap-0 w-64 h-64 border border-slate-600">
+                                          {board.map((cell, idx) => {
+                                            const row = Math.floor(idx / 8);
+                                            const col = idx % 8;
+                                            const isLight = (row + col) % 2 === 0;
+                                            const piece = cell.color === 0 ? cell.pieceType : cell.pieceType + 10;
+                                            return (
+                                              <div
+                                                key={idx}
+                                                className={`flex items-center justify-center text-2xl ${
+                                                  isLight ? 'bg-amber-200/20' : 'bg-amber-900/20'
+                                                }`}
+                                              >
+                                                {pieceSymbols[piece] || ''}
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    );
+                                  })()}
+
+                                  {gameName === 'connect4' && (() => {
+                                    const board = unpackBoard(match.board, 'connect4');
+                                    // Convert flat array to 6x7 grid
+                                    const grid = [];
+                                    for (let row = 0; row < 6; row++) {
+                                      grid.push(board.slice(row * 7, (row + 1) * 7));
+                                    }
+                                    return (
+                                      <div className="flex justify-center">
+                                        <div className="bg-blue-900/30 p-2 rounded-lg border border-blue-500/30">
+                                          <div className="grid grid-rows-6 gap-1">
+                                            {grid.map((row, rowIdx) => (
+                                              <div key={rowIdx} className="grid grid-cols-7 gap-1">
+                                                {row.map((cell, colIdx) => (
+                                                  <div
+                                                    key={colIdx}
+                                                    className="w-6 h-6 rounded-full border-2 border-slate-600/50 flex items-center justify-center"
+                                                  >
+                                                    {cell === 1 ? (
+                                                      <div className="w-5 h-5 rounded-full bg-red-500"></div>
+                                                    ) : cell === 2 ? (
+                                                      <div className="w-5 h-5 rounded-full bg-yellow-400"></div>
+                                                    ) : (
+                                                      <div className="w-5 h-5 rounded-full bg-slate-800/50"></div>
+                                                    )}
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })()}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+            </div>
+          </>
           )}
         </div>
       )}
