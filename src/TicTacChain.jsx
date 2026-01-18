@@ -3092,12 +3092,12 @@ export default function TicTacChain() {
             layout="players-board-history"
             isSpectator={isSpectator}
             renderMoveHistory={moveHistory.length > 0 ? () => (
-              <div className="bg-slate-900/50 rounded-xl p-6 border border-purple-500/30">
+              <div>
                 <h3 className="text-xl font-bold text-purple-300 mb-4 flex items-center gap-2">
                   <History size={20} />
                   Move History
                 </h3>
-                <div className="space-y-2 max-h-48 overflow-y-auto">
+                <div className="space-y-2">
                   {moveHistory.map((move, idx) => (
                     <div key={idx} className="flex items-center gap-3 text-sm bg-purple-500/10 p-2 rounded">
                       <span className="text-purple-300">Move {idx + 1}:</span>
