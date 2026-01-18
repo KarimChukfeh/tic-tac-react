@@ -458,8 +458,15 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
     if (!contract || !account) return;
 
     // Handler for any MatchCompleted event
-    const handleMatchCompleted = (matchId, winner, isDraw) => {
-      console.log('[PlayerActivity] MatchCompleted event received:', { matchId, winner, isDraw });
+    const handleMatchCompleted = (matchId, player1, player2, winner, isDraw, reason, board) => {
+      console.log('[PlayerActivity] MatchCompleted event received:', {
+        matchId,
+        player1,
+        player2,
+        winner,
+        isDraw,
+        reason: Number(reason)
+      });
 
       // Trigger a refetch to update the player's active matches
       fetchActivity(false);

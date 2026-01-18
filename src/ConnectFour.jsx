@@ -2085,7 +2085,7 @@ export default function ConnectFour() {
           // Find event that matches this exact match instance
           for (let i = events.length - 1; i >= 0; i--) {
             const event = events[i];
-            const [, eventWinner, eventIsDraw, eventReason, eventPackedBoard] = event.args;
+            const { winner: eventWinner, isDraw: eventIsDraw, reason: eventReason, board: eventPackedBoard } = event.args;
 
             // Verify winner is one of our players
             const winnerLower = eventWinner.toLowerCase();
@@ -2863,9 +2863,10 @@ export default function ConnectFour() {
       matchNumber: currentMatch.matchNumber
     });
 
-    const handleMatchCompleted = async (matchId, winner, isDraw, reason, packedBoard, event) => {
+    const handleMatchCompleted = async (matchId, player1, player2, winner, isDraw, reason, packedBoard, event) => {
       console.log('[MatchCompleted Event] ===== EVENT FIRED =====');
       console.log('[MatchCompleted Event] MatchId:', matchId);
+      console.log('[MatchCompleted Event] Player1:', player1, 'Player2:', player2);
       console.log('[MatchCompleted Event] Winner:', winner, 'isDraw:', isDraw, 'reason:', Number(reason));
 
       // Check if this event is for the current match being viewed
@@ -2982,8 +2983,8 @@ export default function ConnectFour() {
         // Process most recent event for this match
         if (events.length > 0) {
           const event = events[events.length - 1];
-          const { winner, isDraw, reason, board } = event.args;
-          handleMatchCompleted(currentMatchId, winner, isDraw, reason, board, event);
+          const { player1, player2, winner, isDraw, reason, board } = event.args;
+          handleMatchCompleted(currentMatchId, player1, player2, winner, isDraw, reason, board, event);
         }
       } catch (err) {
         console.error('[MatchCompleted] Error checking recent events:', err);
