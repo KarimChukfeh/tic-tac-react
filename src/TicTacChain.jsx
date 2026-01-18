@@ -3071,36 +3071,8 @@ export default function TicTacChain() {
               player1: { icon: 'X', label: 'Player 1' },
               player2: { icon: 'O', label: 'Player 2' }
             }}
-            layout="three-column"
+            layout="players-board-history"
             isSpectator={isSpectator}
-            renderPlayer1Stats={() => (
-              <>
-                <div className="bg-black/20 rounded-lg p-3">
-                  <div className="text-blue-300 text-sm mb-1">Symbol</div>
-                  <div className="text-white font-bold text-2xl">X</div>
-                </div>
-                <div className="bg-black/20 rounded-lg p-3">
-                  <div className="text-blue-300 text-sm mb-1">Moves Made</div>
-                  <div className="text-white font-bold text-xl">
-                    {currentMatch.board.filter(c => c === 1).length}
-                  </div>
-                </div>
-              </>
-            )}
-            renderPlayer2Stats={() => (
-              <>
-                <div className="bg-black/20 rounded-lg p-3">
-                  <div className="text-pink-300 text-sm mb-1">Symbol</div>
-                  <div className="text-white font-bold text-2xl">O</div>
-                </div>
-                <div className="bg-black/20 rounded-lg p-3">
-                  <div className="text-pink-300 text-sm mb-1">Moves Made</div>
-                  <div className="text-white font-bold text-xl">
-                    {currentMatch.board.filter(c => c === 2).length}
-                  </div>
-                </div>
-              </>
-            )}
             renderMoveHistory={moveHistory.length > 0 ? () => (
               <div className="bg-slate-900/50 rounded-xl p-6 border border-purple-500/30">
                 <h3 className="text-xl font-bold text-purple-300 mb-4 flex items-center gap-2">
@@ -3120,8 +3092,9 @@ export default function TicTacChain() {
             ) : undefined}
           >
             {/* TicTacToe Board Grid */}
-            <div className="grid grid-cols-3 gap-3">
-              {currentMatch.board.map((cell, idx) => (
+            <div className="w-full max-w-md mx-auto">
+              <div className="grid grid-cols-3 gap-3">
+                {currentMatch.board.map((cell, idx) => (
                 <button
                   key={idx}
                   onClick={isSpectator ? null : () => handleCellClick(idx)}
@@ -3139,6 +3112,7 @@ export default function TicTacChain() {
                   {cell === 1 ? 'X' : cell === 2 ? 'O' : ''}
                 </button>
               ))}
+              </div>
             </div>
           </GameMatchLayout>
           </div>

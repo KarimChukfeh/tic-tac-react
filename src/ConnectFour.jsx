@@ -3373,65 +3373,7 @@ export default function ConnectFour() {
                 label: 'Blue'
               }
             }}
-            layout="three-column"
-            renderPlayer1Stats={() => (
-              <>
-                <div className="bg-black/20 rounded-lg p-3">
-                  <div className="text-red-300 text-sm mb-1">Symbol</div>
-                  <div className="flex justify-center">
-                    <svg width="32" height="32" viewBox="0 0 32 32">
-                      <circle
-                        cx="16"
-                        cy="16"
-                        r="14"
-                        fill="url(#magentaGradientStat)"
-                      />
-                      <defs>
-                        <radialGradient id="magentaGradientStat" cx="30%" cy="30%">
-                          <stop offset="0%" stopColor="#ff0044" />
-                          <stop offset="100%" stopColor="#bb0033" />
-                        </radialGradient>
-                      </defs>
-                    </svg>
-                  </div>
-                </div>
-                <div className="bg-black/20 rounded-lg p-3">
-                  <div className="text-red-300 text-sm mb-1">Pieces Played</div>
-                  <div className="text-white font-bold text-xl">
-                    {currentMatch.board.filter(c => c === 1).length}
-                  </div>
-                </div>
-              </>
-            )}
-            renderPlayer2Stats={() => (
-              <>
-                <div className="bg-black/20 rounded-lg p-3">
-                  <div className="text-blue-300 text-sm mb-1">Symbol</div>
-                  <div className="flex justify-center">
-                    <svg width="32" height="32" viewBox="0 0 32 32">
-                      <circle
-                        cx="16"
-                        cy="16"
-                        r="14"
-                        fill="url(#cyanGradientStat)"
-                      />
-                      <defs>
-                        <radialGradient id="cyanGradientStat" cx="30%" cy="30%">
-                          <stop offset="0%" stopColor="#0077ff" />
-                          <stop offset="100%" stopColor="#0055aa" />
-                        </radialGradient>
-                      </defs>
-                    </svg>
-                  </div>
-                </div>
-                <div className="bg-black/20 rounded-lg p-3">
-                  <div className="text-blue-300 text-sm mb-1">Pieces Played</div>
-                  <div className="text-white font-bold text-xl">
-                    {currentMatch.board.filter(c => c === 2).length}
-                  </div>
-                </div>
-              </>
-            )}
+            layout="players-board-history"
             renderMoveHistory={moveHistory.length > 0 ? () => (
               <div className="bg-slate-900/50 rounded-xl p-6 border border-purple-500/30">
                 <h3 className="text-xl font-bold text-purple-300 mb-4 flex items-center gap-2">
@@ -3451,18 +3393,20 @@ export default function ConnectFour() {
             ) : undefined}
           >
             {/* Connect Four Board */}
-            <ConnectFourBoard
-              board={currentMatch.board}
-              onColumnClick={isSpectator ? null : handleColumnClick}
-              currentTurn={currentMatch.currentTurn}
-              account={isSpectator ? null : account}
-              player1={currentMatch.player1}
-              player2={currentMatch.player2}
-              matchStatus={currentMatch.matchStatus}
-              loading={matchLoading}
-              winner={currentMatch.winner}
-              lastColumn={currentMatch.lastColumn}
-            />
+            <div className="w-full max-w-2xl mx-auto">
+              <ConnectFourBoard
+                board={currentMatch.board}
+                onColumnClick={isSpectator ? null : handleColumnClick}
+                currentTurn={currentMatch.currentTurn}
+                account={isSpectator ? null : account}
+                player1={currentMatch.player1}
+                player2={currentMatch.player2}
+                matchStatus={currentMatch.matchStatus}
+                loading={matchLoading}
+                winner={currentMatch.winner}
+                lastColumn={currentMatch.lastColumn}
+              />
+            </div>
           </GameMatchLayout>
           </div>
         )}
