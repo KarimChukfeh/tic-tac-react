@@ -624,10 +624,10 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
 
 export default function Chess() {
   // Use network config instead of hardcoded values
-  // const EXPECTED_CHAIN_ID = CURRENT_NETWORK.chainId;
-  const EXPECTED_CHAIN_ID = 42161;
-  // const RPC_URL = import.meta.env.VITE_RPC_URL || CURRENT_NETWORK.rpcUrl;
-  const RPC_URL = "https://rpc.ankr.com/arbitrum/fa78359589ebb4ba1c97e306d5ad98192c1b897a76d2df05acf7ade04aa2687b";
+  const EXPECTED_CHAIN_ID = CURRENT_NETWORK.chainId;
+  // const EXPECTED_CHAIN_ID = 42161;
+  const RPC_URL = import.meta.env.VITE_RPC_URL || CURRENT_NETWORK.rpcUrl;
+  // const RPC_URL = "https://rpc.ankr.com/arbitrum/fa78359589ebb4ba1c97e306d5ad98192c1b897a76d2df05acf7ade04aa2687b";
   const EXPLORER_URL = getAddressUrl(CONTRACT_ADDRESS);
 
   // Helper to get read-only contract (bypasses MetaMask for read operations)
@@ -3000,53 +3000,10 @@ export default function Chess() {
   };
 
   // Handle closing the match end modal
-  const handleMatchEndModalClose = async () => {
-    const tournamentInfo = currentMatch ? {
-      tierId: currentMatch.tierId,
-      instanceId: currentMatch.instanceId
-    } : null;
-
-    // Check if this was the finals match
-    const totalRounds = currentMatch?.playerCount ? Math.ceil(Math.log2(currentMatch.playerCount)) : 0;
-    const isFinals = currentMatch?.roundNumber === totalRounds - 1;
-
-    // Check if player lost (defeat or forfeit_lose)
-    const isDefeat = matchEndResult === 'lose' || matchEndResult === 'forfeit_lose';
-
-    // Clear the modal state
+  const handleMatchEndModalClose = () => {
+    // Clear the modal state only - no navigation
     setMatchEndResult(null);
     setMatchEndWinnerLabel('');
-
-    // For defeat: keep match state so player can view final board position
-    // For victory: clear match state and navigate
-    if (!isDefeat) {
-      setCurrentMatch(null);
-      setMoveHistory([]);
-    }
-
-    // Refresh data
-    if (contract) {
-      await fetchLeaderboard(true);
-      await refreshAfterAction(tournamentInfo?.tierId ?? null);
-
-      // For defeat: don't navigate, let player view the board
-      if (isDefeat) {
-        // Stay on board - no navigation
-      }
-      // If finals, always return to instances list
-      else if (isFinals) {
-        setViewingTournament(null);
-      }
-      // If not finals and player won, show tournament bracket
-      else if (tournamentInfo && (matchEndResult === 'win' || matchEndResult === 'forfeit_win')) {
-        const bracketData = await refreshTournamentBracket(contract, tournamentInfo.tierId, tournamentInfo.instanceId, matchTimePerPlayer);
-        if (bracketData) {
-          setViewingTournament(bracketData);
-        }
-      } else {
-        setViewingTournament(null);
-      }
-    }
   };
 
   // Handle closing the tournament completion modal
