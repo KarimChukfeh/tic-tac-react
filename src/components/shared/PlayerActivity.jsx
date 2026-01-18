@@ -297,17 +297,23 @@ const PlayerActivity = ({
       }
       return board;
     } else if (gameType === 'chess') {
-      // Chess: 64 cells, 8 bits per cell
+      // Chess: 64 cells, 4 bits per cell
+      // Encoding: 0=empty, 1-6=white pieces, 7-12=black pieces
       const board = [];
       let p = BigInt(packedBoard);
-      for (let row = 0; row < 8; row++) {
-        for (let col = 0; col < 8; col++) {
-          const pieceData = Number(p & 0xFFn);
-          const pieceType = pieceData & 0x0F;
-          const color = (pieceData >> 4) & 0x01;
-          board.push({ pieceType, color });
-          p = p >> 8n;
+      for (let i = 0; i < 64; i++) {
+        const value = Number(p & 0xFn);
+        let pieceType = 0;
+        let color = 0;
+        if (value >= 1 && value <= 6) {
+          pieceType = value;  // white: 1-6
+          color = 1;
+        } else if (value >= 7 && value <= 12) {
+          pieceType = value - 6;  // black: 7-12 → pieceType 1-6
+          color = 2;
         }
+        board.push({ pieceType, color });
+        p = p >> 4n;
       }
       return board;
     } else if (gameType === 'connect4') {
@@ -1012,11 +1018,10 @@ const PlayerActivity = ({
 
                                   {gameName === 'chess' && (() => {
                                     const board = unpackBoard(match.board, 'chess');
-                                    const pieceSymbols = {
-                                      0: '',  // Empty
-                                      1: '♙', 2: '♘', 3: '♗', 4: '♖', 5: '♕', 6: '♔', // White pieces
-                                      11: '♟', 12: '♞', 13: '♝', 14: '♜', 15: '♛', 16: '♚' // Black pieces
-                                    };
+                                    // Map pieceType (1-6) to symbols
+                                    const whitePieceSymbols = ['', '♙', '♘', '♗', '♖', '♕', '♔']; // index 0 unused, 1-6 for pawn-king
+                                    const blackPieceSymbols = ['', '♟', '♞', '♝', '♜', '♛', '♚']; // index 0 unused, 1-6 for pawn-king
+
                                     return (
                                       <div className="flex justify-center">
                                         <div className="grid grid-cols-8 gap-0 w-64 h-64 border border-slate-600">
@@ -1024,15 +1029,30 @@ const PlayerActivity = ({
                                             const row = Math.floor(idx / 8);
                                             const col = idx % 8;
                                             const isLight = (row + col) % 2 === 0;
-                                            const piece = cell.color === 0 ? cell.pieceType : cell.pieceType + 10;
+
+                                            // Get the appropriate symbol based on color and pieceType
+                                            let symbol = '';
+                                            let textColor = '';
+                                            if (cell.pieceType > 0) {
+                                              if (cell.color === 1) {
+                                                // White piece
+                                                symbol = whitePieceSymbols[cell.pieceType] || '';
+                                                textColor = 'text-white drop-shadow-[0_0_3px_rgba(0,0,0,0.8)]';
+                                              } else if (cell.color === 2) {
+                                                // Black piece
+                                                symbol = blackPieceSymbols[cell.pieceType] || '';
+                                                textColor = 'text-black drop-shadow-[0_0_3px_rgba(255,255,255,0.6)]';
+                                              }
+                                            }
+
                                             return (
                                               <div
                                                 key={idx}
                                                 className={`flex items-center justify-center text-2xl ${
                                                   isLight ? 'bg-amber-200/20' : 'bg-amber-900/20'
-                                                }`}
+                                                } ${textColor}`}
                                               >
-                                                {pieceSymbols[piece] || ''}
+                                                {symbol}
                                               </div>
                                             );
                                           })}

@@ -8,6 +8,32 @@
 import { ethers } from 'ethers';
 
 /**
+ * Unpack Chess board from packedBoard (4 bits per square, 64 squares)
+ * Encoding: 0=empty, 1-6=white pieces (pawn..king), 7-12=black pieces (pawn..king)
+ * @param {BigInt|number} packedBoard - Packed board data
+ * @returns {Array<{pieceType: number, color: number}>} Array of 64 piece objects
+ */
+const unpackChessBoard = (packedBoard) => {
+  const board = [];
+  let packed = BigInt(packedBoard);
+  for (let i = 0; i < 64; i++) {
+    const value = Number(packed & 0xFn);
+    let pieceType = 0;
+    let color = 0;
+    if (value >= 1 && value <= 6) {
+      pieceType = value;  // white: 1-6
+      color = 1;
+    } else if (value >= 7 && value <= 12) {
+      pieceType = value - 6;  // black: 7-12 → pieceType 1-6
+      color = 2;
+    }
+    board.push({ pieceType, color });
+    packed = packed >> 4n;
+  }
+  return board;
+};
+
+/**
  * Generate matchId for querying events
  * @param {number} tierId
  * @param {number} instanceId
@@ -93,16 +119,26 @@ export const reconstructTicTacToeBoard = (events, player1Address, _player2Addres
  * @returns {Object} { boardArray, moveHistory }
  */
 export const reconstructChessBoard = (events, _player1Address, _player2Address) => {
-  // Initialize standard chess starting position
+  // Initialize standard chess starting position with {pieceType, color} objects
+  // White pieces: color=1, Black pieces: color=2
+  // PieceTypes: 1=pawn, 2=knight, 3=bishop, 4=rook, 5=queen, 6=king
   const board = [
-    4, 2, 3, 5, 6, 3, 2, 4, // Row 0: White back rank
-    1, 1, 1, 1, 1, 1, 1, 1, // Row 1: White pawns
-    0, 0, 0, 0, 0, 0, 0, 0, // Row 2: Empty
-    0, 0, 0, 0, 0, 0, 0, 0, // Row 3: Empty
-    0, 0, 0, 0, 0, 0, 0, 0, // Row 4: Empty
-    0, 0, 0, 0, 0, 0, 0, 0, // Row 5: Empty
-    11, 11, 11, 11, 11, 11, 11, 11, // Row 6: Black pawns
-    14, 12, 13, 15, 16, 13, 12, 14  // Row 7: Black back rank
+    { pieceType: 4, color: 1 }, { pieceType: 2, color: 1 }, { pieceType: 3, color: 1 }, { pieceType: 5, color: 1 },
+    { pieceType: 6, color: 1 }, { pieceType: 3, color: 1 }, { pieceType: 2, color: 1 }, { pieceType: 4, color: 1 }, // Row 0: White back rank
+    { pieceType: 1, color: 1 }, { pieceType: 1, color: 1 }, { pieceType: 1, color: 1 }, { pieceType: 1, color: 1 },
+    { pieceType: 1, color: 1 }, { pieceType: 1, color: 1 }, { pieceType: 1, color: 1 }, { pieceType: 1, color: 1 }, // Row 1: White pawns
+    { pieceType: 0, color: 0 }, { pieceType: 0, color: 0 }, { pieceType: 0, color: 0 }, { pieceType: 0, color: 0 },
+    { pieceType: 0, color: 0 }, { pieceType: 0, color: 0 }, { pieceType: 0, color: 0 }, { pieceType: 0, color: 0 }, // Row 2: Empty
+    { pieceType: 0, color: 0 }, { pieceType: 0, color: 0 }, { pieceType: 0, color: 0 }, { pieceType: 0, color: 0 },
+    { pieceType: 0, color: 0 }, { pieceType: 0, color: 0 }, { pieceType: 0, color: 0 }, { pieceType: 0, color: 0 }, // Row 3: Empty
+    { pieceType: 0, color: 0 }, { pieceType: 0, color: 0 }, { pieceType: 0, color: 0 }, { pieceType: 0, color: 0 },
+    { pieceType: 0, color: 0 }, { pieceType: 0, color: 0 }, { pieceType: 0, color: 0 }, { pieceType: 0, color: 0 }, // Row 4: Empty
+    { pieceType: 0, color: 0 }, { pieceType: 0, color: 0 }, { pieceType: 0, color: 0 }, { pieceType: 0, color: 0 },
+    { pieceType: 0, color: 0 }, { pieceType: 0, color: 0 }, { pieceType: 0, color: 0 }, { pieceType: 0, color: 0 }, // Row 5: Empty
+    { pieceType: 1, color: 2 }, { pieceType: 1, color: 2 }, { pieceType: 1, color: 2 }, { pieceType: 1, color: 2 },
+    { pieceType: 1, color: 2 }, { pieceType: 1, color: 2 }, { pieceType: 1, color: 2 }, { pieceType: 1, color: 2 }, // Row 6: Black pawns
+    { pieceType: 4, color: 2 }, { pieceType: 2, color: 2 }, { pieceType: 3, color: 2 }, { pieceType: 5, color: 2 },
+    { pieceType: 6, color: 2 }, { pieceType: 3, color: 2 }, { pieceType: 2, color: 2 }, { pieceType: 4, color: 2 }  // Row 7: Black back rank
   ];
 
   const moveHistory = [];
@@ -111,7 +147,7 @@ export const reconstructChessBoard = (events, _player1Address, _player2Address) 
     const { player, from, to } = event.args;
     const piece = board[from];
     board[to] = piece;
-    board[from] = 0;
+    board[from] = { pieceType: 0, color: 0 };
 
     moveHistory.push({ player, from, to, piece });
   });
@@ -176,7 +212,16 @@ export const reconstructMatchFromEvents = async (
         board = reconstructTicTacToeBoard(moveEvents, player1Address, player2Address);
         break;
       case 'chess':
-        board = reconstructChessBoard(moveEvents, player1Address, player2Address);
+        // For chess, prefer using the board from MatchCompleted event
+        // This contains the final board state as a packed uint256
+        if (completedEvent?.args?.board) {
+          console.log('[EventReconstruction] Using board from MatchCompleted event');
+          board = { boardArray: unpackChessBoard(completedEvent.args.board), moveHistory: [] };
+        } else {
+          // Fallback to move-by-move reconstruction
+          console.log('[EventReconstruction] Falling back to move-by-move reconstruction');
+          board = reconstructChessBoard(moveEvents, player1Address, player2Address);
+        }
         break;
       case 'connect4':
         board = reconstructConnect4Board(moveEvents, player1Address, player2Address);
