@@ -1649,14 +1649,13 @@ export default function TicTacChain() {
     }
   };
 
-  // Fetch move history from blockchain events with fallback to board state reconstruction
+  // Fetch move history from blockchain events
   const fetchMoveHistory = useCallback(async (contractInstance, tierId, instanceId, roundNumber, matchNumber) => {
     try {
-      // Get match data first (needed for both approaches)
+      // Get match data first (needed for event filtering)
       const matchData = await contractInstance.getMatch(tierId, instanceId, roundNumber, matchNumber);
       const parsedMatch = parseTicTacToeMatch(matchData);
       const player1 = parsedMatch.player1;
-      const board = parsedMatch.board;
       const matchStartTime = Number(matchData.common.startTime);
 
       // Try to query MoveMade events for this match
@@ -1714,18 +1713,37 @@ export default function TicTacChain() {
         console.warn('Event query failed, falling back to board reconstruction:', eventError);
       }
 
-      // Fallback: Reconstruct from board state (loses move order but shows current state)
+      // Fallback: Reconstruct from board state by alternating players
+      // This won't be perfect chronologically, but will alternate correctly
       const history = [];
-      const boardArray = Array.from(board);
+      const boardArray = Array.from(parsedMatch.board);
+
+      const player1Moves = [];
+      const player2Moves = [];
+
       for (let i = 0; i < boardArray.length; i++) {
         const cell = Number(boardArray[i]);
         if (cell !== 0) {
-          history.push({
+          const move = {
             player: cell === 1 ? 'X' : 'O',
-            cell: i
-          });
+            cell: i,
+            address: cell === 1 ? player1 : parsedMatch.player2
+          };
+          if (cell === 1) {
+            player1Moves.push(move);
+          } else {
+            player2Moves.push(move);
+          }
         }
       }
+
+      // Interleave moves to alternate between players
+      const maxMoves = Math.max(player1Moves.length, player2Moves.length);
+      for (let i = 0; i < maxMoves; i++) {
+        if (i < player1Moves.length) history.push(player1Moves[i]);
+        if (i < player2Moves.length) history.push(player2Moves[i]);
+      }
+
       return history;
     } catch (error) {
       console.error('Error fetching move history:', error);
