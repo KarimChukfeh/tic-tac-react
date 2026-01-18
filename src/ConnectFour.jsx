@@ -4023,8 +4023,8 @@ export default function ConnectFour() {
         prizePool={currentMatch?.prizePool}
       />
 
-      {/* Tournament Completion Modal */}
-      {tournamentCompletionData && (
+      {/* Tournament Completion Modal - only show if no match result modal is showing */}
+      {tournamentCompletionData && !matchEndResult && (
         <MatchEndModal
           result="tournament_ended"
           onClose={handleTournamentCompletionModalClose}
