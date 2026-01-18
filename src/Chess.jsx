@@ -2438,6 +2438,95 @@ export default function Chess() {
         player1.toLowerCase() !== zeroAddress &&
         player2.toLowerCase() !== zeroAddress;
 
+      // If contract returns cleared data (zero addresses + empty board), query MatchCompleted event
+      // Keep polling until we find an event matching this exact match instance
+      const isBoardEmpty = board.every(cell => cell.pieceType === 0);
+      if (!isMatchInitialized && isBoardEmpty) {
+        console.log('[refreshMatchData] Match data cleared, querying MatchCompleted event');
+
+        try {
+          const matchId = ethers.solidityPackedKeccak256(
+            ['uint8', 'uint8', 'uint8', 'uint8'],
+            [tierId, instanceId, roundNumber, matchNumber]
+          );
+
+          const filter = contractInstance.filters.MatchCompleted(matchId);
+          const events = await contractInstance.queryFilter(filter);
+
+          // Find event that matches this exact match instance
+          for (let i = events.length - 1; i >= 0; i--) {
+            const event = events[i];
+            const [, eventWinner, eventIsDraw, eventReason, eventPackedBoard] = event.args;
+
+            // Verify winner is one of our players
+            const winnerLower = eventWinner.toLowerCase();
+            const p1Lower = matchInfo.player1?.toLowerCase();
+            const p2Lower = matchInfo.player2?.toLowerCase();
+            const winnerIsPlayer = eventIsDraw || winnerLower === p1Lower || winnerLower === p2Lower || winnerLower === zeroAddress;
+
+            if (!winnerIsPlayer) continue;
+
+            // Verify event occurred after match start time
+            const block = await event.getBlock();
+            const eventTimestamp = Number(block.timestamp);
+            const matchStartTime = matchInfo.startTime;
+
+            if (matchStartTime && eventTimestamp < matchStartTime) continue;
+
+            // Unpack the chess board from the event (4 bits per square, 64 squares)
+            const unpackChessBoard = (packed) => {
+              const boardArray = [];
+              let p = BigInt(packed);
+              for (let j = 0; j < 64; j++) {
+                const value = Number(p & 0xFn);
+                let pieceType = 0;
+                let color = 0;
+                if (value >= 1 && value <= 6) {
+                  pieceType = value;
+                  color = 1;
+                } else if (value >= 7 && value <= 12) {
+                  pieceType = value - 6;
+                  color = 2;
+                }
+                boardArray.push({ pieceType, color });
+                p = p >> 4n;
+              }
+              return boardArray;
+            };
+            const eventBoard = unpackChessBoard(eventPackedBoard);
+
+            console.log('[refreshMatchData] Found matching MatchCompleted event:', {
+              winner: eventWinner,
+              isDraw: eventIsDraw,
+              reason: Number(eventReason),
+              eventTimestamp,
+              matchStartTime
+            });
+
+            const eventLoser = eventIsDraw ? zeroAddress :
+              (winnerLower === p1Lower ? matchInfo.player2 : matchInfo.player1);
+
+            return {
+              ...matchInfo,
+              matchStatus: 2,
+              winner: eventWinner,
+              loser: eventLoser,
+              isDraw: eventIsDraw,
+              board: eventBoard,
+              isYourTurn: false,
+              completedFromEventPoll: true,
+              completionReason: Number(eventReason)
+            };
+          }
+
+          console.log('[refreshMatchData] No matching MatchCompleted event found yet, continuing to poll');
+        } catch (err) {
+          console.error('[refreshMatchData] Error querying MatchCompleted event:', err);
+        }
+
+        return null;
+      }
+
       let actualPlayer1 = player1;
       let actualPlayer2 = player2;
 
@@ -3493,7 +3582,57 @@ export default function Chess() {
         );
 
         if (updatedMatch) {
-          // If match just completed, let events handle it
+          // Handle match completed from MatchCompleted event polling
+          if (updatedMatch.completedFromEventPoll) {
+            console.log('[Chess Polling] Match completed from event poll, updating state and showing banner');
+
+            // Update match state with event data (including board from event)
+            setCurrentMatch(prev => {
+              if (!prev) return updatedMatch;
+              // Don't overwrite if already completed
+              if (prev.matchStatus === 2) return prev;
+
+              return {
+                ...prev,
+                matchStatus: 2,
+                winner: updatedMatch.winner,
+                loser: updatedMatch.loser,
+                isDraw: updatedMatch.isDraw,
+                board: updatedMatch.board,
+                isYourTurn: false,
+                completionReason: updatedMatch.completionReason
+              };
+            });
+
+            // Show winner/loser banner
+            const player1 = updatedMatch.player1;
+            const player2 = updatedMatch.player2;
+            const isPlayer1 = player1?.toLowerCase() === userAccount.toLowerCase();
+            const isPlayer2 = player2?.toLowerCase() === userAccount.toLowerCase();
+            const isParticipant = isPlayer1 || isPlayer2;
+
+            if (isParticipant) {
+              const userWon = !updatedMatch.isDraw && updatedMatch.winner.toLowerCase() === userAccount.toLowerCase();
+              const reasonNum = updatedMatch.completionReason;
+
+              let resultType = 'lose';
+              if (updatedMatch.isDraw) {
+                resultType = 'draw';
+              } else if (userWon) {
+                resultType = (reasonNum === 1 || reasonNum === 2 || reasonNum === 3) ? 'forfeit_win' : 'win';
+              } else {
+                resultType = (reasonNum === 1 || reasonNum === 2 || reasonNum === 3) ? 'forfeit_lose' : 'lose';
+              }
+
+              console.log('[Chess Polling] Setting match end result:', resultType);
+              setMatchEndResult(resultType);
+              setMatchEndWinner(updatedMatch.winner);
+              setMatchEndLoser(updatedMatch.loser);
+            }
+            return;
+          }
+
+          // If match just completed (not from event poll), let events handle it
           if (updatedMatch.matchStatus === 2) {
             return;
           }
