@@ -256,12 +256,12 @@ const PlayerActivity = ({
   // Helper to get completion reason text
   const getCompletionReasonText = (reason) => {
     const reasons = {
-      0: 'Normal Win',
-      1: 'Timeout Win (ML1)',
+      0: 'Normal',
+      1: 'Timeout (ML1)',
       2: 'Draw',
       3: 'Force Elimination (ML2)',
-      4: 'Abandoned Match Replacement (ML3)',
-      5: 'All Draw Scenario'
+      4: 'Abandoned Match (ML3)',
+      5: 'All Draw'
     };
     return reasons[reason] || `Unknown (${reason})`;
   };
@@ -905,13 +905,25 @@ const PlayerActivity = ({
                                       Lost
                                     </span>
                                   )}
-                                  <span className={`text-[10px] px-2 py-0.5 rounded ${
-                                    match.reason === 0
-                                      ? 'bg-blue-500/20 text-blue-300'
-                                      : 'bg-orange-500/20 text-orange-300'
-                                  }`}>
-                                    {getCompletionReasonText(match.reason)}
-                                  </span>
+                                  {/* Reason Tag - Link to manual for ML1/ML2/ML3 */}
+                                  {(match.reason === 1 || match.reason === 3 || match.reason === 4) ? (
+                                    <a
+                                      href={match.reason === 1 ? '#ml1' : match.reason === 3 ? '#ml2' : '#ml3'}
+                                      onClick={() => setIsExpanded(false)}
+                                      className={`text-[10px] px-2 py-0.5 rounded bg-orange-500/20 text-orange-300 hover:bg-orange-500/30 hover:text-orange-200 transition-colors underline decoration-dotted cursor-pointer`}
+                                      title={`Learn more about ${match.reason === 1 ? 'ML1' : match.reason === 3 ? 'ML2' : 'ML3'} in the User Manual`}
+                                    >
+                                      {getCompletionReasonText(match.reason)}
+                                    </a>
+                                  ) : (
+                                    <span className={`text-[10px] px-2 py-0.5 rounded ${
+                                      match.reason === 0
+                                        ? 'bg-blue-500/20 text-blue-300'
+                                        : 'bg-orange-500/20 text-orange-300'
+                                    }`}>
+                                      {getCompletionReasonText(match.reason)}
+                                    </span>
+                                  )}
                                 </div>
                               </div>
 
@@ -919,6 +931,18 @@ const PlayerActivity = ({
                               <div className="text-slate-300 text-xs mb-2">
                                 <span className="text-slate-400">vs </span>
                                 <span className="font-mono">{shortenAddress(opponent)}</span>
+                              </div>
+
+                              {/* Winner Info */}
+                              <div className="text-slate-300 text-xs mb-2">
+                                <span className="text-slate-400">Winner: </span>
+                                {match.isDraw ? (
+                                  <span className="text-yellow-300 font-semibold">Draw</span>
+                                ) : (
+                                  <span className={`font-mono ${isWinner ? 'text-green-400 font-semibold' : 'text-red-400'}`}>
+                                    {shortenAddress(match.winner)}
+                                  </span>
+                                )}
                               </div>
 
                               {/* Match Details */}
