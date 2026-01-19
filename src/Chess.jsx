@@ -2180,6 +2180,37 @@ export default function Chess() {
               console.debug('Could not check escalation availability:', escCheckErr.message);
             }
 
+            // Check if current user is an advanced player for this round
+            let isUserAdvancedForRound = false;
+            if (account) {
+              try {
+                isUserAdvancedForRound = await contractInstance.isPlayerInAdvancedRound(tierId, instanceId, roundNum, account);
+                console.log(`[Bracket R${roundNum}] isUserAdvancedForRound:`, isUserAdvancedForRound);
+              } catch (advErr) {
+                console.debug('[Bracket] Advanced player check failed:', advErr.reason || advErr.message);
+              }
+            }
+
+            // Create client-side timeout state if contract doesn't have it
+            if (!timeoutState) {
+              const timeoutOccurred = parsedMatch.lastMoveTime + (player1TimeRemaining <= 0
+                ? (parsedMatch.player1TimeRemaining ?? tierMatchTime)
+                : (parsedMatch.player2TimeRemaining ?? tierMatchTime));
+              const matchLevel2Delay = timeoutConfig?.matchLevel2Delay || 120;
+              const matchLevel3Delay = timeoutConfig?.matchLevel3Delay || 240;
+
+              timeoutState = {
+                escalation1Start: timeoutOccurred + matchLevel2Delay,
+                escalation2Start: timeoutOccurred + matchLevel3Delay,
+                escalation3Start: 0,
+                activeEscalation: 0,
+                timeoutActive: true, // We detected a timeout
+                forfeitAmount: 0,
+                clientDetected: true // Flag to indicate this was detected client-side
+              };
+              console.log(`[Bracket R${roundNum}M${matchNum}] Client-detected timeout state:`, timeoutState);
+            }
+
             // Determine if match was completed by timeout
             const isTimedOut = parsedMatch.matchStatus === 2 && timeoutState?.timeoutActive === true;
 
@@ -2194,7 +2225,8 @@ export default function Chess() {
               matchTimePerPlayer: tierMatchTime, // Pass through per-tier value for UI
               timeoutConfig, // Add tier timeout config for escalation calculations
               escL2Available, // Contract says Level 2 is available
-              escL3Available  // Contract says Level 3 is available
+              escL3Available, // Contract says Level 3 is available
+              isUserAdvancedForRound // User's advanced status for this round
             });
           } catch (err) {
             // Match might not exist yet - create placeholder with all required fields
@@ -2245,7 +2277,7 @@ export default function Chess() {
       console.error('Error refreshing tournament bracket:', error);
       return null;
     }
-  }, [escalationInterval]);
+  }, [escalationInterval, account]);
 
   // Handle entering tournament (fetch and display bracket)
   const handleEnterTournament = async (tierId, instanceId) => {
