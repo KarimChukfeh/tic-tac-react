@@ -88,12 +88,37 @@ const PlayerPanel = ({
   icon,
   label,
   colorScheme = 'blue',
-  variant = 'full', // 'full' | 'compact'
+  variant = 'full', // 'full' | 'compact' | 'mobile-compact'
   renderStats, // Optional render prop for game-specific stats
   extraContent // Optional extra content (e.g., check indicator for chess)
 }) => {
   const colors = COLOR_CONFIGS[colorScheme] || COLOR_CONFIGS.blue;
   const isYou = currentAccount && playerAddress?.toLowerCase() === currentAccount.toLowerCase();
+
+  if (variant === 'mobile-compact') {
+    // Mobile-compact variant for ultra-compact mobile layouts (~60px height)
+    return (
+      <div className={`relative flex flex-row items-center gap-3 p-2 rounded-lg border-2 ${
+        isCurrentTurn && !isGameOver
+          ? 'border-green-400 bg-green-500/10 ring-2 ring-green-400/30'
+          : isYou
+          ? 'border-yellow-400 bg-yellow-500/10 ring-1 ring-yellow-400/20'
+          : `${colors.border} ${colors.bg}`
+      }`}>
+        <div className={`w-8 h-8 ${colors.iconBg} rounded-full flex items-center justify-center text-lg font-bold border ${
+          isCurrentTurn && !isGameOver ? 'border-green-400' : colors.border
+        }`}>
+          {icon}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-xs text-gray-400">{label}</div>
+          <div className="font-mono text-xs truncate">{shortenAddress(playerAddress)}</div>
+          {isYou && <span className="text-yellow-300 text-[10px] font-bold">YOU</span>}
+        </div>
+        {extraContent && <div className="flex-shrink-0">{extraContent}</div>}
+      </div>
+    );
+  }
 
   if (variant === 'compact') {
     // Compact variant for centered/inline layouts

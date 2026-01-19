@@ -19,7 +19,8 @@ const TurnTimer = ({
   loading,
   syncDots = 1,
   isSpectator = false,
-  playerConfig = null // { player1: { icon, label }, player2: { icon, label } }
+  playerConfig = null, // { player1: { icon, label }, player2: { icon, label } }
+  compact = false // Enable compact mode for mobile
 }) => {
   // Client-side ticking state
   const [player1TimeLeft, setPlayer1TimeLeft] = useState(match.player1TimeRemaining ?? match.matchTimePerPlayer ?? 300);
@@ -120,6 +121,53 @@ const TurnTimer = ({
   const leftPlayerProgress = ((totalTime - leftPlayerTimeLeft) / totalTime) * 100;
   const rightPlayerProgress = ((totalTime - rightPlayerTimeLeft) / totalTime) * 100;
 
+  // Compact mode for mobile - single row layout
+  if (compact) {
+    return (
+      <div className="border border-purple-400/20 rounded-lg p-2 bg-gradient-to-br from-purple-600/5 to-blue-600/5">
+        <div className="grid grid-cols-2 gap-2">
+          {/* Left Player */}
+          <div className={`border rounded p-2 ${
+            leftPlayerTurn ? `${leftPlayerColors.border} ${leftPlayerColors.bg}` : 'border-gray-600/30 opacity-60'
+          }`}>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-bold text-purple-300">{leftPlayerLabel}</span>
+              <span className={`font-mono text-sm ${leftPlayerColors.text}`}>
+                {leftPlayerTimeLeft > 0 ? formatTime(leftPlayerTimeLeft) : 'OUT'}
+              </span>
+            </div>
+            <div className="h-1 bg-gray-700 rounded-full overflow-hidden">
+              <div className={`h-full ${leftPlayerColors.barColor}`} style={{ width: `${leftPlayerProgress}%` }} />
+            </div>
+          </div>
+
+          {/* Right Player */}
+          <div className={`border rounded p-2 ${
+            rightPlayerTurn ? `${rightPlayerColors.border} ${rightPlayerColors.bg}` : 'border-gray-600/30 opacity-60'
+          }`}>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-bold text-pink-300">{rightPlayerLabel}</span>
+              <span className={`font-mono text-sm ${rightPlayerColors.text}`}>
+                {rightPlayerTimeLeft > 0 ? formatTime(rightPlayerTimeLeft) : 'OUT'}
+              </span>
+            </div>
+            <div className="h-1 bg-gray-700 rounded-full overflow-hidden">
+              <div className={`h-full ${rightPlayerColors.barColor}`} style={{ width: `${rightPlayerProgress}%` }} />
+            </div>
+          </div>
+        </div>
+
+        {/* Timeout button (if applicable) */}
+        {!isSpectator && opponentTimedOut && !isYourTurn && (
+          <button onClick={onClaimTimeoutWin} disabled={loading} className="w-full mt-2 bg-green-600 hover:bg-green-700 text-white font-bold py-1.5 px-2 rounded text-xs">
+            Claim Timeout Victory
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  // Full mode for desktop - existing dual-column layout
   return (
     <div className="border border-purple-400/30 rounded-xl p-4 bg-gradient-to-br from-purple-600/10 to-blue-600/10 backdrop-blur-lg">
       {/* Header */}
