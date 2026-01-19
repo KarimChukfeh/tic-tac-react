@@ -70,30 +70,35 @@ const MiniChessBoard = ({
     return 'Failed to make move';
   };
 
-  // Helper to flip board index (so player is always at bottom)
-  // Flip vertically (rows only) for white's view - preserves a-h left-to-right
-  // White view: a1 at bottom-left, h1 at bottom-right, a8 at top-left, h8 at top-right
-  // Black view: a1 at top-left, h8 at bottom-right (standard array order)
+  // Helper to flip board index (so player is always at bottom with dark square on left)
+  // White view: flip vertically - a1 at bottom-left (dark), h1 at bottom-right (light)
+  // Black view: flip horizontally - h8 at bottom-left (dark), a8 at bottom-right (light)
   const getDisplayIndex = (actualIndex) => {
     if (!matchData) return actualIndex;
-    const shouldFlip = matchData.isWhite; // Flip if player is white so white pieces are at bottom
-    if (shouldFlip) {
-      const actualRow = Math.floor(actualIndex / 8);
-      const actualCol = actualIndex % 8;
+    const actualRow = Math.floor(actualIndex / 8);
+    const actualCol = actualIndex % 8;
+
+    if (matchData.isWhite) {
+      // White: flip rows (vertical flip)
       return (7 - actualRow) * 8 + actualCol;
+    } else {
+      // Black: flip columns (horizontal flip)
+      return actualRow * 8 + (7 - actualCol);
     }
-    return actualIndex;
   };
 
   const getActualIndex = (displayIndex) => {
     if (!matchData) return displayIndex;
-    const shouldFlip = matchData.isWhite; // Flip if player is white so white pieces are at bottom
-    if (shouldFlip) {
-      const displayRow = Math.floor(displayIndex / 8);
-      const displayCol = displayIndex % 8;
+    const displayRow = Math.floor(displayIndex / 8);
+    const displayCol = displayIndex % 8;
+
+    if (matchData.isWhite) {
+      // White: flip rows (vertical flip)
       return (7 - displayRow) * 8 + displayCol;
+    } else {
+      // Black: flip columns (horizontal flip)
+      return displayRow * 8 + (7 - displayCol);
     }
-    return displayIndex;
   };
 
   // Fetch last move from contract events (persists after page refresh)
