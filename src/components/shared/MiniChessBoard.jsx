@@ -160,9 +160,82 @@ const MiniChessBoard = ({
       });
 
       let parsed = parseChessMatch(data);
+      let alreadyReconstructed = false; // Flag to prevent double reconstruction
 
-      // If match is completed, reconstruct board from events instead of cache
-      if (parsed.matchStatus === 2) {
+      // Check if contract returned invalid/cleared data (happens when tournament resets after finals)
+      const zeroAddress = '0x0000000000000000000000000000000000000000';
+      const isMatchInitialized =
+        parsed.player1?.toLowerCase() !== zeroAddress.toLowerCase() &&
+        parsed.player2?.toLowerCase() !== zeroAddress.toLowerCase();
+      const isBoardEmpty = parsed.board?.every(cell => !cell || cell.pieceType === 0);
+
+      // If contract returns cleared data (zero addresses + empty board), query MatchCompleted event
+      if (!isMatchInitialized && isBoardEmpty) {
+        console.log('[MiniChessBoard] Match data cleared, querying MatchCompleted event');
+
+        try {
+          const matchId = ethers.solidityPackedKeccak256(
+            ['uint8', 'uint8', 'uint8', 'uint8'],
+            [match.tierId, match.instanceId, match.roundIdx, match.matchIdx]
+          );
+
+          // Query MatchCompleted events
+          const filter = contract.filters.MatchCompleted(matchId);
+          const events = await contract.queryFilter(filter, -10000); // Last 10k blocks
+
+          if (events.length > 0) {
+            // Use the most recent event
+            const event = events[events.length - 1];
+            const [eventMatchId, eventPlayer1, eventPlayer2, eventWinner, eventIsDraw, eventReason, eventPackedBoard] = event.args;
+
+            console.log('[MiniChessBoard] MatchCompleted event data:', {
+              eventMatchId,
+              eventPlayer1,
+              eventPlayer2,
+              eventWinner,
+              eventIsDraw,
+              eventReason: Number(eventReason),
+              eventPackedBoard: eventPackedBoard.toString()
+            });
+
+            const eventLoser = eventIsDraw ? zeroAddress : (
+              eventWinner.toLowerCase() === eventPlayer1.toLowerCase() ? eventPlayer2 : eventPlayer1
+            );
+
+            // Reconstruct match data from event
+            parsed = {
+              ...parsed,
+              player1: eventPlayer1,
+              player2: eventPlayer2,
+              matchStatus: 2,
+              winner: eventWinner,
+              loser: eventLoser,
+              isDraw: eventIsDraw,
+              isForfeit: Number(eventReason) === 2, // Reason 2 = forfeit
+            };
+
+            alreadyReconstructed = true; // We'll reconstruct board from MoveMade events below
+            console.log('[MiniChessBoard] Reconstructed match from MatchCompleted event');
+          } else {
+            // No event found - if we have existing matchData, preserve it
+            if (matchData) {
+              console.log('[MiniChessBoard] No event found but have existing data, preserving state');
+              return; // Don't update, keep existing state
+            }
+            // Otherwise, use the cleared data (initial load)
+          }
+        } catch (err) {
+          console.warn('[MiniChessBoard] Failed to query MatchCompleted event:', err);
+          // If we have existing matchData, preserve it
+          if (matchData) {
+            console.log('[MiniChessBoard] Preserving existing state due to event query error');
+            return; // Don't update, keep existing state
+          }
+        }
+      }
+
+      // If match is completed, reconstruct board from events (only if not already reconstructed above)
+      if (parsed.matchStatus === 2 && !alreadyReconstructed) {
         try {
           const reconstructed = await reconstructMatchFromEvents(
             contract,
@@ -206,7 +279,6 @@ const MiniChessBoard = ({
       // Calculate isMyTurn based on current turn
       parsed.isMyTurn = parsed.currentTurn?.toLowerCase() === account?.toLowerCase();
       // Calculate isWhite using firstPlayer (fallback to player1 if not set)
-      const zeroAddress = '0x0000000000000000000000000000000000000000';
       const whitePlayer = (parsed.firstPlayer && parsed.firstPlayer.toLowerCase() !== zeroAddress) ? parsed.firstPlayer : parsed.player1;
       parsed.isWhite = account && whitePlayer?.toLowerCase() === account?.toLowerCase();
 
@@ -450,11 +522,9 @@ const MiniChessBoard = ({
           result={matchEndResult}
           onClose={() => {
             const isDefeat = matchEndResult === 'lose' || matchEndResult === 'forfeit_lose';
-            // Hide modal
+            // Hide modal only - keep match card visible with final board state
             setShowMatchEndModal(false);
-            // Notify parent that match was dismissed
-            onMatchDismissed?.();
-            // For victory/draw, also trigger refresh
+            // For victory/draw, trigger refresh to update activity panel
             if (!isDefeat) {
               onMoveComplete?.();
             }
