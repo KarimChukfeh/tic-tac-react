@@ -102,9 +102,29 @@ const PlayerActivity = ({
   };
 
   const handleRefresh = () => {
+    // Refresh activity data from hook
     onRefresh();
+
     // Trigger mini board refresh by changing the value
     setRefreshTrigger(prev => prev + 1);
+
+    // Clear and refetch transaction history if visible
+    if (showTransactionHistory) {
+      setTransactionHistory([]);
+      fetchTransactionHistory();
+    }
+
+    // Clear and refetch recent matches if visible
+    if (showRecentMatches) {
+      setRecentMatches([]);
+      fetchRecentMatches();
+    }
+
+    // Clear local completed matches state to get fresh data
+    setCompletedMatches(new Map());
+
+    // Clear local dismissed matches to get fresh state
+    setLocalDismissedMatches(new Set());
   };
 
   // Fetch Transfer events for transaction history
