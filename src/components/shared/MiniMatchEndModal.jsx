@@ -142,7 +142,7 @@ const MiniMatchEndModal = ({
       </button>
 
       {/* Icon and Title - Compact */}
-      <div className="flex items-center justify-center gap-2 mb-1.5">
+      <div className="flex items-center justify-center gap-2">
         <IconComponent size={20} className={currentConfig.iconColor} />
         <div className="text-center">
           <h3 className={`text-sm font-bold ${currentConfig.titleColor}`}>
@@ -153,17 +153,6 @@ const MiniMatchEndModal = ({
           </p>
         </div>
       </div>
-
-      {/* Dismiss button - Compact */}
-      <button
-        onClick={onClose}
-        className="w-full py-1 px-3 rounded font-semibold text-xs
-          bg-white/10 hover:bg-white/20
-          border border-white/20 hover:border-white/30
-          transition-all duration-200 text-white"
-      >
-        Dismiss
-      </button>
     </div>
   );
 };

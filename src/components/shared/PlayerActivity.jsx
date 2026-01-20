@@ -644,49 +644,49 @@ const PlayerActivity = ({
 
                           {/* Buttons */}
                           <div className="flex gap-2">
-                            {!isCompleted && (
-                              <button
-                                onClick={() =>
-                                  onEnterMatch(
-                                    match.tierId,
-                                    match.instanceId,
-                                    match.roundIdx,
-                                    match.matchIdx
-                                  )
-                                }
-                                className="flex-1 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-bold py-2 px-4 rounded-lg transition-all transform hover:scale-105 flex items-center justify-center gap-2 text-sm"
-                              >
-                                {match.isMyTurn ? (
-                                  <>
-                                    <Play size={16} />
-                                    Make Move
-                                  </>
-                                ) : (
-                                  <>
-                                    <Eye size={16} />
-                                    View Match
-                                  </>
-                                )}
-                              </button>
-                            )}
+                            {!isCompleted ? (
+                              <>
+                                <button
+                                  onClick={() =>
+                                    onEnterMatch(
+                                      match.tierId,
+                                      match.instanceId,
+                                      match.roundIdx,
+                                      match.matchIdx
+                                    )
+                                  }
+                                  className="flex-1 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-bold py-2 px-4 rounded-lg transition-all transform hover:scale-105 flex items-center justify-center gap-2 text-sm"
+                                >
+                                  {match.isMyTurn ? (
+                                    <>
+                                      <Play size={16} />
+                                      Make Move
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Eye size={16} />
+                                      View Match
+                                    </>
+                                  )}
+                                </button>
 
-                            {/* Expand button - show for all games */}
-                            <button
-                              onClick={() => toggleMatchExpand(matchKey)}
-                              className={`${isCompleted ? 'flex-1' : ''} px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-all`}
-                              title={isMatchExpanded ? "Hide board" : "Show board"}
-                            >
-                              {isMatchExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                            </button>
-
-                            {/* Dismiss button for completed matches */}
-                            {isCompleted && (
+                                {/* Expand button - show for active games only */}
+                                <button
+                                  onClick={() => toggleMatchExpand(matchKey)}
+                                  className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-all"
+                                  title={isMatchExpanded ? "Hide board" : "Show board"}
+                                >
+                                  {isMatchExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                </button>
+                              </>
+                            ) : (
+                              /* Dismiss button for completed matches */
                               <button
                                 onClick={() => handleDismissMatch(match.tierId, match.instanceId, match.roundIdx, match.matchIdx)}
-                                className="px-3 py-2 bg-red-600/20 hover:bg-red-600/40 text-red-300 rounded-lg transition-all flex items-center gap-1 text-sm"
+                                className="flex-1 bg-red-600/20 hover:bg-red-600/40 text-red-300 rounded-lg transition-all flex items-center justify-center gap-2 py-2 px-4 font-semibold text-sm"
                                 title="Remove this match from the list"
                               >
-                                <X size={14} />
+                                <X size={16} />
                                 Dismiss
                               </button>
                             )}
