@@ -8,7 +8,7 @@
  * TODO: Update to call the new contract function once it's deployed
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { parseTicTacToeMatch, parseChessMatch, parseConnectFourMatch } from '../utils/matchDataParser';
 
 /**
@@ -32,6 +32,8 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState(null);
   const [dismissedMatches, setDismissedMatches] = useState(new Set());
+  // Track match keys that were previously active (to preserve them when contract data gets cleared)
+  const previousActiveMatchesRef = useRef(new Set());
 
   const fetchActivity = useCallback(async (isInitialLoad = false) => {
     // Don't fetch if contract or account not available
@@ -256,16 +258,40 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
           // Check if this is the player's match (parsed match has flattened structure)
           const isPlayer1 = matchData.player1?.toLowerCase() === account.toLowerCase();
           const isPlayer2 = matchData.player2?.toLowerCase() === account.toLowerCase();
+          const matchKey = `${tierId}-${instanceId}-${roundIdx}-${matchIdx}`;
 
-          if (!isPlayer1 && !isPlayer2) {
+          // Check if contract returned cleared data (zero addresses + empty board)
+          const zeroAddress = '0x0000000000000000000000000000000000000000';
+          const hasZeroAddresses =
+            matchData.player1?.toLowerCase() === zeroAddress.toLowerCase() ||
+            matchData.player2?.toLowerCase() === zeroAddress.toLowerCase();
+          const isBoardEmpty = matchData.board?.every(cell => cell === 0);
+          const isClearedData = hasZeroAddresses && isBoardEmpty;
+
+          // If data is cleared but match was previously active, keep it (mini board will query event)
+          const wasPreviouslyActive = previousActiveMatchesRef.current.has(matchKey);
+
+          if (!isPlayer1 && !isPlayer2 && !isClearedData) {
             console.log(`[PlayerActivity] Skipping match T${tierId}I${instanceId}R${roundIdx}M${matchIdx} - player not in match (p1: ${matchData.player1}, p2: ${matchData.player2}, account: ${account})`);
             continue;
+          }
+
+          // If cleared data but not previously active, skip it
+          if (isClearedData && !wasPreviouslyActive) {
+            console.log(`[PlayerActivity] Skipping match ${matchKey} - cleared data and not previously active`);
+            continue;
+          }
+
+          // If cleared data but WAS previously active, mark it as completed so mini board can handle it
+          if (isClearedData && wasPreviouslyActive) {
+            console.log(`[PlayerActivity] Including match ${matchKey} despite cleared data (was previously active)`);
+            // Mark as completed status so it gets handled properly
+            matchData.matchStatus = 2;
           }
 
           // Check if match is in progress OR recently completed
           const matchStatus = matchData.matchStatus;
           const isMyTurn = matchData.currentTurn?.toLowerCase() === account.toLowerCase();
-          const matchKey = `${tierId}-${instanceId}-${roundIdx}-${matchIdx}`;
 
           console.log(`[PlayerActivity] Found player's match at T${tierId}I${instanceId}R${roundIdx}M${matchIdx}:`, {
             status: matchStatus,
@@ -284,13 +310,18 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
             continue;
           }
 
-          // Only include in-progress matches (status === 1)
-          // Completed matches (status === 2) should not appear as "active"
-          if (matchStatus === 1) {
+          // Include in-progress matches (status === 1) AND recently completed matches (status === 2)
+          // Completed matches will be shown with final board state in the activity panel
+          if (matchStatus === 1 || matchStatus === 2) {
             hasActiveMatch = true;
 
-            // Determine opponent
-            const opponent = isPlayer1 ? matchData.player2 : matchData.player1;
+            // Determine opponent (for cleared matches, use placeholder until mini board reconstructs)
+            let opponent;
+            if (isClearedData) {
+              opponent = '0x0000000000000000000000000000000000000000'; // Placeholder
+            } else {
+              opponent = isPlayer1 ? matchData.player2 : matchData.player1;
+            }
 
             // Collect for time remaining calculation later
             activeMatchesToFetch.push({
@@ -299,12 +330,13 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
               roundIdx,
               matchIdx,
               opponent,
-              isMyTurn,
+              isMyTurn: matchStatus === 1 ? isMyTurn : false, // No turns in completed matches
               isPlayer1,
               parsedMatch: matchData,
+              matchStatus, // Include status so we can handle completed matches differently
             });
           } else {
-            console.log(`[PlayerActivity] Skipping match ${matchKey} - status not 1 (status: ${matchStatus})`);
+            console.log(`[PlayerActivity] Skipping match ${matchKey} - status not 1 or 2 (status: ${matchStatus})`);
           }
         }
 
@@ -362,11 +394,12 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
           });
 
           // Add all matches to activeMatches array
-          matchesWithTime.forEach(({ tierId, instanceId, roundIdx, matchIdx, opponent, timeRemaining, isMyTurn }) => {
+          matchesWithTime.forEach(({ tierId, instanceId, roundIdx, matchIdx, opponent, timeRemaining, isMyTurn, matchStatus }) => {
             console.log(`[PlayerActivity] Adding match T${tierId}I${instanceId}R${roundIdx}M${matchIdx} to activeMatches`, {
               opponent,
               timeRemaining,
-              isMyTurn
+              isMyTurn,
+              matchStatus
             });
 
             activeMatches.push({
@@ -377,6 +410,7 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
               opponent,
               timeRemaining,
               isMyTurn,
+              matchStatus, // Include status so UI can show completed state
             });
           });
         }
@@ -395,14 +429,22 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
         }
       }
 
-      // Sort active matches: your turn first (by time remaining), then waiting matches
+      // Sort active matches: in-progress first (your turn prioritized), then completed matches
       activeMatches.sort((a, b) => {
-        // Prioritize matches where it's your turn
+        // Completed matches go to the bottom
+        if (a.matchStatus === 2 && b.matchStatus !== 2) return 1;
+        if (a.matchStatus !== 2 && b.matchStatus === 2) return -1;
+        // For in-progress matches, prioritize matches where it's your turn
         if (a.isMyTurn && !b.isMyTurn) return -1;
         if (!a.isMyTurn && b.isMyTurn) return 1;
         // Within same turn status, sort by time remaining (most urgent first)
         return a.timeRemaining - b.timeRemaining;
       });
+
+      // Update tracking of active matches for next poll
+      previousActiveMatchesRef.current = new Set(
+        activeMatches.map(m => `${m.tierId}-${m.instanceId}-${m.roundIdx}-${m.matchIdx}`)
+      );
 
       console.log('[PlayerActivity] ===== FINAL RESULTS =====');
       console.log('[PlayerActivity] Active Matches:', activeMatches.map(m =>
@@ -458,7 +500,7 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
     if (!contract || !account) return;
 
     // Handler for any MatchCompleted event
-    const handleMatchCompleted = (matchId, player1, player2, winner, isDraw, reason, board) => {
+    const handleMatchCompleted = (matchId, player1, player2, winner, isDraw, reason, _board) => {
       console.log('[PlayerActivity] MatchCompleted event received:', {
         matchId,
         player1,
