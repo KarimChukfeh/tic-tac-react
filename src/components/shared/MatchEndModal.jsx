@@ -354,8 +354,11 @@ const MatchEndModal = ({
   const currentConfig = config[result] || config.lose;
   const IconComponent = currentConfig.icon;
 
+  // Match results (win/lose/draw) should have higher priority than tournament_ended
+  const zIndex = result === 'tournament_ended' ? 'z-50' : 'z-[60]';
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className={`fixed inset-0 ${zIndex} flex items-center justify-center p-4`}>
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"

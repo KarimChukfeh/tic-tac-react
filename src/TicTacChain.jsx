@@ -1649,14 +1649,13 @@ export default function TicTacChain() {
     }
   };
 
-  // Fetch move history from blockchain events with fallback to board state reconstruction
+  // Fetch move history from blockchain events
   const fetchMoveHistory = useCallback(async (contractInstance, tierId, instanceId, roundNumber, matchNumber) => {
     try {
-      // Get match data first (needed for both approaches)
+      // Get match data first (needed for event filtering)
       const matchData = await contractInstance.getMatch(tierId, instanceId, roundNumber, matchNumber);
       const parsedMatch = parseTicTacToeMatch(matchData);
       const player1 = parsedMatch.player1;
-      const board = parsedMatch.board;
       const matchStartTime = Number(matchData.common.startTime);
 
       // Try to query MoveMade events for this match
@@ -1714,18 +1713,37 @@ export default function TicTacChain() {
         console.warn('Event query failed, falling back to board reconstruction:', eventError);
       }
 
-      // Fallback: Reconstruct from board state (loses move order but shows current state)
+      // Fallback: Reconstruct from board state by alternating players
+      // This won't be perfect chronologically, but will alternate correctly
       const history = [];
-      const boardArray = Array.from(board);
+      const boardArray = Array.from(parsedMatch.board);
+
+      const player1Moves = [];
+      const player2Moves = [];
+
       for (let i = 0; i < boardArray.length; i++) {
         const cell = Number(boardArray[i]);
         if (cell !== 0) {
-          history.push({
+          const move = {
             player: cell === 1 ? 'X' : 'O',
-            cell: i
-          });
+            cell: i,
+            address: cell === 1 ? player1 : parsedMatch.player2
+          };
+          if (cell === 1) {
+            player1Moves.push(move);
+          } else {
+            player2Moves.push(move);
+          }
         }
       }
+
+      // Interleave moves to alternate between players
+      const maxMoves = Math.max(player1Moves.length, player2Moves.length);
+      for (let i = 0; i < maxMoves; i++) {
+        if (i < player1Moves.length) history.push(player1Moves[i]);
+        if (i < player2Moves.length) history.push(player2Moves[i]);
+      }
+
       return history;
     } catch (error) {
       console.error('Error fetching move history:', error);
@@ -1753,6 +1771,87 @@ export default function TicTacChain() {
       const isMatchInitialized =
         player1.toLowerCase() !== zeroAddress &&
         player2.toLowerCase() !== zeroAddress;
+
+      // If contract returns cleared data (zero addresses + empty board), query MatchCompleted event
+      // Keep polling until we find an event matching this exact match instance
+      const isBoardEmpty = board.every(cell => cell === 0);
+      if (!isMatchInitialized && isBoardEmpty) {
+        console.log('[refreshMatchData] Match data cleared, querying MatchCompleted event');
+
+        try {
+          const matchId = ethers.solidityPackedKeccak256(
+            ['uint8', 'uint8', 'uint8', 'uint8'],
+            [tierId, instanceId, roundNumber, matchNumber]
+          );
+
+          const filter = contractInstance.filters.MatchCompleted(matchId);
+          const events = await contractInstance.queryFilter(filter);
+
+          // Find event that matches this exact match instance
+          for (let i = events.length - 1; i >= 0; i--) {
+            const event = events[i];
+            const { winner: eventWinner, isDraw: eventIsDraw, reason: eventReason, board: eventPackedBoard } = event.args;
+
+            // Verify winner is one of our players
+            const winnerLower = eventWinner.toLowerCase();
+            const p1Lower = matchInfo.player1?.toLowerCase();
+            const p2Lower = matchInfo.player2?.toLowerCase();
+            const winnerIsPlayer = eventIsDraw || winnerLower === p1Lower || winnerLower === p2Lower || winnerLower === zeroAddress;
+
+            if (!winnerIsPlayer) continue;
+
+            // Verify event occurred after match start time
+            const block = await event.getBlock();
+            const eventTimestamp = Number(block.timestamp);
+            const matchStartTime = matchInfo.startTime;
+
+            if (matchStartTime && eventTimestamp < matchStartTime) continue;
+
+            // Unpack the board from the event (2 bits per cell, 9 cells)
+            const unpackBoard = (packed) => {
+              const boardArray = [];
+              let p = BigInt(packed);
+              for (let j = 0; j < 9; j++) {
+                boardArray.push(Number(p & 3n));
+                p = p >> 2n;
+              }
+              return boardArray;
+            };
+            const eventBoard = unpackBoard(eventPackedBoard);
+
+            console.log('[refreshMatchData] Found matching MatchCompleted event:', {
+              winner: eventWinner,
+              isDraw: eventIsDraw,
+              reason: Number(eventReason),
+              board: eventBoard,
+              eventTimestamp,
+              matchStartTime
+            });
+
+            const eventLoser = eventIsDraw ? zeroAddress :
+              (winnerLower === p1Lower ? matchInfo.player2 : matchInfo.player1);
+
+            return {
+              ...matchInfo,
+              matchStatus: 2,
+              winner: eventWinner,
+              loser: eventLoser,
+              isDraw: eventIsDraw,
+              board: eventBoard,
+              isYourTurn: false,
+              // Flag to indicate this came from MatchCompleted event polling
+              completedFromEventPoll: true,
+              completionReason: Number(eventReason)
+            };
+          }
+
+          console.log('[refreshMatchData] No matching MatchCompleted event found yet, continuing to poll');
+        } catch (err) {
+          console.error('[refreshMatchData] Error querying MatchCompleted event:', err);
+        }
+
+        return null;
+      }
 
       let actualPlayer1 = player1;
       let actualPlayer2 = player2;
@@ -2284,53 +2383,10 @@ export default function TicTacChain() {
   };
 
   // Handle closing the match end modal
-  const handleMatchEndModalClose = async () => {
-    const tournamentInfo = currentMatch ? {
-      tierId: currentMatch.tierId,
-      instanceId: currentMatch.instanceId
-    } : null;
-
-    // Check if this was the finals match
-    const totalRounds = currentMatch?.playerCount ? Math.ceil(Math.log2(currentMatch.playerCount)) : 0;
-    const isFinals = currentMatch?.roundNumber === totalRounds - 1;
-
-    // Check if player lost (defeat or forfeit_lose)
-    const isDefeat = matchEndResult === 'lose' || matchEndResult === 'forfeit_lose';
-
-    // Clear the modal state
+  const handleMatchEndModalClose = () => {
+    // Clear the modal state only - no navigation
     setMatchEndResult(null);
     setMatchEndWinnerLabel('');
-
-    // For defeat: keep match state so player can view final board position
-    // For victory: clear match state and navigate
-    if (!isDefeat) {
-      setCurrentMatch(null);
-      setMoveHistory([]);
-    }
-
-    // Refresh data
-    if (contract) {
-      await fetchLeaderboard(true);
-      await refreshAfterAction(tournamentInfo?.tierId ?? null);
-
-      // For defeat: don't navigate, let player view the board
-      if (isDefeat) {
-        // Stay on board - no navigation
-      }
-      // If finals, always return to instances list
-      else if (isFinals) {
-        setViewingTournament(null);
-      }
-      // If not finals and player won, show tournament bracket
-      else if (tournamentInfo && (matchEndResult === 'win' || matchEndResult === 'forfeit_win')) {
-        const bracketData = await refreshTournamentBracket(contract, tournamentInfo.tierId, tournamentInfo.instanceId, matchTimePerPlayer);
-        if (bracketData) {
-          setViewingTournament(bracketData);
-        }
-      } else {
-        setViewingTournament(null);
-      }
-    }
   };
 
   // Handle closing the tournament completion modal
@@ -2529,233 +2585,153 @@ export default function TicTacChain() {
     };
   }, [contract, account, currentMatch]);
 
-  // Listen for MoveMade and MatchCompleted events for real-time match updates
+  // Listen for MatchCompleted events to notify players and update match state
   useEffect(() => {
-    if (!contract || !currentMatch) return;
+    if (!contract || !account || !currentMatch) return;
 
-    const { tierId, instanceId, roundNumber, matchNumber } = currentMatch;
+    console.log('[MatchCompleted] Setting up event listener for current match:', {
+      tierId: currentMatch.tierId,
+      instanceId: currentMatch.instanceId,
+      roundNumber: currentMatch.roundNumber,
+      matchNumber: currentMatch.matchNumber
+    });
 
-    // Generate matchId for event filtering
-    const matchId = ethers.solidityPackedKeccak256(
-      ['uint8', 'uint8', 'uint8', 'uint8'],
-      [tierId, instanceId, roundNumber, matchNumber]
-    );
+    const handleMatchCompleted = async (matchId, player1, player2, winner, isDraw, reason, packedBoard, event) => {
+      console.log('[MatchCompleted Event] ===== EVENT FIRED =====');
+      console.log('[MatchCompleted Event] MatchId:', matchId);
+      console.log('[MatchCompleted Event] Player1:', player1, 'Player2:', player2);
+      console.log('[MatchCompleted Event] Winner:', winner, 'isDraw:', isDraw, 'reason:', Number(reason));
 
-    // Handler for MoveMade events
-    const handleMoveMade = async (eventMatchId, player, cellIndex, event) => {
-      console.log('[MoveMade Event] Received:', { eventMatchId, player, cellIndex });
+      // Check if this event is for the current match being viewed
+      const currentMatchId = ethers.solidityPackedKeccak256(
+        ['uint8', 'uint8', 'uint8', 'uint8'],
+        [currentMatch.tierId, currentMatch.instanceId, currentMatch.roundNumber, currentMatch.matchNumber]
+      );
 
-      // Only update if this event is for the current match
-      if (eventMatchId !== matchId) return;
+      if (matchId !== currentMatchId) {
+        console.log('[MatchCompleted Event] Event is for different match, ignoring');
+        return;
+      }
 
-      // Time-gate: Only process events that occurred after match started
-      try {
-        const block = await event.getBlock();
-        const eventTimestamp = block.timestamp;
-        const matchStartTime = currentMatch.startTime;
+      // Time-gate: Only process events that occurred after current match started
+      if (event) {
+        try {
+          const block = await event.getBlock();
+          const eventTimestamp = block.timestamp;
+          const matchStartTime = currentMatch.startTime;
 
-        console.log('[MoveMade Event] Timestamp check:', {
-          eventTimestamp,
-          matchStartTime,
-          isValidEvent: eventTimestamp >= matchStartTime
-        });
+          console.log('[MatchCompleted Event] Timestamp check:', {
+            eventTimestamp,
+            matchStartTime,
+            isValidEvent: eventTimestamp >= matchStartTime
+          });
 
-        if (eventTimestamp < matchStartTime) {
-          console.log('[MoveMade Event] Event is older than match start time, ignoring');
-          return;
+          if (eventTimestamp < matchStartTime) {
+            console.log('[MatchCompleted Event] Event is older than current match start time, ignoring');
+            return;
+          }
+        } catch (err) {
+          console.error('[MatchCompleted Event] Error checking timestamp:', err);
+          // Continue processing if timestamp check fails
         }
-      } catch (err) {
-        console.error('[MoveMade Event] Error checking timestamp:', err);
-        return;
       }
 
-      // Update the board immediately
-      setCurrentMatch(prev => {
-        if (!prev) return prev;
+      console.log('[MatchCompleted Event] ✓ Event is for current match - processing completion');
 
-        const newBoard = [...prev.board];
-        const isPlayer1 = player.toLowerCase() === prev.player1.toLowerCase();
-        newBoard[cellIndex] = isPlayer1 ? 1 : 2;
-
-        // Toggle turn
-        const newTurn = isPlayer1 ? prev.player2 : prev.player1;
-
-        console.log('[MoveMade Event] Updating board:', { cellIndex, value: newBoard[cellIndex], newTurn });
-
-        return {
-          ...prev,
-          board: newBoard,
-          currentTurn: newTurn,
-          isYourTurn: account ? newTurn.toLowerCase() === account.toLowerCase() : false
-        };
-      });
-
-      // Refresh move history
-      try {
-        const history = await fetchMoveHistory(contract, tierId, instanceId, roundNumber, matchNumber);
-        setMoveHistory(history);
-      } catch (err) {
-        console.error('[MoveMade Event] Error refreshing move history:', err);
-      }
-    };
-
-    // Handler for MatchCompleted events
-    const handleMatchCompleted = async (eventMatchId, winner, isDraw, reason, event) => {
-      console.log('[MatchCompleted Event] Received:', { eventMatchId, winner, isDraw, reason });
-      console.log('[MatchCompleted Event] Current matchId:', matchId);
-      console.log('[MatchCompleted Event] Match comparison:', {
-        eventId: eventMatchId,
-        currentId: matchId,
-        matches: eventMatchId === matchId,
-        currentMatchExists: !!currentMatch
-      });
-
-      // Only update if this event is for the current match
-      if (eventMatchId !== matchId) {
-        console.log('[MatchCompleted Event] Event not for current match, ignoring');
-        return;
-      }
-
-      // Time-gate: Only process events that occurred after match started
-      try {
-        const block = await event.getBlock();
-        const eventTimestamp = block.timestamp;
-        const matchStartTime = currentMatch.startTime;
-
-        console.log('[MatchCompleted Event] Timestamp check:', {
-          eventTimestamp,
-          matchStartTime,
-          isValidEvent: eventTimestamp >= matchStartTime
-        });
-
-        if (eventTimestamp < matchStartTime) {
-          console.log('[MatchCompleted Event] Event is older than match start time, ignoring');
-          return;
+      // Unpack board state
+      const unpackBoard = (packed) => {
+        const boardArray = [];
+        let p = BigInt(packed);
+        for (let j = 0; j < 9; j++) {
+          boardArray.push(Number(p & 3n));
+          p = p >> 2n;
         }
-      } catch (err) {
-        console.error('[MatchCompleted Event] Error checking timestamp:', err);
-        return;
-      }
+        return boardArray;
+      };
+      const eventBoard = unpackBoard(packedBoard);
 
-      console.log('[MatchCompleted Event] Processing match completion for current match');
+      // Determine loser
+      const zeroAddress = '0x0000000000000000000000000000000000000000';
+      const winnerLower = winner.toLowerCase();
+      const p1Lower = currentMatch.player1?.toLowerCase();
+      const p2Lower = currentMatch.player2?.toLowerCase();
+      const eventLoser = isDraw ? zeroAddress : (winnerLower === p1Lower ? currentMatch.player2 : currentMatch.player1);
 
-      // Store player info before updating state
-      const player1 = currentMatch.player1;
-      const player2 = currentMatch.player2;
-
-      // Update match status and preserve board state
+      // Update match state with completion data
       setCurrentMatch(prev => {
-        if (!prev) return prev;
+        if (!prev || prev.matchStatus === 2) return prev; // Already completed
 
-        const loser = isDraw ? '0x0000000000000000000000000000000000000000' :
-                     (winner.toLowerCase() === prev.player1.toLowerCase() ? prev.player2 : prev.player1);
-
-        console.log('[MatchCompleted Event] Match completed:', {
-          winner,
-          isDraw,
-          loser,
-          reason,
-          boardPreserved: prev.board.length
-        });
-
-        // Preserve the board state from the last MoveMade event
         return {
           ...prev,
           matchStatus: 2,
-          winner: isDraw ? '0x0000000000000000000000000000000000000000' : winner,
-          loser,
+          winner,
+          loser: eventLoser,
           isDraw,
-          completionReason: Number(reason),
-          isYourTurn: false
+          board: eventBoard,
+          isYourTurn: false,
+          completionReason: Number(reason)
         };
       });
 
-      // Show match end modal using event data (not stale currentMatch)
-      if (account) {
-        const isPlayer1 = player1.toLowerCase() === account.toLowerCase();
-        const isPlayer2 = player2.toLowerCase() === account.toLowerCase();
-        const isParticipant = isPlayer1 || isPlayer2;
+      // Show winner/loser banner
+      const isPlayer1 = currentMatch.player1?.toLowerCase() === account.toLowerCase();
+      const isPlayer2 = currentMatch.player2?.toLowerCase() === account.toLowerCase();
+      const isParticipant = isPlayer1 || isPlayer2;
 
-        console.log('[MatchCompleted Event] Player check:', {
-          account,
-          player1,
-          player2,
-          isPlayer1,
-          isPlayer2,
-          isParticipant
-        });
+      if (isParticipant) {
+        const userWon = !isDraw && winner.toLowerCase() === account.toLowerCase();
+        const reasonNum = Number(reason);
 
-        if (isParticipant) {
-          const userWon = !isDraw && winner.toLowerCase() === account.toLowerCase();
-          const opponent = isPlayer1 ? player2 : player1;
-
-          console.log('[MatchCompleted Event] Winner check:', {
-            winner,
-            account,
-            winnerLower: winner.toLowerCase(),
-            accountLower: account.toLowerCase(),
-            matches: winner.toLowerCase() === account.toLowerCase(),
-            isDraw,
-            userWon
-          });
-
-          // Get reason-specific text
-          const reasonNum = Number(reason);
-          const title = getCompletionReasonText(reasonNum, userWon, isDraw, 'tictactoe');
-          const description = getCompletionReasonDescription(reasonNum, userWon, isDraw);
-
-          console.log('[MatchCompleted Event] Showing modal:', {
-            userWon,
-            isDraw,
-            opponent,
-            reason: reasonNum,
-            title,
-            description
-          });
-
-          // Determine result type for modal
-          let resultType = 'lose'; // default
-          if (isDraw) {
-            resultType = 'draw';
-          } else if (userWon) {
-            // Check if it's a timeout win
-            if (reasonNum === 1 || reasonNum === 2 || reasonNum === 3) { // Timeout reasons
-              resultType = 'forfeit_win';
-            } else {
-              resultType = 'win';
-            }
-          } else {
-            // User lost - check if it's a timeout loss
-            if (reasonNum === 1 || reasonNum === 2 || reasonNum === 3) { // Timeout reasons
-              resultType = 'forfeit_lose';
-            } else {
-              resultType = 'lose';
-            }
-          }
-
-          console.log('[MatchCompleted Event] Setting result type:', resultType);
-
-          setMatchEndResult(resultType);
-          setMatchEndWinner(winner);
-          setMatchEndLoser(isDraw ? '0x0000000000000000000000000000000000000000' :
-            (winner.toLowerCase() === player1.toLowerCase() ? player2 : player1));
+        let resultType = 'lose';
+        if (isDraw) {
+          resultType = 'draw';
+        } else if (userWon) {
+          resultType = (reasonNum === 1 || reasonNum === 3 || reasonNum === 4) ? 'forfeit_win' : 'win';
+        } else {
+          resultType = (reasonNum === 1 || reasonNum === 3 || reasonNum === 4) ? 'forfeit_lose' : 'lose';
         }
+
+        console.log('[MatchCompleted Event] Setting match end result:', resultType);
+        setMatchEndResult(resultType);
+        setMatchEndWinner(winner);
+        setMatchEndLoser(eventLoser);
       }
     };
 
-    // Register event listeners (listen to all, filter inside handlers)
-    contract.on('MoveMade', handleMoveMade);
+    // Register event listener (listen to all MatchCompleted events, filter in handler)
     contract.on('MatchCompleted', handleMatchCompleted);
+    console.log('[MatchCompleted] Event listener registered');
 
-    console.log('[Match Events] Listeners registered for matchId:', matchId);
+    // Query recent events to catch any missed while page was loading
+    const checkRecentEvents = async () => {
+      try {
+        const currentMatchId = ethers.solidityPackedKeccak256(
+          ['uint8', 'uint8', 'uint8', 'uint8'],
+          [currentMatch.tierId, currentMatch.instanceId, currentMatch.roundNumber, currentMatch.matchNumber]
+        );
 
-    // Cleanup
+        const filter = contract.filters.MatchCompleted(currentMatchId);
+        const events = await contract.queryFilter(filter, -50);
+        console.log('[MatchCompleted] Found', events.length, 'recent events for current match in last 50 blocks');
+
+        // Process most recent event for this match
+        if (events.length > 0) {
+          const event = events[events.length - 1];
+          const { player1, player2, winner, isDraw, reason, board } = event.args;
+          handleMatchCompleted(currentMatchId, player1, player2, winner, isDraw, reason, board, event);
+        }
+      } catch (err) {
+        console.error('[MatchCompleted] Error checking recent events:', err);
+      }
+    };
+
+    checkRecentEvents();
+
     return () => {
-      console.log('[Match Events] Cleaning up event listeners for matchId:', matchId);
-      contract.off('MoveMade', handleMoveMade);
+      console.log('[MatchCompleted] Cleaning up event listener');
       contract.off('MatchCompleted', handleMatchCompleted);
     };
-  }, [contract, currentMatch, account, fetchMoveHistory]);
+  }, [contract, account, currentMatch]);
 
   // Refresh tier data when account changes (initial load handled by initReadOnlyContract)
   useEffect(() => {
@@ -2896,7 +2872,57 @@ export default function TicTacChain() {
         );
 
         if (updatedMatch) {
-          // If match just completed, let events handle it
+          // Handle match completed from MatchCompleted event polling
+          if (updatedMatch.completedFromEventPoll) {
+            console.log('[Polling] Match completed from event poll, updating state and showing banner');
+
+            // Update match state with event data (including board from event)
+            setCurrentMatch(prev => {
+              if (!prev) return updatedMatch;
+              // Don't overwrite if already completed
+              if (prev.matchStatus === 2) return prev;
+
+              return {
+                ...prev,
+                matchStatus: 2,
+                winner: updatedMatch.winner,
+                loser: updatedMatch.loser,
+                isDraw: updatedMatch.isDraw,
+                board: updatedMatch.board,
+                isYourTurn: false,
+                completionReason: updatedMatch.completionReason
+              };
+            });
+
+            // Show winner/loser banner
+            const player1 = updatedMatch.player1;
+            const player2 = updatedMatch.player2;
+            const isPlayer1 = player1?.toLowerCase() === userAccount.toLowerCase();
+            const isPlayer2 = player2?.toLowerCase() === userAccount.toLowerCase();
+            const isParticipant = isPlayer1 || isPlayer2;
+
+            if (isParticipant) {
+              const userWon = !updatedMatch.isDraw && updatedMatch.winner.toLowerCase() === userAccount.toLowerCase();
+              const reasonNum = updatedMatch.completionReason;
+
+              let resultType = 'lose';
+              if (updatedMatch.isDraw) {
+                resultType = 'draw';
+              } else if (userWon) {
+                resultType = (reasonNum === 1 || reasonNum === 3 || reasonNum === 4) ? 'forfeit_win' : 'win';
+              } else {
+                resultType = (reasonNum === 1 || reasonNum === 3 || reasonNum === 4) ? 'forfeit_lose' : 'lose';
+              }
+
+              console.log('[Polling] Setting match end result:', resultType);
+              setMatchEndResult(resultType);
+              setMatchEndWinner(updatedMatch.winner);
+              setMatchEndLoser(updatedMatch.loser);
+            }
+            return;
+          }
+
+          // If match just completed (not from event poll), let events handle it
           if (updatedMatch.matchStatus === 2) {
             return;
           }
@@ -3211,43 +3237,15 @@ export default function TicTacChain() {
               player1: { icon: 'X', label: 'Player 1' },
               player2: { icon: 'O', label: 'Player 2' }
             }}
-            layout="three-column"
+            layout="players-board-history"
             isSpectator={isSpectator}
-            renderPlayer1Stats={() => (
-              <>
-                <div className="bg-black/20 rounded-lg p-3">
-                  <div className="text-blue-300 text-sm mb-1">Symbol</div>
-                  <div className="text-white font-bold text-2xl">X</div>
-                </div>
-                <div className="bg-black/20 rounded-lg p-3">
-                  <div className="text-blue-300 text-sm mb-1">Moves Made</div>
-                  <div className="text-white font-bold text-xl">
-                    {currentMatch.board.filter(c => c === 1).length}
-                  </div>
-                </div>
-              </>
-            )}
-            renderPlayer2Stats={() => (
-              <>
-                <div className="bg-black/20 rounded-lg p-3">
-                  <div className="text-pink-300 text-sm mb-1">Symbol</div>
-                  <div className="text-white font-bold text-2xl">O</div>
-                </div>
-                <div className="bg-black/20 rounded-lg p-3">
-                  <div className="text-pink-300 text-sm mb-1">Moves Made</div>
-                  <div className="text-white font-bold text-xl">
-                    {currentMatch.board.filter(c => c === 2).length}
-                  </div>
-                </div>
-              </>
-            )}
             renderMoveHistory={moveHistory.length > 0 ? () => (
-              <div className="bg-slate-900/50 rounded-xl p-6 border border-purple-500/30">
+              <div>
                 <h3 className="text-xl font-bold text-purple-300 mb-4 flex items-center gap-2">
                   <History size={20} />
                   Move History
                 </h3>
-                <div className="space-y-2 max-h-48 overflow-y-auto">
+                <div className="space-y-2">
                   {moveHistory.map((move, idx) => (
                     <div key={idx} className="flex items-center gap-3 text-sm bg-purple-500/10 p-2 rounded">
                       <span className="text-purple-300">Move {idx + 1}:</span>
@@ -3260,8 +3258,9 @@ export default function TicTacChain() {
             ) : undefined}
           >
             {/* TicTacToe Board Grid */}
-            <div className="grid grid-cols-3 gap-3">
-              {currentMatch.board.map((cell, idx) => (
+            <div className="w-full max-w-md mx-auto">
+              <div className="grid grid-cols-3 gap-3">
+                {currentMatch.board.map((cell, idx) => (
                 <button
                   key={idx}
                   onClick={isSpectator ? null : () => handleCellClick(idx)}
@@ -3279,6 +3278,7 @@ export default function TicTacChain() {
                   {cell === 1 ? 'X' : cell === 2 ? 'O' : ''}
                 </button>
               ))}
+              </div>
             </div>
           </GameMatchLayout>
           </div>
@@ -3842,8 +3842,8 @@ export default function TicTacChain() {
         prizePool={currentMatch?.prizePool}
       />
 
-      {/* Tournament Completion Modal */}
-      {tournamentCompletionData && (
+      {/* Tournament Completion Modal - only show if no match result modal is showing */}
+      {tournamentCompletionData && !matchEndResult && (
         <MatchEndModal
           result="tournament_ended"
           onClose={handleTournamentCompletionModalClose}

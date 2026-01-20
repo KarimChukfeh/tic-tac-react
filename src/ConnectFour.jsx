@@ -1848,6 +1848,36 @@ export default function ConnectFour() {
               console.debug('Could not check escalation availability:', escCheckErr.message);
             }
 
+            // Check if current user is an advanced player for this round
+            let isUserAdvancedForRound = false;
+            if (account) {
+              try {
+                isUserAdvancedForRound = await contractInstance.isPlayerInAdvancedRound(tierId, instanceId, roundNum, account);
+                console.log(`[Bracket R${roundNum}] isUserAdvancedForRound:`, isUserAdvancedForRound);
+              } catch (advErr) {
+                console.debug('[Bracket] Advanced player check failed:', advErr.reason || advErr.message);
+              }
+            }
+
+            // Create client-side timeout state if contract doesn't have it
+            if (!timeoutState) {
+              const timeoutOccurred = parsedMatch.lastMoveTime + (player1TimeRemaining <= 0
+                ? (parsedMatch.player1TimeRemaining ?? tierMatchTime)
+                : (parsedMatch.player2TimeRemaining ?? tierMatchTime));
+              const matchLevel2Delay = timeoutConfig?.matchLevel2Delay || 120;
+              const matchLevel3Delay = timeoutConfig?.matchLevel3Delay || 240;
+
+              timeoutState = {
+                escalation1Start: timeoutOccurred + matchLevel2Delay,
+                escalation2Start: timeoutOccurred + matchLevel3Delay,
+                activeEscalation: 0,
+                timeoutActive: true, // We detected a timeout
+                forfeitAmount: 0,
+                clientDetected: true // Flag to indicate this was detected client-side
+              };
+              console.log(`[Bracket R${roundNum}M${matchNum}] Client-detected timeout state:`, timeoutState);
+            }
+
             matches.push({
               ...parsedMatch,
               timeoutState,
@@ -1857,7 +1887,8 @@ export default function ConnectFour() {
               matchTimePerPlayer: tierMatchTime, // Pass through per-tier value for UI
               timeoutConfig, // Add tier timeout config for escalation calculations
               escL2Available, // Contract says Level 2 is available
-              escL3Available  // Contract says Level 3 is available
+              escL3Available, // Contract says Level 3 is available
+              isUserAdvancedForRound // User's advanced status for this round
             });
           } catch (err) {
             // Match might not exist yet - create placeholder with all required fields
@@ -1908,7 +1939,7 @@ export default function ConnectFour() {
       console.error('Error refreshing tournament bracket:', error);
       return null;
     }
-  }, [escalationInterval]);
+  }, [escalationInterval, account]);
 
   // Handle entering tournament (fetch and display bracket)
   const handleEnterTournament = async (tierId, instanceId) => {
@@ -1941,14 +1972,13 @@ export default function ConnectFour() {
     }
   };
 
-  // Fetch move history from blockchain events with fallback to board state reconstruction
+  // Fetch move history from blockchain events
   const fetchMoveHistory = useCallback(async (contractInstance, tierId, instanceId, roundNumber, matchNumber) => {
     try {
-      // Get match data first (needed for both approaches)
+      // Get match data first (needed for event filtering)
       const matchData = await contractInstance.getMatch(tierId, instanceId, roundNumber, matchNumber);
       const parsedMatch = parseConnectFourMatch(matchData);
       const player1 = parsedMatch.player1;
-      const board = parsedMatch.board;
       const matchStartTime = Number(matchData.common.startTime);
 
       // Try to query MoveMade events for this match
@@ -2008,20 +2038,38 @@ export default function ConnectFour() {
         console.warn('Event query failed, falling back to board reconstruction:', eventError);
       }
 
-      // Fallback: Reconstruct from board state (loses move order but shows current state)
+      // Fallback: Reconstruct from board state by alternating players
+      // This won't be perfect chronologically, but will alternate correctly
       const history = [];
-      const boardArray = Array.from(board);
+      const boardArray = Array.from(parsedMatch.board);
+
+      const player1Moves = [];
+      const player2Moves = [];
+
       for (let i = 0; i < boardArray.length; i++) {
         const cell = Number(boardArray[i]);
         if (cell !== 0) {
-          const column = i % 7; // Convert cell index to column (0-6)
-          history.push({
+          const column = i % 7;
+          const move = {
             player: cell === 1 ? 'Red' : 'Blue',
-            column: column + 1, // Display as 1-7 for users
+            column: column + 1,
             cellIndex: i
-          });
+          };
+          if (cell === 1) {
+            player1Moves.push(move);
+          } else {
+            player2Moves.push(move);
+          }
         }
       }
+
+      // Interleave moves to alternate between players
+      const maxMoves = Math.max(player1Moves.length, player2Moves.length);
+      for (let i = 0; i < maxMoves; i++) {
+        if (i < player1Moves.length) history.push(player1Moves[i]);
+        if (i < player2Moves.length) history.push(player2Moves[i]);
+      }
+
       return history;
     } catch (error) {
       console.error('Error fetching move history:', error);
@@ -2049,6 +2097,85 @@ export default function ConnectFour() {
       const isMatchInitialized =
         player1.toLowerCase() !== zeroAddress &&
         player2.toLowerCase() !== zeroAddress;
+
+      // If contract returns cleared data (zero addresses + empty board), query MatchCompleted event
+      // Keep polling until we find an event matching this exact match instance
+      const isBoardEmpty = board.every(cell => cell === 0);
+      if (!isMatchInitialized && isBoardEmpty) {
+        console.log('[refreshMatchData] Match data cleared, querying MatchCompleted event');
+
+        try {
+          const matchId = ethers.solidityPackedKeccak256(
+            ['uint8', 'uint8', 'uint8', 'uint8'],
+            [tierId, instanceId, roundNumber, matchNumber]
+          );
+
+          const filter = contractInstance.filters.MatchCompleted(matchId);
+          const events = await contractInstance.queryFilter(filter);
+
+          // Find event that matches this exact match instance
+          for (let i = events.length - 1; i >= 0; i--) {
+            const event = events[i];
+            const { winner: eventWinner, isDraw: eventIsDraw, reason: eventReason, board: eventPackedBoard } = event.args;
+
+            // Verify winner is one of our players
+            const winnerLower = eventWinner.toLowerCase();
+            const p1Lower = matchInfo.player1?.toLowerCase();
+            const p2Lower = matchInfo.player2?.toLowerCase();
+            const winnerIsPlayer = eventIsDraw || winnerLower === p1Lower || winnerLower === p2Lower || winnerLower === zeroAddress;
+
+            if (!winnerIsPlayer) continue;
+
+            // Verify event occurred after match start time
+            const block = await event.getBlock();
+            const eventTimestamp = Number(block.timestamp);
+            const matchStartTime = matchInfo.startTime;
+
+            if (matchStartTime && eventTimestamp < matchStartTime) continue;
+
+            // Unpack the ConnectFour board from the event (2 bits per cell, 42 cells)
+            const unpackBoard = (packed) => {
+              const boardArray = [];
+              let p = BigInt(packed);
+              for (let j = 0; j < 42; j++) {
+                boardArray.push(Number(p & 3n));
+                p = p >> 2n;
+              }
+              return boardArray;
+            };
+            const eventBoard = unpackBoard(eventPackedBoard);
+
+            console.log('[refreshMatchData] Found matching MatchCompleted event:', {
+              winner: eventWinner,
+              isDraw: eventIsDraw,
+              reason: Number(eventReason),
+              eventTimestamp,
+              matchStartTime
+            });
+
+            const eventLoser = eventIsDraw ? zeroAddress :
+              (winnerLower === p1Lower ? matchInfo.player2 : matchInfo.player1);
+
+            return {
+              ...matchInfo,
+              matchStatus: 2,
+              winner: eventWinner,
+              loser: eventLoser,
+              isDraw: eventIsDraw,
+              board: eventBoard,
+              isYourTurn: false,
+              completedFromEventPoll: true,
+              completionReason: Number(eventReason)
+            };
+          }
+
+          console.log('[refreshMatchData] No matching MatchCompleted event found yet, continuing to poll');
+        } catch (err) {
+          console.error('[refreshMatchData] Error querying MatchCompleted event:', err);
+        }
+
+        return null;
+      }
 
       let actualPlayer1 = player1;
       let actualPlayer2 = player2;
@@ -2554,53 +2681,10 @@ export default function ConnectFour() {
   };
 
   // Handle closing the match end modal
-  const handleMatchEndModalClose = async () => {
-    const tournamentInfo = currentMatch ? {
-      tierId: currentMatch.tierId,
-      instanceId: currentMatch.instanceId
-    } : null;
-
-    // Check if this was the finals match
-    const totalRounds = currentMatch?.playerCount ? Math.ceil(Math.log2(currentMatch.playerCount)) : 0;
-    const isFinals = currentMatch?.roundNumber === totalRounds - 1;
-
-    // Check if player lost (defeat or forfeit_lose)
-    const isDefeat = matchEndResult === 'lose' || matchEndResult === 'forfeit_lose';
-
-    // Clear the modal state
+  const handleMatchEndModalClose = () => {
+    // Clear the modal state only - no navigation
     setMatchEndResult(null);
     setMatchEndWinnerLabel('');
-
-    // For defeat: keep match state so player can view final board position
-    // For victory: clear match state and navigate
-    if (!isDefeat) {
-      setCurrentMatch(null);
-      setMoveHistory([]);
-    }
-
-    // Refresh data
-    if (contract) {
-      await fetchLeaderboard(true);
-      await refreshAfterAction(tournamentInfo?.tierId ?? null);
-
-      // For defeat: don't navigate, let player view the board
-      if (isDefeat) {
-        // Stay on board - no navigation
-      }
-      // If finals, always return to instances list
-      else if (isFinals) {
-        setViewingTournament(null);
-      }
-      // If not finals and player won, show tournament bracket
-      else if (tournamentInfo && (matchEndResult === 'win' || matchEndResult === 'forfeit_win')) {
-        const bracketData = await refreshTournamentBracket(contract, tournamentInfo.tierId, tournamentInfo.instanceId, matchTimePerPlayer);
-        if (bracketData) {
-          setViewingTournament(bracketData);
-        }
-      } else {
-        setViewingTournament(null);
-      }
-    }
   };
 
   // Handle closing the tournament completion modal
@@ -2799,213 +2883,152 @@ export default function ConnectFour() {
     };
   }, [contract, account, currentMatch]);
 
-  // Listen for MoveMade and MatchCompleted events for real-time match updates
+  // Listen for MatchCompleted events to notify players and update match state
   useEffect(() => {
-    if (!contract || !currentMatch) return;
+    if (!contract || !account || !currentMatch) return;
 
-    const { tierId, instanceId, roundNumber, matchNumber } = currentMatch;
+    console.log('[MatchCompleted] Setting up event listener for current match:', {
+      tierId: currentMatch.tierId,
+      instanceId: currentMatch.instanceId,
+      roundNumber: currentMatch.roundNumber,
+      matchNumber: currentMatch.matchNumber
+    });
 
-    // Generate matchId for event filtering
-    const matchId = ethers.solidityPackedKeccak256(
-      ['uint8', 'uint8', 'uint8', 'uint8'],
-      [tierId, instanceId, roundNumber, matchNumber]
-    );
+    const handleMatchCompleted = async (matchId, player1, player2, winner, isDraw, reason, packedBoard, event) => {
+      console.log('[MatchCompleted Event] ===== EVENT FIRED =====');
+      console.log('[MatchCompleted Event] MatchId:', matchId);
+      console.log('[MatchCompleted Event] Player1:', player1, 'Player2:', player2);
+      console.log('[MatchCompleted Event] Winner:', winner, 'isDraw:', isDraw, 'reason:', Number(reason));
 
-    // Handler for MoveMade events (Connect4 uses column/row params)
-    const handleMoveMade = async (eventMatchId, player, column, row, event) => {
-      console.log('[MoveMade Event] Received:', { eventMatchId, player, column, row });
+      // Check if this event is for the current match being viewed
+      const currentMatchId = ethers.solidityPackedKeccak256(
+        ['uint8', 'uint8', 'uint8', 'uint8'],
+        [currentMatch.tierId, currentMatch.instanceId, currentMatch.roundNumber, currentMatch.matchNumber]
+      );
 
-      // Only update if this event is for the current match
-      if (eventMatchId !== matchId) return;
-
-      // Time-gate: Only process events that occurred after match started
-      try {
-        const block = await event.getBlock();
-        const eventTimestamp = block.timestamp;
-        const matchStartTime = currentMatch.startTime;
-
-        console.log('[MoveMade Event] Timestamp check:', {
-          eventTimestamp,
-          matchStartTime,
-          isValidEvent: eventTimestamp >= matchStartTime
-        });
-
-        if (eventTimestamp < matchStartTime) {
-          console.log('[MoveMade Event] Event is older than match start time, ignoring');
-          return;
-        }
-      } catch (err) {
-        console.error('[MoveMade Event] Error checking timestamp:', err);
+      if (matchId !== currentMatchId) {
+        console.log('[MatchCompleted Event] Event is for different match, ignoring');
         return;
       }
 
-      // Fetch fresh board state directly from contract (fast path for real-time updates)
-      console.log('[MoveMade Event] Fetching fresh board state from contract');
-      try {
-        const matchData = await contract.getMatch(tierId, instanceId, roundNumber, matchNumber);
-        const parsedMatch = parseConnectFourMatch(matchData);
+      // Time-gate: Only process events that occurred after current match started
+      if (event) {
+        try {
+          const block = await event.getBlock();
+          const eventTimestamp = block.timestamp;
+          const matchStartTime = currentMatch.startTime;
 
-        // Convert board to number array
-        const boardState = Array.from(parsedMatch.board).map(cell => Number(cell));
+          console.log('[MatchCompleted Event] Timestamp check:', {
+            eventTimestamp,
+            matchStartTime,
+            isValidEvent: eventTimestamp >= matchStartTime
+          });
 
-        // Update currentMatch with fresh board and turn data
-        setCurrentMatch(prev => ({
-          ...prev,
-          board: boardState,
-          currentTurn: parsedMatch.currentTurn,
-          matchStatus: parsedMatch.matchStatus,
-          winner: parsedMatch.winner,
-          loser: parsedMatch.loser,
-          isDraw: parsedMatch.isDraw,
-          lastMoveTime: parsedMatch.lastMoveTime,
-          lastColumn: Number(column), // Use column from event for highlighting
-          player1TimeRemaining: parsedMatch.player1TimeRemaining,
-          player2TimeRemaining: parsedMatch.player2TimeRemaining,
-          isYourTurn: parsedMatch.currentTurn?.toLowerCase() === account?.toLowerCase()
-        }));
-        previousBoardRef.current = boardState;
-
-        console.log('[MoveMade Event] Board updated from contract:', {
-          column,
-          row,
-          boardLength: boardState.length,
-          currentTurn: parsedMatch.currentTurn
-        });
-
-        // Refresh move history
-        const history = await fetchMoveHistory(contract, tierId, instanceId, roundNumber, matchNumber);
-        setMoveHistory(history);
-      } catch (err) {
-        console.error('[MoveMade Event] Error refreshing match data:', err);
-      }
-    };
-
-    // Handler for MatchCompleted events
-    const handleMatchCompleted = async (eventMatchId, winner, isDraw, reason, event) => {
-      console.log('[MatchCompleted Event] Received:', { eventMatchId, winner, isDraw, reason });
-
-      // Only update if this event is for the current match
-      if (eventMatchId !== matchId) return;
-
-      // Time-gate: Only process events that occurred after match started
-      try {
-        const block = await event.getBlock();
-        const eventTimestamp = block.timestamp;
-        const matchStartTime = currentMatch.startTime;
-
-        console.log('[MatchCompleted Event] Timestamp check:', {
-          eventTimestamp,
-          matchStartTime,
-          isValidEvent: eventTimestamp >= matchStartTime
-        });
-
-        if (eventTimestamp < matchStartTime) {
-          console.log('[MatchCompleted Event] Event is older than match start time, ignoring');
-          return;
+          if (eventTimestamp < matchStartTime) {
+            console.log('[MatchCompleted Event] Event is older than current match start time, ignoring');
+            return;
+          }
+        } catch (err) {
+          console.error('[MatchCompleted Event] Error checking timestamp:', err);
+          // Continue processing if timestamp check fails
         }
-      } catch (err) {
-        console.error('[MatchCompleted Event] Error checking timestamp:', err);
-        return;
       }
 
-      // Store player info before updating state
-      const player1 = currentMatch.player1;
-      const player2 = currentMatch.player2;
+      console.log('[MatchCompleted Event] ✓ Event is for current match - processing completion');
 
-      // Update match status and preserve board state
+      // Unpack Connect4 board state (6 rows x 7 cols = 42 cells, 2 bits per cell)
+      const unpackBoard = (packed) => {
+        const boardArray = [];
+        let p = BigInt(packed);
+        for (let i = 0; i < 42; i++) {
+          boardArray.push(Number(p & 3n));
+          p = p >> 2n;
+        }
+        return boardArray;
+      };
+      const eventBoard = unpackBoard(packedBoard);
+
+      // Determine loser
+      const zeroAddress = '0x0000000000000000000000000000000000000000';
+      const winnerLower = winner.toLowerCase();
+      const p1Lower = currentMatch.player1?.toLowerCase();
+      const eventLoser = isDraw ? zeroAddress : (winnerLower === p1Lower ? currentMatch.player2 : currentMatch.player1);
+
+      // Update match state with completion data
       setCurrentMatch(prev => {
-        if (!prev) return prev;
+        if (!prev || prev.matchStatus === 2) return prev; // Already completed
 
-        const loser = isDraw ? '0x0000000000000000000000000000000000000000' :
-                     (winner.toLowerCase() === prev.player1.toLowerCase() ? prev.player2 : prev.player1);
-
-        console.log('[MatchCompleted Event] Match completed:', {
-          winner,
-          isDraw,
-          loser,
-          reason,
-          boardPreserved: prev.board?.length || 0
-        });
-
-        // Preserve the board state from the last MoveMade event
         return {
           ...prev,
           matchStatus: 2,
-          winner: isDraw ? '0x0000000000000000000000000000000000000000' : winner,
-          loser,
+          winner,
+          loser: eventLoser,
           isDraw,
-          completionReason: Number(reason),
-          isYourTurn: false
+          board: eventBoard,
+          isYourTurn: false,
+          completionReason: Number(reason)
         };
       });
 
-      // Show match end modal using event data (not stale currentMatch)
-      if (account) {
-        const isPlayer1 = player1.toLowerCase() === account.toLowerCase();
-        const isPlayer2 = player2.toLowerCase() === account.toLowerCase();
-        const isParticipant = isPlayer1 || isPlayer2;
+      // Show winner/loser banner
+      const isPlayer1 = currentMatch.player1?.toLowerCase() === account.toLowerCase();
+      const isPlayer2 = currentMatch.player2?.toLowerCase() === account.toLowerCase();
+      const isParticipant = isPlayer1 || isPlayer2;
 
-        if (isParticipant) {
-          const userWon = !isDraw && winner.toLowerCase() === account.toLowerCase();
-          const opponent = isPlayer1 ? player2 : player1;
+      if (isParticipant) {
+        const userWon = !isDraw && winner.toLowerCase() === account.toLowerCase();
+        const reasonNum = Number(reason);
 
-          // Get reason-specific text
-          const reasonNum = Number(reason);
-          const title = getCompletionReasonText(reasonNum, userWon, isDraw, 'connect4');
-          const description = getCompletionReasonDescription(reasonNum, userWon, isDraw);
-
-          console.log('[MatchCompleted Event] Showing modal:', {
-            userWon,
-            isDraw,
-            opponent,
-            reason: reasonNum,
-            title,
-            description
-          });
-
-          // Determine result type for modal
-          let resultType = 'lose'; // default
-          if (isDraw) {
-            resultType = 'draw';
-          } else if (userWon) {
-            // Check if it's a timeout win
-            if (reasonNum === 1 || reasonNum === 2 || reasonNum === 3) { // Timeout reasons
-              resultType = 'forfeit_win';
-            } else {
-              resultType = 'win';
-            }
-          } else {
-            // User lost - check if it's a timeout loss
-            if (reasonNum === 1 || reasonNum === 2 || reasonNum === 3) { // Timeout reasons
-              resultType = 'forfeit_lose';
-            } else {
-              resultType = 'lose';
-            }
-          }
-
-          console.log('[MatchCompleted Event] Setting result type:', resultType);
-
-          setMatchEndResult(resultType);
-          setMatchEndWinner(winner);
-          setMatchEndLoser(isDraw ? '0x0000000000000000000000000000000000000000' :
-            (winner.toLowerCase() === player1.toLowerCase() ? player2 : player1));
+        let resultType = 'lose';
+        if (isDraw) {
+          resultType = 'draw';
+        } else if (userWon) {
+          resultType = (reasonNum === 1 || reasonNum === 3 || reasonNum === 4) ? 'forfeit_win' : 'win';
+        } else {
+          resultType = (reasonNum === 1 || reasonNum === 3 || reasonNum === 4) ? 'forfeit_lose' : 'lose';
         }
+
+        console.log('[MatchCompleted Event] Setting match end result:', resultType);
+        setMatchEndResult(resultType);
+        setMatchEndWinner(winner);
+        setMatchEndLoser(eventLoser);
       }
     };
 
-    // Register event listeners (listen to all, filter inside handlers)
-    contract.on('MoveMade', handleMoveMade);
+    // Register event listener (listen to all MatchCompleted events, filter in handler)
     contract.on('MatchCompleted', handleMatchCompleted);
+    console.log('[MatchCompleted] Event listener registered');
 
-    console.log('[Connect4 Match Events] Listeners registered for matchId:', matchId);
+    // Query recent events to catch any missed while page was loading
+    const checkRecentEvents = async () => {
+      try {
+        const currentMatchId = ethers.solidityPackedKeccak256(
+          ['uint8', 'uint8', 'uint8', 'uint8'],
+          [currentMatch.tierId, currentMatch.instanceId, currentMatch.roundNumber, currentMatch.matchNumber]
+        );
 
-    // Cleanup
+        const filter = contract.filters.MatchCompleted(currentMatchId);
+        const events = await contract.queryFilter(filter, -50);
+        console.log('[MatchCompleted] Found', events.length, 'recent events for current match in last 50 blocks');
+
+        // Process most recent event for this match
+        if (events.length > 0) {
+          const event = events[events.length - 1];
+          const { player1, player2, winner, isDraw, reason, board } = event.args;
+          handleMatchCompleted(currentMatchId, player1, player2, winner, isDraw, reason, board, event);
+        }
+      } catch (err) {
+        console.error('[MatchCompleted] Error checking recent events:', err);
+      }
+    };
+
+    checkRecentEvents();
+
     return () => {
-      console.log('[Connect4 Match Events] Cleaning up event listeners for matchId:', matchId);
-      contract.off('MoveMade', handleMoveMade);
+      console.log('[MatchCompleted] Cleaning up event listener');
       contract.off('MatchCompleted', handleMatchCompleted);
     };
-  }, [contract, currentMatch, account, fetchMoveHistory]);
+  }, [contract, account, currentMatch]);
 
   // Refresh tier data when account changes (initial load handled by initReadOnlyContract)
   useEffect(() => {
@@ -3141,7 +3164,57 @@ export default function ConnectFour() {
         );
 
         if (updatedMatch) {
-          // If match just completed, let events handle it
+          // Handle match completed from MatchCompleted event polling
+          if (updatedMatch.completedFromEventPoll) {
+            console.log('[Connect4 Polling] Match completed from event poll, updating state and showing banner');
+
+            // Update match state with event data (including board from event)
+            setCurrentMatch(prev => {
+              if (!prev) return updatedMatch;
+              // Don't overwrite if already completed
+              if (prev.matchStatus === 2) return prev;
+
+              return {
+                ...prev,
+                matchStatus: 2,
+                winner: updatedMatch.winner,
+                loser: updatedMatch.loser,
+                isDraw: updatedMatch.isDraw,
+                board: updatedMatch.board,
+                isYourTurn: false,
+                completionReason: updatedMatch.completionReason
+              };
+            });
+
+            // Show winner/loser banner
+            const player1 = updatedMatch.player1;
+            const player2 = updatedMatch.player2;
+            const isPlayer1 = player1?.toLowerCase() === userAccount.toLowerCase();
+            const isPlayer2 = player2?.toLowerCase() === userAccount.toLowerCase();
+            const isParticipant = isPlayer1 || isPlayer2;
+
+            if (isParticipant) {
+              const userWon = !updatedMatch.isDraw && updatedMatch.winner.toLowerCase() === userAccount.toLowerCase();
+              const reasonNum = updatedMatch.completionReason;
+
+              let resultType = 'lose';
+              if (updatedMatch.isDraw) {
+                resultType = 'draw';
+              } else if (userWon) {
+                resultType = (reasonNum === 1 || reasonNum === 3 || reasonNum === 4) ? 'forfeit_win' : 'win';
+              } else {
+                resultType = (reasonNum === 1 || reasonNum === 3 || reasonNum === 4) ? 'forfeit_lose' : 'lose';
+              }
+
+              console.log('[Connect4 Polling] Setting match end result:', resultType);
+              setMatchEndResult(resultType);
+              setMatchEndWinner(updatedMatch.winner);
+              setMatchEndLoser(updatedMatch.loser);
+            }
+            return;
+          }
+
+          // If match just completed (not from event poll), let events handle it
           if (updatedMatch.matchStatus === 2) {
             return;
           }
@@ -3495,72 +3568,14 @@ export default function ConnectFour() {
                 label: 'Blue'
               }
             }}
-            layout="three-column"
-            renderPlayer1Stats={() => (
-              <>
-                <div className="bg-black/20 rounded-lg p-3">
-                  <div className="text-red-300 text-sm mb-1">Symbol</div>
-                  <div className="flex justify-center">
-                    <svg width="32" height="32" viewBox="0 0 32 32">
-                      <circle
-                        cx="16"
-                        cy="16"
-                        r="14"
-                        fill="url(#magentaGradientStat)"
-                      />
-                      <defs>
-                        <radialGradient id="magentaGradientStat" cx="30%" cy="30%">
-                          <stop offset="0%" stopColor="#ff0044" />
-                          <stop offset="100%" stopColor="#bb0033" />
-                        </radialGradient>
-                      </defs>
-                    </svg>
-                  </div>
-                </div>
-                <div className="bg-black/20 rounded-lg p-3">
-                  <div className="text-red-300 text-sm mb-1">Pieces Played</div>
-                  <div className="text-white font-bold text-xl">
-                    {currentMatch.board.filter(c => c === 1).length}
-                  </div>
-                </div>
-              </>
-            )}
-            renderPlayer2Stats={() => (
-              <>
-                <div className="bg-black/20 rounded-lg p-3">
-                  <div className="text-blue-300 text-sm mb-1">Symbol</div>
-                  <div className="flex justify-center">
-                    <svg width="32" height="32" viewBox="0 0 32 32">
-                      <circle
-                        cx="16"
-                        cy="16"
-                        r="14"
-                        fill="url(#cyanGradientStat)"
-                      />
-                      <defs>
-                        <radialGradient id="cyanGradientStat" cx="30%" cy="30%">
-                          <stop offset="0%" stopColor="#0077ff" />
-                          <stop offset="100%" stopColor="#0055aa" />
-                        </radialGradient>
-                      </defs>
-                    </svg>
-                  </div>
-                </div>
-                <div className="bg-black/20 rounded-lg p-3">
-                  <div className="text-blue-300 text-sm mb-1">Pieces Played</div>
-                  <div className="text-white font-bold text-xl">
-                    {currentMatch.board.filter(c => c === 2).length}
-                  </div>
-                </div>
-              </>
-            )}
+            layout="players-board-history"
             renderMoveHistory={moveHistory.length > 0 ? () => (
-              <div className="bg-slate-900/50 rounded-xl p-6 border border-purple-500/30">
+              <div>
                 <h3 className="text-xl font-bold text-purple-300 mb-4 flex items-center gap-2">
                   <History size={20} />
                   Move History
                 </h3>
-                <div className="space-y-2 max-h-48 overflow-y-auto">
+                <div className="space-y-2">
                   {moveHistory.map((move, idx) => (
                     <div key={idx} className="flex items-center gap-3 text-sm bg-purple-500/10 p-2 rounded">
                       <span className="text-purple-300">Move {idx + 1}:</span>
@@ -3573,18 +3588,20 @@ export default function ConnectFour() {
             ) : undefined}
           >
             {/* Connect Four Board */}
-            <ConnectFourBoard
-              board={currentMatch.board}
-              onColumnClick={isSpectator ? null : handleColumnClick}
-              currentTurn={currentMatch.currentTurn}
-              account={isSpectator ? null : account}
-              player1={currentMatch.player1}
-              player2={currentMatch.player2}
-              matchStatus={currentMatch.matchStatus}
-              loading={matchLoading}
-              winner={currentMatch.winner}
-              lastColumn={currentMatch.lastColumn}
-            />
+            <div className="w-full max-w-2xl mx-auto">
+              <ConnectFourBoard
+                board={currentMatch.board}
+                onColumnClick={isSpectator ? null : handleColumnClick}
+                currentTurn={currentMatch.currentTurn}
+                account={isSpectator ? null : account}
+                player1={currentMatch.player1}
+                player2={currentMatch.player2}
+                matchStatus={currentMatch.matchStatus}
+                loading={matchLoading}
+                winner={currentMatch.winner}
+                lastColumn={currentMatch.lastColumn}
+              />
+            </div>
           </GameMatchLayout>
           </div>
         )}
@@ -4184,8 +4201,8 @@ export default function ConnectFour() {
         prizePool={currentMatch?.prizePool}
       />
 
-      {/* Tournament Completion Modal */}
-      {tournamentCompletionData && (
+      {/* Tournament Completion Modal - only show if no match result modal is showing */}
+      {tournamentCompletionData && !matchEndResult && (
         <MatchEndModal
           result="tournament_ended"
           onClose={handleTournamentCompletionModalClose}

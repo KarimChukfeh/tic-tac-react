@@ -476,16 +476,20 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
     return mins + ':' + secs.toString().padStart(2, '0');
   };
 
-  // Flip vertically (rows only) for white's view - preserves a-h left-to-right
-  // White view: a1 at bottom-left, h1 at bottom-right, a8 at top-left, h8 at top-right
-  // Black view: a1 at top-left, h8 at bottom-right (standard array order)
+  // Flip board based on player color
+  // White view: flip vertically - a1 at bottom-left (dark), h1 at bottom-right (light)
+  // Black view: flip horizontally - h8 at bottom-left (dark), a8 at bottom-right (light)
   const getActualIndex = (displayIdx) => {
+    const displayRow = Math.floor(displayIdx / 8);
+    const displayCol = displayIdx % 8;
+
     if (shouldFlip) {
-      const displayRow = Math.floor(displayIdx / 8);
-      const displayCol = displayIdx % 8;
+      // White: flip rows (vertical flip)
       return (7 - displayRow) * 8 + displayCol;
+    } else {
+      // Black: flip columns (horizontal flip)
+      return displayRow * 8 + (7 - displayCol);
     }
-    return displayIdx;
   };
 
   const getSquareColor = (actualIdx) => {
@@ -2176,6 +2180,37 @@ export default function Chess() {
               console.debug('Could not check escalation availability:', escCheckErr.message);
             }
 
+            // Check if current user is an advanced player for this round
+            let isUserAdvancedForRound = false;
+            if (account) {
+              try {
+                isUserAdvancedForRound = await contractInstance.isPlayerInAdvancedRound(tierId, instanceId, roundNum, account);
+                console.log(`[Bracket R${roundNum}] isUserAdvancedForRound:`, isUserAdvancedForRound);
+              } catch (advErr) {
+                console.debug('[Bracket] Advanced player check failed:', advErr.reason || advErr.message);
+              }
+            }
+
+            // Create client-side timeout state if contract doesn't have it
+            if (!timeoutState) {
+              const timeoutOccurred = parsedMatch.lastMoveTime + (player1TimeRemaining <= 0
+                ? (parsedMatch.player1TimeRemaining ?? tierMatchTime)
+                : (parsedMatch.player2TimeRemaining ?? tierMatchTime));
+              const matchLevel2Delay = timeoutConfig?.matchLevel2Delay || 120;
+              const matchLevel3Delay = timeoutConfig?.matchLevel3Delay || 240;
+
+              timeoutState = {
+                escalation1Start: timeoutOccurred + matchLevel2Delay,
+                escalation2Start: timeoutOccurred + matchLevel3Delay,
+                escalation3Start: 0,
+                activeEscalation: 0,
+                timeoutActive: true, // We detected a timeout
+                forfeitAmount: 0,
+                clientDetected: true // Flag to indicate this was detected client-side
+              };
+              console.log(`[Bracket R${roundNum}M${matchNum}] Client-detected timeout state:`, timeoutState);
+            }
+
             // Determine if match was completed by timeout
             const isTimedOut = parsedMatch.matchStatus === 2 && timeoutState?.timeoutActive === true;
 
@@ -2190,7 +2225,8 @@ export default function Chess() {
               matchTimePerPlayer: tierMatchTime, // Pass through per-tier value for UI
               timeoutConfig, // Add tier timeout config for escalation calculations
               escL2Available, // Contract says Level 2 is available
-              escL3Available  // Contract says Level 3 is available
+              escL3Available, // Contract says Level 3 is available
+              isUserAdvancedForRound // User's advanced status for this round
             });
           } catch (err) {
             // Match might not exist yet - create placeholder with all required fields
@@ -2241,7 +2277,7 @@ export default function Chess() {
       console.error('Error refreshing tournament bracket:', error);
       return null;
     }
-  }, [escalationInterval]);
+  }, [escalationInterval, account]);
 
   // Handle entering tournament (fetch and display bracket)
   const handleEnterTournament = async (tierId, instanceId) => {
@@ -2437,6 +2473,95 @@ export default function Chess() {
       const isMatchInitialized =
         player1.toLowerCase() !== zeroAddress &&
         player2.toLowerCase() !== zeroAddress;
+
+      // If contract returns cleared data (zero addresses + empty board), query MatchCompleted event
+      // Keep polling until we find an event matching this exact match instance
+      const isBoardEmpty = board.every(cell => cell.pieceType === 0);
+      if (!isMatchInitialized && isBoardEmpty) {
+        console.log('[refreshMatchData] Match data cleared, querying MatchCompleted event');
+
+        try {
+          const matchId = ethers.solidityPackedKeccak256(
+            ['uint8', 'uint8', 'uint8', 'uint8'],
+            [tierId, instanceId, roundNumber, matchNumber]
+          );
+
+          const filter = contractInstance.filters.MatchCompleted(matchId);
+          const events = await contractInstance.queryFilter(filter);
+
+          // Find event that matches this exact match instance
+          for (let i = events.length - 1; i >= 0; i--) {
+            const event = events[i];
+            const { winner: eventWinner, isDraw: eventIsDraw, reason: eventReason, board: eventPackedBoard } = event.args;
+
+            // Verify winner is one of our players
+            const winnerLower = eventWinner.toLowerCase();
+            const p1Lower = matchInfo.player1?.toLowerCase();
+            const p2Lower = matchInfo.player2?.toLowerCase();
+            const winnerIsPlayer = eventIsDraw || winnerLower === p1Lower || winnerLower === p2Lower || winnerLower === zeroAddress;
+
+            if (!winnerIsPlayer) continue;
+
+            // Verify event occurred after match start time
+            const block = await event.getBlock();
+            const eventTimestamp = Number(block.timestamp);
+            const matchStartTime = matchInfo.startTime;
+
+            if (matchStartTime && eventTimestamp < matchStartTime) continue;
+
+            // Unpack the chess board from the event (4 bits per square, 64 squares)
+            const unpackChessBoard = (packed) => {
+              const boardArray = [];
+              let p = BigInt(packed);
+              for (let j = 0; j < 64; j++) {
+                const value = Number(p & 0xFn);
+                let pieceType = 0;
+                let color = 0;
+                if (value >= 1 && value <= 6) {
+                  pieceType = value;
+                  color = 1;
+                } else if (value >= 7 && value <= 12) {
+                  pieceType = value - 6;
+                  color = 2;
+                }
+                boardArray.push({ pieceType, color });
+                p = p >> 4n;
+              }
+              return boardArray;
+            };
+            const eventBoard = unpackChessBoard(eventPackedBoard);
+
+            console.log('[refreshMatchData] Found matching MatchCompleted event:', {
+              winner: eventWinner,
+              isDraw: eventIsDraw,
+              reason: Number(eventReason),
+              eventTimestamp,
+              matchStartTime
+            });
+
+            const eventLoser = eventIsDraw ? zeroAddress :
+              (winnerLower === p1Lower ? matchInfo.player2 : matchInfo.player1);
+
+            return {
+              ...matchInfo,
+              matchStatus: 2,
+              winner: eventWinner,
+              loser: eventLoser,
+              isDraw: eventIsDraw,
+              board: eventBoard,
+              isYourTurn: false,
+              completedFromEventPoll: true,
+              completionReason: Number(eventReason)
+            };
+          }
+
+          console.log('[refreshMatchData] No matching MatchCompleted event found yet, continuing to poll');
+        } catch (err) {
+          console.error('[refreshMatchData] Error querying MatchCompleted event:', err);
+        }
+
+        return null;
+      }
 
       let actualPlayer1 = player1;
       let actualPlayer2 = player2;
@@ -2911,53 +3036,10 @@ export default function Chess() {
   };
 
   // Handle closing the match end modal
-  const handleMatchEndModalClose = async () => {
-    const tournamentInfo = currentMatch ? {
-      tierId: currentMatch.tierId,
-      instanceId: currentMatch.instanceId
-    } : null;
-
-    // Check if this was the finals match
-    const totalRounds = currentMatch?.playerCount ? Math.ceil(Math.log2(currentMatch.playerCount)) : 0;
-    const isFinals = currentMatch?.roundNumber === totalRounds - 1;
-
-    // Check if player lost (defeat or forfeit_lose)
-    const isDefeat = matchEndResult === 'lose' || matchEndResult === 'forfeit_lose';
-
-    // Clear the modal state
+  const handleMatchEndModalClose = () => {
+    // Clear the modal state only - no navigation
     setMatchEndResult(null);
     setMatchEndWinnerLabel('');
-
-    // For defeat: keep match state so player can view final board position
-    // For victory: clear match state and navigate
-    if (!isDefeat) {
-      setCurrentMatch(null);
-      setMoveHistory([]);
-    }
-
-    // Refresh data
-    if (contract) {
-      await fetchLeaderboard(true);
-      await refreshAfterAction(tournamentInfo?.tierId ?? null);
-
-      // For defeat: don't navigate, let player view the board
-      if (isDefeat) {
-        // Stay on board - no navigation
-      }
-      // If finals, always return to instances list
-      else if (isFinals) {
-        setViewingTournament(null);
-      }
-      // If not finals and player won, show tournament bracket
-      else if (tournamentInfo && (matchEndResult === 'win' || matchEndResult === 'forfeit_win')) {
-        const bracketData = await refreshTournamentBracket(contract, tournamentInfo.tierId, tournamentInfo.instanceId, matchTimePerPlayer);
-        if (bracketData) {
-          setViewingTournament(bracketData);
-        }
-      } else {
-        setViewingTournament(null);
-      }
-    }
   };
 
   // Handle closing the tournament completion modal
@@ -3156,200 +3238,158 @@ export default function Chess() {
     };
   }, [contract, account, currentMatch]);
 
-  // Listen for MoveMade and MatchCompleted events for real-time match updates
+  // Listen for MatchCompleted events to notify players and update match state
   useEffect(() => {
-    if (!contract || !currentMatch) return;
+    if (!contract || !account || !currentMatch) return;
 
-    const { tierId, instanceId, roundNumber, matchNumber } = currentMatch;
+    console.log('[MatchCompleted] Setting up event listener for current match:', {
+      tierId: currentMatch.tierId,
+      instanceId: currentMatch.instanceId,
+      roundNumber: currentMatch.roundNumber,
+      matchNumber: currentMatch.matchNumber
+    });
 
-    // Generate matchId for event filtering
-    const matchId = ethers.solidityPackedKeccak256(
-      ['uint8', 'uint8', 'uint8', 'uint8'],
-      [tierId, instanceId, roundNumber, matchNumber]
-    );
+    const handleMatchCompleted = async (matchId, player1, player2, winner, isDraw, reason, packedBoard, event) => {
+      console.log('[MatchCompleted Event] ===== EVENT FIRED =====');
+      console.log('[MatchCompleted Event] MatchId:', matchId);
+      console.log('[MatchCompleted Event] Player1:', player1, 'Player2:', player2);
+      console.log('[MatchCompleted Event] Winner:', winner, 'isDraw:', isDraw, 'reason:', Number(reason));
 
-    // Handler for MoveMade events (Chess uses from/to params)
-    const handleMoveMade = async (eventMatchId, player, from, to, event) => {
-      console.log('[MoveMade Event] Received:', { eventMatchId, player, from, to });
+      // Check if this event is for the current match being viewed
+      const currentMatchId = ethers.solidityPackedKeccak256(
+        ['uint8', 'uint8', 'uint8', 'uint8'],
+        [currentMatch.tierId, currentMatch.instanceId, currentMatch.roundNumber, currentMatch.matchNumber]
+      );
 
-      // Only update if this event is for the current match
-      if (eventMatchId !== matchId) return;
-
-      // Time-gate: Only process events that occurred after match started
-      try {
-        const block = await event.getBlock();
-        const eventTimestamp = block.timestamp;
-        const matchStartTime = currentMatch.startTime;
-
-        console.log('[MoveMade Event] Timestamp check:', {
-          eventTimestamp,
-          matchStartTime,
-          isValidEvent: eventTimestamp >= matchStartTime
-        });
-
-        if (eventTimestamp < matchStartTime) {
-          console.log('[MoveMade Event] Event is older than match start time, ignoring');
-          return;
-        }
-      } catch (err) {
-        console.error('[MoveMade Event] Error checking timestamp:', err);
+      if (matchId !== currentMatchId) {
+        console.log('[MatchCompleted Event] Event is for different match, ignoring');
         return;
       }
 
-      // Fetch the full board state from contract for Chess (ensures accuracy)
-      console.log('[MoveMade Event] Fetching fresh board state from contract');
-      try {
-        const updatedMatch = await refreshMatchData(
-          contract,
-          account,
-          currentMatch,
-          matchTimePerPlayer
-        );
+      // Time-gate: Only process events that occurred after current match started
+      if (event) {
+        try {
+          const block = await event.getBlock();
+          const eventTimestamp = block.timestamp;
+          const matchStartTime = currentMatch.startTime;
 
-        if (updatedMatch) {
-          console.log('[MoveMade Event] Board updated from contract:', {
-            from,
-            to,
-            boardLength: updatedMatch.board?.length
+          console.log('[MatchCompleted Event] Timestamp check:', {
+            eventTimestamp,
+            matchStartTime,
+            isValidEvent: eventTimestamp >= matchStartTime
           });
-          setCurrentMatch(updatedMatch);
-          previousBoardRef.current = [...updatedMatch.board];
+
+          if (eventTimestamp < matchStartTime) {
+            console.log('[MatchCompleted Event] Event is older than current match start time, ignoring');
+            return;
+          }
+        } catch (err) {
+          console.error('[MatchCompleted Event] Error checking timestamp:', err);
+          // Continue processing if timestamp check fails
         }
-
-        // Refresh move history
-        const history = await fetchMoveHistory(contract, tierId, instanceId, roundNumber, matchNumber);
-        setMoveHistory(history);
-      } catch (err) {
-        console.error('[MoveMade Event] Error refreshing match data:', err);
-      }
-    };
-
-    // Handler for MatchCompleted events
-    const handleMatchCompleted = async (eventMatchId, winner, isDraw, reason, event) => {
-      console.log('[MatchCompleted Event] Received:', { eventMatchId, winner, isDraw, reason });
-
-      // Only update if this event is for the current match
-      if (eventMatchId !== matchId) return;
-
-      // Time-gate: Only process events that occurred after match started
-      try {
-        const block = await event.getBlock();
-        const eventTimestamp = block.timestamp;
-        const matchStartTime = currentMatch.startTime;
-
-        console.log('[MatchCompleted Event] Timestamp check:', {
-          eventTimestamp,
-          matchStartTime,
-          isValidEvent: eventTimestamp >= matchStartTime
-        });
-
-        if (eventTimestamp < matchStartTime) {
-          console.log('[MatchCompleted Event] Event is older than match start time, ignoring');
-          return;
-        }
-      } catch (err) {
-        console.error('[MatchCompleted Event] Error checking timestamp:', err);
-        return;
       }
 
-      // Store player info before updating state
-      const player1 = currentMatch.player1;
-      const player2 = currentMatch.player2;
+      console.log('[MatchCompleted Event] ✓ Event is for current match - processing completion');
 
-      // Update match status and preserve board state
+      // Unpack chess board state (4 packed uint256s)
+      const unpackChessBoard = (packed) => {
+        // Chess board is packed differently - implementation matches refreshMatchData
+        const boardArray = [];
+        let p = BigInt(packed);
+        for (let row = 0; row < 8; row++) {
+          for (let col = 0; col < 8; col++) {
+            const pieceData = Number(p & 0xFFn); // 8 bits per cell
+            const pieceType = pieceData & 0x0F;
+            const color = (pieceData >> 4) & 0x01;
+            boardArray.push({ pieceType, color });
+            p = p >> 8n;
+          }
+        }
+        return boardArray;
+      };
+      const eventBoard = unpackChessBoard(packedBoard);
+
+      // Determine loser
+      const zeroAddress = '0x0000000000000000000000000000000000000000';
+      const winnerLower = winner.toLowerCase();
+      const p1Lower = currentMatch.player1?.toLowerCase();
+      const eventLoser = isDraw ? zeroAddress : (winnerLower === p1Lower ? currentMatch.player2 : currentMatch.player1);
+
+      // Update match state with completion data
       setCurrentMatch(prev => {
-        if (!prev) return prev;
+        if (!prev || prev.matchStatus === 2) return prev; // Already completed
 
-        const loser = isDraw ? '0x0000000000000000000000000000000000000000' :
-                     (winner.toLowerCase() === prev.player1.toLowerCase() ? prev.player2 : prev.player1);
-
-        console.log('[MatchCompleted Event] Match completed:', {
-          winner,
-          isDraw,
-          loser,
-          reason,
-          boardPreserved: prev.board?.length || 0
-        });
-
-        // Preserve the board state from the last MoveMade event
         return {
           ...prev,
           matchStatus: 2,
-          winner: isDraw ? '0x0000000000000000000000000000000000000000' : winner,
-          loser,
+          winner,
+          loser: eventLoser,
           isDraw,
-          completionReason: Number(reason),
-          isYourTurn: false
+          board: eventBoard,
+          isYourTurn: false,
+          completionReason: Number(reason)
         };
       });
 
-      // Show match end modal using event data (not stale currentMatch)
-      if (account) {
-        const isPlayer1 = player1.toLowerCase() === account.toLowerCase();
-        const isPlayer2 = player2.toLowerCase() === account.toLowerCase();
-        const isParticipant = isPlayer1 || isPlayer2;
+      // Show winner/loser banner
+      const isPlayer1 = currentMatch.player1?.toLowerCase() === account.toLowerCase();
+      const isPlayer2 = currentMatch.player2?.toLowerCase() === account.toLowerCase();
+      const isParticipant = isPlayer1 || isPlayer2;
 
-        if (isParticipant) {
-          const userWon = !isDraw && winner.toLowerCase() === account.toLowerCase();
-          const opponent = isPlayer1 ? player2 : player1;
+      if (isParticipant) {
+        const userWon = !isDraw && winner.toLowerCase() === account.toLowerCase();
+        const reasonNum = Number(reason);
 
-          // Get reason-specific text
-          const reasonNum = Number(reason);
-          const title = getCompletionReasonText(reasonNum, userWon, isDraw, 'chess');
-          const description = getCompletionReasonDescription(reasonNum, userWon, isDraw);
-
-          console.log('[MatchCompleted Event] Showing modal:', {
-            userWon,
-            isDraw,
-            opponent,
-            reason: reasonNum,
-            title,
-            description
-          });
-
-          // Determine result type for modal
-          let resultType = 'lose'; // default
-          if (isDraw) {
-            resultType = 'draw';
-          } else if (userWon) {
-            // Check if it's a timeout win
-            if (reasonNum === 1 || reasonNum === 2 || reasonNum === 3) { // Timeout reasons
-              resultType = 'forfeit_win';
-            } else {
-              resultType = 'win';
-            }
-          } else {
-            // User lost - check if it's a timeout loss
-            if (reasonNum === 1 || reasonNum === 2 || reasonNum === 3) { // Timeout reasons
-              resultType = 'forfeit_lose';
-            } else {
-              resultType = 'lose';
-            }
-          }
-
-          console.log('[MatchCompleted Event] Setting result type:', resultType);
-
-          setMatchEndResult(resultType);
-          setMatchEndWinner(winner);
-          setMatchEndLoser(isDraw ? '0x0000000000000000000000000000000000000000' :
-            (winner.toLowerCase() === player1.toLowerCase() ? player2 : player1));
+        let resultType = 'lose';
+        if (isDraw) {
+          resultType = 'draw';
+        } else if (userWon) {
+          resultType = (reasonNum === 1 || reasonNum === 3 || reasonNum === 4) ? 'forfeit_win' : 'win';
+        } else {
+          resultType = (reasonNum === 1 || reasonNum === 3 || reasonNum === 4) ? 'forfeit_lose' : 'lose';
         }
+
+        console.log('[MatchCompleted Event] Setting match end result:', resultType);
+        setMatchEndResult(resultType);
+        setMatchEndWinner(winner);
+        setMatchEndLoser(eventLoser);
       }
     };
 
-    // Register event listeners (listen to all, filter inside handlers)
-    contract.on('MoveMade', handleMoveMade);
+    // Register event listener (listen to all MatchCompleted events, filter in handler)
     contract.on('MatchCompleted', handleMatchCompleted);
+    console.log('[MatchCompleted] Event listener registered');
 
-    console.log('[Chess Match Events] Listeners registered for matchId:', matchId);
+    // Query recent events to catch any missed while page was loading
+    const checkRecentEvents = async () => {
+      try {
+        const currentMatchId = ethers.solidityPackedKeccak256(
+          ['uint8', 'uint8', 'uint8', 'uint8'],
+          [currentMatch.tierId, currentMatch.instanceId, currentMatch.roundNumber, currentMatch.matchNumber]
+        );
 
-    // Cleanup
+        const filter = contract.filters.MatchCompleted(currentMatchId);
+        const events = await contract.queryFilter(filter, -50);
+        console.log('[MatchCompleted] Found', events.length, 'recent events for current match in last 50 blocks');
+
+        // Process most recent event for this match
+        if (events.length > 0) {
+          const event = events[events.length - 1];
+          const { player1, player2, winner, isDraw, reason, board } = event.args;
+          handleMatchCompleted(currentMatchId, player1, player2, winner, isDraw, reason, board, event);
+        }
+      } catch (err) {
+        console.error('[MatchCompleted] Error checking recent events:', err);
+      }
+    };
+
+    checkRecentEvents();
+
     return () => {
-      console.log('[Chess Match Events] Cleaning up event listeners for matchId:', matchId);
-      contract.off('MoveMade', handleMoveMade);
+      console.log('[MatchCompleted] Cleaning up event listener');
       contract.off('MatchCompleted', handleMatchCompleted);
     };
-  }, [contract, currentMatch, account, fetchMoveHistory]);
+  }, [contract, account, currentMatch]);
 
   // Refresh tier data when account changes (initial load handled by initReadOnlyContract)
   useEffect(() => {
@@ -3493,7 +3533,57 @@ export default function Chess() {
         );
 
         if (updatedMatch) {
-          // If match just completed, let events handle it
+          // Handle match completed from MatchCompleted event polling
+          if (updatedMatch.completedFromEventPoll) {
+            console.log('[Chess Polling] Match completed from event poll, updating state and showing banner');
+
+            // Update match state with event data (including board from event)
+            setCurrentMatch(prev => {
+              if (!prev) return updatedMatch;
+              // Don't overwrite if already completed
+              if (prev.matchStatus === 2) return prev;
+
+              return {
+                ...prev,
+                matchStatus: 2,
+                winner: updatedMatch.winner,
+                loser: updatedMatch.loser,
+                isDraw: updatedMatch.isDraw,
+                board: updatedMatch.board,
+                isYourTurn: false,
+                completionReason: updatedMatch.completionReason
+              };
+            });
+
+            // Show winner/loser banner
+            const player1 = updatedMatch.player1;
+            const player2 = updatedMatch.player2;
+            const isPlayer1 = player1?.toLowerCase() === userAccount.toLowerCase();
+            const isPlayer2 = player2?.toLowerCase() === userAccount.toLowerCase();
+            const isParticipant = isPlayer1 || isPlayer2;
+
+            if (isParticipant) {
+              const userWon = !updatedMatch.isDraw && updatedMatch.winner.toLowerCase() === userAccount.toLowerCase();
+              const reasonNum = updatedMatch.completionReason;
+
+              let resultType = 'lose';
+              if (updatedMatch.isDraw) {
+                resultType = 'draw';
+              } else if (userWon) {
+                resultType = (reasonNum === 1 || reasonNum === 3 || reasonNum === 4) ? 'forfeit_win' : 'win';
+              } else {
+                resultType = (reasonNum === 1 || reasonNum === 3 || reasonNum === 4) ? 'forfeit_lose' : 'lose';
+              }
+
+              console.log('[Chess Polling] Setting match end result:', resultType);
+              setMatchEndResult(resultType);
+              setMatchEndWinner(updatedMatch.winner);
+              setMatchEndLoser(updatedMatch.loser);
+            }
+            return;
+          }
+
+          // If match just completed (not from event poll), let events handle it
           if (updatedMatch.matchStatus === 2) {
             return;
           }
@@ -4847,8 +4937,8 @@ export default function Chess() {
         prizePool={currentMatch?.prizePool}
       />
 
-      {/* Tournament Completion Modal */}
-      {tournamentCompletionData && (
+      {/* Tournament Completion Modal - only show if no match result modal is showing */}
+      {tournamentCompletionData && !matchEndResult && (
         <MatchEndModal
           result="tournament_ended"
           onClose={handleTournamentCompletionModalClose}
