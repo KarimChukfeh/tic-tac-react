@@ -255,7 +255,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, /* onSpectate
       </div>
     </div>
   );
-};
+}; 
 
 export default function TicTacChain() {
   // Use network config instead of hardcoded values
