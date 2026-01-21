@@ -485,15 +485,16 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
   }, [fetchActivity]);
 
   // Set up 30-second polling interval
-  useEffect(() => {
-    if (!contract || !account) return;
+  // COMMENTED OUT: Auto-refresh disabled for now
+  // useEffect(() => {
+  //   if (!contract || !account) return;
 
-    const interval = setInterval(() => {
-      fetchActivity(false);
-    }, 30000); // 30 seconds
+  //   const interval = setInterval(() => {
+  //     fetchActivity(false);
+  //   }, 30000); // 30 seconds
 
-    return () => clearInterval(interval);
-  }, [contract, account, fetchActivity]);
+  //   return () => clearInterval(interval);
+  // }, [contract, account, fetchActivity]);
 
   // Listen for MatchCompleted events for instant updates
   useEffect(() => {

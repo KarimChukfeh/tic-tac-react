@@ -198,6 +198,29 @@ const MiniChessBoard = ({
               eventPackedBoard: eventPackedBoard.toString()
             });
 
+            // Unpack board from event (Chess: 64 cells, 4 bits per cell)
+            const unpackBoard = (packed) => {
+              const boardArray = [];
+              let p = BigInt(packed);
+              for (let i = 0; i < 64; i++) {
+                const value = Number(p & 0xFn);
+                let pieceType = 0;
+                let color = 0;
+                if (value >= 1 && value <= 6) {
+                  pieceType = value;  // white: 1-6
+                  color = 1;
+                } else if (value >= 7 && value <= 12) {
+                  pieceType = value - 6;  // black: 7-12 → pieceType 1-6
+                  color = 2;
+                }
+                boardArray.push({ pieceType, color });
+                p = p >> 4n;
+              }
+              return boardArray;
+            };
+            const eventBoard = unpackBoard(eventPackedBoard);
+            console.log('[MiniChessBoard] Unpacked board from event:', eventBoard.filter(c => c.pieceType !== 0).length, 'pieces');
+
             const eventLoser = eventIsDraw ? zeroAddress : (
               eventWinner.toLowerCase() === eventPlayer1.toLowerCase() ? eventPlayer2 : eventPlayer1
             );
@@ -211,11 +234,12 @@ const MiniChessBoard = ({
               winner: eventWinner,
               loser: eventLoser,
               isDraw: eventIsDraw,
+              board: eventBoard,
               isForfeit: Number(eventReason) === 2, // Reason 2 = forfeit
             };
 
-            alreadyReconstructed = true; // We'll reconstruct board from MoveMade events below
-            console.log('[MiniChessBoard] Reconstructed match from MatchCompleted event');
+            alreadyReconstructed = true; // Mark as reconstructed to skip second reconstruction
+            console.log('[MiniChessBoard] Reconstructed match from MatchCompleted event:', eventBoard.filter(c => c.pieceType !== 0).length, 'pieces');
           } else {
             // No event found - if we have existing matchData, preserve it
             if (matchData) {

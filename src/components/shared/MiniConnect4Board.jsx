@@ -103,6 +103,19 @@ const MiniConnect4Board = ({
               eventPackedBoard: eventPackedBoard.toString()
             });
 
+            // Unpack board from event (Connect4: 42 cells, 2 bits per cell)
+            const unpackBoard = (packed) => {
+              const boardArray = [];
+              let p = BigInt(packed);
+              for (let i = 0; i < 42; i++) {
+                boardArray.push(Number(p & 3n));
+                p = p >> 2n;
+              }
+              return boardArray;
+            };
+            const eventBoard = unpackBoard(eventPackedBoard);
+            console.log('[MiniConnect4Board] Unpacked board from event:', eventBoard.filter(c => c !== 0).length, 'pieces');
+
             const eventLoser = eventIsDraw ? zeroAddress : (
               eventWinner.toLowerCase() === eventPlayer1.toLowerCase() ? eventPlayer2 : eventPlayer1
             );
@@ -116,11 +129,12 @@ const MiniConnect4Board = ({
               winner: eventWinner,
               loser: eventLoser,
               isDraw: eventIsDraw,
+              board: eventBoard,
               isForfeit: Number(eventReason) === 2, // Reason 2 = forfeit
             };
 
-            alreadyReconstructed = true; // We'll reconstruct board from MoveMade events below
-            console.log('[MiniConnect4Board] Reconstructed match from MatchCompleted event');
+            alreadyReconstructed = true; // Mark as reconstructed to skip second reconstruction
+            console.log('[MiniConnect4Board] Reconstructed match from MatchCompleted event:', eventBoard.filter(c => c !== 0).length, 'pieces');
           } else {
             // No event found - if we have existing matchData, preserve it
             if (matchData) {
