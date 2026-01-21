@@ -120,7 +120,7 @@ const EliteMatchesCard = ({
 
   return (
     <div
-      className={`max-md:relative md:fixed max-md:flex-1 z-50 transition-all duration-300 md:bottom-auto md:left-16`}
+      className={`max-md:relative md:fixed max-md:flex-1 max-md:flex max-md:justify-center z-50 transition-all duration-300 md:bottom-auto md:left-16`}
       style={{
         // On desktop: use top positioning
         top: isDesktop ? `${topPositionDesktop}px` : undefined

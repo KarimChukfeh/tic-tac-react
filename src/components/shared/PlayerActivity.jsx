@@ -483,7 +483,7 @@ const PlayerActivity = ({
   );
 
   return (
-    <div className={`max-md:relative md:fixed max-md:flex-1 md:top-20 md:left-16 z-50`}>
+    <div className={`max-md:relative md:fixed max-md:flex-1 max-md:flex max-md:justify-center md:top-20 md:left-16 z-50`}>
       {/* Collapsed State */}
       {!isExpanded && (
         <button
