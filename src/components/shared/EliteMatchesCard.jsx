@@ -120,14 +120,9 @@ const EliteMatchesCard = ({
 
   return (
     <div
-      className={`fixed bottom-4 z-50 transition-all duration-300 md:bottom-auto md:left-16 ${
-        // Hide on mobile when another panel is expanded
-        hideOnMobile ? 'max-md:hidden' : ''
-      }`}
+      className={`max-md:relative md:fixed max-md:flex-1 z-50 transition-all duration-300 md:bottom-auto md:left-16`}
       style={{
-        // On mobile: when expanded, reposition to left-4 (16px), when collapsed stay at horizontal position
         // On desktop: use top positioning
-        left: isDesktop ? undefined : (isExpanded ? '16px' : `${MOBILE_LEFT}px`),
         top: isDesktop ? `${topPositionDesktop}px` : undefined
       }}
     >
@@ -135,7 +130,7 @@ const EliteMatchesCard = ({
       {!isExpanded && (
         <button
           onClick={() => handleSetExpanded(true)}
-          className="bg-gradient-to-br from-amber-500/90 to-yellow-600/90 backdrop-blur-lg rounded-full p-2.5 md:p-4 border-2 border-amber-400/40 hover:border-amber-400/70 transition-all hover:scale-110 shadow-xl relative group"
+          className="max-md:mx-auto bg-gradient-to-br from-amber-500/90 to-yellow-600/90 backdrop-blur-lg rounded-full p-2.5 md:p-4 border-2 border-amber-400/40 hover:border-amber-400/70 transition-all hover:scale-110 shadow-xl relative group"
           aria-label="Open elite matches"
         >
           <Crown size={18} className="text-white md:w-6 md:h-6" />
@@ -161,7 +156,7 @@ const EliteMatchesCard = ({
 
       {/* Expanded State */}
       {isExpanded && (
-        <div className="mt-3 bg-gradient-to-br from-amber-600/20 to-yellow-600/20 backdrop-blur-lg rounded-xl p-4 border-2 border-amber-400/40 shadow-2xl w-[calc(100vw-2rem)] md:w-[464px] max-h-[60vh] overflow-hidden flex flex-col">
+        <div className="max-md:fixed max-md:bottom-20 max-md:left-4 max-md:right-4 max-md:w-auto md:mt-3 bg-gradient-to-br from-amber-600/20 to-yellow-600/20 backdrop-blur-lg rounded-xl p-4 border-2 border-amber-400/40 shadow-2xl md:w-[464px] max-h-[calc(100vh-7rem)] overflow-hidden flex flex-col">
           {/* Header */}
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">

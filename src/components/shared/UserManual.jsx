@@ -666,7 +666,10 @@ const UserManual = ({
             <h3 className={`text-lg font-semibold ${colors.highlightText} mb-3 scroll-mt-24`}>Prize Distribution</h3>
             <div className="space-y-3 text-gray-300">
               <p>
-                The game always keeps 10% of the threshold to ensure continuous operation remains covered. The remaining accumulated pool is then split between the winner and owner.
+                The raffle pot is split between the contract itself, the ETour's creator, and the randomly selected raffle winner. This ensures the protocol remains sustainable while rewarding active community members.
+              </p>
+              <p>
+                When the raffle is triggered the pot is immediately distributed as follows:
               </p>
 
               <div className="overflow-x-auto">
@@ -679,19 +682,23 @@ const UserManual = ({
                   </thead>
                   <tbody className="divide-y divide-blue-500/20">
                     <tr className="hover:bg-blue-500/5 transition-colors">
-                      <td className="py-3 px-4 text-gray-300">Random Winner</td>
-                      <td className="py-3 px-4 text-gray-300 font-mono">{raffleWinnerShare}%</td>
+                      <td className="py-3 px-4 text-gray-300">Randomly Relected Raffle Winner</td>
+                      <td className="py-3 px-4 text-gray-300 font-mono">90%</td>
                     </tr>
                     <tr className="hover:bg-blue-500/5 transition-colors">
-                      <td className="py-3 px-4 text-gray-300">Owner</td>
-                      <td className="py-3 px-4 text-gray-300 font-mono">{raffleOwnerShare}%</td>
+                      <td className="py-3 px-4 text-gray-300">Contract Reserve</td>
+                      <td className="py-3 px-4 text-gray-300 font-mono">5%</td>
+                    </tr>
+                    <tr className="hover:bg-blue-500/5 transition-colors">
+                      <td className="py-3 px-4 text-gray-300">Creator Reward</td>
+                      <td className="py-3 px-4 text-gray-300 font-mono">5%</td>
                     </tr>
                   </tbody>
                 </table>
               </div>
 
               <p className="font-semibold text-gray-200">
-                Example: A raffle with a 0.4 ETH threshold triggers after accumulating 0.6 ETH.
+                For example: a raffle with a pot of 1 ETH is distributed as follows:
               </p>
 
               <div className="overflow-x-auto">
@@ -704,20 +711,16 @@ const UserManual = ({
                   </thead>
                   <tbody className="divide-y divide-blue-500/20">
                     <tr className="hover:bg-blue-500/5 transition-colors">
-                      <td className="py-3 px-4 text-gray-300">Contract Reserve (10% of threshold)</td>
-                      <td className="py-3 px-4 text-gray-300 font-mono">0.04 ETH</td>
+                      <td className="py-3 px-4 text-gray-300">Randomly Relected Raffle Winner (90%)</td>
+                      <td className="py-3 px-4 text-gray-300 font-mono">0.9 ETH</td>
                     </tr>
                     <tr className="hover:bg-blue-500/5 transition-colors">
-                      <td className="py-3 px-4 text-gray-300">Raffle Pool</td>
-                      <td className="py-3 px-4 text-gray-300 font-mono">0.56 ETH</td>
+                      <td className="py-3 px-4 text-gray-300">Contract Reserve (5%)</td>
+                      <td className="py-3 px-4 text-gray-300 font-mono">0.05 ETH</td>
                     </tr>
                     <tr className="hover:bg-blue-500/5 transition-colors">
-                      <td className="py-3 px-4 text-gray-300 pl-8">→ Random Winner 80%</td>
-                      <td className="py-3 px-4 text-gray-300 font-mono">0.448 ETH</td>
-                    </tr>
-                    <tr className="hover:bg-blue-500/5 transition-colors">
-                      <td className="py-3 px-4 text-gray-300 pl-8">→ Owner 20%</td>
-                      <td className="py-3 px-4 text-gray-300 font-mono">0.112 ETH</td>
+                      <td className="py-3 px-4 text-gray-300">Creator Reward (5%)</td>
+                      <td className="py-3 px-4 text-gray-300 font-mono">0.05 ETH</td>
                     </tr>
                   </tbody>
                 </table>

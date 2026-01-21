@@ -2900,26 +2900,79 @@ export default function TicTacChain() {
         </div>
       )}
 
-      {/* Player Activity Component - Available in all views */}
+      {/* Bottom Navigation Bar - Mobile Only */}
       {account && (
-        <PlayerActivity
-          activity={playerActivity.data}
-          loading={playerActivity.loading}
-          syncing={playerActivity.syncing}
-          contract={contract}
-          account={account}
-          onEnterMatch={handlePlayMatch}
-          onEnterTournament={handleEnterTournament}
-          onRefresh={playerActivity.refetch}
-          onDismissMatch={playerActivity.dismissMatch}
-          gameName="tictactoe"
-          gameEmoji="✖️"
-          onHeightChange={setPlayerActivityHeight}
-          onCollapse={(collapseFn) => { collapseActivityPanelRef.current = collapseFn; }}
-          isExpanded={expandedPanel === 'playerActivity'}
-          onToggleExpand={() => setExpandedPanel(expandedPanel === 'playerActivity' ? null : 'playerActivity')}
-          hideOnMobile={expandedPanel !== null && expandedPanel !== 'playerActivity'}
-        />
+        <div className="fixed bottom-0 left-0 right-0 z-50 md:static md:z-auto">
+          {/* Solid background bar on mobile */}
+          <div className="md:hidden bg-gradient-to-b from-slate-900 to-slate-950 border-t border-purple-400/30 px-4 py-2 flex items-center justify-around gap-2">
+            {/* Player Activity Component */}
+            <PlayerActivity
+              activity={playerActivity.data}
+              loading={playerActivity.loading}
+              syncing={playerActivity.syncing}
+              contract={contract}
+              account={account}
+              onEnterMatch={handlePlayMatch}
+              onEnterTournament={handleEnterTournament}
+              onRefresh={playerActivity.refetch}
+              onDismissMatch={playerActivity.dismissMatch}
+              gameName="tictactoe"
+              gameEmoji="✖️"
+              onHeightChange={setPlayerActivityHeight}
+              onCollapse={(collapseFn) => { collapseActivityPanelRef.current = collapseFn; }}
+              isExpanded={expandedPanel === 'playerActivity'}
+              onToggleExpand={() => setExpandedPanel(expandedPanel === 'playerActivity' ? null : 'playerActivity')}
+              hideOnMobile={expandedPanel !== null && expandedPanel !== 'playerActivity'}
+            />
+
+            {/* Community Raffle Card */}
+            <CommunityRaffleCard
+              raffleInfo={raffleInfo}
+              raffleHistory={raffleHistory}
+              playerActivityHeight={playerActivityHeight}
+              onRefresh={fetchRaffleInfo}
+              onTriggerRaffle={executeRaffle}
+              syncing={raffleSyncing}
+              isExpanded={expandedPanel === 'communityRaffle'}
+              onToggleExpand={() => setExpandedPanel(expandedPanel === 'communityRaffle' ? null : 'communityRaffle')}
+              hideOnMobile={expandedPanel !== null && expandedPanel !== 'communityRaffle'}
+            />
+          </div>
+
+          {/* Desktop positioning (hidden on mobile, shown on desktop with original behavior) */}
+          <div className="hidden md:block">
+            <PlayerActivity
+              activity={playerActivity.data}
+              loading={playerActivity.loading}
+              syncing={playerActivity.syncing}
+              contract={contract}
+              account={account}
+              onEnterMatch={handlePlayMatch}
+              onEnterTournament={handleEnterTournament}
+              onRefresh={playerActivity.refetch}
+              onDismissMatch={playerActivity.dismissMatch}
+              gameName="tictactoe"
+              gameEmoji="✖️"
+              onHeightChange={setPlayerActivityHeight}
+              onCollapse={(collapseFn) => { collapseActivityPanelRef.current = collapseFn; }}
+              isExpanded={expandedPanel === 'playerActivity'}
+              onToggleExpand={() => setExpandedPanel(expandedPanel === 'playerActivity' ? null : 'playerActivity')}
+              hideOnMobile={expandedPanel !== null && expandedPanel !== 'playerActivity'}
+            />
+
+            <CommunityRaffleCard
+              raffleInfo={raffleInfo}
+              raffleHistory={raffleHistory}
+              playerActivityHeight={playerActivityHeight}
+              onRefresh={fetchRaffleInfo}
+              onTriggerRaffle={executeRaffle}
+              syncing={raffleSyncing}
+              isExpanded={expandedPanel === 'communityRaffle'}
+              onToggleExpand={() => setExpandedPanel(expandedPanel === 'communityRaffle' ? null : 'communityRaffle')}
+              hideOnMobile={expandedPanel !== null && expandedPanel !== 'communityRaffle'}
+            />
+          </div>
+        </div>
       )}
 
       {/* Trust Banner */}
@@ -2965,21 +3018,6 @@ export default function TicTacChain() {
           </div>
         </div>
       </div>
-
-      {/* Community Raffle Card - Below Player Activity Toggle */}
-      {account && (
-        <CommunityRaffleCard
-          raffleInfo={raffleInfo}
-          raffleHistory={raffleHistory}
-          playerActivityHeight={playerActivityHeight}
-          onRefresh={fetchRaffleInfo}
-          onTriggerRaffle={executeRaffle}
-          syncing={raffleSyncing}
-          isExpanded={expandedPanel === 'communityRaffle'}
-          onToggleExpand={() => setExpandedPanel(expandedPanel === 'communityRaffle' ? null : 'communityRaffle')}
-          hideOnMobile={expandedPanel !== null && expandedPanel !== 'communityRaffle'}
-        />
-      )}
 
       <div className="max-w-7xl mx-auto px-6 py-12" style={{ position: 'relative', zIndex: 10 }}>
         {/* Hero Section */}

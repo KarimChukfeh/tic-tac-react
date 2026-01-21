@@ -483,15 +483,12 @@ const PlayerActivity = ({
   );
 
   return (
-    <div className={`fixed bottom-4 left-4 md:top-20 md:bottom-auto md:left-16 z-50 ${
-      // Hide on mobile when another panel is expanded
-      hideOnMobile ? 'max-md:hidden' : ''
-    }`}>
+    <div className={`max-md:relative md:fixed max-md:flex-1 md:top-20 md:left-16 z-50`}>
       {/* Collapsed State */}
       {!isExpanded && (
         <button
           onClick={() => handleSetExpanded(true)}
-          className={`bg-gradient-to-br backdrop-blur-lg rounded-full p-2.5 md:p-4 border-2 transition-all hover:scale-110 shadow-xl relative group ${
+          className={`max-md:mx-auto bg-gradient-to-br backdrop-blur-lg rounded-full p-2.5 md:p-4 border-2 transition-all hover:scale-110 shadow-xl relative group ${
             isElite
               ? 'from-[#fbbf24]/90 to-[#f59e0b]/90 border-[#d4a012]/40 hover:border-[#d4a012]/70'
               : 'from-purple-600/90 to-blue-600/90 border-purple-400/40 hover:border-purple-400/70'
@@ -526,7 +523,7 @@ const PlayerActivity = ({
 
       {/* Expanded State */}
       {isExpanded && (
-        <div ref={expandedPanelRef} className="mt-3 bg-gradient-to-br from-slate-900/95 to-slate-800/95 backdrop-blur-lg rounded-2xl p-4 md:p-6 border-2 border-purple-400/40 shadow-2xl w-[calc(100vw-2rem)] md:w-[464px] max-h-[80vh] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-slate-800/50 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-purple-500/60 [&::-webkit-scrollbar-thumb]:to-blue-500/60 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border [&::-webkit-scrollbar-thumb]:border-purple-400/30 hover:[&::-webkit-scrollbar-thumb]:from-purple-500/80 hover:[&::-webkit-scrollbar-thumb]:to-blue-500/80">
+        <div ref={expandedPanelRef} className="max-md:fixed max-md:bottom-20 max-md:left-4 max-md:right-4 max-md:w-auto md:mt-3 bg-gradient-to-br from-slate-900/95 to-slate-800/95 backdrop-blur-lg rounded-2xl p-4 md:p-6 border-2 border-purple-400/40 shadow-2xl md:w-[464px] max-h-[calc(100vh-7rem)] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-slate-800/50 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-purple-500/60 [&::-webkit-scrollbar-thumb]:to-blue-500/60 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border [&::-webkit-scrollbar-thumb]:border-purple-400/30 hover:[&::-webkit-scrollbar-thumb]:from-purple-500/80 hover:[&::-webkit-scrollbar-thumb]:to-blue-500/80">
           {/* Header */}
           <div className="mb-4">
             <div className="flex items-center justify-between mb-2">

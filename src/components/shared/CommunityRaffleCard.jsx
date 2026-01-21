@@ -117,14 +117,9 @@ const CommunityRaffleCard = ({
 
   return (
     <div
-      className={`fixed bottom-4 z-50 transition-all duration-300 md:bottom-auto md:left-16 ${
-        // Hide on mobile when another panel is expanded
-        hideOnMobile ? 'max-md:hidden' : ''
-      }`}
+      className={`max-md:relative md:fixed max-md:flex-1 z-50 transition-all duration-300 md:bottom-auto md:left-16`}
       style={{
-        // On mobile: when expanded, reposition to left-4 (16px), when collapsed stay at horizontal position
         // On desktop: use top positioning
-        left: isDesktop ? undefined : (isExpanded ? '16px' : `${MOBILE_LEFT}px`),
         top: isDesktop ? `${topPositionDesktop}px` : undefined
       }}
     >
@@ -132,7 +127,7 @@ const CommunityRaffleCard = ({
       {!isExpanded && (
         <button
           onClick={() => handleSetExpanded(true)}
-          className={`rounded-full p-2.5 md:p-4 border-2 transition-all hover:scale-110 shadow-xl relative group ${
+          className={`max-md:mx-auto rounded-full p-2.5 md:p-4 border-2 transition-all hover:scale-110 shadow-xl relative group ${
             isFull
               ? 'bg-gradient-to-br from-yellow-500 to-amber-500 border-yellow-400/70 hover:border-yellow-400'
               : 'bg-gradient-to-br from-yellow-600 to-amber-600 border-yellow-400/40 hover:border-yellow-400/70'
@@ -169,7 +164,7 @@ const CommunityRaffleCard = ({
       {isExpanded && (
         <div
           ref={expandedPanelRef}
-          className={`mt-3 bg-gradient-to-br from-yellow-700 to-amber-800 rounded-xl p-4 border-2 transition-all shadow-2xl w-[calc(100vw-2rem)] md:w-[464px] ${
+          className={`max-md:fixed max-md:bottom-20 max-md:left-4 max-md:right-4 max-md:w-auto md:mt-3 bg-gradient-to-br from-yellow-700 to-amber-800 rounded-xl p-4 border-2 transition-all shadow-2xl md:w-[464px] max-h-[calc(100vh-7rem)] overflow-y-auto ${
             isFull
               ? 'border-yellow-400 shadow-yellow-500/50'
               : 'border-yellow-400/40'
