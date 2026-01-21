@@ -1082,7 +1082,7 @@ const PlayerActivity = ({
                                           {board.map((cell, idx) => (
                                             <div
                                               key={idx}
-                                              className="bg-slate-800/50 border border-slate-600/50 rounded flex items-center justify-center text-xl font-bold"
+                                              className="aspect-square bg-slate-800/50 border border-slate-600/50 rounded flex items-center justify-center text-xl font-bold"
                                             >
                                               {cell === 1 ? (
                                                 <span className="text-blue-400">X</span>
@@ -1128,7 +1128,7 @@ const PlayerActivity = ({
                                             return (
                                               <div
                                                 key={idx}
-                                                className={`flex items-center justify-center text-2xl ${
+                                                className={`aspect-square flex items-center justify-center text-2xl ${
                                                   isLight ? 'bg-amber-200/20' : 'bg-amber-900/20'
                                                 } ${textColor}`}
                                               >
