@@ -200,8 +200,36 @@ const GameMatchLayout = ({
     const player1Colors = getTimeColors(player1TimeLeft);
     const player2Colors = getTimeColors(player2TimeLeft);
 
-    // Check if ML1 CTA should be shown (timeout active and not user's turn)
-    const showML1CTA = timeoutState && timeoutState.timeoutActive && matchStatus === 1 && !isYourTurn;
+    // Determine if user is player 2
+    const isPlayer2You = account && player2?.toLowerCase() === account.toLowerCase();
+
+    // Check if ML1 CTA should be shown
+    // Player 1 timed out: show button to player 2 (in player 1's timer position)
+    // Player 2 timed out: show button to player 1 (in player 2's timer position)
+    const player1TimedOut = player1TimeLeft <= 0 && isPlayer1Turn && isPlayer2You;
+    const player2TimedOut = player2TimeLeft <= 0 && isPlayer2Turn && isPlayer1You;
+    const showML1CTAFromTimeout = timeoutState && timeoutState.timeoutActive && matchStatus === 1 && !isYourTurn;
+    const showML1CTAFromTimer = matchStatus === 1 && (player1TimedOut || player2TimedOut);
+    const showML1CTA = showML1CTAFromTimeout || showML1CTAFromTimer;
+
+    // Debug logging
+    console.log('ML1 CTA Debug:', {
+      timeoutState,
+      timeoutActive: timeoutState?.timeoutActive,
+      matchStatus,
+      isYourTurn,
+      isPlayer1Turn,
+      isPlayer2Turn,
+      isPlayer1You,
+      isPlayer2You,
+      player1TimeLeft,
+      player2TimeLeft,
+      player1TimedOut,
+      player2TimedOut,
+      showML1CTAFromTimeout,
+      showML1CTAFromTimer,
+      showML1CTA
+    });
 
     return (
       <div className="lg:hidden space-y-3 mb-6">
