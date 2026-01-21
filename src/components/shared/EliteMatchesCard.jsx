@@ -95,7 +95,8 @@ const EliteMatchesCard = ({
   // Desktop (>=768px): Vertical layout at top-left, positioned below both PlayerActivity and CommunityRaffle
 
   // Mobile positioning (bottom-left, horizontal)
-  const MOBILE_LEFT = 144; // 16px (left-4) + 48px (PlayerActivity) + 16px (gap) + 48px (CommunityRaffle) + 16px (gap)
+  // Button size calculation: p-4 (16px × 2) + icon (24px) + border-2 (2px × 2) = 60px
+  const MOBILE_LEFT = 168; // 16px (left-4) + 60px (PlayerActivity) + 16px (gap) + 60px (CommunityRaffle) + 16px (gap)
 
   // Desktop positioning (top-left, vertical)
   const BASE_TOP_DESKTOP = 80; // md:top-20 in pixels
@@ -130,10 +131,10 @@ const EliteMatchesCard = ({
       {!isExpanded && (
         <button
           onClick={() => handleSetExpanded(true)}
-          className="bg-gradient-to-br from-amber-500/90 to-yellow-600/90 backdrop-blur-lg rounded-full p-2 md:p-4 border-2 border-amber-400/40 hover:border-amber-400/70 transition-all hover:scale-110 shadow-xl relative group"
+          className="bg-gradient-to-br from-amber-500/90 to-yellow-600/90 backdrop-blur-lg rounded-full p-4 md:p-4 border-2 border-amber-400/40 hover:border-amber-400/70 transition-all hover:scale-110 shadow-xl relative group"
           aria-label="Open elite matches"
         >
-          <Crown size={16} className="text-white md:w-6 md:h-6" />
+          <Crown size={24} className="text-white md:w-6 md:h-6" />
 
           {/* Sync Circle Animation */}
           {syncing && (
@@ -142,8 +143,8 @@ const EliteMatchesCard = ({
 
           {/* Match Count Badge */}
           {hasMatches && (
-            <div className="absolute -top-1 -right-1 bg-amber-700 rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center">
-              <span className="text-white text-[11px] md:text-xs font-bold">{eliteMatches.length}</span>
+            <div className="absolute -top-1 -right-1 bg-amber-700 rounded-full w-6 h-6 md:w-6 md:h-6 flex items-center justify-center">
+              <span className="text-white text-xs md:text-xs font-bold">{eliteMatches.length}</span>
             </div>
           )}
 
@@ -156,7 +157,7 @@ const EliteMatchesCard = ({
 
       {/* Expanded State */}
       {isExpanded && (
-        <div className="bg-gradient-to-br from-amber-600/20 to-yellow-600/20 backdrop-blur-lg rounded-xl p-4 border-2 border-amber-400/40 shadow-2xl w-[calc(100vw-2rem)] md:w-[464px] max-h-[60vh] overflow-hidden flex flex-col">
+        <div className="mt-3 bg-gradient-to-br from-amber-600/20 to-yellow-600/20 backdrop-blur-lg rounded-xl p-4 border-2 border-amber-400/40 shadow-2xl w-[calc(100vw-2rem)] md:w-[464px] max-h-[60vh] overflow-hidden flex flex-col">
           {/* Header */}
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
