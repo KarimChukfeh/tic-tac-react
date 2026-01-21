@@ -180,7 +180,7 @@ const getPieceSymbol = (piece) => {
 };
 
 // Tournament Bracket Component
-const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onSpectateMatch, onForceEliminate, onClaimReplacement, onManualStart, onClaimAbandonedPool, onResetEnrollmentWindow, onEnroll, account, loading, syncDots, isEnrolled, entryFee, isFull, contract, isEnrolledInElite }) => {
+const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, /* onSpectateMatch, */ onForceEliminate, onClaimReplacement, onManualStart, onClaimAbandonedPool, onResetEnrollmentWindow, onEnroll, account, loading, syncDots, isEnrolled, entryFee, isFull, contract, isEnrolledInElite }) => {
   const { tierId, instanceId, status, currentRound, enrolledCount, prizePool, rounds, playerCount, enrolledPlayers, firstEnrollmentTime, countdownActive, enrollmentTimeout } = tournamentData;
 
   // Calculate total rounds based on player count
@@ -364,7 +364,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onSpectateMat
                         account={account}
                         loading={loading}
                         onEnterMatch={onEnterMatch}
-                        onSpectateMatch={onSpectateMatch}
+                        // onSpectateMatch={onSpectateMatch} // COMMENTED OUT: Spectate disabled
                         onForceEliminate={onForceEliminate}
                         onClaimReplacement={onClaimReplacement}
                         playerIcons={{ player1: '♚', player2: '♔' }}
@@ -2932,7 +2932,8 @@ export default function Chess() {
   };
 
   // Handle spectating a match (for non-participants)
-  const handleSpectateMatch = async (tierId, instanceId, roundNumber, matchNumber) => {
+  // COMMENTED OUT: Spectate functionality disabled for now
+  /* const handleSpectateMatch = async (tierId, instanceId, roundNumber, matchNumber) => {
     if (!contract) {
       alert('Contract not loaded');
       return;
@@ -3005,7 +3006,7 @@ export default function Chess() {
       setMatchLoading(false);
       setIsSpectator(false);
     }
-  };
+  }; */
 
   // Close match view and refresh tournament bracket
   const closeMatch = async () => {
@@ -3395,9 +3396,41 @@ export default function Chess() {
         );
 
         if (updatedMatch) {
-          // If match just completed, let MatchCompleted event listener handle modal display
+          // If match just completed (detected via event query in refreshMatchData)
           if (updatedMatch.matchStatus === 2) {
-            return;
+            console.log('[Chess Polling] Match completion detected, updating state and showing modal');
+
+            // Update match state with completion data
+            setCurrentMatch(prev => {
+              if (!prev || prev.matchStatus === 2) return prev; // Already completed
+              return updatedMatch;
+            });
+
+            // Show completion modal (in case event listener missed it)
+            const isPlayer1 = match.player1?.toLowerCase() === userAccount.toLowerCase();
+            const isPlayer2 = match.player2?.toLowerCase() === userAccount.toLowerCase();
+            const isParticipant = isPlayer1 || isPlayer2;
+
+            if (isParticipant) {
+              const userWon = !updatedMatch.isDraw && updatedMatch.winner.toLowerCase() === userAccount.toLowerCase();
+              const reasonNum = updatedMatch.completionReason || 0;
+
+              let resultType = 'lose';
+              if (updatedMatch.isDraw) {
+                resultType = 'draw';
+              } else if (userWon) {
+                resultType = (reasonNum === 1 || reasonNum === 3 || reasonNum === 4) ? 'forfeit_win' : 'win';
+              } else {
+                resultType = (reasonNum === 1 || reasonNum === 3 || reasonNum === 4) ? 'forfeit_lose' : 'lose';
+              }
+
+              console.log('[Chess Polling] Setting match end result:', resultType, 'with completion reason:', reasonNum);
+              setMatchEndResult({ result: resultType, completionReason: reasonNum });
+              setMatchEndWinner(updatedMatch.winner);
+              setMatchEndLoser(updatedMatch.loser);
+            }
+
+            return; // Stop polling
           }
 
           // Update for in-progress matches only - update turn, timer, and board fields
@@ -3954,7 +3987,7 @@ export default function Chess() {
                   tournamentData={viewingTournament}
                   onBack={handleBackToTournaments}
                   onEnterMatch={handlePlayMatch}
-                  onSpectateMatch={handleSpectateMatch}
+                  // onSpectateMatch={handleSpectateMatch} // COMMENTED OUT: Spectate disabled
                   onForceEliminate={handleForceEliminateStalledMatch}
                   onClaimReplacement={handleClaimMatchSlotByReplacement}
                   onManualStart={handleManualStart}
