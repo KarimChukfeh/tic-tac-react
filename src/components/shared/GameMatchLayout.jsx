@@ -212,25 +212,6 @@ const GameMatchLayout = ({
     const showML1CTAFromTimer = matchStatus === 1 && (player1TimedOut || player2TimedOut);
     const showML1CTA = showML1CTAFromTimeout || showML1CTAFromTimer;
 
-    // Debug logging
-    console.log('ML1 CTA Debug:', {
-      timeoutState,
-      timeoutActive: timeoutState?.timeoutActive,
-      matchStatus,
-      isYourTurn,
-      isPlayer1Turn,
-      isPlayer2Turn,
-      isPlayer1You,
-      isPlayer2You,
-      player1TimeLeft,
-      player2TimeLeft,
-      player1TimedOut,
-      player2TimedOut,
-      showML1CTAFromTimeout,
-      showML1CTAFromTimer,
-      showML1CTA
-    });
-
     return (
       <div className="lg:hidden space-y-3 mb-6">
         {/* Row 1: Player cards (with addresses and assignments) */}
