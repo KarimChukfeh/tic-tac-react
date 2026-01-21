@@ -68,29 +68,29 @@ const CommunityRaffleCard = ({ raffleInfo, raffleHistory = [], playerActivityHei
     }
   };
 
-  // Dynamic positioning based on actual PlayerActivity panel height
-  // PlayerActivity base positions: top-4 (16px) mobile, md:top-20 (80px) desktop
-  // PlayerActivity collapsed button size: ~32px mobile, ~64px desktop (with padding)
-  // Spacing between components: 32px
-  const BASE_TOP_MOBILE = 16; // top-4 in pixels
+  // Dynamic positioning:
+  // Mobile (<768px): Horizontal layout at bottom-left, positioned to the right of PlayerActivity
+  // Desktop (>=768px): Vertical layout at top-left, positioned below PlayerActivity
+
+  // Mobile positioning (bottom-left, horizontal)
+  const MOBILE_LEFT = 80; // 16px (left-4) + 48px (button width) + 16px (gap)
+
+  // Desktop positioning (top-left, vertical)
   const BASE_TOP_DESKTOP = 80; // md:top-20 in pixels
-  const COLLAPSED_BUTTON_HEIGHT_MOBILE = 32; // collapsed button height on mobile
   const COLLAPSED_BUTTON_HEIGHT_DESKTOP = 64; // collapsed button height on desktop
-  const SPACING = 32; // gap between components
+  const SPACING_DESKTOP = 32; // gap between components on desktop
 
-  // Calculate position based on current screen size
-  const baseTop = isDesktop ? BASE_TOP_DESKTOP : BASE_TOP_MOBILE;
-  const collapsedButtonHeight = isDesktop ? COLLAPSED_BUTTON_HEIGHT_DESKTOP : COLLAPSED_BUTTON_HEIGHT_MOBILE;
-
-  const topPosition = playerActivityHeight > 0
-    ? baseTop + playerActivityHeight + SPACING
-    : baseTop + collapsedButtonHeight + SPACING;
+  // Calculate desktop top position based on PlayerActivity height
+  const topPositionDesktop = playerActivityHeight > 0
+    ? BASE_TOP_DESKTOP + playerActivityHeight + SPACING_DESKTOP
+    : BASE_TOP_DESKTOP + COLLAPSED_BUTTON_HEIGHT_DESKTOP + SPACING_DESKTOP;
 
   return (
     <div
-      className="fixed left-4 md:left-16 z-50 transition-all duration-300"
+      className="fixed bottom-4 z-50 transition-all duration-300 md:bottom-auto md:left-16"
       style={{
-        top: `${topPosition}px`
+        left: isDesktop ? undefined : `${MOBILE_LEFT}px`,
+        top: isDesktop ? `${topPositionDesktop}px` : undefined
       }}
     >
       {/* Collapsed State - Yellow Circle Button */}

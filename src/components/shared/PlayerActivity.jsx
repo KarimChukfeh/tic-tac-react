@@ -458,7 +458,7 @@ const PlayerActivity = ({
   );
 
   return (
-    <div className="fixed top-4 left-4 md:top-20 md:left-16 z-50">
+    <div className="fixed bottom-4 left-4 md:top-20 md:bottom-auto md:left-16 z-50">
       {/* Collapsed State */}
       {!isExpanded && (
         <button
