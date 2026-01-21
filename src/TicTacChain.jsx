@@ -2733,57 +2733,7 @@ export default function TicTacChain() {
         );
 
         if (updatedMatch) {
-          // Handle match completed from MatchCompleted event polling
-          if (updatedMatch.completedFromEventPoll) {
-            console.log('[Polling] Match completed from event poll, updating state and showing banner');
-
-            // Update match state with event data (including board from event)
-            setCurrentMatch(prev => {
-              if (!prev) return updatedMatch;
-              // Don't overwrite if already completed
-              if (prev.matchStatus === 2) return prev;
-
-              return {
-                ...prev,
-                matchStatus: 2,
-                winner: updatedMatch.winner,
-                loser: updatedMatch.loser,
-                isDraw: updatedMatch.isDraw,
-                board: updatedMatch.board,
-                isYourTurn: false,
-                completionReason: updatedMatch.completionReason
-              };
-            });
-
-            // Show winner/loser banner
-            const player1 = updatedMatch.player1;
-            const player2 = updatedMatch.player2;
-            const isPlayer1 = player1?.toLowerCase() === userAccount.toLowerCase();
-            const isPlayer2 = player2?.toLowerCase() === userAccount.toLowerCase();
-            const isParticipant = isPlayer1 || isPlayer2;
-
-            if (isParticipant) {
-              const userWon = !updatedMatch.isDraw && updatedMatch.winner.toLowerCase() === userAccount.toLowerCase();
-              const reasonNum = updatedMatch.completionReason;
-
-              let resultType = 'lose';
-              if (updatedMatch.isDraw) {
-                resultType = 'draw';
-              } else if (userWon) {
-                resultType = (reasonNum === 1 || reasonNum === 3 || reasonNum === 4) ? 'forfeit_win' : 'win';
-              } else {
-                resultType = (reasonNum === 1 || reasonNum === 3 || reasonNum === 4) ? 'forfeit_lose' : 'lose';
-              }
-
-              console.log('[Polling] Setting match end result:', resultType, 'with completion reason:', reasonNum);
-              setMatchEndResult({ result: resultType, completionReason: reasonNum });
-              setMatchEndWinner(updatedMatch.winner);
-              setMatchEndLoser(updatedMatch.loser);
-            }
-            return;
-          }
-
-          // If match just completed (not from event poll), let events handle it
+          // If match just completed, let MatchCompleted event listener handle modal display
           if (updatedMatch.matchStatus === 2) {
             return;
           }

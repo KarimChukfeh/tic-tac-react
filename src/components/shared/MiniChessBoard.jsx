@@ -353,33 +353,6 @@ const MiniChessBoard = ({
       // Update the previous board ref
       previousBoardRef.current = parsed.board;
 
-      // Detect match end and show modal
-      if (parsed.matchStatus === 2 && !showMatchEndModal) {
-        // Determine result with completion reason
-        let result = null;
-        const completionReason = parsed.completionReason ?? 0; // Default to 0 (normal)
-
-        if (parsed.isDraw) {
-          result = 'draw';
-        } else if (parsed.winner?.toLowerCase() === account?.toLowerCase()) {
-          // Check if forfeit win
-          result = parsed.isForfeit ? 'forfeit_win' : 'win';
-        } else {
-          // Check if forfeit lose
-          result = parsed.isForfeit ? 'forfeit_lose' : 'lose';
-        }
-
-        // Store result with completion reason
-        setMatchEndResult({ result, completionReason });
-        setShowMatchEndModal(true);
-
-        // Notify parent that match completed so it stays visible (only once)
-        if (!hasNotifiedCompletion) {
-          onMatchCompleted?.();
-          setHasNotifiedCompletion(true);
-        }
-      }
-
       setMatchData(parsed);
       setLoading(false);
     } catch (err) {
@@ -409,6 +382,90 @@ const MiniChessBoard = ({
       fetchMatchData(false);
     }
   }, [refreshTrigger, fetchMatchData]);
+
+  // Listen for MatchCompleted events to show modal
+  useEffect(() => {
+    if (!contract || !account || !match || !matchData) return;
+
+    const handleMatchCompleted = async (eventMatchId, player1, player2, winner, isDraw, reason, packedBoard, event) => {
+      try {
+        // Calculate match ID for this mini board's match
+        const matchId = ethers.keccak256(
+          ethers.AbiCoder.defaultAbiCoder().encode(
+            ['uint8', 'uint8', 'uint8', 'uint8'],
+            [match.tierId, match.instanceId, match.roundIdx, match.matchIdx]
+          )
+        );
+
+        // Filter: Only process events for this specific match
+        if (eventMatchId !== matchId) {
+          return;
+        }
+
+        console.log('[MiniChessBoard] MatchCompleted event received for this match');
+
+        // Determine result with completion reason
+        let result = null;
+        const completionReason = Number(reason);
+
+        if (isDraw) {
+          result = 'draw';
+        } else if (winner?.toLowerCase() === account?.toLowerCase()) {
+          // Check if forfeit/intervention win
+          result = (completionReason === 1 || completionReason === 3 || completionReason === 4) ? 'forfeit_win' : 'win';
+        } else {
+          // Check if forfeit/intervention lose
+          result = (completionReason === 1 || completionReason === 3 || completionReason === 4) ? 'forfeit_lose' : 'lose';
+        }
+
+        // Store result with completion reason and show modal
+        setMatchEndResult({ result, completionReason });
+        setShowMatchEndModal(true);
+
+        // Notify parent that match completed so it stays visible (only once)
+        if (!hasNotifiedCompletion) {
+          onMatchCompleted?.();
+          setHasNotifiedCompletion(true);
+        }
+
+        console.log('[MiniChessBoard] Modal triggered by MatchCompleted event:', result);
+      } catch (err) {
+        console.error('[MiniChessBoard] Error processing MatchCompleted event:', err);
+      }
+    };
+
+    // Register event listener
+    contract.on('MatchCompleted', handleMatchCompleted);
+
+    // Query recent events to catch any missed while component was loading
+    const checkRecentEvents = async () => {
+      try {
+        const matchId = ethers.keccak256(
+          ethers.AbiCoder.defaultAbiCoder().encode(
+            ['uint8', 'uint8', 'uint8', 'uint8'],
+            [match.tierId, match.instanceId, match.roundIdx, match.matchIdx]
+          )
+        );
+
+        const filter = contract.filters.MatchCompleted(matchId);
+        const events = await contract.queryFilter(filter, -100); // Last 100 blocks
+
+        if (events.length > 0 && !showMatchEndModal) {
+          const event = events[events.length - 1];
+          const { player1, player2, winner, isDraw, reason, board } = event.args;
+          handleMatchCompleted(matchId, player1, player2, winner, isDraw, reason, board, event);
+        }
+      } catch (err) {
+        console.error('[MiniChessBoard] Error checking recent events:', err);
+      }
+    };
+
+    checkRecentEvents();
+
+    return () => {
+      contract.off('MatchCompleted', handleMatchCompleted);
+    };
+  }, [contract, account, match, matchData, showMatchEndModal, hasNotifiedCompletion, onMatchCompleted]);
 
   // Get piece symbol helper
   const getPieceSymbol = (piece) => {
@@ -498,13 +555,6 @@ const MiniChessBoard = ({
       previousBoardRef.current = parsed.board;
 
       setMatchData(parsed);
-
-      // Check if this move completed the match
-      if (parsed.matchStatus === 2 && !hasNotifiedCompletion) {
-        // Notify parent that match completed so it stays visible
-        onMatchCompleted?.();
-        setHasNotifiedCompletion(true);
-      }
 
       // Notify parent
       onMoveComplete?.();
