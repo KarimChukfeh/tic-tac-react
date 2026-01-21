@@ -31,6 +31,8 @@ const MatchTimeoutEscalation = ({
   escL2Available = false,
   escL3Available = false,
   isUserAdvancedForRound = false,
+  // Hide ML1 button on mobile (it's shown in the timer row instead)
+  hideML1OnMobile = false,
 }) => {
   // Only render when timeout is active and match is in progress
   if (!timeoutState || !timeoutState.timeoutActive || matchStatus !== 1) {
@@ -76,7 +78,7 @@ const MatchTimeoutEscalation = ({
         <button
           onClick={onClaimTimeoutWin}
           disabled={loading}
-          className="w-full mb-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-2 px-4 rounded-lg transition-all disabled:opacity-50"
+          className={`w-full mb-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-2 px-4 rounded-lg transition-all disabled:opacity-50 ${hideML1OnMobile ? 'hidden lg:block' : ''}`}
         >
           Claim Timeout Victory
         </button>

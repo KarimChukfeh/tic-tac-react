@@ -200,6 +200,9 @@ const GameMatchLayout = ({
     const player1Colors = getTimeColors(player1TimeLeft);
     const player2Colors = getTimeColors(player2TimeLeft);
 
+    // Check if ML1 CTA should be shown (timeout active and not user's turn)
+    const showML1CTA = timeoutState && timeoutState.timeoutActive && matchStatus === 1 && !isYourTurn;
+
     return (
       <div className="lg:hidden space-y-3 mb-6">
         {/* Row 1: Player cards (with addresses and assignments) */}
@@ -228,38 +231,58 @@ const GameMatchLayout = ({
           />
         </div>
 
-        {/* Row 2: Player timers (aligned with player cards) */}
+        {/* Row 2: Player timers OR ML1 CTA (aligned with player cards) */}
         {showTurnTimer && (
           <div className="grid grid-cols-2 gap-3">
-            {/* Player 1 Timer */}
-            <div className={`border rounded-lg p-2 ${
-              isPlayer1Turn ? `${player1Colors.border} ${player1Colors.bg}` : 'border-gray-600/30 opacity-60'
-            }`}>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-bold text-purple-300">Time</span>
-                <span className={`font-mono text-sm font-bold ${player1Colors.text}`}>
-                  {player1TimeLeft > 0 ? formatTime(player1TimeLeft) : 'OUT'}
-                </span>
+            {/* Player 1 Timer or ML1 CTA */}
+            {showML1CTA && !isPlayer1Turn ? (
+              <button
+                onClick={onClaimTimeoutWin}
+                disabled={loading}
+                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-2 px-4 rounded-lg transition-all disabled:opacity-50 text-sm"
+              >
+                Claim Timeout Victory
+              </button>
+            ) : (
+              <div className={`border rounded-lg p-2 ${
+                isPlayer1Turn ? `${player1Colors.border} ${player1Colors.bg}` : 'border-gray-600/30 opacity-60'
+              }`}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-bold text-purple-300">Time</span>
+                  <span className={`font-mono text-sm font-bold ${player1Colors.text}`}>
+                    {player1TimeLeft > 0 ? formatTime(player1TimeLeft) : 'OUT'}
+                  </span>
+                </div>
+                <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                  <div className={`h-full ${player1Colors.bar}`} style={{ width: `${Math.min(player1Progress, 100)}%` }} />
+                </div>
               </div>
-              <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
-                <div className={`h-full ${player1Colors.bar}`} style={{ width: `${Math.min(player1Progress, 100)}%` }} />
-              </div>
-            </div>
+            )}
 
-            {/* Player 2 Timer */}
-            <div className={`border rounded-lg p-2 ${
-              isPlayer2Turn ? `${player2Colors.border} ${player2Colors.bg}` : 'border-gray-600/30 opacity-60'
-            }`}>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-bold text-pink-300">Time</span>
-                <span className={`font-mono text-sm font-bold ${player2Colors.text}`}>
-                  {player2TimeLeft > 0 ? formatTime(player2TimeLeft) : 'OUT'}
-                </span>
+            {/* Player 2 Timer or ML1 CTA */}
+            {showML1CTA && !isPlayer2Turn ? (
+              <button
+                onClick={onClaimTimeoutWin}
+                disabled={loading}
+                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-2 px-4 rounded-lg transition-all disabled:opacity-50 text-sm"
+              >
+                Claim Timeout Victory
+              </button>
+            ) : (
+              <div className={`border rounded-lg p-2 ${
+                isPlayer2Turn ? `${player2Colors.border} ${player2Colors.bg}` : 'border-gray-600/30 opacity-60'
+              }`}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-bold text-pink-300">Time</span>
+                  <span className={`font-mono text-sm font-bold ${player2Colors.text}`}>
+                    {player2TimeLeft > 0 ? formatTime(player2TimeLeft) : 'OUT'}
+                  </span>
+                </div>
+                <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                  <div className={`h-full ${player2Colors.bar}`} style={{ width: `${Math.min(player2Progress, 100)}%` }} />
+                </div>
               </div>
-              <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
-                <div className={`h-full ${player2Colors.bar}`} style={{ width: `${Math.min(player2Progress, 100)}%` }} />
-              </div>
-            </div>
+            )}
           </div>
         )}
       </div>
@@ -324,6 +347,7 @@ const GameMatchLayout = ({
                 escL2Available={match.escL2Available}
                 escL3Available={match.escL3Available}
                 isUserAdvancedForRound={match.isUserAdvancedForRound}
+                hideML1OnMobile={true}
               />
             )}
 
@@ -414,6 +438,7 @@ const GameMatchLayout = ({
                 escL2Available={match.escL2Available}
                 escL3Available={match.escL3Available}
                 isUserAdvancedForRound={match.isUserAdvancedForRound}
+                hideML1OnMobile={true}
               />
             </div>
           )}
@@ -522,9 +547,10 @@ const GameMatchLayout = ({
             onForceEliminate={onForceEliminate}
             onClaimReplacement={onClaimReplacement}
             loading={loading}
-            tournamentRounds={tournamentRounds}
-            currentAccount={account}
-            currentRoundNumber={currentRoundNumber}
+            escL2Available={match.escL2Available}
+            escL3Available={match.escL3Available}
+            isUserAdvancedForRound={match.isUserAdvancedForRound}
+            hideML1OnMobile={true}
           />
         </div>
       )}
@@ -559,6 +585,7 @@ const GameMatchLayout = ({
             escL2Available={match.escL2Available}
             escL3Available={match.escL3Available}
             isUserAdvancedForRound={match.isUserAdvancedForRound}
+            hideML1OnMobile={true}
           />
         )}
 
@@ -637,6 +664,7 @@ const GameMatchLayout = ({
                 escL2Available={match.escL2Available}
                 escL3Available={match.escL3Available}
                 isUserAdvancedForRound={match.isUserAdvancedForRound}
+                hideML1OnMobile={true}
               />
             </div>
           )}
