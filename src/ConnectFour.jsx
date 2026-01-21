@@ -652,7 +652,6 @@ export default function ConnectFour() {
   const [matchEndWinnerLabel, setMatchEndWinnerLabel] = useState('');
   const [matchEndWinner, setMatchEndWinner] = useState(null); // Winner address for modal display
   const [matchEndLoser, setMatchEndLoser] = useState(null); // Loser address for modal display
-  const [tournamentCompletionData, setTournamentCompletionData] = useState(null); // Tournament completion notification data
   const previousBoardRef = useRef(null); // Track previous board state for move history sync
   const tournamentBracketRef = useRef(null); // Ref for auto-scrolling to tournament after URL navigation
   const matchViewRef = useRef(null); // Ref for auto-scrolling to match view
@@ -2687,22 +2686,6 @@ export default function ConnectFour() {
     setMatchEndWinnerLabel('');
   };
 
-  // Handle closing the tournament completion modal
-  const handleTournamentCompletionModalClose = async () => {
-    // Clear the modal state
-    setTournamentCompletionData(null);
-
-    // Refresh player activity to update terminated matches
-    if (playerActivity?.refetch) {
-      playerActivity.refetch();
-    }
-
-    // Refresh data
-    if (contract) {
-      await fetchLeaderboard(true);
-      await refreshAfterAction();
-    }
-  };
 
   // Go back from tournament bracket to tournaments list
   const handleBackToTournaments = async () => {
@@ -2761,127 +2744,6 @@ export default function ConnectFour() {
     }
   }, []);
 
-  // Listen for TournamentCompleted events to notify players
-  useEffect(() => {
-    if (!contract || !account) return;
-
-    console.log('[TournamentCompleted] Setting up event listener for account:', account);
-
-    const handleTournamentCompleted = async (tierId, instanceId, winner, _prizeAmount, completionReason, enrolledPlayers, event) => {
-      console.log('[TournamentCompleted Event] ===== EVENT FIRED =====');
-      console.log('[TournamentCompleted Event] Tournament:', Number(tierId), 'Instance:', Number(instanceId));
-      console.log('[TournamentCompleted Event] Completion reason:', Number(completionReason));
-      console.log('[TournamentCompleted Event] Winner:', winner);
-
-      // Time-gate: Only process events that occurred after current match/tournament started
-      if (event && currentMatch) {
-        try {
-          const block = await event.getBlock();
-          const eventTimestamp = block.timestamp;
-          const matchStartTime = currentMatch.startTime;
-
-          console.log('[TournamentCompleted Event] Timestamp check:', {
-            eventTimestamp,
-            matchStartTime,
-            isValidEvent: eventTimestamp >= matchStartTime
-          });
-
-          if (eventTimestamp < matchStartTime) {
-            console.log('[TournamentCompleted Event] Event is older than current match start time, ignoring');
-            return;
-          }
-        } catch (err) {
-          console.error('[TournamentCompleted Event] Error checking timestamp:', err);
-          // Don't return here - if timestamp check fails, proceed with other validation
-        }
-      }
-
-      // 1. Check if player is the winner - if yes, DON'T show modal (they won!)
-      const playerIsWinner = winner.toLowerCase() === account.toLowerCase();
-      if (playerIsWinner) {
-        console.log('[TournamentCompleted Event] Player is the WINNER - no notification needed');
-        return;
-      }
-
-      // 2. Check if player was enrolled
-      const isEnrolled = enrolledPlayers.some(
-        addr => addr.toLowerCase() === account.toLowerCase()
-      );
-
-      if (!isEnrolled) {
-        console.log('[TournamentCompleted Event] Player not enrolled, ignoring');
-        return;
-      }
-
-      // 3. Check if player had an active tournament at time of completion
-      // (if not in playerActiveTournaments, they were already eliminated)
-      try {
-        const activeTournaments = await contract.getPlayerActiveTournaments(account);
-        const wasActive = activeTournaments.some(
-          ref => Number(ref.tierId) === Number(tierId) && Number(ref.instanceId) === Number(instanceId)
-        );
-
-        if (!wasActive) {
-          console.log('[TournamentCompleted Event] Player was already eliminated before tournament ended - no notification needed');
-          return;
-        }
-
-        console.log('[TournamentCompleted Event] ✓ Player had active match when tournament ended - SHOWING NOTIFICATION');
-
-        // Show modal - player was actively playing when tournament completed
-        setTournamentCompletionData({
-          tierId: Number(tierId),
-          instanceId: Number(instanceId),
-          winner,
-          completionReason: Number(completionReason)
-        });
-
-        // Clear current match view if in this tournament
-        if (currentMatch &&
-            currentMatch.tierId === Number(tierId) &&
-            currentMatch.instanceId === Number(instanceId)) {
-          console.log('[TournamentCompleted Event] Clearing current match view');
-          setCurrentMatch(null);
-          setMoveHistory([]);
-        }
-      } catch (error) {
-        console.error('[TournamentCompleted Event] Error checking playerActiveTournaments:', error);
-      }
-    };
-
-    // Register event listener
-    contract.on('TournamentCompleted', handleTournamentCompleted);
-    console.log('[TournamentCompleted] Event listener registered');
-
-    // Query recent events to catch any missed while page was loading
-    const checkRecentEvents = async () => {
-      try {
-        const filter = contract.filters.TournamentCompleted();
-        const events = await contract.queryFilter(filter, -50);
-        console.log('[TournamentCompleted] Found', events.length, 'recent events in last 50 blocks');
-
-        // Process only the most recent event per tournament
-        const processedTournaments = new Set();
-        events.reverse().forEach(event => {
-          const tournamentKey = `${event.args.tierId}-${event.args.instanceId}`;
-          if (!processedTournaments.has(tournamentKey)) {
-            processedTournaments.add(tournamentKey);
-            const { tierId, instanceId, winner, completionReason, enrolledPlayers } = event.args;
-            handleTournamentCompleted(tierId, instanceId, winner, 0n, completionReason, enrolledPlayers, event);
-          }
-        });
-      } catch (err) {
-        console.error('[TournamentCompleted] Error checking recent events:', err);
-      }
-    };
-
-    checkRecentEvents();
-
-    return () => {
-      console.log('[TournamentCompleted] Cleaning up event listener');
-      contract.off('TournamentCompleted', handleTournamentCompleted);
-    };
-  }, [contract, account, currentMatch]);
 
   // Listen for MatchCompleted events to notify players and update match state
   useEffect(() => {
@@ -4202,18 +4064,6 @@ export default function ConnectFour() {
         prizePool={currentMatch?.prizePool}
       />
 
-      {/* Tournament Completion Modal - only show if no match result modal is showing */}
-      {tournamentCompletionData && !matchEndResult && (
-        <MatchEndModal
-          result="tournament_ended"
-          onClose={handleTournamentCompletionModalClose}
-          completionReason={tournamentCompletionData.completionReason}
-          tournamentWinner={tournamentCompletionData.winner}
-          currentAccount={account}
-          gameType="connectfour"
-          isVisible={true}
-        />
-      )}
     </div>
   );
 }
