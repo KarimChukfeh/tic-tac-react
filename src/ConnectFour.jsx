@@ -23,6 +23,8 @@ import {
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import ConnectFourABIData from './ConnectFourABI-modular.json';
+import TicTacChainABIData from './TTTABI-modular.json';
+import ChessABIData from './ChessOnChain-ABI-modular.json';
 const CONNECTFOUR_ABI = ConnectFourABIData.abi;
 const CONTRACT_ADDRESS = ConnectFourABIData.address;
 const MODULE_ADDRESSES = ConnectFourABIData.modules;
@@ -3808,7 +3810,7 @@ export default function ConnectFour() {
                     <td className="p-4 align-top">
                       <div className="space-y-2">
                         <a
-                          href="https://arbiscan.io/address/0x50fA8Bc9622F7Cac110586a418F8731f17A9dbFE#code"
+                          href={`https://arbiscan.io/address/${MODULE_ADDRESSES.core}#code`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="block text-slate-400 hover:text-cyan-400 transition-colors text-sm"
@@ -3816,7 +3818,7 @@ export default function ConnectFour() {
                           ETour_Core.sol
                         </a>
                         <a
-                          href="https://arbiscan.io/address/0xF3C194d0277Ee9F2F46cd17D78D377a9f04b4a9B#code"
+                          href={`https://arbiscan.io/address/${MODULE_ADDRESSES.matches}#code`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="block text-slate-400 hover:text-cyan-400 transition-colors text-sm"
@@ -3824,7 +3826,7 @@ export default function ConnectFour() {
                           ETour_Matches.sol
                         </a>
                         <a
-                          href="https://arbiscan.io/address/0x6828987b8684c5a4ec1353D38aE16D205238E46F#code"
+                          href={`https://arbiscan.io/address/${MODULE_ADDRESSES.prizes}#code`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="block text-slate-400 hover:text-cyan-400 transition-colors text-sm"
@@ -3832,7 +3834,7 @@ export default function ConnectFour() {
                           ETour_Prizes.sol
                         </a>
                         <a
-                          href="https://arbiscan.io/address/0x7D00c716955B32375bef412078AD2B72cE8530B8#code"
+                          href={`https://arbiscan.io/address/${MODULE_ADDRESSES.raffle}#code`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="block text-slate-400 hover:text-cyan-400 transition-colors text-sm"
@@ -3840,7 +3842,7 @@ export default function ConnectFour() {
                           ETour_Raffle.sol
                         </a>
                         <a
-                          href="https://arbiscan.io/address/0x8eF07467764b4B0baE5d4A481371d351c3b3c0DF#code"
+                          href={`https://arbiscan.io/address/${MODULE_ADDRESSES.escalation}#code`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="block text-slate-400 hover:text-cyan-400 transition-colors text-sm"
@@ -3852,7 +3854,7 @@ export default function ConnectFour() {
                     <td className="p-4 align-top">
                       <div className="space-y-2">
                         <a
-                          href="https://arbiscan.io/address/0xE794752f489d0223a80114efA39BC520ceE38978#code"
+                          href={`https://arbiscan.io/address/${ChessABIData.modules.chessRules}#code`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="block text-slate-400 hover:text-cyan-400 transition-colors text-sm"
@@ -3864,7 +3866,7 @@ export default function ConnectFour() {
                     <td className="p-4 align-top">
                       <div className="space-y-2">
                         <a
-                          href="https://arbiscan.io/address/0xA98e643F2EE17781f1FDE5D740CB413b6d5DbDbe#code"
+                          href={`https://arbiscan.io/address/${TicTacChainABIData.address}#code`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="block text-slate-400 hover:text-cyan-400 transition-colors text-sm"
@@ -3872,7 +3874,7 @@ export default function ConnectFour() {
                           TicTacChain.sol
                         </a>
                         <a
-                          href="https://arbiscan.io/address/0x010b8790d9597D5E7800a44Ad24f76F0C45584e7#code"
+                          href={`https://arbiscan.io/address/${ChessABIData.address}#code`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="block text-slate-400 hover:text-cyan-400 transition-colors text-sm"
@@ -3880,7 +3882,7 @@ export default function ConnectFour() {
                           ChessOnChain.sol
                         </a>
                         <a
-                          href="https://arbiscan.io/address/0x96855793ba805ffDEf910e77807604c33f9816Ae#code"
+                          href={`https://arbiscan.io/address/${ConnectFourABIData.address}#code`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="block text-slate-400 hover:text-cyan-400 transition-colors text-sm"
