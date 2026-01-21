@@ -353,7 +353,7 @@ const MatchCard = ({
         )}
 
         {/* Escalation CTAs for outsiders */}
-        {showEscalation && !isUserMatch && match.matchStatus !== 2 && (
+        {showEscalation && !isUserMatch && match.matchStatus === 1 && (
           <>
             {/* ML2: Force Eliminate (Advanced Players Only) */}
             {showML2CTA && onForceEliminate && (
