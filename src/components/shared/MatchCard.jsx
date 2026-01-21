@@ -340,8 +340,8 @@ const MatchCard = ({
           </button>
         )}
 
-        {/* Spectate Button for non-participants (active matches only) */}
-        {!isUserMatch && match.matchStatus === 1 && onSpectateMatch && (
+        {/* COMMENTED OUT: Spectate Button disabled for now */}
+        {/* {!isUserMatch && match.matchStatus === 1 && onSpectateMatch && (
           <button
             onClick={() => onSpectateMatch(tierId, instanceId, roundIdx, matchIdx)}
             disabled={loading}
@@ -350,7 +350,7 @@ const MatchCard = ({
             <Eye size={16} />
             Spectate Match
           </button>
-        )}
+        )} */}
 
         {/* Escalation CTAs for outsiders */}
         {showEscalation && !isUserMatch && match.matchStatus === 1 && (

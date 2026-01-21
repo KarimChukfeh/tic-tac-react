@@ -697,14 +697,14 @@ const PlayerActivity = ({
                                   )}
                                 </button>
 
-                                {/* Expand button - show for active games only */}
-                                <button
+                                {/* COMMENTED OUT: Mini board expand button */}
+                                {/* <button
                                   onClick={() => toggleMatchExpand(matchKey)}
                                   className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-all"
                                   title={isMatchExpanded ? "Hide board" : "Show board"}
                                 >
                                   {isMatchExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                                </button>
+                                </button> */}
                               </>
                             ) : (
                               /* Dismiss button for completed matches */
@@ -719,8 +719,8 @@ const PlayerActivity = ({
                             )}
                           </div>
 
-                          {/* Mini Board - support all three games */}
-                          {isMatchExpanded && (
+                          {/* COMMENTED OUT: Mini Board - support all three games */}
+                          {/* {isMatchExpanded && (
                             <div className="mt-3 pt-3 border-t border-yellow-400/20">
                               {gameName === 'tictactoe' && (
                                 <MiniTicTacToeBoard
@@ -788,7 +788,7 @@ const PlayerActivity = ({
                                 />
                               )}
                             </div>
-                          )}
+                          )} */}
                         </div>
                       );
                     })}
