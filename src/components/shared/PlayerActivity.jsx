@@ -703,7 +703,7 @@ const PlayerActivity = ({
                               /* Dismiss button for completed matches */
                               <button
                                 onClick={() => handleDismissMatch(match.tierId, match.instanceId, match.roundIdx, match.matchIdx)}
-                                className="flex-1 bg-red-600/20 hover:bg-red-600/40 text-red-300 rounded-lg transition-all flex items-center justify-center gap-2 py-2 px-4 font-semibold text-sm"
+                                className="flex-1 bg-blue-600/20 hover:bg-blue-600/40 text-blue-300 rounded-lg transition-all flex items-center justify-center gap-2 py-2 px-4 font-semibold text-sm"
                                 title="Remove this match from the list"
                               >
                                 <X size={16} />
