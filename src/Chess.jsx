@@ -2765,8 +2765,8 @@ export default function Chess() {
       if (updatedMatch) {
         setCurrentMatch(updatedMatch);
 
-        // Show victory modal with proper winner/loser info
-        setMatchEndResult('forfeit_win');
+        // Show victory modal with proper winner/loser info (timeout = reason 1)
+        setMatchEndResult({ result: 'forfeit_win', completionReason: 1 });
         setMatchEndWinnerLabel('You');
         setMatchEndWinner(updatedMatch.winner);
         setMatchEndLoser(updatedMatch.loser);
@@ -3349,8 +3349,8 @@ export default function Chess() {
           resultType = (reasonNum === 1 || reasonNum === 3 || reasonNum === 4) ? 'forfeit_lose' : 'lose';
         }
 
-        console.log('[MatchCompleted Event] Setting match end result:', resultType);
-        setMatchEndResult(resultType);
+        console.log('[MatchCompleted Event] Setting match end result:', resultType, 'with completion reason:', reasonNum);
+        setMatchEndResult({ result: resultType, completionReason: reasonNum });
         setMatchEndWinner(winner);
         setMatchEndLoser(eventLoser);
       }
@@ -3575,8 +3575,8 @@ export default function Chess() {
                 resultType = (reasonNum === 1 || reasonNum === 3 || reasonNum === 4) ? 'forfeit_lose' : 'lose';
               }
 
-              console.log('[Chess Polling] Setting match end result:', resultType);
-              setMatchEndResult(resultType);
+              console.log('[Chess Polling] Setting match end result:', resultType, 'with completion reason:', reasonNum);
+              setMatchEndResult({ result: resultType, completionReason: reasonNum });
               setMatchEndWinner(updatedMatch.winner);
               setMatchEndLoser(updatedMatch.loser);
             }
@@ -4924,7 +4924,8 @@ export default function Chess() {
 
       {/* Match End Modal */}
       <MatchEndModal
-        result={matchEndResult}
+        result={matchEndResult?.result || matchEndResult}
+        completionReason={matchEndResult?.completionReason}
         onClose={handleMatchEndModalClose}
         winnerLabel={matchEndWinnerLabel}
         winnerAddress={matchEndWinner}

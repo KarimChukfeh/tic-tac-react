@@ -122,6 +122,7 @@ const MiniTicTacToeBoard = ({
               isDraw: eventIsDraw,
               board: eventBoard,
               isForfeit: Number(eventReason) === 2, // Reason 2 = forfeit
+              completionReason: Number(eventReason), // Store full reason code
             };
 
             alreadyReconstructed = true; // Mark as reconstructed to skip second reconstruction
@@ -180,8 +181,10 @@ const MiniTicTacToeBoard = ({
 
       // Detect match end and show modal
       if (parsed.matchStatus === 2 && !showMatchEndModal) {
-        // Determine result
+        // Determine result with completion reason
         let result = null;
+        const completionReason = parsed.completionReason ?? 0; // Default to 0 (normal)
+
         if (parsed.isDraw) {
           result = 'draw';
         } else if (parsed.winner?.toLowerCase() === account?.toLowerCase()) {
@@ -191,7 +194,9 @@ const MiniTicTacToeBoard = ({
           // Check if forfeit lose
           result = parsed.isForfeit ? 'forfeit_lose' : 'lose';
         }
-        setMatchEndResult(result);
+
+        // Store result with completion reason
+        setMatchEndResult({ result, completionReason });
         setShowMatchEndModal(true);
 
         // Notify parent that match completed so it stays visible (only once)
@@ -419,9 +424,10 @@ const MiniTicTacToeBoard = ({
       {/* Mini Match End Modal - Above Board */}
       {showMatchEndModal && matchEndResult && matchData.matchStatus === 2 && (
         <MiniMatchEndModal
-          result={matchEndResult}
+          result={matchEndResult.result}
+          completionReason={matchEndResult.completionReason}
           onClose={() => {
-            const isDefeat = matchEndResult === 'lose' || matchEndResult === 'forfeit_lose';
+            const isDefeat = matchEndResult.result === 'lose' || matchEndResult.result === 'forfeit_lose';
             // Hide modal only - keep match card visible with final board state
             setShowMatchEndModal(false);
             // For victory/draw, trigger refresh to update activity panel
