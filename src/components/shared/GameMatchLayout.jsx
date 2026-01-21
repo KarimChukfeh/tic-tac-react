@@ -235,7 +235,7 @@ const GameMatchLayout = ({
         {showTurnTimer && (
           <div className="grid grid-cols-2 gap-3">
             {/* Player 1 Timer or ML1 CTA */}
-            {showML1CTA && !isPlayer1Turn ? (
+            {showML1CTA && isPlayer1Turn ? (
               <button
                 onClick={onClaimTimeoutWin}
                 disabled={loading}
@@ -260,7 +260,7 @@ const GameMatchLayout = ({
             )}
 
             {/* Player 2 Timer or ML1 CTA */}
-            {showML1CTA && !isPlayer2Turn ? (
+            {showML1CTA && isPlayer2Turn ? (
               <button
                 onClick={onClaimTimeoutWin}
                 disabled={loading}
