@@ -496,7 +496,7 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
   //   return () => clearInterval(interval);
   // }, [contract, account, fetchActivity]);
 
-  // Listen for MatchCompleted events for instant updates
+  // Listen for MatchCompleted events for instant updates (filtered to player's matches only)
   useEffect(() => {
     if (!contract || !account) return;
 
@@ -515,14 +515,21 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
       fetchActivity(false);
     };
 
-    // Register event listener (no filter - listen to all MatchCompleted events)
-    contract.on('MatchCompleted', handleMatchCompleted);
-    console.log('[PlayerActivity] MatchCompleted event listener registered');
+    // Register filtered event listeners - only listen to events where player is involved
+    // Filter 1: Player is player1
+    const filterAsPlayer1 = contract.filters.MatchCompleted(null, account, null);
+    // Filter 2: Player is player2
+    const filterAsPlayer2 = contract.filters.MatchCompleted(null, null, account);
+
+    contract.on(filterAsPlayer1, handleMatchCompleted);
+    contract.on(filterAsPlayer2, handleMatchCompleted);
+    console.log('[PlayerActivity] MatchCompleted event listeners registered (filtered to player matches only)');
 
     // Cleanup
     return () => {
-      console.log('[PlayerActivity] Cleaning up MatchCompleted event listener');
-      contract.off('MatchCompleted', handleMatchCompleted);
+      console.log('[PlayerActivity] Cleaning up MatchCompleted event listeners');
+      contract.off(filterAsPlayer1, handleMatchCompleted);
+      contract.off(filterAsPlayer2, handleMatchCompleted);
     };
   }, [contract, account, fetchActivity]);
 
@@ -532,12 +539,17 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
     setDismissedMatches(prev => new Set([...prev, matchKey]));
   }, []);
 
+  // Stable refetch function to prevent infinite re-renders
+  const refetch = useCallback(() => {
+    fetchActivity(false);
+  }, [fetchActivity]);
+
   return {
     data,
     loading,
     syncing,
     error,
-    refetch: () => fetchActivity(false),
+    refetch,
     dismissMatch
   };
 };
