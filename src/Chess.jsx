@@ -3611,7 +3611,6 @@ export default function Chess() {
               isElite={isEnrolledInElite}
               isExpanded={expandedPanel === 'playerActivity'}
               onToggleExpand={() => setExpandedPanel(expandedPanel === 'playerActivity' ? null : 'playerActivity')}
-              hideOnMobile={expandedPanel !== null && expandedPanel !== 'playerActivity'}
             />
 
             {/* Community Raffle Card */}
@@ -3625,7 +3624,6 @@ export default function Chess() {
               onHeightChange={setRaffleCardHeight}
               isExpanded={expandedPanel === 'communityRaffle'}
               onToggleExpand={() => setExpandedPanel(expandedPanel === 'communityRaffle' ? null : 'communityRaffle')}
-              hideOnMobile={expandedPanel !== null && expandedPanel !== 'communityRaffle'}
             />
 
             {/* Elite Matches Card */}
@@ -3639,7 +3637,6 @@ export default function Chess() {
               onViewMatch={handleViewArchivedMatch}
               isExpanded={expandedPanel === 'eliteMatches'}
               onToggleExpand={() => setExpandedPanel(expandedPanel === 'eliteMatches' ? null : 'eliteMatches')}
-              hideOnMobile={expandedPanel !== null && expandedPanel !== 'eliteMatches'}
             />
           </div>
 
@@ -3662,7 +3659,6 @@ export default function Chess() {
               isElite={isEnrolledInElite}
               isExpanded={expandedPanel === 'playerActivity'}
               onToggleExpand={() => setExpandedPanel(expandedPanel === 'playerActivity' ? null : 'playerActivity')}
-              hideOnMobile={expandedPanel !== null && expandedPanel !== 'playerActivity'}
             />
 
             <CommunityRaffleCard
@@ -3675,7 +3671,6 @@ export default function Chess() {
               onHeightChange={setRaffleCardHeight}
               isExpanded={expandedPanel === 'communityRaffle'}
               onToggleExpand={() => setExpandedPanel(expandedPanel === 'communityRaffle' ? null : 'communityRaffle')}
-              hideOnMobile={expandedPanel !== null && expandedPanel !== 'communityRaffle'}
             />
 
             <EliteMatchesCard
@@ -3688,7 +3683,6 @@ export default function Chess() {
               onViewMatch={handleViewArchivedMatch}
               isExpanded={expandedPanel === 'eliteMatches'}
               onToggleExpand={() => setExpandedPanel(expandedPanel === 'eliteMatches' ? null : 'eliteMatches')}
-              hideOnMobile={expandedPanel !== null && expandedPanel !== 'eliteMatches'}
             />
           </div>
         </div>

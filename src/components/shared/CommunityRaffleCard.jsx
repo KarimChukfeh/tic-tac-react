@@ -123,42 +123,40 @@ const CommunityRaffleCard = ({
         top: isDesktop ? `${topPositionDesktop}px` : undefined
       }}
     >
-      {/* Collapsed State - Yellow Circle Button */}
-      {!isExpanded && (
-        <button
-          onClick={() => handleSetExpanded(true)}
-          className={`max-md:mx-auto rounded-full p-2.5 md:p-4 border-2 transition-all hover:scale-110 shadow-xl relative group ${
-            isFull
-              ? 'bg-gradient-to-br from-yellow-500 to-amber-500 border-yellow-400/70 hover:border-yellow-400'
-              : 'bg-gradient-to-br from-yellow-600 to-amber-600 border-yellow-400/40 hover:border-yellow-400/70'
-          }`}
-          aria-label="Open contract pool"
-        >
-          <img
-            src="/raffle-icon.png"
-            alt="Raffle"
-            className="w-[18px] h-[18px] md:w-6 md:h-6"
-            style={{ filter: 'brightness(0) invert(1)' }}
-          />
+      {/* Toggle Button */}
+      <button
+        onClick={() => handleSetExpanded(!isExpanded)}
+        className={`max-md:mx-auto rounded-full p-2.5 md:p-4 border-2 transition-all hover:scale-110 shadow-xl relative group ${
+          isFull
+            ? 'bg-gradient-to-br from-yellow-500 to-amber-500 border-yellow-400/70 hover:border-yellow-400'
+            : 'bg-gradient-to-br from-yellow-600 to-amber-600 border-yellow-400/40 hover:border-yellow-400/70'
+        }`}
+        aria-label={isExpanded ? "Close community raffle" : "Open community raffle"}
+      >
+        <img
+          src="/raffle-icon.png"
+          alt="Raffle"
+          className="w-[18px] h-[18px] md:w-6 md:h-6"
+          style={{ filter: 'brightness(0) invert(1)' }}
+        />
 
-          {/* Sync Circle Animation */}
-          {syncing && (
-            <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-cyan-400 animate-spin"></div>
-          )}
+        {/* Sync Circle Animation */}
+        {syncing && (
+          <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-cyan-400 animate-spin"></div>
+        )}
 
-          {/* Full Badge */}
-          {isFull && (
-            <div className="absolute -top-1 -right-1 bg-green-500 rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center">
-              <span className="text-white text-[10px] md:text-xs font-bold">✓</span>
-            </div>
-          )}
-
-          {/* Tooltip */}
-          <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-            Community Raffle
+        {/* Full Badge */}
+        {isFull && (
+          <div className="absolute -top-1 -right-1 bg-green-500 rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center">
+            <span className="text-white text-[10px] md:text-xs font-bold">✓</span>
           </div>
-        </button>
-      )}
+        )}
+
+        {/* Tooltip */}
+        <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+          Community Raffle
+        </div>
+      </button>
 
       {/* Expanded State */}
       {isExpanded && (

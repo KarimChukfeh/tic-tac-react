@@ -484,42 +484,40 @@ const PlayerActivity = ({
 
   return (
     <div className={`max-md:relative md:fixed max-md:flex-1 max-md:flex max-md:justify-center md:top-20 md:left-16 z-50`}>
-      {/* Collapsed State */}
-      {!isExpanded && (
-        <button
-          onClick={() => handleSetExpanded(true)}
-          className={`max-md:mx-auto bg-gradient-to-br backdrop-blur-lg rounded-full p-2.5 md:p-4 border-2 transition-all hover:scale-110 shadow-xl relative group ${
-            isElite
-              ? 'from-[#fbbf24]/90 to-[#f59e0b]/90 border-[#d4a012]/40 hover:border-[#d4a012]/70'
-              : 'from-purple-600/90 to-blue-600/90 border-purple-400/40 hover:border-purple-400/70'
-          }`}
-          aria-label="Open player activity"
-        >
-          <Users size={18} className="text-white md:w-6 md:h-6" />
+      {/* Toggle Button */}
+      <button
+        onClick={() => handleSetExpanded(!isExpanded)}
+        className={`max-md:mx-auto bg-gradient-to-br backdrop-blur-lg rounded-full p-2.5 md:p-4 border-2 transition-all hover:scale-110 shadow-xl relative group ${
+          isElite
+            ? 'from-[#fbbf24]/90 to-[#f59e0b]/90 border-[#d4a012]/40 hover:border-[#d4a012]/70'
+            : 'from-purple-600/90 to-blue-600/90 border-purple-400/40 hover:border-purple-400/70'
+        }`}
+        aria-label={isExpanded ? "Close player activity" : "Open player activity"}
+      >
+        <Users size={18} className="text-white md:w-6 md:h-6" />
 
-          {/* Sync Circle Animation */}
-          {syncing && (
-            <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-cyan-400 animate-spin"></div>
-          )}
+        {/* Sync Circle Animation */}
+        {syncing && (
+          <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-cyan-400 animate-spin"></div>
+        )}
 
-          {/* Activity Badges */}
-          {enrolledTournamentCount > 0 && (
-            <div className="absolute -top-1 -right-1 bg-orange-500 rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center animate-pulse">
-              <span className="text-white text-[10px] md:text-xs font-bold">{enrolledTournamentCount}</span>
-            </div>
-          )}
-          {activeMatchCount > 0 && (
-            <div className="absolute -top-1 -left-1 bg-red-500 rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center animate-pulse">
-              <span className="text-white text-[10px] md:text-xs font-bold">{activeMatchCount}</span>
-            </div>
-          )}
-
-          {/* Tooltip */}
-          <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-            Your Activity
+        {/* Activity Badges */}
+        {enrolledTournamentCount > 0 && (
+          <div className="absolute -top-1 -right-1 bg-orange-500 rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center animate-pulse">
+            <span className="text-white text-[10px] md:text-xs font-bold">{enrolledTournamentCount}</span>
           </div>
-        </button>
-      )}
+        )}
+        {activeMatchCount > 0 && (
+          <div className="absolute -top-1 -left-1 bg-red-500 rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center animate-pulse">
+            <span className="text-white text-[10px] md:text-xs font-bold">{activeMatchCount}</span>
+          </div>
+        )}
+
+        {/* Tooltip */}
+        <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+          Your Activity
+        </div>
+      </button>
 
       {/* Expanded State */}
       {isExpanded && (

@@ -126,33 +126,31 @@ const EliteMatchesCard = ({
         top: isDesktop ? `${topPositionDesktop}px` : undefined
       }}
     >
-      {/* Collapsed State - Gold Crown Circle Button */}
-      {!isExpanded && (
-        <button
-          onClick={() => handleSetExpanded(true)}
-          className="max-md:mx-auto bg-gradient-to-br from-amber-500/90 to-yellow-600/90 backdrop-blur-lg rounded-full p-2.5 md:p-4 border-2 border-amber-400/40 hover:border-amber-400/70 transition-all hover:scale-110 shadow-xl relative group"
-          aria-label="Open elite matches"
-        >
-          <Crown size={18} className="text-white md:w-6 md:h-6" />
+      {/* Toggle Button */}
+      <button
+        onClick={() => handleSetExpanded(!isExpanded)}
+        className="max-md:mx-auto bg-gradient-to-br from-amber-500/90 to-yellow-600/90 backdrop-blur-lg rounded-full p-2.5 md:p-4 border-2 border-amber-400/40 hover:border-amber-400/70 transition-all hover:scale-110 shadow-xl relative group"
+        aria-label={isExpanded ? "Close elite matches" : "Open elite matches"}
+      >
+        <Crown size={18} className="text-white md:w-6 md:h-6" />
 
-          {/* Sync Circle Animation */}
-          {syncing && (
-            <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-cyan-400 animate-spin"></div>
-          )}
+        {/* Sync Circle Animation */}
+        {syncing && (
+          <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-cyan-400 animate-spin"></div>
+        )}
 
-          {/* Match Count Badge */}
-          {hasMatches && (
-            <div className="absolute -top-1 -right-1 bg-amber-700 rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center">
-              <span className="text-white text-[10px] md:text-xs font-bold">{eliteMatches.length}</span>
-            </div>
-          )}
-
-          {/* Tooltip */}
-          <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-            Elite Matches
+        {/* Match Count Badge */}
+        {hasMatches && (
+          <div className="absolute -top-1 -right-1 bg-amber-700 rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center">
+            <span className="text-white text-[10px] md:text-xs font-bold">{eliteMatches.length}</span>
           </div>
-        </button>
-      )}
+        )}
+
+        {/* Tooltip */}
+        <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+          Elite Matches
+        </div>
+      </button>
 
       {/* Expanded State */}
       {isExpanded && (
