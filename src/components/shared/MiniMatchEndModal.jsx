@@ -80,7 +80,25 @@ const MiniMatchEndModal = ({
     // 0: Normal, 1: Timeout (ML1), 2: Draw/Forfeit, 3: Force Elimination (ML2),
     // 4: Abandoned Match (ML3), 5: All Draw
 
-    if (completionReason === 3) {
+    if (completionReason === 1) {
+      // ML1: Timeout
+      if (result === 'forfeit_win') {
+        if (isFinalRound) {
+          return (
+            <span>
+              Opponent timed out via <a href="#ml1" onClick={onClose} className="underline decoration-dotted hover:text-white">ML1</a>. Champion!{formattedPrizePool ? ` +${formattedPrizePool} ETH` : ''}
+            </span>
+          );
+        }
+        return (
+          <span>
+            Opponent timed out via <a href="#ml1" onClick={onClose} className="underline decoration-dotted hover:text-white">ML1</a>. Advance to {getNextRoundName()}
+          </span>
+        );
+      } else if (result === 'forfeit_lose') {
+        return 'You ran out of time';
+      }
+    } else if (completionReason === 3) {
       // ML2: Force Elimination
       return (
         <span>
@@ -120,6 +138,15 @@ const MiniMatchEndModal = ({
 
   // Get title based on completion reason and result
   const getTitle = () => {
+    // ML1: Timeout
+    if (completionReason === 1) {
+      if (result === 'forfeit_win') {
+        return 'Victory by Timeout!';
+      } else if (result === 'forfeit_lose') {
+        return 'Timeout';
+      }
+    }
+
     // ML2 or ML3 eliminations
     if (completionReason === 3 || completionReason === 4) {
       return 'Match Eliminated';

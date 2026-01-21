@@ -212,10 +212,55 @@ const MatchEndModal = ({
     forfeit_win: {
       icon: Trophy,
       title: isFinalRound ? 'Tournament Champion!' : 'You Win!',
-      subtitle: completionReason === 3 || completionReason === 4
+      subtitle: completionReason === 1
+        ? 'Victory via ML1'
+        : completionReason === 3 || completionReason === 4
         ? `Victory via ${completionReason === 3 ? 'ML2' : 'ML3'}`
         : 'Victory by Forfeit!',
-      description: completionReason === 3 || completionReason === 4 ? (
+      description: completionReason === 1 ? (
+        <div className="space-y-2">
+          {winnerAddress && loserAddress && (
+            <>
+              <div className="flex items-center justify-center gap-2">
+                <span className="text-green-400 font-bold">Winner (You):</span>
+                <span className="text-white/90 font-mono text-sm">
+                  {shortenAddress(winnerAddress)}
+                </span>
+              </div>
+              <div className="flex items-center justify-center gap-2">
+                <span className="text-red-400">Opponent (Timed Out):</span>
+                <span className="text-white/70 font-mono text-sm">
+                  {shortenAddress(loserAddress)}
+                </span>
+              </div>
+            </>
+          )}
+          <p className="text-white/90">
+            Your opponent timed out via{' '}
+            <a
+              href="#ml1"
+              className="text-orange-400 underline decoration-dotted hover:text-orange-300 font-semibold"
+            >
+              ML1
+            </a>
+            {' '}timeout escalation.
+          </p>
+          {isFinalRound ? (
+            <p className="text-white/70 mt-4">
+              You have won the tournament!
+              {formattedPrizePool && (
+                <span className="block text-green-400 font-bold mt-2">
+                  Prize: {formattedPrizePool} ETH
+                </span>
+              )}
+            </p>
+          ) : (
+            <p className="text-white/70 mt-4">
+              You advance to {getNextRoundName()}!
+            </p>
+          )}
+        </div>
+      ) : completionReason === 3 || completionReason === 4 ? (
         <div className="space-y-2">
           {winnerAddress && loserAddress && (
             <>
