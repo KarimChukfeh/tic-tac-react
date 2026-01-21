@@ -136,7 +136,31 @@ const MatchEndModal = ({
       return 'Tournament Champion!';
     }
 
-    return 'You Win!';
+    // Game-specific victory messages
+    switch (gameType) {
+      case 'tictactoe':
+        return 'Three in a Row!';
+      case 'chess':
+        return 'Checkmate!';
+      case 'connectfour':
+        return 'Four Connected!';
+      default:
+        return 'You Win!';
+    }
+  };
+
+  // Game-specific defeat text
+  const getDefeatText = () => {
+    switch (gameType) {
+      case 'tictactoe':
+        return 'Opponent Got Three in a Row';
+      case 'chess':
+        return "You've Been Checkmated";
+      case 'connectfour':
+        return 'Opponent Connected Four';
+      default:
+        return 'Defeated';
+    }
   };
 
   const config = {
@@ -188,8 +212,98 @@ const MatchEndModal = ({
     forfeit_win: {
       icon: Trophy,
       title: isFinalRound ? 'Tournament Champion!' : 'You Win!',
-      subtitle: 'Victory by Forfeit!',
-      description: winnerAddress && loserAddress ? (
+      subtitle: completionReason === 1
+        ? 'Victory via ML1'
+        : completionReason === 3 || completionReason === 4
+        ? `Victory via ${completionReason === 3 ? 'ML2' : 'ML3'}`
+        : 'Victory by Forfeit!',
+      description: completionReason === 1 ? (
+        <div className="space-y-2">
+          {winnerAddress && loserAddress && (
+            <>
+              <div className="flex items-center justify-center gap-2">
+                <span className="text-green-400 font-bold">Winner (You):</span>
+                <span className="text-white/90 font-mono text-sm">
+                  {shortenAddress(winnerAddress)}
+                </span>
+              </div>
+              <div className="flex items-center justify-center gap-2">
+                <span className="text-red-400">Opponent (Timed Out):</span>
+                <span className="text-white/70 font-mono text-sm">
+                  {shortenAddress(loserAddress)}
+                </span>
+              </div>
+            </>
+          )}
+          <p className="text-white/90">
+            Your opponent timed out via{' '}
+            <a
+              href="#ml1"
+              className="text-orange-400 underline decoration-dotted hover:text-orange-300 font-semibold"
+            >
+              ML1
+            </a>
+            {' '}timeout escalation.
+          </p>
+          {isFinalRound ? (
+            <p className="text-white/70 mt-4">
+              You have won the tournament!
+              {formattedPrizePool && (
+                <span className="block text-green-400 font-bold mt-2">
+                  Prize: {formattedPrizePool} ETH
+                </span>
+              )}
+            </p>
+          ) : (
+            <p className="text-white/70 mt-4">
+              You advance to {getNextRoundName()}!
+            </p>
+          )}
+        </div>
+      ) : completionReason === 3 || completionReason === 4 ? (
+        <div className="space-y-2">
+          {winnerAddress && loserAddress && (
+            <>
+              <div className="flex items-center justify-center gap-2">
+                <span className="text-green-400 font-bold">Winner (You):</span>
+                <span className="text-white/90 font-mono text-sm">
+                  {shortenAddress(winnerAddress)}
+                </span>
+              </div>
+              <div className="flex items-center justify-center gap-2">
+                <span className="text-red-400">Opponent (Eliminated):</span>
+                <span className="text-white/70 font-mono text-sm">
+                  {shortenAddress(loserAddress)}
+                </span>
+              </div>
+            </>
+          )}
+          <p className="text-white/90">
+            Your opponent was eliminated via{' '}
+            <a
+              href={completionReason === 3 ? '#ml2' : '#ml3'}
+              className="text-orange-400 underline decoration-dotted hover:text-orange-300 font-semibold"
+            >
+              {completionReason === 3 ? 'ML2' : 'ML3'}
+            </a>
+            {' '}match escalation.
+          </p>
+          {isFinalRound ? (
+            <p className="text-white/70 mt-4">
+              You have won the tournament!
+              {formattedPrizePool && (
+                <span className="block text-green-400 font-bold mt-2">
+                  Prize: {formattedPrizePool} ETH
+                </span>
+              )}
+            </p>
+          ) : (
+            <p className="text-white/70 mt-4">
+              You advance to {getNextRoundName()}!
+            </p>
+          )}
+        </div>
+      ) : winnerAddress && loserAddress ? (
         <div className="space-y-2">
           <div className="flex items-center justify-center gap-2">
             <span className="text-green-400 font-bold">Winner (You):</span>
@@ -231,10 +345,26 @@ const MatchEndModal = ({
       animation: 'animate-bounce'
     },
     lose: {
-      icon: Frown,
-      title: 'Defeated',
-      subtitle: 'Better luck next time!',
-      description: winnerAddress && loserAddress ? (
+      icon: completionReason === 3 || completionReason === 4 ? AlertCircle : Frown,
+      title: completionReason === 3 || completionReason === 4 ? 'Match Eliminated' : getDefeatText(),
+      subtitle: completionReason === 3 || completionReason === 4 ? 'Tournament Escalation' : 'Better luck next time!',
+      description: completionReason === 3 || completionReason === 4 ? (
+        <div className="space-y-2">
+          <p className="text-white/90">
+            Your match was eliminated via{' '}
+            <a
+              href={completionReason === 3 ? '#ml2' : '#ml3'}
+              className="text-orange-400 underline decoration-dotted hover:text-orange-300 font-semibold"
+            >
+              {completionReason === 3 ? 'ML2' : 'ML3'}
+            </a>
+            {' '}due to match escalation.
+          </p>
+          <p className="text-white/70 mt-4">
+            You have been eliminated from the tournament.
+          </p>
+        </div>
+      ) : winnerAddress && loserAddress ? (
         <div className="space-y-2">
           <div className="flex items-center justify-center gap-2">
             <span className="text-green-400">Winner:</span>
@@ -253,11 +383,11 @@ const MatchEndModal = ({
           </p>
         </div>
       ) : `${winnerLabel} wins this match. You have been eliminated from the tournament.`,
-      bgGradient: 'from-red-500/20 via-rose-500/20 to-pink-500/20',
-      borderColor: 'border-red-400/50',
-      iconColor: 'text-red-400',
-      titleColor: 'text-red-300',
-      glowColor: 'shadow-red-500/30',
+      bgGradient: completionReason === 3 || completionReason === 4 ? 'from-orange-500/20 via-amber-500/20 to-yellow-500/20' : 'from-red-500/20 via-rose-500/20 to-pink-500/20',
+      borderColor: completionReason === 3 || completionReason === 4 ? 'border-orange-400/50' : 'border-red-400/50',
+      iconColor: completionReason === 3 || completionReason === 4 ? 'text-orange-400' : 'text-red-400',
+      titleColor: completionReason === 3 || completionReason === 4 ? 'text-orange-300' : 'text-red-300',
+      glowColor: completionReason === 3 || completionReason === 4 ? 'shadow-orange-500/30' : 'shadow-red-500/30',
       animation: ''
     },
     forfeit_lose: {

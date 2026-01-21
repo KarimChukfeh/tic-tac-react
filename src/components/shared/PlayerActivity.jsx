@@ -8,7 +8,7 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { Users, X, Zap, Trophy, Clock, Play, Eye, RefreshCw, ChevronDown, ChevronUp, TrendingUp, AlertCircle, ExternalLink, History } from 'lucide-react';
+import { Users, X, Zap, Trophy, Clock, Play, Eye, RefreshCw, ChevronDown, ChevronUp, TrendingUp, AlertCircle, ExternalLink, History, CheckCircle2 } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
 import { formatTimeRemaining } from '../../utils/activityHelpers';
 import MiniTicTacToeBoard from './MiniTicTacToeBoard';
@@ -36,6 +36,8 @@ const PlayerActivity = ({
   const expandedPanelRef = useRef(null);
   // Track completed matches that should remain visible until user dismisses them
   const [completedMatches, setCompletedMatches] = useState(new Map());
+  // Track dismissed matches locally for immediate filtering (before refetch completes)
+  const [localDismissedMatches, setLocalDismissedMatches] = useState(new Set());
   // Transaction history state
   const [showTransactionHistory, setShowTransactionHistory] = useState(false);
   const [transactionHistory, setTransactionHistory] = useState([]);
@@ -52,6 +54,13 @@ const PlayerActivity = ({
       onCollapse(() => setIsExpanded(false));
     }
   }, [onCollapse]);
+
+  // Fetch fresh data whenever the panel is expanded
+  useEffect(() => {
+    if (isExpanded && onRefresh) {
+      onRefresh();
+    }
+  }, [isExpanded, onRefresh]);
 
   // Measure and report height whenever content changes
   useEffect(() => {
@@ -100,9 +109,29 @@ const PlayerActivity = ({
   };
 
   const handleRefresh = () => {
+    // Refresh activity data from hook
     onRefresh();
+
     // Trigger mini board refresh by changing the value
     setRefreshTrigger(prev => prev + 1);
+
+    // Clear and refetch transaction history if visible
+    if (showTransactionHistory) {
+      setTransactionHistory([]);
+      fetchTransactionHistory();
+    }
+
+    // Clear and refetch recent matches if visible
+    if (showRecentMatches) {
+      setRecentMatches([]);
+      fetchRecentMatches();
+    }
+
+    // Clear local completed matches state to get fresh data
+    setCompletedMatches(new Map());
+
+    // Clear local dismissed matches to get fresh state
+    setLocalDismissedMatches(new Set());
   };
 
   // Fetch Transfer events for transaction history
@@ -332,9 +361,18 @@ const PlayerActivity = ({
   // Handler when a match completes - add it to completed matches to keep it visible
   const handleMatchCompleted = (match) => {
     const matchKey = `${match.tierId}-${match.instanceId}-${match.roundIdx}-${match.matchIdx}`;
+    console.log('[MiniTicTacToeBoard] handleMatchCompleted called with match:', match);
+
+    // Ensure match has matchStatus set to 2 (completed)
+    const completedMatch = {
+      ...match,
+      matchStatus: 2
+    };
+
     setCompletedMatches(prev => {
       const next = new Map(prev);
-      next.set(matchKey, match);
+      next.set(matchKey, completedMatch);
+      console.log('[MiniTicTacToeBoard] Added to completedMatches with matchStatus:', completedMatch.matchStatus);
       return next;
     });
     // Keep it expanded so user sees the result
@@ -348,13 +386,28 @@ const PlayerActivity = ({
   // Handler when user dismisses a completed match
   const handleDismissMatch = (tierId, instanceId, roundIdx, matchIdx) => {
     const matchKey = `${tierId}-${instanceId}-${roundIdx}-${matchIdx}`;
+    console.log('[MiniTicTacToeBoard] Dismissing match:', matchKey);
+
+    // Remove from local completedMatches
     setCompletedMatches(prev => {
       const next = new Map(prev);
       next.delete(matchKey);
+      console.log('[MiniTicTacToeBoard] Removed from completedMatches');
       return next;
     });
-    // Also call parent's dismiss handler if provided
+
+    // Add to local dismissed set for immediate filtering
+    setLocalDismissedMatches(prev => {
+      const next = new Set([...prev, matchKey]);
+      console.log('[MiniTicTacToeBoard] Added to localDismissedMatches:', Array.from(next));
+      return next;
+    });
+
+    // Also call parent's dismiss handler if provided (adds to dismissedMatches in hook)
     onDismissMatch?.(tierId, instanceId, roundIdx, matchIdx);
+
+    // Trigger immediate refetch to remove from activity.activeMatches
+    onRefresh?.();
   };
 
   // Merge active matches from polling with completed matches we're keeping visible
@@ -362,19 +415,31 @@ const PlayerActivity = ({
     const activeMatches = activity?.activeMatches || [];
     const matchMap = new Map();
 
-    // First, add all completed matches (these take priority to show final state)
-    completedMatches.forEach((match, key) => {
-      matchMap.set(key, match);
-    });
+    console.log('[MiniTicTacToeBoard] getDisplayMatches - localDismissedMatches:', Array.from(localDismissedMatches));
+    console.log('[MiniTicTacToeBoard] getDisplayMatches - active matches count:', activeMatches.length);
 
-    // Then add active matches (won't override completed ones)
-    activeMatches.forEach(match => {
-      const matchKey = `${match.tierId}-${match.instanceId}-${match.roundIdx}-${match.matchIdx}`;
-      if (!matchMap.has(matchKey)) {
-        matchMap.set(matchKey, match);
+    // First, add all completed matches (these take priority to show final state)
+    // Skip matches that have been locally dismissed
+    completedMatches.forEach((match, key) => {
+      if (!localDismissedMatches.has(key)) {
+        matchMap.set(key, match);
+      } else {
+        console.log('[MiniTicTacToeBoard] Filtered out completed match (dismissed):', key);
       }
     });
 
+    // Then add active matches (won't override completed ones)
+    // Skip matches that have been locally dismissed
+    activeMatches.forEach(match => {
+      const matchKey = `${match.tierId}-${match.instanceId}-${match.roundIdx}-${match.matchIdx}`;
+      if (!matchMap.has(matchKey) && !localDismissedMatches.has(matchKey)) {
+        matchMap.set(matchKey, match);
+      } else if (localDismissedMatches.has(matchKey)) {
+        console.log('[MiniTicTacToeBoard] Filtered out active match (dismissed):', matchKey);
+      }
+    });
+
+    console.log('[MiniTicTacToeBoard] Final display matches count:', matchMap.size);
     return Array.from(matchMap.values());
   };
 
@@ -571,25 +636,33 @@ const PlayerActivity = ({
                     {displayMatches.map((match) => {
                       const matchKey = `${match.tierId}-${match.instanceId}-${match.roundIdx}-${match.matchIdx}`;
                       const isMatchExpanded = expandedMatches.has(matchKey);
+                      const isCompleted = match.matchStatus === 2;
+
+                      console.log('[MiniTicTacToeBoard] Rendering match card:', matchKey, 'matchStatus:', match.matchStatus, 'isCompleted:', isCompleted);
 
                       return (
                         <div
                           key={matchKey}
-                          className="bg-gradient-to-br from-yellow-500/20 to-orange-500/20 border-2 border-yellow-400/50 hover:border-yellow-400/80 rounded-lg p-3 transition-all"
+                          className={`bg-gradient-to-br ${isCompleted ? 'from-slate-500/20 to-slate-600/20 border-slate-400/50' : 'from-yellow-500/20 to-orange-500/20 border-yellow-400/50 hover:border-yellow-400/80'} border-2 rounded-lg p-3 transition-all`}
                         >
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-2">
                               <span className="text-white font-semibold text-sm">
                                 Tier {match.tierId + 1} Instance {match.instanceId + 1}
                               </span>
-                              {match.isMyTurn && (
+                              {isCompleted ? (
+                                <span className="bg-slate-500 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase flex items-center gap-1">
+                                  <CheckCircle2 size={10} />
+                                  Complete
+                                </span>
+                              ) : match.isMyTurn ? (
                                 <span className="bg-yellow-500 text-black text-[10px] font-bold px-2 py-0.5 rounded uppercase animate-pulse">
                                   Your Turn!
                                 </span>
-                              )}
+                              ) : null}
                             </div>
-                            <span className="text-yellow-300 bg-yellow-900/30 font-mono text-xs font-bold px-2 py-1 rounded">
-                              {formatTimeRemaining(match.timeRemaining)}
+                            <span className={`${isCompleted ? 'text-slate-400 bg-slate-800/30' : 'text-yellow-300 bg-yellow-900/30'} font-mono text-xs font-bold px-2 py-1 rounded`}>
+                              {isCompleted ? 'Complete' : formatTimeRemaining(match.timeRemaining)}
                             </span>
                           </div>
                           <div className="text-slate-300 text-xs mb-3">
@@ -598,38 +671,52 @@ const PlayerActivity = ({
 
                           {/* Buttons */}
                           <div className="flex gap-2">
-                            <button
-                              onClick={() =>
-                                onEnterMatch(
-                                  match.tierId,
-                                  match.instanceId,
-                                  match.roundIdx,
-                                  match.matchIdx
-                                )
-                              }
-                              className="flex-1 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-bold py-2 px-4 rounded-lg transition-all transform hover:scale-105 flex items-center justify-center gap-2 text-sm"
-                            >
-                              {match.isMyTurn ? (
-                                <>
-                                  <Play size={16} />
-                                  Make Move
-                                </>
-                              ) : (
-                                <>
-                                  <Eye size={16} />
-                                  View Match
-                                </>
-                              )}
-                            </button>
+                            {!isCompleted ? (
+                              <>
+                                <button
+                                  onClick={() =>
+                                    onEnterMatch(
+                                      match.tierId,
+                                      match.instanceId,
+                                      match.roundIdx,
+                                      match.matchIdx
+                                    )
+                                  }
+                                  className="flex-1 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-bold py-2 px-4 rounded-lg transition-all transform hover:scale-105 flex items-center justify-center gap-2 text-sm"
+                                >
+                                  {match.isMyTurn ? (
+                                    <>
+                                      <Play size={16} />
+                                      Make Move
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Eye size={16} />
+                                      View Match
+                                    </>
+                                  )}
+                                </button>
 
-                            {/* Expand button - show for all games */}
-                            <button
-                              onClick={() => toggleMatchExpand(matchKey)}
-                              className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-all"
-                              title={isMatchExpanded ? "Hide board" : "Show board"}
-                            >
-                              {isMatchExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                            </button>
+                                {/* Expand button - show for active games only */}
+                                <button
+                                  onClick={() => toggleMatchExpand(matchKey)}
+                                  className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-all"
+                                  title={isMatchExpanded ? "Hide board" : "Show board"}
+                                >
+                                  {isMatchExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                </button>
+                              </>
+                            ) : (
+                              /* Dismiss button for completed matches */
+                              <button
+                                onClick={() => handleDismissMatch(match.tierId, match.instanceId, match.roundIdx, match.matchIdx)}
+                                className="flex-1 bg-blue-600/20 hover:bg-blue-600/40 text-blue-300 rounded-lg transition-all flex items-center justify-center gap-2 py-2 px-4 font-semibold text-sm"
+                                title="Remove this match from the list"
+                              >
+                                <X size={16} />
+                                Dismiss
+                              </button>
+                            )}
                           </div>
 
                           {/* Mini Board - support all three games */}
@@ -1002,7 +1089,7 @@ const PlayerActivity = ({
                                           {board.map((cell, idx) => (
                                             <div
                                               key={idx}
-                                              className="bg-slate-800/50 border border-slate-600/50 rounded flex items-center justify-center text-xl font-bold"
+                                              className="aspect-square bg-slate-800/50 border border-slate-600/50 rounded flex items-center justify-center text-xl font-bold"
                                             >
                                               {cell === 1 ? (
                                                 <span className="text-blue-400">X</span>
@@ -1048,7 +1135,7 @@ const PlayerActivity = ({
                                             return (
                                               <div
                                                 key={idx}
-                                                className={`flex items-center justify-center text-2xl ${
+                                                className={`aspect-square flex items-center justify-center text-2xl ${
                                                   isLight ? 'bg-amber-200/20' : 'bg-amber-900/20'
                                                 } ${textColor}`}
                                               >

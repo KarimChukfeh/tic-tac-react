@@ -64,9 +64,98 @@ const MiniConnect4Board = ({
       );
 
       let parsed = parseConnectFourMatch(data);
+      let alreadyReconstructed = false; // Flag to prevent double reconstruction
 
-      // If match is completed, reconstruct board from events instead of cache
-      if (parsed.matchStatus === 2) {
+      // Check if contract returned invalid/cleared data (happens when tournament resets after finals)
+      const zeroAddress = '0x0000000000000000000000000000000000000000';
+      const isMatchInitialized =
+        parsed.player1?.toLowerCase() !== zeroAddress.toLowerCase() &&
+        parsed.player2?.toLowerCase() !== zeroAddress.toLowerCase();
+      const isBoardEmpty = parsed.board?.every(cell => cell === 0);
+
+      // If contract returns cleared data (zero addresses + empty board), query MatchCompleted event
+      if (!isMatchInitialized && isBoardEmpty) {
+        console.log('[MiniConnect4Board] Match data cleared, querying MatchCompleted event');
+
+        try {
+          const { ethers } = await import('ethers');
+          const matchId = ethers.solidityPackedKeccak256(
+            ['uint8', 'uint8', 'uint8', 'uint8'],
+            [match.tierId, match.instanceId, match.roundIdx, match.matchIdx]
+          );
+
+          // Query MatchCompleted events
+          const filter = contract.filters.MatchCompleted(matchId);
+          const events = await contract.queryFilter(filter, -10000); // Last 10k blocks
+
+          if (events.length > 0) {
+            // Use the most recent event
+            const event = events[events.length - 1];
+            const [eventMatchId, eventPlayer1, eventPlayer2, eventWinner, eventIsDraw, eventReason, eventPackedBoard] = event.args;
+
+            console.log('[MiniConnect4Board] MatchCompleted event data:', {
+              eventMatchId,
+              eventPlayer1,
+              eventPlayer2,
+              eventWinner,
+              eventIsDraw,
+              eventReason: Number(eventReason),
+              eventPackedBoard: eventPackedBoard.toString()
+            });
+
+            // Unpack board from event (Connect4: 42 cells, 2 bits per cell)
+            const unpackBoard = (packed) => {
+              const boardArray = [];
+              let p = BigInt(packed);
+              for (let i = 0; i < 42; i++) {
+                boardArray.push(Number(p & 3n));
+                p = p >> 2n;
+              }
+              return boardArray;
+            };
+            const eventBoard = unpackBoard(eventPackedBoard);
+            console.log('[MiniConnect4Board] Unpacked board from event:', eventBoard.filter(c => c !== 0).length, 'pieces');
+
+            const eventLoser = eventIsDraw ? zeroAddress : (
+              eventWinner.toLowerCase() === eventPlayer1.toLowerCase() ? eventPlayer2 : eventPlayer1
+            );
+
+            // Reconstruct match data from event
+            parsed = {
+              ...parsed,
+              player1: eventPlayer1,
+              player2: eventPlayer2,
+              matchStatus: 2,
+              winner: eventWinner,
+              loser: eventLoser,
+              isDraw: eventIsDraw,
+              board: eventBoard,
+              isForfeit: Number(eventReason) === 2, // Reason 2 = forfeit
+              completionReason: Number(eventReason), // Store full reason code
+            };
+
+            alreadyReconstructed = true; // Mark as reconstructed to skip second reconstruction
+            console.log('[MiniConnect4Board] Reconstructed match from MatchCompleted event:', eventBoard.filter(c => c !== 0).length, 'pieces');
+          } else {
+            // No event found - if we have existing matchData, preserve it
+            if (matchData) {
+              console.log('[MiniConnect4Board] No event found but have existing data, preserving state');
+              return; // Don't update, keep existing state
+            }
+            // Otherwise, use the cleared data (initial load)
+          }
+        } catch (err) {
+          console.warn('[MiniConnect4Board] Failed to query MatchCompleted event:', err);
+          // If we have existing matchData, preserve it
+          if (matchData) {
+            console.log('[MiniConnect4Board] Preserving existing state due to event query error');
+            return; // Don't update, keep existing state
+          }
+        }
+      }
+
+      // If match is completed, reconstruct board from events (only if not already reconstructed above)
+      if (parsed.matchStatus === 2 && !alreadyReconstructed) {
         try {
           const reconstructed = await reconstructMatchFromEvents(
             contract,
@@ -99,29 +188,6 @@ const MiniConnect4Board = ({
       // Calculate isMyTurn based on current turn
       parsed.isMyTurn = parsed.currentTurn?.toLowerCase() === account?.toLowerCase();
 
-      // Detect match end and show modal
-      if (parsed.matchStatus === 2 && !showMatchEndModal) {
-        // Determine result
-        let result = null;
-        if (parsed.isDraw) {
-          result = 'draw';
-        } else if (parsed.winner?.toLowerCase() === account?.toLowerCase()) {
-          // Check if forfeit win
-          result = parsed.isForfeit ? 'forfeit_win' : 'win';
-        } else {
-          // Check if forfeit lose
-          result = parsed.isForfeit ? 'forfeit_lose' : 'lose';
-        }
-        setMatchEndResult(result);
-        setShowMatchEndModal(true);
-
-        // Notify parent that match completed so it stays visible (only once)
-        if (!hasNotifiedCompletion) {
-          onMatchCompleted?.();
-          setHasNotifiedCompletion(true);
-        }
-      }
-
       setMatchData(parsed);
       setLoading(false);
     } catch (err) {
@@ -151,6 +217,88 @@ const MiniConnect4Board = ({
       fetchMatchData(false);
     }
   }, [refreshTrigger, fetchMatchData]);
+
+  // Listen for MatchCompleted events to show modal
+  useEffect(() => {
+    if (!contract || !account || !match || !matchData) return;
+
+    const handleMatchCompleted = async (eventMatchId, player1, player2, winner, isDraw, reason, packedBoard, event) => {
+      try {
+        // Calculate match ID for this mini board's match
+        const { ethers } = await import('ethers');
+        const matchId = ethers.solidityPackedKeccak256(
+          ['uint8', 'uint8', 'uint8', 'uint8'],
+          [match.tierId, match.instanceId, match.roundIdx, match.matchIdx]
+        );
+
+        // Filter: Only process events for this specific match
+        if (eventMatchId !== matchId) {
+          return;
+        }
+
+        console.log('[MiniConnect4Board] MatchCompleted event received for this match');
+
+        // Determine result with completion reason
+        let result = null;
+        const completionReason = Number(reason);
+
+        if (isDraw) {
+          result = 'draw';
+        } else if (winner?.toLowerCase() === account?.toLowerCase()) {
+          // Check if forfeit/intervention win
+          result = (completionReason === 1 || completionReason === 3 || completionReason === 4) ? 'forfeit_win' : 'win';
+        } else {
+          // Check if forfeit/intervention lose
+          result = (completionReason === 1 || completionReason === 3 || completionReason === 4) ? 'forfeit_lose' : 'lose';
+        }
+
+        // Store result with completion reason and show modal
+        setMatchEndResult({ result, completionReason });
+        setShowMatchEndModal(true);
+
+        // Notify parent that match completed so it stays visible (only once)
+        if (!hasNotifiedCompletion) {
+          onMatchCompleted?.();
+          setHasNotifiedCompletion(true);
+        }
+
+        console.log('[MiniConnect4Board] Modal triggered by MatchCompleted event:', result);
+      } catch (err) {
+        console.error('[MiniConnect4Board] Error processing MatchCompleted event:', err);
+      }
+    };
+
+    // Register event listener
+    contract.on('MatchCompleted', handleMatchCompleted);
+
+    // Query recent events to catch any missed while component was loading
+    const checkRecentEvents = async () => {
+      try {
+        const { ethers } = await import('ethers');
+        const matchId = ethers.solidityPackedKeccak256(
+          ['uint8', 'uint8', 'uint8', 'uint8'],
+          [match.tierId, match.instanceId, match.roundIdx, match.matchIdx]
+        );
+
+        const filter = contract.filters.MatchCompleted(matchId);
+        const events = await contract.queryFilter(filter, -100); // Last 100 blocks
+
+        if (events.length > 0 && !showMatchEndModal) {
+          const event = events[events.length - 1];
+          const { player1, player2, winner, isDraw, reason, board } = event.args;
+          handleMatchCompleted(matchId, player1, player2, winner, isDraw, reason, board, event);
+        }
+      } catch (err) {
+        console.error('[MiniConnect4Board] Error checking recent events:', err);
+      }
+    };
+
+    checkRecentEvents();
+
+    return () => {
+      contract.off('MatchCompleted', handleMatchCompleted);
+    };
+  }, [contract, account, match, matchData, showMatchEndModal, hasNotifiedCompletion, onMatchCompleted]);
 
   // Handle column click
   const handleColumnClick = async (columnIndex) => {
@@ -206,13 +354,6 @@ const MiniConnect4Board = ({
       parsed.isMyTurn = parsed.currentTurn?.toLowerCase() === account?.toLowerCase();
       setMatchData(parsed);
 
-      // Check if this move completed the match
-      if (parsed.matchStatus === 2 && !hasNotifiedCompletion) {
-        // Notify parent that match completed so it stays visible
-        onMatchCompleted?.();
-        setHasNotifiedCompletion(true);
-      }
-
       // Notify parent
       onMoveComplete?.();
       setMakingMove(false);
@@ -255,14 +396,13 @@ const MiniConnect4Board = ({
       {/* Mini Match End Modal - Above Board */}
       {showMatchEndModal && matchEndResult && matchData.matchStatus === 2 && (
         <MiniMatchEndModal
-          result={matchEndResult}
+          result={matchEndResult.result}
+          completionReason={matchEndResult.completionReason}
           onClose={() => {
-            const isDefeat = matchEndResult === 'lose' || matchEndResult === 'forfeit_lose';
-            // Hide modal
+            const isDefeat = matchEndResult.result === 'lose' || matchEndResult.result === 'forfeit_lose';
+            // Hide modal only - keep match card visible with final board state
             setShowMatchEndModal(false);
-            // Notify parent that match was dismissed
-            onMatchDismissed?.();
-            // For victory/draw, also trigger refresh
+            // For victory/draw, trigger refresh to update activity panel
             if (!isDefeat) {
               onMoveComplete?.();
             }
