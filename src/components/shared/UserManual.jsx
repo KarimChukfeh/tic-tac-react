@@ -682,7 +682,7 @@ const UserManual = ({
                   </thead>
                   <tbody className="divide-y divide-blue-500/20">
                     <tr className="hover:bg-blue-500/5 transition-colors">
-                      <td className="py-3 px-4 text-gray-300">Randomly Relected Raffle Winner</td>
+                      <td className="py-3 px-4 text-gray-300">Randomly Selected Raffle Winner</td>
                       <td className="py-3 px-4 text-gray-300 font-mono">90%</td>
                     </tr>
                     <tr className="hover:bg-blue-500/5 transition-colors">
@@ -711,7 +711,7 @@ const UserManual = ({
                   </thead>
                   <tbody className="divide-y divide-blue-500/20">
                     <tr className="hover:bg-blue-500/5 transition-colors">
-                      <td className="py-3 px-4 text-gray-300">Randomly Relected Raffle Winner (90%)</td>
+                      <td className="py-3 px-4 text-gray-300">Randomly Selected Raffle Winner (90%)</td>
                       <td className="py-3 px-4 text-gray-300 font-mono">0.9 ETH</td>
                     </tr>
                     <tr className="hover:bg-blue-500/5 transition-colors">
