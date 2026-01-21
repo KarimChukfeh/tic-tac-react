@@ -18,10 +18,30 @@ const EliteMatchesCard = ({
   onRefresh,
   syncing,
   account,
-  onViewMatch
+  onViewMatch,
+  isExpanded: externalIsExpanded, // External control for mobile single-panel coordination
+  onToggleExpand, // External toggle handler
 }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [internalIsExpanded, setInternalIsExpanded] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
+
+  // Use external state if provided, otherwise use internal state
+  const isExpanded = externalIsExpanded !== undefined ? externalIsExpanded : internalIsExpanded;
+
+  // Helper to handle expansion changes
+  const handleSetExpanded = (value) => {
+    if (onToggleExpand) {
+      // External control: only toggle if needed
+      if (value && !externalIsExpanded) {
+        onToggleExpand();
+      } else if (!value && externalIsExpanded) {
+        onToggleExpand();
+      }
+    } else {
+      // Internal control
+      setInternalIsExpanded(value);
+    }
+  };
 
   // Track screen size for responsive positioning
   useEffect(() => {
@@ -70,45 +90,46 @@ const EliteMatchesCard = ({
     return address.toLowerCase() === account.toLowerCase();
   };
 
-  // Dynamic positioning - stack below PlayerActivity and CommunityRaffle cards
-  // PlayerActivity base positions: top-4 (16px) mobile, md:top-20 (80px) desktop
-  // Each collapsed button: ~32px mobile, ~64px desktop (with padding)
-  // CommunityRaffle is positioned below PlayerActivity with SPACING gap
-  // EliteMatches is positioned below both with SPACING gap
-  const BASE_TOP_MOBILE = 16; // top-4 in pixels
-  const BASE_TOP_DESKTOP = 80; // md:top-20 in pixels
-  const COLLAPSED_BUTTON_HEIGHT_MOBILE = 32;
-  const COLLAPSED_BUTTON_HEIGHT_DESKTOP = 64;
-  const SPACING = 32;
+  // Dynamic positioning:
+  // Mobile (<768px): Horizontal layout at bottom-left, positioned to the right of CommunityRaffleCard
+  // Desktop (>=768px): Vertical layout at top-left, positioned below both PlayerActivity and CommunityRaffle
 
-  const baseTop = isDesktop ? BASE_TOP_DESKTOP : BASE_TOP_MOBILE;
-  const collapsedButtonHeight = isDesktop ? COLLAPSED_BUTTON_HEIGHT_DESKTOP : COLLAPSED_BUTTON_HEIGHT_MOBILE;
+  // Mobile positioning (bottom-left, horizontal)
+  const MOBILE_LEFT = 144; // 16px (left-4) + 48px (PlayerActivity) + 16px (gap) + 48px (CommunityRaffle) + 16px (gap)
+
+  // Desktop positioning (top-left, vertical)
+  const BASE_TOP_DESKTOP = 80; // md:top-20 in pixels
+  const COLLAPSED_BUTTON_HEIGHT_DESKTOP = 64;
+  const SPACING_DESKTOP = 32;
 
   // Position below PlayerActivity
   const activityOffset = playerActivityHeight > 0
-    ? playerActivityHeight + SPACING
-    : collapsedButtonHeight + SPACING;
+    ? playerActivityHeight + SPACING_DESKTOP
+    : COLLAPSED_BUTTON_HEIGHT_DESKTOP + SPACING_DESKTOP;
 
   // Add offset for CommunityRaffle card (use actual height when expanded, collapsed button height otherwise)
   const raffleOffset = raffleCardHeight > 0
-    ? raffleCardHeight + SPACING
-    : collapsedButtonHeight + SPACING;
+    ? raffleCardHeight + SPACING_DESKTOP
+    : COLLAPSED_BUTTON_HEIGHT_DESKTOP + SPACING_DESKTOP;
 
-  const topPosition = baseTop + activityOffset + raffleOffset;
+  const topPositionDesktop = BASE_TOP_DESKTOP + activityOffset + raffleOffset;
 
   const hasMatches = eliteMatches && eliteMatches.length > 0;
 
   return (
     <div
-      className="fixed left-4 md:left-16 z-50 transition-all duration-300"
+      className="fixed bottom-4 z-50 transition-all duration-300 md:bottom-auto md:left-16"
       style={{
-        top: `${topPosition}px`
+        // On mobile: when expanded, reposition to left-4 (16px), when collapsed stay at horizontal position
+        // On desktop: use top positioning
+        left: isDesktop ? undefined : (isExpanded ? '16px' : `${MOBILE_LEFT}px`),
+        top: isDesktop ? `${topPositionDesktop}px` : undefined
       }}
     >
       {/* Collapsed State - Gold Crown Circle Button */}
       {!isExpanded && (
         <button
-          onClick={() => setIsExpanded(true)}
+          onClick={() => handleSetExpanded(true)}
           className="bg-gradient-to-br from-amber-500/90 to-yellow-600/90 backdrop-blur-lg rounded-full p-2 md:p-4 border-2 border-amber-400/40 hover:border-amber-400/70 transition-all hover:scale-110 shadow-xl relative group"
           aria-label="Open elite matches"
         >
@@ -160,7 +181,7 @@ const EliteMatchesCard = ({
               </button>
               {/* Close Button */}
               <button
-                onClick={() => setIsExpanded(false)}
+                onClick={() => handleSetExpanded(false)}
                 className="text-amber-300 hover:text-amber-100 transition-colors p-1 hover:bg-amber-700/30 rounded"
                 aria-label="Close"
               >

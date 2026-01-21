@@ -729,6 +729,9 @@ export default function Chess() {
   // Player Activity Collapse Function Ref
   const collapseActivityPanelRef = useRef(null);
 
+  // Mobile Panel Expansion Coordination (only one panel expanded at a time on mobile)
+  const [expandedPanel, setExpandedPanel] = useState(null); // 'playerActivity' | 'communityRaffle' | 'eliteMatches' | null
+
   // Set page title
   useEffect(() => {
     document.title = 'ETour - Chess';
@@ -3602,6 +3605,8 @@ export default function Chess() {
           onHeightChange={setPlayerActivityHeight}
           onCollapse={(collapseFn) => { collapseActivityPanelRef.current = collapseFn; }}
           isElite={isEnrolledInElite}
+          isExpanded={expandedPanel === 'playerActivity'}
+          onToggleExpand={() => setExpandedPanel(expandedPanel === 'playerActivity' ? null : 'playerActivity')}
         />
       )}
 
@@ -3615,6 +3620,8 @@ export default function Chess() {
           onTriggerRaffle={executeRaffle}
           syncing={raffleSyncing}
           onHeightChange={setRaffleCardHeight}
+          isExpanded={expandedPanel === 'communityRaffle'}
+          onToggleExpand={() => setExpandedPanel(expandedPanel === 'communityRaffle' ? null : 'communityRaffle')}
         />
       )}
 
@@ -3628,6 +3635,8 @@ export default function Chess() {
           syncing={eliteMatchesSyncing}
           account={account}
           onViewMatch={handleViewArchivedMatch}
+          isExpanded={expandedPanel === 'eliteMatches'}
+          onToggleExpand={() => setExpandedPanel(expandedPanel === 'eliteMatches' ? null : 'eliteMatches')}
         />
       )}
 

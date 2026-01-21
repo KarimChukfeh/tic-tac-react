@@ -31,9 +31,29 @@ const PlayerActivity = ({
   onHeightChange,
   onCollapse,
   isElite = false,
+  isExpanded: externalIsExpanded, // External control for mobile single-panel coordination
+  onToggleExpand, // External toggle handler
 }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [internalIsExpanded, setInternalIsExpanded] = useState(false);
   const expandedPanelRef = useRef(null);
+
+  // Use external state if provided, otherwise use internal state
+  const isExpanded = externalIsExpanded !== undefined ? externalIsExpanded : internalIsExpanded;
+
+  // Helper to handle expansion changes
+  const handleSetExpanded = (value) => {
+    if (onToggleExpand) {
+      // External control: only toggle if needed
+      if (value && !externalIsExpanded) {
+        onToggleExpand();
+      } else if (!value && externalIsExpanded) {
+        onToggleExpand();
+      }
+    } else {
+      // Internal control
+      setInternalIsExpanded(value);
+    }
+  };
   // Track completed matches that should remain visible until user dismisses them
   const [completedMatches, setCompletedMatches] = useState(new Map());
   // Track dismissed matches locally for immediate filtering (before refetch completes)
@@ -51,9 +71,13 @@ const PlayerActivity = ({
   // Expose collapse function via callback
   useEffect(() => {
     if (onCollapse) {
-      onCollapse(() => setIsExpanded(false));
+      // If using external state, collapse via onToggleExpand, otherwise use internal setter
+      const collapseFn = onToggleExpand
+        ? () => { if (externalIsExpanded) onToggleExpand(); }
+        : () => setInternalIsExpanded(false);
+      onCollapse(collapseFn);
     }
-  }, [onCollapse]);
+  }, [onCollapse, onToggleExpand, externalIsExpanded]);
 
   // Fetch fresh data whenever the panel is expanded
   useEffect(() => {
@@ -462,7 +486,7 @@ const PlayerActivity = ({
       {/* Collapsed State */}
       {!isExpanded && (
         <button
-          onClick={() => setIsExpanded(true)}
+          onClick={() => handleSetExpanded(true)}
           className={`bg-gradient-to-br backdrop-blur-lg rounded-full p-2 md:p-4 border-2 transition-all hover:scale-110 shadow-xl relative group ${
             isElite
               ? 'from-[#fbbf24]/90 to-[#f59e0b]/90 border-[#d4a012]/40 hover:border-[#d4a012]/70'
@@ -519,7 +543,7 @@ const PlayerActivity = ({
                 </button>
                 {/* Close Button */}
                 <button
-                  onClick={() => setIsExpanded(false)}
+                  onClick={() => handleSetExpanded(false)}
                   className="text-slate-400 hover:text-white transition-colors p-1 hover:bg-slate-700/50 rounded"
                   aria-label="Close"
                 >
@@ -1002,7 +1026,7 @@ const PlayerActivity = ({
                                   {(match.reason === 1 || match.reason === 3 || match.reason === 4) ? (
                                     <a
                                       href={match.reason === 1 ? '#ml1' : match.reason === 3 ? '#ml2' : '#ml3'}
-                                      onClick={() => setIsExpanded(false)}
+                                      onClick={() => handleSetExpanded(false)}
                                       className={`text-[10px] px-2 py-0.5 rounded bg-orange-500/20 text-orange-300 hover:bg-orange-500/30 hover:text-orange-200 transition-colors underline decoration-dotted cursor-pointer`}
                                       title={`Learn more about ${match.reason === 1 ? 'ML1' : match.reason === 3 ? 'ML2' : 'ML3'} in the User Manual`}
                                     >

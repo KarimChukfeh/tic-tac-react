@@ -10,10 +10,38 @@ import { X, RefreshCw, Zap, Trophy } from 'lucide-react';
 import { ethers } from 'ethers';
 import { shortenAddress } from '../../utils/formatters';
 
-const CommunityRaffleCard = ({ raffleInfo, raffleHistory = [], playerActivityHeight, onRefresh, onTriggerRaffle, syncing, onHeightChange }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
+const CommunityRaffleCard = ({
+  raffleInfo,
+  raffleHistory = [],
+  playerActivityHeight,
+  onRefresh,
+  onTriggerRaffle,
+  syncing,
+  onHeightChange,
+  isExpanded: externalIsExpanded, // External control for mobile single-panel coordination
+  onToggleExpand, // External toggle handler
+}) => {
+  const [internalIsExpanded, setInternalIsExpanded] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
   const expandedPanelRef = useRef(null);
+
+  // Use external state if provided, otherwise use internal state
+  const isExpanded = externalIsExpanded !== undefined ? externalIsExpanded : internalIsExpanded;
+
+  // Helper to handle expansion changes
+  const handleSetExpanded = (value) => {
+    if (onToggleExpand) {
+      // External control: only toggle if needed
+      if (value && !externalIsExpanded) {
+        onToggleExpand();
+      } else if (!value && externalIsExpanded) {
+        onToggleExpand();
+      }
+    } else {
+      // Internal control
+      setInternalIsExpanded(value);
+    }
+  };
 
   // Track screen size for responsive positioning
   useEffect(() => {
@@ -63,7 +91,7 @@ const CommunityRaffleCard = ({ raffleInfo, raffleHistory = [], playerActivityHei
       element.scrollIntoView({ behavior: 'smooth', block: 'start' });
       // Collapse card after scrolling
       setTimeout(() => {
-        setIsExpanded(false);
+        handleSetExpanded(false);
       }, 100);
     }
   };
@@ -89,14 +117,16 @@ const CommunityRaffleCard = ({ raffleInfo, raffleHistory = [], playerActivityHei
     <div
       className="fixed bottom-4 z-50 transition-all duration-300 md:bottom-auto md:left-16"
       style={{
-        left: isDesktop ? undefined : `${MOBILE_LEFT}px`,
+        // On mobile: when expanded, reposition to left-4 (16px), when collapsed stay at horizontal position
+        // On desktop: use top positioning
+        left: isDesktop ? undefined : (isExpanded ? '16px' : `${MOBILE_LEFT}px`),
         top: isDesktop ? `${topPositionDesktop}px` : undefined
       }}
     >
       {/* Collapsed State - Yellow Circle Button */}
       {!isExpanded && (
         <button
-          onClick={() => setIsExpanded(true)}
+          onClick={() => handleSetExpanded(true)}
           className={`rounded-full p-2 md:p-4 border-2 transition-all hover:scale-110 shadow-xl relative group ${
             isFull
               ? 'bg-gradient-to-br from-yellow-500 to-amber-500 border-yellow-400/70 hover:border-yellow-400'
@@ -169,7 +199,7 @@ const CommunityRaffleCard = ({ raffleInfo, raffleHistory = [], playerActivityHei
               </button>
               {/* Close Button */}
               <button
-                onClick={() => setIsExpanded(false)}
+                onClick={() => handleSetExpanded(false)}
                 className="text-yellow-300 hover:text-yellow-100 transition-colors p-1 hover:bg-yellow-700/30 rounded"
                 aria-label="Close"
               >

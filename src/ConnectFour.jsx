@@ -689,6 +689,9 @@ export default function ConnectFour() {
   // Player Activity Collapse Function Ref
   const collapseActivityPanelRef = useRef(null);
 
+  // Mobile Panel Expansion Coordination (only one panel expanded at a time on mobile)
+  const [expandedPanel, setExpandedPanel] = useState(null); // 'playerActivity' | 'communityRaffle' | null
+
   // Set page title
   useEffect(() => {
     document.title = 'ETour - Connect Four';
@@ -3206,6 +3209,8 @@ export default function ConnectFour() {
           gameEmoji="🔴"
           onHeightChange={setPlayerActivityHeight}
           onCollapse={(collapseFn) => { collapseActivityPanelRef.current = collapseFn; }}
+          isExpanded={expandedPanel === 'playerActivity'}
+          onToggleExpand={() => setExpandedPanel(expandedPanel === 'playerActivity' ? null : 'playerActivity')}
         />
       )}
 
@@ -3218,6 +3223,8 @@ export default function ConnectFour() {
           onRefresh={fetchRaffleInfo}
           onTriggerRaffle={executeRaffle}
           syncing={raffleSyncing}
+          isExpanded={expandedPanel === 'communityRaffle'}
+          onToggleExpand={() => setExpandedPanel(expandedPanel === 'communityRaffle' ? null : 'communityRaffle')}
         />
       )}
 

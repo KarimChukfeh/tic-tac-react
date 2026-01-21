@@ -355,6 +355,9 @@ export default function TicTacChain() {
   // Raffle Syncing State
   const [raffleSyncing, setRaffleSyncing] = useState(false);
 
+  // Mobile Panel Expansion Coordination (only one panel expanded at a time on mobile)
+  const [expandedPanel, setExpandedPanel] = useState(null); // 'playerActivity' | 'communityRaffle' | null
+
   // Set page title
   useEffect(() => {
     document.title = 'ETour - TicTacToe';
@@ -2913,6 +2916,8 @@ export default function TicTacChain() {
           gameEmoji="✖️"
           onHeightChange={setPlayerActivityHeight}
           onCollapse={(collapseFn) => { collapseActivityPanelRef.current = collapseFn; }}
+          isExpanded={expandedPanel === 'playerActivity'}
+          onToggleExpand={() => setExpandedPanel(expandedPanel === 'playerActivity' ? null : 'playerActivity')}
         />
       )}
 
@@ -2969,6 +2974,8 @@ export default function TicTacChain() {
           onRefresh={fetchRaffleInfo}
           onTriggerRaffle={executeRaffle}
           syncing={raffleSyncing}
+          isExpanded={expandedPanel === 'communityRaffle'}
+          onToggleExpand={() => setExpandedPanel(expandedPanel === 'communityRaffle' ? null : 'communityRaffle')}
         />
       )}
 
