@@ -4549,8 +4549,8 @@ export default function Chess() {
                 <thead>
                   <tr className="border-b border-slate-700/50">
                     <th className="text-left p-4 text-cyan-300 font-semibold">ETour Modules</th>
-                    <th className="text-left p-4 text-cyan-300 font-semibold">Game Modules</th>
                     <th className="text-left p-4 text-cyan-300 font-semibold">Game Contracts</th>
+                    <th className="text-left p-4 text-cyan-300 font-semibold">Game Modules</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -4602,18 +4602,6 @@ export default function Chess() {
                     <td className="p-4 align-top">
                       <div className="space-y-2">
                         <a
-                          href={`https://arbiscan.io/address/${MODULE_ADDRESSES.chessRules}#code`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="block text-slate-400 hover:text-cyan-400 transition-colors text-sm"
-                        >
-                          ChessRules.sol
-                        </a>
-                      </div>
-                    </td>
-                    <td className="p-4 align-top">
-                      <div className="space-y-2">
-                        <a
                           href={`https://arbiscan.io/address/${TicTacChainABIData.address}#code`}
                           target="_blank"
                           rel="noopener noreferrer"
@@ -4636,6 +4624,18 @@ export default function Chess() {
                           className="block text-slate-400 hover:text-cyan-400 transition-colors text-sm"
                         >
                           ConnectFourOnChain.sol
+                        </a>
+                      </div>
+                    </td>
+                    <td className="p-4 align-top">
+                      <div className="space-y-2">
+                        <a
+                          href={`https://arbiscan.io/address/${MODULE_ADDRESSES.chessRules}#code`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block text-slate-400 hover:text-cyan-400 transition-colors text-sm"
+                        >
+                          ChessRules.sol
                         </a>
                       </div>
                     </td>
