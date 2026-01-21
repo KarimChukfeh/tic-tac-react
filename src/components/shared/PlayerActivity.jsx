@@ -55,6 +55,13 @@ const PlayerActivity = ({
     }
   }, [onCollapse]);
 
+  // Fetch fresh data whenever the panel is expanded
+  useEffect(() => {
+    if (isExpanded && onRefresh) {
+      onRefresh();
+    }
+  }, [isExpanded, onRefresh]);
+
   // Measure and report height whenever content changes
   useEffect(() => {
     if (isExpanded && expandedPanelRef.current && onHeightChange) {
