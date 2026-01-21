@@ -20,6 +20,7 @@ const CommunityRaffleCard = ({
   onHeightChange,
   isExpanded: externalIsExpanded, // External control for mobile single-panel coordination
   onToggleExpand, // External toggle handler
+  hideOnMobile = false, // Hide this panel on mobile when another panel is expanded
 }) => {
   const [internalIsExpanded, setInternalIsExpanded] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
@@ -101,8 +102,8 @@ const CommunityRaffleCard = ({
   // Desktop (>=768px): Vertical layout at top-left, positioned below PlayerActivity
 
   // Mobile positioning (bottom-left, horizontal)
-  // Button size calculation: p-4 (16px × 2) + icon (24px) + border-2 (2px × 2) = 60px
-  const MOBILE_LEFT = 92; // 16px (left-4) + 60px (button width) + 16px (gap)
+  // Button size calculation: p-2.5 (10px × 2) + icon (18px) + border-2 (2px × 2) = 42px
+  const MOBILE_LEFT = 74; // 16px (left-4) + 42px (button width) + 16px (gap)
 
   // Desktop positioning (top-left, vertical)
   const BASE_TOP_DESKTOP = 80; // md:top-20 in pixels
@@ -116,7 +117,10 @@ const CommunityRaffleCard = ({
 
   return (
     <div
-      className="fixed bottom-4 z-50 transition-all duration-300 md:bottom-auto md:left-16"
+      className={`fixed bottom-4 z-50 transition-all duration-300 md:bottom-auto md:left-16 ${
+        // Hide on mobile when another panel is expanded
+        hideOnMobile ? 'max-md:hidden' : ''
+      }`}
       style={{
         // On mobile: when expanded, reposition to left-4 (16px), when collapsed stay at horizontal position
         // On desktop: use top positioning
@@ -128,7 +132,7 @@ const CommunityRaffleCard = ({
       {!isExpanded && (
         <button
           onClick={() => handleSetExpanded(true)}
-          className={`rounded-full p-4 md:p-4 border-2 transition-all hover:scale-110 shadow-xl relative group ${
+          className={`rounded-full p-2.5 md:p-4 border-2 transition-all hover:scale-110 shadow-xl relative group ${
             isFull
               ? 'bg-gradient-to-br from-yellow-500 to-amber-500 border-yellow-400/70 hover:border-yellow-400'
               : 'bg-gradient-to-br from-yellow-600 to-amber-600 border-yellow-400/40 hover:border-yellow-400/70'
@@ -138,7 +142,7 @@ const CommunityRaffleCard = ({
           <img
             src="/raffle-icon.png"
             alt="Raffle"
-            className="w-6 h-6 md:w-6 md:h-6"
+            className="w-[18px] h-[18px] md:w-6 md:h-6"
             style={{ filter: 'brightness(0) invert(1)' }}
           />
 
@@ -149,8 +153,8 @@ const CommunityRaffleCard = ({
 
           {/* Full Badge */}
           {isFull && (
-            <div className="absolute -top-1 -right-1 bg-green-500 rounded-full w-6 h-6 md:w-6 md:h-6 flex items-center justify-center">
-              <span className="text-white text-xs md:text-xs font-bold">✓</span>
+            <div className="absolute -top-1 -right-1 bg-green-500 rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center">
+              <span className="text-white text-[10px] md:text-xs font-bold">✓</span>
             </div>
           )}
 

@@ -2918,6 +2918,7 @@ export default function TicTacChain() {
           onCollapse={(collapseFn) => { collapseActivityPanelRef.current = collapseFn; }}
           isExpanded={expandedPanel === 'playerActivity'}
           onToggleExpand={() => setExpandedPanel(expandedPanel === 'playerActivity' ? null : 'playerActivity')}
+          hideOnMobile={expandedPanel !== null && expandedPanel !== 'playerActivity'}
         />
       )}
 
@@ -2976,6 +2977,7 @@ export default function TicTacChain() {
           syncing={raffleSyncing}
           isExpanded={expandedPanel === 'communityRaffle'}
           onToggleExpand={() => setExpandedPanel(expandedPanel === 'communityRaffle' ? null : 'communityRaffle')}
+          hideOnMobile={expandedPanel !== null && expandedPanel !== 'communityRaffle'}
         />
       )}
 

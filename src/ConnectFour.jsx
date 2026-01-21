@@ -3211,6 +3211,7 @@ export default function ConnectFour() {
           onCollapse={(collapseFn) => { collapseActivityPanelRef.current = collapseFn; }}
           isExpanded={expandedPanel === 'playerActivity'}
           onToggleExpand={() => setExpandedPanel(expandedPanel === 'playerActivity' ? null : 'playerActivity')}
+          hideOnMobile={expandedPanel !== null && expandedPanel !== 'playerActivity'}
         />
       )}
 
@@ -3225,6 +3226,7 @@ export default function ConnectFour() {
           syncing={raffleSyncing}
           isExpanded={expandedPanel === 'communityRaffle'}
           onToggleExpand={() => setExpandedPanel(expandedPanel === 'communityRaffle' ? null : 'communityRaffle')}
+          hideOnMobile={expandedPanel !== null && expandedPanel !== 'communityRaffle'}
         />
       )}
 

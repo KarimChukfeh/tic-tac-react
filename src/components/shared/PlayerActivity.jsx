@@ -33,6 +33,7 @@ const PlayerActivity = ({
   isElite = false,
   isExpanded: externalIsExpanded, // External control for mobile single-panel coordination
   onToggleExpand, // External toggle handler
+  hideOnMobile = false, // Hide this panel on mobile when another panel is expanded
 }) => {
   const [internalIsExpanded, setInternalIsExpanded] = useState(false);
   const expandedPanelRef = useRef(null);
@@ -482,19 +483,22 @@ const PlayerActivity = ({
   );
 
   return (
-    <div className="fixed bottom-4 left-4 md:top-20 md:bottom-auto md:left-16 z-50">
+    <div className={`fixed bottom-4 left-4 md:top-20 md:bottom-auto md:left-16 z-50 ${
+      // Hide on mobile when another panel is expanded
+      hideOnMobile ? 'max-md:hidden' : ''
+    }`}>
       {/* Collapsed State */}
       {!isExpanded && (
         <button
           onClick={() => handleSetExpanded(true)}
-          className={`bg-gradient-to-br backdrop-blur-lg rounded-full p-4 md:p-4 border-2 transition-all hover:scale-110 shadow-xl relative group ${
+          className={`bg-gradient-to-br backdrop-blur-lg rounded-full p-2.5 md:p-4 border-2 transition-all hover:scale-110 shadow-xl relative group ${
             isElite
               ? 'from-[#fbbf24]/90 to-[#f59e0b]/90 border-[#d4a012]/40 hover:border-[#d4a012]/70'
               : 'from-purple-600/90 to-blue-600/90 border-purple-400/40 hover:border-purple-400/70'
           }`}
           aria-label="Open player activity"
         >
-          <Users size={24} className="text-white md:w-6 md:h-6" />
+          <Users size={18} className="text-white md:w-6 md:h-6" />
 
           {/* Sync Circle Animation */}
           {syncing && (
@@ -503,13 +507,13 @@ const PlayerActivity = ({
 
           {/* Activity Badges */}
           {enrolledTournamentCount > 0 && (
-            <div className="absolute -top-1 -right-1 bg-orange-500 rounded-full w-6 h-6 md:w-6 md:h-6 flex items-center justify-center animate-pulse">
-              <span className="text-white text-xs md:text-xs font-bold">{enrolledTournamentCount}</span>
+            <div className="absolute -top-1 -right-1 bg-orange-500 rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center animate-pulse">
+              <span className="text-white text-[10px] md:text-xs font-bold">{enrolledTournamentCount}</span>
             </div>
           )}
           {activeMatchCount > 0 && (
-            <div className="absolute -top-1 -left-1 bg-red-500 rounded-full w-6 h-6 md:w-6 md:h-6 flex items-center justify-center animate-pulse">
-              <span className="text-white text-xs md:text-xs font-bold">{activeMatchCount}</span>
+            <div className="absolute -top-1 -left-1 bg-red-500 rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center animate-pulse">
+              <span className="text-white text-[10px] md:text-xs font-bold">{activeMatchCount}</span>
             </div>
           )}
 

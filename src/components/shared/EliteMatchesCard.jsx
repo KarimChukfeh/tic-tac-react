@@ -21,6 +21,7 @@ const EliteMatchesCard = ({
   onViewMatch,
   isExpanded: externalIsExpanded, // External control for mobile single-panel coordination
   onToggleExpand, // External toggle handler
+  hideOnMobile = false, // Hide this panel on mobile when another panel is expanded
 }) => {
   const [internalIsExpanded, setInternalIsExpanded] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
@@ -95,8 +96,8 @@ const EliteMatchesCard = ({
   // Desktop (>=768px): Vertical layout at top-left, positioned below both PlayerActivity and CommunityRaffle
 
   // Mobile positioning (bottom-left, horizontal)
-  // Button size calculation: p-4 (16px × 2) + icon (24px) + border-2 (2px × 2) = 60px
-  const MOBILE_LEFT = 168; // 16px (left-4) + 60px (PlayerActivity) + 16px (gap) + 60px (CommunityRaffle) + 16px (gap)
+  // Button size calculation: p-2.5 (10px × 2) + icon (18px) + border-2 (2px × 2) = 42px
+  const MOBILE_LEFT = 132; // 16px (left-4) + 42px (PlayerActivity) + 16px (gap) + 42px (CommunityRaffle) + 16px (gap)
 
   // Desktop positioning (top-left, vertical)
   const BASE_TOP_DESKTOP = 80; // md:top-20 in pixels
@@ -119,7 +120,10 @@ const EliteMatchesCard = ({
 
   return (
     <div
-      className="fixed bottom-4 z-50 transition-all duration-300 md:bottom-auto md:left-16"
+      className={`fixed bottom-4 z-50 transition-all duration-300 md:bottom-auto md:left-16 ${
+        // Hide on mobile when another panel is expanded
+        hideOnMobile ? 'max-md:hidden' : ''
+      }`}
       style={{
         // On mobile: when expanded, reposition to left-4 (16px), when collapsed stay at horizontal position
         // On desktop: use top positioning
@@ -131,10 +135,10 @@ const EliteMatchesCard = ({
       {!isExpanded && (
         <button
           onClick={() => handleSetExpanded(true)}
-          className="bg-gradient-to-br from-amber-500/90 to-yellow-600/90 backdrop-blur-lg rounded-full p-4 md:p-4 border-2 border-amber-400/40 hover:border-amber-400/70 transition-all hover:scale-110 shadow-xl relative group"
+          className="bg-gradient-to-br from-amber-500/90 to-yellow-600/90 backdrop-blur-lg rounded-full p-2.5 md:p-4 border-2 border-amber-400/40 hover:border-amber-400/70 transition-all hover:scale-110 shadow-xl relative group"
           aria-label="Open elite matches"
         >
-          <Crown size={24} className="text-white md:w-6 md:h-6" />
+          <Crown size={18} className="text-white md:w-6 md:h-6" />
 
           {/* Sync Circle Animation */}
           {syncing && (
@@ -143,8 +147,8 @@ const EliteMatchesCard = ({
 
           {/* Match Count Badge */}
           {hasMatches && (
-            <div className="absolute -top-1 -right-1 bg-amber-700 rounded-full w-6 h-6 md:w-6 md:h-6 flex items-center justify-center">
-              <span className="text-white text-xs md:text-xs font-bold">{eliteMatches.length}</span>
+            <div className="absolute -top-1 -right-1 bg-amber-700 rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center">
+              <span className="text-white text-[10px] md:text-xs font-bold">{eliteMatches.length}</span>
             </div>
           )}
 

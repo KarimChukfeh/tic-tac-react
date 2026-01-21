@@ -202,7 +202,7 @@ const GameMatchLayout = ({
 
     return (
       <div className="lg:hidden space-y-3 mb-6">
-        {/* Row 1: Player cards with assignments */}
+        {/* Row 1: Player cards (with addresses and assignments) */}
         <div className="grid grid-cols-2 gap-3">
           <PlayerPanel
             playerAddress={player1}
@@ -260,19 +260,6 @@ const GameMatchLayout = ({
                 <div className={`h-full ${player2Colors.bar}`} style={{ width: `${Math.min(player2Progress, 100)}%` }} />
               </div>
             </div>
-          </div>
-        )}
-
-        {/* Row 3: Turn indicator */}
-        {!isGameOver && (
-          <div className="flex justify-center">
-            <TurnIndicator
-              isYourTurn={isYourTurn}
-              isGameOver={isGameOver}
-              hasWinner={hasWinner}
-              userWon={userWon}
-              isDraw={isDraw}
-            />
           </div>
         )}
       </div>
