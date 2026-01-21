@@ -17,6 +17,7 @@
  * </GameMatchLayout>
  */
 
+import { useState, useEffect, useRef } from 'react';
 import MatchHeader from './MatchHeader';
 import PlayerPanel from './PlayerPanel';
 import TurnIndicator from './TurnIndicator';
@@ -129,34 +130,160 @@ const GameMatchLayout = ({
   const isPlayer1Turn = currentTurn?.toLowerCase() === player1?.toLowerCase();
   const isPlayer2Turn = currentTurn?.toLowerCase() === player2?.toLowerCase();
 
+  // Client-side timer state for mobile consolidated header
+  const [player1TimeLeft, setPlayer1TimeLeft] = useState(match.player1TimeRemaining ?? match.matchTimePerPlayer ?? 300);
+  const [player2TimeLeft, setPlayer2TimeLeft] = useState(match.player2TimeRemaining ?? match.matchTimePerPlayer ?? 300);
+  const lastSyncRef = useRef(Date.now());
+  const lastContractP1TimeRef = useRef(match.player1TimeRemaining);
+  const lastContractP2TimeRef = useRef(match.player2TimeRemaining);
+
+  // Update client-side time when contract data changes (on sync)
+  useEffect(() => {
+    const contractP1Time = match.player1TimeRemaining ?? match.matchTimePerPlayer ?? 300;
+    const contractP2Time = match.player2TimeRemaining ?? match.matchTimePerPlayer ?? 300;
+
+    // Only update if contract values actually changed (real sync occurred)
+    if (contractP1Time !== lastContractP1TimeRef.current || contractP2Time !== lastContractP2TimeRef.current) {
+      setPlayer1TimeLeft(contractP1Time);
+      setPlayer2TimeLeft(contractP2Time);
+      lastSyncRef.current = Date.now();
+      lastContractP1TimeRef.current = contractP1Time;
+      lastContractP2TimeRef.current = contractP2Time;
+    }
+  }, [match.player1TimeRemaining, match.player2TimeRemaining, match.matchTimePerPlayer]);
+
+  // Client-side countdown ticker
+  useEffect(() => {
+    if (match.matchStatus !== 1) return; // Only tick during active match
+
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const elapsedSinceSync = Math.floor((now - lastSyncRef.current) / 1000);
+
+      // Decrement the time for the player whose turn it is
+      if (isPlayer1Turn) {
+        const newP1Time = Math.max(0, lastContractP1TimeRef.current - elapsedSinceSync);
+        setPlayer1TimeLeft(newP1Time);
+      } else if (isPlayer2Turn) {
+        const newP2Time = Math.max(0, lastContractP2TimeRef.current - elapsedSinceSync);
+        setPlayer2TimeLeft(newP2Time);
+      }
+    }, 100); // Update every 100ms for smooth countdown
+
+    return () => clearInterval(interval);
+  }, [match.matchStatus, isPlayer1Turn, isPlayer2Turn]);
+
+  // Render mobile consolidated header (used across all layouts)
+  const renderMobileConsolidatedHeader = () => {
+    // Timer values come from state (client-side ticking)
+    const totalTime = match.matchTimePerPlayer ?? 300;
+
+    // Calculate progress percentages
+    const player1Progress = ((totalTime - player1TimeLeft) / totalTime) * 100;
+    const player2Progress = ((totalTime - player2TimeLeft) / totalTime) * 100;
+
+    // Format time display
+    const formatTime = (seconds) => {
+      const mins = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    // Get color scheme based on remaining time
+    const getTimeColors = (timeLeft) => {
+      if (timeLeft <= 0) return { text: 'text-red-500', border: 'border-red-500', bg: 'bg-red-500/20', bar: 'bg-red-500' };
+      if (timeLeft <= 30) return { text: 'text-red-400', border: 'border-red-400', bg: 'bg-red-500/10', bar: 'bg-red-500' };
+      if (timeLeft <= 60) return { text: 'text-yellow-400', border: 'border-yellow-400', bg: 'bg-yellow-500/10', bar: 'bg-yellow-500' };
+      return { text: 'text-green-400', border: 'border-green-400', bg: 'bg-green-500/10', bar: 'bg-green-500' };
+    };
+
+    const player1Colors = getTimeColors(player1TimeLeft);
+    const player2Colors = getTimeColors(player2TimeLeft);
+
+    return (
+      <div className="lg:hidden space-y-3 mb-6">
+        {/* Row 1: Player cards with assignments */}
+        <div className="grid grid-cols-2 gap-3">
+          <PlayerPanel
+            playerAddress={player1}
+            currentAccount={account}
+            isCurrentTurn={isPlayer1Turn && isPlayer1You}
+            isGameOver={isGameOver}
+            icon={playerConfig?.player1?.icon}
+            label={playerConfig?.player1?.label || 'Player 1'}
+            colorScheme={theme.player1Color}
+            variant="compact"
+            extraContent={renderPlayer1Extra?.()}
+          />
+          <PlayerPanel
+            playerAddress={player2}
+            currentAccount={account}
+            isCurrentTurn={isPlayer2Turn && !isPlayer1You && account?.toLowerCase() === player2?.toLowerCase()}
+            isGameOver={isGameOver}
+            icon={playerConfig?.player2?.icon}
+            label={playerConfig?.player2?.label || 'Player 2'}
+            colorScheme={theme.player2Color}
+            variant="compact"
+            extraContent={renderPlayer2Extra?.()}
+          />
+        </div>
+
+        {/* Row 2: Player timers (aligned with player cards) */}
+        {showTurnTimer && (
+          <div className="grid grid-cols-2 gap-3">
+            {/* Player 1 Timer */}
+            <div className={`border rounded-lg p-2 ${
+              isPlayer1Turn ? `${player1Colors.border} ${player1Colors.bg}` : 'border-gray-600/30 opacity-60'
+            }`}>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-bold text-purple-300">Time</span>
+                <span className={`font-mono text-sm font-bold ${player1Colors.text}`}>
+                  {player1TimeLeft > 0 ? formatTime(player1TimeLeft) : 'OUT'}
+                </span>
+              </div>
+              <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                <div className={`h-full ${player1Colors.bar}`} style={{ width: `${Math.min(player1Progress, 100)}%` }} />
+              </div>
+            </div>
+
+            {/* Player 2 Timer */}
+            <div className={`border rounded-lg p-2 ${
+              isPlayer2Turn ? `${player2Colors.border} ${player2Colors.bg}` : 'border-gray-600/30 opacity-60'
+            }`}>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-bold text-pink-300">Time</span>
+                <span className={`font-mono text-sm font-bold ${player2Colors.text}`}>
+                  {player2TimeLeft > 0 ? formatTime(player2TimeLeft) : 'OUT'}
+                </span>
+              </div>
+              <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                <div className={`h-full ${player2Colors.bar}`} style={{ width: `${Math.min(player2Progress, 100)}%` }} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Row 3: Turn indicator */}
+        {!isGameOver && (
+          <div className="flex justify-center">
+            <TurnIndicator
+              isYourTurn={isYourTurn}
+              isGameOver={isGameOver}
+              hasWinner={hasWinner}
+              userWon={userWon}
+              isDraw={isDraw}
+            />
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // Render three-column layout (TicTacToe style)
   const renderThreeColumnLayout = () => (
     <div>
-      {/* Mobile: Both players side by side above board */}
-      <div className="lg:hidden grid grid-cols-2 gap-3 mb-6">
-        <PlayerPanel
-          playerAddress={player1}
-          currentAccount={account}
-          isCurrentTurn={isPlayer1Turn && isPlayer1You}
-          isGameOver={isGameOver}
-          icon={playerConfig?.player1?.icon}
-          label={playerConfig?.player1?.label || 'Player 1'}
-          colorScheme={theme.player1Color}
-          variant="compact"
-          extraContent={renderPlayer1Extra?.()}
-        />
-        <PlayerPanel
-          playerAddress={player2}
-          currentAccount={account}
-          isCurrentTurn={isPlayer2Turn && !isPlayer1You && account?.toLowerCase() === player2?.toLowerCase()}
-          isGameOver={isGameOver}
-          icon={playerConfig?.player2?.icon}
-          label={playerConfig?.player2?.label || 'Player 2'}
-          colorScheme={theme.player2Color}
-          variant="compact"
-          extraContent={renderPlayer2Extra?.()}
-        />
-      </div>
+      {/* Mobile: Consolidated header with player cards, timers, and turn indicator */}
+      {renderMobileConsolidatedHeader()}
 
       {/* Desktop: Three column layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -183,16 +310,19 @@ const GameMatchLayout = ({
 
           {/* Game Controls */}
           <div className="space-y-3 mt-6">
+            {/* Desktop: Show timer inside board panel */}
             {showTurnTimer && (
-              <TurnTimer
-                match={match}
-                account={account}
-                onClaimTimeoutWin={onClaimTimeoutWin}
-                loading={loading}
-                syncDots={syncDots}
-                isSpectator={isSpectator}
-                playerConfig={playerConfig}
-              />
+              <div className="hidden lg:block">
+                <TurnTimer
+                  match={match}
+                  account={account}
+                  onClaimTimeoutWin={onClaimTimeoutWin}
+                  loading={loading}
+                  syncDots={syncDots}
+                  isSpectator={isSpectator}
+                  playerConfig={playerConfig}
+                />
+              </div>
             )}
 
             {timeoutState && (
@@ -245,85 +375,91 @@ const GameMatchLayout = ({
 
   // Render sidebar layout (Chess style)
   const renderSidebarLayout = () => (
-    <div className="flex flex-col xl:flex-row gap-6">
-      {/* Player 1 - Left side */}
-      <div className="flex-none xl:w-56">
-        <PlayerPanel
-          playerAddress={player1}
-          currentAccount={account}
-          isCurrentTurn={isPlayer1Turn && isPlayer1You}
-          isGameOver={isGameOver}
-          icon={playerConfig?.player1?.icon}
-          label={playerConfig?.player1?.label || 'Player 1'}
-          colorScheme={theme.player1Color}
-          variant="full"
-          extraContent={renderPlayer1Extra?.()}
-        />
-      </div>
+    <div>
+      {/* Mobile: Consolidated header */}
+      {renderMobileConsolidatedHeader()}
 
-      {/* Center: Board and controls */}
-      <div className="flex-1 flex flex-col items-center min-w-0">
-        {children}
+      <div className="flex flex-col xl:flex-row gap-6">
+        {/* Player 1 - Left side (hidden on mobile) */}
+        <div className="hidden xl:block flex-none xl:w-56">
+          <PlayerPanel
+            playerAddress={player1}
+            currentAccount={account}
+            isCurrentTurn={isPlayer1Turn && isPlayer1You}
+            isGameOver={isGameOver}
+            icon={playerConfig?.player1?.icon}
+            label={playerConfig?.player1?.label || 'Player 1'}
+            colorScheme={theme.player1Color}
+            variant="full"
+            extraContent={renderPlayer1Extra?.()}
+          />
+        </div>
 
-        {showTurnTimer && (
-          <div className="w-full max-w-md mt-4">
-            <TurnTimer
-              match={match}
-              account={account}
-              onClaimTimeoutWin={onClaimTimeoutWin}
-              loading={loading}
-              syncDots={syncDots}
-              isSpectator={isSpectator}
-              playerConfig={playerConfig}
-            />
-          </div>
-        )}
+        {/* Center: Board and controls */}
+        <div className="flex-1 flex flex-col items-center min-w-0">
+          {children}
 
-        {timeoutState && (
-          <div className="w-full max-w-md mt-4">
-            <MatchTimeoutEscalation
-              timeoutState={timeoutState}
-              matchStatus={matchStatus}
-              isYourTurn={isYourTurn}
-              onClaimTimeoutWin={onClaimTimeoutWin}
-              onForceEliminate={onForceEliminate}
-              onClaimReplacement={onClaimReplacement}
-              loading={loading}
-              escL2Available={match.escL2Available}
-              escL3Available={match.escL3Available}
-              isUserAdvancedForRound={match.isUserAdvancedForRound}
-            />
-          </div>
-        )}
+          {/* Desktop: Timer (hidden on mobile) */}
+          {showTurnTimer && (
+            <div className="hidden xl:block w-full max-w-md mt-4">
+              <TurnTimer
+                match={match}
+                account={account}
+                onClaimTimeoutWin={onClaimTimeoutWin}
+                loading={loading}
+                syncDots={syncDots}
+                isSpectator={isSpectator}
+                playerConfig={playerConfig}
+              />
+            </div>
+          )}
 
-        {renderGameControls?.()}
+          {timeoutState && (
+            <div className="w-full max-w-md mt-4">
+              <MatchTimeoutEscalation
+                timeoutState={timeoutState}
+                matchStatus={matchStatus}
+                isYourTurn={isYourTurn}
+                onClaimTimeoutWin={onClaimTimeoutWin}
+                onForceEliminate={onForceEliminate}
+                onClaimReplacement={onClaimReplacement}
+                loading={loading}
+                escL2Available={match.escL2Available}
+                escL3Available={match.escL3Available}
+                isUserAdvancedForRound={match.isUserAdvancedForRound}
+              />
+            </div>
+          )}
 
-        {isGameOver && (
-          <div className="w-full max-w-md mt-4">
-            <MatchComplete
-              isDraw={isDraw}
-              winner={winner}
-              loser={loser}
-              currentAccount={account}
-              gameSpecificText={!isDraw ? theme.completeText : undefined}
-            />
-          </div>
-        )}
-      </div>
+          {renderGameControls?.()}
 
-      {/* Player 2 - Right side */}
-      <div className="flex-none xl:w-56">
-        <PlayerPanel
-          playerAddress={player2}
-          currentAccount={account}
-          isCurrentTurn={isPlayer2Turn && account?.toLowerCase() === player2?.toLowerCase()}
-          isGameOver={isGameOver}
-          icon={playerConfig?.player2?.icon}
-          label={playerConfig?.player2?.label || 'Player 2'}
-          colorScheme={theme.player2Color}
-          variant="full"
-          extraContent={renderPlayer2Extra?.()}
-        />
+          {isGameOver && (
+            <div className="w-full max-w-md mt-4">
+              <MatchComplete
+                isDraw={isDraw}
+                winner={winner}
+                loser={loser}
+                currentAccount={account}
+                gameSpecificText={!isDraw ? theme.completeText : undefined}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Player 2 - Right side (hidden on mobile) */}
+        <div className="hidden xl:block flex-none xl:w-56">
+          <PlayerPanel
+            playerAddress={player2}
+            currentAccount={account}
+            isCurrentTurn={isPlayer2Turn && account?.toLowerCase() === player2?.toLowerCase()}
+            isGameOver={isGameOver}
+            icon={playerConfig?.player2?.icon}
+            label={playerConfig?.player2?.label || 'Player 2'}
+            colorScheme={theme.player2Color}
+            variant="full"
+            extraContent={renderPlayer2Extra?.()}
+          />
+        </div>
       </div>
     </div>
   );
@@ -331,8 +467,11 @@ const GameMatchLayout = ({
   // Render centered layout (ConnectFour style)
   const renderCenteredLayout = () => (
     <div className="flex flex-col items-center">
-      {/* Turn Indicator */}
-      <div className="flex justify-center mb-6">
+      {/* Mobile: Consolidated header */}
+      {renderMobileConsolidatedHeader()}
+
+      {/* Desktop: Turn Indicator (hidden on mobile since it's in consolidated header) */}
+      <div className="hidden lg:flex justify-center mb-6">
         <TurnIndicator
           isYourTurn={isYourTurn}
           isGameOver={isGameOver}
@@ -342,8 +481,8 @@ const GameMatchLayout = ({
         />
       </div>
 
-      {/* Player Info - Horizontal */}
-      <div className="flex justify-between items-center mb-6 max-w-md mx-auto w-full">
+      {/* Desktop: Player Info - Horizontal (hidden on mobile) */}
+      <div className="hidden lg:flex justify-between items-center mb-6 max-w-md mx-auto w-full">
         <PlayerPanel
           playerAddress={player1}
           currentAccount={account}
@@ -370,9 +509,9 @@ const GameMatchLayout = ({
       {/* Board */}
       {children}
 
-      {/* Turn Timer */}
+      {/* Desktop: Turn Timer (hidden on mobile) */}
       {showTurnTimer && (
-        <div className="max-w-md mx-auto mt-6 w-full">
+        <div className="hidden lg:block max-w-md mx-auto mt-6 w-full">
           <TurnTimer
             match={match}
             account={account}
@@ -412,50 +551,13 @@ const GameMatchLayout = ({
     <>
       {/* Mobile Layout (< lg breakpoint) */}
       <div className="lg:hidden space-y-3">
-        {/* Player 1 - mobile-compact */}
-        <PlayerPanel
-          playerAddress={player1}
-          currentAccount={account}
-          isCurrentTurn={isPlayer1Turn && isPlayer1You}
-          isGameOver={isGameOver}
-          icon={playerConfig?.player1?.icon}
-          label={playerConfig?.player1?.label || 'Player 1'}
-          colorScheme={theme.player1Color}
-          variant="mobile-compact"
-          extraContent={renderPlayer1Extra?.()}
-        />
+        {/* Mobile: Consolidated header */}
+        {renderMobileConsolidatedHeader()}
 
         {/* Board */}
         <div className="flex justify-center">
           {children}
         </div>
-
-        {/* Player 2 - mobile-compact */}
-        <PlayerPanel
-          playerAddress={player2}
-          currentAccount={account}
-          isCurrentTurn={isPlayer2Turn && account?.toLowerCase() === player2?.toLowerCase()}
-          isGameOver={isGameOver}
-          icon={playerConfig?.player2?.icon}
-          label={playerConfig?.player2?.label || 'Player 2'}
-          colorScheme={theme.player2Color}
-          variant="mobile-compact"
-          extraContent={renderPlayer2Extra?.()}
-        />
-
-        {/* Turn Timer - compact */}
-        {showTurnTimer && (
-          <TurnTimer
-            compact={true}
-            match={match}
-            account={account}
-            onClaimTimeoutWin={onClaimTimeoutWin}
-            loading={loading}
-            syncDots={syncDots}
-            isSpectator={isSpectator}
-            playerConfig={playerConfig}
-          />
-        )}
 
         {/* Other controls */}
         {timeoutState && (
