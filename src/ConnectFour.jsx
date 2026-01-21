@@ -3324,12 +3324,14 @@ export default function ConnectFour() {
             ETour Connect Four
           </h1>
           <p className={`text-2xl ${currentTheme.heroText} mb-6`}>
-            Drop • Connect • Win
+            Provably Fair • Zero Trust • 100% On-Chain
           </p>
-          <p className={`text-lg ${currentTheme.heroText} max-w-3xl mx-auto mb-8`}>
-            Drop your discs, connect four in a row, win real ETH.
+          <p className={`text-lg ${currentTheme.heroSubtext} max-w-3xl mx-auto mb-8`}>
+            Play Connect Four on the blockchain. Real opponents. Real ETH on the line.
             <br/>
-            Every move is verified on-chain. No cheating possible.
+            No servers required. No trust needed.
+            <br/>
+            Every move is a transaction. Every outcome is permanently on-chain.
           </p>
 
           {/* Game Info Cards */}
