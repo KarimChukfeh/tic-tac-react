@@ -46,6 +46,7 @@ import GameMatchLayout from './components/shared/GameMatchLayout';
 import TournamentHeader from './components/shared/TournamentHeader';
 import PlayerActivity from './components/shared/PlayerActivity';
 import CommunityRaffleCard from './components/shared/CommunityRaffleCard';
+import BracketScrollHint from './components/shared/BracketScrollHint';
 import { usePlayerActivity } from './hooks/usePlayerActivity';
 
 // ConnectFour particle symbols (SVG circles with darker colors)
@@ -405,6 +406,9 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, /* onSpectate
   // Ref for active match scrolling
   const activeMatchRef = useRef(null);
 
+  // Ref for scroll hint component
+  const bracketViewRef = useRef(null);
+
   // Countdown timer logic for enrollment
   const ENROLLMENT_DURATION = 1 * 60; // 1 minute in seconds (matches contract)
   const [timeRemaining, setTimeRemaining] = useState(0);
@@ -528,7 +532,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, /* onSpectate
       />
 
       {/* Bracket View */}
-      <div className={`bg-gradient-to-br from-slate-900/50 to-purple-900/30 backdrop-blur-lg rounded-2xl p-8 border ${colors.headerBorder}`}>
+      <div ref={bracketViewRef} className={`bg-gradient-to-br from-slate-900/50 to-purple-900/30 backdrop-blur-lg rounded-2xl p-8 border ${colors.headerBorder}`}>
         <h3 className={`text-2xl font-bold ${colors.text} mb-6 flex items-center gap-2`}>
           <Grid size={24} />
           {tournamentTypeLabel} Bracket
@@ -592,6 +596,9 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, /* onSpectate
           </div>
         )}
       </div>
+
+      {/* Mobile scroll hint */}
+      <BracketScrollHint bracketRef={bracketViewRef} />
     </div>
   );
 };
@@ -3170,8 +3177,8 @@ export default function ConnectFour() {
 
       {/* Tournament Invitation Banner - shown when URL params present but not connected */}
       {urlTournamentParams && !account && (
-        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 max-w-2xl mx-4 w-full">
-          <div className="bg-gradient-to-r from-purple-600/90 to-blue-600/90 backdrop-blur-lg rounded-xl p-4 border border-purple-400/50 shadow-2xl">
+        <div className="fixed top-4 left-4 right-4 z-50">
+          <div className="max-w-2xl mx-auto bg-gradient-to-r from-purple-600/90 to-blue-600/90 backdrop-blur-lg rounded-xl p-4 border border-purple-400/50 shadow-2xl">
             <div className="flex items-start gap-3">
               <Trophy className="text-yellow-400 shrink-0 mt-1" size={24} />
               <div className="flex-1 min-w-0">

@@ -64,21 +64,21 @@ const StatsGrid = ({ enrolledCount, playerCount, status, currentRound, totalRoun
   const showStatus = !(status === 0 && enrolledCount === 0);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <div className="bg-black/20 rounded-lg p-4">
-        <div className={`${colors.text} text-sm mb-1`}>Players</div>
-        <div className="text-white font-bold text-xl">{enrolledCount} / {playerCount}</div>
+    <div className="grid grid-cols-3 gap-2 md:gap-4">
+      <div className="bg-black/20 rounded-lg p-2 md:p-4">
+        <div className={`${colors.text} text-xs md:text-sm mb-1`}>Players</div>
+        <div className="text-white font-bold text-sm md:text-xl">{enrolledCount} / {playerCount}</div>
       </div>
-      <div className={`${showStatus ? `${statusDisplay.bgColor} border ${statusDisplay.borderColor}` : 'bg-black/20'} rounded-lg p-4`}>
-        <div className={`${colors.text} text-sm mb-1`}>Status</div>
+      <div className={`${showStatus ? `${statusDisplay.bgColor} border ${statusDisplay.borderColor}` : 'bg-black/20'} rounded-lg p-2 md:p-4`}>
+        <div className={`${colors.text} text-xs md:text-sm mb-1`}>Status</div>
         {showStatus ? (
           <div className="flex flex-col gap-1">
-            <div className={`${statusDisplay.color} font-bold text-base flex items-center gap-2`}>
-              <div className={`w-2 h-2 ${statusDisplay.dotColor} rounded-full ${status < 2 ? 'animate-pulse' : ''}`}></div>
-              {statusDisplay.text}
+            <div className={`${statusDisplay.color} font-bold text-xs md:text-base flex items-center gap-1 md:gap-2`}>
+              <div className={`w-1.5 md:w-2 h-1.5 md:h-2 ${statusDisplay.dotColor} rounded-full ${status < 2 ? 'animate-pulse' : ''}`}></div>
+              <span className="truncate">{statusDisplay.text}</span>
             </div>
             {status < 2 && (
-              <div className="flex items-center gap-1.5 mt-1">
+              <div className="hidden md:flex items-center gap-1.5 mt-1">
                 <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse"></div>
                 <span className="text-cyan-400 text-sm font-semibold">
                   Syncing{'.'.repeat(syncDots)}
@@ -87,12 +87,12 @@ const StatsGrid = ({ enrolledCount, playerCount, status, currentRound, totalRoun
             )}
           </div>
         ) : (
-          <div className="text-white/50 font-bold text-base">-</div>
+          <div className="text-white/50 font-bold text-xs md:text-base">-</div>
         )}
       </div>
-      <div className="bg-black/20 rounded-lg p-4">
-        <div className={`${colors.text} text-sm mb-1`}>Current Round</div>
-        <div className="text-white font-bold text-xl">Round {currentRound + 1}/{totalRounds}</div>
+      <div className="bg-black/20 rounded-lg p-2 md:p-4">
+        <div className={`${colors.text} text-xs md:text-sm mb-1`}>Round</div>
+        <div className="text-white font-bold text-sm md:text-xl">{currentRound + 1}/{totalRounds}</div>
       </div>
     </div>
   );
