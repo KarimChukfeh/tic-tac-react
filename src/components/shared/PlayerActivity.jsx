@@ -386,7 +386,6 @@ const PlayerActivity = ({
   // Handler when a match completes - add it to completed matches to keep it visible
   const handleMatchCompleted = (match) => {
     const matchKey = `${match.tierId}-${match.instanceId}-${match.roundIdx}-${match.matchIdx}`;
-    console.log('[MiniTicTacToeBoard] handleMatchCompleted called with match:', match);
 
     // Ensure match has matchStatus set to 2 (completed)
     const completedMatch = {
@@ -397,7 +396,6 @@ const PlayerActivity = ({
     setCompletedMatches(prev => {
       const next = new Map(prev);
       next.set(matchKey, completedMatch);
-      console.log('[MiniTicTacToeBoard] Added to completedMatches with matchStatus:', completedMatch.matchStatus);
       return next;
     });
     // Keep it expanded so user sees the result
@@ -411,20 +409,17 @@ const PlayerActivity = ({
   // Handler when user dismisses a completed match
   const handleDismissMatch = (tierId, instanceId, roundIdx, matchIdx) => {
     const matchKey = `${tierId}-${instanceId}-${roundIdx}-${matchIdx}`;
-    console.log('[MiniTicTacToeBoard] Dismissing match:', matchKey);
 
     // Remove from local completedMatches
     setCompletedMatches(prev => {
       const next = new Map(prev);
       next.delete(matchKey);
-      console.log('[MiniTicTacToeBoard] Removed from completedMatches');
       return next;
     });
 
     // Add to local dismissed set for immediate filtering
     setLocalDismissedMatches(prev => {
       const next = new Set([...prev, matchKey]);
-      console.log('[MiniTicTacToeBoard] Added to localDismissedMatches:', Array.from(next));
       return next;
     });
 
@@ -440,16 +435,11 @@ const PlayerActivity = ({
     const activeMatches = activity?.activeMatches || [];
     const matchMap = new Map();
 
-    console.log('[MiniTicTacToeBoard] getDisplayMatches - localDismissedMatches:', Array.from(localDismissedMatches));
-    console.log('[MiniTicTacToeBoard] getDisplayMatches - active matches count:', activeMatches.length);
-
     // First, add all completed matches (these take priority to show final state)
     // Skip matches that have been locally dismissed
     completedMatches.forEach((match, key) => {
       if (!localDismissedMatches.has(key)) {
         matchMap.set(key, match);
-      } else {
-        console.log('[MiniTicTacToeBoard] Filtered out completed match (dismissed):', key);
       }
     });
 
@@ -459,12 +449,9 @@ const PlayerActivity = ({
       const matchKey = `${match.tierId}-${match.instanceId}-${match.roundIdx}-${match.matchIdx}`;
       if (!matchMap.has(matchKey) && !localDismissedMatches.has(matchKey)) {
         matchMap.set(matchKey, match);
-      } else if (localDismissedMatches.has(matchKey)) {
-        console.log('[MiniTicTacToeBoard] Filtered out active match (dismissed):', matchKey);
       }
     });
 
-    console.log('[MiniTicTacToeBoard] Final display matches count:', matchMap.size);
     return Array.from(matchMap.values());
   };
 
@@ -660,8 +647,6 @@ const PlayerActivity = ({
                       const matchKey = `${match.tierId}-${match.instanceId}-${match.roundIdx}-${match.matchIdx}`;
                       const isMatchExpanded = expandedMatches.has(matchKey);
                       const isCompleted = match.matchStatus === 2;
-
-                      console.log('[MiniTicTacToeBoard] Rendering match card:', matchKey, 'matchStatus:', match.matchStatus, 'isCompleted:', isCompleted);
 
                       return (
                         <div

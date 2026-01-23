@@ -66,7 +66,6 @@ const MiniTicTacToeBoard = ({
 
       // If contract returns cleared data (zero addresses + empty board), query MatchCompleted event
       if (!isMatchInitialized && isBoardEmpty) {
-        console.log('[MiniTicTacToeBoard] Match data cleared, querying MatchCompleted event');
 
         try {
           const { ethers } = await import('ethers');
@@ -84,16 +83,6 @@ const MiniTicTacToeBoard = ({
             const event = events[events.length - 1];
             const [eventMatchId, eventPlayer1, eventPlayer2, eventWinner, eventIsDraw, eventReason, eventPackedBoard] = event.args;
 
-            console.log('[MiniTicTacToeBoard] MatchCompleted event data:', {
-              eventMatchId,
-              eventPlayer1,
-              eventPlayer2,
-              eventWinner,
-              eventIsDraw,
-              eventReason: Number(eventReason),
-              eventPackedBoard: eventPackedBoard.toString()
-            });
-
             // Unpack board from event
             const unpackBoard = (packed) => {
               const boardArray = [];
@@ -105,7 +94,6 @@ const MiniTicTacToeBoard = ({
               return boardArray;
             };
             const eventBoard = unpackBoard(eventPackedBoard);
-            console.log('[MiniTicTacToeBoard] Unpacked board from event:', eventBoard);
 
             const eventLoser = eventIsDraw ? zeroAddress : (
               eventWinner.toLowerCase() === eventPlayer1.toLowerCase() ? eventPlayer2 : eventPlayer1
@@ -126,11 +114,9 @@ const MiniTicTacToeBoard = ({
             };
 
             alreadyReconstructed = true; // Mark as reconstructed to skip second reconstruction
-            console.log('[MiniTicTacToeBoard] Reconstructed match from MatchCompleted event:', eventBoard);
           } else {
             // No event found - if we have existing matchData, preserve it
             if (matchData) {
-              console.log('[MiniTicTacToeBoard] No event found but have existing data, preserving state');
               return; // Don't update, keep existing state
             }
             // Otherwise, use the cleared data (initial load)
@@ -139,7 +125,6 @@ const MiniTicTacToeBoard = ({
           console.warn('[MiniTicTacToeBoard] Failed to query MatchCompleted event:', err);
           // If we have existing matchData, preserve it
           if (matchData) {
-            console.log('[MiniTicTacToeBoard] Preserving existing state due to event query error');
             return; // Don't update, keep existing state
           }
         }
@@ -167,7 +152,6 @@ const MiniTicTacToeBoard = ({
               winner: reconstructed.winner || parsed.winner,
               isDraw: reconstructed.isDraw ?? parsed.isDraw
             };
-            console.log('[MiniTicTacToeBoard] Using reconstructed board from MoveMade events');
           }
         } catch (err) {
           console.warn('[MiniTicTacToeBoard] Event reconstruction failed, using cached data:', err);
@@ -179,7 +163,6 @@ const MiniTicTacToeBoard = ({
       // Calculate isMyTurn based on current turn
       parsed.isMyTurn = parsed.currentTurn?.toLowerCase() === account?.toLowerCase();
 
-      console.log('[MiniTicTacToeBoard] Setting matchData - board:', parsed.board, 'status:', parsed.matchStatus);
       setMatchData(parsed);
 
       // Calculate time remaining client-side (same as main board logic)
@@ -272,7 +255,6 @@ const MiniTicTacToeBoard = ({
           return;
         }
 
-        console.log('[MiniTicTacToeBoard] MatchCompleted event received for this match');
 
         // Determine result with completion reason
         let result = null;
@@ -298,7 +280,6 @@ const MiniTicTacToeBoard = ({
           setHasNotifiedCompletion(true);
         }
 
-        console.log('[MiniTicTacToeBoard] Modal triggered by MatchCompleted event:', result);
       } catch (err) {
         console.error('[MiniTicTacToeBoard] Error processing MatchCompleted event:', err);
       }
