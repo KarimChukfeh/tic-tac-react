@@ -35,7 +35,7 @@ import { parseConnectFourMatch } from './utils/matchDataParser';
 import { determineMatchResult } from './utils/matchCompletionHandler';
 import { fetchTierTimeoutConfig } from './utils/timeCalculations';
 import { getCompletionReasonText, getCompletionReasonDescription } from './utils/completionReasons';
-import { batchFetchTournamentInfo } from './utils/multicall';
+import { batchFetchTournaments, batchFetchIsEnrolled } from './utils/multicall';
 import ParticleBackground from './components/shared/ParticleBackground';
 import MatchCard from './components/shared/MatchCard';
 import TournamentCard from './components/shared/TournamentCard';
@@ -1135,19 +1135,23 @@ export default function ConnectFour() {
 
         const { playerCount, instanceCount, entryFee } = tierConfig;
 
-        const statuses = [];
-        const enrolledCounts = [];
-
-        // OPTIMIZATION: Fetch all tournament instances using multicall (batches into single RPC call)
+        // OPTIMIZATION: Fetch all tournament data using multicall (batches into single RPC call)
         // Falls back to parallel calls if Multicall3 is not available on the network
         const provider = readContract.runner?.provider || readContract.provider;
-        const results = await batchFetchTournamentInfo(readContract, tierId, instanceCount, provider);
+        const results = await batchFetchTournaments(readContract, tierId, instanceCount, provider);
 
         // Process results - stop at first uninitialized instance
+        const statuses = [];
+        const enrolledCounts = [];
+        const enrollmentTimeouts = [];
+        const hasStartedViaTimeouts = [];
+
         for (const result of results) {
           if (!result.success) break; // Instance not initialized yet
           statuses.push(result.status);
           enrolledCounts.push(result.enrolledCount);
+          enrollmentTimeouts.push(result.enrollmentTimeout);
+          hasStartedViaTimeouts.push(result.hasStartedViaTimeout);
         }
 
         metadata = {
@@ -1155,7 +1159,9 @@ export default function ConnectFour() {
           instanceCount: statuses.length,
           entryFee,
           statuses,
-          enrolledCounts
+          enrolledCounts,
+          enrollmentTimeouts,
+          hasStartedViaTimeouts
         };
       }
 
@@ -1166,16 +1172,20 @@ export default function ConnectFour() {
 
       const instances = [];
 
-      // Fetch detailed data for each instance in this tier
+      // OPTIMIZATION: Fetch enrollment status for all instances using multicall (second multicall)
+      const provider = readContract.runner?.provider || readContract.provider;
+      let enrollmentStatuses = [];
+
+      if (currentAccount) {
+        enrollmentStatuses = await batchFetchIsEnrolled(readContract, tierId, metadata.instanceCount, currentAccount, provider);
+      } else {
+        // No account connected, all false
+        enrollmentStatuses = Array(metadata.instanceCount).fill(false);
+      }
+
+      // Build instances array using data from both multicalls
       for (let i = 0; i < metadata.instanceCount; i++) {
         try {
-          // Parallel fetch tournament data and enrollment status
-          const [tournamentInfo, isUserEnrolled] = await Promise.all([
-            readContract.tournaments(tierId, i),
-            currentAccount ? readContract.isEnrolled(tierId, i, currentAccount).catch(() => false) : Promise.resolve(false)
-          ]);
-
-          // Calculate prize pool (enrolled count * entry fee * 0.9 to account for 10% network fee)
           const prizePoolETH = (metadata.enrolledCounts[i] * parseFloat(metadata.entryFee) * 0.9).toFixed(4);
 
           instances.push({
@@ -1186,13 +1196,13 @@ export default function ConnectFour() {
             maxPlayers: metadata.playerCount,
             entryFee: metadata.entryFee,
             prizePool: prizePoolETH,
-            isEnrolled: isUserEnrolled,
-            enrollmentTimeout: tournamentInfo.enrollmentTimeout,
-            hasStartedViaTimeout: tournamentInfo.hasStartedViaTimeout,
+            isEnrolled: enrollmentStatuses[i],
+            enrollmentTimeout: metadata.enrollmentTimeouts[i],
+            hasStartedViaTimeout: metadata.hasStartedViaTimeouts[i],
             tournamentStatus: metadata.statuses[i]
           });
         } catch (err) {
-          console.log(`Could not fetch instance ${i} for tier ${tierId}:`, err.message);
+          console.log(`Could not build instance ${i} for tier ${tierId}:`, err.message);
         }
       }
 
