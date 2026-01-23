@@ -35,6 +35,7 @@ import { parseConnectFourMatch } from './utils/matchDataParser';
 import { determineMatchResult } from './utils/matchCompletionHandler';
 import { fetchTierTimeoutConfig } from './utils/timeCalculations';
 import { getCompletionReasonText, getCompletionReasonDescription } from './utils/completionReasons';
+import { batchFetchTournamentInfo } from './utils/multicall';
 import ParticleBackground from './components/shared/ParticleBackground';
 import MatchCard from './components/shared/MatchCard';
 import TournamentCard from './components/shared/TournamentCard';
@@ -1137,18 +1138,10 @@ export default function ConnectFour() {
         const statuses = [];
         const enrolledCounts = [];
 
-        // OPTIMIZATION: Fetch all tournament instances in parallel
-        const tournamentPromises = Array.from({ length: instanceCount }, (_, instanceId) =>
-          readContract.getTournamentInfo(tierId, instanceId)
-            .then(tournamentInfo => ({
-              success: true,
-              status: Number(tournamentInfo[0]),
-              enrolledCount: Number(tournamentInfo[2])
-            }))
-            .catch(error => ({ success: false, error }))
-        );
-
-        const results = await Promise.all(tournamentPromises);
+        // OPTIMIZATION: Fetch all tournament instances using multicall (batches into single RPC call)
+        // Falls back to parallel calls if Multicall3 is not available on the network
+        const provider = readContract.runner?.provider || readContract.provider;
+        const results = await batchFetchTournamentInfo(readContract, tierId, instanceCount, provider);
 
         // Process results - stop at first uninitialized instance
         for (const result of results) {

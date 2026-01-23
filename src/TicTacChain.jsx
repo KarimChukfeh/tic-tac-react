@@ -37,6 +37,7 @@ import { parseTicTacToeMatch } from './utils/matchDataParser';
 import { determineMatchResult } from './utils/matchCompletionHandler';
 import { fetchTierTimeoutConfig } from './utils/timeCalculations';
 import { getCompletionReasonText, getCompletionReasonDescription } from './utils/completionReasons';
+import { batchFetchTournaments } from './utils/multicall';
 import ParticleBackground from './components/shared/ParticleBackground';
 import MatchCard from './components/shared/MatchCard';
 import TournamentCard from './components/shared/TournamentCard';
@@ -809,18 +810,10 @@ export default function TicTacChain() {
         const statuses = [];
         const enrolledCounts = [];
 
-        // OPTIMIZATION: Fetch all tournament instances in parallel
-        const tournamentPromises = Array.from({ length: instanceCount }, (_, instanceId) =>
-          readContract.tournaments(tierId, instanceId)
-            .then(tournament => ({
-              success: true,
-              status: Number(tournament.status),
-              enrolledCount: Number(tournament.enrolledCount)
-            }))
-            .catch(error => ({ success: false, error }))
-        );
-
-        const results = await Promise.all(tournamentPromises);
+        // OPTIMIZATION: Fetch all tournament instances using multicall (batches into single RPC call)
+        // Falls back to parallel calls if Multicall3 is not available on the network
+        const provider = readContract.runner?.provider || readContract.provider;
+        const results = await batchFetchTournaments(readContract, tierId, instanceCount, provider);
 
         // Process results - stop at first uninitialized instance
         for (const result of results) {
