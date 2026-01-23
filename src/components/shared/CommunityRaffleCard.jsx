@@ -165,8 +165,8 @@ const CommunityRaffleCard = ({
           </div>
         )}
 
-        {/* Tooltip */}
-        <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+        {/* Tooltip - Desktop only */}
+        <div className="max-md:hidden absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
           Community Raffle
         </div>
       </button>

@@ -101,8 +101,8 @@ const GamesCard = ({
           style={{ filter: 'brightness(0) invert(1)' }}
         />
 
-        {/* Tooltip */}
-        <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-slate-800 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border border-cyan-400/30">
+        {/* Tooltip - Desktop only */}
+        <div className="max-md:hidden absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-slate-800 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border border-cyan-400/30">
           Games
         </div>
       </button>
