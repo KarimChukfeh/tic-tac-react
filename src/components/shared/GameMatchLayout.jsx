@@ -925,12 +925,12 @@ const GameMatchLayout = ({
     return (
       <>
         {/* Mobile Layout (< lg breakpoint) */}
-        <div className="lg:hidden space-y-3">
+        <div className={`lg:hidden ${gameType === 'connectfour' ? 'space-y-0' : 'space-y-3'}`}>
           {/* Mobile: Consolidated header */}
           {renderMobileConsolidatedHeader()}
 
           {/* Board */}
-          <div className="flex justify-center">
+          <div className={`flex justify-center ${gameType === 'connectfour' ? 'mt-0' : ''}`}>
             {children}
           </div>
 
