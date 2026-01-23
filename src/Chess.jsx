@@ -4502,7 +4502,7 @@ export default function Chess() {
                 <h3 id="elite-matches" className={`text-lg font-semibold ${isEnrolledInElite ? 'text-[#fff8e7]' : 'text-purple-100'} mb-3 scroll-mt-24`}>Why are Elite tiers so expensive?</h3>
                 <div className="space-y-3 text-gray-300">
                   <p>
-                    Elite tiers are high-stakes to serves a specific purpose. Elite chess on ETour isn't just another tournament level. It's as an exclusive club for serious chess competitors.
+                    Elite chess on ETour isn't just another tournament tier. It's as an exclusive club for serious chess competitors.
                   </p>
                   <p className="font-semibold text-gray-200">Here's what makes Elite tiers special:</p>
                   <ul className="space-y-2 ml-4">
