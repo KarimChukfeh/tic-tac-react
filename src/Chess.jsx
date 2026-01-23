@@ -646,6 +646,7 @@ export default function Chess() {
   // const EXPECTED_CHAIN_ID = CURRENT_NETWORK.chainId;
   const EXPECTED_CHAIN_ID = 42161;
   // const RPC_URL = import.meta.env.VITE_RPC_URL || CURRENT_NETWORK.rpcUrl;
+  // const RPC_URL = "https://arb1.arbitrum.io/rpc";
   const RPC_URL = "https://rpc.ankr.com/arbitrum/fa78359589ebb4ba1c97e306d5ad98192c1b897a76d2df05acf7ade04aa2687b";
   const EXPLORER_URL = getAddressUrl(CONTRACT_ADDRESS);
 
@@ -2442,6 +2443,7 @@ export default function Chess() {
       // Chess move history - get match data using chess functions
       const matchData = await contractInstance.getMatch(tierId, instanceId, roundNumber, matchNumber);
       const player1 = matchData.common.player1;
+      const player2 = matchData.common.player2;
       const matchStartTime = Number(matchData.common.startTime);
 
       // Try to query ChessMoveMade events for this match
@@ -2457,7 +2459,7 @@ export default function Chess() {
 
         if (events.length > 0) {
           // Filter events to only include those from the current match instance
-          // Get block timestamps and filter by match start time
+          // Get block timestamps and filter by match start time and player addresses
           const eventsWithTimestamps = await Promise.all(
             events.map(async (event) => {
               const block = await event.getBlock();
@@ -2468,9 +2470,13 @@ export default function Chess() {
             })
           );
 
-          // Only include events that occurred at or after the match started
+          // Only include events that occurred after match start with the correct players
           const currentMatchEvents = eventsWithTimestamps
-            .filter(({ timestamp }) => timestamp >= matchStartTime)
+            .filter(({ event, timestamp }) => {
+              const eventPlayer = event.args.player.toLowerCase();
+              const isCorrectPlayer = eventPlayer === player1.toLowerCase() || eventPlayer === player2.toLowerCase();
+              return timestamp >= matchStartTime && isCorrectPlayer;
+            })
             .map(({ event }) => event);
 
           if (currentMatchEvents.length === 0) {
@@ -2732,6 +2738,7 @@ export default function Chess() {
         if (events.length > 0) {
           // Filter events to only include those from current match instance
           const matchStartTime = Number(matchData.common.startTime);
+
           const eventsWithTimestamps = await Promise.all(
             events.map(async (event) => {
               const block = await event.getBlock();
@@ -2742,9 +2749,13 @@ export default function Chess() {
             })
           );
 
-          // Only include events that occurred at or after the match started
+          // Only include events that occurred after match start with the correct players
           const currentMatchEvents = eventsWithTimestamps
-            .filter(({ timestamp }) => timestamp >= matchStartTime)
+            .filter(({ event, timestamp }) => {
+              const eventPlayer = event.args.player.toLowerCase();
+              const isCorrectPlayer = eventPlayer === player1.toLowerCase() || eventPlayer === player2.toLowerCase();
+              return timestamp >= matchStartTime && isCorrectPlayer;
+            })
             .map(({ event }) => event);
 
           if (currentMatchEvents.length > 0) {
@@ -3569,6 +3580,10 @@ export default function Chess() {
             return; // Stop polling
           }
 
+          // Check if board changed to update move history
+          const boardChanged = previousBoardRef.current &&
+            JSON.stringify(previousBoardRef.current) !== JSON.stringify(updatedMatch.board);
+
           // Update for in-progress matches only - update turn, timer, and board fields
           setCurrentMatch(prev => {
             if (!prev) return updatedMatch;
@@ -3591,6 +3606,22 @@ export default function Chess() {
               // matchStatus, winner, loser, isDraw are preserved from prev (event-driven)
             };
           });
+
+          // If board changed, refresh move history
+          if (boardChanged) {
+            console.log('[Chess Polling] Board changed, refreshing move history');
+            const history = await fetchMoveHistory(
+              contractInstance,
+              match.tierId,
+              match.instanceId,
+              match.roundNumber,
+              match.matchNumber
+            );
+            setMoveHistory(history);
+          }
+
+          // Update board reference
+          previousBoardRef.current = [...updatedMatch.board];
         }
       } catch (error) {
         console.error('[Chess Polling] Error syncing match:', error);

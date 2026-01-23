@@ -1767,6 +1767,7 @@ export default function TicTacChain() {
       const matchData = await contractInstance.getMatch(tierId, instanceId, roundNumber, matchNumber);
       const parsedMatch = parseTicTacToeMatch(matchData);
       const player1 = parsedMatch.player1;
+      const player2 = parsedMatch.player2;
       const matchStartTime = Number(matchData.common.startTime);
 
       // Try to query MoveMade events for this match
@@ -1783,7 +1784,7 @@ export default function TicTacChain() {
 
         if (events.length > 0) {
           // Filter events to only include those from the current match instance
-          // Get block timestamps and filter by match start time
+          // Get block timestamps and filter by match start time and player addresses
           const eventsWithTimestamps = await Promise.all(
             events.map(async (event) => {
               const block = await event.getBlock();
@@ -1794,9 +1795,13 @@ export default function TicTacChain() {
             })
           );
 
-          // Only include events that occurred at or after the match started
+          // Only include events that occurred after match start with the correct players
           const currentMatchEvents = eventsWithTimestamps
-            .filter(({ timestamp }) => timestamp >= matchStartTime)
+            .filter(({ event, timestamp }) => {
+              const eventPlayer = event.args.player.toLowerCase();
+              const isCorrectPlayer = eventPlayer === player1.toLowerCase() || eventPlayer === player2.toLowerCase();
+              return timestamp >= matchStartTime && isCorrectPlayer;
+            })
             .map(({ event }) => event);
 
           if (currentMatchEvents.length === 0) {
@@ -2062,6 +2067,7 @@ export default function TicTacChain() {
         if (events.length > 0) {
           // Filter events to only include those from current match instance
           const matchStartTime = Number(matchData.common.startTime);
+
           const eventsWithTimestamps = await Promise.all(
             events.map(async (event) => {
               const block = await event.getBlock();
@@ -2072,9 +2078,13 @@ export default function TicTacChain() {
             })
           );
 
-          // Only include events that occurred at or after the match started
+          // Only include events that occurred after match start with the correct players
           const currentMatchEvents = eventsWithTimestamps
-            .filter(({ timestamp }) => timestamp >= matchStartTime)
+            .filter(({ event, timestamp }) => {
+              const eventPlayer = event.args.player.toLowerCase();
+              const isCorrectPlayer = eventPlayer === player1.toLowerCase() || eventPlayer === player2.toLowerCase();
+              return timestamp >= matchStartTime && isCorrectPlayer;
+            })
             .map(({ event }) => event);
 
           if (currentMatchEvents.length > 0) {
@@ -2901,6 +2911,10 @@ export default function TicTacChain() {
             return; // Stop polling
           }
 
+          // Check if board changed to update move history
+          const boardChanged = previousBoardRef.current &&
+            JSON.stringify(previousBoardRef.current) !== JSON.stringify(updatedMatch.board);
+
           // Update for in-progress matches only - update turn, timer, and board fields
           setCurrentMatch(prev => {
             if (!prev) return updatedMatch;
@@ -2923,6 +2937,22 @@ export default function TicTacChain() {
               // matchStatus, winner, loser, isDraw are preserved from prev (event-driven)
             };
           });
+
+          // If board changed, refresh move history
+          if (boardChanged) {
+            console.log('[Polling] Board changed, refreshing move history');
+            const history = await fetchMoveHistory(
+              contractInstance,
+              match.tierId,
+              match.instanceId,
+              match.roundNumber,
+              match.matchNumber
+            );
+            setMoveHistory(history);
+          }
+
+          // Update board reference
+          previousBoardRef.current = [...updatedMatch.board];
         }
       } catch (error) {
         console.error('[Polling] Error syncing match:', error);
