@@ -68,7 +68,6 @@ export async function multicall(contract, functionName, paramsArray, provider, a
 
   if (!multicallAvailable) {
     // Fall back to parallel calls
-    console.log('[Multicall] Multicall3 not available, falling back to parallel calls');
     const fallbackResults = await Promise.all(
       paramsArray.map(params =>
         contract[functionName](...params)
@@ -76,7 +75,6 @@ export async function multicall(contract, functionName, paramsArray, provider, a
           .catch(error => ({ success: false, error }))
       )
     );
-    console.log('[Multicall] Fallback results:', fallbackResults.length, 'calls completed');
     return fallbackResults;
   }
 
@@ -94,19 +92,13 @@ export async function multicall(contract, functionName, paramsArray, provider, a
   }));
 
   // Create multicall contract
-  console.log('[Multicall] Creating Multicall3 contract with provider:', provider?.constructor?.name);
   const multicallContract = new ethers.Contract(
     MULTICALL3_ADDRESS,
     MULTICALL3_ABI,
     provider
   );
-  console.log('[Multicall] Multicall3 contract created successfully');
 
   // Execute multicall with timeout
-  console.log('[Multicall] Using Multicall3 for', calls.length, 'calls');
-  console.log('[Multicall] Multicall contract address:', MULTICALL3_ADDRESS);
-  console.log('[Multicall] Calls structure sample:', JSON.stringify(calls[0]));
-  console.log('[Multicall] About to call aggregate3.staticCall with 10s timeout...');
   let results;
   try {
     // Add timeout to detect hanging calls
@@ -116,18 +108,12 @@ export async function multicall(contract, functionName, paramsArray, provider, a
 
     // Use staticCall for read-only operation (ethers v6 best practice)
     const callPromise = multicallContract.aggregate3.staticCall(calls);
-    console.log('[Multicall] staticCall promise created, awaiting...');
 
     results = await Promise.race([
       callPromise,
       timeoutPromise
     ]);
-    console.log('[Multicall] aggregate3 completed!');
-    console.log('[Multicall] Returned', results.length, 'results');
   } catch (error) {
-    console.error('[Multicall] aggregate3 call failed or timed out:', error.message);
-    console.error('[Multicall] Full error:', error);
-    console.log('[Multicall] Falling back to parallel calls');
 
     // Fallback to parallel calls
     return Promise.all(
@@ -142,7 +128,6 @@ export async function multicall(contract, functionName, paramsArray, provider, a
   // Decode results
   const decodedResults = results.map((result, index) => {
     if (!result.success) {
-      console.log(`[Multicall] Call ${index} failed (allowFailure=true)`);
       return { success: false, error: new Error('Call failed') };
     }
 
@@ -152,13 +137,11 @@ export async function multicall(contract, functionName, paramsArray, provider, a
       const finalResult = decoded.length === 1 ? decoded[0] : decoded;
       return { success: true, result: finalResult };
     } catch (error) {
-      console.error(`[Multicall] Error decoding result ${index}:`, error.message);
       return { success: false, error };
     }
   });
 
   const successCount = decodedResults.filter(r => r.success).length;
-  console.log('[Multicall] Decoded results:', successCount, 'successful out of', decodedResults.length);
   return decodedResults;
 }
 
@@ -173,8 +156,6 @@ export async function multicall(contract, functionName, paramsArray, provider, a
  * @returns {Promise<Array>} Array of tournament data with status and enrolledCount
  */
 export async function batchFetchTournaments(contract, tierId, instanceCount, provider) {
-  console.log('[Multicall] Fetching', instanceCount, 'tournaments for tier', tierId);
-
   // Create parameter arrays for each tournament call
   const paramsArray = Array.from(
     { length: instanceCount },
@@ -188,7 +169,6 @@ export async function batchFetchTournaments(contract, tierId, instanceCount, pro
   // tournaments() returns the full struct, so extract all fields we need
   const transformed = results.map((result, idx) => {
     if (!result.success) {
-      console.log(`[Multicall] tournaments() - Instance ${idx} failed:`, result.error);
       return { success: false, error: result.error };
     }
 
@@ -202,13 +182,11 @@ export async function batchFetchTournaments(contract, tierId, instanceCount, pro
         hasStartedViaTimeout: tournament.hasStartedViaTimeout
       };
     } catch (error) {
-      console.error(`[Multicall] tournaments() - Instance ${idx} transform error:`, error);
       return { success: false, error };
     }
   });
 
   const successCount = transformed.filter(r => r.success).length;
-  console.log('[Multicall] Transformed', successCount, 'successful tournaments out of', transformed.length);
   return transformed;
 }
 
@@ -223,8 +201,6 @@ export async function batchFetchTournaments(contract, tierId, instanceCount, pro
  * @returns {Promise<Array>} Array of boolean enrollment statuses
  */
 export async function batchFetchIsEnrolled(contract, tierId, instanceCount, userAddress, provider) {
-  console.log('[Multicall] Fetching isEnrolled for', instanceCount, 'instances, user:', userAddress);
-
   // Create parameter arrays for each isEnrolled call
   const paramsArray = Array.from(
     { length: instanceCount },
@@ -237,14 +213,12 @@ export async function batchFetchIsEnrolled(contract, tierId, instanceCount, user
   // Transform results to simple boolean array
   const transformed = results.map((result, idx) => {
     if (!result.success) {
-      console.log(`[Multicall] isEnrolled() - Instance ${idx} failed, defaulting to false`);
       return false;
     }
     return Boolean(result.result);
   });
 
   const enrolledCount = transformed.filter(r => r).length;
-  console.log('[Multicall] User enrolled in', enrolledCount, 'out of', transformed.length, 'instances');
   return transformed;
 }
 
@@ -259,8 +233,6 @@ export async function batchFetchIsEnrolled(contract, tierId, instanceCount, user
  * @returns {Promise<Array>} Array of tournament data with status and enrolledCount
  */
 export async function batchFetchTournamentInfo(contract, tierId, instanceCount, provider) {
-  console.log('[Multicall] Fetching', instanceCount, 'tournaments for tier', tierId);
-
   // Create parameter arrays for each tournament call
   const paramsArray = Array.from(
     { length: instanceCount },
@@ -274,7 +246,6 @@ export async function batchFetchTournamentInfo(contract, tierId, instanceCount, 
   // getTournamentInfo returns an array: [status, startTime, enrolledCount, ...]
   const transformed = results.map((result, idx) => {
     if (!result.success) {
-      console.log(`[Multicall] getTournamentInfo() - Instance ${idx} failed:`, result.error);
       return { success: false, error: result.error };
     }
 
@@ -286,12 +257,9 @@ export async function batchFetchTournamentInfo(contract, tierId, instanceCount, 
         enrolledCount: Number(tournamentInfo[2])
       };
     } catch (error) {
-      console.error(`[Multicall] getTournamentInfo() - Instance ${idx} transform error:`, error);
       return { success: false, error };
     }
   });
 
-  const successCount = transformed.filter(r => r.success).length;
-  console.log('[Multicall] Transformed', successCount, 'successful tournaments out of', transformed.length);
   return transformed;
 }
