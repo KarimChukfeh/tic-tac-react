@@ -6,32 +6,33 @@
 import { ethers } from 'ethers';
 
 // Multicall3 ABI - only the aggregate3 function we need
+// Using the correct ABI format for ethers v6
 const MULTICALL3_ABI = [
   {
+    type: 'function',
+    name: 'aggregate3',
+    stateMutability: 'payable',
     inputs: [
       {
+        name: 'calls',
+        type: 'tuple[]',
         components: [
           { name: 'target', type: 'address' },
           { name: 'allowFailure', type: 'bool' },
           { name: 'callData', type: 'bytes' }
-        ],
-        name: 'calls',
-        type: 'tuple[]'
+        ]
       }
     ],
-    name: 'aggregate3',
     outputs: [
       {
+        name: 'returnData',
+        type: 'tuple[]',
         components: [
           { name: 'success', type: 'bool' },
           { name: 'returnData', type: 'bytes' }
-        ],
-        name: 'returnData',
-        type: 'tuple[]'
+        ]
       }
-    ],
-    stateMutability: 'payable',
-    type: 'function'
+    ]
   }
 ];
 
@@ -101,18 +102,41 @@ export async function multicall(contract, functionName, paramsArray, provider, a
   );
   console.log('[Multicall] Multicall3 contract created successfully');
 
-  // Execute multicall
+  // Execute multicall with timeout
   console.log('[Multicall] Using Multicall3 for', calls.length, 'calls');
   console.log('[Multicall] Multicall contract address:', MULTICALL3_ADDRESS);
-  console.log('[Multicall] About to call aggregate3...');
+  console.log('[Multicall] Calls structure sample:', JSON.stringify(calls[0]));
+  console.log('[Multicall] About to call aggregate3.staticCall with 10s timeout...');
   let results;
   try {
-    results = await multicallContract.aggregate3(calls);
+    // Add timeout to detect hanging calls
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Multicall timeout after 10s')), 10000)
+    );
+
+    // Use staticCall for read-only operation (ethers v6 best practice)
+    const callPromise = multicallContract.aggregate3.staticCall(calls);
+    console.log('[Multicall] staticCall promise created, awaiting...');
+
+    results = await Promise.race([
+      callPromise,
+      timeoutPromise
+    ]);
     console.log('[Multicall] aggregate3 completed!');
     console.log('[Multicall] Returned', results.length, 'results');
   } catch (error) {
-    console.error('[Multicall] aggregate3 call failed:', error);
-    throw error;
+    console.error('[Multicall] aggregate3 call failed or timed out:', error.message);
+    console.error('[Multicall] Full error:', error);
+    console.log('[Multicall] Falling back to parallel calls');
+
+    // Fallback to parallel calls
+    return Promise.all(
+      paramsArray.map(params =>
+        contract[functionName](...params)
+          .then(result => ({ success: true, result }))
+          .catch(error => ({ success: false, error }))
+      )
+    );
   }
 
   // Decode results
