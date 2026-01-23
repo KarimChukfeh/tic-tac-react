@@ -267,7 +267,7 @@ const GameMatchLayout = ({
             <div className="flex-1 min-w-0">
               <div className="text-xs text-gray-400">{label}</div>
               <div className="font-mono text-xs truncate">{playerAddress ? `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : ''}</div>
-              {isYou && <span className="text-yellow-300 text-[11px] font-bold">YOU ARE {icon}</span>}
+              {isYou && <span className="text-yellow-300 text-[11px] font-bold">YOU</span>}
             </div>
             {extraContent && <div className="flex-shrink-0">{extraContent}</div>}
           </div>
