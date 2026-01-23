@@ -277,6 +277,7 @@ export default function TicTacChain() {
   // const EXPECTED_CHAIN_ID = CURRENT_NETWORK.chainId;
   const EXPECTED_CHAIN_ID = 42161;
   // const RPC_URL = import.meta.env.VITE_RPC_URL || CURRENT_NETWORK.rpcUrl;
+  // const RPC_URL = "https://arb1.arbitrum.io/rpc";
   const RPC_URL = "https://rpc.ankr.com/arbitrum/fa78359589ebb4ba1c97e306d5ad98192c1b897a76d2df05acf7ade04aa2687b";
   const EXPLORER_URL = getAddressUrl(CONTRACT_ADDRESS);
 
@@ -3026,8 +3027,19 @@ export default function TicTacChain() {
         </div>
       )}
 
-      {/* Bottom Navigation Bar - Mobile Only */}
-      {account && (
+      {/* Back to Bracket Button - Mobile Only (Shown during match) */}
+      {account && currentMatch && (
+        <button
+          onClick={() => setCurrentMatch(null)}
+          className="fixed bottom-4 left-4 z-50 md:hidden bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-full p-2.5 shadow-lg border-2 border-purple-400/50 transition-all transform hover:scale-110 active:scale-95"
+          aria-label="Back to bracket"
+        >
+          <ArrowLeft size={20} />
+        </button>
+      )}
+
+      {/* Bottom Navigation Bar - Mobile Only (Hidden during match) */}
+      {account && !currentMatch && (
         <div className="fixed bottom-0 left-0 right-0 z-50 md:static md:z-auto">
           {/* Solid background bar on mobile */}
           <div className="md:hidden bg-gradient-to-b from-slate-800 to-slate-900 border-t border-purple-400/30 px-4 py-2.5 flex items-center justify-between">
