@@ -963,8 +963,12 @@ const GameMatchLayout = ({
             />
           )}
 
-          {/* Move History - hidden on mobile by default */}
-          {/* Future enhancement: Add collapsible toggle here if needed */}
+          {/* Move History - Mobile Section */}
+          {renderMoveHistory && (
+            <div style={{ marginTop: '24px' }} className="bg-slate-900/50 rounded-xl p-4 border border-purple-500/30">
+              {renderMoveHistory()}
+            </div>
+          )}
         </div>
 
         {/* Desktop Layout (>= lg breakpoint) - Three-column layout with timers */}
@@ -1067,7 +1071,7 @@ const GameMatchLayout = ({
 
       {/* Move History (optional) - Only show if NOT using players-board-history layout */}
       {renderMoveHistory && layout !== 'players-board-history' && (
-        <div className="mt-6">
+        <div style={{ marginTop: '24px' }} className="bg-slate-900/50 rounded-xl p-4 lg:p-6 border border-purple-500/30">
           {renderMoveHistory()}
         </div>
       )}
