@@ -101,13 +101,19 @@ export async function multicall(contract, functionName, paramsArray, provider, a
 
   // Execute multicall
   console.log('[Multicall] Using Multicall3 for', calls.length, 'calls');
-  const results = await multicallContract.aggregate3(calls);
-  console.log('[Multicall] Multicall3 returned', results.length, 'results');
+  let results;
+  try {
+    results = await multicallContract.aggregate3(calls);
+    console.log('[Multicall] Multicall3 returned', results.length, 'results');
+  } catch (error) {
+    console.error('[Multicall] aggregate3 call failed:', error);
+    throw error;
+  }
 
   // Decode results
   const decodedResults = results.map((result, index) => {
     if (!result.success) {
-      console.log(`[Multicall] Call ${index} failed`);
+      console.log(`[Multicall] Call ${index} failed (allowFailure=true)`);
       return { success: false, error: new Error('Call failed') };
     }
 
@@ -117,12 +123,13 @@ export async function multicall(contract, functionName, paramsArray, provider, a
       const finalResult = decoded.length === 1 ? decoded[0] : decoded;
       return { success: true, result: finalResult };
     } catch (error) {
-      console.log(`[Multicall] Error decoding result ${index}:`, error);
+      console.error(`[Multicall] Error decoding result ${index}:`, error.message);
       return { success: false, error };
     }
   });
 
-  console.log('[Multicall] Decoded results:', decodedResults.filter(r => r.success).length, 'successful');
+  const successCount = decodedResults.filter(r => r.success).length;
+  console.log('[Multicall] Decoded results:', successCount, 'successful out of', decodedResults.length);
   return decodedResults;
 }
 
@@ -155,20 +162,21 @@ export async function batchFetchTournaments(contract, tierId, instanceCount, pro
       return { success: false, error: result.error };
     }
 
-    const tournament = result.result;
-    console.log(`[Multicall] tournaments() - Instance ${idx}:`, {
-      status: Number(tournament.status),
-      enrolledCount: Number(tournament.enrolledCount)
-    });
-
-    return {
-      success: true,
-      status: Number(tournament.status),
-      enrolledCount: Number(tournament.enrolledCount)
-    };
+    try {
+      const tournament = result.result;
+      return {
+        success: true,
+        status: Number(tournament.status),
+        enrolledCount: Number(tournament.enrolledCount)
+      };
+    } catch (error) {
+      console.error(`[Multicall] tournaments() - Instance ${idx} transform error:`, error);
+      return { success: false, error };
+    }
   });
 
-  console.log('[Multicall] Transformed results:', transformed.filter(r => r.success).length, 'successful');
+  const successCount = transformed.filter(r => r.success).length;
+  console.log('[Multicall] Transformed', successCount, 'successful tournaments out of', transformed.length);
   return transformed;
 }
 
@@ -202,19 +210,20 @@ export async function batchFetchTournamentInfo(contract, tierId, instanceCount, 
       return { success: false, error: result.error };
     }
 
-    const tournamentInfo = result.result;
-    console.log(`[Multicall] getTournamentInfo() - Instance ${idx}:`, {
-      status: Number(tournamentInfo[0]),
-      enrolledCount: Number(tournamentInfo[2])
-    });
-
-    return {
-      success: true,
-      status: Number(tournamentInfo[0]),
-      enrolledCount: Number(tournamentInfo[2])
-    };
+    try {
+      const tournamentInfo = result.result;
+      return {
+        success: true,
+        status: Number(tournamentInfo[0]),
+        enrolledCount: Number(tournamentInfo[2])
+      };
+    } catch (error) {
+      console.error(`[Multicall] getTournamentInfo() - Instance ${idx} transform error:`, error);
+      return { success: false, error };
+    }
   });
 
-  console.log('[Multicall] Transformed results:', transformed.filter(r => r.success).length, 'successful');
+  const successCount = transformed.filter(r => r.success).length;
+  console.log('[Multicall] Transformed', successCount, 'successful tournaments out of', transformed.length);
   return transformed;
 }
