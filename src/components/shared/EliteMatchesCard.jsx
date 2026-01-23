@@ -144,6 +144,9 @@ const EliteMatchesCard = ({
         onClick={() => handleSetExpanded(!isExpanded)}
         className="max-md:mx-auto bg-gradient-to-br from-amber-500/90 to-yellow-600/90 backdrop-blur-lg rounded-full p-2.5 md:p-4 border-2 border-amber-400/40 hover:border-amber-400/70 transition-all hover:scale-110 shadow-xl relative group"
         aria-label={isExpanded ? "Close elite matches" : "Open elite matches"}
+        style={{
+          boxShadow: '0 0 25px rgba(245, 158, 11, 0.9), 0 0 50px rgba(245, 158, 11, 0.7), 0 0 75px rgba(245, 158, 11, 0.5), 0 0 100px rgba(245, 158, 11, 0.3)'
+        }}
       >
         <Crown size={18} className="text-white md:w-6 md:h-6" />
 
@@ -201,17 +204,8 @@ const EliteMatchesCard = ({
             </div>
           </div>
 
-          {/* What are Elite Matches? Link */}
-          <a
-            href="#elite-matches"
-            onClick={handleEliteMatchesClick}
-            className="block w-full text-center text-amber-300 hover:text-amber-200 hover:bg-amber-500/10 text-xs mb-3 py-2 px-4 rounded-lg border border-amber-400/30 hover:border-amber-400/50 transition-all cursor-pointer"
-          >
-            What are Elite Matches?
-          </a>
-
           {/* Matches List */}
-          <div className="overflow-y-auto flex-1 space-y-2 pr-1 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-slate-800/50 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-amber-500/60 [&::-webkit-scrollbar-thumb]:to-yellow-500/60 [&::-webkit-scrollbar-thumb]:rounded-full">
+          <div className="overflow-y-auto flex-1 space-y-2 pr-1 mb-3 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-slate-800/50 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-amber-500/60 [&::-webkit-scrollbar-thumb]:to-yellow-500/60 [&::-webkit-scrollbar-thumb]:rounded-full">
             {!hasMatches ? (
               <div className="text-center py-8 text-amber-300/60">
                 <Swords size={32} className="mx-auto mb-2 opacity-50" />
@@ -315,6 +309,15 @@ const EliteMatchesCard = ({
               })
             )}
           </div>
+
+          {/* What are Elite Matches? Link */}
+          <a
+            href="#elite-matches"
+            onClick={handleEliteMatchesClick}
+            className="block w-full text-center text-amber-300 hover:text-amber-200 hover:bg-amber-500/10 text-xs py-2 px-4 rounded-lg border border-amber-400/30 hover:border-amber-400/50 transition-all cursor-pointer"
+          >
+            What are Elite Matches?
+          </a>
         </div>
       )}
     </div>
