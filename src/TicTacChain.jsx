@@ -813,7 +813,9 @@ export default function TicTacChain() {
         // OPTIMIZATION: Fetch all tournament instances using multicall (batches into single RPC call)
         // Falls back to parallel calls if Multicall3 is not available on the network
         const provider = readContract.runner?.provider || readContract.provider;
+        console.log('[Multicall] Calling batchFetchTournaments...');
         const results = await batchFetchTournaments(readContract, tierId, instanceCount, provider);
+        console.log('[Multicall] batchFetchTournaments returned', results?.length, 'results');
 
         // Process results - stop at first uninitialized instance
         for (const result of results) {

@@ -93,18 +93,23 @@ export async function multicall(contract, functionName, paramsArray, provider, a
   }));
 
   // Create multicall contract
+  console.log('[Multicall] Creating Multicall3 contract with provider:', provider?.constructor?.name);
   const multicallContract = new ethers.Contract(
     MULTICALL3_ADDRESS,
     MULTICALL3_ABI,
     provider
   );
+  console.log('[Multicall] Multicall3 contract created successfully');
 
   // Execute multicall
   console.log('[Multicall] Using Multicall3 for', calls.length, 'calls');
+  console.log('[Multicall] Multicall contract address:', MULTICALL3_ADDRESS);
+  console.log('[Multicall] About to call aggregate3...');
   let results;
   try {
     results = await multicallContract.aggregate3(calls);
-    console.log('[Multicall] Multicall3 returned', results.length, 'results');
+    console.log('[Multicall] aggregate3 completed!');
+    console.log('[Multicall] Returned', results.length, 'results');
   } catch (error) {
     console.error('[Multicall] aggregate3 call failed:', error);
     throw error;
