@@ -91,6 +91,19 @@ const EliteMatchesCard = ({
     return address.toLowerCase() === account.toLowerCase();
   };
 
+  // Handle anchor link click with collapse after scroll
+  const handleEliteMatchesClick = (e) => {
+    e.preventDefault();
+    const element = document.getElementById('elite-matches');
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Collapse card after scrolling
+      setTimeout(() => {
+        handleSetExpanded(false);
+      }, 100);
+    }
+  };
+
   // Dynamic positioning:
   // Mobile (<768px): Horizontal layout at bottom-left, positioned to the right of CommunityRaffleCard
   // Desktop (>=768px): Vertical layout at top-left, positioned below both PlayerActivity and CommunityRaffle
@@ -187,6 +200,15 @@ const EliteMatchesCard = ({
               </button>
             </div>
           </div>
+
+          {/* What are Elite Matches? Link */}
+          <a
+            href="#elite-matches"
+            onClick={handleEliteMatchesClick}
+            className="block w-full text-center text-amber-300 hover:text-amber-200 hover:bg-amber-500/10 text-xs mb-3 py-2 px-4 rounded-lg border border-amber-400/30 hover:border-amber-400/50 transition-all cursor-pointer"
+          >
+            What are Elite Matches?
+          </a>
 
           {/* Matches List */}
           <div className="overflow-y-auto flex-1 space-y-2 pr-1 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-slate-800/50 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-amber-500/60 [&::-webkit-scrollbar-thumb]:to-yellow-500/60 [&::-webkit-scrollbar-thumb]:rounded-full">
