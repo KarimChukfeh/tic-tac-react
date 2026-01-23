@@ -185,6 +185,7 @@ export async function batchFetchTournaments(contract, tierId, instanceCount, pro
   const results = await multicall(contract, 'tournaments', paramsArray, provider, true);
 
   // Transform results to match existing format
+  // tournaments() returns the full struct, so extract all fields we need
   const transformed = results.map((result, idx) => {
     if (!result.success) {
       console.log(`[Multicall] tournaments() - Instance ${idx} failed:`, result.error);
@@ -196,7 +197,9 @@ export async function batchFetchTournaments(contract, tierId, instanceCount, pro
       return {
         success: true,
         status: Number(tournament.status),
-        enrolledCount: Number(tournament.enrolledCount)
+        enrolledCount: Number(tournament.enrolledCount),
+        enrollmentTimeout: tournament.enrollmentTimeout,
+        hasStartedViaTimeout: tournament.hasStartedViaTimeout
       };
     } catch (error) {
       console.error(`[Multicall] tournaments() - Instance ${idx} transform error:`, error);
@@ -206,6 +209,42 @@ export async function batchFetchTournaments(contract, tierId, instanceCount, pro
 
   const successCount = transformed.filter(r => r.success).length;
   console.log('[Multicall] Transformed', successCount, 'successful tournaments out of', transformed.length);
+  return transformed;
+}
+
+/**
+ * Specialized function for fetching isEnrolled status in batch
+ *
+ * @param {ethers.Contract} contract - The tournament contract
+ * @param {number} tierId - The tier ID
+ * @param {number} instanceCount - Number of instances to check
+ * @param {string} userAddress - The user address to check enrollment for
+ * @param {ethers.Provider} provider - The provider to use
+ * @returns {Promise<Array>} Array of boolean enrollment statuses
+ */
+export async function batchFetchIsEnrolled(contract, tierId, instanceCount, userAddress, provider) {
+  console.log('[Multicall] Fetching isEnrolled for', instanceCount, 'instances, user:', userAddress);
+
+  // Create parameter arrays for each isEnrolled call
+  const paramsArray = Array.from(
+    { length: instanceCount },
+    (_, instanceId) => [tierId, instanceId, userAddress]
+  );
+
+  // Execute multicall
+  const results = await multicall(contract, 'isEnrolled', paramsArray, provider, true);
+
+  // Transform results to simple boolean array
+  const transformed = results.map((result, idx) => {
+    if (!result.success) {
+      console.log(`[Multicall] isEnrolled() - Instance ${idx} failed, defaulting to false`);
+      return false;
+    }
+    return Boolean(result.result);
+  });
+
+  const enrolledCount = transformed.filter(r => r).length;
+  console.log('[Multicall] User enrolled in', enrolledCount, 'out of', transformed.length, 'instances');
   return transformed;
 }
 
