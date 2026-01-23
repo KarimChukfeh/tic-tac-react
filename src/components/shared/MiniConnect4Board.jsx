@@ -202,15 +202,6 @@ const MiniConnect4Board = ({
     fetchMatchData(true);
   }, [fetchMatchData]);
 
-  // Auto-refresh every 2 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetchMatchData(false);
-    }, 2000);
-
-    return () => clearInterval(interval);
-  }, [fetchMatchData]);
-
   // Refresh when manual sync button is clicked
   useEffect(() => {
     if (refreshTrigger !== undefined) {
