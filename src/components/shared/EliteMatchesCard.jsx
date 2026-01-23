@@ -13,6 +13,7 @@ import { shortenAddress } from '../../utils/formatters';
 
 const EliteMatchesCard = ({
   eliteMatches,
+  gamesCardHeight = 0,
   playerActivityHeight,
   raffleCardHeight,
   onRefresh,
@@ -117,17 +118,26 @@ const EliteMatchesCard = ({
   const COLLAPSED_BUTTON_HEIGHT_DESKTOP = 64;
   const SPACING_DESKTOP = 90;
 
-  // Position below PlayerActivity
+  // Position below GamesCard, PlayerActivity, and CommunityRaffle
+  let topPositionDesktop = BASE_TOP_DESKTOP;
+
+  // Add GamesCard offset
+  const gamesOffset = gamesCardHeight > 0
+    ? gamesCardHeight + SPACING_DESKTOP
+    : COLLAPSED_BUTTON_HEIGHT_DESKTOP + SPACING_DESKTOP;
+  topPositionDesktop += gamesOffset;
+
+  // Add PlayerActivity offset
   const activityOffset = playerActivityHeight > 0
     ? playerActivityHeight + SPACING_DESKTOP
     : COLLAPSED_BUTTON_HEIGHT_DESKTOP + SPACING_DESKTOP;
+  topPositionDesktop += activityOffset;
 
-  // Add offset for CommunityRaffle card (use actual height when expanded, collapsed button height otherwise)
+  // Add CommunityRaffle offset
   const raffleOffset = raffleCardHeight > 0
     ? raffleCardHeight + SPACING_DESKTOP
     : COLLAPSED_BUTTON_HEIGHT_DESKTOP + SPACING_DESKTOP;
-
-  const topPositionDesktop = BASE_TOP_DESKTOP + activityOffset + raffleOffset;
+  topPositionDesktop += raffleOffset;
 
   const hasMatches = eliteMatches && eliteMatches.length > 0;
 

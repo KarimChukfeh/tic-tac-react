@@ -48,6 +48,7 @@ import GameMatchLayout from './components/shared/GameMatchLayout';
 import TournamentHeader from './components/shared/TournamentHeader';
 import PlayerActivity from './components/shared/PlayerActivity';
 import CommunityRaffleCard from './components/shared/CommunityRaffleCard';
+import GamesCard from './components/shared/GamesCard';
 import EliteMatchesCard from './components/shared/EliteMatchesCard';
 import PlayerPanel from './components/shared/PlayerPanel';
 import BracketScrollHint from './components/shared/BracketScrollHint';
@@ -737,6 +738,7 @@ export default function Chess() {
 
   // Player Activity Hook
   const playerActivity = usePlayerActivity(contract, account, 'chess', TIER_CONFIG);
+  const [gamesCardHeight, setGamesCardHeight] = useState(0);
   const [playerActivityHeight, setPlayerActivityHeight] = useState(0);
   const [raffleCardHeight, setRaffleCardHeight] = useState(0);
 
@@ -744,7 +746,7 @@ export default function Chess() {
   const collapseActivityPanelRef = useRef(null);
 
   // Mobile Panel Expansion Coordination (only one panel expanded at a time on mobile)
-  const [expandedPanel, setExpandedPanel] = useState(null); // 'playerActivity' | 'communityRaffle' | 'eliteMatches' | null
+  const [expandedPanel, setExpandedPanel] = useState(null); // 'games' | 'playerActivity' | 'communityRaffle' | 'eliteMatches' | null
 
   // Set page title
   useEffect(() => {
@@ -3609,6 +3611,14 @@ export default function Chess() {
         <div className="fixed bottom-0 left-0 right-0 z-50 md:static md:z-auto">
           {/* Solid background bar on mobile */}
           <div className="md:hidden bg-gradient-to-b from-slate-800 to-slate-900 border-t border-purple-400/30 px-4 py-2.5 flex items-center justify-between">
+            {/* Games Card */}
+            <GamesCard
+              currentGame="chess"
+              onHeightChange={setGamesCardHeight}
+              isExpanded={expandedPanel === 'games'}
+              onToggleExpand={() => setExpandedPanel(expandedPanel === 'games' ? null : 'games')}
+            />
+
             {/* Player Activity Component */}
             <PlayerActivity
               activity={playerActivity.data}
@@ -3622,6 +3632,7 @@ export default function Chess() {
               onDismissMatch={playerActivity.dismissMatch}
               gameName="chess"
               gameEmoji="♚"
+              gamesCardHeight={gamesCardHeight}
               onHeightChange={setPlayerActivityHeight}
               onCollapse={(collapseFn) => { collapseActivityPanelRef.current = collapseFn; }}
               isElite={isEnrolledInElite}
@@ -3633,6 +3644,7 @@ export default function Chess() {
             <CommunityRaffleCard
               raffleInfo={raffleInfo}
               raffleHistory={raffleHistory}
+              gamesCardHeight={gamesCardHeight}
               playerActivityHeight={playerActivityHeight}
               onRefresh={fetchRaffleInfo}
               onTriggerRaffle={executeRaffle}
@@ -3645,6 +3657,7 @@ export default function Chess() {
             {/* Elite Matches Card */}
             <EliteMatchesCard
               eliteMatches={eliteMatches}
+              gamesCardHeight={gamesCardHeight}
               playerActivityHeight={playerActivityHeight}
               raffleCardHeight={raffleCardHeight}
               onRefresh={fetchEliteMatches}
@@ -3658,6 +3671,13 @@ export default function Chess() {
 
           {/* Desktop positioning (hidden on mobile, shown on desktop with original behavior) */}
           <div className="hidden md:block">
+            <GamesCard
+              currentGame="chess"
+              onHeightChange={setGamesCardHeight}
+              isExpanded={expandedPanel === 'games'}
+              onToggleExpand={() => setExpandedPanel(expandedPanel === 'games' ? null : 'games')}
+            />
+
             <PlayerActivity
               activity={playerActivity.data}
               loading={playerActivity.loading}
@@ -3670,6 +3690,7 @@ export default function Chess() {
               onDismissMatch={playerActivity.dismissMatch}
               gameName="chess"
               gameEmoji="♚"
+              gamesCardHeight={gamesCardHeight}
               onHeightChange={setPlayerActivityHeight}
               onCollapse={(collapseFn) => { collapseActivityPanelRef.current = collapseFn; }}
               isElite={isEnrolledInElite}
@@ -3680,6 +3701,7 @@ export default function Chess() {
             <CommunityRaffleCard
               raffleInfo={raffleInfo}
               raffleHistory={raffleHistory}
+              gamesCardHeight={gamesCardHeight}
               playerActivityHeight={playerActivityHeight}
               onRefresh={fetchRaffleInfo}
               onTriggerRaffle={executeRaffle}
@@ -3691,6 +3713,7 @@ export default function Chess() {
 
             <EliteMatchesCard
               eliteMatches={eliteMatches}
+              gamesCardHeight={gamesCardHeight}
               playerActivityHeight={playerActivityHeight}
               raffleCardHeight={raffleCardHeight}
               onRefresh={fetchEliteMatches}

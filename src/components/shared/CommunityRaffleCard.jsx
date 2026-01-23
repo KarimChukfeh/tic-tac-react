@@ -13,6 +13,7 @@ import { shortenAddress } from '../../utils/formatters';
 const CommunityRaffleCard = ({
   raffleInfo,
   raffleHistory = [],
+  gamesCardHeight = 0,
   playerActivityHeight,
   onRefresh,
   onTriggerRaffle,
@@ -105,15 +106,27 @@ const CommunityRaffleCard = ({
   // Button size calculation: p-2.5 (10px × 2) + icon (18px) + border-2 (2px × 2) = 42px
   const MOBILE_LEFT = 74; // 16px (left-4) + 42px (button width) + 16px (gap)
 
-  // Desktop positioning (top-left, vertical)
+  // Desktop positioning (top-left, vertical stack below GamesCard and PlayerActivity)
   const BASE_TOP_DESKTOP = 80; // md:top-20 in pixels
   const COLLAPSED_BUTTON_HEIGHT_DESKTOP = 64; // collapsed button height on desktop
   const SPACING_DESKTOP = 90; // gap between components on desktop
 
-  // Calculate desktop top position based on PlayerActivity height
-  const topPositionDesktop = playerActivityHeight > 0
-    ? BASE_TOP_DESKTOP + playerActivityHeight + SPACING_DESKTOP
-    : BASE_TOP_DESKTOP + COLLAPSED_BUTTON_HEIGHT_DESKTOP + SPACING_DESKTOP;
+  // Calculate desktop top position accounting for both GamesCard and PlayerActivity
+  let topPositionDesktop = BASE_TOP_DESKTOP;
+
+  // Add GamesCard height (or collapsed height if not expanded)
+  if (gamesCardHeight > 0) {
+    topPositionDesktop += gamesCardHeight + SPACING_DESKTOP;
+  } else {
+    topPositionDesktop += COLLAPSED_BUTTON_HEIGHT_DESKTOP + SPACING_DESKTOP;
+  }
+
+  // Add PlayerActivity height (or collapsed height if not expanded)
+  if (playerActivityHeight > 0) {
+    topPositionDesktop += playerActivityHeight + SPACING_DESKTOP;
+  } else {
+    topPositionDesktop += COLLAPSED_BUTTON_HEIGHT_DESKTOP + SPACING_DESKTOP;
+  }
 
   return (
     <div

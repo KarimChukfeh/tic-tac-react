@@ -34,8 +34,10 @@ const PlayerActivity = ({
   isExpanded: externalIsExpanded, // External control for mobile single-panel coordination
   onToggleExpand, // External toggle handler
   hideOnMobile = false, // Hide this panel on mobile when another panel is expanded
+  gamesCardHeight = 0, // Height of the GamesCard above this component
 }) => {
   const [internalIsExpanded, setInternalIsExpanded] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
   const expandedPanelRef = useRef(null);
 
   // Use external state if provided, otherwise use internal state
@@ -79,6 +81,16 @@ const PlayerActivity = ({
       onCollapse(collapseFn);
     }
   }, [onCollapse, onToggleExpand, externalIsExpanded]);
+
+  // Track screen size for responsive positioning
+  useEffect(() => {
+    const handleResize = () => {
+      setIsDesktop(window.innerWidth >= 768);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Fetch fresh data whenever the panel is expanded
   useEffect(() => {
@@ -469,8 +481,24 @@ const PlayerActivity = ({
     activity.unfilledTournaments.length > 0
   );
 
+  // Desktop positioning (vertical stack below GamesCard)
+  const BASE_TOP_DESKTOP = 80; // md:top-20 in pixels
+  const COLLAPSED_BUTTON_HEIGHT_DESKTOP = 64; // collapsed button height on desktop
+  const SPACING_DESKTOP = 90; // gap between components on desktop
+
+  // Calculate desktop top position based on GamesCard height
+  const topPositionDesktop = gamesCardHeight > 0
+    ? BASE_TOP_DESKTOP + gamesCardHeight + SPACING_DESKTOP
+    : BASE_TOP_DESKTOP + COLLAPSED_BUTTON_HEIGHT_DESKTOP + SPACING_DESKTOP;
+
   return (
-    <div className={`max-md:relative md:fixed max-md:flex-1 max-md:flex max-md:justify-center md:top-20 md:left-16 z-50`}>
+    <div
+      className={`max-md:relative md:fixed max-md:flex-1 max-md:flex max-md:justify-center md:bottom-auto md:left-16 z-50 transition-all duration-300`}
+      style={{
+        // On desktop: use top positioning
+        top: isDesktop ? `${topPositionDesktop}px` : undefined
+      }}
+    >
       {/* Toggle Button */}
       <button
         onClick={() => handleSetExpanded(!isExpanded)}
