@@ -261,7 +261,11 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, /* onSpectate
       </div>
 
       {/* Mobile scroll hint */}
-      <BracketScrollHint bracketRef={bracketViewRef} />
+      <BracketScrollHint
+        bracketRef={bracketViewRef}
+        isUserEnrolled={isEnrolled}
+        isTournamentInProgress={status === 1}
+      />
     </div>
   );
 }; 

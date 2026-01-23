@@ -8,7 +8,7 @@
 import { useState, useEffect } from 'react';
 import { ArrowUp, ArrowDown } from 'lucide-react';
 
-const BracketScrollHint = ({ bracketRef }) => {
+const BracketScrollHint = ({ bracketRef, isUserEnrolled, isTournamentInProgress }) => {
   const [showHint, setShowHint] = useState(false);
   const [scrollDirection, setScrollDirection] = useState(null); // 'up' or 'down'
 
@@ -81,7 +81,8 @@ const BracketScrollHint = ({ bracketRef }) => {
   };
 
   // Only show on mobile/tablet (max-width: 1024px)
-  if (!showHint || !scrollDirection) return null;
+  // AND only if user is enrolled and tournament is in progress
+  if (!showHint || !scrollDirection || !isUserEnrolled || !isTournamentInProgress) return null;
 
   const isScrollUp = scrollDirection === 'up';
 

@@ -212,88 +212,103 @@ const GameMatchLayout = ({
     const showML1CTAFromTimer = matchStatus === 1 && (player1TimedOut || player2TimedOut);
     const showML1CTA = showML1CTAFromTimeout || showML1CTAFromTimer;
 
-    return (
-      <div className="lg:hidden space-y-3 mb-6">
-        {/* Row 1: Player cards (with addresses and assignments) */}
-        <div className="grid grid-cols-2 gap-3">
-          <PlayerPanel
-            playerAddress={player1}
-            currentAccount={account}
-            isCurrentTurn={isPlayer1Turn && isPlayer1You}
-            isGameOver={isGameOver}
-            icon={playerConfig?.player1?.icon}
-            label={playerConfig?.player1?.label || 'Player 1'}
-            colorScheme={theme.player1Color}
-            variant="compact"
-            extraContent={renderPlayer1Extra?.()}
-          />
-          <PlayerPanel
-            playerAddress={player2}
-            currentAccount={account}
-            isCurrentTurn={isPlayer2Turn && !isPlayer1You && account?.toLowerCase() === player2?.toLowerCase()}
-            isGameOver={isGameOver}
-            icon={playerConfig?.player2?.icon}
-            label={playerConfig?.player2?.label || 'Player 2'}
-            colorScheme={theme.player2Color}
-            variant="compact"
-            extraContent={renderPlayer2Extra?.()}
-          />
-        </div>
+    // Helper to render a combined player card with timer
+    const renderPlayerCard = (playerNum) => {
+      const isPlayer1 = playerNum === 1;
+      const playerAddress = isPlayer1 ? player1 : player2;
+      const isYou = account && playerAddress?.toLowerCase() === account.toLowerCase();
+      const isTurn = isPlayer1 ? isPlayer1Turn : isPlayer2Turn;
+      const timeLeft = isPlayer1 ? player1TimeLeft : player2TimeLeft;
+      const progress = isPlayer1 ? player1Progress : player2Progress;
+      const colors = isPlayer1 ? player1Colors : player2Colors;
+      const icon = isPlayer1 ? playerConfig?.player1?.icon : playerConfig?.player2?.icon;
+      const label = isPlayer1 ? (playerConfig?.player1?.label || 'Player 1') : (playerConfig?.player2?.label || 'Player 2');
+      const colorScheme = isPlayer1 ? theme.player1Color : theme.player2Color;
+      const extraContent = isPlayer1 ? renderPlayer1Extra?.() : renderPlayer2Extra?.();
+      const showCTA = showML1CTA && isTurn;
 
-        {/* Row 2: Player timers OR ML1 CTA (aligned with player cards) */}
-        {showTurnTimer && (
-          <div className="grid grid-cols-2 gap-3">
-            {/* Player 1 Timer or ML1 CTA */}
-            {showML1CTA && isPlayer1Turn ? (
-              <button
-                onClick={onClaimTimeoutWin}
-                disabled={loading}
-                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-2 px-4 rounded-lg transition-all disabled:opacity-50 text-sm"
-              >
-                Claim Timeout Victory
-              </button>
-            ) : (
-              <div className={`border rounded-lg p-2 ${
-                isPlayer1Turn ? `${player1Colors.border} ${player1Colors.bg}` : 'border-gray-600/30 opacity-60'
-              }`}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-bold text-purple-300">Time</span>
-                  <span className={`font-mono text-sm font-bold ${player1Colors.text}`}>
-                    {player1TimeLeft > 0 ? formatTime(player1TimeLeft) : 'OUT'}
-                  </span>
-                </div>
-                <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
-                  <div className={`h-full ${player1Colors.bar}`} style={{ width: `${Math.min(player1Progress, 100)}%` }} />
-                </div>
-              </div>
-            )}
+      // Get color config for player
+      const COLOR_CONFIGS = {
+        blue: { border: 'border-blue-400/30', bg: 'bg-gradient-to-br from-blue-600/20 to-cyan-600/20', iconBg: 'bg-blue-500', text: 'text-blue-300' },
+        pink: { border: 'border-pink-400/30', bg: 'bg-gradient-to-br from-pink-600/20 to-purple-600/20', iconBg: 'bg-pink-500', text: 'text-pink-300' },
+        white: { border: 'border-blue-500/30', bg: 'bg-slate-900/50', iconBg: 'bg-white text-black', text: 'text-blue-300' },
+        black: { border: 'border-pink-500/30', bg: 'bg-slate-900/50', iconBg: 'bg-gray-900 text-white', text: 'text-pink-300' },
+        neonred: { border: 'border-red-400/30', bg: 'bg-gradient-to-br from-red-600/20 to-rose-600/20', iconBg: 'bg-red-500', text: 'text-red-300' },
+        neonblue: { border: 'border-blue-400/30', bg: 'bg-gradient-to-br from-blue-600/20 to-indigo-600/20', iconBg: 'bg-blue-500', text: 'text-blue-300' }
+      };
+      const cardColors = COLOR_CONFIGS[colorScheme] || COLOR_CONFIGS.blue;
 
-            {/* Player 2 Timer or ML1 CTA */}
-            {showML1CTA && isPlayer2Turn ? (
-              <button
-                onClick={onClaimTimeoutWin}
-                disabled={loading}
-                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-2 px-4 rounded-lg transition-all disabled:opacity-50 text-sm"
-              >
-                Claim Timeout Victory
-              </button>
-            ) : (
-              <div className={`border rounded-lg p-2 ${
-                isPlayer2Turn ? `${player2Colors.border} ${player2Colors.bg}` : 'border-gray-600/30 opacity-60'
-              }`}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-bold text-pink-300">Time</span>
-                  <span className={`font-mono text-sm font-bold ${player2Colors.text}`}>
-                    {player2TimeLeft > 0 ? formatTime(player2TimeLeft) : 'OUT'}
-                  </span>
-                </div>
-                <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
-                  <div className={`h-full ${player2Colors.bar}`} style={{ width: `${Math.min(player2Progress, 100)}%` }} />
-                </div>
+      return (
+        <div className={`relative rounded-lg border-2 ${
+          isTurn && isYou && !isGameOver
+            ? 'border-green-400 bg-green-500/10 ring-2 ring-green-400/30'
+            : `${cardColors.border} ${cardColors.bg}`
+        } p-3 space-y-2`}>
+          {/* Turn Indicator Badge */}
+          {isTurn && !isGameOver && (
+            isYou ? (
+              <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap shadow-lg animate-bounce z-10">
+                YOUR TURN!
               </div>
-            )}
+            ) : (
+              <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-red-500 to-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap shadow-lg animate-bounce z-10">
+                THEIR TURN
+              </div>
+            )
+          )}
+
+          {/* Player Info Section */}
+          <div className="flex items-center gap-2">
+            <div className={`w-10 h-10 ${cardColors.iconBg} rounded-full flex items-center justify-center text-xl font-bold border ${
+              isTurn && !isGameOver ? 'border-green-400' : cardColors.border
+            }`}>
+              {icon}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-xs text-gray-400">{label}</div>
+              <div className="font-mono text-xs truncate">{playerAddress ? `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : ''}</div>
+              {isYou && <span className="text-yellow-300 text-[11px] font-bold">YOU ARE {icon}</span>}
+            </div>
+            {extraContent && <div className="flex-shrink-0">{extraContent}</div>}
           </div>
-        )}
+
+          {/* Timer Section or ML1 CTA */}
+          {showTurnTimer && (
+            showCTA ? (
+              <button
+                onClick={onClaimTimeoutWin}
+                disabled={loading}
+                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-2 px-3 rounded-lg transition-all disabled:opacity-50 text-xs"
+              >
+                Claim Timeout Victory
+              </button>
+            ) : (
+              <div className={`border rounded-lg p-2 ${
+                isTurn ? `${colors.border} ${colors.bg}` : 'border-gray-600/30 opacity-60'
+              }`}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-bold text-gray-300">Time Remaining</span>
+                  <span className={`font-mono text-sm font-bold ${colors.text}`}>
+                    {timeLeft > 0 ? formatTime(timeLeft) : 'OUT'}
+                  </span>
+                </div>
+                <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                  <div className={`h-full ${colors.bar}`} style={{ width: `${Math.min(progress, 100)}%` }} />
+                </div>
+              </div>
+            )
+          )}
+        </div>
+      );
+    };
+
+    return (
+      <div className="lg:hidden mb-6">
+        {/* Single row: Combined player cards with timers */}
+        <div className="grid grid-cols-2 gap-3">
+          {renderPlayerCard(1)}
+          {renderPlayerCard(2)}
+        </div>
       </div>
     );
   };
