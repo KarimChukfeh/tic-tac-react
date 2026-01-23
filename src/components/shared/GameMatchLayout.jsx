@@ -314,413 +314,718 @@ const GameMatchLayout = ({
   };
 
   // Render three-column layout (TicTacToe style)
-  const renderThreeColumnLayout = () => (
-    <div>
-      {/* Mobile: Consolidated header with player cards, timers, and turn indicator */}
-      {renderMobileConsolidatedHeader()}
+  const renderThreeColumnLayout = () => {
+    // Helper to render desktop player card with timer
+    const renderDesktopPlayerCard = (playerNum) => {
+      const isPlayer1 = playerNum === 1;
+      const playerAddress = isPlayer1 ? player1 : player2;
+      const isYou = account && playerAddress?.toLowerCase() === account.toLowerCase();
+      const isTurn = isPlayer1 ? isPlayer1Turn : isPlayer2Turn;
+      const timeLeft = isPlayer1 ? player1TimeLeft : player2TimeLeft;
+      const totalTime = match.matchTimePerPlayer ?? 300;
+      const progress = ((totalTime - timeLeft) / totalTime) * 100;
+      const icon = isPlayer1 ? playerConfig?.player1?.icon : playerConfig?.player2?.icon;
+      const label = isPlayer1 ? (playerConfig?.player1?.label || 'Player 1') : (playerConfig?.player2?.label || 'Player 2');
+      const colorScheme = isPlayer1 ? theme.player1Color : theme.player2Color;
+      const extraContent = isPlayer1 ? renderPlayer1Extra?.() : renderPlayer2Extra?.();
+      const renderStats = isPlayer1 ? renderPlayer1Stats : renderPlayer2Stats;
 
-      {/* Desktop: Three column layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Panel - Player 1 (hidden on mobile) */}
-        <div className="hidden lg:block">
-          <PlayerPanel
-            playerAddress={player1}
-            currentAccount={account}
-            isCurrentTurn={isPlayer1Turn && isPlayer1You}
-            isGameOver={isGameOver}
-            icon={playerConfig?.player1?.icon}
-            label={playerConfig?.player1?.label || 'Player 1'}
-            colorScheme={theme.player1Color}
-            variant="full"
-            renderStats={renderPlayer1Stats}
-            extraContent={renderPlayer1Extra?.()}
-          />
-        </div>
+      // Get color scheme based on remaining time
+      const getTimeColors = (timeLeft) => {
+        if (timeLeft <= 0) return { text: 'text-red-500', border: 'border-red-500', bg: 'bg-red-500/20', bar: 'bg-red-500' };
+        if (timeLeft <= 30) return { text: 'text-red-400', border: 'border-red-400', bg: 'bg-red-500/10', bar: 'bg-red-500' };
+        if (timeLeft <= 60) return { text: 'text-yellow-400', border: 'border-yellow-400', bg: 'bg-yellow-500/10', bar: 'bg-yellow-500' };
+        return { text: 'text-green-400', border: 'border-green-400', bg: 'bg-green-500/10', bar: 'bg-green-500' };
+      };
 
-        {/* Center Panel - Board */}
-        <div className={`bg-gradient-to-br from-purple-600/20 to-pink-600/20 backdrop-blur-lg rounded-2xl p-6 border border-purple-400/30 lg:col-span-1`}>
-          <h3 className="text-2xl font-bold text-center text-white mb-6">Game Board</h3>
-          {children}
+      const colors = getTimeColors(timeLeft);
 
-          {/* Game Controls */}
-          <div className="space-y-3 mt-6">
-            {/* Desktop: Show timer inside board panel */}
-            {showTurnTimer && (
-              <div className="hidden lg:block">
-                <TurnTimer
-                  match={match}
-                  account={account}
-                  onClaimTimeoutWin={onClaimTimeoutWin}
-                  loading={loading}
-                  syncDots={syncDots}
-                  isSpectator={isSpectator}
-                  playerConfig={playerConfig}
-                />
+      // Format time display
+      const formatTime = (seconds) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+      };
+
+      // Check if ML1 CTA should be shown
+      const player1TimedOut = player1TimeLeft <= 0 && isPlayer1Turn && !isPlayer1You;
+      const player2TimedOut = player2TimeLeft <= 0 && isPlayer2Turn && !isPlayer2You;
+      const showML1CTAFromTimeout = timeoutState && timeoutState.timeoutActive && matchStatus === 1 && !isYourTurn;
+      const showML1CTAFromTimer = matchStatus === 1 && (player1TimedOut || player2TimedOut);
+      const showML1CTA = (showML1CTAFromTimeout || showML1CTAFromTimer) && isTurn;
+
+      // Get color config for player card
+      const COLOR_CONFIGS = {
+        blue: { border: 'border-blue-400/30', bg: 'bg-gradient-to-br from-blue-600/20 to-cyan-600/20', iconBg: 'bg-blue-500', text: 'text-blue-300' },
+        pink: { border: 'border-pink-400/30', bg: 'bg-gradient-to-br from-pink-600/20 to-purple-600/20', iconBg: 'bg-pink-500', text: 'text-pink-300' },
+        white: { border: 'border-blue-500/30', bg: 'bg-slate-900/50', iconBg: 'bg-white text-black', text: 'text-blue-300' },
+        black: { border: 'border-pink-500/30', bg: 'bg-slate-900/50', iconBg: 'bg-gray-900 text-white', text: 'text-pink-300' },
+        neonred: { border: 'border-red-400/30', bg: 'bg-gradient-to-br from-red-600/20 to-rose-600/20', iconBg: 'bg-red-500', text: 'text-red-300' },
+        neonblue: { border: 'border-blue-400/30', bg: 'bg-gradient-to-br from-blue-600/20 to-indigo-600/20', iconBg: 'bg-blue-500', text: 'text-blue-300' }
+      };
+      const cardColors = COLOR_CONFIGS[colorScheme] || COLOR_CONFIGS.blue;
+
+      return (
+        <div className={`relative ${cardColors.bg} backdrop-blur-lg rounded-2xl p-6 border-2 ${cardColors.border}`}>
+          {/* Turn Indicator Badge - show for both your turn and their turn */}
+          {isTurn && !isGameOver && (
+            isYou ? (
+              <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-sm font-bold px-4 py-1.5 rounded-full whitespace-nowrap shadow-lg animate-bounce z-50">
+                YOUR TURN!
               </div>
-            )}
+            ) : (
+              <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-red-500 to-rose-500 text-white text-sm font-bold px-4 py-1.5 rounded-full whitespace-nowrap shadow-lg z-50">
+                THEIR TURN
+              </div>
+            )
+          )}
+
+          {/* Player Info */}
+          <div className="flex items-center gap-3 mb-4">
+            <div className={`w-12 h-12 ${cardColors.iconBg} rounded-full flex items-center justify-center text-2xl font-bold border-2 ${cardColors.border}`}>
+              {icon}
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-white">{label}</h3>
+              <p className={`${cardColors.text} font-mono text-sm`}>
+                {playerAddress ? `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : ''}
+              </p>
+              {isYou && <span className="text-yellow-400 text-sm font-bold">YOU</span>}
+            </div>
+          </div>
+
+          {/* Stats */}
+          {renderStats && (
+            <div className="space-y-2 mb-4">
+              {renderStats()}
+            </div>
+          )}
+
+          {/* Extra Content */}
+          {extraContent && <div className="mb-4">{extraContent}</div>}
+
+          {/* Timer Section or ML1 CTA */}
+          {showTurnTimer && (
+            showML1CTA ? (
+              <button
+                onClick={onClaimTimeoutWin}
+                disabled={loading}
+                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-3 px-4 rounded-lg transition-all disabled:opacity-50 shadow-lg"
+              >
+                Claim Timeout Victory
+              </button>
+            ) : (
+              <div className={`border-2 rounded-lg p-3 ${
+                isTurn ? `${colors.border} ${colors.bg}` : 'border-gray-600/30 bg-gray-800/20 opacity-60'
+              }`}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-bold text-gray-300">Time Remaining</span>
+                  <span className={`font-mono text-xl font-bold ${colors.text}`}>
+                    {timeLeft > 0 ? formatTime(timeLeft) : 'OUT'}
+                  </span>
+                </div>
+                <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+                  <div className={`h-full ${colors.bar} transition-all duration-500`} style={{ width: `${Math.min(progress, 100)}%` }} />
+                </div>
+              </div>
+            )
+          )}
+        </div>
+      );
+    };
+
+    return (
+      <div>
+        {/* Mobile: Consolidated header with player cards, timers, and turn indicator */}
+        {renderMobileConsolidatedHeader()}
+
+        {/* Desktop: Three column layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Panel - Player 1 (hidden on mobile) */}
+          <div className="hidden lg:block">
+            {renderDesktopPlayerCard(1)}
+          </div>
+
+          {/* Center Panel - Board */}
+          <div className={`bg-gradient-to-br from-purple-600/20 to-pink-600/20 backdrop-blur-lg rounded-2xl p-6 border border-purple-400/30 lg:col-span-1`}>
+            <h3 className="text-2xl font-bold text-center text-white mb-6">Game Board</h3>
+            {children}
+
+            {/* Game Controls */}
+            <div className="space-y-3 mt-6">
+              {timeoutState && (
+                <MatchTimeoutEscalation
+                  timeoutState={timeoutState}
+                  matchStatus={matchStatus}
+                  isYourTurn={isYourTurn}
+                  onClaimTimeoutWin={onClaimTimeoutWin}
+                  onForceEliminate={onForceEliminate}
+                  onClaimReplacement={onClaimReplacement}
+                  loading={loading}
+                  escL2Available={match.escL2Available}
+                  escL3Available={match.escL3Available}
+                  isUserAdvancedForRound={match.isUserAdvancedForRound}
+                  hideML1OnMobile={true}
+                />
+              )}
+
+              {renderGameControls?.()}
+
+              {isGameOver && (
+                <MatchComplete
+                  isDraw={isDraw}
+                  winner={winner}
+                  loser={loser}
+                  currentAccount={account}
+                  gameSpecificText={!isDraw ? theme.completeText : undefined}
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Right Panel - Player 2 (hidden on mobile) */}
+          <div className="hidden lg:block">
+            {renderDesktopPlayerCard(2)}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Render sidebar layout (Chess style)
+  const renderSidebarLayout = () => {
+    // Helper to render desktop player card with timer for sidebar layout
+    const renderSidebarPlayerCard = (playerNum) => {
+      const isPlayer1 = playerNum === 1;
+      const playerAddress = isPlayer1 ? player1 : player2;
+      const isYou = account && playerAddress?.toLowerCase() === account.toLowerCase();
+      const isTurn = isPlayer1 ? isPlayer1Turn : isPlayer2Turn;
+      const timeLeft = isPlayer1 ? player1TimeLeft : player2TimeLeft;
+      const totalTime = match.matchTimePerPlayer ?? 300;
+      const progress = ((totalTime - timeLeft) / totalTime) * 100;
+      const icon = isPlayer1 ? playerConfig?.player1?.icon : playerConfig?.player2?.icon;
+      const label = isPlayer1 ? (playerConfig?.player1?.label || 'Player 1') : (playerConfig?.player2?.label || 'Player 2');
+      const colorScheme = isPlayer1 ? theme.player1Color : theme.player2Color;
+      const extraContent = isPlayer1 ? renderPlayer1Extra?.() : renderPlayer2Extra?.();
+
+      // Get color scheme based on remaining time
+      const getTimeColors = (timeLeft) => {
+        if (timeLeft <= 0) return { text: 'text-red-500', border: 'border-red-500', bg: 'bg-red-500/20', bar: 'bg-red-500' };
+        if (timeLeft <= 30) return { text: 'text-red-400', border: 'border-red-400', bg: 'bg-red-500/10', bar: 'bg-red-500' };
+        if (timeLeft <= 60) return { text: 'text-yellow-400', border: 'border-yellow-400', bg: 'bg-yellow-500/10', bar: 'bg-yellow-500' };
+        return { text: 'text-green-400', border: 'border-green-400', bg: 'bg-green-500/10', bar: 'bg-green-500' };
+      };
+
+      const colors = getTimeColors(timeLeft);
+
+      // Format time display
+      const formatTime = (seconds) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+      };
+
+      // Check if ML1 CTA should be shown
+      const isPlayer2You = account && player2?.toLowerCase() === account.toLowerCase();
+      const player1TimedOut = player1TimeLeft <= 0 && isPlayer1Turn && !isPlayer1You;
+      const player2TimedOut = player2TimeLeft <= 0 && isPlayer2Turn && !isPlayer2You;
+      const showML1CTAFromTimeout = timeoutState && timeoutState.timeoutActive && matchStatus === 1 && !isYourTurn;
+      const showML1CTAFromTimer = matchStatus === 1 && (player1TimedOut || player2TimedOut);
+      const showML1CTA = (showML1CTAFromTimeout || showML1CTAFromTimer) && isTurn;
+
+      // Get color config for player card
+      const COLOR_CONFIGS = {
+        blue: { border: 'border-blue-400/30', bg: 'bg-gradient-to-br from-blue-600/20 to-cyan-600/20', iconBg: 'bg-blue-500', text: 'text-blue-300' },
+        pink: { border: 'border-pink-400/30', bg: 'bg-gradient-to-br from-pink-600/20 to-purple-600/20', iconBg: 'bg-pink-500', text: 'text-pink-300' },
+        white: { border: 'border-blue-500/30', bg: 'bg-slate-900/50', iconBg: 'bg-white text-black', text: 'text-blue-300' },
+        black: { border: 'border-pink-500/30', bg: 'bg-slate-900/50', iconBg: 'bg-gray-900 text-white', text: 'text-pink-300' },
+        neonred: { border: 'border-red-400/30', bg: 'bg-gradient-to-br from-red-600/20 to-rose-600/20', iconBg: 'bg-red-500', text: 'text-red-300' },
+        neonblue: { border: 'border-blue-400/30', bg: 'bg-gradient-to-br from-blue-600/20 to-indigo-600/20', iconBg: 'bg-blue-500', text: 'text-blue-300' }
+      };
+      const cardColors = COLOR_CONFIGS[colorScheme] || COLOR_CONFIGS.blue;
+
+      return (
+        <div className={`relative ${cardColors.bg} backdrop-blur-lg rounded-2xl p-6 border-2 ${cardColors.border}`}>
+          {/* Turn Indicator Badge */}
+          {isTurn && !isGameOver && (
+            isYou ? (
+              <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap shadow-lg animate-bounce z-50">
+                YOUR TURN!
+              </div>
+            ) : (
+              <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-red-500 to-rose-500 text-white text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap shadow-lg z-50">
+                THEIR TURN
+              </div>
+            )
+          )}
+
+          {/* Player Info */}
+          <div className="flex items-center gap-3 mb-4">
+            <div className={`w-12 h-12 ${cardColors.iconBg} rounded-full flex items-center justify-center text-2xl font-bold border-2 ${cardColors.border}`}>
+              {icon}
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-white">{label}</h3>
+              <p className={`${cardColors.text} font-mono text-sm`}>
+                {playerAddress ? `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : ''}
+              </p>
+              {isYou && <span className="text-yellow-400 text-sm font-bold">YOU</span>}
+            </div>
+          </div>
+
+          {/* Extra Content */}
+          {extraContent && <div className="mb-4">{extraContent}</div>}
+
+          {/* Timer Section or ML1 CTA */}
+          {showTurnTimer && (
+            showML1CTA ? (
+              <button
+                onClick={onClaimTimeoutWin}
+                disabled={loading}
+                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-2 px-3 rounded-lg transition-all disabled:opacity-50 shadow-lg text-sm"
+              >
+                Claim Timeout Victory
+              </button>
+            ) : (
+              <div className={`border-2 rounded-lg p-3 ${
+                isTurn ? `${colors.border} ${colors.bg}` : 'border-gray-600/30 bg-gray-800/20 opacity-60'
+              }`}>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs font-bold text-gray-300">Time Remaining</span>
+                  <span className={`font-mono text-lg font-bold ${colors.text}`}>
+                    {timeLeft > 0 ? formatTime(timeLeft) : 'OUT'}
+                  </span>
+                </div>
+                <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                  <div className={`h-full ${colors.bar} transition-all duration-500`} style={{ width: `${Math.min(progress, 100)}%` }} />
+                </div>
+              </div>
+            )
+          )}
+        </div>
+      );
+    };
+
+    return (
+      <div>
+        {/* Mobile: Consolidated header */}
+        {renderMobileConsolidatedHeader()}
+
+        <div className="flex flex-col xl:flex-row gap-6">
+          {/* Player 1 - Left side (hidden on mobile) */}
+          <div className="hidden xl:block flex-none xl:w-56">
+            {renderSidebarPlayerCard(1)}
+          </div>
+
+          {/* Center: Board and controls */}
+          <div className="flex-1 flex flex-col items-center min-w-0">
+            {children}
 
             {timeoutState && (
-              <MatchTimeoutEscalation
-                timeoutState={timeoutState}
-                matchStatus={matchStatus}
-                isYourTurn={isYourTurn}
-                onClaimTimeoutWin={onClaimTimeoutWin}
-                onForceEliminate={onForceEliminate}
-                onClaimReplacement={onClaimReplacement}
-                loading={loading}
-                escL2Available={match.escL2Available}
-                escL3Available={match.escL3Available}
-                isUserAdvancedForRound={match.isUserAdvancedForRound}
-                hideML1OnMobile={true}
-              />
+              <div className="w-full max-w-md mt-4">
+                <MatchTimeoutEscalation
+                  timeoutState={timeoutState}
+                  matchStatus={matchStatus}
+                  isYourTurn={isYourTurn}
+                  onClaimTimeoutWin={onClaimTimeoutWin}
+                  onForceEliminate={onForceEliminate}
+                  onClaimReplacement={onClaimReplacement}
+                  loading={loading}
+                  escL2Available={match.escL2Available}
+                  escL3Available={match.escL3Available}
+                  isUserAdvancedForRound={match.isUserAdvancedForRound}
+                  hideML1OnMobile={true}
+                />
+              </div>
             )}
 
             {renderGameControls?.()}
 
             {isGameOver && (
-              <MatchComplete
-                isDraw={isDraw}
-                winner={winner}
-                loser={loser}
-                currentAccount={account}
-                gameSpecificText={!isDraw ? theme.completeText : undefined}
-              />
+              <div className="w-full max-w-md mt-4">
+                <MatchComplete
+                  isDraw={isDraw}
+                  winner={winner}
+                  loser={loser}
+                  currentAccount={account}
+                  gameSpecificText={!isDraw ? theme.completeText : undefined}
+                />
+              </div>
             )}
           </div>
-        </div>
 
-        {/* Right Panel - Player 2 (hidden on mobile) */}
-        <div className="hidden lg:block">
-          <PlayerPanel
-            playerAddress={player2}
-            currentAccount={account}
-            isCurrentTurn={isPlayer2Turn && !isPlayer1You && account?.toLowerCase() === player2?.toLowerCase()}
-            isGameOver={isGameOver}
-            icon={playerConfig?.player2?.icon}
-            label={playerConfig?.player2?.label || 'Player 2'}
-            colorScheme={theme.player2Color}
-            variant="full"
-            renderStats={renderPlayer2Stats}
-            extraContent={renderPlayer2Extra?.()}
-          />
+          {/* Player 2 - Right side (hidden on mobile) */}
+          <div className="hidden xl:block flex-none xl:w-56">
+            {renderSidebarPlayerCard(2)}
+          </div>
         </div>
       </div>
-    </div>
-  );
-
-  // Render sidebar layout (Chess style)
-  const renderSidebarLayout = () => (
-    <div>
-      {/* Mobile: Consolidated header */}
-      {renderMobileConsolidatedHeader()}
-
-      <div className="flex flex-col xl:flex-row gap-6">
-        {/* Player 1 - Left side (hidden on mobile) */}
-        <div className="hidden xl:block flex-none xl:w-56">
-          <PlayerPanel
-            playerAddress={player1}
-            currentAccount={account}
-            isCurrentTurn={isPlayer1Turn && isPlayer1You}
-            isGameOver={isGameOver}
-            icon={playerConfig?.player1?.icon}
-            label={playerConfig?.player1?.label || 'Player 1'}
-            colorScheme={theme.player1Color}
-            variant="full"
-            extraContent={renderPlayer1Extra?.()}
-          />
-        </div>
-
-        {/* Center: Board and controls */}
-        <div className="flex-1 flex flex-col items-center min-w-0">
-          {children}
-
-          {/* Desktop: Timer (hidden on mobile) */}
-          {showTurnTimer && (
-            <div className="hidden xl:block w-full max-w-md mt-4">
-              <TurnTimer
-                match={match}
-                account={account}
-                onClaimTimeoutWin={onClaimTimeoutWin}
-                loading={loading}
-                syncDots={syncDots}
-                isSpectator={isSpectator}
-                playerConfig={playerConfig}
-              />
-            </div>
-          )}
-
-          {timeoutState && (
-            <div className="w-full max-w-md mt-4">
-              <MatchTimeoutEscalation
-                timeoutState={timeoutState}
-                matchStatus={matchStatus}
-                isYourTurn={isYourTurn}
-                onClaimTimeoutWin={onClaimTimeoutWin}
-                onForceEliminate={onForceEliminate}
-                onClaimReplacement={onClaimReplacement}
-                loading={loading}
-                escL2Available={match.escL2Available}
-                escL3Available={match.escL3Available}
-                isUserAdvancedForRound={match.isUserAdvancedForRound}
-                hideML1OnMobile={true}
-              />
-            </div>
-          )}
-
-          {renderGameControls?.()}
-
-          {isGameOver && (
-            <div className="w-full max-w-md mt-4">
-              <MatchComplete
-                isDraw={isDraw}
-                winner={winner}
-                loser={loser}
-                currentAccount={account}
-                gameSpecificText={!isDraw ? theme.completeText : undefined}
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Player 2 - Right side (hidden on mobile) */}
-        <div className="hidden xl:block flex-none xl:w-56">
-          <PlayerPanel
-            playerAddress={player2}
-            currentAccount={account}
-            isCurrentTurn={isPlayer2Turn && account?.toLowerCase() === player2?.toLowerCase()}
-            isGameOver={isGameOver}
-            icon={playerConfig?.player2?.icon}
-            label={playerConfig?.player2?.label || 'Player 2'}
-            colorScheme={theme.player2Color}
-            variant="full"
-            extraContent={renderPlayer2Extra?.()}
-          />
-        </div>
-      </div>
-    </div>
-  );
+    );
+  };
 
   // Render centered layout (ConnectFour style)
-  const renderCenteredLayout = () => (
-    <div className="flex flex-col items-center">
-      {/* Mobile: Consolidated header */}
-      {renderMobileConsolidatedHeader()}
+  const renderCenteredLayout = () => {
+    // Helper to render desktop player card with timer for centered layout
+    const renderCenteredPlayerCard = (playerNum) => {
+      const isPlayer1 = playerNum === 1;
+      const playerAddress = isPlayer1 ? player1 : player2;
+      const isYou = account && playerAddress?.toLowerCase() === account.toLowerCase();
+      const isTurn = isPlayer1 ? isPlayer1Turn : isPlayer2Turn;
+      const timeLeft = isPlayer1 ? player1TimeLeft : player2TimeLeft;
+      const totalTime = match.matchTimePerPlayer ?? 300;
+      const progress = ((totalTime - timeLeft) / totalTime) * 100;
+      const icon = isPlayer1 ? playerConfig?.player1?.icon : playerConfig?.player2?.icon;
+      const label = isPlayer1 ? (playerConfig?.player1?.label || 'Player 1') : (playerConfig?.player2?.label || 'Player 2');
+      const colorScheme = isPlayer1 ? theme.player1Color : theme.player2Color;
 
-      {/* Desktop: Turn Indicator (hidden on mobile since it's in consolidated header) */}
-      <div className="hidden lg:flex justify-center mb-6">
-        <TurnIndicator
-          isYourTurn={isYourTurn}
-          isGameOver={isGameOver}
-          hasWinner={hasWinner}
-          userWon={userWon}
-          isDraw={isDraw}
-        />
-      </div>
+      // Get color scheme based on remaining time
+      const getTimeColors = (timeLeft) => {
+        if (timeLeft <= 0) return { text: 'text-red-500', border: 'border-red-500', bg: 'bg-red-500/20', bar: 'bg-red-500' };
+        if (timeLeft <= 30) return { text: 'text-red-400', border: 'border-red-400', bg: 'bg-red-500/10', bar: 'bg-red-500' };
+        if (timeLeft <= 60) return { text: 'text-yellow-400', border: 'border-yellow-400', bg: 'bg-yellow-500/10', bar: 'bg-yellow-500' };
+        return { text: 'text-green-400', border: 'border-green-400', bg: 'bg-green-500/10', bar: 'bg-green-500' };
+      };
 
-      {/* Desktop: Player Info - Horizontal (hidden on mobile) */}
-      <div className="hidden lg:flex justify-between items-center mb-6 max-w-md mx-auto w-full">
-        <PlayerPanel
-          playerAddress={player1}
-          currentAccount={account}
-          isCurrentTurn={isPlayer1Turn}
-          isGameOver={isGameOver}
-          icon={playerConfig?.player1?.icon}
-          label={playerConfig?.player1?.label || 'Player 1'}
-          colorScheme={theme.player1Color}
-          variant="compact"
-        />
-        <div className="text-xl font-bold text-gray-500">VS</div>
-        <PlayerPanel
-          playerAddress={player2}
-          currentAccount={account}
-          isCurrentTurn={isPlayer2Turn}
-          isGameOver={isGameOver}
-          icon={playerConfig?.player2?.icon}
-          label={playerConfig?.player2?.label || 'Player 2'}
-          colorScheme={theme.player2Color}
-          variant="compact"
-        />
-      </div>
+      const colors = getTimeColors(timeLeft);
 
-      {/* Board */}
-      {children}
+      // Format time display
+      const formatTime = (seconds) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+      };
 
-      {/* Desktop: Turn Timer (hidden on mobile) */}
-      {showTurnTimer && (
-        <div className="hidden lg:block max-w-md mx-auto mt-6 w-full">
-          <TurnTimer
-            match={match}
-            account={account}
-            onClaimTimeoutWin={onClaimTimeoutWin}
-            loading={loading}
-            syncDots={syncDots}
-            isSpectator={isSpectator}
-            playerConfig={playerConfig}
-          />
+      // Check if ML1 CTA should be shown
+      const isPlayer2You = account && player2?.toLowerCase() === account.toLowerCase();
+      const player1TimedOut = player1TimeLeft <= 0 && isPlayer1Turn && !isPlayer1You;
+      const player2TimedOut = player2TimeLeft <= 0 && isPlayer2Turn && !isPlayer2You;
+      const showML1CTAFromTimeout = timeoutState && timeoutState.timeoutActive && matchStatus === 1 && !isYourTurn;
+      const showML1CTAFromTimer = matchStatus === 1 && (player1TimedOut || player2TimedOut);
+      const showML1CTA = (showML1CTAFromTimeout || showML1CTAFromTimer) && isTurn;
+
+      // Get color config for player card
+      const COLOR_CONFIGS = {
+        blue: { border: 'border-blue-400/30', bg: 'bg-gradient-to-br from-blue-600/20 to-cyan-600/20', iconBg: 'bg-blue-500', text: 'text-blue-300', activeHighlight: 'bg-cyan-500/30 border-cyan-400' },
+        pink: { border: 'border-pink-400/30', bg: 'bg-gradient-to-br from-pink-600/20 to-purple-600/20', iconBg: 'bg-pink-500', text: 'text-pink-300', activeHighlight: 'bg-pink-500/30 border-pink-400' },
+        white: { border: 'border-blue-500/30', bg: 'bg-slate-900/50', iconBg: 'bg-white text-black', text: 'text-blue-300', activeHighlight: 'bg-blue-500/30 border-blue-400' },
+        black: { border: 'border-pink-500/30', bg: 'bg-slate-900/50', iconBg: 'bg-gray-900 text-white', text: 'text-pink-300', activeHighlight: 'bg-pink-500/30 border-pink-400' },
+        neonred: { border: 'border-red-400/30', bg: 'bg-gradient-to-br from-red-600/20 to-rose-600/20', iconBg: 'bg-red-500', text: 'text-red-300', activeHighlight: 'bg-red-500/30 border-red-400' },
+        neonblue: { border: 'border-blue-400/30', bg: 'bg-gradient-to-br from-blue-600/20 to-indigo-600/20', iconBg: 'bg-blue-500', text: 'text-blue-300', activeHighlight: 'bg-blue-500/30 border-blue-400' }
+      };
+      const cardColors = COLOR_CONFIGS[colorScheme] || COLOR_CONFIGS.blue;
+
+      return (
+        <div className={`flex-1 relative flex flex-col gap-2 p-3 rounded-lg bg-black/30`}>
+          {/* Turn Indicator Badge */}
+          {isTurn && !isGameOver && (
+            isYou ? (
+              <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap shadow-lg animate-bounce z-50">
+                YOUR TURN!
+              </div>
+            ) : (
+              <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-red-500 to-rose-500 text-white text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap shadow-lg z-50">
+                THEIR TURN
+              </div>
+            )
+          )}
+
+          {/* Player Info */}
+          <div className="flex items-center gap-2">
+            <span className="text-2xl">{icon}</span>
+            <div className="flex-1">
+              <div className="text-xs text-gray-400">{label}</div>
+              <div className="font-mono text-xs">{playerAddress ? `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : ''}</div>
+              {isYou && <span className="text-yellow-400 text-sm font-bold">YOU</span>}
+            </div>
+          </div>
+
+          {/* Timer Section or ML1 CTA */}
+          {showTurnTimer && (
+            showML1CTA ? (
+              <button
+                onClick={onClaimTimeoutWin}
+                disabled={loading}
+                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-1.5 px-2 rounded-lg transition-all disabled:opacity-50 shadow-lg text-xs"
+              >
+                Claim Timeout Victory
+              </button>
+            ) : (
+              <div className={`border-2 rounded-lg p-2 ${
+                isTurn ? `${colors.border} ${colors.bg}` : 'border-gray-600/30 bg-gray-800/20 opacity-60'
+              }`}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-bold text-gray-300">Time</span>
+                  <span className={`font-mono text-sm font-bold ${colors.text}`}>
+                    {timeLeft > 0 ? formatTime(timeLeft) : 'OUT'}
+                  </span>
+                </div>
+                <div className="h-1 bg-gray-700 rounded-full overflow-hidden">
+                  <div className={`h-full ${colors.bar} transition-all duration-500`} style={{ width: `${Math.min(progress, 100)}%` }} />
+                </div>
+              </div>
+            )
+          )}
         </div>
-      )}
+      );
+    };
 
-      {/* Escalation */}
-      {timeoutState && (
-        <div className="max-w-md mx-auto mt-6 w-full">
-          <MatchTimeoutEscalation
-            timeoutState={timeoutState}
-            matchStatus={matchStatus}
-            isYourTurn={isYourTurn}
-            onClaimTimeoutWin={onClaimTimeoutWin}
-            onForceEliminate={onForceEliminate}
-            onClaimReplacement={onClaimReplacement}
-            loading={loading}
-            escL2Available={match.escL2Available}
-            escL3Available={match.escL3Available}
-            isUserAdvancedForRound={match.isUserAdvancedForRound}
-            hideML1OnMobile={true}
-          />
-        </div>
-      )}
-
-      {renderGameControls?.()}
-    </div>
-  );
-
-  // Render players-board-history layout (Elite archive style)
-  const renderPlayersBoardHistoryLayout = () => (
-    <>
-      {/* Mobile Layout (< lg breakpoint) */}
-      <div className="lg:hidden space-y-3">
+    return (
+      <div className="flex flex-col items-center">
         {/* Mobile: Consolidated header */}
         {renderMobileConsolidatedHeader()}
 
-        {/* Board */}
-        <div className="flex justify-center">
-          {children}
+        {/* Desktop: Player Info with Timers - Horizontal (hidden on mobile) */}
+        <div className="hidden lg:flex justify-between items-start gap-7 mb-6 max-w-2xl mx-auto w-full">
+          {renderCenteredPlayerCard(1)}
+          <div className="text-xl font-bold text-gray-500 self-center mt-8">VS</div>
+          {renderCenteredPlayerCard(2)}
         </div>
 
-        {/* Other controls */}
+        {/* Board */}
+        {children}
+
+        {/* Escalation */}
         {timeoutState && (
-          <MatchTimeoutEscalation
-            timeoutState={timeoutState}
-            matchStatus={matchStatus}
-            isYourTurn={isYourTurn}
-            onClaimTimeoutWin={onClaimTimeoutWin}
-            onForceEliminate={onForceEliminate}
-            onClaimReplacement={onClaimReplacement}
-            loading={loading}
-            escL2Available={match.escL2Available}
-            escL3Available={match.escL3Available}
-            isUserAdvancedForRound={match.isUserAdvancedForRound}
-            hideML1OnMobile={true}
-          />
+          <div className="max-w-md mx-auto mt-6 w-full">
+            <MatchTimeoutEscalation
+              timeoutState={timeoutState}
+              matchStatus={matchStatus}
+              isYourTurn={isYourTurn}
+              onClaimTimeoutWin={onClaimTimeoutWin}
+              onForceEliminate={onForceEliminate}
+              onClaimReplacement={onClaimReplacement}
+              loading={loading}
+              escL2Available={match.escL2Available}
+              escL3Available={match.escL3Available}
+              isUserAdvancedForRound={match.isUserAdvancedForRound}
+              hideML1OnMobile={true}
+            />
+          </div>
         )}
 
         {renderGameControls?.()}
-
-        {isGameOver && (
-          <MatchComplete
-            isDraw={isDraw}
-            winner={winner}
-            loser={loser}
-            currentAccount={account}
-            gameSpecificText={!isDraw ? theme.completeText : undefined}
-          />
-        )}
-
-        {/* Move History - hidden on mobile by default */}
-        {/* Future enhancement: Add collapsible toggle here if needed */}
       </div>
+    );
+  };
 
-      {/* Desktop Layout (>= lg breakpoint) - Original three-column layout */}
-      <div className="hidden lg:grid lg:grid-cols-[18%_52%_30%] gap-4 items-start">
-        {/* Left Column - Both Player Panels */}
-        <div className="space-y-4 max-h-[800px] overflow-y-auto pr-2 pt-6 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-slate-800/50 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-purple-500/60 [&::-webkit-scrollbar-thumb]:to-pink-500/60 [&::-webkit-scrollbar-thumb]:rounded-full">
-          <PlayerPanel
-            playerAddress={player1}
-            currentAccount={account}
-            isCurrentTurn={isPlayer1Turn && isPlayer1You}
-            isGameOver={isGameOver}
-            icon={playerConfig?.player1?.icon}
-            label={playerConfig?.player1?.label || 'Player 1'}
-            colorScheme={theme.player1Color}
-            variant="full"
-            extraContent={renderPlayer1Extra?.()}
-          />
-          <PlayerPanel
-            playerAddress={player2}
-            currentAccount={account}
-            isCurrentTurn={isPlayer2Turn && account?.toLowerCase() === player2?.toLowerCase()}
-            isGameOver={isGameOver}
-            icon={playerConfig?.player2?.icon}
-            label={playerConfig?.player2?.label || 'Player 2'}
-            colorScheme={theme.player2Color}
-            variant="full"
-            extraContent={renderPlayer2Extra?.()}
-          />
-        </div>
+  // Render players-board-history layout (Elite archive style)
+  const renderPlayersBoardHistoryLayout = () => {
+    // Helper to render desktop player card with timer for history layout
+    const renderHistoryPlayerCard = (playerNum) => {
+      const isPlayer1 = playerNum === 1;
+      const playerAddress = isPlayer1 ? player1 : player2;
+      const isYou = account && playerAddress?.toLowerCase() === account.toLowerCase();
+      const isTurn = isPlayer1 ? isPlayer1Turn : isPlayer2Turn;
+      const timeLeft = isPlayer1 ? player1TimeLeft : player2TimeLeft;
+      const totalTime = match.matchTimePerPlayer ?? 300;
+      const progress = ((totalTime - timeLeft) / totalTime) * 100;
+      const icon = isPlayer1 ? playerConfig?.player1?.icon : playerConfig?.player2?.icon;
+      const label = isPlayer1 ? (playerConfig?.player1?.label || 'Player 1') : (playerConfig?.player2?.label || 'Player 2');
+      const colorScheme = isPlayer1 ? theme.player1Color : theme.player2Color;
+      const extraContent = isPlayer1 ? renderPlayer1Extra?.() : renderPlayer2Extra?.();
 
-        {/* Center Column - Board */}
-        <div className="flex flex-col items-center w-full">
-          {children}
+      // Get color scheme based on remaining time
+      const getTimeColors = (timeLeft) => {
+        if (timeLeft <= 0) return { text: 'text-red-500', border: 'border-red-500', bg: 'bg-red-500/20', bar: 'bg-red-500' };
+        if (timeLeft <= 30) return { text: 'text-red-400', border: 'border-red-400', bg: 'bg-red-500/10', bar: 'bg-red-500' };
+        if (timeLeft <= 60) return { text: 'text-yellow-400', border: 'border-yellow-400', bg: 'bg-yellow-500/10', bar: 'bg-yellow-500' };
+        return { text: 'text-green-400', border: 'border-green-400', bg: 'bg-green-500/10', bar: 'bg-green-500' };
+      };
 
-          {showTurnTimer && (
-            <div className="w-full max-w-md mt-4">
-              <TurnTimer
-                match={match}
-                account={account}
-                onClaimTimeoutWin={onClaimTimeoutWin}
-                loading={loading}
-                syncDots={syncDots}
-                isSpectator={isSpectator}
-                playerConfig={playerConfig}
-              />
-            </div>
+      const colors = getTimeColors(timeLeft);
+
+      // Format time display
+      const formatTime = (seconds) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+      };
+
+      // Check if ML1 CTA should be shown
+      const isPlayer2You = account && player2?.toLowerCase() === account.toLowerCase();
+      const player1TimedOut = player1TimeLeft <= 0 && isPlayer1Turn && !isPlayer1You;
+      const player2TimedOut = player2TimeLeft <= 0 && isPlayer2Turn && !isPlayer2You;
+      const showML1CTAFromTimeout = timeoutState && timeoutState.timeoutActive && matchStatus === 1 && !isYourTurn;
+      const showML1CTAFromTimer = matchStatus === 1 && (player1TimedOut || player2TimedOut);
+      const showML1CTA = (showML1CTAFromTimeout || showML1CTAFromTimer) && isTurn;
+
+      // Get color config for player card
+      const COLOR_CONFIGS = {
+        blue: { border: 'border-blue-400/30', bg: 'bg-gradient-to-br from-blue-600/20 to-cyan-600/20', iconBg: 'bg-blue-500', text: 'text-blue-300' },
+        pink: { border: 'border-pink-400/30', bg: 'bg-gradient-to-br from-pink-600/20 to-purple-600/20', iconBg: 'bg-pink-500', text: 'text-pink-300' },
+        white: { border: 'border-blue-500/30', bg: 'bg-slate-900/50', iconBg: 'bg-white text-black', text: 'text-blue-300' },
+        black: { border: 'border-pink-500/30', bg: 'bg-slate-900/50', iconBg: 'bg-gray-900 text-white', text: 'text-pink-300' },
+        neonred: { border: 'border-red-400/30', bg: 'bg-gradient-to-br from-red-600/20 to-rose-600/20', iconBg: 'bg-red-500', text: 'text-red-300' },
+        neonblue: { border: 'border-blue-400/30', bg: 'bg-gradient-to-br from-blue-600/20 to-indigo-600/20', iconBg: 'bg-blue-500', text: 'text-blue-300' }
+      };
+      const cardColors = COLOR_CONFIGS[colorScheme] || COLOR_CONFIGS.blue;
+
+      return (
+        <div className={`relative ${cardColors.bg} backdrop-blur-lg rounded-2xl p-6 border-2 ${cardColors.border}`}>
+          {/* Turn Indicator Badge */}
+          {isTurn && !isGameOver && (
+            isYou ? (
+              <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap shadow-lg animate-bounce z-50">
+                YOUR TURN!
+              </div>
+            ) : (
+              <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-red-500 to-rose-500 text-white text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap shadow-lg z-50">
+                THEIR TURN
+              </div>
+            )
           )}
 
-          {timeoutState && (
-            <div className="w-full max-w-md mt-4">
-              <MatchTimeoutEscalation
-                timeoutState={timeoutState}
-                matchStatus={matchStatus}
-                isYourTurn={isYourTurn}
-                onClaimTimeoutWin={onClaimTimeoutWin}
-                onForceEliminate={onForceEliminate}
-                onClaimReplacement={onClaimReplacement}
-                loading={loading}
-                escL2Available={match.escL2Available}
-                escL3Available={match.escL3Available}
-                isUserAdvancedForRound={match.isUserAdvancedForRound}
-                hideML1OnMobile={true}
-              />
+          {/* Player Info */}
+          <div className="flex items-center gap-3 mb-4">
+            <div className={`w-12 h-12 ${cardColors.iconBg} rounded-full flex items-center justify-center text-2xl font-bold border-2 ${cardColors.border}`}>
+              {icon}
             </div>
+            <div>
+              <h3 className="text-xl font-bold text-white">{label}</h3>
+              <p className={`${cardColors.text} font-mono text-sm`}>
+                {playerAddress ? `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : ''}
+              </p>
+              {isYou && <span className="text-yellow-400 text-sm font-bold">YOU</span>}
+            </div>
+          </div>
+
+          {/* Extra Content */}
+          {extraContent && <div className="mb-4">{extraContent}</div>}
+
+          {/* Timer Section or ML1 CTA */}
+          {showTurnTimer && (
+            showML1CTA ? (
+              <button
+                onClick={onClaimTimeoutWin}
+                disabled={loading}
+                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-2 px-3 rounded-lg transition-all disabled:opacity-50 shadow-lg text-sm"
+              >
+                Claim Timeout Victory
+              </button>
+            ) : (
+              <div className={`border-2 rounded-lg p-2.5 ${
+                isTurn ? `${colors.border} ${colors.bg}` : 'border-gray-600/30 bg-gray-800/20 opacity-60'
+              }`}>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs font-bold text-gray-300">Time Remaining</span>
+                  <span className={`font-mono text-base font-bold ${colors.text}`}>
+                    {timeLeft > 0 ? formatTime(timeLeft) : 'OUT'}
+                  </span>
+                </div>
+                <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                  <div className={`h-full ${colors.bar} transition-all duration-500`} style={{ width: `${Math.min(progress, 100)}%` }} />
+                </div>
+              </div>
+            )
+          )}
+        </div>
+      );
+    };
+
+    return (
+      <>
+        {/* Mobile Layout (< lg breakpoint) */}
+        <div className="lg:hidden space-y-3">
+          {/* Mobile: Consolidated header */}
+          {renderMobileConsolidatedHeader()}
+
+          {/* Board */}
+          <div className="flex justify-center">
+            {children}
+          </div>
+
+          {/* Other controls */}
+          {timeoutState && (
+            <MatchTimeoutEscalation
+              timeoutState={timeoutState}
+              matchStatus={matchStatus}
+              isYourTurn={isYourTurn}
+              onClaimTimeoutWin={onClaimTimeoutWin}
+              onForceEliminate={onForceEliminate}
+              onClaimReplacement={onClaimReplacement}
+              loading={loading}
+              escL2Available={match.escL2Available}
+              escL3Available={match.escL3Available}
+              isUserAdvancedForRound={match.isUserAdvancedForRound}
+              hideML1OnMobile={true}
+            />
           )}
 
           {renderGameControls?.()}
 
           {isGameOver && (
-            <div className="w-full max-w-md mt-4">
-              <MatchComplete
-                isDraw={isDraw}
-                winner={winner}
-                loser={loser}
-                currentAccount={account}
-                gameSpecificText={!isDraw ? theme.completeText : undefined}
-              />
-            </div>
+            <MatchComplete
+              isDraw={isDraw}
+              winner={winner}
+              loser={loser}
+              currentAccount={account}
+              gameSpecificText={!isDraw ? theme.completeText : undefined}
+            />
           )}
+
+          {/* Move History - hidden on mobile by default */}
+          {/* Future enhancement: Add collapsible toggle here if needed */}
         </div>
 
-        {/* Right Column - Move History or Match Info */}
-        <div className="bg-slate-900/50 rounded-xl p-6 border border-purple-500/30 max-h-[800px] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-slate-800/50 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-purple-500/60 [&::-webkit-scrollbar-thumb]:to-pink-500/60 [&::-webkit-scrollbar-thumb]:rounded-full">
-          {renderMoveHistory ? (
-            renderMoveHistory()
-          ) : (
-            <div className="text-center py-8 text-purple-300/60">
-              <p className="text-sm">No move history available</p>
-            </div>
-          )}
+        {/* Desktop Layout (>= lg breakpoint) - Three-column layout with timers */}
+        <div className="hidden lg:grid lg:grid-cols-[18%_52%_30%] gap-4 items-start">
+          {/* Left Column - Both Player Panels with Timers */}
+          <div className="space-y-7 max-h-[800px] overflow-y-auto pr-2 pt-6 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-slate-800/50 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-purple-500/60 [&::-webkit-scrollbar-thumb]:to-pink-500/60 [&::-webkit-scrollbar-thumb]:rounded-full">
+            {renderHistoryPlayerCard(1)}
+            {renderHistoryPlayerCard(2)}
+          </div>
+
+          {/* Center Column - Board */}
+          <div className="flex flex-col items-center w-full">
+            {children}
+
+            {timeoutState && (
+              <div className="w-full max-w-md mt-4">
+                <MatchTimeoutEscalation
+                  timeoutState={timeoutState}
+                  matchStatus={matchStatus}
+                  isYourTurn={isYourTurn}
+                  onClaimTimeoutWin={onClaimTimeoutWin}
+                  onForceEliminate={onForceEliminate}
+                  onClaimReplacement={onClaimReplacement}
+                  loading={loading}
+                  escL2Available={match.escL2Available}
+                  escL3Available={match.escL3Available}
+                  isUserAdvancedForRound={match.isUserAdvancedForRound}
+                  hideML1OnMobile={true}
+                />
+              </div>
+            )}
+
+            {renderGameControls?.()}
+
+            {isGameOver && (
+              <div className="w-full max-w-md mt-4">
+                <MatchComplete
+                  isDraw={isDraw}
+                  winner={winner}
+                  loser={loser}
+                  currentAccount={account}
+                  gameSpecificText={!isDraw ? theme.completeText : undefined}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Right Column - Move History or Match Info */}
+          <div className="bg-slate-900/50 rounded-xl p-6 border border-purple-500/30 max-h-[800px] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-slate-800/50 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-purple-500/60 [&::-webkit-scrollbar-thumb]:to-pink-500/60 [&::-webkit-scrollbar-thumb]:rounded-full">
+            {renderMoveHistory ? (
+              renderMoveHistory()
+            ) : (
+              <div className="text-center py-8 text-purple-300/60">
+                <p className="text-sm">No move history available</p>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
-    </>
-  );
+      </>
+    );
+  };
 
   // Select layout renderer
   const renderLayout = () => {
