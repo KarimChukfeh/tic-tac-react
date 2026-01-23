@@ -1091,54 +1091,27 @@ export default function ConnectFour() {
     }
   }, [getReadOnlyContract]);
 
-  // LAZY LOADING: Fetch tier metadata from hardcoded TIER_CONFIG (no RPC calls)
-  // Active enrollment counts come from tierInstances when tiers are expanded
-  const fetchTierMetadata = useCallback(async (_contractInstance = null, silentUpdate = false) => {
+  // EAGER LOADING: Fetch tier metadata and all tier instances on page load
+  // No longer lazy - all tier data is fetched upfront to show "currently playing" counts
+  const fetchTierMetadata = useCallback(async (contractInstance = null, silentUpdate = false) => {
     if (!silentUpdate) setMetadataLoading(true);
     if (!silentUpdate) setConnectionError(null);
 
-    // Build metadata directly from TIER_CONFIG - zero RPC calls
-    const metadata = {};
-    for (const [tierId, tierConfig] of Object.entries(TIER_CONFIG)) {
-      const { playerCount, instanceCount, entryFee } = tierConfig;
-      metadata[tierId] = {
-        playerCount,
-        instanceCount,
-        entryFee,
-        statuses: [],
-        enrolledCounts: [],
-        prizePools: []
-      };
+    const readContract = contractInstance || getReadOnlyContract();
+    if (!readContract) {
+      if (!silentUpdate) setMetadataLoading(false);
+      return;
     }
 
-    setTierMetadata(metadata);
-    if (!silentUpdate) setMetadataLoading(false);
-  }, []);
-
-  // LAZY LOADING: Fetch detailed instances for a specific tier (called on expand)
-  // Note: Uses functional state updates to avoid dependency on tierInstances/tierMetadata
-  const fetchTierInstances = useCallback(async (tierId, contractInstance = null, userAccount = null, metadataOverride = null, silentUpdate = false) => {
-    const readContract = contractInstance || getReadOnlyContract();
-    const currentAccount = userAccount ?? account;
-    if (!readContract) return;
-
-    if (!silentUpdate) setTierLoading(prev => ({ ...prev, [tierId]: true }));
-
     try {
-      // Get metadata from override or fetch fresh
-      let metadata = metadataOverride;
-      if (!metadata) {
-        // Get tier config from hardcoded data (matches TicTacChain)
-        const tierConfig = TIER_CONFIG[tierId];
-        if (!tierConfig) {
-          if (!silentUpdate) setTierLoading(prev => ({ ...prev, [tierId]: false }));
-          return;
-        }
+      // Build metadata from TIER_CONFIG and fetch all instances at once
+      const metadata = {};
+      const allInstances = {};
 
+      for (const [tierId, tierConfig] of Object.entries(TIER_CONFIG)) {
         const { playerCount, instanceCount, entryFee } = tierConfig;
 
-        // OPTIMIZATION: Fetch all tournament data using multicall (batches into single RPC call)
-        // Falls back to parallel calls if Multicall3 is not available on the network
+        // OPTIMIZATION: Fetch all tournament data using multicall
         const provider = readContract.runner?.provider || readContract.provider;
         const results = await batchFetchTournaments(readContract, tierId, instanceCount, provider);
 
@@ -1149,14 +1122,15 @@ export default function ConnectFour() {
         const hasStartedViaTimeouts = [];
 
         for (const result of results) {
-          if (!result.success) break; // Instance not initialized yet
+          if (!result.success) break;
           statuses.push(result.status);
           enrolledCounts.push(result.enrolledCount);
           enrollmentTimeouts.push(result.enrollmentTimeout);
           hasStartedViaTimeouts.push(result.hasStartedViaTimeout);
         }
 
-        metadata = {
+        // Store metadata
+        metadata[tierId] = {
           playerCount,
           instanceCount: statuses.length,
           entryFee,
@@ -1165,29 +1139,150 @@ export default function ConnectFour() {
           enrollmentTimeouts,
           hasStartedViaTimeouts
         };
+
+        // Build instances array (without enrollment status for now)
+        const instances = [];
+        for (let i = 0; i < statuses.length; i++) {
+          const prizePoolETH = (enrolledCounts[i] * parseFloat(entryFee) * 0.9).toFixed(4);
+
+          instances.push({
+            tierId: parseInt(tierId),
+            instanceId: i,
+            status: statuses[i],
+            enrolledCount: enrolledCounts[i],
+            maxPlayers: playerCount,
+            entryFee,
+            prizePool: prizePoolETH,
+            isEnrolled: false, // Will be updated when wallet connects
+            enrollmentTimeout: enrollmentTimeouts[i],
+            hasStartedViaTimeout: hasStartedViaTimeouts[i],
+            tournamentStatus: statuses[i]
+          });
+        }
+
+        allInstances[tierId] = instances;
       }
 
-      if (!metadata || metadata.instanceCount === 0) {
-        if (!silentUpdate) setTierLoading(prev => ({ ...prev, [tierId]: false }));
-        return;
+      setTierMetadata(metadata);
+      setTierInstances(allInstances);
+      if (!silentUpdate) setMetadataLoading(false);
+    } catch (error) {
+      console.error('Error fetching tier metadata and instances:', error);
+
+      // Fallback: Build basic metadata from TIER_CONFIG
+      const metadata = {};
+      for (const [tierId, tierConfig] of Object.entries(TIER_CONFIG)) {
+        const { playerCount, instanceCount, entryFee } = tierConfig;
+        metadata[tierId] = {
+          playerCount,
+          instanceCount,
+          entryFee,
+          statuses: [],
+          enrolledCounts: [],
+          prizePools: []
+        };
       }
+      setTierMetadata(metadata);
+      if (!silentUpdate) setMetadataLoading(false);
+    }
+  }, [getReadOnlyContract]);
 
-      const instances = [];
+  // Update enrollment status for a specific tier when wallet connects
+  // Since we now fetch all tier data on page load, we just need to update isEnrolled flags
+  const fetchTierInstances = useCallback(async (tierId, contractInstance = null, userAccount = null, metadataOverride = null, silentUpdate = false) => {
+    const readContract = contractInstance || getReadOnlyContract();
+    const currentAccount = userAccount ?? account;
+    if (!readContract) return;
 
-      // OPTIMIZATION: Fetch enrollment status for all instances using multicall (second multicall)
-      const provider = readContract.runner?.provider || readContract.provider;
-      let enrollmentStatuses = [];
+    if (!silentUpdate) setTierLoading(prev => ({ ...prev, [tierId]: true }));
 
-      if (currentAccount) {
-        enrollmentStatuses = await batchFetchIsEnrolled(readContract, tierId, metadata.instanceCount, currentAccount, provider);
+    try {
+      // Get existing instances from state
+      const existingInstances = tierInstancesRef.current[tierId];
+
+      if (existingInstances && existingInstances.length > 0) {
+        // Update enrollment status only
+        const provider = readContract.runner?.provider || readContract.provider;
+        let enrollmentStatuses = [];
+
+        if (currentAccount) {
+          enrollmentStatuses = await batchFetchIsEnrolled(readContract, tierId, existingInstances.length, currentAccount, provider);
+        } else {
+          enrollmentStatuses = Array(existingInstances.length).fill(false);
+        }
+
+        // Update instances with new enrollment status
+        const updatedInstances = existingInstances.map((instance, i) => ({
+          ...instance,
+          isEnrolled: enrollmentStatuses[i]
+        }));
+
+        // Sort instances by priority
+        const getSortPriority = (instance) => {
+          const { tournamentStatus, isEnrolled, enrolledCount } = instance;
+
+          if (tournamentStatus === 1 && isEnrolled) return 1;
+          if (tournamentStatus === 0 && isEnrolled) return 2;
+          if (tournamentStatus === 0 && !isEnrolled && enrolledCount > 0) return 3;
+          if (tournamentStatus === 0 && !isEnrolled && enrolledCount === 0) return 4;
+          if (tournamentStatus === 1 && !isEnrolled) return 5;
+          return 6;
+        };
+
+        updatedInstances.sort((a, b) => getSortPriority(a) - getSortPriority(b));
+
+        setTierInstances(prev => ({ ...prev, [tierId]: updatedInstances }));
       } else {
-        // No account connected, all false
-        enrollmentStatuses = Array(metadata.instanceCount).fill(false);
-      }
+        // Fallback: fetch full tier data if not already loaded
+        const tierConfig = TIER_CONFIG[tierId];
+        if (!tierConfig) {
+          if (!silentUpdate) setTierLoading(prev => ({ ...prev, [tierId]: false }));
+          return;
+        }
 
-      // Build instances array using data from both multicalls
-      for (let i = 0; i < metadata.instanceCount; i++) {
-        try {
+        const { playerCount, instanceCount, entryFee } = tierConfig;
+
+        // Fetch all tournament data using multicall
+        const provider = readContract.runner?.provider || readContract.provider;
+        const results = await batchFetchTournaments(readContract, tierId, instanceCount, provider);
+
+        const statuses = [];
+        const enrolledCounts = [];
+        const enrollmentTimeouts = [];
+        const hasStartedViaTimeouts = [];
+
+        for (const result of results) {
+          if (!result.success) break;
+          statuses.push(result.status);
+          enrolledCounts.push(result.enrolledCount);
+          enrollmentTimeouts.push(result.enrollmentTimeout);
+          hasStartedViaTimeouts.push(result.hasStartedViaTimeout);
+        }
+
+        const metadata = {
+          playerCount,
+          instanceCount: statuses.length,
+          entryFee,
+          statuses,
+          enrolledCounts,
+          enrollmentTimeouts,
+          hasStartedViaTimeouts
+        };
+
+        if (!metadata || metadata.instanceCount === 0) {
+          if (!silentUpdate) setTierLoading(prev => ({ ...prev, [tierId]: false }));
+          return;
+        }
+
+        let enrollmentStatuses = [];
+        if (currentAccount) {
+          enrollmentStatuses = await batchFetchIsEnrolled(readContract, tierId, metadata.instanceCount, currentAccount, provider);
+        } else {
+          enrollmentStatuses = Array(metadata.instanceCount).fill(false);
+        }
+
+        const instances = [];
+        for (let i = 0; i < metadata.instanceCount; i++) {
           const prizePoolETH = (metadata.enrolledCounts[i] * parseFloat(metadata.entryFee) * 0.9).toFixed(4);
 
           instances.push({
@@ -1203,32 +1298,23 @@ export default function ConnectFour() {
             hasStartedViaTimeout: metadata.hasStartedViaTimeouts[i],
             tournamentStatus: metadata.statuses[i]
           });
-        } catch (err) {
-          console.log(`Could not build instance ${i} for tier ${tierId}:`, err.message);
         }
+
+        const getSortPriority = (instance) => {
+          const { tournamentStatus, isEnrolled, enrolledCount } = instance;
+
+          if (tournamentStatus === 1 && isEnrolled) return 1;
+          if (tournamentStatus === 0 && isEnrolled) return 2;
+          if (tournamentStatus === 0 && !isEnrolled && enrolledCount > 0) return 3;
+          if (tournamentStatus === 0 && !isEnrolled && enrolledCount === 0) return 4;
+          if (tournamentStatus === 1 && !isEnrolled) return 5;
+          return 6;
+        };
+
+        instances.sort((a, b) => getSortPriority(a) - getSortPriority(b));
+
+        setTierInstances(prev => ({ ...prev, [tierId]: instances }));
       }
-
-      // Sort instances by priority
-      // 1. In progress (status 1) + enrolled
-      // 2. Enrolling (status 0) + enrolled
-      // 3. Enrolling (status 0) + not enrolled + has players
-      // 4. Enrolling (status 0) + not enrolled + empty
-      // 5. In progress (status 1) + not enrolled
-      // 6. Everything else (completed, etc.)
-      const getSortPriority = (instance) => {
-        const { tournamentStatus, isEnrolled, enrolledCount } = instance;
-
-        if (tournamentStatus === 1 && isEnrolled) return 1;
-        if (tournamentStatus === 0 && isEnrolled) return 2;
-        if (tournamentStatus === 0 && !isEnrolled && enrolledCount > 0) return 3;
-        if (tournamentStatus === 0 && !isEnrolled && enrolledCount === 0) return 4;
-        if (tournamentStatus === 1 && !isEnrolled) return 5;
-        return 6; // Completed tournaments and others
-      };
-
-      instances.sort((a, b) => getSortPriority(a) - getSortPriority(b));
-
-      setTierInstances(prev => ({ ...prev, [tierId]: instances }));
     } catch (error) {
       console.error(`Error fetching tier ${tierId} instances:`, error);
     }
@@ -1333,24 +1419,28 @@ export default function ConnectFour() {
   useEffect(() => { expandedTiersRef.current = expandedTiers; }, [expandedTiers]);
   useEffect(() => { tierInstancesRef.current = tierInstances; }, [tierInstances]);
 
-  // Toggle tier expansion with lazy loading
+  // Toggle tier expansion (no lazy loading - data already fetched on page load)
   const toggleTier = useCallback(async (tierId) => {
     const isCurrentlyExpanded = expandedTiersRef.current[tierId];
     const alreadyLoaded = tierInstancesRef.current[tierId];
 
-    // If expanding and not yet loaded, fetch instances
-    if (!isCurrentlyExpanded && !alreadyLoaded) {
-      setExpandedTiers(prev => ({ ...prev, [tierId]: true }));
-      setVisibleInstancesCount(prev => ({ ...prev, [tierId]: 4 })); // Initialize to show 4 instances
-      await fetchTierInstances(tierId);
-    } else {
-      setExpandedTiers(prev => ({ ...prev, [tierId]: !prev[tierId] }));
-      if (!isCurrentlyExpanded) {
-        // When expanding an already loaded tier, ensure visible count is set
-        setVisibleInstancesCount(prev => ({ ...prev, [tierId]: prev[tierId] || 4 }));
+    // Toggle expansion
+    setExpandedTiers(prev => ({ ...prev, [tierId]: !prev[tierId] }));
+
+    if (!isCurrentlyExpanded) {
+      // When expanding, ensure visible count is set
+      setVisibleInstancesCount(prev => ({ ...prev, [tierId]: prev[tierId] || 4 }));
+
+      // If wallet is connected and we have instances, update enrollment status
+      if (account && alreadyLoaded && alreadyLoaded.length > 0) {
+        // Check if we need to update enrollment status
+        const needsEnrollmentUpdate = alreadyLoaded.every(inst => !inst.isEnrolled);
+        if (needsEnrollmentUpdate) {
+          await fetchTierInstances(tierId);
+        }
       }
     }
-  }, [fetchTierInstances]);
+  }, [account, fetchTierInstances]);
 
   // Show more instances for a tier
   const showMoreInstances = useCallback((tierId) => {
@@ -2766,6 +2856,24 @@ export default function ConnectFour() {
     }
   }, []);
 
+  // Update enrollment status for all loaded tiers when account changes
+  useEffect(() => {
+    const updateEnrollmentStatuses = async () => {
+      if (!contract || !account) return;
+
+      const loadedTierIds = Object.keys(tierInstancesRef.current).map(Number);
+      if (loadedTierIds.length === 0) return;
+
+      console.log('Updating enrollment statuses for tiers:', loadedTierIds);
+
+      // Update enrollment status for all loaded tiers
+      for (const tierId of loadedTierIds) {
+        await fetchTierInstances(tierId, contract, account, null, true);
+      }
+    };
+
+    updateEnrollmentStatuses();
+  }, [account, contract, fetchTierInstances]);
 
   // Listen for MatchCompleted events to notify players and update match state
   useEffect(() => {
@@ -3602,6 +3710,9 @@ export default function ConnectFour() {
                       // Calculate prize pool per tournament
                       const totalPrizePool = (parseFloat(metadata.entryFee) * metadata.playerCount * 0.9).toFixed(4);
 
+                      // Count total enrolled players across all tournament instances
+                      const totalEnrollments = allInstances.reduce((sum, inst) => sum + inst.enrolledCount, 0);
+
                       return (
                         <div key={tierId} className="mb-6">
                           <button
@@ -3614,6 +3725,11 @@ export default function ConnectFour() {
                               <span className="text-sm font-normal text-purple-300">• {metadata.entryFee} ETH entry</span>
                               <span className="text-sm font-normal text-purple-300">• {totalPrizePool} ETH prize pool</span>
                               <span className="ml-auto flex items-center gap-2">
+                                {totalEnrollments > 0 && (
+                                  <span className="text-sm font-normal text-green-400">
+                                    {totalEnrollments} current enrolment{totalEnrollments !== 1 ? 's' : ''}
+                                  </span>
+                                )}
                                 <ChevronDown
                                   size={24}
                                   className={`transition-transform duration-200 ${expandedTiers[tierId] ? 'rotate-180' : ''}`}
