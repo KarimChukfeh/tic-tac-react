@@ -115,7 +115,7 @@ const EliteMatchesCard = ({
   // Desktop positioning (top-left, vertical)
   const BASE_TOP_DESKTOP = 80; // md:top-20 in pixels
   const COLLAPSED_BUTTON_HEIGHT_DESKTOP = 64;
-  const SPACING_DESKTOP = 32;
+  const SPACING_DESKTOP = 90;
 
   // Position below PlayerActivity
   const activityOffset = playerActivityHeight > 0
