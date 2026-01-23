@@ -34,8 +34,10 @@ const PlayerActivity = ({
   isExpanded: externalIsExpanded, // External control for mobile single-panel coordination
   onToggleExpand, // External toggle handler
   hideOnMobile = false, // Hide this panel on mobile when another panel is expanded
+  gamesCardHeight = 0, // Height of the GamesCard above this component
 }) => {
   const [internalIsExpanded, setInternalIsExpanded] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
   const expandedPanelRef = useRef(null);
 
   // Use external state if provided, otherwise use internal state
@@ -79,6 +81,16 @@ const PlayerActivity = ({
       onCollapse(collapseFn);
     }
   }, [onCollapse, onToggleExpand, externalIsExpanded]);
+
+  // Track screen size for responsive positioning
+  useEffect(() => {
+    const handleResize = () => {
+      setIsDesktop(window.innerWidth >= 768);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Fetch fresh data whenever the panel is expanded
   useEffect(() => {
@@ -386,7 +398,6 @@ const PlayerActivity = ({
   // Handler when a match completes - add it to completed matches to keep it visible
   const handleMatchCompleted = (match) => {
     const matchKey = `${match.tierId}-${match.instanceId}-${match.roundIdx}-${match.matchIdx}`;
-    console.log('[MiniTicTacToeBoard] handleMatchCompleted called with match:', match);
 
     // Ensure match has matchStatus set to 2 (completed)
     const completedMatch = {
@@ -397,7 +408,6 @@ const PlayerActivity = ({
     setCompletedMatches(prev => {
       const next = new Map(prev);
       next.set(matchKey, completedMatch);
-      console.log('[MiniTicTacToeBoard] Added to completedMatches with matchStatus:', completedMatch.matchStatus);
       return next;
     });
     // Keep it expanded so user sees the result
@@ -411,20 +421,17 @@ const PlayerActivity = ({
   // Handler when user dismisses a completed match
   const handleDismissMatch = (tierId, instanceId, roundIdx, matchIdx) => {
     const matchKey = `${tierId}-${instanceId}-${roundIdx}-${matchIdx}`;
-    console.log('[MiniTicTacToeBoard] Dismissing match:', matchKey);
 
     // Remove from local completedMatches
     setCompletedMatches(prev => {
       const next = new Map(prev);
       next.delete(matchKey);
-      console.log('[MiniTicTacToeBoard] Removed from completedMatches');
       return next;
     });
 
     // Add to local dismissed set for immediate filtering
     setLocalDismissedMatches(prev => {
       const next = new Set([...prev, matchKey]);
-      console.log('[MiniTicTacToeBoard] Added to localDismissedMatches:', Array.from(next));
       return next;
     });
 
@@ -440,16 +447,11 @@ const PlayerActivity = ({
     const activeMatches = activity?.activeMatches || [];
     const matchMap = new Map();
 
-    console.log('[MiniTicTacToeBoard] getDisplayMatches - localDismissedMatches:', Array.from(localDismissedMatches));
-    console.log('[MiniTicTacToeBoard] getDisplayMatches - active matches count:', activeMatches.length);
-
     // First, add all completed matches (these take priority to show final state)
     // Skip matches that have been locally dismissed
     completedMatches.forEach((match, key) => {
       if (!localDismissedMatches.has(key)) {
         matchMap.set(key, match);
-      } else {
-        console.log('[MiniTicTacToeBoard] Filtered out completed match (dismissed):', key);
       }
     });
 
@@ -459,12 +461,9 @@ const PlayerActivity = ({
       const matchKey = `${match.tierId}-${match.instanceId}-${match.roundIdx}-${match.matchIdx}`;
       if (!matchMap.has(matchKey) && !localDismissedMatches.has(matchKey)) {
         matchMap.set(matchKey, match);
-      } else if (localDismissedMatches.has(matchKey)) {
-        console.log('[MiniTicTacToeBoard] Filtered out active match (dismissed):', matchKey);
       }
     });
 
-    console.log('[MiniTicTacToeBoard] Final display matches count:', matchMap.size);
     return Array.from(matchMap.values());
   };
 
@@ -482,8 +481,24 @@ const PlayerActivity = ({
     activity.unfilledTournaments.length > 0
   );
 
+  // Desktop positioning (vertical stack below GamesCard)
+  const BASE_TOP_DESKTOP = 80; // md:top-20 in pixels
+  const COLLAPSED_BUTTON_HEIGHT_DESKTOP = 64; // collapsed button height on desktop
+  const SPACING_DESKTOP = 90; // gap between components on desktop
+
+  // Calculate desktop top position based on GamesCard height
+  const topPositionDesktop = gamesCardHeight > 0
+    ? BASE_TOP_DESKTOP + gamesCardHeight + SPACING_DESKTOP
+    : BASE_TOP_DESKTOP + COLLAPSED_BUTTON_HEIGHT_DESKTOP + SPACING_DESKTOP;
+
   return (
-    <div className={`max-md:relative md:fixed max-md:flex-1 max-md:flex max-md:justify-center md:top-20 md:left-16 z-50`}>
+    <div
+      className={`max-md:relative md:fixed max-md:flex-1 max-md:flex max-md:justify-center md:bottom-auto md:left-16 z-50 transition-all duration-300`}
+      style={{
+        // On desktop: use top positioning
+        top: isDesktop ? `${topPositionDesktop}px` : undefined
+      }}
+    >
       {/* Toggle Button */}
       <button
         onClick={() => handleSetExpanded(!isExpanded)}
@@ -513,8 +528,8 @@ const PlayerActivity = ({
           </div>
         )}
 
-        {/* Tooltip */}
-        <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+        {/* Tooltip - Desktop only */}
+        <div className="max-md:hidden absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
           Your Activity
         </div>
       </button>
@@ -660,8 +675,6 @@ const PlayerActivity = ({
                       const matchKey = `${match.tierId}-${match.instanceId}-${match.roundIdx}-${match.matchIdx}`;
                       const isMatchExpanded = expandedMatches.has(matchKey);
                       const isCompleted = match.matchStatus === 2;
-
-                      console.log('[MiniTicTacToeBoard] Rendering match card:', matchKey, 'matchStatus:', match.matchStatus, 'isCompleted:', isCompleted);
 
                       return (
                         <div

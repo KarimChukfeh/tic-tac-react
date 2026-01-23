@@ -13,6 +13,7 @@ import { shortenAddress } from '../../utils/formatters';
 
 const EliteMatchesCard = ({
   eliteMatches,
+  gamesCardHeight = 0,
   playerActivityHeight,
   raffleCardHeight,
   onRefresh,
@@ -117,17 +118,26 @@ const EliteMatchesCard = ({
   const COLLAPSED_BUTTON_HEIGHT_DESKTOP = 64;
   const SPACING_DESKTOP = 90;
 
-  // Position below PlayerActivity
+  // Position below GamesCard, PlayerActivity, and CommunityRaffle
+  let topPositionDesktop = BASE_TOP_DESKTOP;
+
+  // Add GamesCard offset
+  const gamesOffset = gamesCardHeight > 0
+    ? gamesCardHeight + SPACING_DESKTOP
+    : COLLAPSED_BUTTON_HEIGHT_DESKTOP + SPACING_DESKTOP;
+  topPositionDesktop += gamesOffset;
+
+  // Add PlayerActivity offset
   const activityOffset = playerActivityHeight > 0
     ? playerActivityHeight + SPACING_DESKTOP
     : COLLAPSED_BUTTON_HEIGHT_DESKTOP + SPACING_DESKTOP;
+  topPositionDesktop += activityOffset;
 
-  // Add offset for CommunityRaffle card (use actual height when expanded, collapsed button height otherwise)
+  // Add CommunityRaffle offset
   const raffleOffset = raffleCardHeight > 0
     ? raffleCardHeight + SPACING_DESKTOP
     : COLLAPSED_BUTTON_HEIGHT_DESKTOP + SPACING_DESKTOP;
-
-  const topPositionDesktop = BASE_TOP_DESKTOP + activityOffset + raffleOffset;
+  topPositionDesktop += raffleOffset;
 
   const hasMatches = eliteMatches && eliteMatches.length > 0;
 
@@ -142,10 +152,10 @@ const EliteMatchesCard = ({
       {/* Toggle Button */}
       <button
         onClick={() => handleSetExpanded(!isExpanded)}
-        className="max-md:mx-auto bg-gradient-to-br from-amber-500/90 to-yellow-600/90 backdrop-blur-lg rounded-full p-2.5 md:p-4 border-2 border-amber-400/40 hover:border-amber-400/70 transition-all hover:scale-110 shadow-xl relative group"
+        className="max-md:mx-auto bg-gradient-to-br from-amber-700/95 to-yellow-800/95 backdrop-blur-lg rounded-full p-2.5 md:p-4 border-2 border-amber-600/50 hover:border-amber-500/70 transition-all hover:scale-110 shadow-xl relative group"
         aria-label={isExpanded ? "Close elite matches" : "Open elite matches"}
         style={{
-          boxShadow: '0 0 25px rgba(245, 158, 11, 0.9), 0 0 50px rgba(245, 158, 11, 0.7), 0 0 75px rgba(245, 158, 11, 0.5), 0 0 100px rgba(245, 158, 11, 0.3)'
+          boxShadow: '0 0 25px rgba(180, 83, 9, 0.9), 0 0 50px rgba(180, 83, 9, 0.7), 0 0 75px rgba(180, 83, 9, 0.5), 0 0 100px rgba(180, 83, 9, 0.3)'
         }}
       >
         <Crown size={18} className="text-white md:w-6 md:h-6" />
@@ -157,27 +167,27 @@ const EliteMatchesCard = ({
 
         {/* Match Count Badge */}
         {hasMatches && (
-          <div className="absolute -top-1 -right-1 bg-amber-700 rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center">
+          <div className="absolute -top-1 -right-1 bg-amber-800 rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center">
             <span className="text-white text-[10px] md:text-xs font-bold">{eliteMatches.length}</span>
           </div>
         )}
 
-        {/* Tooltip */}
-        <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+        {/* Tooltip - Desktop only */}
+        <div className="max-md:hidden absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
           Elite Matches
         </div>
       </button>
 
       {/* Expanded State */}
       {isExpanded && (
-        <div className="max-md:fixed max-md:bottom-20 max-md:left-4 max-md:right-4 max-md:w-auto md:mt-3 bg-gradient-to-br from-amber-600/20 to-yellow-600/20 backdrop-blur-lg rounded-xl p-4 border-2 border-amber-400/40 shadow-2xl md:w-[464px] max-h-[calc(100vh-7rem)] overflow-hidden flex flex-col">
+        <div className="max-md:fixed max-md:bottom-20 max-md:left-4 max-md:right-4 max-md:w-auto md:mt-3 bg-gradient-to-br from-amber-800/30 to-yellow-900/30 backdrop-blur-lg rounded-xl p-4 border-2 border-amber-600/50 shadow-2xl md:w-[464px] max-h-[calc(100vh-7rem)] overflow-hidden flex flex-col">
           {/* Header */}
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <Crown size={20} className="text-amber-400" />
+              <Crown size={20} className="text-amber-500" />
               <h3 className="text-white font-bold text-sm">Elite Matches</h3>
               {hasMatches && (
-                <span className="text-amber-300 text-xs bg-amber-500/20 px-2 py-0.5 rounded-full">
+                <span className="text-amber-300 text-xs bg-amber-700/30 px-2 py-0.5 rounded-full">
                   {eliteMatches.length} matches
                 </span>
               )}
@@ -187,7 +197,7 @@ const EliteMatchesCard = ({
               <button
                 onClick={onRefresh}
                 disabled={syncing}
-                className="text-amber-300 hover:text-amber-100 transition-colors p-1 hover:bg-amber-700/30 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                className="text-amber-400 hover:text-amber-200 transition-colors p-1 hover:bg-amber-800/40 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                 aria-label="Refresh"
                 title="Refresh elite matches"
               >
@@ -196,7 +206,7 @@ const EliteMatchesCard = ({
               {/* Close Button */}
               <button
                 onClick={() => handleSetExpanded(false)}
-                className="text-amber-300 hover:text-amber-100 transition-colors p-1 hover:bg-amber-700/30 rounded"
+                className="text-amber-400 hover:text-amber-200 transition-colors p-1 hover:bg-amber-800/40 rounded"
                 aria-label="Close"
               >
                 <X size={18} />
@@ -205,9 +215,9 @@ const EliteMatchesCard = ({
           </div>
 
           {/* Matches List */}
-          <div className="overflow-y-auto flex-1 space-y-2 pr-1 mb-3 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-slate-800/50 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-amber-500/60 [&::-webkit-scrollbar-thumb]:to-yellow-500/60 [&::-webkit-scrollbar-thumb]:rounded-full">
+          <div className="overflow-y-auto flex-1 space-y-2 pr-1 mb-3 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-slate-800/50 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-amber-700/70 [&::-webkit-scrollbar-thumb]:to-yellow-800/70 [&::-webkit-scrollbar-thumb]:rounded-full">
             {!hasMatches ? (
-              <div className="text-center py-8 text-amber-300/60">
+              <div className="text-center py-8 text-amber-400/60">
                 <Swords size={32} className="mx-auto mb-2 opacity-50" />
                 <p className="text-sm">No elite matches yet</p>
                 <p className="text-xs mt-1">High-tier tournament finals will appear here</p>
@@ -222,11 +232,11 @@ const EliteMatchesCard = ({
                 return (
                   <div
                     key={idx}
-                    className="bg-black/20 border border-amber-400/20 rounded-lg p-3 hover:border-amber-400/40 transition-colors"
+                    className="bg-black/30 border border-amber-600/30 rounded-lg p-3 hover:border-amber-500/50 transition-colors"
                   >
                     {/* Match Header - Time */}
                     <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-1 text-amber-300/60 text-xs">
+                      <div className="flex items-center gap-1 text-amber-400/60 text-xs">
                         <Clock size={12} />
                         <span>{formatDate(matchTime)}</span>
                       </div>
@@ -242,21 +252,21 @@ const EliteMatchesCard = ({
                       {/* Winner */}
                       {hasWinner && !match.isDraw && (
                         <div className="flex items-center gap-2">
-                          <Trophy size={14} className="text-amber-400" />
-                          <span className={`text-sm font-semibold ${isUser(match.winner) ? 'text-green-400' : 'text-amber-200'}`}>
+                          <Trophy size={14} className="text-amber-500" />
+                          <span className={`text-sm font-semibold ${isUser(match.winner) ? 'text-green-400' : 'text-amber-300'}`}>
                             {isUser(match.winner) ? 'You' : shortenAddress(match.winner)}
                           </span>
-                          <span className="text-[10px] text-amber-400/60 uppercase">Winner</span>
+                          <span className="text-[10px] text-amber-500/70 uppercase">Winner</span>
                         </div>
                       )}
 
                       {/* Loser */}
                       {loser && !match.isDraw && (
                         <div className="flex items-center gap-2 ml-5">
-                          <span className={`text-sm ${isUser(loser) ? 'text-red-400' : 'text-amber-300/70'}`}>
+                          <span className={`text-sm ${isUser(loser) ? 'text-red-400' : 'text-amber-400/70'}`}>
                             {isUser(loser) ? 'You' : shortenAddress(loser)}
                           </span>
-                          <span className="text-[10px] text-amber-400/40 uppercase">Lost</span>
+                          <span className="text-[10px] text-amber-500/50 uppercase">Lost</span>
                         </div>
                       )}
 
@@ -264,12 +274,12 @@ const EliteMatchesCard = ({
                       {match.isDraw && (
                         <>
                           <div className="flex items-center gap-2">
-                            <span className="text-sm text-amber-300/70">
+                            <span className="text-sm text-amber-400/70">
                               {isUser(match.player1) ? 'You' : shortenAddress(match.player1)}
                             </span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="text-sm text-amber-300/70">
+                            <span className="text-sm text-amber-400/70">
                               {isUser(match.player2) ? 'You' : shortenAddress(match.player2)}
                             </span>
                           </div>
@@ -280,18 +290,18 @@ const EliteMatchesCard = ({
                       {!hasWinner && !match.isDraw && (
                         <>
                           <div className="flex items-center gap-2">
-                            <Swords size={14} className="text-amber-400/60" />
-                            <span className={`text-sm ${isUser(match.player1) ? 'text-green-400' : 'text-amber-300/70'}`}>
+                            <Swords size={14} className="text-amber-500/70" />
+                            <span className={`text-sm ${isUser(match.player1) ? 'text-green-400' : 'text-amber-400/70'}`}>
                               {isUser(match.player1) ? 'You' : shortenAddress(match.player1)}
                             </span>
                           </div>
                           <div className="flex items-center gap-2 ml-5">
-                            <span className="text-xs text-amber-400/60">vs</span>
-                            <span className={`text-sm ${isUser(match.player2) ? 'text-green-400' : 'text-amber-300/70'}`}>
+                            <span className="text-xs text-amber-500/70">vs</span>
+                            <span className={`text-sm ${isUser(match.player2) ? 'text-green-400' : 'text-amber-400/70'}`}>
                               {isUser(match.player2) ? 'You' : shortenAddress(match.player2)}
                             </span>
                           </div>
-                          <div className="text-[10px] text-orange-400 mt-1">In Progress</div>
+                          <div className="text-[10px] text-amber-600 mt-1">In Progress</div>
                         </>
                       )}
                     </div>
@@ -299,7 +309,7 @@ const EliteMatchesCard = ({
                     {/* View Match Button */}
                     <button
                       onClick={() => onViewMatch(eliteMatches.length - 1 - idx)}
-                      className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 hover:from-amber-500/30 hover:to-yellow-500/30 text-amber-300 rounded-lg transition-all border border-amber-400/30 hover:border-amber-400/50 text-sm"
+                      className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 bg-gradient-to-r from-amber-700/30 to-yellow-800/30 hover:from-amber-700/40 hover:to-yellow-800/40 text-amber-400 rounded-lg transition-all border border-amber-600/40 hover:border-amber-500/60 text-sm"
                     >
                       <Eye size={14} />
                       View Match
@@ -314,7 +324,7 @@ const EliteMatchesCard = ({
           <a
             href="#elite-matches"
             onClick={handleEliteMatchesClick}
-            className="block w-full text-center text-amber-300 hover:text-amber-200 hover:bg-amber-500/10 text-xs py-2 px-4 rounded-lg border border-amber-400/30 hover:border-amber-400/50 transition-all cursor-pointer"
+            className="block w-full text-center text-amber-400 hover:text-amber-300 hover:bg-amber-700/20 text-xs py-2 px-4 rounded-lg border border-amber-600/40 hover:border-amber-500/60 transition-all cursor-pointer"
           >
             What are Elite Matches?
           </a>

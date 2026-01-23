@@ -35,6 +35,7 @@ import { parseConnectFourMatch } from './utils/matchDataParser';
 import { determineMatchResult } from './utils/matchCompletionHandler';
 import { fetchTierTimeoutConfig } from './utils/timeCalculations';
 import { getCompletionReasonText, getCompletionReasonDescription } from './utils/completionReasons';
+import { batchFetchTournaments, batchFetchIsEnrolled } from './utils/multicall';
 import ParticleBackground from './components/shared/ParticleBackground';
 import MatchCard from './components/shared/MatchCard';
 import TournamentCard from './components/shared/TournamentCard';
@@ -46,6 +47,7 @@ import GameMatchLayout from './components/shared/GameMatchLayout';
 import TournamentHeader from './components/shared/TournamentHeader';
 import PlayerActivity from './components/shared/PlayerActivity';
 import CommunityRaffleCard from './components/shared/CommunityRaffleCard';
+import GamesCard from './components/shared/GamesCard';
 import BracketScrollHint from './components/shared/BracketScrollHint';
 import { usePlayerActivity } from './hooks/usePlayerActivity';
 
@@ -697,13 +699,14 @@ export default function ConnectFour() {
 
   // Player Activity Hook
   const playerActivity = usePlayerActivity(contract, account, 'connect4');
+  const [gamesCardHeight, setGamesCardHeight] = useState(0);
   const [playerActivityHeight, setPlayerActivityHeight] = useState(0);
 
   // Player Activity Collapse Function Ref
   const collapseActivityPanelRef = useRef(null);
 
   // Mobile Panel Expansion Coordination (only one panel expanded at a time on mobile)
-  const [expandedPanel, setExpandedPanel] = useState(null); // 'playerActivity' | 'communityRaffle' | null
+  const [expandedPanel, setExpandedPanel] = useState(null); // 'games' | 'playerActivity' | 'communityRaffle' | null
 
   // Set page title
   useEffect(() => {
@@ -1134,27 +1137,23 @@ export default function ConnectFour() {
 
         const { playerCount, instanceCount, entryFee } = tierConfig;
 
-        const statuses = [];
-        const enrolledCounts = [];
-
-        // OPTIMIZATION: Fetch all tournament instances in parallel
-        const tournamentPromises = Array.from({ length: instanceCount }, (_, instanceId) =>
-          readContract.getTournamentInfo(tierId, instanceId)
-            .then(tournamentInfo => ({
-              success: true,
-              status: Number(tournamentInfo[0]),
-              enrolledCount: Number(tournamentInfo[2])
-            }))
-            .catch(error => ({ success: false, error }))
-        );
-
-        const results = await Promise.all(tournamentPromises);
+        // OPTIMIZATION: Fetch all tournament data using multicall (batches into single RPC call)
+        // Falls back to parallel calls if Multicall3 is not available on the network
+        const provider = readContract.runner?.provider || readContract.provider;
+        const results = await batchFetchTournaments(readContract, tierId, instanceCount, provider);
 
         // Process results - stop at first uninitialized instance
+        const statuses = [];
+        const enrolledCounts = [];
+        const enrollmentTimeouts = [];
+        const hasStartedViaTimeouts = [];
+
         for (const result of results) {
           if (!result.success) break; // Instance not initialized yet
           statuses.push(result.status);
           enrolledCounts.push(result.enrolledCount);
+          enrollmentTimeouts.push(result.enrollmentTimeout);
+          hasStartedViaTimeouts.push(result.hasStartedViaTimeout);
         }
 
         metadata = {
@@ -1162,7 +1161,9 @@ export default function ConnectFour() {
           instanceCount: statuses.length,
           entryFee,
           statuses,
-          enrolledCounts
+          enrolledCounts,
+          enrollmentTimeouts,
+          hasStartedViaTimeouts
         };
       }
 
@@ -1173,16 +1174,20 @@ export default function ConnectFour() {
 
       const instances = [];
 
-      // Fetch detailed data for each instance in this tier
+      // OPTIMIZATION: Fetch enrollment status for all instances using multicall (second multicall)
+      const provider = readContract.runner?.provider || readContract.provider;
+      let enrollmentStatuses = [];
+
+      if (currentAccount) {
+        enrollmentStatuses = await batchFetchIsEnrolled(readContract, tierId, metadata.instanceCount, currentAccount, provider);
+      } else {
+        // No account connected, all false
+        enrollmentStatuses = Array(metadata.instanceCount).fill(false);
+      }
+
+      // Build instances array using data from both multicalls
       for (let i = 0; i < metadata.instanceCount; i++) {
         try {
-          // Parallel fetch tournament data and enrollment status
-          const [tournamentInfo, isUserEnrolled] = await Promise.all([
-            readContract.tournaments(tierId, i),
-            currentAccount ? readContract.isEnrolled(tierId, i, currentAccount).catch(() => false) : Promise.resolve(false)
-          ]);
-
-          // Calculate prize pool (enrolled count * entry fee * 0.9 to account for 10% network fee)
           const prizePoolETH = (metadata.enrolledCounts[i] * parseFloat(metadata.entryFee) * 0.9).toFixed(4);
 
           instances.push({
@@ -1193,13 +1198,13 @@ export default function ConnectFour() {
             maxPlayers: metadata.playerCount,
             entryFee: metadata.entryFee,
             prizePool: prizePoolETH,
-            isEnrolled: isUserEnrolled,
-            enrollmentTimeout: tournamentInfo.enrollmentTimeout,
-            hasStartedViaTimeout: tournamentInfo.hasStartedViaTimeout,
+            isEnrolled: enrollmentStatuses[i],
+            enrollmentTimeout: metadata.enrollmentTimeouts[i],
+            hasStartedViaTimeout: metadata.hasStartedViaTimeouts[i],
             tournamentStatus: metadata.statuses[i]
           });
         } catch (err) {
-          console.log(`Could not fetch instance ${i} for tier ${tierId}:`, err.message);
+          console.log(`Could not build instance ${i} for tier ${tierId}:`, err.message);
         }
       }
 
@@ -3210,7 +3215,15 @@ export default function ConnectFour() {
       {account && (
         <div className="fixed bottom-0 left-0 right-0 z-50 md:static md:z-auto">
           {/* Solid background bar on mobile */}
-          <div className="md:hidden bg-gradient-to-b from-slate-900 to-slate-950 border-t border-purple-400/30 px-4 py-2 flex items-center justify-between">
+          <div className="md:hidden bg-gradient-to-b from-slate-800 to-slate-900 border-t border-purple-400/30 px-4 py-2.5 flex items-center justify-between">
+            {/* Games Card */}
+            <GamesCard
+              currentGame="connect4"
+              onHeightChange={setGamesCardHeight}
+              isExpanded={expandedPanel === 'games'}
+              onToggleExpand={() => setExpandedPanel(expandedPanel === 'games' ? null : 'games')}
+            />
+
             {/* Player Activity Component */}
             <PlayerActivity
               activity={playerActivity.data}
@@ -3224,6 +3237,7 @@ export default function ConnectFour() {
               onDismissMatch={playerActivity.dismissMatch}
               gameName="connect4"
               gameEmoji="🔴"
+              gamesCardHeight={gamesCardHeight}
               onHeightChange={setPlayerActivityHeight}
               onCollapse={(collapseFn) => { collapseActivityPanelRef.current = collapseFn; }}
               isExpanded={expandedPanel === 'playerActivity'}
@@ -3234,6 +3248,7 @@ export default function ConnectFour() {
             <CommunityRaffleCard
               raffleInfo={raffleInfo}
               raffleHistory={raffleHistory}
+              gamesCardHeight={gamesCardHeight}
               playerActivityHeight={playerActivityHeight}
               onRefresh={fetchRaffleInfo}
               onTriggerRaffle={executeRaffle}
@@ -3245,6 +3260,13 @@ export default function ConnectFour() {
 
           {/* Desktop positioning (hidden on mobile, shown on desktop with original behavior) */}
           <div className="hidden md:block">
+            <GamesCard
+              currentGame="connect4"
+              onHeightChange={setGamesCardHeight}
+              isExpanded={expandedPanel === 'games'}
+              onToggleExpand={() => setExpandedPanel(expandedPanel === 'games' ? null : 'games')}
+            />
+
             <PlayerActivity
               activity={playerActivity.data}
               loading={playerActivity.loading}
@@ -3257,6 +3279,7 @@ export default function ConnectFour() {
               onDismissMatch={playerActivity.dismissMatch}
               gameName="connect4"
               gameEmoji="🔴"
+              gamesCardHeight={gamesCardHeight}
               onHeightChange={setPlayerActivityHeight}
               onCollapse={(collapseFn) => { collapseActivityPanelRef.current = collapseFn; }}
               isExpanded={expandedPanel === 'playerActivity'}
@@ -3266,6 +3289,7 @@ export default function ConnectFour() {
             <CommunityRaffleCard
               raffleInfo={raffleInfo}
               raffleHistory={raffleHistory}
+              gamesCardHeight={gamesCardHeight}
               playerActivityHeight={playerActivityHeight}
               onRefresh={fetchRaffleInfo}
               onTriggerRaffle={executeRaffle}

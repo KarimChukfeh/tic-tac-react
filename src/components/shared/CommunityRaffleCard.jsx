@@ -13,6 +13,7 @@ import { shortenAddress } from '../../utils/formatters';
 const CommunityRaffleCard = ({
   raffleInfo,
   raffleHistory = [],
+  gamesCardHeight = 0,
   playerActivityHeight,
   onRefresh,
   onTriggerRaffle,
@@ -105,15 +106,27 @@ const CommunityRaffleCard = ({
   // Button size calculation: p-2.5 (10px × 2) + icon (18px) + border-2 (2px × 2) = 42px
   const MOBILE_LEFT = 74; // 16px (left-4) + 42px (button width) + 16px (gap)
 
-  // Desktop positioning (top-left, vertical)
+  // Desktop positioning (top-left, vertical stack below GamesCard and PlayerActivity)
   const BASE_TOP_DESKTOP = 80; // md:top-20 in pixels
   const COLLAPSED_BUTTON_HEIGHT_DESKTOP = 64; // collapsed button height on desktop
   const SPACING_DESKTOP = 90; // gap between components on desktop
 
-  // Calculate desktop top position based on PlayerActivity height
-  const topPositionDesktop = playerActivityHeight > 0
-    ? BASE_TOP_DESKTOP + playerActivityHeight + SPACING_DESKTOP
-    : BASE_TOP_DESKTOP + COLLAPSED_BUTTON_HEIGHT_DESKTOP + SPACING_DESKTOP;
+  // Calculate desktop top position accounting for both GamesCard and PlayerActivity
+  let topPositionDesktop = BASE_TOP_DESKTOP;
+
+  // Add GamesCard height (or collapsed height if not expanded)
+  if (gamesCardHeight > 0) {
+    topPositionDesktop += gamesCardHeight + SPACING_DESKTOP;
+  } else {
+    topPositionDesktop += COLLAPSED_BUTTON_HEIGHT_DESKTOP + SPACING_DESKTOP;
+  }
+
+  // Add PlayerActivity height (or collapsed height if not expanded)
+  if (playerActivityHeight > 0) {
+    topPositionDesktop += playerActivityHeight + SPACING_DESKTOP;
+  } else {
+    topPositionDesktop += COLLAPSED_BUTTON_HEIGHT_DESKTOP + SPACING_DESKTOP;
+  }
 
   return (
     <div
@@ -128,8 +141,8 @@ const CommunityRaffleCard = ({
         onClick={() => handleSetExpanded(!isExpanded)}
         className={`max-md:mx-auto rounded-full p-2.5 md:p-4 border-2 transition-all hover:scale-110 shadow-xl relative group ${
           isFull
-            ? 'bg-gradient-to-br from-green-500 to-emerald-500 border-green-400/70 hover:border-green-400'
-            : 'bg-gradient-to-br from-green-600 to-emerald-600 border-green-400/40 hover:border-green-400/70'
+            ? 'bg-gradient-to-br from-yellow-500 to-amber-500 border-yellow-400/70 hover:border-yellow-400'
+            : 'bg-gradient-to-br from-yellow-600 to-amber-600 border-yellow-400/40 hover:border-yellow-400/70'
         }`}
         aria-label={isExpanded ? "Close community raffle" : "Open community raffle"}
       >
@@ -147,13 +160,13 @@ const CommunityRaffleCard = ({
 
         {/* Full Badge */}
         {isFull && (
-          <div className="absolute -top-1 -right-1 bg-green-500 rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center">
+          <div className="absolute -top-1 -right-1 bg-yellow-500 rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center">
             <span className="text-white text-[10px] md:text-xs font-bold">✓</span>
           </div>
         )}
 
-        {/* Tooltip */}
-        <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+        {/* Tooltip - Desktop only */}
+        <div className="max-md:hidden absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
           Community Raffle
         </div>
       </button>
@@ -162,10 +175,10 @@ const CommunityRaffleCard = ({
       {isExpanded && (
         <div
           ref={expandedPanelRef}
-          className={`max-md:fixed max-md:bottom-20 max-md:left-4 max-md:right-4 max-md:w-auto md:mt-3 bg-gradient-to-br from-green-700 to-emerald-800 rounded-xl p-4 border-2 transition-all shadow-2xl md:w-[464px] max-h-[calc(100vh-7rem)] overflow-y-auto ${
+          className={`max-md:fixed max-md:bottom-20 max-md:left-4 max-md:right-4 max-md:w-auto md:mt-3 bg-gradient-to-br from-yellow-700 to-amber-800 rounded-xl p-4 border-2 transition-all shadow-2xl md:w-[464px] max-h-[calc(100vh-7rem)] overflow-y-auto ${
             isFull
-              ? 'border-green-400 shadow-green-500/50'
-              : 'border-green-400/40'
+              ? 'border-yellow-400 shadow-yellow-500/50'
+              : 'border-yellow-400/40'
           }`}
         >
           {/* Header */}
@@ -175,13 +188,13 @@ const CommunityRaffleCard = ({
                 src="/raffle-icon.png"
                 alt="Raffle"
                 className="w-5 h-5"
-                style={{ filter: 'brightness(0) saturate(100%) invert(87%) sepia(69%) saturate(425%) hue-rotate(86deg) brightness(103%) contrast(97%)' }}
+                style={{ filter: 'brightness(0) saturate(100%) invert(87%) sepia(69%) saturate(425%) hue-rotate(10deg) brightness(103%) contrast(97%)' }}
               />
               <h3 className="text-white font-bold text-sm">Community Raffle #{raffleNumber}</h3>
             </div>
             <div className="flex items-center gap-1">
               {isFull && (
-                <span className="text-green-300 text-xs font-bold bg-green-500/20 px-2 py-1 rounded-full">
+                <span className="text-yellow-300 text-xs font-bold bg-yellow-500/20 px-2 py-1 rounded-full">
                   READY
                 </span>
               )}
@@ -189,7 +202,7 @@ const CommunityRaffleCard = ({
               <button
                 onClick={onRefresh}
                 disabled={syncing}
-                className="text-green-300 hover:text-green-100 transition-colors p-1 hover:bg-green-700/30 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                className="text-yellow-300 hover:text-yellow-100 transition-colors p-1 hover:bg-yellow-700/30 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                 aria-label="Refresh"
                 title="Refresh contract pool"
               >
@@ -198,7 +211,7 @@ const CommunityRaffleCard = ({
               {/* Close Button */}
               <button
                 onClick={() => handleSetExpanded(false)}
-                className="text-green-300 hover:text-green-100 transition-colors p-1 hover:bg-green-700/30 rounded"
+                className="text-yellow-300 hover:text-yellow-100 transition-colors p-1 hover:bg-yellow-700/30 rounded"
                 aria-label="Close"
               >
                 <X size={18} />
@@ -211,11 +224,11 @@ const CommunityRaffleCard = ({
             <div className="text-2xl font-bold text-white">
               {currentETH.toFixed(4)} ETH
             </div>
-            <div className="text-xs text-green-300/70">
+            <div className="text-xs text-yellow-300/70">
               Target: {thresholdETH.toFixed(4)} ETH
             </div>
             {reserveETH > 0 && (
-              <div className="text-[10px] text-green-300/50 mt-1">
+              <div className="text-[10px] text-yellow-300/50 mt-1">
                 Reserve: {reserveETH.toFixed(4)} ETH kept in contract
               </div>
             )}
@@ -226,8 +239,8 @@ const CommunityRaffleCard = ({
             <div
               className={`h-full transition-all duration-500 rounded-full ${
                 isFull
-                  ? 'bg-gradient-to-r from-green-400 to-green-500'
-                  : 'bg-gradient-to-r from-green-500 to-emerald-500'
+                  ? 'bg-gradient-to-r from-yellow-400 to-yellow-500'
+                  : 'bg-gradient-to-r from-yellow-500 to-amber-500'
               }`}
               style={{ width: `${percentage}%` }}
             />
@@ -235,29 +248,29 @@ const CommunityRaffleCard = ({
 
           {/* Percentage Label */}
           <div className="text-right mt-1">
-            <span className={`text-xs font-semibold ${isFull ? 'text-green-300' : 'text-green-300/70'}`}>
+            <span className={`text-xs font-semibold ${isFull ? 'text-yellow-300' : 'text-yellow-300/70'}`}>
               {percentage.toFixed(1)}%
             </span>
           </div>
 
           {/* Raffle Distribution Info - Only show when ready */}
           {isFull && raffleAmountETH > 0 && (
-            <div className="mt-3 p-3 bg-green-800/80 border border-green-400/30 rounded-lg">
-              <div className="text-xs text-green-300/80 mb-2">
+            <div className="mt-3 p-3 bg-yellow-800/80 border border-yellow-400/30 rounded-lg">
+              <div className="text-xs text-yellow-300/80 mb-2">
                 <span className="font-semibold">Raffle Distribution:</span>
               </div>
               <div className="space-y-1 text-[11px]">
-                <div className="flex justify-between text-green-300/70">
+                <div className="flex justify-between text-yellow-300/70">
                   <span>Current Pool:</span>
                   <span className="font-mono">{currentETH.toFixed(4)} ETH</span>
                 </div>
                 {reserveETH > 0 && (
-                  <div className="flex justify-between text-green-300/60">
+                  <div className="flex justify-between text-yellow-300/60">
                     <span>- Contract Reserve:</span>
                     <span className="font-mono">-{reserveETH.toFixed(4)} ETH</span>
                   </div>
                 )}
-                <div className="flex justify-between text-green-300 font-semibold border-t border-green-400/20 pt-1">
+                <div className="flex justify-between text-yellow-300 font-semibold border-t border-yellow-400/20 pt-1">
                   <span>= Raffle Prize Pool:</span>
                   <span className="font-mono">{raffleAmountETH.toFixed(4)} ETH</span>
                 </div>
@@ -270,7 +283,7 @@ const CommunityRaffleCard = ({
             <button
               onClick={onTriggerRaffle}
               disabled={syncing}
-              className="w-full mt-4 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-semibold py-2.5 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-sm shadow-lg shadow-green-500/20"
+              className="w-full mt-4 bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white font-semibold py-2.5 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-sm shadow-lg shadow-yellow-500/20"
             >
               <Zap size={16} />
               {syncing ? 'Triggering Raffle...' : 'Trigger Raffle'}
@@ -281,46 +294,46 @@ const CommunityRaffleCard = ({
           <a
             href="#community-raffles"
             onClick={handleCommunityRafflesClick}
-            className="block w-full text-center text-green-300 hover:text-green-200 hover:bg-green-500/10 text-xs mt-3 py-2 px-4 rounded-lg border border-green-400/30 hover:border-green-400/50 transition-all cursor-pointer"
+            className="block w-full text-center text-yellow-300 hover:text-yellow-200 hover:bg-yellow-500/10 text-xs mt-3 py-2 px-4 rounded-lg border border-yellow-400/30 hover:border-yellow-400/50 transition-all cursor-pointer"
           >
             What are Community Raffles?
           </a>
 
           {/* Raffle History Section */}
           {raffleHistory.length > 0 && (
-            <div className="mt-4 border-t border-green-400/20 pt-4">
-              <h4 className="text-green-300 font-semibold text-xs mb-2 flex items-center gap-1">
+            <div className="mt-4 border-t border-yellow-400/20 pt-4">
+              <h4 className="text-yellow-300 font-semibold text-xs mb-2 flex items-center gap-1">
                 <Trophy size={14} />
                 Past Raffle Winners
               </h4>
-              <div className="space-y-2 max-h-64 overflow-y-auto scrollbar-thin scrollbar-thumb-green-500/30 scrollbar-track-transparent">
+              <div className="space-y-2 max-h-64 overflow-y-auto scrollbar-thin scrollbar-thumb-yellow-500/30 scrollbar-track-transparent">
                 {raffleHistory.map((raffle) => (
                   <div
                     key={raffle.raffleNumber}
-                    className="bg-green-900/60 rounded-lg p-2.5 border border-green-400/10 hover:border-green-400/30 transition-colors"
+                    className="bg-yellow-900/60 rounded-lg p-2.5 border border-yellow-400/10 hover:border-yellow-400/30 transition-colors"
                   >
                     <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-green-300 font-semibold text-xs">
+                      <span className="text-yellow-300 font-semibold text-xs">
                         Raffle #{raffle.raffleNumber + 1}
                       </span>
-                      <span className="text-green-300/50 text-[10px]">
+                      <span className="text-yellow-300/50 text-[10px]">
                         {new Date(raffle.timestamp * 1000).toLocaleDateString()}
                       </span>
                     </div>
                     <div className="space-y-1 text-[11px]">
-                      <div className="flex justify-between text-green-300/70">
+                      <div className="flex justify-between text-yellow-300/70">
                         <span>Winner:</span>
-                        <span className="font-mono text-green-200">
+                        <span className="font-mono text-yellow-200">
                           {shortenAddress(raffle.winner)}
                         </span>
                       </div>
-                      <div className="flex justify-between text-green-300/70">
+                      <div className="flex justify-between text-yellow-300/70">
                         <span>Prize:</span>
-                        <span className="font-mono text-emerald-400 font-semibold">
+                        <span className="font-mono text-amber-400 font-semibold">
                           {parseFloat(ethers.formatEther(raffle.winnerPrize)).toFixed(4)} ETH
                         </span>
                       </div>
-                      <div className="flex justify-between text-green-300/50">
+                      <div className="flex justify-between text-yellow-300/50">
                         <span>Total Pot:</span>
                         <span className="font-mono">
                           {parseFloat(ethers.formatEther(raffle.rafflePot)).toFixed(4)} ETH
