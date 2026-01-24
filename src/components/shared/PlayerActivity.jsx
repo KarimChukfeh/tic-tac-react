@@ -1179,19 +1179,20 @@ const PlayerActivity = ({
                                 )}
                               </div>
 
-                              {/* Opponent Info */}
-                              <div className="text-slate-300 text-xs mb-2">
-                                <span className="text-slate-400">vs </span>
-                                <span className="font-mono">{shortenAddress(opponent)}</span>
+                              {/* Match Participants */}
+                              <div className="text-slate-300 text-[10px] mb-2">
+                                <span className="font-mono">{account.slice(0, 6)}...</span>
+                                <span className="text-slate-400"> vs </span>
+                                <span className="font-mono">{opponent.slice(0, 6)}...</span>
                               </div>
 
                               {/* Winner Info */}
                               <div className="text-slate-300 text-xs mb-2">
-                                <span className="text-slate-400">Winner: </span>
+                                <span className="text-slate-400">Winner </span>
                                 {match.isDraw ? (
                                   <span className="text-yellow-300 font-semibold">Draw</span>
                                 ) : match.winner === '0x0000000000000000000000000000000000000000' || !match.winner ? (
-                                  <span className="text-slate-500 font-semibold">No Winner</span>
+                                  <span className="text-slate-500 font-semibold">None</span>
                                 ) : (
                                   <span className={`font-mono ${isWinner ? 'text-green-400 font-semibold' : 'text-red-400'}`}>
                                     {shortenAddress(match.winner)}
