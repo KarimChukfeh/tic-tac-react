@@ -1,15 +1,15 @@
 {
   "contractName": "TicTacChain",
-  "address": "0x6F9679BdF5F180a139d01c598839a5df4860431b",
+  "address": "0x8731d45ff9684d380302573cCFafd994Dfa7f7d3",
   "network": "localhost",
   "chainId": "412346",
-  "deployedAt": "2026-01-24T14:14:16.420Z",
+  "deployedAt": "2026-01-24T17:41:28.241Z",
   "modules": {
-    "core": "0x1c39BA375faB6a9f6E0c01B9F49d488e101C2011",
-    "matches": "0xb04CB6c52E73CF3e2753776030CE85a36549c9C2",
-    "prizes": "0xc0c5618f0F3Fa66b496F2940f373DC366d765BAe",
-    "raffle": "0xa195ACcEB1945163160CD5703Ed43E4f78176a54",
-    "escalation": "0x6212cb549De37c25071cF506aB7E115D140D9e42"
+    "core": "0xa8d297D643a11cE83b432e87eEBce6bee0fd2bAb",
+    "matches": "0x6Da3D07a6BF01F02fB41c02984a49B5d9Aa6ea92",
+    "prizes": "0x68d2Ecd85bDEbfFd075Fb6D87fFD829AD025DD5C",
+    "raffle": "0x9D3999af03458c11C78F7e6C0fAE712b455D4e33",
+    "escalation": "0xc4Fe39a1588807CfF8d8897050c39F065eBAb0B8"
   },
   "abi": [
     {
@@ -1662,35 +1662,6 @@
           "internalType": "uint256",
           "name": "",
           "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint8",
-          "name": "",
-          "type": "uint8"
-        },
-        {
-          "internalType": "uint8",
-          "name": "",
-          "type": "uint8"
-        },
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "name": "playerRanking",
-      "outputs": [
-        {
-          "internalType": "uint8",
-          "name": "",
-          "type": "uint8"
         }
       ],
       "stateMutability": "view",

@@ -464,10 +464,9 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
     }
   }, [contract, account, gameName, tierConfig, tierInstances, dismissedMatches]);
 
-  // Initial fetch
-  useEffect(() => {
-    fetchActivity(true);
-  }, [fetchActivity]);
+  // No automatic fetching - data is only fetched when:
+  // 1. PlayerActivity panel is expanded (via onRefresh prop)
+  // 2. User clicks refresh button (via onRefresh prop)
 
   // Set up 30-second polling interval
   // COMMENTED OUT: Auto-refresh disabled for now
@@ -481,42 +480,6 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
   //   return () => clearInterval(interval);
   // }, [contract, account, fetchActivity]);
 
-  // Listen for MatchCompleted events for instant updates (filtered to player's matches only)
-  useEffect(() => {
-    if (!contract || !account) return;
-
-    // Handler for any MatchCompleted event
-    const handleMatchCompleted = (matchId, player1, player2, winner, isDraw, reason, _board) => {
-      console.log('[PlayerActivity] MatchCompleted event received:', {
-        matchId,
-        player1,
-        player2,
-        winner,
-        isDraw,
-        reason: Number(reason)
-      });
-
-      // Trigger a refetch to update the player's active matches
-      fetchActivity(false);
-    };
-
-    // Register filtered event listeners - only listen to events where player is involved
-    // Filter 1: Player is player1
-    const filterAsPlayer1 = contract.filters.MatchCompleted(null, account, null);
-    // Filter 2: Player is player2
-    const filterAsPlayer2 = contract.filters.MatchCompleted(null, null, account);
-
-    contract.on(filterAsPlayer1, handleMatchCompleted);
-    contract.on(filterAsPlayer2, handleMatchCompleted);
-    console.log('[PlayerActivity] MatchCompleted event listeners registered (filtered to player matches only)');
-
-    // Cleanup
-    return () => {
-      console.log('[PlayerActivity] Cleaning up MatchCompleted event listeners');
-      contract.off(filterAsPlayer1, handleMatchCompleted);
-      contract.off(filterAsPlayer2, handleMatchCompleted);
-    };
-  }, [contract, account, fetchActivity]);
 
   // Function to dismiss a completed match
   const dismissMatch = useCallback((tierId, instanceId, roundIdx, matchIdx) => {

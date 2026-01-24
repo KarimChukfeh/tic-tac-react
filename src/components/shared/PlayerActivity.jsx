@@ -40,6 +40,7 @@ const PlayerActivity = ({
   const [internalIsExpanded, setInternalIsExpanded] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
   const expandedPanelRef = useRef(null);
+  const prevExpandedRef = useRef(false);
 
   // Helper functions for match labels
   const getTierLabel = (tierId) => {
@@ -140,11 +141,14 @@ const PlayerActivity = ({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Fetch fresh data whenever the panel is expanded
+  // Fetch fresh data when panel transitions from collapsed to expanded
   useEffect(() => {
-    if (isExpanded && onRefresh) {
+    // Only trigger refresh when expanding (false → true transition)
+    if (isExpanded && !prevExpandedRef.current && onRefresh) {
       onRefresh();
     }
+    // Update previous state
+    prevExpandedRef.current = isExpanded;
   }, [isExpanded, onRefresh]);
 
   // Measure and report height whenever content changes
@@ -297,7 +301,8 @@ const PlayerActivity = ({
 
       // Filter for completed matches (status === 2) OR matches with endTime > 0 (finished)
       // Some matches might have endTime but status not yet updated
-      const recentCompletedMatches = allMatches
+      // Convert to regular array first (ethers Result objects are immutable)
+      const recentCompletedMatches = [...allMatches]
         .filter(m => {
           const status = Number(m.status);
           const endTime = Number(m.endTime);
@@ -438,7 +443,7 @@ const PlayerActivity = ({
   // Helper to format timestamp
   const formatTimestamp = (timestamp) => {
     const date = new Date(timestamp * 1000);
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   // Toggle recent match card expansion
@@ -1136,47 +1141,59 @@ const PlayerActivity = ({
                                   : 'bg-gradient-to-br from-red-500/10 to-rose-500/10 border-red-400/30'
                               }`}
                             >
-                              {/* Match Header - All Labels */}
-                              <div className="flex items-center gap-2 mb-2 flex-wrap">
-                                {/* Tournament Context Labels */}
-                                {getTierLabel(match.tierId) && (
-                                  <span className="bg-teal-500/20 text-teal-300 text-[10px] font-semibold px-2 py-0.5 rounded border border-teal-400/30">
-                                    {getTierLabel(match.tierId)}
-                                  </span>
-                                )}
-                                {/* Only show round label for non-duel tournaments */}
-                                {tierConfig && tierConfig[match.tierId] && tierConfig[match.tierId].playerCount > 2 && (
-                                  <span className="bg-blue-500/20 text-blue-300 text-[10px] font-semibold px-2 py-0.5 rounded border border-blue-400/30">
-                                    {getRoundLabel(match.tierId, match.roundNumber)}
-                                  </span>
-                                )}
-                                {/* Combined Match Outcome */}
-                                {(match.reason === 1 || match.reason === 3 || match.reason === 4) ? (
-                                  <a
-                                    href={match.reason === 1 ? '#ml1' : match.reason === 3 ? '#ml2' : '#ml3'}
-                                    onClick={() => handleSetExpanded(false)}
-                                    className={`text-[10px] px-2 py-0.5 rounded font-bold ${
+                              {/* Match Header - All Labels and Arbiscan Link */}
+                              <div className="flex items-start justify-between gap-2 mb-2">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  {/* Tournament Context Labels */}
+                                  {getTierLabel(match.tierId) && (
+                                    <span className="bg-teal-500/20 text-teal-300 text-[10px] font-semibold px-2 py-0.5 rounded border border-teal-400/30">
+                                      {getTierLabel(match.tierId)}
+                                    </span>
+                                  )}
+                                  {/* Only show round label for non-duel tournaments */}
+                                  {tierConfig && tierConfig[match.tierId] && tierConfig[match.tierId].playerCount > 2 && (
+                                    <span className="bg-blue-500/20 text-blue-300 text-[10px] font-semibold px-2 py-0.5 rounded border border-blue-400/30">
+                                      {getRoundLabel(match.tierId, match.roundNumber)}
+                                    </span>
+                                  )}
+                                  {/* Combined Match Outcome */}
+                                  {(match.reason === 1 || match.reason === 3 || match.reason === 4) ? (
+                                    <a
+                                      href={match.reason === 1 ? '#ml1' : match.reason === 3 ? '#ml2' : '#ml3'}
+                                      onClick={() => handleSetExpanded(false)}
+                                      className={`text-[10px] px-2 py-0.5 rounded font-bold ${
+                                        match.isDraw
+                                          ? 'bg-yellow-500/60 text-white'
+                                          : isWinner
+                                          ? 'bg-green-500/60 text-white'
+                                          : 'bg-red-500/60 text-white'
+                                      } hover:opacity-80 transition-colors underline decoration-dotted cursor-pointer`}
+                                      title={`Learn more about ${match.reason === 1 ? 'ML1' : match.reason === 3 ? 'ML2' : 'ML3'} in the User Manual`}
+                                    >
+                                      {getOutcomeLabel(match.isDraw, isWinner, match.reason)}
+                                    </a>
+                                  ) : (
+                                    <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${
                                       match.isDraw
                                         ? 'bg-yellow-500/60 text-white'
                                         : isWinner
                                         ? 'bg-green-500/60 text-white'
                                         : 'bg-red-500/60 text-white'
-                                    } hover:opacity-80 transition-colors underline decoration-dotted cursor-pointer`}
-                                    title={`Learn more about ${match.reason === 1 ? 'ML1' : match.reason === 3 ? 'ML2' : 'ML3'} in the User Manual`}
-                                  >
-                                    {getOutcomeLabel(match.isDraw, isWinner, match.reason)}
-                                  </a>
-                                ) : (
-                                  <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${
-                                    match.isDraw
-                                      ? 'bg-yellow-500/60 text-white'
-                                      : isWinner
-                                      ? 'bg-green-500/60 text-white'
-                                      : 'bg-red-500/60 text-white'
-                                  }`}>
-                                    {getOutcomeLabel(match.isDraw, isWinner, match.reason)}
-                                  </span>
-                                )}
+                                    }`}>
+                                      {getOutcomeLabel(match.isDraw, isWinner, match.reason)}
+                                    </span>
+                                  )}
+                                </div>
+                                {/* Arbiscan Link */}
+                                <a
+                                  href={`https://arbiscan.io/tx/${match.txHash}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1 flex-shrink-0"
+                                  title="View on Arbiscan"
+                                >
+                                  <ExternalLink size={12} />
+                                </a>
                               </div>
 
                               {/* Match Participants */}
@@ -1186,8 +1203,20 @@ const PlayerActivity = ({
                                 <span className="font-mono">{opponent.slice(0, 6)}...</span>
                               </div>
 
+                              {/* Match Details */}
+                              <div className="space-y-1 text-[10px] text-slate-400 mb-2">
+                                <div className="text-slate-300">
+                                  <span className="text-slate-400">Started </span>
+                                  {formatTimestamp(match.startTime)}
+                                </div>
+                                <div className="text-slate-300">
+                                  <span className="text-slate-400">Ended </span>
+                                  {formatTimestamp(match.endTime)}
+                                </div>
+                              </div>
+
                               {/* Winner Info */}
-                              <div className="text-slate-300 text-xs mb-2">
+                              <div className="text-slate-300 text-[10px] mb-2">
                                 <span className="text-slate-400">Winner </span>
                                 {match.isDraw ? (
                                   <span className="text-yellow-300 font-semibold">Draw</span>
@@ -1198,29 +1227,6 @@ const PlayerActivity = ({
                                     {shortenAddress(match.winner)}
                                   </span>
                                 )}
-                              </div>
-
-                              {/* Match Details */}
-                              <div className="space-y-1 text-[10px] text-slate-400 mb-2">
-                                <div className="flex items-center justify-between">
-                                  <span>Start Time:</span>
-                                  <span className="text-slate-300">{formatTimestamp(match.startTime)}</span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                  <span>End Time:</span>
-                                  <span className="text-slate-300">{formatTimestamp(match.endTime)}</span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                  <a
-                                    href={`https://arbiscan.io/tx/${match.txHash}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1"
-                                  >
-                                    <span>View on Arbiscan</span>
-                                    <ExternalLink size={10} />
-                                  </a>
-                                </div>
                               </div>
 
                               {/* View Board Button */}

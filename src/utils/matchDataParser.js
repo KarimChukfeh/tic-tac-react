@@ -25,6 +25,9 @@ export const parseCommonMatchData = (matchData) => {
     matchStatus: Number(matchData.common.status),
     isDraw: matchData.common.isDraw,
 
+    // Completion reason (ML1/ML2/ML3/etc)
+    completionReason: Number(matchData.completionReason || 0),
+
     // Timestamps (convert BigInt to number)
     startTime: Number(matchData.common.startTime),
     lastMoveTime: Number(matchData.common.lastMoveTime),
