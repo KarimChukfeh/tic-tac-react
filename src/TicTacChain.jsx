@@ -1811,30 +1811,52 @@ export default function TicTacChain() {
       // The updated ABI now includes moves in the match data
       let movesString = matchData.moves || matchData.common.moves || '';
 
-      // If getMatch() returned empty data, try fetching from getPlayerMatches()
+      // Check if match data has been cleared (happens when tournament ends)
       const zeroAddress = '0x0000000000000000000000000000000000000000';
-      if (!movesString && player1 === zeroAddress) {
-        console.log('[FetchMoveHistory] getMatch() returned cleared data, fetching from getPlayerMatches()');
+      const isMatchCleared = player1.toLowerCase() === zeroAddress;
+
+      // FALLBACK: Fetch from getPlayerMatches() if:
+      // 1. Match data is cleared (tournament ended), OR
+      // 2. Match is completed (to ensure we have the final move for both players)
+      const isMatchCompleted = parsedMatch.matchStatus === 2;
+      if (isMatchCleared || isMatchCompleted) {
+        console.log('[FetchMoveHistory] Fetching from getPlayerMatches() - cleared:', isMatchCleared, 'completed:', isMatchCompleted);
 
         try {
           const allMatches = await contractInstance.getPlayerMatches();
 
           // Find the specific match (search from end - recent matches last)
+          // Also verify that player addresses are valid
           let foundMatch = null;
           for (let i = allMatches.length - 1; i >= 0; i--) {
             const m = allMatches[i];
-            if (Number(m.tierId) === tierId &&
-                Number(m.instanceId) === instanceId &&
-                Number(m.roundNumber) === roundNumber &&
-                Number(m.matchNumber) === matchNumber) {
+            const tournamentMatches =
+              Number(m.tierId) === tierId &&
+              Number(m.instanceId) === instanceId &&
+              Number(m.roundNumber) === roundNumber &&
+              Number(m.matchNumber) === matchNumber;
+
+            // Verify that the match record has valid player addresses (not zero addresses)
+            const m1Lower = m.player1?.toLowerCase() || '';
+            const m2Lower = m.player2?.toLowerCase() || '';
+            const hasValidPlayers =
+              m1Lower !== zeroAddress.toLowerCase() &&
+              m2Lower !== zeroAddress.toLowerCase() &&
+              m1Lower !== '' && m2Lower !== '';
+
+            if (tournamentMatches && hasValidPlayers) {
               foundMatch = m;
               break;
             }
           }
 
           if (foundMatch) {
+            // Use moves from getPlayerMatches() - this is the authoritative source for completed matches
+            // Ensures both winner and loser see the complete final move history
             movesString = foundMatch.moves || '';
             console.log('[FetchMoveHistory] Found moves from getPlayerMatches():', movesString.length, 'chars');
+          } else {
+            console.warn('[FetchMoveHistory] Match not found in getPlayerMatches() with valid player addresses');
           }
         } catch (err) {
           console.warn('[FetchMoveHistory] Failed to fetch from getPlayerMatches():', err);
@@ -2758,6 +2780,25 @@ export default function TicTacChain() {
           // If match just completed (detected via event query in refreshMatchData)
           if (updatedMatch.matchStatus === 2) {
             console.log('[Polling] Match completion detected, updating state and showing modal');
+
+            // CRITICAL: Fetch final move history from getPlayerMatches()
+            // This ensures the loser sees the opponent's final winning move
+            try {
+              console.log('[Polling] Fetching final move history for completed match...');
+              const finalHistory = await fetchMoveHistory(
+                contractInstance,
+                match.tierId,
+                match.instanceId,
+                match.roundNumber,
+                match.matchNumber
+              );
+              if (finalHistory && finalHistory.length > 0) {
+                setMoveHistory(finalHistory);
+                console.log('[Polling] Updated final move history:', finalHistory.length, 'moves');
+              }
+            } catch (historyErr) {
+              console.warn('[Polling] Failed to fetch final move history:', historyErr);
+            }
 
             // Update match state with completion data
             setCurrentMatch(prev => {

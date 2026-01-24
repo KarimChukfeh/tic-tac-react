@@ -109,13 +109,14 @@ export const parseConnectFourMatch = (matchData) => ({
   board: unpackConnectFourBoard(matchData.packedBoard),
   currentTurn: matchData.currentTurn,
   firstPlayer: matchData.firstPlayer,
-  moveCount: Number(matchData.moveCount),
-  lastColumn: Number(matchData.lastColumn),
 
   // Total match time tracking fields
   player1TimeRemaining: matchData.player1TimeRemaining !== undefined ? Number(matchData.player1TimeRemaining) : 300,
   player2TimeRemaining: matchData.player2TimeRemaining !== undefined ? Number(matchData.player2TimeRemaining) : 300,
   lastMoveTimestamp: matchData.lastMoveTimestamp !== undefined ? Number(matchData.lastMoveTimestamp) : 0,
+
+  // Move history string (returned by getMatch)
+  moves: matchData.moves || '',
 });
 
 /**

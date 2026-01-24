@@ -381,6 +381,7 @@ const PlayerActivity = ({
           matchNumber: Number(match.matchNumber),
           player1: match.player1,
           player2: match.player2,
+          firstPlayer: match.firstPlayer,
           winner: match.winner,
           isDraw: match.isDraw,
           reason: Number(match.completionReason),
@@ -1130,6 +1131,26 @@ const PlayerActivity = ({
                           const matchKey = `recent-${match.matchId}-${index}`;
                           const isExpanded = expandedRecentMatches.has(matchKey);
 
+                          // Determine symbols/colors based on firstPlayer
+                          const firstPlayerLower = match.firstPlayer?.toLowerCase() || '';
+                          const isAccountFirstPlayer = firstPlayerLower === accountLower;
+
+                          // Get symbol/color for each player based on game type
+                          // Opponent is always the opposite of account
+                          let accountSymbol = '';
+                          let opponentSymbol = '';
+
+                          if (gameName === 'tictactoe') {
+                            accountSymbol = isAccountFirstPlayer ? 'X' : 'O';
+                            opponentSymbol = isAccountFirstPlayer ? 'O' : 'X';
+                          } else if (gameName === 'connect4') {
+                            accountSymbol = isAccountFirstPlayer ? 'Red' : 'Blue';
+                            opponentSymbol = isAccountFirstPlayer ? 'Blue' : 'Red';
+                          } else if (gameName === 'chess') {
+                            accountSymbol = isAccountFirstPlayer ? 'White' : 'Black';
+                            opponentSymbol = isAccountFirstPlayer ? 'Black' : 'White';
+                          }
+
                           return (
                             <div
                               key={matchKey}
@@ -1198,9 +1219,12 @@ const PlayerActivity = ({
 
                               {/* Match Participants */}
                               <div className="text-slate-300 text-[10px] mb-2">
-                                <span className="font-mono">{account.slice(0, 6)}...</span>
-                                <span className="text-slate-400"> vs </span>
-                                <span className="font-mono">{opponent.slice(0, 6)}...</span>
+                                <span>You: </span>
+                                <span className="font-mono">{account.slice(0, 6)}...{account.slice(-4)}</span>
+                                {accountSymbol && <span> as ({accountSymbol})</span>}
+                                <span className="mx-2">vs</span>
+                                <span className="font-mono">{opponent.slice(0, 6)}...{opponent.slice(-4)}</span>
+                                {opponentSymbol && <span> as ({opponentSymbol})</span>}
                               </div>
 
                               {/* Match Details */}
@@ -1217,16 +1241,54 @@ const PlayerActivity = ({
 
                               {/* Winner Info */}
                               <div className="text-slate-300 text-[10px] mb-2">
-                                <span className="text-slate-400">Winner </span>
-                                {match.isDraw ? (
-                                  <span className="text-yellow-300 font-semibold">Draw</span>
-                                ) : match.winner === '0x0000000000000000000000000000000000000000' || !match.winner ? (
-                                  <span className="text-slate-500 font-semibold">None</span>
-                                ) : (
-                                  <span className={`font-mono ${isWinner ? 'text-green-400 font-semibold' : 'text-red-400'}`}>
-                                    {shortenAddress(match.winner)}
-                                  </span>
-                                )}
+                                {(() => {
+                                  // Determine if there's no winner (draw, ML2, all draw)
+                                  const noWinner = match.isDraw || match.reason === 2 || match.reason === 3 || match.reason === 5;
+
+                                  if (noWinner) {
+                                    return <span className="text-slate-400">No winner</span>;
+                                  }
+
+                                  // Check if winner exists
+                                  if (!match.winner || match.winner === '0x0000000000000000000000000000000000000000') {
+                                    return <><span className="text-slate-400">Winner </span><span className="text-slate-500 font-semibold">None</span></>;
+                                  }
+
+                                  // Determine winner's symbol
+                                  let winnerSymbol = '';
+
+                                  if (match.reason === 4) {
+                                    // ML3 victory
+                                    winnerSymbol = 'ML3';
+                                  } else {
+                                    // Normal victory - determine which player won and their symbol
+                                    const winnerLowerCase = match.winner?.toLowerCase() || '';
+                                    const isWinnerPlayer1 = winnerLowerCase === player1Lower;
+                                    const isPlayer1FirstPlayer = player1Lower === firstPlayerLower;
+
+                                    // Determine if winner is the first player
+                                    const isWinnerFirstPlayer = isWinnerPlayer1 ? isPlayer1FirstPlayer : !isPlayer1FirstPlayer;
+
+                                    // Assign symbol based on game type
+                                    if (gameName === 'tictactoe') {
+                                      winnerSymbol = isWinnerFirstPlayer ? 'X' : 'O';
+                                    } else if (gameName === 'connect4') {
+                                      winnerSymbol = isWinnerFirstPlayer ? 'Red' : 'Blue';
+                                    } else if (gameName === 'chess') {
+                                      winnerSymbol = isWinnerFirstPlayer ? 'White' : 'Black';
+                                    }
+                                  }
+
+                                  return (
+                                    <>
+                                      <span className="text-slate-400">Winner </span>
+                                      <span className={`font-mono ${isWinner ? 'text-green-400 font-semibold' : 'text-red-400'}`}>
+                                        {shortenAddress(match.winner)}
+                                      </span>
+                                      {winnerSymbol && <span className="text-slate-400"> ({winnerSymbol})</span>}
+                                    </>
+                                  );
+                                })()}
                               </div>
 
                               {/* View Board Button */}
@@ -1335,7 +1397,7 @@ const PlayerActivity = ({
                                                     {cell === 1 ? (
                                                       <div className="w-5 h-5 rounded-full bg-red-500"></div>
                                                     ) : cell === 2 ? (
-                                                      <div className="w-5 h-5 rounded-full bg-yellow-400"></div>
+                                                      <div className="w-5 h-5 rounded-full bg-blue-500"></div>
                                                     ) : (
                                                       <div className="w-5 h-5 rounded-full bg-slate-800/50"></div>
                                                     )}
