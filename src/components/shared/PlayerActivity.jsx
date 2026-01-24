@@ -67,6 +67,27 @@ const PlayerActivity = ({
     return `Round ${roundNumber + 1}`;
   };
 
+  const getOutcomeLabel = (isDraw, isWinner, reason) => {
+    const reasons = {
+      0: 'Normal',
+      1: 'Timeout (ML1)',
+      2: 'Draw',
+      3: 'Force Elimination (ML2)',
+      4: 'Abandoned Match (ML3)',
+      5: 'All Draw'
+    };
+
+    if (isDraw) return 'Draw';
+
+    const reasonText = reasons[reason] || `Unknown (${reason})`;
+
+    if (isWinner) {
+      return reason === 0 ? 'Victory' : `Victory by ${reasonText}`;
+    } else {
+      return reason === 0 ? 'Defeat' : `Defeat by ${reasonText}`;
+    }
+  };
+
   // Use external state if provided, otherwise use internal state
   const isExpanded = externalIsExpanded !== undefined ? externalIsExpanded : internalIsExpanded;
 
@@ -1115,50 +1136,45 @@ const PlayerActivity = ({
                                   : 'bg-gradient-to-br from-red-500/10 to-rose-500/10 border-red-400/30'
                               }`}
                             >
-                              {/* Tournament Context Labels */}
+                              {/* Match Header - All Labels */}
                               <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                {/* Tournament Context Labels */}
                                 {getTierLabel(match.tierId) && (
-                                  <span className="bg-blue-500/20 text-blue-300 text-[10px] font-semibold px-2 py-0.5 rounded border border-blue-400/30">
+                                  <span className="bg-teal-500/20 text-teal-300 text-[10px] font-semibold px-2 py-0.5 rounded border border-teal-400/30">
                                     {getTierLabel(match.tierId)}
                                   </span>
                                 )}
-                                <span className="bg-blue-500/20 text-blue-300 text-[10px] font-semibold px-2 py-0.5 rounded border border-blue-400/30">
-                                  {getRoundLabel(match.tierId, match.roundNumber)}
-                                </span>
-                              </div>
-
-                              {/* Match Result Header */}
-                              <div className="flex items-center gap-2 mb-2 flex-wrap">
-                                {match.isDraw ? (
-                                  <span className="bg-yellow-500/60 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase">
-                                    Draw
-                                  </span>
-                                ) : isWinner ? (
-                                  <span className="bg-green-500/60 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase">
-                                    Won
-                                  </span>
-                                ) : (
-                                  <span className="bg-red-500/60 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase">
-                                    Lost
+                                {/* Only show round label for non-duel tournaments */}
+                                {tierConfig && tierConfig[match.tierId] && tierConfig[match.tierId].playerCount > 2 && (
+                                  <span className="bg-blue-500/20 text-blue-300 text-[10px] font-semibold px-2 py-0.5 rounded border border-blue-400/30">
+                                    {getRoundLabel(match.tierId, match.roundNumber)}
                                   </span>
                                 )}
-                                {/* Reason Tag - Link to manual for ML1/ML2/ML3 */}
+                                {/* Combined Match Outcome */}
                                 {(match.reason === 1 || match.reason === 3 || match.reason === 4) ? (
                                   <a
                                     href={match.reason === 1 ? '#ml1' : match.reason === 3 ? '#ml2' : '#ml3'}
                                     onClick={() => handleSetExpanded(false)}
-                                    className={`text-[10px] px-2 py-0.5 rounded bg-orange-500/20 text-orange-300 hover:bg-orange-500/30 hover:text-orange-200 transition-colors underline decoration-dotted cursor-pointer`}
+                                    className={`text-[10px] px-2 py-0.5 rounded font-bold ${
+                                      match.isDraw
+                                        ? 'bg-yellow-500/60 text-white'
+                                        : isWinner
+                                        ? 'bg-green-500/60 text-white'
+                                        : 'bg-red-500/60 text-white'
+                                    } hover:opacity-80 transition-colors underline decoration-dotted cursor-pointer`}
                                     title={`Learn more about ${match.reason === 1 ? 'ML1' : match.reason === 3 ? 'ML2' : 'ML3'} in the User Manual`}
                                   >
-                                    {getCompletionReasonText(match.reason)}
+                                    {getOutcomeLabel(match.isDraw, isWinner, match.reason)}
                                   </a>
                                 ) : (
-                                  <span className={`text-[10px] px-2 py-0.5 rounded ${
-                                    match.reason === 0
-                                      ? 'bg-blue-500/20 text-blue-300'
-                                      : 'bg-orange-500/20 text-orange-300'
+                                  <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${
+                                    match.isDraw
+                                      ? 'bg-yellow-500/60 text-white'
+                                      : isWinner
+                                      ? 'bg-green-500/60 text-white'
+                                      : 'bg-red-500/60 text-white'
                                   }`}>
-                                    {getCompletionReasonText(match.reason)}
+                                    {getOutcomeLabel(match.isDraw, isWinner, match.reason)}
                                   </span>
                                 )}
                               </div>
