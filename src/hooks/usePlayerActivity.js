@@ -18,9 +18,10 @@ import { parseTicTacToeMatch, parseChessMatch, parseConnectFourMatch } from '../
  * @param {string} account - Player's wallet address
  * @param {string} gameName - Game name ('tictactoe', 'chess', 'connect4') - for logging only
  * @param {Object} tierConfig - Optional tier configuration object { 0: {playerCount, instanceCount, entryFee}, ... }
+ * @param {Object} tierInstances - Tournament instances data from multicall { 0: [{tierId, instanceId, status, enrolledCount, currentRound, isEnrolled, ...}], ... }
  * @returns {Object} { data, loading, syncing, error, refetch }
  */
-export const usePlayerActivity = (contract, account, gameName, tierConfig = null) => {
+export const usePlayerActivity = (contract, account, gameName, tierConfig = null, tierInstances = null) => {
   const [data, setData] = useState({
     activeMatches: [],
     inProgressTournaments: [],
@@ -36,8 +37,8 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
   const previousActiveMatchesRef = useRef(new Set());
 
   const fetchActivity = useCallback(async (isInitialLoad = false) => {
-    // Don't fetch if contract or account not available
-    if (!contract || !account) {
+    // Don't fetch if contract, account, or tierInstances not available
+    if (!contract || !account || !tierInstances) {
       setLoading(false);
       setSyncing(false);
       setData({
@@ -80,50 +81,50 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
         console.warn('[PlayerActivity] Could not fetch player earnings:', err);
       }
 
-      // Step 2: Get enrolling tournaments (unfilled)
-      const enrollingTournaments = await contract.getPlayerEnrollingTournaments(account);
-      console.log('[PlayerActivity] Raw enrollingTournaments from contract:',
-        enrollingTournaments.map(ref => ({
-          tierId: Number(ref.tierId),
-          instanceId: Number(ref.instanceId)
+      // Step 2: Get enrolling tournaments (unfilled) from tierInstances
+      // Filter for: status === 0 (enrolling) AND isEnrolled === true
+      const unfilledTournaments = [];
+      for (const [tierId, instances] of Object.entries(tierInstances)) {
+        for (const instance of instances) {
+          if (instance.status === 0 && instance.isEnrolled === true) {
+            unfilledTournaments.push({
+              tierId: instance.tierId,
+              instanceId: instance.instanceId,
+              enrolledCount: instance.enrolledCount,
+              playerCount: instance.maxPlayers,
+            });
+          }
+        }
+      }
+
+      console.log('[PlayerActivity] Enrolling tournaments from tierInstances:',
+        unfilledTournaments.map(t => ({
+          tierId: t.tierId,
+          instanceId: t.instanceId
         }))
       );
 
-      const unfilledTournaments = await Promise.all(
-        enrollingTournaments.map(async (ref) => {
-          // getTournamentInfo returns: (status, currentRound, enrolledCount, prizePool, winner)
-          const tournamentInfo = await contract.getTournamentInfo(ref.tierId, ref.instanceId);
-          const enrolledCount = Number(tournamentInfo[2]); // enrolledCount at index 2
-
-          // Get player count from tierConfig if provided, otherwise try contract
-          let playerCount;
-          if (tierConfig && tierConfig[ref.tierId]) {
-            playerCount = tierConfig[ref.tierId].playerCount;
-          } else {
-            try {
-              const config = await contract.getTierConfig(ref.tierId);
-              playerCount = Number(config.playerCount);
-            } catch (err) {
-              console.warn(`[PlayerActivity] Could not fetch tier ${ref.tierId} config:`, err);
-              playerCount = 2; // Default fallback
-            }
+      // Step 3: Get active/completed tournaments from tierInstances
+      // Filter for: (status === 1 (active) OR status === 2 (completed)) AND isEnrolled === true
+      const activeTournaments = [];
+      for (const [tierId, instances] of Object.entries(tierInstances)) {
+        for (const instance of instances) {
+          if ((instance.status === 1 || instance.status === 2) && instance.isEnrolled === true) {
+            activeTournaments.push({
+              tierId: instance.tierId,
+              instanceId: instance.instanceId,
+              tournamentStatus: instance.status,
+              currentRound: instance.currentRound,
+              enrolledCount: instance.enrolledCount
+            });
           }
+        }
+      }
 
-          return {
-            tierId: Number(ref.tierId),
-            instanceId: Number(ref.instanceId),
-            enrolledCount,
-            playerCount,
-          };
-        })
-      );
-
-      // Step 3: Get active tournaments
-      const activeTournaments = await contract.getPlayerActiveTournaments(account);
-      console.log('[PlayerActivity] Raw activeTournaments from contract:',
-        activeTournaments.map(ref => ({
-          tierId: Number(ref.tierId),
-          instanceId: Number(ref.instanceId)
+      console.log('[PlayerActivity] Active/completed tournaments from tierInstances:',
+        activeTournaments.map(t => ({
+          tierId: t.tierId,
+          instanceId: t.instanceId
         }))
       );
 
@@ -131,24 +132,8 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
       const inProgressTournaments = [];
       const terminatedMatches = [];
 
-      // OPTIMIZATION: Step 4 - Fetch all tournament info in parallel first
-      const tournamentInfoPromises = activeTournaments.map(async (ref) => {
-        const tierId = Number(ref.tierId);
-        const instanceId = Number(ref.instanceId);
-        const tournamentInfo = await contract.getTournamentInfo(tierId, instanceId);
-        return {
-          tierId,
-          instanceId,
-          tournamentStatus: Number(tournamentInfo[0]),
-          currentRound: Number(tournamentInfo[1]),
-          enrolledCount: Number(tournamentInfo[2])
-        };
-      });
-
-      const tournamentsData = await Promise.all(tournamentInfoPromises);
-
-      // Step 5: Process each tournament
-      for (const { tierId, instanceId, tournamentStatus, currentRound, enrolledCount } of tournamentsData) {
+      // Step 4: Process each active/completed tournament (data already from tierInstances)
+      for (const { tierId, instanceId, tournamentStatus, currentRound, enrolledCount } of activeTournaments) {
 
         console.log(`[PlayerActivity] Processing tournament T${tierId}I${instanceId}:`, {
           status: tournamentStatus,
@@ -477,7 +462,7 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
       setLoading(false);
       setSyncing(false);
     }
-  }, [contract, account, gameName, tierConfig, dismissedMatches]);
+  }, [contract, account, gameName, tierConfig, tierInstances, dismissedMatches]);
 
   // Initial fetch
   useEffect(() => {

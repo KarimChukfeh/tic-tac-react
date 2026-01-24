@@ -643,11 +643,11 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
 
 export default function Chess() {
   // Use network config instead of hardcoded values
-  // const EXPECTED_CHAIN_ID = CURRENT_NETWORK.chainId;
-  const EXPECTED_CHAIN_ID = 42161;
-  // const RPC_URL = import.meta.env.VITE_RPC_URL || CURRENT_NETWORK.rpcUrl;
+  const EXPECTED_CHAIN_ID = CURRENT_NETWORK.chainId;
+  // const EXPECTED_CHAIN_ID = 42161;
+  const RPC_URL = import.meta.env.VITE_RPC_URL || CURRENT_NETWORK.rpcUrl;
   // const RPC_URL = "https://arb1.arbitrum.io/rpc";
-  const RPC_URL = "https://rpc.ankr.com/arbitrum/fa78359589ebb4ba1c97e306d5ad98192c1b897a76d2df05acf7ade04aa2687b";
+  // const RPC_URL = "https://rpc.ankr.com/arbitrum/fa78359589ebb4ba1c97e306d5ad98192c1b897a76d2df05acf7ade04aa2687b";
   const EXPLORER_URL = getAddressUrl(CONTRACT_ADDRESS);
 
   // Helper to get read-only contract (bypasses MetaMask for read operations)
@@ -738,7 +738,7 @@ export default function Chess() {
   const [moveHistoryLoading, setMoveHistoryLoading] = useState(false);
 
   // Player Activity Hook
-  const playerActivity = usePlayerActivity(contract, account, 'chess', TIER_CONFIG);
+  const playerActivity = usePlayerActivity(contract, account, 'chess', TIER_CONFIG, tierInstances);
   const [gamesCardHeight, setGamesCardHeight] = useState(0);
   const [playerActivityHeight, setPlayerActivityHeight] = useState(0);
   const [raffleCardHeight, setRaffleCardHeight] = useState(0);
@@ -1193,46 +1193,46 @@ export default function Chess() {
       setEliteMatchesSyncing(true);
       const readOnlyContract = getReadOnlyContract();
 
-      const matches = [];
-      let index = 0;
-      const MAX_MATCHES = 50; // Safety limit
+      // OPTIMIZATION: Use getPlayerMatches() to fetch all matches in a single RPC call
+      // This replaces the previous sequential loop that made up to 50 individual calls
+      const allMatches = await readOnlyContract.getPlayerMatches();
 
-      while (index < MAX_MATCHES) {
-        try {
-          const match = await readOnlyContract.eliteMatches(index);
-          const zeroAddress = '0x0000000000000000000000000000000000000000';
+      console.log('[EliteMatches] Fetched all player matches:', allMatches.length);
 
-          // Check if this is a valid match (has at least one player)
-          if (!match.player1 || match.player1 === zeroAddress) {
-            break;
-          }
+      // Filter for completed matches only (status === 2) and map to expected format
+      const matches = allMatches
+        .filter(match => Number(match.status) === 2) // Only completed matches
+        .map(match => ({
+          // Match metadata (used for viewing archived match)
+          tierId: Number(match.tierId),
+          instanceId: Number(match.instanceId),
+          roundNumber: Number(match.roundNumber),
+          matchNumber: Number(match.matchNumber),
+          // Player info
+          player1: match.player1,
+          player2: match.player2,
+          winner: match.winner,
+          firstPlayer: match.firstPlayer,
+          // Match state
+          status: Number(match.status),
+          isDraw: match.isDraw,
+          // Timestamps
+          startTime: match.startTime,
+          endTime: match.endTime,
+          lastMoveTime: match.endTime, // For compatibility with EliteMatchesCard
+          // Board state (packed)
+          packedBoard: match.packedBoard,
+          packedState: match.packedState,
+          // Move history
+          moves: match.moves || '',
+          // Completion info
+          completionReason: Number(match.completionReason)
+        }))
+        .reverse(); // Newest first
 
-          matches.push({
-            player1: match.player1,
-            player2: match.player2,
-            winner: match.winner,
-            currentTurn: match.currentTurn,
-            firstPlayer: match.firstPlayer,
-            status: Number(match.status),
-            isDraw: match.isDraw,
-            startTime: match.startTime,
-            lastMoveTime: match.lastMoveTime,
-            player1TimeRemaining: match.player1TimeRemaining,
-            player2TimeRemaining: match.player2TimeRemaining,
-            moves: match.moves || '' // New moves string field
-          });
+      setEliteMatches(matches);
 
-          index++;
-        } catch (e) {
-          // Array index out of bounds - we've read all matches
-          break;
-        }
-      }
-
-      // Reverse to show newest first
-      setEliteMatches(matches.reverse());
-
-      console.log('Elite Matches fetched:', matches.length);
+      console.log('[EliteMatches] Completed matches fetched:', matches.length);
     } catch (error) {
       console.error('Error fetching elite matches:', error);
     } finally {
@@ -1243,14 +1243,21 @@ export default function Chess() {
   // Handler to view an archived elite match
   const handleViewArchivedMatch = useCallback(async (matchIndex) => {
     try {
-      const readOnlyContract = getReadOnlyContract();
-      const matchData = await readOnlyContract.eliteMatches(matchIndex);
+      // OPTIMIZATION: Get match data from state instead of contract call
+      // The match data is already fetched via getPlayerMatches()
+      const matchData = eliteMatches[matchIndex];
 
-      const zeroAddress = '0x0000000000000000000000000000000000000000';
-      if (!matchData.player1 || matchData.player1 === zeroAddress) {
+      if (!matchData || !matchData.player1) {
         console.error('Match not found at index:', matchIndex);
         return;
       }
+
+      console.log('[ViewArchived] Viewing match:', {
+        tierId: matchData.tierId,
+        instanceId: matchData.instanceId,
+        round: matchData.roundNumber,
+        match: matchData.matchNumber
+      });
 
       // Unpack the chess board from packedBoard
       const board = [];
@@ -1271,21 +1278,21 @@ export default function Chess() {
         player1: matchData.player1,
         player2: matchData.player2,
         winner: matchData.winner,
-        currentTurn: matchData.currentTurn,
+        currentTurn: matchData.player1, // For archived matches, this doesn't matter
         firstPlayer: matchData.firstPlayer,
-        matchStatus: Number(matchData.status),
+        matchStatus: matchData.status,
         isDraw: matchData.isDraw,
         startTime: matchData.startTime,
-        lastMoveTime: matchData.lastMoveTime,
-        player1TimeRemaining: matchData.player1TimeRemaining,
-        player2TimeRemaining: matchData.player2TimeRemaining,
+        lastMoveTime: matchData.endTime, // Use endTime for archived matches
+        player1TimeRemaining: 0, // Archived matches don't have time remaining
+        player2TimeRemaining: 0,
         board,
         // Archive-specific metadata
         isArchived: true,
-        tierId: null,
-        instanceId: null,
-        roundNumber: null,
-        matchNumber: null
+        tierId: matchData.tierId,
+        instanceId: matchData.instanceId,
+        roundNumber: matchData.roundNumber,
+        matchNumber: matchData.matchNumber
       };
 
       setViewingArchivedMatch(archivedMatch);
@@ -1361,7 +1368,7 @@ export default function Chess() {
       console.error('Error fetching archived match:', error);
       setMoveHistoryLoading(false);
     }
-  }, [getReadOnlyContract]);
+  }, [eliteMatches]); // Dependency on eliteMatches state instead of contract
 
   // Handler to go back from archived match view
   const handleBackFromArchived = useCallback(() => {
@@ -1397,6 +1404,7 @@ export default function Chess() {
         // Process results - stop at first uninitialized instance
         const statuses = [];
         const enrolledCounts = [];
+        const currentRounds = [];
         const enrollmentTimeouts = [];
         const hasStartedViaTimeouts = [];
 
@@ -1404,6 +1412,7 @@ export default function Chess() {
           if (!result.success) break;
           statuses.push(result.status);
           enrolledCounts.push(result.enrolledCount);
+          currentRounds.push(result.currentRound);
           enrollmentTimeouts.push(result.enrollmentTimeout);
           hasStartedViaTimeouts.push(result.hasStartedViaTimeout);
         }
@@ -1415,6 +1424,7 @@ export default function Chess() {
           entryFee,
           statuses,
           enrolledCounts,
+          currentRounds,
           enrollmentTimeouts,
           hasStartedViaTimeouts
         };
@@ -1429,6 +1439,7 @@ export default function Chess() {
             instanceId: i,
             status: statuses[i],
             enrolledCount: enrolledCounts[i],
+            currentRound: currentRounds[i],
             maxPlayers: playerCount,
             entryFee,
             prizePool: prizePoolETH,
@@ -1527,6 +1538,7 @@ export default function Chess() {
 
         const statuses = [];
         const enrolledCounts = [];
+        const currentRounds = [];
         const enrollmentTimeouts = [];
         const hasStartedViaTimeouts = [];
 
@@ -1534,6 +1546,7 @@ export default function Chess() {
           if (!result.success) break;
           statuses.push(result.status);
           enrolledCounts.push(result.enrolledCount);
+          currentRounds.push(result.currentRound);
           enrollmentTimeouts.push(result.enrollmentTimeout);
           hasStartedViaTimeouts.push(result.hasStartedViaTimeout);
         }
@@ -1544,6 +1557,7 @@ export default function Chess() {
           entryFee,
           statuses,
           enrolledCounts,
+          currentRounds,
           enrollmentTimeouts,
           hasStartedViaTimeouts
         };
@@ -1569,6 +1583,7 @@ export default function Chess() {
             instanceId: i,
             status: metadata.statuses[i],
             enrolledCount: metadata.enrolledCounts[i],
+            currentRound: metadata.currentRounds[i],
             maxPlayers: metadata.playerCount,
             entryFee: metadata.entryFee,
             prizePool: prizePoolETH,
@@ -1767,6 +1782,32 @@ export default function Chess() {
       }
     }
   }, [getReadOnlyContract, account, fetchTierMetadata, fetchTierInstances]);
+
+  // Comprehensive refresh for Player Activity panel
+  // Fetches fresh multicall data for ALL tiers (regardless of loaded/expanded state)
+  const handlePlayerActivityRefresh = useCallback(async () => {
+    if (!contract || !account) return;
+
+    console.log('[PlayerActivity Refresh] Triggering fresh multicall for all tiers');
+
+    // Get ALL tier IDs from TIER_CONFIG (not just loaded ones)
+    const allTierIds = Object.keys(TIER_CONFIG).map(Number);
+
+    if (allTierIds.length === 0) {
+      console.log('[PlayerActivity Refresh] No tiers configured');
+      return;
+    }
+
+    console.log('[PlayerActivity Refresh] Refreshing all tiers:', allTierIds);
+
+    // Trigger fresh multicall for each tier
+    // fetchTierInstances will call batchFetchTournaments + batchFetchIsEnrolled
+    for (const tierId of allTierIds) {
+      await fetchTierInstances(tierId, contract, account, null, false);
+    }
+
+    console.log('[PlayerActivity Refresh] Multicall refresh complete for all tiers');
+  }, [contract, account, fetchTierInstances]);
 
   // Handle tournament enrollment
   const handleEnroll = async (tierId, instanceId, entryFee) => {
@@ -2446,8 +2487,86 @@ export default function Chess() {
       const player2 = matchData.common.player2;
       const matchStartTime = Number(matchData.common.startTime);
 
-      // Try to query ChessMoveMade events for this match
+      // OPTIMIZATION: Use the moves field from getMatch() instead of event queries
+      // The updated ABI now includes moves in the match data
+      let movesString = matchData.moves || matchData.common.moves || '';
+
+      // If getMatch() returned empty data, try fetching from getPlayerMatches()
+      const zeroAddress = '0x0000000000000000000000000000000000000000';
+      if (!movesString && player1 === zeroAddress) {
+        console.log('[FetchMoveHistory] getMatch() returned cleared data, fetching from getPlayerMatches()');
+
+        try {
+          const allMatches = await contractInstance.getPlayerMatches();
+
+          // Find the specific match (search from end - recent matches last)
+          let foundMatch = null;
+          for (let i = allMatches.length - 1; i >= 0; i--) {
+            const m = allMatches[i];
+            if (Number(m.tierId) === tierId &&
+                Number(m.instanceId) === instanceId &&
+                Number(m.roundNumber) === roundNumber &&
+                Number(m.matchNumber) === matchNumber) {
+              foundMatch = m;
+              break;
+            }
+          }
+
+          if (foundMatch) {
+            movesString = foundMatch.moves || '';
+            console.log('[FetchMoveHistory] Found moves from getPlayerMatches():', movesString.length, 'chars');
+          }
+        } catch (err) {
+          console.warn('[FetchMoveHistory] Failed to fetch from getPlayerMatches():', err);
+        }
+      }
+
+      console.log('[FetchMoveHistory] Moves string:', movesString ? `${movesString.length} chars` : 'empty');
+
+      if (movesString && movesString.length > 0) {
+        try {
+          // Parse moves string: contains concatenated uint8 pairs (from, to)
+          // Format: abi.encodePacked(m.moves, from, to) for each move
+          const moves = [];
+
+          // Each move is 2 bytes (2 characters in the string)
+          for (let i = 0; i < movesString.length - 1; i += 2) {
+            // Get the byte values from character codes
+            const fromByte = movesString.charCodeAt(i);
+            const toByte = movesString.charCodeAt(i + 1);
+
+            // Validate that these are valid board positions (0-63)
+            if (fromByte >= 0 && fromByte < 64 && toByte >= 0 && toByte < 64) {
+              moves.push({ from: fromByte, to: toByte });
+            }
+          }
+
+          // Convert to display format
+          const history = moves.map((move, idx) => {
+            const isPlayer1Move = idx % 2 === 0; // Even indices are player1 moves
+            const fromNotation = indexToChessNotation(move.from);
+            const toNotation = indexToChessNotation(move.to);
+            return {
+              player: isPlayer1Move ? '♚' : '♔', // ♚ for white (player1), ♔ for black (player2)
+              move: `${fromNotation}→${toNotation}`,
+              from: move.from,
+              to: move.to,
+              promotion: 0,
+              address: isPlayer1Move ? player1 : player2
+            };
+          });
+
+          console.log('[FetchMoveHistory] Parsed moves from getMatch():', history.length);
+          return history;
+        } catch (parseError) {
+          console.warn('[FetchMoveHistory] Failed to parse moves string, falling back to events:', parseError);
+        }
+      }
+
+      // FALLBACK: Try to query ChessMoveMade events for this match (for backward compatibility)
       try {
+        console.log('[FetchMoveHistory] No moves field found, falling back to event query');
+
         // Use solidityPackedKeccak256 to match Solidity's keccak256(abi.encodePacked(...))
         const matchKey = ethers.solidityPackedKeccak256(
           ['uint8', 'uint8', 'uint8', 'uint8'],
@@ -2597,42 +2716,76 @@ export default function Chess() {
         player1.toLowerCase() !== zeroAddress &&
         player2.toLowerCase() !== zeroAddress;
 
-      // If contract returns cleared data (zero addresses + empty board), query MatchCompleted event
-      // Keep polling until we find an event matching this exact match instance
+      // OPTIMIZATION: If contract returns cleared data (zero addresses + empty board),
+      // fetch from getPlayerMatches() instead of event queries
       const isBoardEmpty = board.every(cell => cell.pieceType === 0);
       if (!isMatchInitialized && isBoardEmpty) {
-        console.log('[refreshMatchData] Match data cleared, querying MatchCompleted event');
+        console.log('[refreshMatchData] Match data cleared, fetching from getPlayerMatches()');
 
         try {
-          const matchId = ethers.solidityPackedKeccak256(
-            ['uint8', 'uint8', 'uint8', 'uint8'],
-            [tierId, instanceId, roundNumber, matchNumber]
-          );
+          // Fetch all player matches (includes completed matches with full data)
+          const allMatches = await contractInstance.getPlayerMatches();
 
-          const filter = contractInstance.filters.MatchCompleted(matchId);
-          const events = await contractInstance.queryFilter(filter);
+          console.log('[refreshMatchData] Fetched player matches:', allMatches.length);
 
-          // Find event that matches this exact match instance
-          for (let i = events.length - 1; i >= 0; i--) {
-            const event = events[i];
-            const { winner: eventWinner, isDraw: eventIsDraw, reason: eventReason, board: eventPackedBoard } = event.args;
+          // Find the match that matches our tournament context
+          // Priority 1: Exact match by tierId/instanceId/roundNumber/matchNumber
+          // Search from end since recent matches are last
+          let foundMatch = null;
+          for (let i = allMatches.length - 1; i >= 0; i--) {
+            const m = allMatches[i];
+            if (Number(m.tierId) === tierId &&
+                Number(m.instanceId) === instanceId &&
+                Number(m.roundNumber) === roundNumber &&
+                Number(m.matchNumber) === matchNumber) {
+              foundMatch = m;
+              break;
+            }
+          }
 
-            // Verify winner is one of our players
-            const winnerLower = eventWinner.toLowerCase();
-            const p1Lower = matchInfo.player1?.toLowerCase();
-            const p2Lower = matchInfo.player2?.toLowerCase();
-            const winnerIsPlayer = eventIsDraw || winnerLower === p1Lower || winnerLower === p2Lower || winnerLower === zeroAddress;
-
-            if (!winnerIsPlayer) continue;
-
-            // Verify event occurred after match start time
-            const block = await event.getBlock();
-            const eventTimestamp = Number(block.timestamp);
+          // Priority 2: Match by player addresses and approximate timestamp
+          if (!foundMatch && matchInfo.player1 && matchInfo.player2) {
+            const p1Lower = matchInfo.player1.toLowerCase();
+            const p2Lower = matchInfo.player2.toLowerCase();
             const matchStartTime = matchInfo.startTime;
 
-            if (matchStartTime && eventTimestamp < matchStartTime) continue;
+            // Find matches with same players within reasonable time window
+            const candidateMatches = allMatches.filter(m => {
+              const m1Lower = m.player1.toLowerCase();
+              const m2Lower = m.player2.toLowerCase();
+              const playersMatch = (m1Lower === p1Lower && m2Lower === p2Lower) ||
+                                   (m1Lower === p2Lower && m2Lower === p1Lower);
 
-            // Unpack the chess board from the event (4 bits per square, 64 squares)
+              if (!playersMatch) return false;
+
+              // If we have a start time, verify the match is within 1 hour window
+              if (matchStartTime) {
+                const timeDiff = Math.abs(Number(m.startTime) - matchStartTime);
+                return timeDiff < 3600; // 1 hour tolerance
+              }
+
+              return true;
+            });
+
+            // Use the most recent match (likely the correct one)
+            if (candidateMatches.length > 0) {
+              foundMatch = candidateMatches.sort((a, b) => Number(b.startTime) - Number(a.startTime))[0];
+              console.log('[refreshMatchData] Found match by player addresses and timestamp');
+            }
+          }
+
+          if (foundMatch) {
+            console.log('[refreshMatchData] Found matching completed match:', {
+              tierId: Number(foundMatch.tierId),
+              instanceId: Number(foundMatch.instanceId),
+              round: Number(foundMatch.roundNumber),
+              match: Number(foundMatch.matchNumber),
+              winner: foundMatch.winner,
+              isDraw: foundMatch.isDraw,
+              movesLength: foundMatch.moves?.length || 0
+            });
+
+            // Unpack the chess board from packedBoard
             const unpackChessBoard = (packed) => {
               const boardArray = [];
               let p = BigInt(packed);
@@ -2652,35 +2805,31 @@ export default function Chess() {
               }
               return boardArray;
             };
-            const eventBoard = unpackChessBoard(eventPackedBoard);
+            const matchBoard = unpackChessBoard(foundMatch.packedBoard);
 
-            console.log('[refreshMatchData] Found matching MatchCompleted event:', {
-              winner: eventWinner,
-              isDraw: eventIsDraw,
-              reason: Number(eventReason),
-              eventTimestamp,
-              matchStartTime
-            });
-
-            const eventLoser = eventIsDraw ? zeroAddress :
-              (winnerLower === p1Lower ? matchInfo.player2 : matchInfo.player1);
+            const winnerLower = foundMatch.winner.toLowerCase();
+            const p1Lower = foundMatch.player1.toLowerCase();
+            const matchLoser = foundMatch.isDraw ? zeroAddress :
+              (winnerLower === p1Lower ? foundMatch.player2 : foundMatch.player1);
 
             return {
               ...matchInfo,
               matchStatus: 2,
-              winner: eventWinner,
-              loser: eventLoser,
-              isDraw: eventIsDraw,
-              board: eventBoard,
+              winner: foundMatch.winner,
+              loser: matchLoser,
+              isDraw: foundMatch.isDraw,
+              board: matchBoard,
               isYourTurn: false,
               completedFromEventPoll: true,
-              completionReason: Number(eventReason)
+              completionReason: Number(foundMatch.completionReason),
+              // Store moves for later retrieval by fetchMoveHistory
+              cachedMoves: foundMatch.moves || ''
             };
           }
 
-          console.log('[refreshMatchData] No matching MatchCompleted event found yet, continuing to poll');
+          console.log('[refreshMatchData] No matching completed match found in getPlayerMatches(), continuing to poll');
         } catch (err) {
-          console.error('[refreshMatchData] Error querying MatchCompleted event:', err);
+          console.error('[refreshMatchData] Error fetching from getPlayerMatches():', err);
         }
 
         return null;
@@ -2725,52 +2874,41 @@ export default function Chess() {
       // A match is timed out if it completed with an active timeout state
       const isTimedOut = matchStatus === 2 && timeoutState?.timeoutActive === true;
 
-      // Fetch last move from MoveMade events (persists after page refresh)
+      // OPTIMIZATION: Get last move from moves string instead of events
       let lastMove = null;
       try {
-        // Use solidityPackedKeccak256 to match Solidity's keccak256(abi.encodePacked(...))
-        const matchKey = ethers.solidityPackedKeccak256(
-          ['uint8', 'uint8', 'uint8', 'uint8'],
-          [tierId, instanceId, roundNumber, matchNumber]
-        );
-        const filter = contractInstance.filters.MoveMade(matchKey);
-        const events = await contractInstance.queryFilter(filter);
-        if (events.length > 0) {
-          // Filter events to only include those from current match instance
-          const matchStartTime = Number(matchData.common.startTime);
+        const movesString = matchData.moves || matchData.common.moves || '';
 
-          const eventsWithTimestamps = await Promise.all(
-            events.map(async (event) => {
-              const block = await event.getBlock();
-              return {
-                event,
-                timestamp: block.timestamp
-              };
-            })
-          );
+        if (movesString && movesString.length >= 2) {
+          // Parse moves string to get the last move
+          const moves = [];
+          for (let i = 0; i < movesString.length - 1; i += 2) {
+            const fromByte = movesString.charCodeAt(i);
+            const toByte = movesString.charCodeAt(i + 1);
+            if (fromByte >= 0 && fromByte < 64 && toByte >= 0 && toByte < 64) {
+              moves.push({ from: fromByte, to: toByte });
+            }
+          }
 
-          // Only include events that occurred after match start with the correct players
-          const currentMatchEvents = eventsWithTimestamps
-            .filter(({ event, timestamp }) => {
-              const eventPlayer = event.args.player.toLowerCase();
-              const isCorrectPlayer = eventPlayer === player1.toLowerCase() || eventPlayer === player2.toLowerCase();
-              return timestamp >= matchStartTime && isCorrectPlayer;
-            })
-            .map(({ event }) => event);
+          if (moves.length > 0) {
+            const lastMoveData = moves[moves.length - 1];
+            const isPlayer1Move = (moves.length - 1) % 2 === 0; // Even indices are player1
+            const movePlayer = isPlayer1Move ? actualPlayer1 : actualPlayer2;
 
-          if (currentMatchEvents.length > 0) {
-            const lastEvent = currentMatchEvents[currentMatchEvents.length - 1];
-            const movePlayer = lastEvent.args.player;
             lastMove = {
-              from: Number(lastEvent.args.from),
-              to: Number(lastEvent.args.to),
+              from: lastMoveData.from,
+              to: lastMoveData.to,
               player: movePlayer,
               isMyMove: movePlayer?.toLowerCase() === userAccount?.toLowerCase()
             };
+
+            console.log('[refreshMatchData] Last move from moves string:', lastMove);
           }
+        } else {
+          console.log('[refreshMatchData] No moves string available, lastMove will be null');
         }
       } catch (err) {
-        console.error('Error fetching MoveMade events:', err.message);
+        console.error('Error parsing last move from moves string:', err.message);
       }
 
       return {
@@ -3530,7 +3668,9 @@ export default function Chess() {
       if (!match || !contractInstance || !userAccount) return;
 
       // Skip polling if match is completed - events have set final state
+      // IMPORTANT: Don't refresh completed matches to preserve board/move history state
       if (match.matchStatus === 2) {
+        console.log('[Chess Polling] Skipping poll for completed match');
         return;
       }
 
@@ -3547,9 +3687,13 @@ export default function Chess() {
           if (updatedMatch.matchStatus === 2) {
             console.log('[Chess Polling] Match completion detected, updating state and showing modal');
 
-            // Update match state with completion data
+            // Update match state with completion data ONLY ONCE
             setCurrentMatch(prev => {
-              if (!prev || prev.matchStatus === 2) return prev; // Already completed
+              // CRITICAL: Don't update if already completed (preserves board/move history)
+              if (!prev || prev.matchStatus === 2) {
+                console.log('[Chess Polling] Match already marked as completed, skipping update');
+                return prev;
+              }
               return updatedMatch;
             });
 
@@ -3785,7 +3929,7 @@ export default function Chess() {
               account={account}
               onEnterMatch={handlePlayMatch}
               onEnterTournament={handleEnterTournament}
-              onRefresh={playerActivity.refetch}
+              onRefresh={handlePlayerActivityRefresh}
               onDismissMatch={playerActivity.dismissMatch}
               gameName="chess"
               gameEmoji="♚"
@@ -3795,6 +3939,7 @@ export default function Chess() {
               isElite={isEnrolledInElite}
               isExpanded={expandedPanel === 'playerActivity'}
               onToggleExpand={() => setExpandedPanel(expandedPanel === 'playerActivity' ? null : 'playerActivity')}
+              tierConfig={TIER_CONFIG}
             />
 
             {/* Community Raffle Card */}
@@ -3843,7 +3988,7 @@ export default function Chess() {
               account={account}
               onEnterMatch={handlePlayMatch}
               onEnterTournament={handleEnterTournament}
-              onRefresh={playerActivity.refetch}
+              onRefresh={handlePlayerActivityRefresh}
               onDismissMatch={playerActivity.dismissMatch}
               gameName="chess"
               gameEmoji="♚"
@@ -3853,6 +3998,7 @@ export default function Chess() {
               isElite={isEnrolledInElite}
               isExpanded={expandedPanel === 'playerActivity'}
               onToggleExpand={() => setExpandedPanel(expandedPanel === 'playerActivity' ? null : 'playerActivity')}
+              tierConfig={TIER_CONFIG}
             />
 
             <CommunityRaffleCard

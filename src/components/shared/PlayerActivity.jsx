@@ -35,10 +35,37 @@ const PlayerActivity = ({
   onToggleExpand, // External toggle handler
   hideOnMobile = false, // Hide this panel on mobile when another panel is expanded
   gamesCardHeight = 0, // Height of the GamesCard above this component
+  tierConfig = null, // Tier configuration for match labeling
 }) => {
   const [internalIsExpanded, setInternalIsExpanded] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
   const expandedPanelRef = useRef(null);
+
+  // Helper functions for match labels
+  const getTierLabel = (tierId) => {
+    if (!tierConfig || !tierConfig[tierId]) return null;
+    const playerCount = tierConfig[tierId].playerCount;
+    if (playerCount === 2) return 'Duel';
+    if (playerCount === 4) return '4-Players';
+    if (playerCount === 8) return '8-Players';
+    return `${playerCount}-Players`;
+  };
+
+  const getInstanceLabel = (instanceId) => {
+    return `Instance ${instanceId + 1}`;
+  };
+
+  const getRoundLabel = (tierId, roundNumber) => {
+    if (!tierConfig || !tierConfig[tierId]) return `Round ${roundNumber + 1}`;
+    const playerCount = tierConfig[tierId].playerCount;
+    const totalRounds = Math.ceil(Math.log2(playerCount));
+
+    if (playerCount === 2) return 'Finals'; // Duels are always finals
+    if (roundNumber === totalRounds - 1) return 'Finals';
+    if (roundNumber === totalRounds - 2) return 'Semi-Finals';
+    if (roundNumber === totalRounds - 3) return 'Quarter-Finals';
+    return `Round ${roundNumber + 1}`;
+  };
 
   // Use external state if provided, otherwise use internal state
   const isExpanded = externalIsExpanded !== undefined ? externalIsExpanded : internalIsExpanded;
@@ -224,83 +251,138 @@ const PlayerActivity = ({
     }
   };
 
-  // Fetch MatchCompleted events for recent matches
+  // OPTIMIZATION: Fetch recent matches using getPlayerMatches() instead of events
   const fetchRecentMatches = async () => {
     if (!contract || !account) return;
 
     setLoadingRecentMatches(true);
     try {
-      console.log('[RecentMatches] Fetching MatchCompleted events for player:', account);
+      console.log('[RecentMatches] Fetching player matches for:', account);
 
-      // Query MatchCompleted events where player is either player1 or player2
-      // Since player1 and player2 are now indexed, we can filter on them
-      const filterAsPlayer1 = contract.filters.MatchCompleted(null, account, null);
-      const filterAsPlayer2 = contract.filters.MatchCompleted(null, null, account);
+      // Fetch all player matches using the optimized function
+      const allMatches = await contract.getPlayerMatches();
 
-      // Query both filters
-      const [eventsAsPlayer1, eventsAsPlayer2] = await Promise.all([
-        contract.queryFilter(filterAsPlayer1),
-        contract.queryFilter(filterAsPlayer2)
-      ]);
-
-      // Combine and deduplicate events
-      const allEvents = [...eventsAsPlayer1, ...eventsAsPlayer2];
-      const uniqueEvents = Array.from(
-        new Map(allEvents.map(event => [event.transactionHash + event.logIndex, event])).values()
-      );
-
-      // Sort by block number (most recent first)
-      const sortedEvents = uniqueEvents.sort((a, b) => b.blockNumber - a.blockNumber);
-
-      // Process events to extract match data
-      const matchesWithDetails = await Promise.all(
-        sortedEvents.slice(0, 20).map(async (event) => {
-          try {
-            const { matchId, player1, player2, winner, isDraw, reason, board } = event.args;
-            const block = await event.getBlock();
-
-            // Decode matchId to get match coordinates (tierId, instanceId, roundNumber, matchNumber)
-            // Note: matchId is keccak256(tierId, instanceId, roundNumber, matchNumber)
-            // We can't directly decode it, but we can display the matchId
-
-            return {
-              matchId,
-              player1,
-              player2,
-              winner,
-              isDraw,
-              reason: Number(reason),
-              board,
-              blockNumber: event.blockNumber,
-              txHash: event.transactionHash,
-              timestamp: block.timestamp,
-            };
-          } catch (err) {
-            console.error('[RecentMatches] Error processing event:', err);
-            return null;
-          }
-        })
-      );
-
-      // Filter out any failed event processing
-      const validMatches = matchesWithDetails.filter(match => match !== null);
-
-      console.log('[RecentMatches] Found', validMatches.length, 'recent matches');
-      console.log('[RecentMatches] Match data:', validMatches.map((match, idx) => ({
-        index: idx,
-        matchId: match.matchId,
-        player1: match.player1,
-        player2: match.player2,
-        winner: match.winner,
-        isDraw: match.isDraw,
-        reason: match.reason,
-        board: match.board.toString(),
-        blockNumber: match.blockNumber,
-        txHash: match.txHash,
-        timestamp: match.timestamp,
-        timestampFormatted: new Date(match.timestamp * 1000).toLocaleString()
+      console.log('[RecentMatches] Total matches fetched:', allMatches.length);
+      console.log('[RecentMatches] Match statuses:', allMatches.map(m => ({
+        tierId: Number(m.tierId),
+        instanceId: Number(m.instanceId),
+        round: Number(m.roundNumber),
+        match: Number(m.matchNumber),
+        status: Number(m.status),
+        endTime: Number(m.endTime),
+        player1: m.player1.slice(0, 10),
+        player2: m.player2.slice(0, 10)
       })));
-      setRecentMatches(validMatches);
+
+      // Filter for completed matches (status === 2) OR matches with endTime > 0 (finished)
+      // Some matches might have endTime but status not yet updated
+      const recentCompletedMatches = allMatches
+        .filter(m => {
+          const status = Number(m.status);
+          const endTime = Number(m.endTime);
+          // Include if status is 2 (completed) OR if endTime is set (match finished)
+          return status === 2 || endTime > 0;
+        })
+        .sort((a, b) => Number(b.endTime) - Number(a.endTime)) // Most recent first
+        .slice(0, 20); // Take 20 most recent
+
+      console.log('[RecentMatches] Recent completed matches:', recentCompletedMatches.length);
+
+      // Parse move history for each match
+      const matchesWithMoveHistory = recentCompletedMatches.map((match) => {
+        const movesString = match.moves || '';
+        let moveHistory = [];
+
+        // Parse moves based on game type
+        if (movesString && movesString.length > 0) {
+          try {
+            if (gameName === 'chess') {
+              // Chess: 2 bytes per move (from, to)
+              for (let i = 0; i < movesString.length - 1; i += 2) {
+                const fromByte = movesString.charCodeAt(i);
+                const toByte = movesString.charCodeAt(i + 1);
+                if (fromByte >= 0 && fromByte < 64 && toByte >= 0 && toByte < 64) {
+                  const isPlayer1Move = (moveHistory.length) % 2 === 0;
+                  const fromFile = String.fromCharCode(97 + (fromByte % 8));
+                  const fromRank = Math.floor(fromByte / 8) + 1;
+                  const toFile = String.fromCharCode(97 + (toByte % 8));
+                  const toRank = Math.floor(toByte / 8) + 1;
+                  moveHistory.push({
+                    player: isPlayer1Move ? '♚' : '♔',
+                    move: `${fromFile}${fromRank}→${toFile}${toRank}`,
+                    from: fromByte,
+                    to: toByte
+                  });
+                }
+              }
+            } else if (gameName === 'tictactoe') {
+              // TicTacToe: 1 byte per move (cell index 0-8)
+              for (let i = 0; i < movesString.length; i++) {
+                const cellIndex = movesString.charCodeAt(i);
+                if (cellIndex >= 0 && cellIndex <= 8) {
+                  const isPlayer1Move = (moveHistory.length) % 2 === 0;
+                  moveHistory.push({
+                    player: isPlayer1Move ? 'X' : 'O',
+                    cell: cellIndex
+                  });
+                }
+              }
+            } else if (gameName === 'connect4') {
+              // ConnectFour: 1 byte per move (cell index 0-41)
+              for (let i = 0; i < movesString.length; i++) {
+                const cellIndex = movesString.charCodeAt(i);
+                if (cellIndex >= 0 && cellIndex <= 41) {
+                  const isPlayer1Move = (moveHistory.length) % 2 === 0;
+                  const column = (cellIndex % 7) + 1; // Convert to column (1-7)
+                  moveHistory.push({
+                    player: isPlayer1Move ? 'Red' : 'Blue',
+                    column: column,
+                    cellIndex: cellIndex
+                  });
+                }
+              }
+            }
+          } catch (err) {
+            console.warn('[RecentMatches] Error parsing moves for match:', err);
+          }
+        }
+
+        const matchData = {
+          matchId: `${match.tierId}-${match.instanceId}-${match.roundNumber}-${match.matchNumber}`,
+          tierId: Number(match.tierId),
+          instanceId: Number(match.instanceId),
+          roundNumber: Number(match.roundNumber),
+          matchNumber: Number(match.matchNumber),
+          player1: match.player1,
+          player2: match.player2,
+          winner: match.winner,
+          isDraw: match.isDraw,
+          reason: Number(match.completionReason),
+          board: match.packedBoard,
+          startTime: Number(match.startTime),
+          endTime: Number(match.endTime),
+          timestamp: Number(match.endTime), // Keep for backwards compatibility
+          moveHistory: moveHistory // Include parsed move history
+        };
+
+        // Debug logging
+        console.log('[RecentMatches] Match data:', {
+          matchId: matchData.matchId,
+          player1: matchData.player1,
+          player2: matchData.player2,
+          winner: matchData.winner,
+          isDraw: matchData.isDraw,
+          account: account,
+          isPlayer1: matchData.player1.toLowerCase() === account.toLowerCase(),
+          isPlayer2: matchData.player2.toLowerCase() === account.toLowerCase(),
+          winnerMatchesAccount: matchData.winner?.toLowerCase() === account.toLowerCase()
+        });
+
+        return matchData;
+      });
+
+      console.log('[RecentMatches] Parsed matches with move history:', matchesWithMoveHistory.length);
+      setRecentMatches(matchesWithMoveHistory);
     } catch (err) {
       console.error('[RecentMatches] Error fetching recent matches:', err);
     } finally {
@@ -536,7 +618,13 @@ const PlayerActivity = ({
 
       {/* Expanded State */}
       {isExpanded && (
-        <div ref={expandedPanelRef} className="max-md:fixed max-md:bottom-20 max-md:left-4 max-md:right-4 max-md:w-auto md:mt-3 bg-gradient-to-br from-slate-900/95 to-slate-800/95 backdrop-blur-lg rounded-2xl p-4 md:p-6 border-2 border-purple-400/40 shadow-2xl md:w-[464px] max-h-[calc(100vh-7rem)] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-slate-800/50 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-purple-500/60 [&::-webkit-scrollbar-thumb]:to-blue-500/60 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border [&::-webkit-scrollbar-thumb]:border-purple-400/30 hover:[&::-webkit-scrollbar-thumb]:from-purple-500/80 hover:[&::-webkit-scrollbar-thumb]:to-blue-500/80">
+        <div
+          ref={expandedPanelRef}
+          className="max-md:fixed max-md:bottom-20 max-md:left-4 max-md:right-4 max-md:w-auto md:mt-3 bg-gradient-to-br from-slate-900/95 to-slate-800/95 backdrop-blur-lg rounded-2xl p-4 md:p-6 pb-8 border-2 border-purple-400/40 shadow-2xl md:w-[464px] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-slate-800/50 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-purple-500/60 [&::-webkit-scrollbar-thumb]:to-blue-500/60 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border [&::-webkit-scrollbar-thumb]:border-purple-400/30 hover:[&::-webkit-scrollbar-thumb]:from-purple-500/80 hover:[&::-webkit-scrollbar-thumb]:to-blue-500/80"
+          style={{
+            maxHeight: isDesktop ? `calc(100vh - ${topPositionDesktop}px - 6rem)` : 'calc(100vh - 7rem)'
+          }}
+        >
           {/* Header */}
           <div className="mb-4">
             <div className="flex items-center justify-between mb-2">
@@ -1002,8 +1090,17 @@ const PlayerActivity = ({
                     ) : (
                       <div className="space-y-2 max-h-96 overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-slate-800/50 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-purple-500/60 [&::-webkit-scrollbar-thumb]:to-blue-500/60 [&::-webkit-scrollbar-thumb]:rounded-full">
                         {recentMatches.map((match, index) => {
-                          const isWinner = !match.isDraw && match.winner.toLowerCase() === account.toLowerCase();
-                          const opponent = match.player1.toLowerCase() === account.toLowerCase() ? match.player2 : match.player1;
+                          // Normalize all addresses to lowercase for comparison
+                          const accountLower = account?.toLowerCase() || '';
+                          const winnerLower = match.winner?.toLowerCase() || '';
+                          const player1Lower = match.player1?.toLowerCase() || '';
+                          const player2Lower = match.player2?.toLowerCase() || '';
+
+                          // Check if current account is the winner
+                          const isWinner = !match.isDraw && winnerLower === accountLower && winnerLower !== '0x0000000000000000000000000000000000000000';
+
+                          // Determine opponent
+                          const opponent = player1Lower === accountLower ? match.player2 : match.player1;
                           const matchKey = `recent-${match.matchId}-${index}`;
                           const isExpanded = expandedRecentMatches.has(matchKey);
 
@@ -1018,42 +1115,52 @@ const PlayerActivity = ({
                                   : 'bg-gradient-to-br from-red-500/10 to-rose-500/10 border-red-400/30'
                               }`}
                             >
+                              {/* Tournament Context Labels */}
+                              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                {getTierLabel(match.tierId) && (
+                                  <span className="bg-blue-500/20 text-blue-300 text-[10px] font-semibold px-2 py-0.5 rounded border border-blue-400/30">
+                                    {getTierLabel(match.tierId)}
+                                  </span>
+                                )}
+                                <span className="bg-blue-500/20 text-blue-300 text-[10px] font-semibold px-2 py-0.5 rounded border border-blue-400/30">
+                                  {getRoundLabel(match.tierId, match.roundNumber)}
+                                </span>
+                              </div>
+
                               {/* Match Result Header */}
-                              <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center gap-2">
-                                  {match.isDraw ? (
-                                    <span className="bg-yellow-500/60 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase">
-                                      Draw
-                                    </span>
-                                  ) : isWinner ? (
-                                    <span className="bg-green-500/60 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase">
-                                      Won
-                                    </span>
-                                  ) : (
-                                    <span className="bg-red-500/60 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase">
-                                      Lost
-                                    </span>
-                                  )}
-                                  {/* Reason Tag - Link to manual for ML1/ML2/ML3 */}
-                                  {(match.reason === 1 || match.reason === 3 || match.reason === 4) ? (
-                                    <a
-                                      href={match.reason === 1 ? '#ml1' : match.reason === 3 ? '#ml2' : '#ml3'}
-                                      onClick={() => handleSetExpanded(false)}
-                                      className={`text-[10px] px-2 py-0.5 rounded bg-orange-500/20 text-orange-300 hover:bg-orange-500/30 hover:text-orange-200 transition-colors underline decoration-dotted cursor-pointer`}
-                                      title={`Learn more about ${match.reason === 1 ? 'ML1' : match.reason === 3 ? 'ML2' : 'ML3'} in the User Manual`}
-                                    >
-                                      {getCompletionReasonText(match.reason)}
-                                    </a>
-                                  ) : (
-                                    <span className={`text-[10px] px-2 py-0.5 rounded ${
-                                      match.reason === 0
-                                        ? 'bg-blue-500/20 text-blue-300'
-                                        : 'bg-orange-500/20 text-orange-300'
-                                    }`}>
-                                      {getCompletionReasonText(match.reason)}
-                                    </span>
-                                  )}
-                                </div>
+                              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                {match.isDraw ? (
+                                  <span className="bg-yellow-500/60 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase">
+                                    Draw
+                                  </span>
+                                ) : isWinner ? (
+                                  <span className="bg-green-500/60 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase">
+                                    Won
+                                  </span>
+                                ) : (
+                                  <span className="bg-red-500/60 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase">
+                                    Lost
+                                  </span>
+                                )}
+                                {/* Reason Tag - Link to manual for ML1/ML2/ML3 */}
+                                {(match.reason === 1 || match.reason === 3 || match.reason === 4) ? (
+                                  <a
+                                    href={match.reason === 1 ? '#ml1' : match.reason === 3 ? '#ml2' : '#ml3'}
+                                    onClick={() => handleSetExpanded(false)}
+                                    className={`text-[10px] px-2 py-0.5 rounded bg-orange-500/20 text-orange-300 hover:bg-orange-500/30 hover:text-orange-200 transition-colors underline decoration-dotted cursor-pointer`}
+                                    title={`Learn more about ${match.reason === 1 ? 'ML1' : match.reason === 3 ? 'ML2' : 'ML3'} in the User Manual`}
+                                  >
+                                    {getCompletionReasonText(match.reason)}
+                                  </a>
+                                ) : (
+                                  <span className={`text-[10px] px-2 py-0.5 rounded ${
+                                    match.reason === 0
+                                      ? 'bg-blue-500/20 text-blue-300'
+                                      : 'bg-orange-500/20 text-orange-300'
+                                  }`}>
+                                    {getCompletionReasonText(match.reason)}
+                                  </span>
+                                )}
                               </div>
 
                               {/* Opponent Info */}
@@ -1079,12 +1186,12 @@ const PlayerActivity = ({
                               {/* Match Details */}
                               <div className="space-y-1 text-[10px] text-slate-400 mb-2">
                                 <div className="flex items-center justify-between">
-                                  <span>Match ID:</span>
-                                  <span className="font-mono text-slate-300">{match.matchId.slice(0, 10)}...</span>
+                                  <span>Start Time:</span>
+                                  <span className="text-slate-300">{formatTimestamp(match.startTime)}</span>
                                 </div>
                                 <div className="flex items-center justify-between">
-                                  <span>Time:</span>
-                                  <span className="text-slate-300">{formatTimestamp(match.timestamp)}</span>
+                                  <span>End Time:</span>
+                                  <span className="text-slate-300">{formatTimestamp(match.endTime)}</span>
                                 </div>
                                 <div className="flex items-center justify-between">
                                   <a
@@ -1218,6 +1325,36 @@ const PlayerActivity = ({
                                       </div>
                                     );
                                   })()}
+
+                                  {/* Move History Section */}
+                                  {match.moveHistory && match.moveHistory.length > 0 && (
+                                    <div className="mt-4 pt-4 border-t border-slate-600/30">
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <History size={14} className="text-purple-400" />
+                                        <h5 className="text-xs font-semibold text-slate-300 uppercase">
+                                          Move History ({match.moveHistory.length} moves)
+                                        </h5>
+                                      </div>
+                                      <div className="max-h-40 overflow-y-auto space-y-1 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-slate-800/50 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-purple-500/60 [&::-webkit-scrollbar-thumb]:rounded-full">
+                                        {match.moveHistory.map((move, idx) => (
+                                          <div
+                                            key={idx}
+                                            className="flex items-center gap-2 text-xs bg-slate-800/30 rounded px-2 py-1"
+                                          >
+                                            <span className="text-slate-500 font-mono w-6">{idx + 1}.</span>
+                                            <span className="font-bold w-6 text-center">
+                                              {move.player}
+                                            </span>
+                                            <span className="text-slate-300 flex-1">
+                                              {gameName === 'chess' && move.move}
+                                              {gameName === 'tictactoe' && `Cell ${move.cell}`}
+                                              {gameName === 'connect4' && `Column ${move.column}`}
+                                            </span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </div>

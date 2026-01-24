@@ -611,10 +611,10 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, /* onSpectate
 
 export default function ConnectFour() {
   // Use network config instead of hardcoded values
-  // const EXPECTED_CHAIN_ID = CURRENT_NETWORK.chainId;
-  const EXPECTED_CHAIN_ID = 42161;
-  // const RPC_URL = import.meta.env.VITE_RPC_URL || CURRENT_NETWORK.rpcUrl;
-  const RPC_URL = "https://rpc.ankr.com/arbitrum/fa78359589ebb4ba1c97e306d5ad98192c1b897a76d2df05acf7ade04aa2687b";
+  const EXPECTED_CHAIN_ID = CURRENT_NETWORK.chainId;
+  // const EXPECTED_CHAIN_ID = 42161;
+  const RPC_URL = import.meta.env.VITE_RPC_URL || CURRENT_NETWORK.rpcUrl;
+  // const RPC_URL = "https://rpc.ankr.com/arbitrum/fa78359589ebb4ba1c97e306d5ad98192c1b897a76d2df05acf7ade04aa2687b";
   const EXPLORER_URL = getAddressUrl(CONTRACT_ADDRESS);
 
   // Helper to get read-only contract (bypasses MetaMask for read operations)
@@ -698,7 +698,7 @@ export default function ConnectFour() {
   const [raffleSyncing, setRaffleSyncing] = useState(false);
 
   // Player Activity Hook
-  const playerActivity = usePlayerActivity(contract, account, 'connect4');
+  const playerActivity = usePlayerActivity(contract, account, 'connect4', TIER_CONFIG, tierInstances);
   const [gamesCardHeight, setGamesCardHeight] = useState(0);
   const [playerActivityHeight, setPlayerActivityHeight] = useState(0);
 
@@ -1118,6 +1118,7 @@ export default function ConnectFour() {
         // Process results - stop at first uninitialized instance
         const statuses = [];
         const enrolledCounts = [];
+        const currentRounds = [];
         const enrollmentTimeouts = [];
         const hasStartedViaTimeouts = [];
 
@@ -1125,6 +1126,7 @@ export default function ConnectFour() {
           if (!result.success) break;
           statuses.push(result.status);
           enrolledCounts.push(result.enrolledCount);
+          currentRounds.push(result.currentRound);
           enrollmentTimeouts.push(result.enrollmentTimeout);
           hasStartedViaTimeouts.push(result.hasStartedViaTimeout);
         }
@@ -1136,6 +1138,7 @@ export default function ConnectFour() {
           entryFee,
           statuses,
           enrolledCounts,
+          currentRounds,
           enrollmentTimeouts,
           hasStartedViaTimeouts
         };
@@ -1150,6 +1153,7 @@ export default function ConnectFour() {
             instanceId: i,
             status: statuses[i],
             enrolledCount: enrolledCounts[i],
+            currentRound: currentRounds[i],
             maxPlayers: playerCount,
             entryFee,
             prizePool: prizePoolETH,
@@ -1248,6 +1252,7 @@ export default function ConnectFour() {
 
         const statuses = [];
         const enrolledCounts = [];
+        const currentRounds = [];
         const enrollmentTimeouts = [];
         const hasStartedViaTimeouts = [];
 
@@ -1255,6 +1260,7 @@ export default function ConnectFour() {
           if (!result.success) break;
           statuses.push(result.status);
           enrolledCounts.push(result.enrolledCount);
+          currentRounds.push(result.currentRound);
           enrollmentTimeouts.push(result.enrollmentTimeout);
           hasStartedViaTimeouts.push(result.hasStartedViaTimeout);
         }
@@ -1265,6 +1271,7 @@ export default function ConnectFour() {
           entryFee,
           statuses,
           enrolledCounts,
+          currentRounds,
           enrollmentTimeouts,
           hasStartedViaTimeouts
         };
@@ -1290,6 +1297,7 @@ export default function ConnectFour() {
             instanceId: i,
             status: metadata.statuses[i],
             enrolledCount: metadata.enrolledCounts[i],
+            currentRound: metadata.currentRounds[i],
             maxPlayers: metadata.playerCount,
             entryFee: metadata.entryFee,
             prizePool: prizePoolETH,
@@ -1483,6 +1491,32 @@ export default function ConnectFour() {
       }
     }
   }, [getReadOnlyContract, account, fetchTierMetadata, fetchTierInstances]);
+
+  // Comprehensive refresh for Player Activity panel
+  // Fetches fresh multicall data for ALL tiers (regardless of loaded/expanded state)
+  const handlePlayerActivityRefresh = useCallback(async () => {
+    if (!contract || !account) return;
+
+    console.log('[PlayerActivity Refresh] Triggering fresh multicall for all tiers');
+
+    // Get ALL tier IDs from TIER_CONFIG (not just loaded ones)
+    const allTierIds = Object.keys(TIER_CONFIG).map(Number);
+
+    if (allTierIds.length === 0) {
+      console.log('[PlayerActivity Refresh] No tiers configured');
+      return;
+    }
+
+    console.log('[PlayerActivity Refresh] Refreshing all tiers:', allTierIds);
+
+    // Trigger fresh multicall for each tier
+    // fetchTierInstances will call batchFetchTournaments + batchFetchIsEnrolled
+    for (const tierId of allTierIds) {
+      await fetchTierInstances(tierId, contract, account, null, false);
+    }
+
+    console.log('[PlayerActivity Refresh] Multicall refresh complete for all tiers');
+  }, [contract, account, fetchTierInstances]);
 
   // Handle tournament enrollment
   const handleEnroll = async (tierId, instanceId, entryFee) => {
@@ -2092,8 +2126,78 @@ export default function ConnectFour() {
       const player2 = parsedMatch.player2;
       const matchStartTime = Number(matchData.common.startTime);
 
-      // Try to query MoveMade events for this match
+      // OPTIMIZATION: Use the moves field from getMatch() instead of event queries
+      // The updated ABI now includes moves in the match data
+      let movesString = matchData.moves || matchData.common.moves || '';
+
+      // If getMatch() returned empty data, try fetching from getPlayerMatches()
+      const zeroAddress = '0x0000000000000000000000000000000000000000';
+      if (!movesString && player1 === zeroAddress) {
+        console.log('[FetchMoveHistory] getMatch() returned cleared data, fetching from getPlayerMatches()');
+
+        try {
+          const allMatches = await contractInstance.getPlayerMatches();
+
+          // Find the specific match (search from end - recent matches last)
+          let foundMatch = null;
+          for (let i = allMatches.length - 1; i >= 0; i--) {
+            const m = allMatches[i];
+            if (Number(m.tierId) === tierId &&
+                Number(m.instanceId) === instanceId &&
+                Number(m.roundNumber) === roundNumber &&
+                Number(m.matchNumber) === matchNumber) {
+              foundMatch = m;
+              break;
+            }
+          }
+
+          if (foundMatch) {
+            movesString = foundMatch.moves || '';
+            console.log('[FetchMoveHistory] Found moves from getPlayerMatches():', movesString.length, 'chars');
+          }
+        } catch (err) {
+          console.warn('[FetchMoveHistory] Failed to fetch from getPlayerMatches():', err);
+        }
+      }
+
+      console.log('[FetchMoveHistory] Moves string:', movesString ? `${movesString.length} chars` : 'empty');
+
+      if (movesString && movesString.length > 0) {
+        try {
+          // Parse moves string for Connect Four: each move is 1 byte (cell index 0-41)
+          const moves = [];
+
+          for (let i = 0; i < movesString.length; i++) {
+            const cellIndex = movesString.charCodeAt(i);
+            // Validate that this is a valid cell index (0-41 for 6x7 board)
+            if (cellIndex >= 0 && cellIndex <= 41) {
+              moves.push(cellIndex);
+            }
+          }
+
+          // Convert to display format
+          const history = moves.map((cellIndex, idx) => {
+            const isPlayer1Move = idx % 2 === 0; // Even indices are player1 moves
+            const column = cellIndex % 7; // Convert cell index to column (0-6)
+            return {
+              player: isPlayer1Move ? 'Red' : 'Blue',
+              column: column + 1, // Display as 1-7 for users
+              cellIndex: cellIndex,
+              address: isPlayer1Move ? player1 : player2
+            };
+          });
+
+          console.log('[FetchMoveHistory] Parsed moves from getMatch():', history.length);
+          return history;
+        } catch (parseError) {
+          console.warn('[FetchMoveHistory] Failed to parse moves string, falling back to events:', parseError);
+        }
+      }
+
+      // FALLBACK: Try to query MoveMade events for this match (for backward compatibility)
       try {
+        console.log('[FetchMoveHistory] No moves field found, falling back to event query');
+
         const matchKey = ethers.keccak256(
           ethers.AbiCoder.defaultAbiCoder().encode(
             ['uint8', 'uint8', 'uint8', 'uint8'],
@@ -2213,42 +2317,72 @@ export default function ConnectFour() {
         player1.toLowerCase() !== zeroAddress &&
         player2.toLowerCase() !== zeroAddress;
 
-      // If contract returns cleared data (zero addresses + empty board), query MatchCompleted event
-      // Keep polling until we find an event matching this exact match instance
+      // OPTIMIZATION: If contract returns cleared data (zero addresses + empty board),
+      // fetch from getPlayerMatches() instead of event queries
       const isBoardEmpty = board.every(cell => cell === 0);
       if (!isMatchInitialized && isBoardEmpty) {
-        console.log('[refreshMatchData] Match data cleared, querying MatchCompleted event');
+        console.log('[refreshMatchData] Match data cleared, fetching from getPlayerMatches()');
 
         try {
-          const matchId = ethers.solidityPackedKeccak256(
-            ['uint8', 'uint8', 'uint8', 'uint8'],
-            [tierId, instanceId, roundNumber, matchNumber]
-          );
+          // Fetch all player matches (includes completed matches with full data)
+          const allMatches = await contractInstance.getPlayerMatches();
 
-          const filter = contractInstance.filters.MatchCompleted(matchId);
-          const events = await contractInstance.queryFilter(filter);
+          console.log('[refreshMatchData] Fetched player matches:', allMatches.length);
 
-          // Find event that matches this exact match instance
-          for (let i = events.length - 1; i >= 0; i--) {
-            const event = events[i];
-            const { winner: eventWinner, isDraw: eventIsDraw, reason: eventReason, board: eventPackedBoard } = event.args;
+          // Find the match that matches our tournament context
+          // Search from end since recent matches are last
+          let foundMatch = null;
+          for (let i = allMatches.length - 1; i >= 0; i--) {
+            const m = allMatches[i];
+            if (Number(m.tierId) === tierId &&
+                Number(m.instanceId) === instanceId &&
+                Number(m.roundNumber) === roundNumber &&
+                Number(m.matchNumber) === matchNumber) {
+              foundMatch = m;
+              break;
+            }
+          }
 
-            // Verify winner is one of our players
-            const winnerLower = eventWinner.toLowerCase();
-            const p1Lower = matchInfo.player1?.toLowerCase();
-            const p2Lower = matchInfo.player2?.toLowerCase();
-            const winnerIsPlayer = eventIsDraw || winnerLower === p1Lower || winnerLower === p2Lower || winnerLower === zeroAddress;
-
-            if (!winnerIsPlayer) continue;
-
-            // Verify event occurred after match start time
-            const block = await event.getBlock();
-            const eventTimestamp = Number(block.timestamp);
+          // Fallback: Match by player addresses and approximate timestamp
+          if (!foundMatch && matchInfo.player1 && matchInfo.player2) {
+            const p1Lower = matchInfo.player1.toLowerCase();
+            const p2Lower = matchInfo.player2.toLowerCase();
             const matchStartTime = matchInfo.startTime;
 
-            if (matchStartTime && eventTimestamp < matchStartTime) continue;
+            const candidateMatches = allMatches.filter(m => {
+              const m1Lower = m.player1.toLowerCase();
+              const m2Lower = m.player2.toLowerCase();
+              const playersMatch = (m1Lower === p1Lower && m2Lower === p2Lower) ||
+                                   (m1Lower === p2Lower && m2Lower === p1Lower);
 
-            // Unpack the ConnectFour board from the event (2 bits per cell, 42 cells)
+              if (!playersMatch) return false;
+
+              if (matchStartTime) {
+                const timeDiff = Math.abs(Number(m.startTime) - matchStartTime);
+                return timeDiff < 3600; // 1 hour tolerance
+              }
+
+              return true;
+            });
+
+            if (candidateMatches.length > 0) {
+              foundMatch = candidateMatches.sort((a, b) => Number(b.startTime) - Number(a.startTime))[0];
+              console.log('[refreshMatchData] Found match by player addresses and timestamp');
+            }
+          }
+
+          if (foundMatch) {
+            console.log('[refreshMatchData] Found matching completed match:', {
+              tierId: Number(foundMatch.tierId),
+              instanceId: Number(foundMatch.instanceId),
+              round: Number(foundMatch.roundNumber),
+              match: Number(foundMatch.matchNumber),
+              winner: foundMatch.winner,
+              isDraw: foundMatch.isDraw,
+              movesLength: foundMatch.moves?.length || 0
+            });
+
+            // Unpack the ConnectFour board from packedBoard (2 bits per cell, 42 cells)
             const unpackBoard = (packed) => {
               const boardArray = [];
               let p = BigInt(packed);
@@ -2258,35 +2392,30 @@ export default function ConnectFour() {
               }
               return boardArray;
             };
-            const eventBoard = unpackBoard(eventPackedBoard);
+            const matchBoard = unpackBoard(foundMatch.packedBoard);
 
-            console.log('[refreshMatchData] Found matching MatchCompleted event:', {
-              winner: eventWinner,
-              isDraw: eventIsDraw,
-              reason: Number(eventReason),
-              eventTimestamp,
-              matchStartTime
-            });
-
-            const eventLoser = eventIsDraw ? zeroAddress :
-              (winnerLower === p1Lower ? matchInfo.player2 : matchInfo.player1);
+            const winnerLower = foundMatch.winner.toLowerCase();
+            const p1Lower = foundMatch.player1.toLowerCase();
+            const matchLoser = foundMatch.isDraw ? zeroAddress :
+              (winnerLower === p1Lower ? foundMatch.player2 : foundMatch.player1);
 
             return {
               ...matchInfo,
               matchStatus: 2,
-              winner: eventWinner,
-              loser: eventLoser,
-              isDraw: eventIsDraw,
-              board: eventBoard,
+              winner: foundMatch.winner,
+              loser: matchLoser,
+              isDraw: foundMatch.isDraw,
+              board: matchBoard,
               isYourTurn: false,
               completedFromEventPoll: true,
-              completionReason: Number(eventReason)
+              completionReason: Number(foundMatch.completionReason),
+              cachedMoves: foundMatch.moves || ''
             };
           }
 
-          console.log('[refreshMatchData] No matching MatchCompleted event found yet, continuing to poll');
+          console.log('[refreshMatchData] No matching completed match found in getPlayerMatches(), continuing to poll');
         } catch (err) {
-          console.error('[refreshMatchData] Error querying MatchCompleted event:', err);
+          console.error('[refreshMatchData] Error fetching from getPlayerMatches():', err);
         }
 
         return null;
@@ -3382,7 +3511,7 @@ export default function ConnectFour() {
               account={account}
               onEnterMatch={handlePlayMatch}
               onEnterTournament={handleEnterTournament}
-              onRefresh={playerActivity.refetch}
+              onRefresh={handlePlayerActivityRefresh}
               onDismissMatch={playerActivity.dismissMatch}
               gameName="connect4"
               gameEmoji="🔴"
@@ -3391,6 +3520,7 @@ export default function ConnectFour() {
               onCollapse={(collapseFn) => { collapseActivityPanelRef.current = collapseFn; }}
               isExpanded={expandedPanel === 'playerActivity'}
               onToggleExpand={() => setExpandedPanel(expandedPanel === 'playerActivity' ? null : 'playerActivity')}
+              tierConfig={TIER_CONFIG}
             />
 
             {/* Community Raffle Card */}
@@ -3424,7 +3554,7 @@ export default function ConnectFour() {
               account={account}
               onEnterMatch={handlePlayMatch}
               onEnterTournament={handleEnterTournament}
-              onRefresh={playerActivity.refetch}
+              onRefresh={handlePlayerActivityRefresh}
               onDismissMatch={playerActivity.dismissMatch}
               gameName="connect4"
               gameEmoji="🔴"
