@@ -2488,6 +2488,7 @@ export default function Chess() {
       const matchData = await contractInstance.getMatch(tierId, instanceId, roundNumber, matchNumber);
       const player1 = matchData.common.player1;
       const player2 = matchData.common.player2;
+      const firstPlayer = matchData.firstPlayer;
 
       // OPTIMIZATION: Use the moves field from getMatch() instead of event queries
       // The updated ABI now includes moves in the match data
@@ -2544,17 +2545,20 @@ export default function Chess() {
           }
 
           // Convert to display format
+          // White (♔) always goes first (even indices 0, 2, 4...), Black (♚) goes second (odd indices 1, 3, 5...)
+          // firstPlayer is the one who moves first and should be White
           const history = moves.map((move, idx) => {
-            const isPlayer1Move = idx % 2 === 0; // Even indices are player1 moves
+            const isFirstPlayerMove = idx % 2 === 0; // Even indices are first player moves
+            const movePlayer = isFirstPlayerMove ? firstPlayer : (firstPlayer === player1 ? player2 : player1);
             const fromNotation = indexToChessNotation(move.from);
             const toNotation = indexToChessNotation(move.to);
             return {
-              player: isPlayer1Move ? '♚' : '♔', // ♚ for white (player1), ♔ for black (player2)
+              player: isFirstPlayerMove ? '♔' : '♚', // ♔ for white (first player), ♚ for black (second player)
               move: `${fromNotation}→${toNotation}`,
               from: move.from,
               to: move.to,
               promotion: 0,
-              address: isPlayer1Move ? player1 : player2
+              address: movePlayer
             };
           });
 

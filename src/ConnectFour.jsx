@@ -2127,69 +2127,77 @@ export default function ConnectFour() {
       const parsedMatch = parseConnectFourMatch(matchData);
       const player1 = parsedMatch.player1;
       const player2 = parsedMatch.player2;
+      const firstPlayer = parsedMatch.firstPlayer;
 
-      // OPTIMIZATION: Use the moves field from getMatch() instead of event queries
-      // The updated ABI now includes moves in the match data
-      let movesString = matchData.moves || matchData.common.moves || '';
+      // ConnectFour's getMatch() doesn't include moves field
+      // Always fetch from getPlayerMatches() for move history
+      let movesString = '';
 
-      // If getMatch() returned empty data, try fetching from getPlayerMatches()
-      const zeroAddress = '0x0000000000000000000000000000000000000000';
-      if (!movesString && player1 === zeroAddress) {
-        console.log('[FetchMoveHistory] getMatch() returned cleared data, fetching from getPlayerMatches()');
+      console.log('[FetchMoveHistory] Fetching moves from getPlayerMatches() for ConnectFour');
 
-        try {
-          const allMatches = await contractInstance.getPlayerMatches();
+      try {
+        const allMatches = await contractInstance.getPlayerMatches();
 
-          // Find the specific match (search from end - recent matches last)
-          let foundMatch = null;
-          for (let i = allMatches.length - 1; i >= 0; i--) {
-            const m = allMatches[i];
-            if (Number(m.tierId) === tierId &&
-                Number(m.instanceId) === instanceId &&
-                Number(m.roundNumber) === roundNumber &&
-                Number(m.matchNumber) === matchNumber) {
-              foundMatch = m;
-              break;
-            }
+        // Find the specific match (search from end - recent matches last)
+        let foundMatch = null;
+        for (let i = allMatches.length - 1; i >= 0; i--) {
+          const m = allMatches[i];
+          if (Number(m.tierId) === tierId &&
+              Number(m.instanceId) === instanceId &&
+              Number(m.roundNumber) === roundNumber &&
+              Number(m.matchNumber) === matchNumber) {
+            foundMatch = m;
+            break;
           }
-
-          if (foundMatch) {
-            movesString = foundMatch.moves || '';
-            console.log('[FetchMoveHistory] Found moves from getPlayerMatches():', movesString.length, 'chars');
-          }
-        } catch (err) {
-          console.warn('[FetchMoveHistory] Failed to fetch from getPlayerMatches():', err);
         }
+
+        if (foundMatch) {
+          movesString = foundMatch.moves || '';
+          console.log('[FetchMoveHistory] Found moves from getPlayerMatches():', movesString.length, 'chars');
+        } else {
+          console.warn('[FetchMoveHistory] Match not found in getPlayerMatches()');
+        }
+      } catch (err) {
+        console.warn('[FetchMoveHistory] Failed to fetch from getPlayerMatches():', err);
       }
 
       console.log('[FetchMoveHistory] Moves string:', movesString ? `${movesString.length} chars` : 'empty');
 
       if (movesString && movesString.length > 0) {
         try {
-          // Parse moves string for Connect Four: each move is 1 byte (cell index 0-41)
+          // Parse moves string for Connect Four: each move is 1 byte (column number 0-6)
           const moves = [];
 
+          console.log('[FetchMoveHistory] Parsing Connect4 moves...');
           for (let i = 0; i < movesString.length; i++) {
-            const cellIndex = movesString.charCodeAt(i);
-            // Validate that this is a valid cell index (0-41 for 6x7 board)
-            if (cellIndex >= 0 && cellIndex <= 41) {
-              moves.push(cellIndex);
+            const columnNumber = movesString.charCodeAt(i);
+            console.log(`[FetchMoveHistory] Move ${i}: charCode=${columnNumber}`);
+            // Validate that this is a valid column (0-6 for 7 columns)
+            if (columnNumber >= 0 && columnNumber <= 6) {
+              moves.push(columnNumber);
+            } else {
+              console.warn(`[FetchMoveHistory] Invalid column ${columnNumber} at index ${i}`);
             }
           }
 
+          console.log('[FetchMoveHistory] Valid moves parsed:', moves.length, 'out of', movesString.length);
+
           // Convert to display format
-          const history = moves.map((cellIndex, idx) => {
-            const isPlayer1Move = idx % 2 === 0; // Even indices are player1 moves
-            const column = cellIndex % 7; // Convert cell index to column (0-6)
+          // Red always goes first (even indices 0, 2, 4...), Blue goes second (odd indices 1, 3, 5...)
+          // firstPlayer is the one who moves first and should be Red
+          const history = moves.map((columnNumber, idx) => {
+            const isFirstPlayerMove = idx % 2 === 0; // Even indices are first player moves
+            const movePlayer = isFirstPlayerMove ? firstPlayer : (firstPlayer === player1 ? player2 : player1);
             return {
-              player: isPlayer1Move ? 'Red' : 'Blue',
-              column: column + 1, // Display as 1-7 for users
-              cellIndex: cellIndex,
-              address: isPlayer1Move ? player1 : player2
+              player: isFirstPlayerMove ? 'Red' : 'Blue',
+              column: columnNumber + 1, // Display as 1-7 for users
+              columnNumber: columnNumber,
+              address: movePlayer
             };
           });
 
           console.log('[FetchMoveHistory] Parsed moves from getMatch():', history.length);
+          console.log('[FetchMoveHistory] History:', history);
           return history;
         } catch (parseError) {
           console.warn('[FetchMoveHistory] Failed to parse moves string:', parseError);

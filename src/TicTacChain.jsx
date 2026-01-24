@@ -1805,6 +1805,7 @@ export default function TicTacChain() {
       const parsedMatch = parseTicTacToeMatch(matchData);
       const player1 = parsedMatch.player1;
       const player2 = parsedMatch.player2;
+      const firstPlayer = parsedMatch.firstPlayer;
 
       // OPTIMIZATION: Use the moves field from getMatch() instead of event queries
       // The updated ABI now includes moves in the match data
@@ -1856,12 +1857,15 @@ export default function TicTacChain() {
           }
 
           // Convert to display format
+          // X always goes first (even indices 0, 2, 4...), O goes second (odd indices 1, 3, 5...)
+          // firstPlayer is the one who moves first and should be X
           const history = moves.map((cellIndex, idx) => {
-            const isPlayer1Move = idx % 2 === 0; // Even indices are player1 moves
+            const isFirstPlayerMove = idx % 2 === 0; // Even indices are first player moves
+            const movePlayer = isFirstPlayerMove ? firstPlayer : (firstPlayer === player1 ? player2 : player1);
             return {
-              player: isPlayer1Move ? 'X' : 'O',
+              player: isFirstPlayerMove ? 'X' : 'O',
               cell: cellIndex,
-              address: isPlayer1Move ? player1 : player2
+              address: movePlayer
             };
           });
 

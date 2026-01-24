@@ -382,7 +382,7 @@ const GameMatchLayout = ({
 
           {/* Player Info */}
           <div className="flex items-center gap-3 mb-4">
-            <div className={`w-12 h-12 ${cardColors.iconBg} rounded-full flex items-center justify-center text-2xl font-bold border-2 ${cardColors.border}`}>
+            <div className={`w-12 h-12 flex-shrink-0 ${cardColors.iconBg} rounded-full flex items-center justify-center text-2xl font-bold border-2 ${cardColors.border}`}>
               {icon}
             </div>
             <div>
@@ -561,7 +561,7 @@ const GameMatchLayout = ({
 
           {/* Player Info */}
           <div className="flex items-center gap-3 mb-4">
-            <div className={`w-12 h-12 ${cardColors.iconBg} rounded-full flex items-center justify-center text-2xl font-bold border-2 ${cardColors.border}`}>
+            <div className={`w-12 h-12 flex-shrink-0 ${cardColors.iconBg} rounded-full flex items-center justify-center text-2xl font-bold border-2 ${cardColors.border}`}>
               {icon}
             </div>
             <div>
@@ -877,7 +877,7 @@ const GameMatchLayout = ({
 
           {/* Player Info */}
           <div className="flex items-center gap-3 mb-4">
-            <div className={`w-12 h-12 ${cardColors.iconBg} rounded-full flex items-center justify-center text-2xl font-bold border-2 ${cardColors.border}`}>
+            <div className={`w-12 h-12 flex-shrink-0 ${cardColors.iconBg} rounded-full flex items-center justify-center text-2xl font-bold border-2 ${cardColors.border}`}>
               {icon}
             </div>
             <div>
@@ -1017,14 +1017,16 @@ const GameMatchLayout = ({
           </div>
 
           {/* Right Column - Move History or Match Info */}
-          <div className="bg-slate-900/50 rounded-xl p-6 border border-purple-500/30 max-h-[800px] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-slate-800/50 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-purple-500/60 [&::-webkit-scrollbar-thumb]:to-pink-500/60 [&::-webkit-scrollbar-thumb]:rounded-full">
-            {renderMoveHistory ? (
-              renderMoveHistory()
-            ) : (
-              <div className="text-center py-8 text-purple-300/60">
-                <p className="text-sm">No move history available</p>
-              </div>
-            )}
+          <div className="mr-6">
+            <div className="bg-slate-900/50 rounded-xl p-6 border border-purple-500/30 max-h-[800px] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-slate-800/50 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-purple-500/60 [&::-webkit-scrollbar-thumb]:to-pink-500/60 [&::-webkit-scrollbar-thumb]:rounded-full">
+              {renderMoveHistory ? (
+                renderMoveHistory()
+              ) : (
+                <div className="text-center py-8 text-purple-300/60">
+                  <p className="text-sm">No move history available</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </>
