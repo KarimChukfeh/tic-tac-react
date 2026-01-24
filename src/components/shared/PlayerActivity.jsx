@@ -1337,25 +1337,40 @@ const PlayerActivity = ({
                                     const whitePieceSymbols = ['', '♙', '♘', '♗', '♖', '♕', '♔']; // index 0 unused, 1-6 for pawn-king
                                     const blackPieceSymbols = ['', '♟', '♞', '♝', '♜', '♛', '♚']; // index 0 unused, 1-6 for pawn-king
 
+                                    // Flip board based on player perspective
+                                    // Board array: indices 0-7 = rank 1 (White's back rank), indices 56-63 = rank 8 (Black's back rank)
+                                    // CSS grid renders 0-7 at TOP, 56-63 at BOTTOM
+                                    // White player: needs flip to show White at bottom
+                                    // Black player: no flip needed, Black already at bottom
+                                    const shouldFlip = isAccountFirstPlayer; // Flip if account is White (firstPlayer)
+
                                     return (
                                       <div className="flex justify-center">
                                         <div className="grid grid-cols-8 gap-0 w-64 h-64 border border-slate-600">
                                           {board.map((cell, idx) => {
-                                            const row = Math.floor(idx / 8);
-                                            const col = idx % 8;
+                                            // Apply perspective flip
+                                            const displayRow = Math.floor(idx / 8);
+                                            const displayCol = idx % 8;
+
+                                            // Flip: reverse rows (vertical flip for black's perspective)
+                                            const actualIdx = shouldFlip ? ((7 - displayRow) * 8 + displayCol) : idx;
+                                            const actualCell = board[actualIdx];
+
+                                            const row = Math.floor(actualIdx / 8);
+                                            const col = actualIdx % 8;
                                             const isLight = (row + col) % 2 === 0;
 
                                             // Get the appropriate symbol based on color and pieceType
                                             let symbol = '';
                                             let textColor = '';
-                                            if (cell.pieceType > 0) {
-                                              if (cell.color === 1) {
+                                            if (actualCell.pieceType > 0) {
+                                              if (actualCell.color === 1) {
                                                 // White piece
-                                                symbol = whitePieceSymbols[cell.pieceType] || '';
+                                                symbol = whitePieceSymbols[actualCell.pieceType] || '';
                                                 textColor = 'text-white drop-shadow-[0_0_3px_rgba(0,0,0,0.8)]';
-                                              } else if (cell.color === 2) {
+                                              } else if (actualCell.color === 2) {
                                                 // Black piece
-                                                symbol = blackPieceSymbols[cell.pieceType] || '';
+                                                symbol = blackPieceSymbols[actualCell.pieceType] || '';
                                                 textColor = 'text-black drop-shadow-[0_0_3px_rgba(255,255,255,0.6)]';
                                               }
                                             }

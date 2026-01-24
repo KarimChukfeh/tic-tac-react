@@ -411,8 +411,10 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, /* onSpectate
 
 // Chess Board Component - copied from Chess.jsx
 const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, firstPlayer, matchStatus, loading, whiteInCheck, blackInCheck, lastMoveTime, startTime, lastMove, maxSize = 520 }) => {
-  // Debug: Log lastMove prop
-  console.log('[ChessBoard] lastMove prop:', lastMove);
+  // Debug: Log lastMove prop with details
+  useEffect(() => {
+    console.log('[ChessBoard] lastMove updated:', lastMove);
+  }, [lastMove]);
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [promotionSquare, setPromotionSquare] = useState(null);
   const [pendingMove, setPendingMove] = useState(null);
@@ -593,20 +595,36 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
       const rankLabel = actualRow + 1; // 1 to 8
       const fileLabel = String.fromCharCode(97 + actualCol); // 'a' to 'h'
 
-      // My move: purple (from) -> blue (to)
-      // Opponent move: yellow (from) -> red (to)
+      // My move: purple (from) -> blue (to) with gradients
+      // Opponent move: yellow (from) -> red (to) with gradients
       const getLastMoveFromClass = () => {
         if (!isLastMoveFrom || isSelected || isKingInCheck) return '';
-        return isMyMove ? 'bg-purple-500/50 ring-2 ring-purple-400 ring-inset' : 'bg-yellow-500/50 ring-2 ring-yellow-400 ring-inset';
+        return isMyMove ? 'ring-2 ring-purple-400 ring-inset' : 'ring-2 ring-yellow-400 ring-inset';
       };
       const getLastMoveToClass = () => {
         if (!isLastMoveTo || isSelected || isKingInCheck) return '';
-        return isMyMove ? 'bg-blue-500/50 ring-2 ring-blue-400 ring-inset' : 'bg-red-500/50 ring-2 ring-red-400 ring-inset';
+        return isMyMove ? 'ring-2 ring-blue-400 ring-inset' : 'ring-2 ring-red-400 ring-inset';
+      };
+      const getLastMoveFromBg = () => {
+        if (!isLastMoveFrom || isSelected || isKingInCheck) return undefined;
+        // My move: Purple gradient
+        // Opponent move: Yellow gradient
+        return isMyMove
+          ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.5), rgba(147, 51, 234, 0.5))'
+          : 'linear-gradient(135deg, rgba(234, 179, 8, 0.5), rgba(202, 138, 4, 0.5))';
+      };
+      const getLastMoveToBg = () => {
+        if (!isLastMoveTo || isSelected || isKingInCheck) return undefined;
+        // My move: Blue gradient
+        // Opponent move: Red gradient
+        return isMyMove
+          ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.5), rgba(29, 78, 216, 0.5))'
+          : 'linear-gradient(135deg, rgba(239, 68, 68, 0.5), rgba(220, 38, 38, 0.5))';
       };
       const getLastMoveShadow = () => {
         if (isSelected) return '0 0 20px rgba(6, 182, 212, 0.3)';
-        if (isLastMoveTo && !isKingInCheck) return isMyMove ? 'inset 0 0 20px rgba(59, 130, 246, 0.5)' : 'inset 0 0 20px rgba(239, 68, 68, 0.5)';
-        if (isLastMoveFrom && !isKingInCheck) return isMyMove ? 'inset 0 0 15px rgba(168, 85, 247, 0.4)' : 'inset 0 0 15px rgba(234, 179, 8, 0.4)';
+        if (isLastMoveTo && !isKingInCheck) return isMyMove ? 'inset 0 0 25px rgba(59, 130, 246, 0.6), 0 0 15px rgba(59, 130, 246, 0.4)' : 'inset 0 0 25px rgba(239, 68, 68, 0.6), 0 0 15px rgba(239, 68, 68, 0.4)';
+        if (isLastMoveFrom && !isKingInCheck) return isMyMove ? 'inset 0 0 20px rgba(168, 85, 247, 0.5), 0 0 12px rgba(168, 85, 247, 0.3)' : 'inset 0 0 20px rgba(234, 179, 8, 0.5), 0 0 12px rgba(234, 179, 8, 0.3)';
         return 'none';
       };
       const getPieceGlow = () => {
@@ -615,8 +633,19 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
       };
       const isPotentialTarget = selectedSquare !== null && !isSelected && !isMyPiece(piece);
 
-      squares.push(<div key={displayIdx} onClick={() => handleSquareClick(displayIdx)} className={'relative flex items-center justify-center cursor-pointer transition-all duration-200 ' + (isLight ? 'bg-stone-300' : 'bg-stone-700') + (isSelected ? ' ring-2 ring-emerald-400 ring-inset bg-emerald-500/50' : '') + (isKingInCheck ? ' bg-red-500/50 ring-2 ring-red-400 ring-inset' : '') + ' ' + getLastMoveFromClass() + ' ' + getLastMoveToClass() + (isMyTurn && isMyPiece(piece) && !isSelected ? ' hover:bg-emerald-500/30' : '') + (isMyTurn && isPotentialTarget ? ' hover:bg-yellow-400/40' : '')} style={{ boxShadow: isSelected ? 'inset 0 0 20px rgba(16, 185, 129, 0.5)' : getLastMoveShadow() }}>
-        <span className={'text-3xl md:text-4xl lg:text-5xl select-none transition-all duration-300 ' + (isSelected ? 'scale-110' : '') + ' ' + (pieceColor === 1 ? 'text-white' : 'text-gray-900')} style={{ opacity: hideForAnimation ? 0 : 1, textShadow: pieceColor === 1 ? '0 2px 4px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.7)' : '0 1px 2px rgba(255,255,255,0.8)' }}>{getPieceSymbol(piece)}</span>
+      // Calculate background: use gradient for last move, otherwise use base color
+      const getSquareBg = () => {
+        if (isSelected) return undefined; // Let CSS class handle it
+        if (isKingInCheck) return undefined; // Let CSS class handle it
+        const lastMoveFromBg = getLastMoveFromBg();
+        const lastMoveToBg = getLastMoveToBg();
+        if (lastMoveFromBg) return lastMoveFromBg;
+        if (lastMoveToBg) return lastMoveToBg;
+        return undefined; // Use default bg from class
+      };
+
+      squares.push(<div key={displayIdx} onClick={() => handleSquareClick(displayIdx)} className={'relative flex items-center justify-center cursor-pointer transition-all duration-200 ' + (isLight ? 'bg-stone-300' : 'bg-stone-700') + (isSelected ? ' ring-2 ring-emerald-400 ring-inset bg-emerald-500/50' : '') + (isKingInCheck ? ' bg-red-500/50 ring-2 ring-red-400 ring-inset' : '') + ' ' + getLastMoveFromClass() + ' ' + getLastMoveToClass() + (isMyTurn && isMyPiece(piece) && !isSelected ? ' hover:bg-emerald-500/30' : '') + (isMyTurn && isPotentialTarget ? ' hover:bg-yellow-400/40' : '')} style={{ boxShadow: isSelected ? 'inset 0 0 20px rgba(16, 185, 129, 0.5)' : getLastMoveShadow(), background: getSquareBg() }}>
+        <span className={'text-3xl md:text-4xl lg:text-5xl select-none transition-all duration-300 ' + (isSelected ? 'scale-110' : '') + ' ' + (pieceColor === 1 ? 'text-white' : 'text-gray-900')} style={{ opacity: hideForAnimation ? 0 : 1, textShadow: pieceColor === 1 ? '0 2px 4px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.7)' : '0 1px 2px rgba(255,255,255,0.8)', filter: getPieceGlow() }}>{getPieceSymbol(piece)}</span>
         {showRankLabel && <span className={'absolute left-1 top-0.5 text-[10px] font-medium ' + (isLight ? 'text-slate-500' : 'text-slate-600')}>{rankLabel}</span>}
         {showFileLabel && <span className={'absolute right-1 bottom-0.5 text-[10px] font-medium ' + (isLight ? 'text-slate-500' : 'text-slate-600')}>{fileLabel}</span>}
       </div>);
@@ -2858,8 +2887,10 @@ export default function Chess() {
 
           if (moves.length > 0) {
             const lastMoveData = moves[moves.length - 1];
-            const isPlayer1Move = (moves.length - 1) % 2 === 0; // Even indices are player1
-            const movePlayer = isPlayer1Move ? actualPlayer1 : actualPlayer2;
+            // White (firstPlayer) always moves first: even indices (0, 2, 4...)
+            // Black moves second: odd indices (1, 3, 5...)
+            const isFirstPlayerMove = (moves.length - 1) % 2 === 0;
+            const movePlayer = isFirstPlayerMove ? firstPlayer : (firstPlayer.toLowerCase() === actualPlayer1.toLowerCase() ? actualPlayer2 : actualPlayer1);
 
             lastMove = {
               from: lastMoveData.from,
@@ -3495,6 +3526,8 @@ export default function Chess() {
 
             // CRITICAL: Fetch final move history from getPlayerMatches()
             // This ensures the loser sees the opponent's final winning move
+            // AND calculate the final lastMove for highlighting
+            let finalLastMove = updatedMatch.lastMove; // Use from updatedMatch as default
             try {
               console.log('[Chess Polling] Fetching final move history for completed match...');
               const finalHistory = await fetchMoveHistory(
@@ -3507,6 +3540,18 @@ export default function Chess() {
               if (finalHistory && finalHistory.length > 0) {
                 setMoveHistory(finalHistory);
                 console.log('[Chess Polling] Updated final move history:', finalHistory.length, 'moves');
+
+                // Calculate lastMove from final move history for proper highlighting
+                const lastHistoryMove = finalHistory[finalHistory.length - 1];
+                if (lastHistoryMove && lastHistoryMove.from !== undefined && lastHistoryMove.to !== undefined) {
+                  finalLastMove = {
+                    from: lastHistoryMove.from,
+                    to: lastHistoryMove.to,
+                    player: lastHistoryMove.address,
+                    isMyMove: lastHistoryMove.address?.toLowerCase() === account?.toLowerCase()
+                  };
+                  console.log('[Chess Polling] Calculated final lastMove for highlighting:', finalLastMove);
+                }
               }
             } catch (historyErr) {
               console.warn('[Chess Polling] Failed to fetch final move history:', historyErr);
@@ -3519,7 +3564,11 @@ export default function Chess() {
                 console.log('[Chess Polling] Match already marked as completed, skipping update');
                 return prev;
               }
-              return updatedMatch;
+              // Include the final lastMove for highlighting
+              return {
+                ...updatedMatch,
+                lastMove: finalLastMove
+              };
             });
 
             // Show completion modal (in case event listener missed it)
@@ -3572,6 +3621,7 @@ export default function Chess() {
               player2TimeRemaining: updatedMatch.player2TimeRemaining,
               lastMoveTime: updatedMatch.lastMoveTime,
               lastMoveTimestamp: updatedMatch.lastMoveTimestamp,
+              lastMove: updatedMatch.lastMove, // Update last move for highlighting
               // matchStatus, winner, loser, isDraw are preserved from prev (event-driven)
             };
           });
