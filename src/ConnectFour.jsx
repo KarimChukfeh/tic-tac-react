@@ -257,8 +257,14 @@ const ConnectFourBoard = ({
 
   const grid = boardToGrid(board);
 
+  // Determine which cell value (1 or 2) corresponds to the firstPlayer
+  // Contract stores: cell = 1 for player1's moves, cell = 2 for player2's moves
+  // We want: RED for firstPlayer's moves, BLUE for second player's moves
+  const isPlayer1First = firstPlayer?.toLowerCase() === player1?.toLowerCase();
+  const firstPlayerCellValue = isPlayer1First ? 1 : 2;
+
   const winnerValue = winner && winner !== '0x0000000000000000000000000000000000000000'
-    ? (winner.toLowerCase() === firstPlayer?.toLowerCase() ? 1 : 2)
+    ? (winner.toLowerCase() === firstPlayer?.toLowerCase() ? firstPlayerCellValue : (firstPlayerCellValue === 1 ? 2 : 1))
     : 0;
   const winningCells = findWinningCells(grid, winnerValue);
 
@@ -376,11 +382,11 @@ const ConnectFourBoard = ({
                         style={{
                           width: cellSize - 8,
                           height: cellSize - 8,
-                          background: cell === 1
+                          background: cell === firstPlayerCellValue
                             ? 'radial-gradient(circle at 30% 30%, #ff0044, #bb0033)'
                             : 'radial-gradient(circle at 30% 30%, #0077ff, #0055aa)',
                           boxShadow: isLastMove && !isWinning
-                            ? cell === 1
+                            ? cell === firstPlayerCellValue
                               ? '0 0 20px 4px rgba(255, 0, 68, 0.8), 0 0 40px 8px rgba(255, 0, 68, 0.4), inset 0 -4px 8px rgba(0,0,0,0.3)'
                               : '0 0 20px 4px rgba(0, 119, 255, 0.8), 0 0 40px 8px rgba(0, 119, 255, 0.4), inset 0 -4px 8px rgba(0,0,0,0.3)'
                             : 'inset 0 -4px 8px rgba(0,0,0,0.3)'
@@ -640,7 +646,8 @@ export default function ConnectFour() {
   // const EXPECTED_CHAIN_ID = CURRENT_NETWORK.chainId;
   const EXPECTED_CHAIN_ID = 42161;
   // const RPC_URL = import.meta.env.VITE_RPC_URL || CURRENT_NETWORK.rpcUrl;
-  const RPC_URL = "https://rpc.ankr.com/arbitrum/fa78359589ebb4ba1c97e306d5ad98192c1b897a76d2df05acf7ade04aa2687b";
+  const RPC_URL = "https://arb1.arbitrum.io/rpc";
+  // const RPC_URL = "https://rpc.ankr.com/arbitrum/fa78359589ebb4ba1c97e306d5ad98192c1b897a76d2df05acf7ade04aa2687b";
   const EXPLORER_URL = getAddressUrl(CONTRACT_ADDRESS);
 
   // Helper to get read-only contract (bypasses MetaMask for read operations)

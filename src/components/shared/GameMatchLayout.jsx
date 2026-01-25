@@ -118,18 +118,16 @@ const GameMatchLayout = ({
     timeoutState
   } = match;
 
-  // Swap colors based on firstPlayer for ALL games
-  // This ensures firstPlayer always gets the "first" color in the theme
-  // (e.g., RED for Connect Four, BLUE for Tic Tac Toe, WHITE for Chess)
-  if (firstPlayer && player1 && player2) {
+  // For Connect Four: swap theme colors if player2 is the firstPlayer
+  // This ensures firstPlayer always gets RED card background, other player gets BLUE
+  if (gameType === 'connectfour' && firstPlayer && player1 && player2) {
     const isPlayer1First = firstPlayer.toLowerCase() === player1.toLowerCase();
     if (!isPlayer1First) {
-      // Swap the colors since player2 went first
-      const originalPlayer1Color = theme.player1Color;
+      // Player2 went first, so swap the colors
       theme = {
         ...theme,
-        player1Color: theme.player2Color,
-        player2Color: originalPlayer1Color
+        player1Color: 'neonblue',
+        player2Color: 'neonred'
       };
     }
   }
