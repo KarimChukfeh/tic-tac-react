@@ -360,7 +360,7 @@ export default function TicTacChain() {
   const [leaderboardError, setLeaderboardError] = useState(false);
 
   // Player Activity Hook
-  const playerActivity = usePlayerActivity(contract, account, 'tictactoe', TIER_CONFIG, tierInstances);
+  const playerActivity = usePlayerActivity(contract, account, 'tictactoe', TIER_CONFIG);
 
   // Card Height States (for positioning cards in vertical stack)
   const [gamesCardHeight, setGamesCardHeight] = useState(0);
@@ -1170,29 +1170,15 @@ export default function TicTacChain() {
   const handlePlayerActivityRefresh = useCallback(async () => {
     if (!contract || !account) return;
 
-    console.log('[PlayerActivity Refresh] Triggering fresh multicall for all tiers');
+    console.log('[PlayerActivity Refresh] Refreshing player activity via event-based polling');
 
-    // Get ALL tier IDs from TIER_CONFIG (not just loaded ones)
-    const allTierIds = Object.keys(TIER_CONFIG).map(Number);
-
-    if (allTierIds.length === 0) {
-      console.log('[PlayerActivity Refresh] No tiers configured');
-      return;
-    }
-
-    console.log('[PlayerActivity Refresh] Refreshing all tiers:', allTierIds);
-
-    // Trigger fresh multicall for each tier
-    // fetchTierInstances will call batchFetchTournaments + batchFetchIsEnrolled
-    for (const tierId of allTierIds) {
-      await fetchTierInstances(tierId, contract, account, null, false);
-    }
-
-    console.log('[PlayerActivity Refresh] Multicall refresh complete for all tiers');
-
-    // Trigger player activity data refetch
-    playerActivity.refetch();
-  }, [contract, account, fetchTierInstances, playerActivity]);
+    // Trigger player activity data refetch (which now uses event-based polling)
+    // This will:
+    // 1. Query TournamentEnrolled events for the player
+    // 2. Poll only the tier/instances from those events
+    // 3. Update activity cards based on current state
+    await playerActivity.refetch();
+  }, [contract, account, playerActivity]);
 
   // Handle tournament enrollment
   const handleEnroll = async (tierId, instanceId, entryFee) => {
