@@ -3567,46 +3567,55 @@ export default function ConnectFour() {
             currentRoundNumber={currentMatch.roundNumber}
             playerCount={viewingTournament?.playerCount || null}
             isSpectator={isSpectator}
-            playerConfig={{
-              player1: {
-                icon: (
-                  <svg width="40" height="40" viewBox="0 0 40 40">
-                    <circle
-                      cx="20"
-                      cy="20"
-                      r="18"
-                      fill="url(#magentaGradient)"
-                    />
-                    <defs>
-                      <radialGradient id="magentaGradient" cx="30%" cy="30%">
-                        <stop offset="0%" stopColor="#ff0044" />
-                        <stop offset="100%" stopColor="#bb0033" />
-                      </radialGradient>
-                    </defs>
-                  </svg>
-                ),
-                label: 'Red'
-              },
-              player2: {
-                icon: (
-                  <svg width="40" height="40" viewBox="0 0 40 40">
-                    <circle
-                      cx="20"
-                      cy="20"
-                      r="18"
-                      fill="url(#cyanGradient)"
-                    />
-                    <defs>
-                      <radialGradient id="cyanGradient" cx="30%" cy="30%">
-                        <stop offset="0%" stopColor="#0077ff" />
-                        <stop offset="100%" stopColor="#0055aa" />
-                      </radialGradient>
-                    </defs>
-                  </svg>
-                ),
-                label: 'Blue'
-              }
-            }}
+            playerConfig={(() => {
+              // Determine which player is the first player (RED) and which is second (BLUE)
+              const isPlayer1First = currentMatch.firstPlayer?.toLowerCase() === currentMatch.player1?.toLowerCase();
+
+              const redIcon = (
+                <svg width="40" height="40" viewBox="0 0 40 40">
+                  <circle
+                    cx="20"
+                    cy="20"
+                    r="18"
+                    fill="url(#redGradient)"
+                  />
+                  <defs>
+                    <radialGradient id="redGradient" cx="30%" cy="30%">
+                      <stop offset="0%" stopColor="#ff0044" />
+                      <stop offset="100%" stopColor="#bb0033" />
+                    </radialGradient>
+                  </defs>
+                </svg>
+              );
+
+              const blueIcon = (
+                <svg width="40" height="40" viewBox="0 0 40 40">
+                  <circle
+                    cx="20"
+                    cy="20"
+                    r="18"
+                    fill="url(#blueGradient)"
+                  />
+                  <defs>
+                    <radialGradient id="blueGradient" cx="30%" cy="30%">
+                      <stop offset="0%" stopColor="#0077ff" />
+                      <stop offset="100%" stopColor="#0055aa" />
+                    </radialGradient>
+                  </defs>
+                </svg>
+              );
+
+              return {
+                player1: {
+                  icon: isPlayer1First ? redIcon : blueIcon,
+                  label: isPlayer1First ? 'Red' : 'Blue'
+                },
+                player2: {
+                  icon: isPlayer1First ? blueIcon : redIcon,
+                  label: isPlayer1First ? 'Blue' : 'Red'
+                }
+              };
+            })()}
             layout="players-board-history"
             renderMoveHistory={moveHistory.length > 0 ? () => (
               <div>

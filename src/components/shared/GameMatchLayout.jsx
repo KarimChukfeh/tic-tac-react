@@ -101,11 +101,12 @@ const GameMatchLayout = ({
   // Children = the game board component
   children
 }) => {
-  const theme = GAME_THEMES[gameType] || GAME_THEMES.tictactoe;
+  let theme = GAME_THEMES[gameType] || GAME_THEMES.tictactoe;
 
   const {
     player1,
     player2,
+    firstPlayer,
     currentTurn,
     matchStatus,
     isDraw,
@@ -116,6 +117,22 @@ const GameMatchLayout = ({
     isYourTurn,
     timeoutState
   } = match;
+
+  // Swap colors based on firstPlayer for ALL games
+  // This ensures firstPlayer always gets the "first" color in the theme
+  // (e.g., RED for Connect Four, BLUE for Tic Tac Toe, WHITE for Chess)
+  if (firstPlayer && player1 && player2) {
+    const isPlayer1First = firstPlayer.toLowerCase() === player1.toLowerCase();
+    if (!isPlayer1First) {
+      // Swap the colors since player2 went first
+      const originalPlayer1Color = theme.player1Color;
+      theme = {
+        ...theme,
+        player1Color: theme.player2Color,
+        player2Color: originalPlayer1Color
+      };
+    }
+  }
 
   const isGameOver = matchStatus === 2;
   const zeroAddress = '0x0000000000000000000000000000000000000000';
