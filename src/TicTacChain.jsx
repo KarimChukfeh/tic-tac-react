@@ -3219,10 +3219,21 @@ export default function TicTacChain() {
             onForceEliminate={isSpectator ? null : handleForceEliminateStalledMatch}
             onClaimReplacement={isSpectator ? null : handleClaimMatchSlotByReplacement}
             playerCount={viewingTournament?.playerCount || null}
-            playerConfig={{
-              player1: { icon: 'X', label: 'Player 1' },
-              player2: { icon: 'O', label: 'Player 2' }
-            }}
+            playerConfig={(() => {
+              // Determine which player is the first player (X) and which is second (O)
+              const isPlayer1First = currentMatch.firstPlayer?.toLowerCase() === currentMatch.player1?.toLowerCase();
+
+              return {
+                player1: {
+                  icon: isPlayer1First ? 'X' : 'O',
+                  label: isPlayer1First ? 'Player 1 (X)' : 'Player 1 (O)'
+                },
+                player2: {
+                  icon: isPlayer1First ? 'O' : 'X',
+                  label: isPlayer1First ? 'Player 2 (O)' : 'Player 2 (X)'
+                }
+              };
+            })()}
             layout="players-board-history"
             isSpectator={isSpectator}
             renderMoveHistory={moveHistory.length > 0 ? () => (
@@ -3246,24 +3257,35 @@ export default function TicTacChain() {
             {/* TicTacToe Board Grid */}
             <div className="w-full max-w-md mx-auto">
               <div className="grid grid-cols-3 gap-3">
-                {currentMatch.board.map((cell, idx) => (
-                <button
-                  key={idx}
-                  onClick={isSpectator ? null : () => handleCellClick(idx)}
-                  disabled={isSpectator || matchLoading || currentMatch.matchStatus === 2 || !currentMatch.isYourTurn}
-                  className={`aspect-square rounded-xl flex items-center justify-center text-4xl font-bold transition-all transform hover:scale-105 disabled:cursor-not-allowed ${
-                    cell === 0
+                {(() => {
+                  // Determine which cell value (1 or 2) corresponds to the firstPlayer
+                  // Contract stores: cell = 1 for player1's moves, cell = 2 for player2's moves
+                  // We want: X for firstPlayer's moves, O for second player's moves
+                  const isPlayer1First = currentMatch.firstPlayer?.toLowerCase() === currentMatch.player1?.toLowerCase();
+                  const firstPlayerCellValue = isPlayer1First ? 1 : 2;
+
+                  return currentMatch.board.map((cell, idx) => {
+                    // Determine what to display and color based on firstPlayer
+                    const isFirstPlayerCell = cell === firstPlayerCellValue;
+                    const cellSymbol = cell === 0 ? '' : (isFirstPlayerCell ? 'X' : 'O');
+                    const cellColorClass = cell === 0
                       ? 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-200'
-                      : cell === 1
+                      : isFirstPlayerCell
                       ? 'bg-blue-500/40 text-blue-200'
-                      : 'bg-pink-500/40 text-pink-200'
-                  } ${
-                    ''
-                  }`}
-                >
-                  {cell === 1 ? 'X' : cell === 2 ? 'O' : ''}
-                </button>
-              ))}
+                      : 'bg-pink-500/40 text-pink-200';
+
+                    return (
+                      <button
+                        key={idx}
+                        onClick={isSpectator ? null : () => handleCellClick(idx)}
+                        disabled={isSpectator || matchLoading || currentMatch.matchStatus === 2 || !currentMatch.isYourTurn}
+                        className={`aspect-square rounded-xl flex items-center justify-center text-4xl font-bold transition-all transform hover:scale-105 disabled:cursor-not-allowed ${cellColorClass}`}
+                      >
+                        {cellSymbol}
+                      </button>
+                    );
+                  });
+                })()}
               </div>
             </div>
           </GameMatchLayout>
