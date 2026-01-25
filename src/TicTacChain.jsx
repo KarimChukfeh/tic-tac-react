@@ -2976,8 +2976,8 @@ export default function TicTacChain() {
         </button>
       )}
 
-      {/* Bottom Navigation Bar - Mobile Only (Hidden during match) */}
-      {account && !currentMatch && (
+      {/* Bottom Navigation Bar - Mobile Only */}
+      {account && (
         <div className="fixed bottom-0 left-0 right-0 z-50 md:static md:z-auto">
           {/* Solid background bar on mobile */}
           <div className="md:hidden bg-gradient-to-b from-slate-800 to-slate-900 border-t border-purple-400/30 px-4 py-2.5 flex items-center justify-between">
