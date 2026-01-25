@@ -4381,7 +4381,7 @@ export default function Chess() {
                             ? 'text-amber-300 group-hover:text-amber-200'
                             : 'text-purple-300 group-hover:text-purple-200'
                         }`}>
-                          1v1 Duels
+                          Duels
                         </h2>
                         <p className={`text-sm leading-relaxed ${isEnrolledInElite ? 'text-amber-300/80' : 'text-purple-300/80'}`}>
                           Compete 1v1 against strangers or invite friends to challenge them.

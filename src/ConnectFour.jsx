@@ -3735,7 +3735,7 @@ export default function ConnectFour() {
                     </div>
                   </div>
                   <p className="text-xl text-blue-200">
-                    Compete in on-chain with real ETH stakes
+                    Compete on-chain with real ETH stakes
                   </p>
                 </div>
 
