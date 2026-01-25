@@ -15,6 +15,7 @@ const EliteMatchesCard = ({
   eliteMatches,
   gamesCardHeight = 0,
   playerActivityHeight,
+  recentMatchesCardHeight = 0,
   raffleCardHeight,
   onRefresh,
   syncing,
@@ -107,11 +108,11 @@ const EliteMatchesCard = ({
 
   // Dynamic positioning:
   // Mobile (<768px): Horizontal layout at bottom-left, positioned to the right of CommunityRaffleCard
-  // Desktop (>=768px): Vertical layout at top-left, positioned below both PlayerActivity and CommunityRaffle
+  // Desktop (>=768px): Vertical layout at top-left, positioned below PlayerActivity, RecentMatches, and CommunityRaffle
 
   // Mobile positioning (bottom-left, horizontal)
   // Button size calculation: p-2.5 (10px × 2) + icon (18px) + border-2 (2px × 2) = 42px
-  const MOBILE_LEFT = 132; // 16px (left-4) + 42px (PlayerActivity) + 16px (gap) + 42px (CommunityRaffle) + 16px (gap)
+  const MOBILE_LEFT = 190; // 16px (left-4) + 42px (PlayerActivity) + 16px (gap) + 42px (RecentMatches) + 16px (gap) + 42px (CommunityRaffle) + 16px (gap)
 
   // Desktop positioning (top-left, vertical)
   const BASE_TOP_DESKTOP = 80; // md:top-20 in pixels
@@ -132,6 +133,12 @@ const EliteMatchesCard = ({
     ? playerActivityHeight + SPACING_DESKTOP
     : COLLAPSED_BUTTON_HEIGHT_DESKTOP + SPACING_DESKTOP;
   topPositionDesktop += activityOffset;
+
+  // Add RecentMatches offset
+  const recentMatchesOffset = recentMatchesCardHeight > 0
+    ? recentMatchesCardHeight + SPACING_DESKTOP
+    : COLLAPSED_BUTTON_HEIGHT_DESKTOP + SPACING_DESKTOP;
+  topPositionDesktop += recentMatchesOffset;
 
   // Add CommunityRaffle offset
   const raffleOffset = raffleCardHeight > 0

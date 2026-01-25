@@ -46,6 +46,7 @@ import WhyArbitrum from './components/shared/WhyArbitrum';
 import GameMatchLayout from './components/shared/GameMatchLayout';
 import TournamentHeader from './components/shared/TournamentHeader';
 import PlayerActivity from './components/shared/PlayerActivity';
+import RecentMatchesCard from './components/shared/RecentMatchesCard';
 import CommunityRaffleCard from './components/shared/CommunityRaffleCard';
 import GamesCard from './components/shared/GamesCard';
 import BracketScrollHint from './components/shared/BracketScrollHint';
@@ -734,12 +735,13 @@ export default function ConnectFour() {
   const playerActivity = usePlayerActivity(contract, account, 'connect4', TIER_CONFIG);
   const [gamesCardHeight, setGamesCardHeight] = useState(0);
   const [playerActivityHeight, setPlayerActivityHeight] = useState(0);
+  const [recentMatchesCardHeight, setRecentMatchesCardHeight] = useState(0);
 
   // Player Activity Collapse Function Ref
   const collapseActivityPanelRef = useRef(null);
 
   // Mobile Panel Expansion Coordination (only one panel expanded at a time on mobile)
-  const [expandedPanel, setExpandedPanel] = useState(null); // 'games' | 'playerActivity' | 'communityRaffle' | null
+  const [expandedPanel, setExpandedPanel] = useState(null); // 'games' | 'playerActivity' | 'recentMatches' | 'communityRaffle' | null
 
   // Set page title
   useEffect(() => {
@@ -3361,12 +3363,27 @@ export default function ConnectFour() {
               tierConfig={TIER_CONFIG}
             />
 
+            {/* Recent Matches Card */}
+            <RecentMatchesCard
+              contract={contract}
+              account={account}
+              gameName="connect4"
+              gameEmoji="🔴"
+              gamesCardHeight={gamesCardHeight}
+              playerActivityHeight={playerActivityHeight}
+              onHeightChange={setRecentMatchesCardHeight}
+              isExpanded={expandedPanel === 'recentMatches'}
+              onToggleExpand={() => setExpandedPanel(expandedPanel === 'recentMatches' ? null : 'recentMatches')}
+              tierConfig={TIER_CONFIG}
+            />
+
             {/* Community Raffle Card */}
             <CommunityRaffleCard
               raffleInfo={raffleInfo}
               raffleHistory={raffleHistory}
               gamesCardHeight={gamesCardHeight}
               playerActivityHeight={playerActivityHeight}
+              recentMatchesCardHeight={recentMatchesCardHeight}
               onRefresh={fetchRaffleInfo}
               onFetchHistory={fetchRaffleHistory}
               onTriggerRaffle={executeRaffle}
@@ -3402,6 +3419,21 @@ export default function ConnectFour() {
               onCollapse={(collapseFn) => { collapseActivityPanelRef.current = collapseFn; }}
               isExpanded={expandedPanel === 'playerActivity'}
               onToggleExpand={() => setExpandedPanel(expandedPanel === 'playerActivity' ? null : 'playerActivity')}
+              tierConfig={TIER_CONFIG}
+            />
+
+            {/* Recent Matches Card */}
+            <RecentMatchesCard
+              contract={contract}
+              account={account}
+              gameName="connect4"
+              gameEmoji="🔴"
+              gamesCardHeight={gamesCardHeight}
+              playerActivityHeight={playerActivityHeight}
+              onHeightChange={setRecentMatchesCardHeight}
+              isExpanded={expandedPanel === 'recentMatches'}
+              onToggleExpand={() => setExpandedPanel(expandedPanel === 'recentMatches' ? null : 'recentMatches')}
+              tierConfig={TIER_CONFIG}
             />
 
             <CommunityRaffleCard
@@ -3409,6 +3441,7 @@ export default function ConnectFour() {
               raffleHistory={raffleHistory}
               gamesCardHeight={gamesCardHeight}
               playerActivityHeight={playerActivityHeight}
+              recentMatchesCardHeight={recentMatchesCardHeight}
               onRefresh={fetchRaffleInfo}
               onFetchHistory={fetchRaffleHistory}
               onTriggerRaffle={executeRaffle}

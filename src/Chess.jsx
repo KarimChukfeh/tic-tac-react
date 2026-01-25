@@ -47,6 +47,7 @@ import WhyArbitrum from './components/shared/WhyArbitrum';
 import GameMatchLayout from './components/shared/GameMatchLayout';
 import TournamentHeader from './components/shared/TournamentHeader';
 import PlayerActivity from './components/shared/PlayerActivity';
+import RecentMatchesCard from './components/shared/RecentMatchesCard';
 import CommunityRaffleCard from './components/shared/CommunityRaffleCard';
 import GamesCard from './components/shared/GamesCard';
 import EliteMatchesCard from './components/shared/EliteMatchesCard';
@@ -770,13 +771,14 @@ export default function Chess() {
   const playerActivity = usePlayerActivity(contract, account, 'chess', TIER_CONFIG);
   const [gamesCardHeight, setGamesCardHeight] = useState(0);
   const [playerActivityHeight, setPlayerActivityHeight] = useState(0);
+  const [recentMatchesCardHeight, setRecentMatchesCardHeight] = useState(0);
   const [raffleCardHeight, setRaffleCardHeight] = useState(0);
 
   // Player Activity Collapse Function Ref
   const collapseActivityPanelRef = useRef(null);
 
   // Mobile Panel Expansion Coordination (only one panel expanded at a time on mobile)
-  const [expandedPanel, setExpandedPanel] = useState(null); // 'games' | 'playerActivity' | 'communityRaffle' | 'eliteMatches' | null
+  const [expandedPanel, setExpandedPanel] = useState(null); // 'games' | 'playerActivity' | 'recentMatches' | 'communityRaffle' | 'eliteMatches' | null
 
   // Set page title
   useEffect(() => {
@@ -3803,12 +3805,28 @@ export default function Chess() {
               tierConfig={TIER_CONFIG}
             />
 
+            {/* Recent Matches Card */}
+            <RecentMatchesCard
+              contract={contract}
+              account={account}
+              gameName="chess"
+              gameEmoji="♚"
+              gamesCardHeight={gamesCardHeight}
+              playerActivityHeight={playerActivityHeight}
+              onHeightChange={setRecentMatchesCardHeight}
+              isExpanded={expandedPanel === 'recentMatches'}
+              onToggleExpand={() => setExpandedPanel(expandedPanel === 'recentMatches' ? null : 'recentMatches')}
+              tierConfig={TIER_CONFIG}
+              isElite={isEnrolledInElite}
+            />
+
             {/* Community Raffle Card */}
             <CommunityRaffleCard
               raffleInfo={raffleInfo}
               raffleHistory={raffleHistory}
               gamesCardHeight={gamesCardHeight}
               playerActivityHeight={playerActivityHeight}
+              recentMatchesCardHeight={recentMatchesCardHeight}
               onRefresh={fetchRaffleInfo}
               onFetchHistory={fetchRaffleHistory}
               onTriggerRaffle={executeRaffle}
@@ -3823,6 +3841,7 @@ export default function Chess() {
               eliteMatches={eliteMatches}
               gamesCardHeight={gamesCardHeight}
               playerActivityHeight={playerActivityHeight}
+              recentMatchesCardHeight={recentMatchesCardHeight}
               raffleCardHeight={raffleCardHeight}
               onRefresh={fetchEliteMatches}
               syncing={eliteMatchesSyncing}
@@ -3863,11 +3882,26 @@ export default function Chess() {
               tierConfig={TIER_CONFIG}
             />
 
+            <RecentMatchesCard
+              contract={contract}
+              account={account}
+              gameName="chess"
+              gameEmoji="♚"
+              gamesCardHeight={gamesCardHeight}
+              playerActivityHeight={playerActivityHeight}
+              onHeightChange={setRecentMatchesCardHeight}
+              isExpanded={expandedPanel === 'recentMatches'}
+              onToggleExpand={() => setExpandedPanel(expandedPanel === 'recentMatches' ? null : 'recentMatches')}
+              tierConfig={TIER_CONFIG}
+              isElite={isEnrolledInElite}
+            />
+
             <CommunityRaffleCard
               raffleInfo={raffleInfo}
               raffleHistory={raffleHistory}
               gamesCardHeight={gamesCardHeight}
               playerActivityHeight={playerActivityHeight}
+              recentMatchesCardHeight={recentMatchesCardHeight}
               onRefresh={fetchRaffleInfo}
               onFetchHistory={fetchRaffleHistory}
               onTriggerRaffle={executeRaffle}
@@ -3881,6 +3915,7 @@ export default function Chess() {
               eliteMatches={eliteMatches}
               gamesCardHeight={gamesCardHeight}
               playerActivityHeight={playerActivityHeight}
+              recentMatchesCardHeight={recentMatchesCardHeight}
               raffleCardHeight={raffleCardHeight}
               onRefresh={fetchEliteMatches}
               syncing={eliteMatchesSyncing}

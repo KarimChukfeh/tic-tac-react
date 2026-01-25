@@ -15,6 +15,7 @@ const CommunityRaffleCard = ({
   raffleHistory = [],
   gamesCardHeight = 0,
   playerActivityHeight,
+  recentMatchesCardHeight = 0,
   onRefresh,
   onFetchHistory,
   onTriggerRaffle,
@@ -140,6 +141,13 @@ const CommunityRaffleCard = ({
   // Add PlayerActivity height (or collapsed height if not expanded)
   if (playerActivityHeight > 0) {
     topPositionDesktop += playerActivityHeight + SPACING_DESKTOP;
+  } else {
+    topPositionDesktop += COLLAPSED_BUTTON_HEIGHT_DESKTOP + SPACING_DESKTOP;
+  }
+
+  // Add RecentMatchesCard height (or collapsed height if not expanded)
+  if (recentMatchesCardHeight > 0) {
+    topPositionDesktop += recentMatchesCardHeight + SPACING_DESKTOP;
   } else {
     topPositionDesktop += COLLAPSED_BUTTON_HEIGHT_DESKTOP + SPACING_DESKTOP;
   }
