@@ -95,6 +95,10 @@ const PlayerPanel = ({
   const colors = COLOR_CONFIGS[colorScheme] || COLOR_CONFIGS.blue;
   const isYou = currentAccount && playerAddress?.toLowerCase() === currentAccount.toLowerCase();
 
+  // Check if icon is a chess piece and convert to SVG
+  const isChessPiece = icon === '♚' || icon === '♔';
+  const chessIconSvg = isChessPiece ? (icon === '♚' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg') : null;
+
   if (variant === 'mobile-compact') {
     // Mobile-compact variant for ultra-compact mobile layouts (~60px height)
     return (
@@ -105,11 +109,15 @@ const PlayerPanel = ({
           ? 'border-yellow-400 bg-yellow-500/10 ring-1 ring-yellow-400/20'
           : `${colors.border} ${colors.bg}`
       }`}>
-        <div className={`w-8 h-8 ${colors.iconBg} rounded-full flex items-center justify-center text-lg font-bold border ${
-          isCurrentTurn && !isGameOver ? 'border-green-400' : colors.border
-        }`}>
-          {icon}
-        </div>
+        {isChessPiece ? (
+          <img src={chessIconSvg} alt={label} className="w-10 h-10" draggable="false" />
+        ) : (
+          <div className={`w-8 h-8 ${colors.iconBg} rounded-full flex items-center justify-center text-lg font-bold border ${
+            isCurrentTurn && !isGameOver ? 'border-green-400' : colors.border
+          }`}>
+            {icon}
+          </div>
+        )}
         <div className="flex-1 min-w-0">
           <div className="text-xs text-gray-400">{label}</div>
           <div className="font-mono text-xs truncate">{shortenAddress(playerAddress)}</div>
@@ -136,7 +144,11 @@ const PlayerPanel = ({
           </div>
         )}
         <div className="flex items-center gap-2">
-          <span className="text-2xl">{icon}</span>
+          {isChessPiece ? (
+            <img src={chessIconSvg} alt={label} className="w-10 h-10" draggable="false" />
+          ) : (
+            <span className="text-2xl">{icon}</span>
+          )}
           <div className="flex-1">
             <div className="text-xs text-gray-400">{label}</div>
             <div className="font-mono text-xs">{shortenAddress(playerAddress)}</div>
@@ -169,15 +181,19 @@ const PlayerPanel = ({
         </div>
       )}
       <div className="flex items-center gap-3 mb-4">
-        <div className={`w-12 h-12 ${colors.iconBg} rounded-full flex items-center justify-center text-2xl font-bold border-2 ${
-          isCurrentTurn && !isGameOver
-            ? 'border-green-400 shadow-lg shadow-green-400/50'
-            : isYou
-            ? 'border-yellow-400 shadow-lg shadow-yellow-400/50'
-            : colors.border
-        }`}>
-          {icon}
-        </div>
+        {isChessPiece ? (
+          <img src={chessIconSvg} alt={label} className="w-16 h-16" draggable="false" />
+        ) : (
+          <div className={`w-12 h-12 ${colors.iconBg} rounded-full flex items-center justify-center text-2xl font-bold border-2 ${
+            isCurrentTurn && !isGameOver
+              ? 'border-green-400 shadow-lg shadow-green-400/50'
+              : isYou
+              ? 'border-yellow-400 shadow-lg shadow-yellow-400/50'
+              : colors.border
+          }`}>
+            {icon}
+          </div>
+        )}
         <div>
           <h3 className="text-xl font-bold text-white">{label}</h3>
           <p className={`${colors.text} font-mono text-sm`}>

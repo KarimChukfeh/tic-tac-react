@@ -1333,9 +1333,8 @@ const PlayerActivity = ({
 
                                   {gameName === 'chess' && (() => {
                                     const board = unpackBoard(match.board, 'chess');
-                                    // Map pieceType (1-6) to symbols
-                                    const whitePieceSymbols = ['', '♙', '♘', '♗', '♖', '♕', '♔']; // index 0 unused, 1-6 for pawn-king
-                                    const blackPieceSymbols = ['', '♟', '♞', '♝', '♜', '♛', '♚']; // index 0 unused, 1-6 for pawn-king
+                                    // Map pieceType (1-6) to SVG filenames
+                                    const pieceTypes = ['', 'pawn', 'knight', 'bishop', 'rook', 'queen', 'king'];
 
                                     // Flip board based on player perspective
                                     // Board array: indices 0-7 = rank 1 (White's back rank), indices 56-63 = rank 8 (Black's back rank)
@@ -1360,29 +1359,22 @@ const PlayerActivity = ({
                                             const col = actualIdx % 8;
                                             const isLight = (row + col) % 2 === 0;
 
-                                            // Get the appropriate symbol based on color and pieceType
-                                            let symbol = '';
-                                            let textColor = '';
+                                            // Get the appropriate SVG path based on color and pieceType
+                                            let svgPath = '';
                                             if (actualCell.pieceType > 0) {
-                                              if (actualCell.color === 1) {
-                                                // White piece
-                                                symbol = whitePieceSymbols[actualCell.pieceType] || '';
-                                                textColor = 'text-white drop-shadow-[0_0_3px_rgba(0,0,0,0.8)]';
-                                              } else if (actualCell.color === 2) {
-                                                // Black piece
-                                                symbol = blackPieceSymbols[actualCell.pieceType] || '';
-                                                textColor = 'text-black drop-shadow-[0_0_3px_rgba(255,255,255,0.6)]';
-                                              }
+                                              const pieceName = pieceTypes[actualCell.pieceType];
+                                              const colorSuffix = actualCell.color === 1 ? 'w' : 'b';
+                                              svgPath = `/chess-pieces/${pieceName}-${colorSuffix}.svg`;
                                             }
 
                                             return (
                                               <div
                                                 key={idx}
-                                                className={`aspect-square flex items-center justify-center text-2xl ${
+                                                className={`aspect-square flex items-center justify-center p-1 ${
                                                   isLight ? 'bg-amber-200/20' : 'bg-amber-900/20'
-                                                } ${textColor}`}
+                                                }`}
                                               >
-                                                {symbol}
+                                                {svgPath && <img src={svgPath} alt="" className="w-full h-full" draggable="false" />}
                                               </div>
                                             );
                                           })}
@@ -1442,9 +1434,18 @@ const PlayerActivity = ({
                                             className="flex items-center gap-2 text-xs bg-slate-800/30 rounded px-2 py-1"
                                           >
                                             <span className="text-slate-500 font-mono w-6">{idx + 1}.</span>
-                                            <span className="font-bold w-6 text-center">
-                                              {move.player}
-                                            </span>
+                                            <div className="w-6 h-6 flex items-center justify-center">
+                                              {gameName === 'chess' ? (
+                                                <img
+                                                  src={move.player === '♚' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
+                                                  alt={move.player === '♚' ? 'White' : 'Black'}
+                                                  className="w-5 h-5"
+                                                  draggable="false"
+                                                />
+                                              ) : (
+                                                <span className="font-bold text-center">{move.player}</span>
+                                              )}
+                                            </div>
                                             <span className="text-slate-300 flex-1">
                                               {gameName === 'chess' && move.move}
                                               {gameName === 'tictactoe' && `Cell ${move.cell}`}

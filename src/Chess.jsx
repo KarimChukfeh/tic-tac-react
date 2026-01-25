@@ -57,11 +57,10 @@ import { usePlayerActivity } from './hooks/usePlayerActivity';
 // Chess piece symbols for particles
 const CHESS_PIECES = ['♔', '♕', '♖', '♗', '♘', '♙', '♚', '♛', '♜', '♝', '♞', '♟'];
 
-// Chess piece symbols for board display
-// Use outline pieces for white, filled pieces for black
-const PIECE_SYMBOLS = {
-  white: { pawn: '♙', knight: '♘', bishop: '♗', rook: '♖', queen: '♕', king: '♔' },  // Outline/white Unicode symbols
-  black: { pawn: '♟', knight: '♞', bishop: '♝', rook: '♜', queen: '♛', king: '♚' }   // Filled/black Unicode symbols
+// Chess piece SVG paths for board display
+const PIECE_SVGS = {
+  white: { pawn: 'pawn-w', knight: 'knight-w', bishop: 'bishop-w', rook: 'rook-w', queen: 'queen-w', king: 'king-w' },
+  black: { pawn: 'pawn-b', knight: 'knight-b', bishop: 'bishop-b', rook: 'rook-b', queen: 'queen-b', king: 'king-b' }
 };
 
 const PIECE_TYPES = ['', 'pawn', 'knight', 'bishop', 'rook', 'queen', 'king'];
@@ -174,14 +173,15 @@ const TIER_CONFIG = {
   }
 };
 
-// Get piece symbol from contract piece data
-const getPieceSymbol = (piece) => {
+// Get piece SVG path from contract piece data
+const getPieceSvg = (piece) => {
   if (!piece) return '';
   const pieceType = Number(piece.pieceType);
   const pieceColor = Number(piece.color);
   if (pieceType === 0) return '';
   const color = pieceColor === 1 ? 'white' : 'black';
-  return PIECE_SYMBOLS[color][PIECE_TYPES[pieceType]] || '';
+  const svgName = PIECE_SVGS[color][PIECE_TYPES[pieceType]];
+  return svgName ? `/chess-pieces/${svgName}.svg` : '';
 };
 
 // Tournament Bracket Component
@@ -645,7 +645,7 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
       };
 
       squares.push(<div key={displayIdx} onClick={() => handleSquareClick(displayIdx)} className={'relative flex items-center justify-center cursor-pointer transition-all duration-200 ' + (isLight ? 'bg-stone-300' : 'bg-stone-700') + (isSelected ? ' ring-2 ring-emerald-400 ring-inset bg-emerald-500/50' : '') + (isKingInCheck ? ' bg-red-500/50 ring-2 ring-red-400 ring-inset' : '') + ' ' + getLastMoveFromClass() + ' ' + getLastMoveToClass() + (isMyTurn && isMyPiece(piece) && !isSelected ? ' hover:bg-emerald-500/30' : '') + (isMyTurn && isPotentialTarget ? ' hover:bg-yellow-400/40' : '')} style={{ boxShadow: isSelected ? 'inset 0 0 20px rgba(16, 185, 129, 0.5)' : getLastMoveShadow(), background: getSquareBg() }}>
-        <span className={'text-3xl md:text-4xl lg:text-5xl select-none transition-all duration-300 ' + (isSelected ? 'scale-110' : '') + ' ' + (pieceColor === 1 ? 'text-white' : 'text-gray-900')} style={{ opacity: hideForAnimation ? 0 : 1, textShadow: pieceColor === 1 ? '0 2px 4px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.7)' : '0 1px 2px rgba(255,255,255,0.8)', filter: getPieceGlow() }}>{getPieceSymbol(piece)}</span>
+        {getPieceSvg(piece) && <img src={getPieceSvg(piece)} alt="" className={'w-3/4 h-3/4 select-none transition-all duration-300 ' + (isSelected ? 'scale-110' : '')} style={{ opacity: hideForAnimation ? 0 : 1, filter: getPieceGlow() }} draggable="false" />}
         {showRankLabel && <span className={'absolute left-1 top-0.5 text-[10px] font-medium ' + (isLight ? 'text-slate-500' : 'text-slate-600')}>{rankLabel}</span>}
         {showFileLabel && <span className={'absolute right-1 bottom-0.5 text-[10px] font-medium ' + (isLight ? 'text-slate-500' : 'text-slate-600')}>{fileLabel}</span>}
       </div>);
@@ -666,7 +666,7 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
     // return (<div className="absolute pointer-events-none z-20" style={{ width: squareSize, height: squareSize, transform: 'translate(' + (toPos.col * squareSize) + 'px, ' + (toPos.row * squareSize) + 'px)' }}><div className="w-full h-full flex items-center justify-center" style={{ '--from-x': ((fromPos.col - toPos.col) * squareSize) + 'px', '--from-y': ((fromPos.row - toPos.row) * squareSize) + 'px' }}><span className={'text-3xl md:text-4xl lg:text-5xl select-none ' + (pieceColor === 1 ? 'text-white' : 'text-gray-900')} style={{ transform: 'translate(var(--from-x), var(--from-y))', animation: 'pieceMove 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards', textShadow: pieceColor === 1 ? '0 2px 4px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.7)' : '0 1px 2px rgba(255,255,255,0.8)' }}>{getPieceSymbol(animatingMove.piece)}</span></div></div>);
   };
 
-  return (<div className="relative flex flex-col items-center"><div ref={containerRef} className="w-full flex justify-center"><div className="relative rounded-xl overflow-hidden" style={{ width: boardSize || 400, height: boardSize || 400, minWidth: 280, minHeight: 280, background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.9))', border: '1px solid rgba(148, 163, 184, 0.2)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(6, 182, 212, 0.1), inset 0 1px 0 rgba(255,255,255,0.05)' }}><div className="grid gap-0 w-full h-full" style={{ gridTemplateColumns: 'repeat(8, 1fr)', gridTemplateRows: 'repeat(8, 1fr)' }}>{renderBoard()}</div>{renderAnimatedPiece()}</div></div><style>{'@keyframes pieceMove { 0% { transform: translate(var(--from-x), var(--from-y)) scale(1); } 50% { transform: translate(calc(var(--from-x) * 0.3), calc(var(--from-y) * 0.3)) scale(1.15); } 100% { transform: translate(0, 0) scale(1); } }'}</style>{promotionSquare !== null && (<div className="absolute inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center rounded-xl"><div className="p-6 rounded-2xl" style={{ background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.95))', border: '1px solid rgba(168, 85, 247, 0.4)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 30px rgba(168, 85, 247, 0.2)' }}><h3 className="text-slate-100 font-bold text-lg mb-4 text-center">Promote Pawn</h3><div className="flex gap-3">{[5, 4, 3, 2].map((pt) => (<button key={pt} onClick={() => handlePromotion(pt)} className="w-14 h-14 md:w-16 md:h-16 rounded-xl flex items-center justify-center text-3xl md:text-4xl transition-all duration-200 hover:scale-110" style={{ background: 'rgba(51, 65, 85, 0.6)', border: '1px solid rgba(148, 163, 184, 0.3)' }} onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(6, 182, 212, 0.2)'; e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.5)'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(51, 65, 85, 0.6)'; e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.3)'; }}><span className={isWhite ? 'text-white' : 'text-gray-900'} style={{ textShadow: isWhite ? '0 2px 4px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.7)' : '0 1px 2px rgba(255,255,255,0.8)' }}>{PIECE_SYMBOLS[isWhite ? 'white' : 'black'][PIECE_TYPES[pt]]}</span></button>))}</div></div></div>)}{(whiteInCheck || blackInCheck) && matchStatus === 1 && (<div className="mt-3 text-center py-2 px-6 rounded-full text-red-300 font-semibold text-sm animate-pulse" style={{ ...(boardSize ? { width: boardSize } : { maxWidth: '100%' }), background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.4)', boxShadow: '0 0 20px rgba(239, 68, 68, 0.2)' }}>{whiteInCheck ? 'White' : 'Black'} King in Check</div>)}</div>);
+  return (<div className="relative flex flex-col items-center"><div ref={containerRef} className="w-full flex justify-center"><div className="relative rounded-xl overflow-hidden" style={{ width: boardSize || 400, height: boardSize || 400, minWidth: 280, minHeight: 280, background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.9))', border: '1px solid rgba(148, 163, 184, 0.2)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(6, 182, 212, 0.1), inset 0 1px 0 rgba(255,255,255,0.05)' }}><div className="grid gap-0 w-full h-full" style={{ gridTemplateColumns: 'repeat(8, 1fr)', gridTemplateRows: 'repeat(8, 1fr)' }}>{renderBoard()}</div>{renderAnimatedPiece()}</div></div><style>{'@keyframes pieceMove { 0% { transform: translate(var(--from-x), var(--from-y)) scale(1); } 50% { transform: translate(calc(var(--from-x) * 0.3), calc(var(--from-y) * 0.3)) scale(1.15); } 100% { transform: translate(0, 0) scale(1); } }'}</style>{promotionSquare !== null && (<div className="absolute inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center rounded-xl"><div className="p-6 rounded-2xl" style={{ background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.95))', border: '1px solid rgba(168, 85, 247, 0.4)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 30px rgba(168, 85, 247, 0.2)' }}><h3 className="text-slate-100 font-bold text-lg mb-4 text-center">Promote Pawn</h3><div className="flex gap-3">{[5, 4, 3, 2].map((pt) => (<button key={pt} onClick={() => handlePromotion(pt)} className="w-14 h-14 md:w-16 md:h-16 rounded-xl flex items-center justify-center text-3xl md:text-4xl transition-all duration-200 hover:scale-110" style={{ background: 'rgba(51, 65, 85, 0.6)', border: '1px solid rgba(148, 163, 184, 0.3)' }} onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(6, 182, 212, 0.2)'; e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.5)'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(51, 65, 85, 0.6)'; e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.3)'; }}><img src={`/chess-pieces/${PIECE_TYPES[pt]}-${isWhite ? 'w' : 'b'}.svg`} alt={PIECE_TYPES[pt]} className="w-full h-full" draggable="false" /></button>))}</div></div></div>)}{(whiteInCheck || blackInCheck) && matchStatus === 1 && (<div className="mt-3 text-center py-2 px-6 rounded-full text-red-300 font-semibold text-sm animate-pulse" style={{ ...(boardSize ? { width: boardSize } : { maxWidth: '100%' }), background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.4)', boxShadow: '0 0 20px rgba(239, 68, 68, 0.2)' }}>{whiteInCheck ? 'White' : 'Black'} King in Check</div>)}</div>);
 };
 
 
@@ -4146,7 +4146,14 @@ export default function Chess() {
                     {moveHistory.map((move, idx) => (
                       <div key={idx} className="flex items-center gap-3 text-sm bg-purple-500/10 p-3 rounded-lg hover:bg-purple-500/20 transition-colors">
                         <span className="text-purple-300 font-semibold min-w-[2rem]">#{idx + 1}</span>
-                        <span className="text-white font-bold text-lg">{move.player}</span>
+                        <div className="w-8 h-8 flex items-center justify-center">
+                          <img
+                            src={move.player === '♚' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
+                            alt={move.player === '♚' ? 'White' : 'Black'}
+                            className="w-7 h-7"
+                            draggable="false"
+                          />
+                        </div>
                         <span className="text-purple-200 font-mono">{move.move}</span>
                       </div>
                     ))}
@@ -4206,7 +4213,14 @@ export default function Chess() {
                   {moveHistory.map((move, idx) => (
                     <div key={idx} className="flex items-center gap-3 text-sm bg-purple-500/10 p-3 rounded-lg hover:bg-purple-500/20 transition-colors">
                       <span className="text-purple-300 font-semibold min-w-[2rem]">#{idx + 1}</span>
-                      <span className="text-white font-bold text-lg">{move.player}</span>
+                      <div className="w-8 h-8 flex items-center justify-center">
+                        <img
+                          src={move.player === '♔' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
+                          alt={move.player === '♔' ? 'White' : 'Black'}
+                          className="w-7 h-7"
+                          draggable="false"
+                        />
+                      </div>
                       <span className="text-purple-200 font-mono">{move.move}</span>
                     </div>
                   ))}
