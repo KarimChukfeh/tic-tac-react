@@ -1905,7 +1905,7 @@ export default function TicTacChain() {
       const tierMatchTime = timeoutConfig?.matchTimePerPlayer ?? totalMatchTime;
 
       const {
-        player1, player2, currentTurn, winner, loser, board, matchStatus, isDraw,
+        player1, player2, firstPlayer, currentTurn, winner, loser, board, matchStatus, isDraw,
         startTime, lastMoveTime, lastMoveTimestamp
       } = parsedMatch;
 
@@ -2154,6 +2154,7 @@ export default function TicTacChain() {
         ...matchInfo,
         player1: actualPlayer1,
         player2: actualPlayer2,
+        firstPlayer,
         currentTurn,
         winner,
         loser,
