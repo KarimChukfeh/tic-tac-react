@@ -16,6 +16,7 @@ const CommunityRaffleCard = ({
   gamesCardHeight = 0,
   playerActivityHeight,
   onRefresh,
+  onFetchHistory,
   onTriggerRaffle,
   syncing,
   onHeightChange,
@@ -25,6 +26,7 @@ const CommunityRaffleCard = ({
 }) => {
   const [internalIsExpanded, setInternalIsExpanded] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
+  const [historyFetched, setHistoryFetched] = useState(false);
   const expandedPanelRef = useRef(null);
 
   // Use external state if provided, otherwise use internal state
@@ -76,6 +78,20 @@ const CommunityRaffleCard = ({
       onHeightChange(0);
     }
   }, [isExpanded, raffleInfo, onHeightChange]);
+
+  // Fetch raffle info when card is expanded
+  useEffect(() => {
+    if (isExpanded) {
+      if (onRefresh) {
+        onRefresh();
+      }
+      // Fetch history on first expansion only
+      if (!historyFetched && onFetchHistory) {
+        onFetchHistory();
+        setHistoryFetched(true);
+      }
+    }
+  }, [isExpanded, onRefresh, onFetchHistory, historyFetched]);
 
   const thresholdETH = parseFloat(ethers.formatEther(raffleInfo.threshold || 0n));
   const currentETH = parseFloat(ethers.formatEther(raffleInfo.currentAccumulated || 0n));

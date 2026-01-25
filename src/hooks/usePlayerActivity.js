@@ -2,14 +2,18 @@
  * usePlayerActivity Hook
  *
  * Custom hook for fetching player activity for a single game
- * Calls a contract function that returns active matches, in-progress tournaments,
- * and unfilled tournaments for the player
+ * Uses event-based polling to efficiently track player enrollments
  *
- * TODO: Update to call the new contract function once it's deployed
+ * Approach:
+ * - Every 5 seconds, query TournamentEnrolled events for the player (last 6 hours)
+ * - Use event results to identify which tier/instance combinations to poll
+ * - Only query contract state for tournaments the player has enrolled in
+ * - Much more efficient than polling all tier instances
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { parseTicTacToeMatch, parseChessMatch, parseConnectFourMatch } from '../utils/matchDataParser';
+import { queryPlayerEnrollmentEvents, queryTournamentStates } from '../utils/eventHelpers';
 
 /**
  * Custom hook to fetch player activity for a single game
@@ -34,6 +38,23 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
   const [dismissedMatches, setDismissedMatches] = useState(new Set());
   // Track match keys that were previously active (to preserve them when contract data gets cleared)
   const previousActiveMatchesRef = useRef(new Set());
+  // Track player's enrolled tier/instances from events
+  const [playerEnrollments, setPlayerEnrollments] = useState([]);
+
+  // Query player enrollment events to get tier/instance combinations
+  const fetchPlayerEnrollments = useCallback(async () => {
+    if (!contract || !account) return;
+
+    try {
+      console.log('[PlayerActivity] Querying TournamentEnrolled events for', account);
+      const enrollments = await queryPlayerEnrollmentEvents(contract, account, 6); // Last 6 hours
+      setPlayerEnrollments(enrollments);
+      console.log('[PlayerActivity] Found', enrollments.length, 'unique enrollments');
+    } catch (err) {
+      console.error('[PlayerActivity] Error querying enrollment events:', err);
+      // Don't update playerEnrollments on error - keep previous state
+    }
+  }, [contract, account]);
 
   const fetchActivity = useCallback(async (isInitialLoad = false) => {
     // Don't fetch if contract or account not available
@@ -47,6 +68,14 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
         terminatedMatches: [],
         totalEarnings: 0n,
       });
+      return;
+    }
+
+    // If no enrollments found yet, query them first
+    if (playerEnrollments.length === 0 && !isInitialLoad) {
+      console.log('[PlayerActivity] No enrollments cached, fetching first');
+      await fetchPlayerEnrollments();
+      // Will trigger re-render and fetchActivity will be called again with enrollments
       return;
     }
 
@@ -71,6 +100,7 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
       setError(null);
 
       console.log('[PlayerActivity] Fetching activity for', gameName, 'account:', account);
+      console.log('[PlayerActivity] Using', playerEnrollments.length, 'enrollments from events');
 
       // Step 1: Get player stats (total earnings)
       let totalEarnings = 0n;
@@ -80,75 +110,69 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
         console.warn('[PlayerActivity] Could not fetch player earnings:', err);
       }
 
-      // Step 2: Get enrolling tournaments (unfilled)
-      const enrollingTournaments = await contract.getPlayerEnrollingTournaments(account);
-      console.log('[PlayerActivity] Raw enrollingTournaments from contract:',
-        enrollingTournaments.map(ref => ({
-          tierId: Number(ref.tierId),
-          instanceId: Number(ref.instanceId)
-        }))
-      );
+      // Step 2: Query tournament states for player's enrollments
+      // This replaces the old approach of polling ALL tier instances
+      let tournamentStates = {};
+      if (playerEnrollments.length > 0) {
+        tournamentStates = await queryTournamentStates(contract, playerEnrollments);
+      } else {
+        console.log('[PlayerActivity] No enrollments to query, skipping tournament state check');
+      }
 
-      const unfilledTournaments = await Promise.all(
-        enrollingTournaments.map(async (ref) => {
-          // getTournamentInfo returns: (status, currentRound, enrolledCount, prizePool, winner)
-          const tournamentInfo = await contract.getTournamentInfo(ref.tierId, ref.instanceId);
-          const enrolledCount = Number(tournamentInfo[2]); // enrolledCount at index 2
+      // Step 3: Categorize tournaments by status
+      const unfilledTournaments = [];
+      const activeTournaments = [];
 
-          // Get player count from tierConfig if provided, otherwise try contract
-          let playerCount;
-          if (tierConfig && tierConfig[ref.tierId]) {
-            playerCount = tierConfig[ref.tierId].playerCount;
-          } else {
-            try {
-              const config = await contract.getTierConfig(ref.tierId);
-              playerCount = Number(config.playerCount);
-            } catch (err) {
-              console.warn(`[PlayerActivity] Could not fetch tier ${ref.tierId} config:`, err);
-              playerCount = 2; // Default fallback
-            }
-          }
+      // For each enrollment, check if we need to also verify isEnrolled
+      // Note: The events tell us the player enrolled, but they might have been eliminated/completed
+      // We'll check the enrollment status for active tournaments
+      const enrollmentCheckPromises = [];
 
-          return {
-            tierId: Number(ref.tierId),
-            instanceId: Number(ref.instanceId),
-            enrolledCount,
-            playerCount,
-          };
-        })
-      );
+      for (const [tierId, instances] of Object.entries(tournamentStates)) {
+        for (const instance of instances) {
+          // Check if player is still enrolled (for filtering)
+          enrollmentCheckPromises.push(
+            contract.isEnrolled(instance.tierId, instance.instanceId, account)
+              .then(isEnrolled => ({ ...instance, isEnrolled }))
+              .catch(() => ({ ...instance, isEnrolled: false }))
+          );
+        }
+      }
 
-      // Step 3: Get active tournaments
-      const activeTournaments = await contract.getPlayerActiveTournaments(account);
-      console.log('[PlayerActivity] Raw activeTournaments from contract:',
-        activeTournaments.map(ref => ({
-          tierId: Number(ref.tierId),
-          instanceId: Number(ref.instanceId)
-        }))
-      );
+      const instancesWithEnrollment = await Promise.all(enrollmentCheckPromises);
+
+      // Categorize tournaments
+      for (const instance of instancesWithEnrollment) {
+        if (instance.status === 0 && instance.isEnrolled) {
+          // Enrolling tournament
+          const tierPlayerCount = tierConfig?.[instance.tierId]?.playerCount || 8;
+          unfilledTournaments.push({
+            tierId: instance.tierId,
+            instanceId: instance.instanceId,
+            enrolledCount: instance.enrolledCount,
+            playerCount: tierPlayerCount,
+          });
+        } else if ((instance.status === 1 || instance.status === 2) && instance.isEnrolled) {
+          // Active or completed tournament
+          activeTournaments.push({
+            tierId: instance.tierId,
+            instanceId: instance.instanceId,
+            tournamentStatus: instance.status,
+            currentRound: instance.currentRound,
+            enrolledCount: instance.enrolledCount
+          });
+        }
+      }
+
+      console.log('[PlayerActivity] Enrolling tournaments:', unfilledTournaments.length);
+      console.log('[PlayerActivity] Active/completed tournaments:', activeTournaments.length);
 
       const activeMatches = [];
       const inProgressTournaments = [];
       const terminatedMatches = [];
 
-      // OPTIMIZATION: Step 4 - Fetch all tournament info in parallel first
-      const tournamentInfoPromises = activeTournaments.map(async (ref) => {
-        const tierId = Number(ref.tierId);
-        const instanceId = Number(ref.instanceId);
-        const tournamentInfo = await contract.getTournamentInfo(tierId, instanceId);
-        return {
-          tierId,
-          instanceId,
-          tournamentStatus: Number(tournamentInfo[0]),
-          currentRound: Number(tournamentInfo[1]),
-          enrolledCount: Number(tournamentInfo[2])
-        };
-      });
-
-      const tournamentsData = await Promise.all(tournamentInfoPromises);
-
-      // Step 5: Process each tournament
-      for (const { tierId, instanceId, tournamentStatus, currentRound, enrolledCount } of tournamentsData) {
+      // Step 4: Process each active/completed tournament
+      for (const { tierId, instanceId, tournamentStatus, currentRound, enrolledCount } of activeTournaments) {
 
         console.log(`[PlayerActivity] Processing tournament T${tierId}I${instanceId}:`, {
           status: tournamentStatus,
@@ -477,61 +501,33 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
       setLoading(false);
       setSyncing(false);
     }
-  }, [contract, account, gameName, tierConfig, dismissedMatches]);
+  }, [contract, account, gameName, tierConfig, playerEnrollments, dismissedMatches, fetchPlayerEnrollments]);
 
-  // Initial fetch
-  useEffect(() => {
-    fetchActivity(true);
-  }, [fetchActivity]);
-
-  // Set up 30-second polling interval
-  // COMMENTED OUT: Auto-refresh disabled for now
-  // useEffect(() => {
-  //   if (!contract || !account) return;
-
-  //   const interval = setInterval(() => {
-  //     fetchActivity(false);
-  //   }, 30000); // 30 seconds
-
-  //   return () => clearInterval(interval);
-  // }, [contract, account, fetchActivity]);
-
-  // Listen for MatchCompleted events for instant updates (filtered to player's matches only)
+  // Set up 5-second polling interval for enrollment events
   useEffect(() => {
     if (!contract || !account) return;
 
-    // Handler for any MatchCompleted event
-    const handleMatchCompleted = (matchId, player1, player2, winner, isDraw, reason, _board) => {
-      console.log('[PlayerActivity] MatchCompleted event received:', {
-        matchId,
-        player1,
-        player2,
-        winner,
-        isDraw,
-        reason: Number(reason)
-      });
+    // Initial fetch
+    fetchPlayerEnrollments();
 
-      // Trigger a refetch to update the player's active matches
-      fetchActivity(false);
-    };
+    // Poll every 5 seconds
+    const interval = setInterval(() => {
+      fetchPlayerEnrollments();
+    }, 5000); // 5 seconds
 
-    // Register filtered event listeners - only listen to events where player is involved
-    // Filter 1: Player is player1
-    const filterAsPlayer1 = contract.filters.MatchCompleted(null, account, null);
-    // Filter 2: Player is player2
-    const filterAsPlayer2 = contract.filters.MatchCompleted(null, null, account);
+    return () => clearInterval(interval);
+  }, [contract, account, fetchPlayerEnrollments]);
 
-    contract.on(filterAsPlayer1, handleMatchCompleted);
-    contract.on(filterAsPlayer2, handleMatchCompleted);
-    console.log('[PlayerActivity] MatchCompleted event listeners registered (filtered to player matches only)');
+  // Fetch activity data whenever enrollments change
+  useEffect(() => {
+    if (!contract || !account) return;
 
-    // Cleanup
-    return () => {
-      console.log('[PlayerActivity] Cleaning up MatchCompleted event listeners');
-      contract.off(filterAsPlayer1, handleMatchCompleted);
-      contract.off(filterAsPlayer2, handleMatchCompleted);
-    };
-  }, [contract, account, fetchActivity]);
+    // Only fetch if we have enrollments or if this is initial load
+    if (playerEnrollments.length > 0 || loading) {
+      fetchActivity(loading);
+    }
+  }, [playerEnrollments, contract, account, fetchActivity, loading]);
+
 
   // Function to dismiss a completed match
   const dismissMatch = useCallback((tierId, instanceId, roundIdx, matchIdx) => {
@@ -540,9 +536,18 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
   }, []);
 
   // Stable refetch function to prevent infinite re-renders
-  const refetch = useCallback(() => {
-    fetchActivity(false);
-  }, [fetchActivity]);
+  // Also re-fetches enrollments for immediate updates
+  const refetch = useCallback(async () => {
+    // Fetch enrollments first to get latest event data
+    await fetchPlayerEnrollments();
+    // Then fetch activity based on new enrollments
+    // Note: fetchActivity will be called automatically when playerEnrollments updates
+  }, [fetchPlayerEnrollments]);
+
+  // Expose enrollment fetcher for external triggers (e.g., after enrollment transaction)
+  const refetchEnrollments = useCallback(async () => {
+    await fetchPlayerEnrollments();
+  }, [fetchPlayerEnrollments]);
 
   return {
     data,
@@ -550,6 +555,7 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
     syncing,
     error,
     refetch,
+    refetchEnrollments, // New: Expose for calling after enrollment transactions
     dismissMatch
   };
 };

@@ -178,6 +178,7 @@ export async function batchFetchTournaments(contract, tierId, instanceCount, pro
         success: true,
         status: Number(tournament.status),
         enrolledCount: Number(tournament.enrolledCount),
+        currentRound: Number(tournament.currentRound || 0),
         enrollmentTimeout: tournament.enrollmentTimeout,
         hasStartedViaTimeout: tournament.hasStartedViaTimeout
       };
@@ -243,7 +244,7 @@ export async function batchFetchTournamentInfo(contract, tierId, instanceCount, 
   const results = await multicall(contract, 'getTournamentInfo', paramsArray, provider, true);
 
   // Transform results to match existing format
-  // getTournamentInfo returns an array: [status, startTime, enrolledCount, ...]
+  // getTournamentInfo returns an array: [status, currentRound, enrolledCount, prizePool, winner]
   const transformed = results.map((result, idx) => {
     if (!result.success) {
       return { success: false, error: result.error };
@@ -254,6 +255,7 @@ export async function batchFetchTournamentInfo(contract, tierId, instanceCount, 
       return {
         success: true,
         status: Number(tournamentInfo[0]),
+        currentRound: Number(tournamentInfo[1]),
         enrolledCount: Number(tournamentInfo[2])
       };
     } catch (error) {

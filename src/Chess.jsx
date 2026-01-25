@@ -57,11 +57,10 @@ import { usePlayerActivity } from './hooks/usePlayerActivity';
 // Chess piece symbols for particles
 const CHESS_PIECES = ['♔', '♕', '♖', '♗', '♘', '♙', '♚', '♛', '♜', '♝', '♞', '♟'];
 
-// Chess piece symbols for board display
-// Use outline pieces for white, filled pieces for black
-const PIECE_SYMBOLS = {
-  white: { pawn: '♙', knight: '♘', bishop: '♗', rook: '♖', queen: '♕', king: '♔' },  // Outline/white Unicode symbols
-  black: { pawn: '♟', knight: '♞', bishop: '♝', rook: '♜', queen: '♛', king: '♚' }   // Filled/black Unicode symbols
+// Chess piece SVG paths for board display
+const PIECE_SVGS = {
+  white: { pawn: 'pawn-w', knight: 'knight-w', bishop: 'bishop-w', rook: 'rook-w', queen: 'queen-w', king: 'king-w' },
+  black: { pawn: 'pawn-b', knight: 'knight-b', bishop: 'bishop-b', rook: 'rook-b', queen: 'queen-b', king: 'king-b' }
 };
 
 const PIECE_TYPES = ['', 'pawn', 'knight', 'bishop', 'rook', 'queen', 'king'];
@@ -174,14 +173,15 @@ const TIER_CONFIG = {
   }
 };
 
-// Get piece symbol from contract piece data
-const getPieceSymbol = (piece) => {
+// Get piece SVG path from contract piece data
+const getPieceSvg = (piece) => {
   if (!piece) return '';
   const pieceType = Number(piece.pieceType);
   const pieceColor = Number(piece.color);
   if (pieceType === 0) return '';
   const color = pieceColor === 1 ? 'white' : 'black';
-  return PIECE_SYMBOLS[color][PIECE_TYPES[pieceType]] || '';
+  const svgName = PIECE_SVGS[color][PIECE_TYPES[pieceType]];
+  return svgName ? `/chess-pieces/${svgName}.svg` : '';
 };
 
 // Tournament Bracket Component
@@ -411,8 +411,10 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, /* onSpectate
 
 // Chess Board Component - copied from Chess.jsx
 const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, firstPlayer, matchStatus, loading, whiteInCheck, blackInCheck, lastMoveTime, startTime, lastMove, maxSize = 520 }) => {
-  // Debug: Log lastMove prop
-  console.log('[ChessBoard] lastMove prop:', lastMove);
+  // Debug: Log lastMove prop with details
+  useEffect(() => {
+    console.log('[ChessBoard] lastMove updated:', lastMove);
+  }, [lastMove]);
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [promotionSquare, setPromotionSquare] = useState(null);
   const [pendingMove, setPendingMove] = useState(null);
@@ -593,20 +595,36 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
       const rankLabel = actualRow + 1; // 1 to 8
       const fileLabel = String.fromCharCode(97 + actualCol); // 'a' to 'h'
 
-      // My move: purple (from) -> blue (to)
-      // Opponent move: yellow (from) -> red (to)
+      // My move: purple (from) -> blue (to) with gradients
+      // Opponent move: yellow (from) -> red (to) with gradients
       const getLastMoveFromClass = () => {
         if (!isLastMoveFrom || isSelected || isKingInCheck) return '';
-        return isMyMove ? 'bg-purple-500/50 ring-2 ring-purple-400 ring-inset' : 'bg-yellow-500/50 ring-2 ring-yellow-400 ring-inset';
+        return isMyMove ? 'ring-2 ring-purple-400 ring-inset' : 'ring-2 ring-yellow-400 ring-inset';
       };
       const getLastMoveToClass = () => {
         if (!isLastMoveTo || isSelected || isKingInCheck) return '';
-        return isMyMove ? 'bg-blue-500/50 ring-2 ring-blue-400 ring-inset' : 'bg-red-500/50 ring-2 ring-red-400 ring-inset';
+        return isMyMove ? 'ring-2 ring-blue-400 ring-inset' : 'ring-2 ring-red-400 ring-inset';
+      };
+      const getLastMoveFromBg = () => {
+        if (!isLastMoveFrom || isSelected || isKingInCheck) return undefined;
+        // My move: Purple gradient
+        // Opponent move: Yellow gradient
+        return isMyMove
+          ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.5), rgba(147, 51, 234, 0.5))'
+          : 'linear-gradient(135deg, rgba(234, 179, 8, 0.5), rgba(202, 138, 4, 0.5))';
+      };
+      const getLastMoveToBg = () => {
+        if (!isLastMoveTo || isSelected || isKingInCheck) return undefined;
+        // My move: Blue gradient
+        // Opponent move: Red gradient
+        return isMyMove
+          ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.5), rgba(29, 78, 216, 0.5))'
+          : 'linear-gradient(135deg, rgba(239, 68, 68, 0.5), rgba(220, 38, 38, 0.5))';
       };
       const getLastMoveShadow = () => {
         if (isSelected) return '0 0 20px rgba(6, 182, 212, 0.3)';
-        if (isLastMoveTo && !isKingInCheck) return isMyMove ? 'inset 0 0 20px rgba(59, 130, 246, 0.5)' : 'inset 0 0 20px rgba(239, 68, 68, 0.5)';
-        if (isLastMoveFrom && !isKingInCheck) return isMyMove ? 'inset 0 0 15px rgba(168, 85, 247, 0.4)' : 'inset 0 0 15px rgba(234, 179, 8, 0.4)';
+        if (isLastMoveTo && !isKingInCheck) return isMyMove ? 'inset 0 0 25px rgba(59, 130, 246, 0.6), 0 0 15px rgba(59, 130, 246, 0.4)' : 'inset 0 0 25px rgba(239, 68, 68, 0.6), 0 0 15px rgba(239, 68, 68, 0.4)';
+        if (isLastMoveFrom && !isKingInCheck) return isMyMove ? 'inset 0 0 20px rgba(168, 85, 247, 0.5), 0 0 12px rgba(168, 85, 247, 0.3)' : 'inset 0 0 20px rgba(234, 179, 8, 0.5), 0 0 12px rgba(234, 179, 8, 0.3)';
         return 'none';
       };
       const getPieceGlow = () => {
@@ -615,8 +633,19 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
       };
       const isPotentialTarget = selectedSquare !== null && !isSelected && !isMyPiece(piece);
 
-      squares.push(<div key={displayIdx} onClick={() => handleSquareClick(displayIdx)} className={'relative flex items-center justify-center cursor-pointer transition-all duration-200 ' + (isLight ? 'bg-stone-300' : 'bg-stone-700') + (isSelected ? ' ring-2 ring-emerald-400 ring-inset bg-emerald-500/50' : '') + (isKingInCheck ? ' bg-red-500/50 ring-2 ring-red-400 ring-inset' : '') + ' ' + getLastMoveFromClass() + ' ' + getLastMoveToClass() + (isMyTurn && isMyPiece(piece) && !isSelected ? ' hover:bg-emerald-500/30' : '') + (isMyTurn && isPotentialTarget ? ' hover:bg-yellow-400/40' : '')} style={{ boxShadow: isSelected ? 'inset 0 0 20px rgba(16, 185, 129, 0.5)' : getLastMoveShadow() }}>
-        <span className={'text-3xl md:text-4xl lg:text-5xl select-none transition-all duration-300 ' + (isSelected ? 'scale-110' : '') + ' ' + (pieceColor === 1 ? 'text-white' : 'text-gray-900')} style={{ opacity: hideForAnimation ? 0 : 1, textShadow: pieceColor === 1 ? '0 2px 4px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.7)' : '0 1px 2px rgba(255,255,255,0.8)' }}>{getPieceSymbol(piece)}</span>
+      // Calculate background: use gradient for last move, otherwise use base color
+      const getSquareBg = () => {
+        if (isSelected) return undefined; // Let CSS class handle it
+        if (isKingInCheck) return undefined; // Let CSS class handle it
+        const lastMoveFromBg = getLastMoveFromBg();
+        const lastMoveToBg = getLastMoveToBg();
+        if (lastMoveFromBg) return lastMoveFromBg;
+        if (lastMoveToBg) return lastMoveToBg;
+        return undefined; // Use default bg from class
+      };
+
+      squares.push(<div key={displayIdx} onClick={() => handleSquareClick(displayIdx)} className={'relative flex items-center justify-center cursor-pointer transition-all duration-200 ' + (isLight ? 'bg-stone-300' : 'bg-stone-700') + (isSelected ? ' ring-2 ring-emerald-400 ring-inset bg-emerald-500/50' : '') + (isKingInCheck ? ' bg-red-500/50 ring-2 ring-red-400 ring-inset' : '') + ' ' + getLastMoveFromClass() + ' ' + getLastMoveToClass() + (isMyTurn && isMyPiece(piece) && !isSelected ? ' hover:bg-emerald-500/30' : '') + (isMyTurn && isPotentialTarget ? ' hover:bg-yellow-400/40' : '')} style={{ boxShadow: isSelected ? 'inset 0 0 20px rgba(16, 185, 129, 0.5)' : getLastMoveShadow(), background: getSquareBg() }}>
+        {getPieceSvg(piece) && <img src={getPieceSvg(piece)} alt="" className={'w-3/4 h-3/4 select-none transition-all duration-300 ' + (isSelected ? 'scale-110' : '')} style={{ opacity: hideForAnimation ? 0 : 1, filter: getPieceGlow() }} draggable="false" />}
         {showRankLabel && <span className={'absolute left-1 top-0.5 text-[10px] font-medium ' + (isLight ? 'text-slate-500' : 'text-slate-600')}>{rankLabel}</span>}
         {showFileLabel && <span className={'absolute right-1 bottom-0.5 text-[10px] font-medium ' + (isLight ? 'text-slate-500' : 'text-slate-600')}>{fileLabel}</span>}
       </div>);
@@ -637,7 +666,7 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
     // return (<div className="absolute pointer-events-none z-20" style={{ width: squareSize, height: squareSize, transform: 'translate(' + (toPos.col * squareSize) + 'px, ' + (toPos.row * squareSize) + 'px)' }}><div className="w-full h-full flex items-center justify-center" style={{ '--from-x': ((fromPos.col - toPos.col) * squareSize) + 'px', '--from-y': ((fromPos.row - toPos.row) * squareSize) + 'px' }}><span className={'text-3xl md:text-4xl lg:text-5xl select-none ' + (pieceColor === 1 ? 'text-white' : 'text-gray-900')} style={{ transform: 'translate(var(--from-x), var(--from-y))', animation: 'pieceMove 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards', textShadow: pieceColor === 1 ? '0 2px 4px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.7)' : '0 1px 2px rgba(255,255,255,0.8)' }}>{getPieceSymbol(animatingMove.piece)}</span></div></div>);
   };
 
-  return (<div className="relative flex flex-col items-center"><div ref={containerRef} className="w-full flex justify-center"><div className="relative rounded-xl overflow-hidden" style={{ width: boardSize || 400, height: boardSize || 400, minWidth: 280, minHeight: 280, background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.9))', border: '1px solid rgba(148, 163, 184, 0.2)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(6, 182, 212, 0.1), inset 0 1px 0 rgba(255,255,255,0.05)' }}><div className="grid gap-0 w-full h-full" style={{ gridTemplateColumns: 'repeat(8, 1fr)', gridTemplateRows: 'repeat(8, 1fr)' }}>{renderBoard()}</div>{renderAnimatedPiece()}</div></div><style>{'@keyframes pieceMove { 0% { transform: translate(var(--from-x), var(--from-y)) scale(1); } 50% { transform: translate(calc(var(--from-x) * 0.3), calc(var(--from-y) * 0.3)) scale(1.15); } 100% { transform: translate(0, 0) scale(1); } }'}</style>{promotionSquare !== null && (<div className="absolute inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center rounded-xl"><div className="p-6 rounded-2xl" style={{ background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.95))', border: '1px solid rgba(168, 85, 247, 0.4)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 30px rgba(168, 85, 247, 0.2)' }}><h3 className="text-slate-100 font-bold text-lg mb-4 text-center">Promote Pawn</h3><div className="flex gap-3">{[5, 4, 3, 2].map((pt) => (<button key={pt} onClick={() => handlePromotion(pt)} className="w-14 h-14 md:w-16 md:h-16 rounded-xl flex items-center justify-center text-3xl md:text-4xl transition-all duration-200 hover:scale-110" style={{ background: 'rgba(51, 65, 85, 0.6)', border: '1px solid rgba(148, 163, 184, 0.3)' }} onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(6, 182, 212, 0.2)'; e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.5)'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(51, 65, 85, 0.6)'; e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.3)'; }}><span className={isWhite ? 'text-white' : 'text-gray-900'} style={{ textShadow: isWhite ? '0 2px 4px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.7)' : '0 1px 2px rgba(255,255,255,0.8)' }}>{PIECE_SYMBOLS[isWhite ? 'white' : 'black'][PIECE_TYPES[pt]]}</span></button>))}</div></div></div>)}{(whiteInCheck || blackInCheck) && matchStatus === 1 && (<div className="mt-3 text-center py-2 px-6 rounded-full text-red-300 font-semibold text-sm animate-pulse" style={{ ...(boardSize ? { width: boardSize } : { maxWidth: '100%' }), background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.4)', boxShadow: '0 0 20px rgba(239, 68, 68, 0.2)' }}>{whiteInCheck ? 'White' : 'Black'} King in Check</div>)}</div>);
+  return (<div className="relative flex flex-col items-center"><div ref={containerRef} className="w-full flex justify-center"><div className="relative rounded-xl overflow-hidden" style={{ width: boardSize || 400, height: boardSize || 400, minWidth: 280, minHeight: 280, background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.9))', border: '1px solid rgba(148, 163, 184, 0.2)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(6, 182, 212, 0.1), inset 0 1px 0 rgba(255,255,255,0.05)' }}><div className="grid gap-0 w-full h-full" style={{ gridTemplateColumns: 'repeat(8, 1fr)', gridTemplateRows: 'repeat(8, 1fr)' }}>{renderBoard()}</div>{renderAnimatedPiece()}</div></div><style>{'@keyframes pieceMove { 0% { transform: translate(var(--from-x), var(--from-y)) scale(1); } 50% { transform: translate(calc(var(--from-x) * 0.3), calc(var(--from-y) * 0.3)) scale(1.15); } 100% { transform: translate(0, 0) scale(1); } }'}</style>{promotionSquare !== null && (<div className="absolute inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center rounded-xl"><div className="p-6 rounded-2xl" style={{ background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.95))', border: '1px solid rgba(168, 85, 247, 0.4)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 30px rgba(168, 85, 247, 0.2)' }}><h3 className="text-slate-100 font-bold text-lg mb-4 text-center">Promote Pawn</h3><div className="flex gap-3">{[5, 4, 3, 2].map((pt) => (<button key={pt} onClick={() => handlePromotion(pt)} className="w-14 h-14 md:w-16 md:h-16 rounded-xl flex items-center justify-center text-3xl md:text-4xl transition-all duration-200 hover:scale-110" style={{ background: 'rgba(51, 65, 85, 0.6)', border: '1px solid rgba(148, 163, 184, 0.3)' }} onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(6, 182, 212, 0.2)'; e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.5)'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(51, 65, 85, 0.6)'; e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.3)'; }}><img src={`/chess-pieces/${PIECE_TYPES[pt]}-${isWhite ? 'w' : 'b'}.svg`} alt={PIECE_TYPES[pt]} className="w-full h-full" draggable="false" /></button>))}</div></div></div>)}{(whiteInCheck || blackInCheck) && matchStatus === 1 && (<div className="mt-3 text-center py-2 px-6 rounded-full text-red-300 font-semibold text-sm animate-pulse" style={{ ...(boardSize ? { width: boardSize } : { maxWidth: '100%' }), background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.4)', boxShadow: '0 0 20px rgba(239, 68, 68, 0.2)' }}>{whiteInCheck ? 'White' : 'Black'} King in Check</div>)}</div>);
 };
 
 
@@ -1193,46 +1222,46 @@ export default function Chess() {
       setEliteMatchesSyncing(true);
       const readOnlyContract = getReadOnlyContract();
 
-      const matches = [];
-      let index = 0;
-      const MAX_MATCHES = 50; // Safety limit
+      // OPTIMIZATION: Use getPlayerMatches() to fetch all matches in a single RPC call
+      // This replaces the previous sequential loop that made up to 50 individual calls
+      const allMatches = await readOnlyContract.getPlayerMatches();
 
-      while (index < MAX_MATCHES) {
-        try {
-          const match = await readOnlyContract.eliteMatches(index);
-          const zeroAddress = '0x0000000000000000000000000000000000000000';
+      console.log('[EliteMatches] Fetched all player matches:', allMatches.length);
 
-          // Check if this is a valid match (has at least one player)
-          if (!match.player1 || match.player1 === zeroAddress) {
-            break;
-          }
+      // Filter for completed matches only (status === 2) and map to expected format
+      const matches = allMatches
+        .filter(match => Number(match.status) === 2) // Only completed matches
+        .map(match => ({
+          // Match metadata (used for viewing archived match)
+          tierId: Number(match.tierId),
+          instanceId: Number(match.instanceId),
+          roundNumber: Number(match.roundNumber),
+          matchNumber: Number(match.matchNumber),
+          // Player info
+          player1: match.player1,
+          player2: match.player2,
+          winner: match.winner,
+          firstPlayer: match.firstPlayer,
+          // Match state
+          status: Number(match.status),
+          isDraw: match.isDraw,
+          // Timestamps
+          startTime: match.startTime,
+          endTime: match.endTime,
+          lastMoveTime: match.endTime, // For compatibility with EliteMatchesCard
+          // Board state (packed)
+          packedBoard: match.packedBoard,
+          packedState: match.packedState,
+          // Move history
+          moves: match.moves || '',
+          // Completion info
+          completionReason: Number(match.completionReason)
+        }))
+        .reverse(); // Newest first
 
-          matches.push({
-            player1: match.player1,
-            player2: match.player2,
-            winner: match.winner,
-            currentTurn: match.currentTurn,
-            firstPlayer: match.firstPlayer,
-            status: Number(match.status),
-            isDraw: match.isDraw,
-            startTime: match.startTime,
-            lastMoveTime: match.lastMoveTime,
-            player1TimeRemaining: match.player1TimeRemaining,
-            player2TimeRemaining: match.player2TimeRemaining,
-            moves: match.moves || '' // New moves string field
-          });
+      setEliteMatches(matches);
 
-          index++;
-        } catch (e) {
-          // Array index out of bounds - we've read all matches
-          break;
-        }
-      }
-
-      // Reverse to show newest first
-      setEliteMatches(matches.reverse());
-
-      console.log('Elite Matches fetched:', matches.length);
+      console.log('[EliteMatches] Completed matches fetched:', matches.length);
     } catch (error) {
       console.error('Error fetching elite matches:', error);
     } finally {
@@ -1243,14 +1272,21 @@ export default function Chess() {
   // Handler to view an archived elite match
   const handleViewArchivedMatch = useCallback(async (matchIndex) => {
     try {
-      const readOnlyContract = getReadOnlyContract();
-      const matchData = await readOnlyContract.eliteMatches(matchIndex);
+      // OPTIMIZATION: Get match data from state instead of contract call
+      // The match data is already fetched via getPlayerMatches()
+      const matchData = eliteMatches[matchIndex];
 
-      const zeroAddress = '0x0000000000000000000000000000000000000000';
-      if (!matchData.player1 || matchData.player1 === zeroAddress) {
+      if (!matchData || !matchData.player1) {
         console.error('Match not found at index:', matchIndex);
         return;
       }
+
+      console.log('[ViewArchived] Viewing match:', {
+        tierId: matchData.tierId,
+        instanceId: matchData.instanceId,
+        round: matchData.roundNumber,
+        match: matchData.matchNumber
+      });
 
       // Unpack the chess board from packedBoard
       const board = [];
@@ -1271,21 +1307,21 @@ export default function Chess() {
         player1: matchData.player1,
         player2: matchData.player2,
         winner: matchData.winner,
-        currentTurn: matchData.currentTurn,
+        currentTurn: matchData.player1, // For archived matches, this doesn't matter
         firstPlayer: matchData.firstPlayer,
-        matchStatus: Number(matchData.status),
+        matchStatus: matchData.status,
         isDraw: matchData.isDraw,
         startTime: matchData.startTime,
-        lastMoveTime: matchData.lastMoveTime,
-        player1TimeRemaining: matchData.player1TimeRemaining,
-        player2TimeRemaining: matchData.player2TimeRemaining,
+        lastMoveTime: matchData.endTime, // Use endTime for archived matches
+        player1TimeRemaining: 0, // Archived matches don't have time remaining
+        player2TimeRemaining: 0,
         board,
         // Archive-specific metadata
         isArchived: true,
-        tierId: null,
-        instanceId: null,
-        roundNumber: null,
-        matchNumber: null
+        tierId: matchData.tierId,
+        instanceId: matchData.instanceId,
+        roundNumber: matchData.roundNumber,
+        matchNumber: matchData.matchNumber
       };
 
       setViewingArchivedMatch(archivedMatch);
@@ -1361,7 +1397,7 @@ export default function Chess() {
       console.error('Error fetching archived match:', error);
       setMoveHistoryLoading(false);
     }
-  }, [getReadOnlyContract]);
+  }, [eliteMatches]); // Dependency on eliteMatches state instead of contract
 
   // Handler to go back from archived match view
   const handleBackFromArchived = useCallback(() => {
@@ -1397,6 +1433,7 @@ export default function Chess() {
         // Process results - stop at first uninitialized instance
         const statuses = [];
         const enrolledCounts = [];
+        const currentRounds = [];
         const enrollmentTimeouts = [];
         const hasStartedViaTimeouts = [];
 
@@ -1404,6 +1441,7 @@ export default function Chess() {
           if (!result.success) break;
           statuses.push(result.status);
           enrolledCounts.push(result.enrolledCount);
+          currentRounds.push(result.currentRound);
           enrollmentTimeouts.push(result.enrollmentTimeout);
           hasStartedViaTimeouts.push(result.hasStartedViaTimeout);
         }
@@ -1415,6 +1453,7 @@ export default function Chess() {
           entryFee,
           statuses,
           enrolledCounts,
+          currentRounds,
           enrollmentTimeouts,
           hasStartedViaTimeouts
         };
@@ -1429,6 +1468,7 @@ export default function Chess() {
             instanceId: i,
             status: statuses[i],
             enrolledCount: enrolledCounts[i],
+            currentRound: currentRounds[i],
             maxPlayers: playerCount,
             entryFee,
             prizePool: prizePoolETH,
@@ -1527,6 +1567,7 @@ export default function Chess() {
 
         const statuses = [];
         const enrolledCounts = [];
+        const currentRounds = [];
         const enrollmentTimeouts = [];
         const hasStartedViaTimeouts = [];
 
@@ -1534,6 +1575,7 @@ export default function Chess() {
           if (!result.success) break;
           statuses.push(result.status);
           enrolledCounts.push(result.enrolledCount);
+          currentRounds.push(result.currentRound);
           enrollmentTimeouts.push(result.enrollmentTimeout);
           hasStartedViaTimeouts.push(result.hasStartedViaTimeout);
         }
@@ -1544,6 +1586,7 @@ export default function Chess() {
           entryFee,
           statuses,
           enrolledCounts,
+          currentRounds,
           enrollmentTimeouts,
           hasStartedViaTimeouts
         };
@@ -1569,6 +1612,7 @@ export default function Chess() {
             instanceId: i,
             status: metadata.statuses[i],
             enrolledCount: metadata.enrolledCounts[i],
+            currentRound: metadata.currentRounds[i],
             maxPlayers: metadata.playerCount,
             entryFee: metadata.entryFee,
             prizePool: prizePoolETH,
@@ -1767,6 +1811,21 @@ export default function Chess() {
       }
     }
   }, [getReadOnlyContract, account, fetchTierMetadata, fetchTierInstances]);
+
+  // Comprehensive refresh for Player Activity panel
+  // Fetches fresh multicall data for ALL tiers (regardless of loaded/expanded state)
+  const handlePlayerActivityRefresh = useCallback(async () => {
+    if (!contract || !account) return;
+
+    console.log('[PlayerActivity Refresh] Refreshing player activity via event-based polling');
+
+    // Trigger player activity data refetch (which now uses event-based polling)
+    // This will:
+    // 1. Query TournamentEnrolled events for the player
+    // 2. Poll only the tier/instances from those events
+    // 3. Update activity cards based on current state
+    await playerActivity.refetch();
+  }, [contract, account, playerActivity]);
 
   // Handle tournament enrollment
   const handleEnroll = async (tierId, instanceId, entryFee) => {
@@ -2444,74 +2503,114 @@ export default function Chess() {
       const matchData = await contractInstance.getMatch(tierId, instanceId, roundNumber, matchNumber);
       const player1 = matchData.common.player1;
       const player2 = matchData.common.player2;
-      const matchStartTime = Number(matchData.common.startTime);
+      const firstPlayer = matchData.firstPlayer;
 
-      // Try to query ChessMoveMade events for this match
-      try {
-        // Use solidityPackedKeccak256 to match Solidity's keccak256(abi.encodePacked(...))
-        const matchKey = ethers.solidityPackedKeccak256(
-          ['uint8', 'uint8', 'uint8', 'uint8'],
-          [tierId, instanceId, roundNumber, matchNumber]
-        );
+      // OPTIMIZATION: Use the moves field from getMatch() instead of event queries
+      // The updated ABI now includes moves in the match data
+      let movesString = matchData.moves || matchData.common.moves || '';
 
-        const filter = contractInstance.filters.MoveMade(matchKey);
-        const events = await contractInstance.queryFilter(filter);
+      // Check if match data has been cleared (happens when tournament ends)
+      const zeroAddress = '0x0000000000000000000000000000000000000000';
+      const isMatchCleared = player1.toLowerCase() === zeroAddress;
 
-        if (events.length > 0) {
-          // Filter events to only include those from the current match instance
-          // Get block timestamps and filter by match start time and player addresses
-          const eventsWithTimestamps = await Promise.all(
-            events.map(async (event) => {
-              const block = await event.getBlock();
-              return {
-                event,
-                timestamp: block.timestamp
-              };
-            })
-          );
+      // Parse match status from matchData to check if completed
+      const matchStatus = Number(matchData.common.status);
 
-          // Only include events that occurred after match start with the correct players
-          const currentMatchEvents = eventsWithTimestamps
-            .filter(({ event, timestamp }) => {
-              const eventPlayer = event.args.player.toLowerCase();
-              const isCorrectPlayer = eventPlayer === player1.toLowerCase() || eventPlayer === player2.toLowerCase();
-              return timestamp >= matchStartTime && isCorrectPlayer;
-            })
-            .map(({ event }) => event);
+      // FALLBACK: Fetch from getPlayerMatches() if:
+      // 1. Match data is cleared (tournament ended), OR
+      // 2. Match is completed (to ensure we have the final move for both players)
+      const isMatchCompleted = matchStatus === 2;
+      if (isMatchCleared || isMatchCompleted) {
+        console.log('[FetchMoveHistory] Fetching from getPlayerMatches() - cleared:', isMatchCleared, 'completed:', isMatchCompleted);
 
-          if (currentMatchEvents.length === 0) {
-            return [];
+        try {
+          const allMatches = await contractInstance.getPlayerMatches();
+
+          // Find the specific match (search from end - recent matches last)
+          // Also verify that player addresses are valid
+          let foundMatch = null;
+          for (let i = allMatches.length - 1; i >= 0; i--) {
+            const m = allMatches[i];
+            const tournamentMatches =
+              Number(m.tierId) === tierId &&
+              Number(m.instanceId) === instanceId &&
+              Number(m.roundNumber) === roundNumber &&
+              Number(m.matchNumber) === matchNumber;
+
+            // Verify that the match record has valid player addresses (not zero addresses)
+            const m1Lower = m.player1?.toLowerCase() || '';
+            const m2Lower = m.player2?.toLowerCase() || '';
+            const hasValidPlayers =
+              m1Lower !== zeroAddress.toLowerCase() &&
+              m2Lower !== zeroAddress.toLowerCase() &&
+              m1Lower !== '' && m2Lower !== '';
+
+            if (tournamentMatches && hasValidPlayers) {
+              foundMatch = m;
+              break;
+            }
           }
 
-          // Convert events to move history with proper chess notation
-          const history = currentMatchEvents.map(event => {
-            const player = event.args.player;
-            const from = Number(event.args.from);
-            const to = Number(event.args.to);
-            const promotion = 0; // MoveMade event doesn't include promotion
-            const isPlayer1 = player.toLowerCase() === player1.toLowerCase();
-            const fromNotation = indexToChessNotation(from);
-            const toNotation = indexToChessNotation(to);
+          if (foundMatch) {
+            // Use moves from getPlayerMatches() - this is the authoritative source for completed matches
+            // Ensures both winner and loser see the complete final move history
+            movesString = foundMatch.moves || '';
+            console.log('[FetchMoveHistory] Found moves from getPlayerMatches():', movesString.length, 'chars');
+          } else {
+            console.warn('[FetchMoveHistory] Match not found in getPlayerMatches() with valid player addresses');
+          }
+        } catch (err) {
+          console.warn('[FetchMoveHistory] Failed to fetch from getPlayerMatches():', err);
+        }
+      }
+
+      console.log('[FetchMoveHistory] Moves string:', movesString ? `${movesString.length} chars` : 'empty');
+
+      if (movesString && movesString.length > 0) {
+        try {
+          // Parse moves string: contains concatenated uint8 pairs (from, to)
+          // Format: abi.encodePacked(m.moves, from, to) for each move
+          const moves = [];
+
+          // Each move is 2 bytes (2 characters in the string)
+          for (let i = 0; i < movesString.length - 1; i += 2) {
+            // Get the byte values from character codes
+            const fromByte = movesString.charCodeAt(i);
+            const toByte = movesString.charCodeAt(i + 1);
+
+            // Validate that these are valid board positions (0-63)
+            if (fromByte >= 0 && fromByte < 64 && toByte >= 0 && toByte < 64) {
+              moves.push({ from: fromByte, to: toByte });
+            }
+          }
+
+          // Convert to display format
+          // White (♔) always goes first (even indices 0, 2, 4...), Black (♚) goes second (odd indices 1, 3, 5...)
+          // firstPlayer is the one who moves first and should be White
+          const history = moves.map((move, idx) => {
+            const isFirstPlayerMove = idx % 2 === 0; // Even indices are first player moves
+            const movePlayer = isFirstPlayerMove ? firstPlayer : (firstPlayer === player1 ? player2 : player1);
+            const fromNotation = indexToChessNotation(move.from);
+            const toNotation = indexToChessNotation(move.to);
             return {
-              player: isPlayer1 ? '♚' : '♔', // ♚ for white (player1), ♔ for black (player2)
-              move: `${fromNotation}→${toNotation}${promotion ? ' ♕' : ''}`, // e.g., "e2→e4"
-              from,
-              to,
-              promotion,
-              address: player,
-              blockNumber: event.blockNumber
+              player: isFirstPlayerMove ? '♔' : '♚', // ♔ for white (first player), ♚ for black (second player)
+              move: `${fromNotation}→${toNotation}`,
+              from: move.from,
+              to: move.to,
+              promotion: 0,
+              address: movePlayer
             };
           });
 
-          // Sort by block number to ensure correct order
-          history.sort((a, b) => a.blockNumber - b.blockNumber);
+          console.log('[FetchMoveHistory] Parsed moves from getMatch():', history.length);
           return history;
+        } catch (parseError) {
+          console.warn('[FetchMoveHistory] Failed to parse moves string:', parseError);
         }
-      } catch (eventError) {
-        console.warn('Event query failed, falling back to empty history:', eventError);
       }
 
-      // No events found - return empty array
+      // No moves found - return empty array
+      console.log('[FetchMoveHistory] No moves available');
       return [];
     } catch (error) {
       console.error('Error fetching move history:', error);
@@ -2584,6 +2683,7 @@ export default function Chess() {
       const isDraw = matchData.common.isDraw;
       const startTime = Number(matchData.common.startTime);
       const lastMoveTime = Number(matchData.common.lastMoveTime);
+      const completionReason = Number(matchData.completionReason || 0);
 
       // Extract check status and move number from packedState
       // Bit 12: whiteInCheck, Bit 13: blackInCheck, Bits 22-31: fullMoveNumber
@@ -2597,42 +2697,76 @@ export default function Chess() {
         player1.toLowerCase() !== zeroAddress &&
         player2.toLowerCase() !== zeroAddress;
 
-      // If contract returns cleared data (zero addresses + empty board), query MatchCompleted event
-      // Keep polling until we find an event matching this exact match instance
+      // OPTIMIZATION: If contract returns cleared data (zero addresses + empty board),
+      // fetch from getPlayerMatches() instead of event queries
       const isBoardEmpty = board.every(cell => cell.pieceType === 0);
       if (!isMatchInitialized && isBoardEmpty) {
-        console.log('[refreshMatchData] Match data cleared, querying MatchCompleted event');
+        console.log('[refreshMatchData] Match data cleared, fetching from getPlayerMatches()');
 
         try {
-          const matchId = ethers.solidityPackedKeccak256(
-            ['uint8', 'uint8', 'uint8', 'uint8'],
-            [tierId, instanceId, roundNumber, matchNumber]
-          );
+          // Fetch all player matches (includes completed matches with full data)
+          const allMatches = await contractInstance.getPlayerMatches();
 
-          const filter = contractInstance.filters.MatchCompleted(matchId);
-          const events = await contractInstance.queryFilter(filter);
+          console.log('[refreshMatchData] Fetched player matches:', allMatches.length);
 
-          // Find event that matches this exact match instance
-          for (let i = events.length - 1; i >= 0; i--) {
-            const event = events[i];
-            const { winner: eventWinner, isDraw: eventIsDraw, reason: eventReason, board: eventPackedBoard } = event.args;
+          // Find the match that matches our tournament context
+          // Priority 1: Exact match by tierId/instanceId/roundNumber/matchNumber
+          // Search from end since recent matches are last
+          let foundMatch = null;
+          for (let i = allMatches.length - 1; i >= 0; i--) {
+            const m = allMatches[i];
+            if (Number(m.tierId) === tierId &&
+                Number(m.instanceId) === instanceId &&
+                Number(m.roundNumber) === roundNumber &&
+                Number(m.matchNumber) === matchNumber) {
+              foundMatch = m;
+              break;
+            }
+          }
 
-            // Verify winner is one of our players
-            const winnerLower = eventWinner.toLowerCase();
-            const p1Lower = matchInfo.player1?.toLowerCase();
-            const p2Lower = matchInfo.player2?.toLowerCase();
-            const winnerIsPlayer = eventIsDraw || winnerLower === p1Lower || winnerLower === p2Lower || winnerLower === zeroAddress;
-
-            if (!winnerIsPlayer) continue;
-
-            // Verify event occurred after match start time
-            const block = await event.getBlock();
-            const eventTimestamp = Number(block.timestamp);
+          // Priority 2: Match by player addresses and approximate timestamp
+          if (!foundMatch && matchInfo.player1 && matchInfo.player2) {
+            const p1Lower = matchInfo.player1.toLowerCase();
+            const p2Lower = matchInfo.player2.toLowerCase();
             const matchStartTime = matchInfo.startTime;
 
-            if (matchStartTime && eventTimestamp < matchStartTime) continue;
+            // Find matches with same players within reasonable time window
+            const candidateMatches = allMatches.filter(m => {
+              const m1Lower = m.player1.toLowerCase();
+              const m2Lower = m.player2.toLowerCase();
+              const playersMatch = (m1Lower === p1Lower && m2Lower === p2Lower) ||
+                                   (m1Lower === p2Lower && m2Lower === p1Lower);
 
-            // Unpack the chess board from the event (4 bits per square, 64 squares)
+              if (!playersMatch) return false;
+
+              // If we have a start time, verify the match is within 1 hour window
+              if (matchStartTime) {
+                const timeDiff = Math.abs(Number(m.startTime) - matchStartTime);
+                return timeDiff < 3600; // 1 hour tolerance
+              }
+
+              return true;
+            });
+
+            // Use the most recent match (likely the correct one)
+            if (candidateMatches.length > 0) {
+              foundMatch = candidateMatches.sort((a, b) => Number(b.startTime) - Number(a.startTime))[0];
+              console.log('[refreshMatchData] Found match by player addresses and timestamp');
+            }
+          }
+
+          if (foundMatch) {
+            console.log('[refreshMatchData] Found matching completed match:', {
+              tierId: Number(foundMatch.tierId),
+              instanceId: Number(foundMatch.instanceId),
+              round: Number(foundMatch.roundNumber),
+              match: Number(foundMatch.matchNumber),
+              winner: foundMatch.winner,
+              isDraw: foundMatch.isDraw,
+              movesLength: foundMatch.moves?.length || 0
+            });
+
+            // Unpack the chess board from packedBoard
             const unpackChessBoard = (packed) => {
               const boardArray = [];
               let p = BigInt(packed);
@@ -2652,35 +2786,31 @@ export default function Chess() {
               }
               return boardArray;
             };
-            const eventBoard = unpackChessBoard(eventPackedBoard);
+            const matchBoard = unpackChessBoard(foundMatch.packedBoard);
 
-            console.log('[refreshMatchData] Found matching MatchCompleted event:', {
-              winner: eventWinner,
-              isDraw: eventIsDraw,
-              reason: Number(eventReason),
-              eventTimestamp,
-              matchStartTime
-            });
-
-            const eventLoser = eventIsDraw ? zeroAddress :
-              (winnerLower === p1Lower ? matchInfo.player2 : matchInfo.player1);
+            const winnerLower = foundMatch.winner.toLowerCase();
+            const p1Lower = foundMatch.player1.toLowerCase();
+            const matchLoser = foundMatch.isDraw ? zeroAddress :
+              (winnerLower === p1Lower ? foundMatch.player2 : foundMatch.player1);
 
             return {
               ...matchInfo,
               matchStatus: 2,
-              winner: eventWinner,
-              loser: eventLoser,
-              isDraw: eventIsDraw,
-              board: eventBoard,
+              winner: foundMatch.winner,
+              loser: matchLoser,
+              isDraw: foundMatch.isDraw,
+              board: matchBoard,
               isYourTurn: false,
               completedFromEventPoll: true,
-              completionReason: Number(eventReason)
+              completionReason: Number(foundMatch.completionReason),
+              // Store moves for later retrieval by fetchMoveHistory
+              cachedMoves: foundMatch.moves || ''
             };
           }
 
-          console.log('[refreshMatchData] No matching MatchCompleted event found yet, continuing to poll');
+          console.log('[refreshMatchData] No matching completed match found in getPlayerMatches(), continuing to poll');
         } catch (err) {
-          console.error('[refreshMatchData] Error querying MatchCompleted event:', err);
+          console.error('[refreshMatchData] Error fetching from getPlayerMatches():', err);
         }
 
         return null;
@@ -2725,52 +2855,43 @@ export default function Chess() {
       // A match is timed out if it completed with an active timeout state
       const isTimedOut = matchStatus === 2 && timeoutState?.timeoutActive === true;
 
-      // Fetch last move from MoveMade events (persists after page refresh)
+      // OPTIMIZATION: Get last move from moves string instead of events
       let lastMove = null;
       try {
-        // Use solidityPackedKeccak256 to match Solidity's keccak256(abi.encodePacked(...))
-        const matchKey = ethers.solidityPackedKeccak256(
-          ['uint8', 'uint8', 'uint8', 'uint8'],
-          [tierId, instanceId, roundNumber, matchNumber]
-        );
-        const filter = contractInstance.filters.MoveMade(matchKey);
-        const events = await contractInstance.queryFilter(filter);
-        if (events.length > 0) {
-          // Filter events to only include those from current match instance
-          const matchStartTime = Number(matchData.common.startTime);
+        const movesString = matchData.moves || matchData.common.moves || '';
 
-          const eventsWithTimestamps = await Promise.all(
-            events.map(async (event) => {
-              const block = await event.getBlock();
-              return {
-                event,
-                timestamp: block.timestamp
-              };
-            })
-          );
+        if (movesString && movesString.length >= 2) {
+          // Parse moves string to get the last move
+          const moves = [];
+          for (let i = 0; i < movesString.length - 1; i += 2) {
+            const fromByte = movesString.charCodeAt(i);
+            const toByte = movesString.charCodeAt(i + 1);
+            if (fromByte >= 0 && fromByte < 64 && toByte >= 0 && toByte < 64) {
+              moves.push({ from: fromByte, to: toByte });
+            }
+          }
 
-          // Only include events that occurred after match start with the correct players
-          const currentMatchEvents = eventsWithTimestamps
-            .filter(({ event, timestamp }) => {
-              const eventPlayer = event.args.player.toLowerCase();
-              const isCorrectPlayer = eventPlayer === player1.toLowerCase() || eventPlayer === player2.toLowerCase();
-              return timestamp >= matchStartTime && isCorrectPlayer;
-            })
-            .map(({ event }) => event);
+          if (moves.length > 0) {
+            const lastMoveData = moves[moves.length - 1];
+            // White (firstPlayer) always moves first: even indices (0, 2, 4...)
+            // Black moves second: odd indices (1, 3, 5...)
+            const isFirstPlayerMove = (moves.length - 1) % 2 === 0;
+            const movePlayer = isFirstPlayerMove ? firstPlayer : (firstPlayer.toLowerCase() === actualPlayer1.toLowerCase() ? actualPlayer2 : actualPlayer1);
 
-          if (currentMatchEvents.length > 0) {
-            const lastEvent = currentMatchEvents[currentMatchEvents.length - 1];
-            const movePlayer = lastEvent.args.player;
             lastMove = {
-              from: Number(lastEvent.args.from),
-              to: Number(lastEvent.args.to),
+              from: lastMoveData.from,
+              to: lastMoveData.to,
               player: movePlayer,
               isMyMove: movePlayer?.toLowerCase() === userAccount?.toLowerCase()
             };
+
+            console.log('[refreshMatchData] Last move from moves string:', lastMove);
           }
+        } else {
+          console.log('[refreshMatchData] No moves string available, lastMove will be null');
         }
       } catch (err) {
-        console.error('Error fetching MoveMade events:', err.message);
+        console.error('Error parsing last move from moves string:', err.message);
       }
 
       return {
@@ -2794,6 +2915,7 @@ export default function Chess() {
         fullMoveNumber,
         whiteInCheck,
         blackInCheck,
+        completionReason, // ML1/ML2/ML3/etc completion reason
         // Time tracking fields
         player1TimeRemaining,
         player2TimeRemaining,
@@ -3248,159 +3370,6 @@ export default function Chess() {
     updateEnrollmentStatuses();
   }, [account, contract, fetchTierInstances]);
 
-  // Listen for MatchCompleted events to notify players and update match state
-  useEffect(() => {
-    if (!contract || !account || !currentMatch) return;
-
-    console.log('[MatchCompleted] Setting up event listener for current match:', {
-      tierId: currentMatch.tierId,
-      instanceId: currentMatch.instanceId,
-      roundNumber: currentMatch.roundNumber,
-      matchNumber: currentMatch.matchNumber
-    });
-
-    const handleMatchCompleted = async (matchId, player1, player2, winner, isDraw, reason, packedBoard, event) => {
-      console.log('[MatchCompleted Event] ===== EVENT FIRED =====');
-      console.log('[MatchCompleted Event] MatchId:', matchId);
-      console.log('[MatchCompleted Event] Player1:', player1, 'Player2:', player2);
-      console.log('[MatchCompleted Event] Winner:', winner, 'isDraw:', isDraw, 'reason:', Number(reason));
-
-      // Check if this event is for the current match being viewed
-      const currentMatchId = ethers.solidityPackedKeccak256(
-        ['uint8', 'uint8', 'uint8', 'uint8'],
-        [currentMatch.tierId, currentMatch.instanceId, currentMatch.roundNumber, currentMatch.matchNumber]
-      );
-
-      if (matchId !== currentMatchId) {
-        console.log('[MatchCompleted Event] Event is for different match, ignoring');
-        return;
-      }
-
-      // Time-gate: Only process events that occurred after current match started
-      if (event) {
-        try {
-          const block = await event.getBlock();
-          const eventTimestamp = block.timestamp;
-          const matchStartTime = currentMatch.startTime;
-
-          console.log('[MatchCompleted Event] Timestamp check:', {
-            eventTimestamp,
-            matchStartTime,
-            isValidEvent: eventTimestamp >= matchStartTime
-          });
-
-          if (eventTimestamp < matchStartTime) {
-            console.log('[MatchCompleted Event] Event is older than current match start time, ignoring');
-            return;
-          }
-        } catch (err) {
-          console.error('[MatchCompleted Event] Error checking timestamp:', err);
-          // Continue processing if timestamp check fails
-        }
-      }
-
-      console.log('[MatchCompleted Event] ✓ Event is for current match - processing completion');
-
-      // Unpack chess board state (4 packed uint256s)
-      const unpackChessBoard = (packed) => {
-        // Chess board is packed differently - implementation matches refreshMatchData
-        const boardArray = [];
-        let p = BigInt(packed);
-        for (let row = 0; row < 8; row++) {
-          for (let col = 0; col < 8; col++) {
-            const pieceData = Number(p & 0xFFn); // 8 bits per cell
-            const pieceType = pieceData & 0x0F;
-            const color = (pieceData >> 4) & 0x01;
-            boardArray.push({ pieceType, color });
-            p = p >> 8n;
-          }
-        }
-        return boardArray;
-      };
-      const eventBoard = unpackChessBoard(packedBoard);
-
-      // Determine loser
-      const zeroAddress = '0x0000000000000000000000000000000000000000';
-      const winnerLower = winner.toLowerCase();
-      const p1Lower = currentMatch.player1?.toLowerCase();
-      const eventLoser = isDraw ? zeroAddress : (winnerLower === p1Lower ? currentMatch.player2 : currentMatch.player1);
-
-      // Update match state with completion data
-      setCurrentMatch(prev => {
-        if (!prev || prev.matchStatus === 2) return prev; // Already completed
-
-        return {
-          ...prev,
-          matchStatus: 2,
-          winner,
-          loser: eventLoser,
-          isDraw,
-          board: eventBoard,
-          isYourTurn: false,
-          completionReason: Number(reason)
-        };
-      });
-
-      // Show winner/loser banner
-      const isPlayer1 = currentMatch.player1?.toLowerCase() === account.toLowerCase();
-      const isPlayer2 = currentMatch.player2?.toLowerCase() === account.toLowerCase();
-      const isParticipant = isPlayer1 || isPlayer2;
-
-      if (isParticipant) {
-        const userWon = !isDraw && winner.toLowerCase() === account.toLowerCase();
-        const reasonNum = Number(reason);
-
-        let resultType = 'lose';
-        if (isDraw) {
-          resultType = 'draw';
-        } else if (userWon) {
-          resultType = (reasonNum === 1 || reasonNum === 3 || reasonNum === 4) ? 'forfeit_win' : 'win';
-        } else {
-          resultType = (reasonNum === 1 || reasonNum === 3 || reasonNum === 4) ? 'forfeit_lose' : 'lose';
-        }
-
-        console.log('[MatchCompleted Event] Setting match end result:', resultType, 'with completion reason:', reasonNum);
-        setMatchEndResult({ result: resultType, completionReason: reasonNum });
-        setMatchEndWinner(winner);
-        setMatchEndLoser(eventLoser);
-      }
-    };
-
-    // Register event listener (listen to all MatchCompleted events, filter in handler)
-    contract.on('MatchCompleted', handleMatchCompleted);
-    console.log('[MatchCompleted] Event listener registered');
-
-    // Query recent events to catch any missed while page was loading
-    const checkRecentEvents = async () => {
-      try {
-        const currentMatchId = ethers.solidityPackedKeccak256(
-          ['uint8', 'uint8', 'uint8', 'uint8'],
-          [currentMatch.tierId, currentMatch.instanceId, currentMatch.roundNumber, currentMatch.matchNumber]
-        );
-
-        const filter = contract.filters.MatchCompleted(currentMatchId);
-        const events = await contract.queryFilter(filter, -50);
-        console.log('[MatchCompleted] Found', events.length, 'recent events for current match in last 50 blocks');
-
-        // Process most recent event for this match
-        if (events.length > 0) {
-          const event = events[events.length - 1];
-          const { player1, player2, winner, isDraw, reason, board } = event.args;
-          handleMatchCompleted(currentMatchId, player1, player2, winner, isDraw, reason, board, event);
-        }
-      } catch (err) {
-        console.error('[MatchCompleted] Error checking recent events:', err);
-      }
-    };
-
-    checkRecentEvents();
-
-    return () => {
-      console.log('[MatchCompleted] Cleaning up event listener');
-      contract.off('MatchCompleted', handleMatchCompleted);
-    };
-  }, [contract, account, currentMatch]);
-
   // Refresh tier data when account changes (initial load handled by initReadOnlyContract)
   useEffect(() => {
     // Skip initial mount - initReadOnlyContract handles that via loadContractData
@@ -3416,14 +3385,6 @@ export default function Chess() {
     fetchLeaderboard();
   }, [fetchLeaderboard]);
 
-  // Poll raffle info every 10 seconds (runs globally when wallet connected)
-  useEffect(() => {
-    if (!account) return;
-    fetchRaffleInfo();
-    fetchRaffleHistory(); // Fetch history once on mount
-    const pollInterval = setInterval(fetchRaffleInfo, 10000);
-    return () => clearInterval(pollInterval);
-  }, [account, fetchRaffleInfo, fetchRaffleHistory]);
 
   // Poll elite matches every 30 seconds (runs globally when wallet connected)
   useEffect(() => {
@@ -3530,7 +3491,9 @@ export default function Chess() {
       if (!match || !contractInstance || !userAccount) return;
 
       // Skip polling if match is completed - events have set final state
+      // IMPORTANT: Don't refresh completed matches to preserve board/move history state
       if (match.matchStatus === 2) {
+        console.log('[Chess Polling] Skipping poll for completed match');
         return;
       }
 
@@ -3547,10 +3510,51 @@ export default function Chess() {
           if (updatedMatch.matchStatus === 2) {
             console.log('[Chess Polling] Match completion detected, updating state and showing modal');
 
-            // Update match state with completion data
+            // CRITICAL: Fetch final move history from getPlayerMatches()
+            // This ensures the loser sees the opponent's final winning move
+            // AND calculate the final lastMove for highlighting
+            let finalLastMove = updatedMatch.lastMove; // Use from updatedMatch as default
+            try {
+              console.log('[Chess Polling] Fetching final move history for completed match...');
+              const finalHistory = await fetchMoveHistory(
+                contractInstance,
+                match.tierId,
+                match.instanceId,
+                match.roundNumber,
+                match.matchNumber
+              );
+              if (finalHistory && finalHistory.length > 0) {
+                setMoveHistory(finalHistory);
+                console.log('[Chess Polling] Updated final move history:', finalHistory.length, 'moves');
+
+                // Calculate lastMove from final move history for proper highlighting
+                const lastHistoryMove = finalHistory[finalHistory.length - 1];
+                if (lastHistoryMove && lastHistoryMove.from !== undefined && lastHistoryMove.to !== undefined) {
+                  finalLastMove = {
+                    from: lastHistoryMove.from,
+                    to: lastHistoryMove.to,
+                    player: lastHistoryMove.address,
+                    isMyMove: lastHistoryMove.address?.toLowerCase() === account?.toLowerCase()
+                  };
+                  console.log('[Chess Polling] Calculated final lastMove for highlighting:', finalLastMove);
+                }
+              }
+            } catch (historyErr) {
+              console.warn('[Chess Polling] Failed to fetch final move history:', historyErr);
+            }
+
+            // Update match state with completion data ONLY ONCE
             setCurrentMatch(prev => {
-              if (!prev || prev.matchStatus === 2) return prev; // Already completed
-              return updatedMatch;
+              // CRITICAL: Don't update if already completed (preserves board/move history)
+              if (!prev || prev.matchStatus === 2) {
+                console.log('[Chess Polling] Match already marked as completed, skipping update');
+                return prev;
+              }
+              // Include the final lastMove for highlighting
+              return {
+                ...updatedMatch,
+                lastMove: finalLastMove
+              };
             });
 
             // Show completion modal (in case event listener missed it)
@@ -3603,6 +3607,7 @@ export default function Chess() {
               player2TimeRemaining: updatedMatch.player2TimeRemaining,
               lastMoveTime: updatedMatch.lastMoveTime,
               lastMoveTimestamp: updatedMatch.lastMoveTimestamp,
+              lastMove: updatedMatch.lastMove, // Update last move for highlighting
               // matchStatus, winner, loser, isDraw are preserved from prev (event-driven)
             };
           });
@@ -3763,8 +3768,8 @@ export default function Chess() {
         </button>
       )}
 
-      {/* Bottom Navigation Bar - Mobile Only (Hidden during match) */}
-      {account && !currentMatch && (
+      {/* Bottom Navigation Bar - Mobile Only */}
+      {account && (
         <div className="fixed bottom-0 left-0 right-0 z-50 md:static md:z-auto">
           {/* Solid background bar on mobile */}
           <div className="md:hidden bg-gradient-to-b from-slate-800 to-slate-900 border-t border-purple-400/30 px-4 py-2.5 flex items-center justify-between">
@@ -3785,7 +3790,7 @@ export default function Chess() {
               account={account}
               onEnterMatch={handlePlayMatch}
               onEnterTournament={handleEnterTournament}
-              onRefresh={playerActivity.refetch}
+              onRefresh={handlePlayerActivityRefresh}
               onDismissMatch={playerActivity.dismissMatch}
               gameName="chess"
               gameEmoji="♚"
@@ -3795,6 +3800,7 @@ export default function Chess() {
               isElite={isEnrolledInElite}
               isExpanded={expandedPanel === 'playerActivity'}
               onToggleExpand={() => setExpandedPanel(expandedPanel === 'playerActivity' ? null : 'playerActivity')}
+              tierConfig={TIER_CONFIG}
             />
 
             {/* Community Raffle Card */}
@@ -3804,6 +3810,7 @@ export default function Chess() {
               gamesCardHeight={gamesCardHeight}
               playerActivityHeight={playerActivityHeight}
               onRefresh={fetchRaffleInfo}
+              onFetchHistory={fetchRaffleHistory}
               onTriggerRaffle={executeRaffle}
               syncing={raffleSyncing}
               onHeightChange={setRaffleCardHeight}
@@ -3843,7 +3850,7 @@ export default function Chess() {
               account={account}
               onEnterMatch={handlePlayMatch}
               onEnterTournament={handleEnterTournament}
-              onRefresh={playerActivity.refetch}
+              onRefresh={handlePlayerActivityRefresh}
               onDismissMatch={playerActivity.dismissMatch}
               gameName="chess"
               gameEmoji="♚"
@@ -3853,6 +3860,7 @@ export default function Chess() {
               isElite={isEnrolledInElite}
               isExpanded={expandedPanel === 'playerActivity'}
               onToggleExpand={() => setExpandedPanel(expandedPanel === 'playerActivity' ? null : 'playerActivity')}
+              tierConfig={TIER_CONFIG}
             />
 
             <CommunityRaffleCard
@@ -3861,6 +3869,7 @@ export default function Chess() {
               gamesCardHeight={gamesCardHeight}
               playerActivityHeight={playerActivityHeight}
               onRefresh={fetchRaffleInfo}
+              onFetchHistory={fetchRaffleHistory}
               onTriggerRaffle={executeRaffle}
               syncing={raffleSyncing}
               onHeightChange={setRaffleCardHeight}
@@ -4137,7 +4146,14 @@ export default function Chess() {
                     {moveHistory.map((move, idx) => (
                       <div key={idx} className="flex items-center gap-3 text-sm bg-purple-500/10 p-3 rounded-lg hover:bg-purple-500/20 transition-colors">
                         <span className="text-purple-300 font-semibold min-w-[2rem]">#{idx + 1}</span>
-                        <span className="text-white font-bold text-lg">{move.player}</span>
+                        <div className="w-8 h-8 flex items-center justify-center">
+                          <img
+                            src={move.player === '♚' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
+                            alt={move.player === '♚' ? 'White' : 'Black'}
+                            className="w-7 h-7"
+                            draggable="false"
+                          />
+                        </div>
                         <span className="text-purple-200 font-mono">{move.move}</span>
                       </div>
                     ))}
@@ -4197,7 +4213,14 @@ export default function Chess() {
                   {moveHistory.map((move, idx) => (
                     <div key={idx} className="flex items-center gap-3 text-sm bg-purple-500/10 p-3 rounded-lg hover:bg-purple-500/20 transition-colors">
                       <span className="text-purple-300 font-semibold min-w-[2rem]">#{idx + 1}</span>
-                      <span className="text-white font-bold text-lg">{move.player}</span>
+                      <div className="w-8 h-8 flex items-center justify-center">
+                        <img
+                          src={move.player === '♔' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
+                          alt={move.player === '♔' ? 'White' : 'Black'}
+                          className="w-7 h-7"
+                          draggable="false"
+                        />
+                      </div>
                       <span className="text-purple-200 font-mono">{move.move}</span>
                     </div>
                   ))}

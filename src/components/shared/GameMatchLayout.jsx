@@ -259,11 +259,20 @@ const GameMatchLayout = ({
 
           {/* Player Info Section */}
           <div className="flex items-center gap-2">
-            <div className={`w-10 h-10 ${cardColors.iconBg} rounded-full flex items-center justify-center text-xl font-bold border ${
-              isTurn && !isGameOver ? 'border-green-400' : cardColors.border
-            }`}>
-              {icon}
-            </div>
+            {(icon === '♚' || icon === '♔') ? (
+              <img
+                src={icon === '♚' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
+                alt={label}
+                className="w-10 h-10"
+                draggable="false"
+              />
+            ) : (
+              <div className={`w-10 h-10 ${cardColors.iconBg} rounded-full flex items-center justify-center text-xl font-bold border ${
+                isTurn && !isGameOver ? 'border-green-400' : cardColors.border
+              }`}>
+                {icon}
+              </div>
+            )}
             <div className="flex-1 min-w-0">
               <div className="text-xs text-gray-400">{label}</div>
               <div className="font-mono text-xs truncate">{playerAddress ? `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : ''}</div>
@@ -382,9 +391,18 @@ const GameMatchLayout = ({
 
           {/* Player Info */}
           <div className="flex items-center gap-3 mb-4">
-            <div className={`w-12 h-12 ${cardColors.iconBg} rounded-full flex items-center justify-center text-2xl font-bold border-2 ${cardColors.border}`}>
-              {icon}
-            </div>
+            {(icon === '♚' || icon === '♔') ? (
+              <img
+                src={icon === '♚' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
+                alt={label}
+                className="w-14 h-14 flex-shrink-0"
+                draggable="false"
+              />
+            ) : (
+              <div className={`w-12 h-12 flex-shrink-0 ${cardColors.iconBg} rounded-full flex items-center justify-center text-2xl font-bold border-2 ${cardColors.border}`}>
+                {icon}
+              </div>
+            )}
             <div>
               <h3 className="text-xl font-bold text-white">{label}</h3>
               <p className={`${cardColors.text} font-mono text-sm`}>
@@ -561,9 +579,18 @@ const GameMatchLayout = ({
 
           {/* Player Info */}
           <div className="flex items-center gap-3 mb-4">
-            <div className={`w-12 h-12 ${cardColors.iconBg} rounded-full flex items-center justify-center text-2xl font-bold border-2 ${cardColors.border}`}>
-              {icon}
-            </div>
+            {(icon === '♚' || icon === '♔') ? (
+              <img
+                src={icon === '♚' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
+                alt={label}
+                className="w-14 h-14 flex-shrink-0"
+                draggable="false"
+              />
+            ) : (
+              <div className={`w-12 h-12 flex-shrink-0 ${cardColors.iconBg} rounded-full flex items-center justify-center text-2xl font-bold border-2 ${cardColors.border}`}>
+                {icon}
+              </div>
+            )}
             <div>
               <h3 className="text-xl font-bold text-white">{label}</h3>
               <p className={`${cardColors.text} font-mono text-sm`}>
@@ -731,7 +758,16 @@ const GameMatchLayout = ({
 
           {/* Player Info */}
           <div className="flex items-center gap-2">
-            <span className="text-2xl">{icon}</span>
+            {(icon === '♚' || icon === '♔') ? (
+              <img
+                src={icon === '♚' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
+                alt={label}
+                className="w-10 h-10"
+                draggable="false"
+              />
+            ) : (
+              <span className="text-2xl">{icon}</span>
+            )}
             <div className="flex-1">
               <div className="text-xs text-gray-400">{label}</div>
               <div className="font-mono text-xs">{playerAddress ? `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : ''}</div>
@@ -877,9 +913,18 @@ const GameMatchLayout = ({
 
           {/* Player Info */}
           <div className="flex items-center gap-3 mb-4">
-            <div className={`w-12 h-12 ${cardColors.iconBg} rounded-full flex items-center justify-center text-2xl font-bold border-2 ${cardColors.border}`}>
-              {icon}
-            </div>
+            {(icon === '♚' || icon === '♔') ? (
+              <img
+                src={icon === '♚' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
+                alt={label}
+                className="w-14 h-14 flex-shrink-0"
+                draggable="false"
+              />
+            ) : (
+              <div className={`w-12 h-12 flex-shrink-0 ${cardColors.iconBg} rounded-full flex items-center justify-center text-2xl font-bold border-2 ${cardColors.border}`}>
+                {icon}
+              </div>
+            )}
             <div>
               <h3 className="text-xl font-bold text-white">{label}</h3>
               <p className={`${cardColors.text} font-mono text-sm`}>
@@ -1017,14 +1062,16 @@ const GameMatchLayout = ({
           </div>
 
           {/* Right Column - Move History or Match Info */}
-          <div className="bg-slate-900/50 rounded-xl p-6 border border-purple-500/30 max-h-[800px] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-slate-800/50 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-purple-500/60 [&::-webkit-scrollbar-thumb]:to-pink-500/60 [&::-webkit-scrollbar-thumb]:rounded-full">
-            {renderMoveHistory ? (
-              renderMoveHistory()
-            ) : (
-              <div className="text-center py-8 text-purple-300/60">
-                <p className="text-sm">No move history available</p>
-              </div>
-            )}
+          <div className="mr-6">
+            <div className="bg-slate-900/50 rounded-xl p-6 border border-purple-500/30 max-h-[800px] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-slate-800/50 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-purple-500/60 [&::-webkit-scrollbar-thumb]:to-pink-500/60 [&::-webkit-scrollbar-thumb]:rounded-full">
+              {renderMoveHistory ? (
+                renderMoveHistory()
+              ) : (
+                <div className="text-center py-8 text-purple-300/60">
+                  <p className="text-sm">No move history available</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </>

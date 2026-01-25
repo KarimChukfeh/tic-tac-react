@@ -224,6 +224,7 @@ const ConnectFourBoard = ({
   account,
   player1,
   player2,
+  firstPlayer,
   matchStatus,
   loading,
   winner,
@@ -250,12 +251,14 @@ const ConnectFourBoard = ({
   const isPlayer2 = account && player2?.toLowerCase() === account.toLowerCase();
   const isMyTurn = account && currentTurn?.toLowerCase() === account.toLowerCase();
 
-  const myColor = isPlayer1 ? 1 : isPlayer2 ? 2 : 0;
+  // Color based on who goes first: firstPlayer = 1 (RED), second player = 2 (BLUE)
+  const isFirstPlayer = account && firstPlayer?.toLowerCase() === account.toLowerCase();
+  const myColor = isFirstPlayer ? 1 : (isPlayer1 || isPlayer2) ? 2 : 0;
 
   const grid = boardToGrid(board);
 
   const winnerValue = winner && winner !== '0x0000000000000000000000000000000000000000'
-    ? (winner.toLowerCase() === player1?.toLowerCase() ? 1 : 2)
+    ? (winner.toLowerCase() === firstPlayer?.toLowerCase() ? 1 : 2)
     : 0;
   const winningCells = findWinningCells(grid, winnerValue);
 
@@ -269,6 +272,11 @@ const ConnectFourBoard = ({
   };
 
   const cellSize = boardSize ? (boardSize - 32 - 24) / 7 : 60;
+
+  // Debug: Log lastColumn value
+  useEffect(() => {
+    console.log('[ConnectFourBoard] lastColumn prop:', lastColumn);
+  }, [lastColumn]);
 
   return (
     <div ref={containerRef} className="flex flex-col items-center">
@@ -324,21 +332,35 @@ const ConnectFourBoard = ({
             <div key={rowIdx} className="flex gap-1">
               {row.map((cell, colIdx) => {
                 const isWinning = winningCells.some(([r, c]) => r === rowIdx && c === colIdx);
-                const isLastMove = lastColumn === colIdx && getTopDiscRow(colIdx) === rowIdx;
+                const topDiscRow = getTopDiscRow(colIdx);
+                const isLastMove = lastColumn === colIdx && topDiscRow === rowIdx;
                 const isPreview = rowIdx === previewRow && colIdx === hoveredColumn && isMyTurn && matchStatus === 1;
+
+                // Debug logging for last move
+                if (isLastMove) {
+                  console.log('[ConnectFourBoard] Last move detected:', {
+                    rowIdx,
+                    colIdx,
+                    lastColumn,
+                    topDiscRow,
+                    cell
+                  });
+                }
 
                 return (
                   <div
                     key={colIdx}
                     className={`rounded-full flex items-center justify-center transition-all
                       ${isWinning ? 'ring-4 ring-yellow-400 animate-pulse' : ''}
-                      ${isLastMove ? 'ring-2 ring-white/50' : ''}
+                      ${isLastMove && !isWinning ? 'ring-2 ring-white/70' : ''}
                     `}
                     style={{
                       width: cellSize,
                       height: cellSize,
                       background: '#0a1628',
-                      boxShadow: 'inset 0 4px 8px rgba(0,0,0,0.5)'
+                      boxShadow: isLastMove && !isWinning
+                        ? 'inset 0 4px 8px rgba(0,0,0,0.5), 0 0 15px 2px rgba(255, 255, 255, 0.3)'
+                        : 'inset 0 4px 8px rgba(0,0,0,0.5)'
                     }}
                     onMouseEnter={() => setHoveredColumn(colIdx)}
                     onMouseLeave={() => setHoveredColumn(-1)}
@@ -350,14 +372,18 @@ const ConnectFourBoard = ({
                   >
                     {cell !== 0 ? (
                       <div
-                        className={`rounded-full transition-all ${isWinning ? 'scale-110' : ''}`}
+                        className={`rounded-full transition-all ${isWinning ? 'scale-110' : ''} ${isLastMove && !isWinning ? 'animate-pulse' : ''}`}
                         style={{
                           width: cellSize - 8,
                           height: cellSize - 8,
                           background: cell === 1
                             ? 'radial-gradient(circle at 30% 30%, #ff0044, #bb0033)'
                             : 'radial-gradient(circle at 30% 30%, #0077ff, #0055aa)',
-                          boxShadow: 'inset 0 -4px 8px rgba(0,0,0,0.3)'
+                          boxShadow: isLastMove && !isWinning
+                            ? cell === 1
+                              ? '0 0 20px 4px rgba(255, 0, 68, 0.8), 0 0 40px 8px rgba(255, 0, 68, 0.4), inset 0 -4px 8px rgba(0,0,0,0.3)'
+                              : '0 0 20px 4px rgba(0, 119, 255, 0.8), 0 0 40px 8px rgba(0, 119, 255, 0.4), inset 0 -4px 8px rgba(0,0,0,0.3)'
+                            : 'inset 0 -4px 8px rgba(0,0,0,0.3)'
                         }}
                       />
                     ) : isPreview ? (
@@ -698,7 +724,7 @@ export default function ConnectFour() {
   const [raffleSyncing, setRaffleSyncing] = useState(false);
 
   // Player Activity Hook
-  const playerActivity = usePlayerActivity(contract, account, 'connect4');
+  const playerActivity = usePlayerActivity(contract, account, 'connect4', TIER_CONFIG);
   const [gamesCardHeight, setGamesCardHeight] = useState(0);
   const [playerActivityHeight, setPlayerActivityHeight] = useState(0);
 
@@ -1118,6 +1144,7 @@ export default function ConnectFour() {
         // Process results - stop at first uninitialized instance
         const statuses = [];
         const enrolledCounts = [];
+        const currentRounds = [];
         const enrollmentTimeouts = [];
         const hasStartedViaTimeouts = [];
 
@@ -1125,6 +1152,7 @@ export default function ConnectFour() {
           if (!result.success) break;
           statuses.push(result.status);
           enrolledCounts.push(result.enrolledCount);
+          currentRounds.push(result.currentRound);
           enrollmentTimeouts.push(result.enrollmentTimeout);
           hasStartedViaTimeouts.push(result.hasStartedViaTimeout);
         }
@@ -1136,6 +1164,7 @@ export default function ConnectFour() {
           entryFee,
           statuses,
           enrolledCounts,
+          currentRounds,
           enrollmentTimeouts,
           hasStartedViaTimeouts
         };
@@ -1150,6 +1179,7 @@ export default function ConnectFour() {
             instanceId: i,
             status: statuses[i],
             enrolledCount: enrolledCounts[i],
+            currentRound: currentRounds[i],
             maxPlayers: playerCount,
             entryFee,
             prizePool: prizePoolETH,
@@ -1248,6 +1278,7 @@ export default function ConnectFour() {
 
         const statuses = [];
         const enrolledCounts = [];
+        const currentRounds = [];
         const enrollmentTimeouts = [];
         const hasStartedViaTimeouts = [];
 
@@ -1255,6 +1286,7 @@ export default function ConnectFour() {
           if (!result.success) break;
           statuses.push(result.status);
           enrolledCounts.push(result.enrolledCount);
+          currentRounds.push(result.currentRound);
           enrollmentTimeouts.push(result.enrollmentTimeout);
           hasStartedViaTimeouts.push(result.hasStartedViaTimeout);
         }
@@ -1265,6 +1297,7 @@ export default function ConnectFour() {
           entryFee,
           statuses,
           enrolledCounts,
+          currentRounds,
           enrollmentTimeouts,
           hasStartedViaTimeouts
         };
@@ -1290,6 +1323,7 @@ export default function ConnectFour() {
             instanceId: i,
             status: metadata.statuses[i],
             enrolledCount: metadata.enrolledCounts[i],
+            currentRound: metadata.currentRounds[i],
             maxPlayers: metadata.playerCount,
             entryFee: metadata.entryFee,
             prizePool: prizePoolETH,
@@ -1483,6 +1517,21 @@ export default function ConnectFour() {
       }
     }
   }, [getReadOnlyContract, account, fetchTierMetadata, fetchTierInstances]);
+
+  // Comprehensive refresh for Player Activity panel
+  // Fetches fresh multicall data for ALL tiers (regardless of loaded/expanded state)
+  const handlePlayerActivityRefresh = useCallback(async () => {
+    if (!contract || !account) return;
+
+    console.log('[PlayerActivity Refresh] Refreshing player activity via event-based polling');
+
+    // Trigger player activity data refetch (which now uses event-based polling)
+    // This will:
+    // 1. Query TournamentEnrolled events for the player
+    // 2. Poll only the tier/instances from those events
+    // 3. Update activity cards based on current state
+    await playerActivity.refetch();
+  }, [contract, account, playerActivity]);
 
   // Handle tournament enrollment
   const handleEnroll = async (tierId, instanceId, entryFee) => {
@@ -2007,6 +2056,7 @@ export default function ConnectFour() {
             matches.push({
               player1: zeroAddress,
               player2: zeroAddress,
+              firstPlayer: zeroAddress,
               currentTurn: zeroAddress,
               winner: zeroAddress,
               loser: zeroAddress,
@@ -2085,107 +2135,127 @@ export default function ConnectFour() {
   // Fetch move history from blockchain events
   const fetchMoveHistory = useCallback(async (contractInstance, tierId, instanceId, roundNumber, matchNumber) => {
     try {
-      // Get match data first (needed for event filtering)
+      // Get match data first
       const matchData = await contractInstance.getMatch(tierId, instanceId, roundNumber, matchNumber);
       const parsedMatch = parseConnectFourMatch(matchData);
-      const player1 = parsedMatch.player1;
-      const player2 = parsedMatch.player2;
-      const matchStartTime = Number(matchData.common.startTime);
+      let player1 = parsedMatch.player1;
+      let player2 = parsedMatch.player2;
+      let firstPlayer = parsedMatch.firstPlayer;
 
-      // Try to query MoveMade events for this match
-      try {
-        const matchKey = ethers.keccak256(
-          ethers.AbiCoder.defaultAbiCoder().encode(
-            ['uint8', 'uint8', 'uint8', 'uint8'],
-            [tierId, instanceId, roundNumber, matchNumber]
-          )
-        );
+      // Check if match data has been cleared (happens when tournament ends)
+      const zeroAddress = '0x0000000000000000000000000000000000000000';
+      const isMatchCleared = player1.toLowerCase() === zeroAddress && player2.toLowerCase() === zeroAddress;
 
-        const filter = contractInstance.filters.MoveMade(matchKey);
-        const events = await contractInstance.queryFilter(filter);
+      // Extract moves string from getMatch() response (primary source)
+      let movesString = parsedMatch.moves || '';
+      console.log('[FetchMoveHistory] Moves from getMatch():', movesString ? `${movesString.length} chars` : 'empty');
 
-        if (events.length > 0) {
-          // Filter events to only include those from the current match instance
-          // Get block timestamps and filter by match start time and player addresses
-          const eventsWithTimestamps = await Promise.all(
-            events.map(async (event) => {
-              const block = await event.getBlock();
-              return {
-                event,
-                timestamp: block.timestamp
-              };
-            })
-          );
+      // FALLBACK: Fetch from getPlayerMatches() if:
+      // 1. Match data is cleared (tournament ended), OR
+      // 2. Match is completed (to ensure we have the final move for both players)
+      const isMatchCompleted = parsedMatch.matchStatus === 2;
+      if (isMatchCleared || isMatchCompleted) {
+        console.log('[FetchMoveHistory] Fetching from getPlayerMatches() - cleared:', isMatchCleared, 'completed:', isMatchCompleted);
+        try {
+          const allMatches = await contractInstance.getPlayerMatches();
 
-          // Only include events that occurred after match start with the correct players
-          const currentMatchEvents = eventsWithTimestamps
-            .filter(({ event, timestamp }) => {
-              const eventPlayer = event.args.player.toLowerCase();
-              const isCorrectPlayer = eventPlayer === player1.toLowerCase() || eventPlayer === player2.toLowerCase();
-              return timestamp >= matchStartTime && isCorrectPlayer;
-            })
-            .map(({ event }) => event);
+          // Find the specific match (search from end - recent matches last)
+          // Verify tournament context AND that player addresses are valid
+          let foundMatch = null;
+          for (let i = allMatches.length - 1; i >= 0; i--) {
+            const m = allMatches[i];
+            const tournamentMatches =
+              Number(m.tierId) === tierId &&
+              Number(m.instanceId) === instanceId &&
+              Number(m.roundNumber) === roundNumber &&
+              Number(m.matchNumber) === matchNumber;
 
-          if (currentMatchEvents.length === 0) {
-            return [];
+            // Verify that the match record has valid player addresses (not zero addresses)
+            const m1Lower = m.player1?.toLowerCase() || '';
+            const m2Lower = m.player2?.toLowerCase() || '';
+            const hasValidPlayers =
+              m1Lower !== zeroAddress.toLowerCase() &&
+              m2Lower !== zeroAddress.toLowerCase() &&
+              m1Lower !== '' && m2Lower !== '';
+
+            if (tournamentMatches && hasValidPlayers) {
+              foundMatch = m;
+              break;
+            }
           }
 
-          // Convert filtered events to move history
-          const history = currentMatchEvents.map(event => {
-            const player = event.args.player;
-            const cellIndex = Number(event.args.cellIndex);
-            const isPlayer1 = player.toLowerCase() === player1.toLowerCase();
-            const column = cellIndex % 7; // Convert cell index to column (0-6)
+          if (foundMatch) {
+            // Use moves from getPlayerMatches() - this is the authoritative source for completed matches
+            // Ensures both winner and loser see the complete final move history
+            movesString = foundMatch.moves || '';
+
+            // Update player info from fallback data ONLY if match was cleared
+            // (For completed but not cleared matches, player info is still valid in getMatch())
+            if (isMatchCleared) {
+              player1 = foundMatch.player1;
+              player2 = foundMatch.player2;
+              firstPlayer = foundMatch.firstPlayer;
+              console.log('[FetchMoveHistory] Updated player info from getPlayerMatches():', {
+                player1,
+                player2,
+                firstPlayer
+              });
+            }
+            console.log('[FetchMoveHistory] Found moves from getPlayerMatches():', movesString.length, 'chars');
+          } else {
+            console.warn('[FetchMoveHistory] Match not found in getPlayerMatches() with valid player addresses');
+          }
+        } catch (err) {
+          console.warn('[FetchMoveHistory] Failed to fetch from getPlayerMatches():', err);
+        }
+      }
+
+      console.log('[FetchMoveHistory] Final moves string:', movesString);
+
+      if (movesString && movesString.length > 0) {
+        try {
+          // Parse moves string for Connect Four: each move is 1 byte (column number 0-6)
+          const moves = [];
+
+          console.log('[FetchMoveHistory] Parsing Connect4 moves...');
+          for (let i = 0; i < movesString.length; i++) {
+            const columnNumber = movesString.charCodeAt(i);
+            console.log(`[FetchMoveHistory] Move ${i}: charCode=${columnNumber}`);
+            // Validate that this is a valid column (0-6 for 7 columns)
+            if (columnNumber >= 0 && columnNumber <= 6) {
+              moves.push(columnNumber);
+            } else {
+              console.warn(`[FetchMoveHistory] Invalid column ${columnNumber} at index ${i}`);
+            }
+          }
+
+          console.log('[FetchMoveHistory] Valid moves parsed:', moves.length, 'out of', movesString.length);
+
+          // Convert to display format
+          // Red always goes first (even indices 0, 2, 4...), Blue goes second (odd indices 1, 3, 5...)
+          // firstPlayer is the one who moves first and should be Red
+          const history = moves.map((columnNumber, idx) => {
+            const isFirstPlayerMove = idx % 2 === 0; // Even indices are first player moves
+            const movePlayer = isFirstPlayerMove ? firstPlayer : (firstPlayer === player1 ? player2 : player1);
             return {
-              player: isPlayer1 ? 'Red' : 'Blue',
-              column: column + 1, // Display as 1-7 for users
-              cellIndex: cellIndex, // Keep for reference
-              address: player,
-              blockNumber: event.blockNumber
+              player: isFirstPlayerMove ? 'Red' : 'Blue',
+              column: columnNumber + 1, // Display as 1-7 for users
+              columnNumber: columnNumber,
+              address: movePlayer
             };
           });
 
-          // Sort by block number to ensure correct order
-          history.sort((a, b) => a.blockNumber - b.blockNumber);
+          console.log('[FetchMoveHistory] Parsed moves from getMatch():', history.length);
+          console.log('[FetchMoveHistory] History:', history);
           return history;
-        }
-      } catch (eventError) {
-        console.warn('Event query failed, falling back to board reconstruction:', eventError);
-      }
-
-      // Fallback: Reconstruct from board state by alternating players
-      // This won't be perfect chronologically, but will alternate correctly
-      const history = [];
-      const boardArray = Array.from(parsedMatch.board);
-
-      const player1Moves = [];
-      const player2Moves = [];
-
-      for (let i = 0; i < boardArray.length; i++) {
-        const cell = Number(boardArray[i]);
-        if (cell !== 0) {
-          const column = i % 7;
-          const move = {
-            player: cell === 1 ? 'Red' : 'Blue',
-            column: column + 1,
-            cellIndex: i
-          };
-          if (cell === 1) {
-            player1Moves.push(move);
-          } else {
-            player2Moves.push(move);
-          }
+        } catch (parseError) {
+          console.warn('[FetchMoveHistory] Failed to parse moves string:', parseError);
         }
       }
 
-      // Interleave moves to alternate between players
-      const maxMoves = Math.max(player1Moves.length, player2Moves.length);
-      for (let i = 0; i < maxMoves; i++) {
-        if (i < player1Moves.length) history.push(player1Moves[i]);
-        if (i < player2Moves.length) history.push(player2Moves[i]);
-      }
-
-      return history;
+      // No moves found - return empty array
+      console.log('[FetchMoveHistory] No moves available');
+      return [];
     } catch (error) {
       console.error('Error fetching move history:', error);
       return [];
@@ -2197,7 +2267,9 @@ export default function ConnectFour() {
     try {
       const { tierId, instanceId, roundNumber, matchNumber } = matchInfo;
       const matchData = await contractInstance.getMatch(tierId, instanceId, roundNumber, matchNumber);
+      console.log('[refreshMatchData] getMatch() raw response:', matchData);
       const parsedMatch = parseConnectFourMatch(matchData);
+      console.log('[refreshMatchData] Parsed match data:', parsedMatch);
 
       // Fetch per-tier timeout config to get correct match time (with hardcoded TIER_CONFIG fallback)
       const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, tierId, totalMatchTime, TIER_CONFIG[tierId]);
@@ -2205,7 +2277,7 @@ export default function ConnectFour() {
 
       const {
         player1, player2, currentTurn, winner, loser, board, matchStatus, isDraw,
-        startTime, lastMoveTime, lastMoveTimestamp
+        startTime, lastMoveTime, lastMoveTimestamp, firstPlayer
       } = parsedMatch;
 
       const zeroAddress = '0x0000000000000000000000000000000000000000';
@@ -2213,42 +2285,99 @@ export default function ConnectFour() {
         player1.toLowerCase() !== zeroAddress &&
         player2.toLowerCase() !== zeroAddress;
 
-      // If contract returns cleared data (zero addresses + empty board), query MatchCompleted event
-      // Keep polling until we find an event matching this exact match instance
+      // OPTIMIZATION: If contract returns cleared data (zero addresses + empty board),
+      // fetch from getPlayerMatches() instead of event queries
       const isBoardEmpty = board.every(cell => cell === 0);
       if (!isMatchInitialized && isBoardEmpty) {
-        console.log('[refreshMatchData] Match data cleared, querying MatchCompleted event');
+        console.log('[refreshMatchData] Match data cleared, fetching from getPlayerMatches()');
 
         try {
-          const matchId = ethers.solidityPackedKeccak256(
-            ['uint8', 'uint8', 'uint8', 'uint8'],
-            [tierId, instanceId, roundNumber, matchNumber]
-          );
+          // Fetch all player matches (includes completed matches with full data)
+          const allMatches = await contractInstance.getPlayerMatches();
 
-          const filter = contractInstance.filters.MatchCompleted(matchId);
-          const events = await contractInstance.queryFilter(filter);
+          console.log('[refreshMatchData] Fetched player matches:', allMatches.length);
 
-          // Find event that matches this exact match instance
-          for (let i = events.length - 1; i >= 0; i--) {
-            const event = events[i];
-            const { winner: eventWinner, isDraw: eventIsDraw, reason: eventReason, board: eventPackedBoard } = event.args;
+          // Find the match that matches our tournament context
+          // Search from end since recent matches are last
+          // Also verify that player addresses are valid
+          let foundMatch = null;
+          for (let i = allMatches.length - 1; i >= 0; i--) {
+            const m = allMatches[i];
+            const tournamentMatches =
+              Number(m.tierId) === tierId &&
+              Number(m.instanceId) === instanceId &&
+              Number(m.roundNumber) === roundNumber &&
+              Number(m.matchNumber) === matchNumber;
 
-            // Verify winner is one of our players
-            const winnerLower = eventWinner.toLowerCase();
-            const p1Lower = matchInfo.player1?.toLowerCase();
-            const p2Lower = matchInfo.player2?.toLowerCase();
-            const winnerIsPlayer = eventIsDraw || winnerLower === p1Lower || winnerLower === p2Lower || winnerLower === zeroAddress;
+            // Verify that the match record has valid player addresses (not zero addresses)
+            const m1Lower = m.player1?.toLowerCase() || '';
+            const m2Lower = m.player2?.toLowerCase() || '';
+            const hasValidPlayers =
+              m1Lower !== zeroAddress.toLowerCase() &&
+              m2Lower !== zeroAddress.toLowerCase() &&
+              m1Lower !== '' && m2Lower !== '';
 
-            if (!winnerIsPlayer) continue;
+            if (tournamentMatches && hasValidPlayers) {
+              foundMatch = m;
+              console.log('[refreshMatchData] Found match with valid players:', {
+                player1: m.player1,
+                player2: m.player2,
+                firstPlayer: m.firstPlayer
+              });
+              break;
+            }
+          }
 
-            // Verify event occurred after match start time
-            const block = await event.getBlock();
-            const eventTimestamp = Number(block.timestamp);
+          // Fallback: Match by player addresses and approximate timestamp
+          if (!foundMatch && matchInfo.player1 && matchInfo.player2) {
+            const p1Lower = matchInfo.player1.toLowerCase();
+            const p2Lower = matchInfo.player2.toLowerCase();
             const matchStartTime = matchInfo.startTime;
 
-            if (matchStartTime && eventTimestamp < matchStartTime) continue;
+            const candidateMatches = allMatches.filter(m => {
+              const m1Lower = m.player1?.toLowerCase() || '';
+              const m2Lower = m.player2?.toLowerCase() || '';
 
-            // Unpack the ConnectFour board from the event (2 bits per cell, 42 cells)
+              // Verify valid player addresses in the match record
+              const hasValidPlayers =
+                m1Lower !== zeroAddress.toLowerCase() &&
+                m2Lower !== zeroAddress.toLowerCase() &&
+                m1Lower !== '' && m2Lower !== '';
+
+              if (!hasValidPlayers) return false;
+
+              // Check if players match (in either order)
+              const playersMatch = (m1Lower === p1Lower && m2Lower === p2Lower) ||
+                                   (m1Lower === p2Lower && m2Lower === p1Lower);
+
+              if (!playersMatch) return false;
+
+              if (matchStartTime) {
+                const timeDiff = Math.abs(Number(m.startTime) - matchStartTime);
+                return timeDiff < 3600; // 1 hour tolerance
+              }
+
+              return true;
+            });
+
+            if (candidateMatches.length > 0) {
+              foundMatch = candidateMatches.sort((a, b) => Number(b.startTime) - Number(a.startTime))[0];
+              console.log('[refreshMatchData] Found match by player addresses and timestamp');
+            }
+          }
+
+          if (foundMatch) {
+            console.log('[refreshMatchData] Found matching completed match:', {
+              tierId: Number(foundMatch.tierId),
+              instanceId: Number(foundMatch.instanceId),
+              round: Number(foundMatch.roundNumber),
+              match: Number(foundMatch.matchNumber),
+              winner: foundMatch.winner,
+              isDraw: foundMatch.isDraw,
+              movesLength: foundMatch.moves?.length || 0
+            });
+
+            // Unpack the ConnectFour board from packedBoard (2 bits per cell, 42 cells)
             const unpackBoard = (packed) => {
               const boardArray = [];
               let p = BigInt(packed);
@@ -2258,35 +2387,30 @@ export default function ConnectFour() {
               }
               return boardArray;
             };
-            const eventBoard = unpackBoard(eventPackedBoard);
+            const matchBoard = unpackBoard(foundMatch.packedBoard);
 
-            console.log('[refreshMatchData] Found matching MatchCompleted event:', {
-              winner: eventWinner,
-              isDraw: eventIsDraw,
-              reason: Number(eventReason),
-              eventTimestamp,
-              matchStartTime
-            });
-
-            const eventLoser = eventIsDraw ? zeroAddress :
-              (winnerLower === p1Lower ? matchInfo.player2 : matchInfo.player1);
+            const winnerLower = foundMatch.winner.toLowerCase();
+            const p1Lower = foundMatch.player1.toLowerCase();
+            const matchLoser = foundMatch.isDraw ? zeroAddress :
+              (winnerLower === p1Lower ? foundMatch.player2 : foundMatch.player1);
 
             return {
               ...matchInfo,
               matchStatus: 2,
-              winner: eventWinner,
-              loser: eventLoser,
-              isDraw: eventIsDraw,
-              board: eventBoard,
+              winner: foundMatch.winner,
+              loser: matchLoser,
+              isDraw: foundMatch.isDraw,
+              board: matchBoard,
               isYourTurn: false,
               completedFromEventPoll: true,
-              completionReason: Number(eventReason)
+              completionReason: Number(foundMatch.completionReason),
+              cachedMoves: foundMatch.moves || ''
             };
           }
 
-          console.log('[refreshMatchData] No matching MatchCompleted event found yet, continuing to poll');
+          console.log('[refreshMatchData] No matching completed match found in getPlayerMatches(), continuing to poll');
         } catch (err) {
-          console.error('[refreshMatchData] Error querying MatchCompleted event:', err);
+          console.error('[refreshMatchData] Error fetching from getPlayerMatches():', err);
         }
 
         return null;
@@ -2356,56 +2480,24 @@ export default function ConnectFour() {
       // A match is timed out if it completed with an active timeout state
       const isTimedOut = matchStatus === 2 && timeoutState?.timeoutActive === true;
 
-      // Fetch last move for highlighting (with timestamp filtering)
+      // Calculate last move column from moves string
+      // Contract doesn't store lastColumn directly - we extract it from moves string
+      // Each move is 1 byte (column number 0-6)
       let lastColumn = null;
-      try {
-        const matchStartTime = Number(matchData.common.startTime);
-
-        const matchKey = ethers.keccak256(
-          ethers.AbiCoder.defaultAbiCoder().encode(
-            ['uint8', 'uint8', 'uint8', 'uint8'],
-            [tierId, instanceId, roundNumber, matchNumber]
-          )
-        );
-
-        const filter = contractInstance.filters.MoveMade(matchKey);
-        const events = await contractInstance.queryFilter(filter);
-
-        if (events.length > 0) {
-          // Get block timestamps for each event
-          const eventsWithTimestamps = await Promise.all(
-            events.map(async (event) => {
-              const block = await event.getBlock();
-              return {
-                event,
-                timestamp: block.timestamp
-              };
-            })
-          );
-
-          // Only include events that occurred after match start with the correct players
-          const currentMatchEvents = eventsWithTimestamps
-            .filter(({ event, timestamp }) => {
-              const eventPlayer = event.args.player.toLowerCase();
-              const isCorrectPlayer = eventPlayer === player1.toLowerCase() || eventPlayer === player2.toLowerCase();
-              return timestamp >= matchStartTime && isCorrectPlayer;
-            })
-            .map(({ event }) => event);
-
-          // Get the last move from the filtered events
-          if (currentMatchEvents.length > 0) {
-            const lastEvent = currentMatchEvents[currentMatchEvents.length - 1];
-            lastColumn = Number(lastEvent.args.cellIndex);
-          }
+      if (parsedMatch.moves && parsedMatch.moves.length > 0) {
+        const lastMoveIndex = parsedMatch.moves.length - 1;
+        const columnNumber = parsedMatch.moves.charCodeAt(lastMoveIndex);
+        if (columnNumber >= 0 && columnNumber <= 6) {
+          lastColumn = columnNumber;
         }
-      } catch (lastMoveErr) {
-        console.debug('Could not fetch last move for highlighting:', lastMoveErr.message);
       }
+      console.log('[refreshMatchData] Last column calculated from moves:', lastColumn, 'moves length:', parsedMatch.moves?.length);
 
       return {
         ...matchInfo,
         player1: actualPlayer1,
         player2: actualPlayer2,
+        firstPlayer,
         currentTurn,
         winner,
         loser,
@@ -2426,7 +2518,8 @@ export default function ConnectFour() {
         lastMoveTimestamp,
         matchTimePerPlayer: tierMatchTime, // Pass through per-tier value for UI components
         timeoutConfig, // Pass timeout config to UI components
-        lastColumn // Last move column for highlighting (filtered by match start time)
+        lastColumn, // Last move column for highlighting (filtered by match start time)
+        cachedMoves: parsedMatch.moves || '' // Moves from getMatch() for move history
       };
     } catch (error) {
       console.error('Error refreshing match:', error);
@@ -2885,152 +2978,6 @@ export default function ConnectFour() {
     updateEnrollmentStatuses();
   }, [account, contract, fetchTierInstances]);
 
-  // Listen for MatchCompleted events to notify players and update match state
-  useEffect(() => {
-    if (!contract || !account || !currentMatch) return;
-
-    console.log('[MatchCompleted] Setting up event listener for current match:', {
-      tierId: currentMatch.tierId,
-      instanceId: currentMatch.instanceId,
-      roundNumber: currentMatch.roundNumber,
-      matchNumber: currentMatch.matchNumber
-    });
-
-    const handleMatchCompleted = async (matchId, player1, player2, winner, isDraw, reason, packedBoard, event) => {
-      console.log('[MatchCompleted Event] ===== EVENT FIRED =====');
-      console.log('[MatchCompleted Event] MatchId:', matchId);
-      console.log('[MatchCompleted Event] Player1:', player1, 'Player2:', player2);
-      console.log('[MatchCompleted Event] Winner:', winner, 'isDraw:', isDraw, 'reason:', Number(reason));
-
-      // Check if this event is for the current match being viewed
-      const currentMatchId = ethers.solidityPackedKeccak256(
-        ['uint8', 'uint8', 'uint8', 'uint8'],
-        [currentMatch.tierId, currentMatch.instanceId, currentMatch.roundNumber, currentMatch.matchNumber]
-      );
-
-      if (matchId !== currentMatchId) {
-        console.log('[MatchCompleted Event] Event is for different match, ignoring');
-        return;
-      }
-
-      // Time-gate: Only process events that occurred after current match started
-      if (event) {
-        try {
-          const block = await event.getBlock();
-          const eventTimestamp = block.timestamp;
-          const matchStartTime = currentMatch.startTime;
-
-          console.log('[MatchCompleted Event] Timestamp check:', {
-            eventTimestamp,
-            matchStartTime,
-            isValidEvent: eventTimestamp >= matchStartTime
-          });
-
-          if (eventTimestamp < matchStartTime) {
-            console.log('[MatchCompleted Event] Event is older than current match start time, ignoring');
-            return;
-          }
-        } catch (err) {
-          console.error('[MatchCompleted Event] Error checking timestamp:', err);
-          // Continue processing if timestamp check fails
-        }
-      }
-
-      console.log('[MatchCompleted Event] ✓ Event is for current match - processing completion');
-
-      // Unpack Connect4 board state (6 rows x 7 cols = 42 cells, 2 bits per cell)
-      const unpackBoard = (packed) => {
-        const boardArray = [];
-        let p = BigInt(packed);
-        for (let i = 0; i < 42; i++) {
-          boardArray.push(Number(p & 3n));
-          p = p >> 2n;
-        }
-        return boardArray;
-      };
-      const eventBoard = unpackBoard(packedBoard);
-
-      // Determine loser
-      const zeroAddress = '0x0000000000000000000000000000000000000000';
-      const winnerLower = winner.toLowerCase();
-      const p1Lower = currentMatch.player1?.toLowerCase();
-      const eventLoser = isDraw ? zeroAddress : (winnerLower === p1Lower ? currentMatch.player2 : currentMatch.player1);
-
-      // Update match state with completion data
-      setCurrentMatch(prev => {
-        if (!prev || prev.matchStatus === 2) return prev; // Already completed
-
-        return {
-          ...prev,
-          matchStatus: 2,
-          winner,
-          loser: eventLoser,
-          isDraw,
-          board: eventBoard,
-          isYourTurn: false,
-          completionReason: Number(reason)
-        };
-      });
-
-      // Show winner/loser banner
-      const isPlayer1 = currentMatch.player1?.toLowerCase() === account.toLowerCase();
-      const isPlayer2 = currentMatch.player2?.toLowerCase() === account.toLowerCase();
-      const isParticipant = isPlayer1 || isPlayer2;
-
-      if (isParticipant) {
-        const userWon = !isDraw && winner.toLowerCase() === account.toLowerCase();
-        const reasonNum = Number(reason);
-
-        let resultType = 'lose';
-        if (isDraw) {
-          resultType = 'draw';
-        } else if (userWon) {
-          resultType = (reasonNum === 1 || reasonNum === 3 || reasonNum === 4) ? 'forfeit_win' : 'win';
-        } else {
-          resultType = (reasonNum === 1 || reasonNum === 3 || reasonNum === 4) ? 'forfeit_lose' : 'lose';
-        }
-
-        console.log('[MatchCompleted Event] Setting match end result:', resultType, 'with completion reason:', reasonNum);
-        setMatchEndResult({ result: resultType, completionReason: reasonNum });
-        setMatchEndWinner(winner);
-        setMatchEndLoser(eventLoser);
-      }
-    };
-
-    // Register event listener (listen to all MatchCompleted events, filter in handler)
-    contract.on('MatchCompleted', handleMatchCompleted);
-    console.log('[MatchCompleted] Event listener registered');
-
-    // Query recent events to catch any missed while page was loading
-    const checkRecentEvents = async () => {
-      try {
-        const currentMatchId = ethers.solidityPackedKeccak256(
-          ['uint8', 'uint8', 'uint8', 'uint8'],
-          [currentMatch.tierId, currentMatch.instanceId, currentMatch.roundNumber, currentMatch.matchNumber]
-        );
-
-        const filter = contract.filters.MatchCompleted(currentMatchId);
-        const events = await contract.queryFilter(filter, -50);
-        console.log('[MatchCompleted] Found', events.length, 'recent events for current match in last 50 blocks');
-
-        // Process most recent event for this match
-        if (events.length > 0) {
-          const event = events[events.length - 1];
-          const { player1, player2, winner, isDraw, reason, board } = event.args;
-          handleMatchCompleted(currentMatchId, player1, player2, winner, isDraw, reason, board, event);
-        }
-      } catch (err) {
-        console.error('[MatchCompleted] Error checking recent events:', err);
-      }
-    };
-
-    checkRecentEvents();
-
-    return () => {
-      console.log('[MatchCompleted] Cleaning up event listener');
-      contract.off('MatchCompleted', handleMatchCompleted);
-    };
-  }, [contract, account, currentMatch]);
 
   // Refresh tier data when account changes (initial load handled by initReadOnlyContract)
   useEffect(() => {
@@ -3047,14 +2994,6 @@ export default function ConnectFour() {
     fetchLeaderboard();
   }, [fetchLeaderboard]);
 
-  // Poll raffle info every 10 seconds (runs globally when wallet connected)
-  useEffect(() => {
-    if (!account) return;
-    fetchRaffleInfo();
-    fetchRaffleHistory(); // Fetch history once on mount
-    const pollInterval = setInterval(fetchRaffleInfo, 10000);
-    return () => clearInterval(pollInterval);
-  }, [account, fetchRaffleInfo, fetchRaffleHistory]);
 
   // Poll leaderboard every 1 minute (runs globally)
   useEffect(() => {
@@ -3170,6 +3109,25 @@ export default function ConnectFour() {
           if (updatedMatch.matchStatus === 2) {
             console.log('[Connect4 Polling] Match completion detected, updating state and showing modal');
 
+            // CRITICAL: Fetch final move history from getPlayerMatches()
+            // This ensures the loser sees the opponent's final winning move
+            try {
+              console.log('[Connect4 Polling] Fetching final move history for completed match...');
+              const finalHistory = await fetchMoveHistory(
+                contractInstance,
+                match.tierId,
+                match.instanceId,
+                match.roundNumber,
+                match.matchNumber
+              );
+              if (finalHistory && finalHistory.length > 0) {
+                setMoveHistory(finalHistory);
+                console.log('[Connect4 Polling] Updated final move history:', finalHistory.length, 'moves');
+              }
+            } catch (historyErr) {
+              console.warn('[Connect4 Polling] Failed to fetch final move history:', historyErr);
+            }
+
             // Update match state with completion data
             setCurrentMatch(prev => {
               if (!prev || prev.matchStatus === 2) return prev; // Already completed
@@ -3226,6 +3184,8 @@ export default function ConnectFour() {
               player2TimeRemaining: updatedMatch.player2TimeRemaining,
               lastMoveTime: updatedMatch.lastMoveTime,
               lastMoveTimestamp: updatedMatch.lastMoveTimestamp,
+              lastColumn: updatedMatch.lastColumn, // Update last move for glow effect
+              cachedMoves: updatedMatch.cachedMoves, // Update moves string
               // matchStatus, winner, loser, isDraw are preserved from prev (event-driven)
             };
           });
@@ -3360,8 +3320,8 @@ export default function ConnectFour() {
         </button>
       )}
 
-      {/* Bottom Navigation Bar - Mobile Only (Hidden during match) */}
-      {account && !currentMatch && (
+      {/* Bottom Navigation Bar - Mobile Only */}
+      {account && (
         <div className="fixed bottom-0 left-0 right-0 z-50 md:static md:z-auto">
           {/* Solid background bar on mobile */}
           <div className="md:hidden bg-gradient-to-b from-slate-800 to-slate-900 border-t border-purple-400/30 px-4 py-2.5 flex items-center justify-between">
@@ -3382,7 +3342,7 @@ export default function ConnectFour() {
               account={account}
               onEnterMatch={handlePlayMatch}
               onEnterTournament={handleEnterTournament}
-              onRefresh={playerActivity.refetch}
+              onRefresh={handlePlayerActivityRefresh}
               onDismissMatch={playerActivity.dismissMatch}
               gameName="connect4"
               gameEmoji="🔴"
@@ -3391,6 +3351,7 @@ export default function ConnectFour() {
               onCollapse={(collapseFn) => { collapseActivityPanelRef.current = collapseFn; }}
               isExpanded={expandedPanel === 'playerActivity'}
               onToggleExpand={() => setExpandedPanel(expandedPanel === 'playerActivity' ? null : 'playerActivity')}
+              tierConfig={TIER_CONFIG}
             />
 
             {/* Community Raffle Card */}
@@ -3400,6 +3361,7 @@ export default function ConnectFour() {
               gamesCardHeight={gamesCardHeight}
               playerActivityHeight={playerActivityHeight}
               onRefresh={fetchRaffleInfo}
+              onFetchHistory={fetchRaffleHistory}
               onTriggerRaffle={executeRaffle}
               syncing={raffleSyncing}
               isExpanded={expandedPanel === 'communityRaffle'}
@@ -3424,7 +3386,7 @@ export default function ConnectFour() {
               account={account}
               onEnterMatch={handlePlayMatch}
               onEnterTournament={handleEnterTournament}
-              onRefresh={playerActivity.refetch}
+              onRefresh={handlePlayerActivityRefresh}
               onDismissMatch={playerActivity.dismissMatch}
               gameName="connect4"
               gameEmoji="🔴"
@@ -3441,6 +3403,7 @@ export default function ConnectFour() {
               gamesCardHeight={gamesCardHeight}
               playerActivityHeight={playerActivityHeight}
               onRefresh={fetchRaffleInfo}
+              onFetchHistory={fetchRaffleHistory}
               onTriggerRaffle={executeRaffle}
               syncing={raffleSyncing}
               isExpanded={expandedPanel === 'communityRaffle'}
@@ -3665,6 +3628,7 @@ export default function ConnectFour() {
           >
             {/* Connect Four Board */}
             <div className="w-full max-w-2xl mx-auto">
+              {console.log('[Main] Passing lastColumn to board:', currentMatch.lastColumn)}
               <ConnectFourBoard
                 board={currentMatch.board}
                 onColumnClick={isSpectator ? null : handleColumnClick}
@@ -3672,6 +3636,7 @@ export default function ConnectFour() {
                 account={isSpectator ? null : account}
                 player1={currentMatch.player1}
                 player2={currentMatch.player2}
+                firstPlayer={currentMatch.firstPlayer}
                 matchStatus={currentMatch.matchStatus}
                 loading={matchLoading}
                 winner={currentMatch.winner}
