@@ -3723,7 +3723,7 @@ export default function ConnectFour() {
               </div>
             ) : (
               // Show Tournament List
-              <div className="mb-16">
+              <div className="mb-16" id="live-instances">
                 {/* Section Header */}
                 <div className="text-center mb-12">
                   <div className="inline-flex items-center gap-3 mb-4">

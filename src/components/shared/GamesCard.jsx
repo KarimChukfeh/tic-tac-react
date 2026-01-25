@@ -127,6 +127,23 @@ const GamesCard = ({
                   <Link
                     key={game.id}
                     to={game.path}
+                    onClick={(e) => {
+                      if (isCurrent) {
+                        e.preventDefault();
+                        // Scroll to Live Instances section with top margin
+                        const liveInstancesSection = document.getElementById('live-instances');
+                        if (liveInstancesSection) {
+                          const elementPosition = liveInstancesSection.getBoundingClientRect().top;
+                          const offsetPosition = elementPosition + window.pageYOffset - 100; // 100px top margin
+                          window.scrollTo({
+                            top: offsetPosition,
+                            behavior: 'smooth'
+                          });
+                        }
+                        // Close the games panel after clicking
+                        handleSetExpanded(false);
+                      }
+                    }}
                     className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all group ${
                       isCurrent
                         ? 'bg-cyan-500/20 border border-cyan-400/40 hover:bg-cyan-500/30 hover:border-cyan-400/60'
