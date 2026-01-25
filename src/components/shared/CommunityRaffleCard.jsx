@@ -126,28 +126,29 @@ const CommunityRaffleCard = ({
   // Desktop positioning (top-left, vertical stack below GamesCard and PlayerActivity)
   const BASE_TOP_DESKTOP = 80; // md:top-20 in pixels
   const COLLAPSED_BUTTON_HEIGHT_DESKTOP = 64; // collapsed button height on desktop
-  const SPACING_DESKTOP = 90; // gap between components on desktop
+  const SPACING_DESKTOP = 16; // gap between collapsed circles
+  const EXPANDED_BOTTOM_MARGIN = 88; // margin below expanded cards
 
   // Calculate desktop top position accounting for both GamesCard and PlayerActivity
   let topPositionDesktop = BASE_TOP_DESKTOP;
 
   // Add GamesCard height (or collapsed height if not expanded)
   if (gamesCardHeight > 0) {
-    topPositionDesktop += gamesCardHeight + SPACING_DESKTOP;
+    topPositionDesktop += gamesCardHeight + EXPANDED_BOTTOM_MARGIN;
   } else {
     topPositionDesktop += COLLAPSED_BUTTON_HEIGHT_DESKTOP + SPACING_DESKTOP;
   }
 
   // Add PlayerActivity height (or collapsed height if not expanded)
   if (playerActivityHeight > 0) {
-    topPositionDesktop += playerActivityHeight + SPACING_DESKTOP;
+    topPositionDesktop += playerActivityHeight + EXPANDED_BOTTOM_MARGIN;
   } else {
     topPositionDesktop += COLLAPSED_BUTTON_HEIGHT_DESKTOP + SPACING_DESKTOP;
   }
 
   // Add RecentMatchesCard height (or collapsed height if not expanded)
   if (recentMatchesCardHeight > 0) {
-    topPositionDesktop += recentMatchesCardHeight + SPACING_DESKTOP;
+    topPositionDesktop += recentMatchesCardHeight + EXPANDED_BOTTOM_MARGIN;
   } else {
     topPositionDesktop += COLLAPSED_BUTTON_HEIGHT_DESKTOP + SPACING_DESKTOP;
   }
@@ -164,7 +165,9 @@ const CommunityRaffleCard = ({
       <button
         onClick={() => handleSetExpanded(!isExpanded)}
         className={`max-md:mx-auto rounded-full p-2.5 md:p-4 border-2 transition-all hover:scale-110 shadow-xl relative group ${
-          isFull
+          isExpanded
+            ? 'bg-gradient-to-br from-yellow-500 to-amber-500 border-yellow-300 shadow-[0_0_20px_rgba(251,191,36,0.6)] scale-105'
+            : isFull
             ? 'bg-gradient-to-br from-yellow-500 to-amber-500 border-yellow-400/70 hover:border-yellow-400'
             : 'bg-gradient-to-br from-yellow-600 to-amber-600 border-yellow-400/40 hover:border-yellow-400/70'
         }`}

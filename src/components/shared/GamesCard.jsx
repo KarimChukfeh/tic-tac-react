@@ -74,7 +74,7 @@ const GamesCard = ({
 
   // Game options
   const games = [
-    { name: 'Home', path: '/', id: 'home', emoji: '🏠' },
+    { name: 'Homepage', path: '/', id: 'home', emoji: '🏠' },
     { name: 'TicTacToe', path: '/tictactoe', id: 'tictactoe', emoji: '✖️' },
     { name: 'Connect Four', path: '/connect4', id: 'connect4', emoji: '🔴' },
     { name: 'Chess', path: '/chess', id: 'chess', emoji: '♟️' },
@@ -91,7 +91,11 @@ const GamesCard = ({
       {/* Toggle Button */}
       <button
         onClick={() => handleSetExpanded(!isExpanded)}
-        className={`max-md:mx-auto rounded-full p-2.5 md:p-4 border-2 transition-all hover:scale-110 shadow-xl relative group bg-gradient-to-br from-slate-700 to-slate-800 border-slate-600/70 hover:border-slate-500`}
+        className={`max-md:mx-auto rounded-full p-2.5 md:p-4 border-2 transition-all hover:scale-110 shadow-xl relative group bg-gradient-to-br from-slate-700 to-slate-800 ${
+          isExpanded
+            ? 'border-slate-400 shadow-[0_0_20px_rgba(148,163,184,0.6)] scale-105'
+            : 'border-slate-600/70 hover:border-slate-500'
+        }`}
         aria-label={isExpanded ? "Close games" : "Open games"}
       >
         <img
@@ -119,29 +123,25 @@ const GamesCard = ({
               {games.map((game) => {
                 const isCurrent = currentGame === game.id;
 
-                if (isCurrent) {
-                  // Disabled state for current game
-                  return (
-                    <div
-                      key={game.id}
-                      className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-cyan-500/20 border border-cyan-400/40 cursor-not-allowed opacity-60"
-                    >
-                      <span className="text-lg">{game.emoji}</span>
-                      <span className="text-white font-medium text-sm">{game.name}</span>
-                      <span className="ml-auto text-xs text-cyan-300">(Current)</span>
-                    </div>
-                  );
-                }
-
-                // Active link
                 return (
                   <Link
                     key={game.id}
                     to={game.path}
-                    className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-slate-700/40 border border-slate-600/40 hover:bg-cyan-500/20 hover:border-cyan-400/40 transition-all group"
+                    className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all group ${
+                      isCurrent
+                        ? 'bg-cyan-500/20 border border-cyan-400/40 hover:bg-cyan-500/30 hover:border-cyan-400/60'
+                        : 'bg-slate-700/40 border border-slate-600/40 hover:bg-cyan-500/20 hover:border-cyan-400/40'
+                    }`}
                   >
                     <span className="text-lg">{game.emoji}</span>
-                    <span className="text-white font-medium text-sm group-hover:text-cyan-200 transition-colors">{game.name}</span>
+                    <span className={`font-medium text-sm transition-colors ${
+                      isCurrent ? 'text-cyan-200' : 'text-white group-hover:text-cyan-200'
+                    }`}>
+                      {game.name}
+                    </span>
+                    {isCurrent && (
+                      <span className="ml-auto text-xs text-cyan-300">(Current)</span>
+                    )}
                   </Link>
                 );
               })}

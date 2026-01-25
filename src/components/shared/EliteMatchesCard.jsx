@@ -117,32 +117,33 @@ const EliteMatchesCard = ({
   // Desktop positioning (top-left, vertical)
   const BASE_TOP_DESKTOP = 80; // md:top-20 in pixels
   const COLLAPSED_BUTTON_HEIGHT_DESKTOP = 64;
-  const SPACING_DESKTOP = 90;
+  const SPACING_DESKTOP = 16; // gap between collapsed circles
+  const EXPANDED_BOTTOM_MARGIN = 88; // margin below expanded cards
 
   // Position below GamesCard, PlayerActivity, and CommunityRaffle
   let topPositionDesktop = BASE_TOP_DESKTOP;
 
   // Add GamesCard offset
   const gamesOffset = gamesCardHeight > 0
-    ? gamesCardHeight + SPACING_DESKTOP
+    ? gamesCardHeight + EXPANDED_BOTTOM_MARGIN
     : COLLAPSED_BUTTON_HEIGHT_DESKTOP + SPACING_DESKTOP;
   topPositionDesktop += gamesOffset;
 
   // Add PlayerActivity offset
   const activityOffset = playerActivityHeight > 0
-    ? playerActivityHeight + SPACING_DESKTOP
+    ? playerActivityHeight + EXPANDED_BOTTOM_MARGIN
     : COLLAPSED_BUTTON_HEIGHT_DESKTOP + SPACING_DESKTOP;
   topPositionDesktop += activityOffset;
 
   // Add RecentMatches offset
   const recentMatchesOffset = recentMatchesCardHeight > 0
-    ? recentMatchesCardHeight + SPACING_DESKTOP
+    ? recentMatchesCardHeight + EXPANDED_BOTTOM_MARGIN
     : COLLAPSED_BUTTON_HEIGHT_DESKTOP + SPACING_DESKTOP;
   topPositionDesktop += recentMatchesOffset;
 
   // Add CommunityRaffle offset
   const raffleOffset = raffleCardHeight > 0
-    ? raffleCardHeight + SPACING_DESKTOP
+    ? raffleCardHeight + EXPANDED_BOTTOM_MARGIN
     : COLLAPSED_BUTTON_HEIGHT_DESKTOP + SPACING_DESKTOP;
   topPositionDesktop += raffleOffset;
 
@@ -159,10 +160,16 @@ const EliteMatchesCard = ({
       {/* Toggle Button */}
       <button
         onClick={() => handleSetExpanded(!isExpanded)}
-        className="max-md:mx-auto bg-gradient-to-br from-amber-700/95 to-yellow-800/95 backdrop-blur-lg rounded-full p-2.5 md:p-4 border-2 border-amber-600/50 hover:border-amber-500/70 transition-all hover:scale-110 shadow-xl relative group"
+        className={`max-md:mx-auto bg-gradient-to-br from-amber-700/95 to-yellow-800/95 backdrop-blur-lg rounded-full p-2.5 md:p-4 border-2 transition-all hover:scale-110 shadow-xl relative group ${
+          isExpanded
+            ? 'border-amber-400 scale-105'
+            : 'border-amber-600/50 hover:border-amber-500/70'
+        }`}
         aria-label={isExpanded ? "Close elite matches" : "Open elite matches"}
         style={{
-          boxShadow: '0 0 25px rgba(180, 83, 9, 0.9), 0 0 50px rgba(180, 83, 9, 0.7), 0 0 75px rgba(180, 83, 9, 0.5), 0 0 100px rgba(180, 83, 9, 0.3)'
+          boxShadow: isExpanded
+            ? '0 0 30px rgba(251, 191, 36, 0.9), 0 0 60px rgba(251, 191, 36, 0.7), 0 0 90px rgba(251, 191, 36, 0.5)'
+            : '0 0 25px rgba(180, 83, 9, 0.9), 0 0 50px rgba(180, 83, 9, 0.7), 0 0 75px rgba(180, 83, 9, 0.5), 0 0 100px rgba(180, 83, 9, 0.3)'
         }}
       >
         <Crown size={18} className="text-white md:w-6 md:h-6" />

@@ -355,11 +355,12 @@ const PlayerActivity = ({
   // Desktop positioning (vertical stack below GamesCard)
   const BASE_TOP_DESKTOP = 80; // md:top-20 in pixels
   const COLLAPSED_BUTTON_HEIGHT_DESKTOP = 64; // collapsed button height on desktop
-  const SPACING_DESKTOP = 90; // gap between components on desktop
+  const SPACING_DESKTOP = 16; // gap between collapsed circles
+  const EXPANDED_BOTTOM_MARGIN = 88; // margin below expanded cards
 
   // Calculate desktop top position based on GamesCard height
   const topPositionDesktop = gamesCardHeight > 0
-    ? BASE_TOP_DESKTOP + gamesCardHeight + SPACING_DESKTOP
+    ? BASE_TOP_DESKTOP + gamesCardHeight + EXPANDED_BOTTOM_MARGIN
     : BASE_TOP_DESKTOP + COLLAPSED_BUTTON_HEIGHT_DESKTOP + SPACING_DESKTOP;
 
   return (
@@ -375,7 +376,11 @@ const PlayerActivity = ({
         onClick={() => handleSetExpanded(!isExpanded)}
         className={`max-md:mx-auto bg-gradient-to-br backdrop-blur-lg rounded-full p-2.5 md:p-4 border-2 transition-all hover:scale-110 shadow-xl relative group ${
           isElite
-            ? 'from-[#fbbf24]/90 to-[#f59e0b]/90 border-[#d4a012]/40 hover:border-[#d4a012]/70'
+            ? isExpanded
+              ? 'from-[#fbbf24]/90 to-[#f59e0b]/90 border-[#fbbf24] shadow-[0_0_20px_rgba(251,191,36,0.6)] scale-105'
+              : 'from-[#fbbf24]/90 to-[#f59e0b]/90 border-[#d4a012]/40 hover:border-[#d4a012]/70'
+            : isExpanded
+            ? 'from-purple-600/90 to-blue-600/90 border-purple-300 shadow-[0_0_20px_rgba(192,132,252,0.6)] scale-105'
             : 'from-purple-600/90 to-blue-600/90 border-purple-400/40 hover:border-purple-400/70'
         }`}
         aria-label={isExpanded ? "Close player activity" : "Open player activity"}

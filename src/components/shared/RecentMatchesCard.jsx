@@ -300,18 +300,19 @@ const RecentMatchesCard = ({
   // Desktop positioning
   const BASE_TOP_DESKTOP = 80;
   const COLLAPSED_BUTTON_HEIGHT_DESKTOP = 64;
-  const SPACING_DESKTOP = 90;
+  const SPACING_DESKTOP = 16; // gap between collapsed circles
+  const EXPANDED_BOTTOM_MARGIN = 88; // margin below expanded cards
 
   let topPositionDesktop = BASE_TOP_DESKTOP;
 
   if (gamesCardHeight > 0) {
-    topPositionDesktop += gamesCardHeight + SPACING_DESKTOP;
+    topPositionDesktop += gamesCardHeight + EXPANDED_BOTTOM_MARGIN;
   } else {
     topPositionDesktop += COLLAPSED_BUTTON_HEIGHT_DESKTOP + SPACING_DESKTOP;
   }
 
   if (playerActivityHeight > 0) {
-    topPositionDesktop += playerActivityHeight + SPACING_DESKTOP;
+    topPositionDesktop += playerActivityHeight + EXPANDED_BOTTOM_MARGIN;
   } else {
     topPositionDesktop += COLLAPSED_BUTTON_HEIGHT_DESKTOP + SPACING_DESKTOP;
   }
@@ -326,7 +327,11 @@ const RecentMatchesCard = ({
       {/* Toggle Button */}
       <button
         onClick={() => handleSetExpanded(!isExpanded)}
-        className={`max-md:mx-auto bg-gradient-to-br backdrop-blur-lg rounded-full p-2.5 md:p-4 border-2 transition-all hover:scale-110 shadow-xl relative group from-teal-600/90 to-cyan-600/90 border-teal-400/40 hover:border-teal-400/70`}
+        className={`max-md:mx-auto bg-gradient-to-br backdrop-blur-lg rounded-full p-2.5 md:p-4 border-2 transition-all hover:scale-110 shadow-xl relative group from-teal-600/90 to-cyan-600/90 ${
+          isExpanded
+            ? 'border-teal-300 shadow-[0_0_20px_rgba(94,234,212,0.6)] scale-105'
+            : 'border-teal-400/40 hover:border-teal-400/70'
+        }`}
         aria-label={isExpanded ? "Close recent matches" : "Open recent matches"}
       >
         <History size={18} className="text-white md:w-6 md:h-6" />
