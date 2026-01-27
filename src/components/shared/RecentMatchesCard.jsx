@@ -578,6 +578,11 @@ const RecentMatchesCard = ({
                       <div className="mt-3 pt-3 border-t border-slate-600/30">
                         {gameName === 'tictactoe' && (() => {
                           const board = unpackBoard(match.board, 'tictactoe');
+
+                          // Determine which cell value (1 or 2) corresponds to the firstPlayer
+                          // X = firstPlayer, O = second player
+                          const isPlayer1First = match.firstPlayer?.toLowerCase() === match.player1?.toLowerCase();
+
                           return (
                             <div className="flex justify-center">
                               <div className="grid grid-cols-3 gap-1 w-32 h-32">
@@ -587,9 +592,9 @@ const RecentMatchesCard = ({
                                     className="aspect-square bg-slate-800/50 border border-slate-600/50 rounded flex items-center justify-center text-xl font-bold"
                                   >
                                     {cell === 1 ? (
-                                      <span className="text-blue-400">X</span>
+                                      <span className="text-blue-400">{isPlayer1First ? 'X' : 'O'}</span>
                                     ) : cell === 2 ? (
-                                      <span className="text-red-400">O</span>
+                                      <span className="text-red-400">{isPlayer1First ? 'O' : 'X'}</span>
                                     ) : null}
                                   </div>
                                 ))}
@@ -606,7 +611,7 @@ const RecentMatchesCard = ({
                           return (
                             <div className="flex justify-center">
                               <div className="grid grid-cols-8 gap-0 w-64 h-64 border border-slate-600">
-                                {board.map((cell, idx) => {
+                                {board.map((_cell, idx) => {
                                   const displayRow = Math.floor(idx / 8);
                                   const displayCol = idx % 8;
 
@@ -646,6 +651,12 @@ const RecentMatchesCard = ({
                           for (let row = 0; row < 6; row++) {
                             grid.push(board.slice(row * 7, (row + 1) * 7));
                           }
+
+                          // Determine which cell value (1 or 2) corresponds to the firstPlayer
+                          // to correctly assign RED (firstPlayer) and BLUE (second player) colors
+                          const isPlayer1First = match.firstPlayer?.toLowerCase() === match.player1?.toLowerCase();
+                          const firstPlayerCellValue = isPlayer1First ? 1 : 2;
+
                           return (
                             <div className="flex justify-center">
                               <div className="bg-blue-900/30 p-2 rounded-lg border border-blue-500/30">
@@ -657,9 +668,9 @@ const RecentMatchesCard = ({
                                           key={colIdx}
                                           className="w-6 h-6 rounded-full border-2 border-slate-600/50 flex items-center justify-center"
                                         >
-                                          {cell === 1 ? (
+                                          {cell === firstPlayerCellValue ? (
                                             <div className="w-5 h-5 rounded-full bg-red-500"></div>
-                                          ) : cell === 2 ? (
+                                          ) : cell === (firstPlayerCellValue === 1 ? 2 : 1) ? (
                                             <div className="w-5 h-5 rounded-full bg-blue-500"></div>
                                           ) : (
                                             <div className="w-5 h-5 rounded-full bg-slate-800/50"></div>
