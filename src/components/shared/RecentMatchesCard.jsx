@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { X, RefreshCw, History, ChevronDown, ChevronUp, Eye, ExternalLink } from 'lucide-react';
+import { X, RefreshCw, History, ChevronDown, ChevronUp, Eye } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
 
 const RecentMatchesCard = ({
@@ -480,15 +480,6 @@ const RecentMatchesCard = ({
                           </span>
                         )}
                       </div>
-                      <a
-                        href={`https://arbiscan.io/tx/${match.txHash}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1 flex-shrink-0"
-                        title="View on Arbiscan"
-                      >
-                        <ExternalLink size={12} />
-                      </a>
                     </div>
 
                     {/* Match Participants */}
