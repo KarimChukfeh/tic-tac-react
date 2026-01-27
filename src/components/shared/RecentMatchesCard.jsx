@@ -610,7 +610,7 @@ const RecentMatchesCard = ({
 
                           return (
                             <div className="flex justify-center">
-                              <div className="grid grid-cols-8 gap-0 w-64 h-64 border border-slate-600">
+                              <div className="grid grid-cols-8 gap-0 w-full max-w-[256px] aspect-square border border-slate-600">
                                 {board.map((_cell, idx) => {
                                   const displayRow = Math.floor(idx / 8);
                                   const displayCol = idx % 8;
@@ -632,11 +632,11 @@ const RecentMatchesCard = ({
                                   return (
                                     <div
                                       key={idx}
-                                      className={`aspect-square flex items-center justify-center p-1 ${
+                                      className={`aspect-square flex items-center justify-center p-0.5 ${
                                         isLight ? 'bg-amber-200/20' : 'bg-amber-900/20'
                                       }`}
                                     >
-                                      {svgPath && <img src={svgPath} alt="" className="w-full h-full" draggable="false" />}
+                                      {svgPath && <img src={svgPath} alt="" className="w-full h-full object-contain" draggable="false" />}
                                     </div>
                                   );
                                 })}
