@@ -397,7 +397,7 @@ const RecentMatchesCard = ({
             : 'border-teal-400/40 hover:border-teal-400/70 hover:scale-110')
         }`}
         aria-label={disabled ? "Connect wallet to access recent matches" : isExpanded ? "Close recent matches" : "Open recent matches"}
-        title={disabled ? "Connect Wallet to View Your Recent Matches" : ""}
+        title={disabled ? "Connect Wallet to View Your Match History" : ""}
       >
         <History size={18} className="text-white md:w-6 md:h-6" />
 
@@ -412,11 +412,11 @@ const RecentMatchesCard = ({
             href="#connect-wallet-cta"
             className="max-md:hidden absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all shadow-2xl border-2 border-purple-400/60 hover:scale-105"
           >
-            Connect Wallet to View Your Recent Matches
+            Connect Wallet to View Your Match History
           </a>
         ) : (
           <div className="max-md:hidden absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-            Recent Matches
+            Match History
           </div>
         )}
 
@@ -427,7 +427,7 @@ const RecentMatchesCard = ({
             onClick={() => setShowMobileTooltip(false)}
             className="md:hidden absolute bottom-full mb-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-6 py-3 rounded-xl whitespace-nowrap z-[100] animate-fade-in shadow-2xl border-2 border-purple-400/60 hover:scale-105 transition-transform"
           >
-            Connect Wallet to View Your Recent Matches
+            Connect Wallet to View Your Match History
             <div className="absolute top-full left-1/2 -translate-x-1/2 border-[6px] border-transparent border-t-purple-600"></div>
           </a>
         )}
@@ -447,7 +447,7 @@ const RecentMatchesCard = ({
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <History size={24} className="text-teal-400" />
-                <h3 className="text-white font-bold text-lg">Recent Matches</h3>
+                <h3 className="text-white font-bold text-lg">Match History</h3>
               </div>
               <div className="flex items-center gap-1">
                 {/* Refresh Button */}

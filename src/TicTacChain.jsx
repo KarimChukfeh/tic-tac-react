@@ -3039,7 +3039,7 @@ export default function TicTacChain() {
             disabled={!account}
           />
 
-          {/* Recent Matches Card */}
+          {/* Match History Card */}
           <RecentMatchesCard
             contract={contract}
             account={account}
@@ -3101,7 +3101,7 @@ export default function TicTacChain() {
             disabled={!account}
           />
 
-          {/* Recent Matches Card */}
+          {/* Match History Card */}
           <RecentMatchesCard
             contract={contract}
             account={account}

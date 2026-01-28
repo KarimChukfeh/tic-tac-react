@@ -3883,7 +3883,7 @@ export default function Chess() {
             disabled={!account}
           />
 
-          {/* Recent Matches Card */}
+          {/* Match History Card */}
           <RecentMatchesCard
             contract={contract}
             account={account}
