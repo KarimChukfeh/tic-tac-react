@@ -418,7 +418,7 @@ const ConnectFourBoard = ({
         className="flex gap-1 mt-2"
         style={{ width: boardSize || 'auto', paddingLeft: 16, paddingRight: 16 }}
       >
-        {['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((label, idx) => (
+        {[1, 2, 3, 4, 5, 6, 7].map((label, idx) => (
           <div key={idx} className="flex-1 text-center text-slate-500 text-sm font-medium">
             {label}
           </div>
