@@ -206,16 +206,29 @@ const CommunityRaffleCard = ({
         )}
 
         {/* Tooltip - Desktop only */}
-        <div className="max-md:hidden absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-          {disabled ? "Connect Wallet to View Community Raffle" : "Community Raffle"}
-        </div>
+        {disabled ? (
+          <a
+            href="#connect-wallet-cta"
+            className="max-md:hidden absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all shadow-2xl border-2 border-purple-400/60 hover:scale-105"
+          >
+            Connect Wallet to View Community Raffle
+          </a>
+        ) : (
+          <div className="max-md:hidden absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+            Community Raffle
+          </div>
+        )}
 
         {/* Tooltip - Mobile only */}
         {showMobileTooltip && disabled && (
-          <div className="md:hidden absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-black/90 text-white text-xs px-3 py-2 rounded whitespace-nowrap z-[100] animate-fade-in">
+          <a
+            href="#connect-wallet-cta"
+            onClick={() => setShowMobileTooltip(false)}
+            className="md:hidden absolute bottom-full mb-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-6 py-3 rounded-xl whitespace-nowrap z-[100] animate-fade-in shadow-2xl border-2 border-purple-400/60 hover:scale-105 transition-transform"
+          >
             Connect Wallet to View Community Raffle
-            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-black/90"></div>
-          </div>
+            <div className="absolute top-full left-1/2 -translate-x-1/2 border-[6px] border-transparent border-t-purple-600"></div>
+          </a>
         )}
       </button>
 

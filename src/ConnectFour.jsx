@@ -3576,9 +3576,10 @@ export default function ConnectFour() {
           {/* Connect Wallet CTA */}
           {!account ? (
             <button
+              id="connect-wallet-cta"
               onClick={connectWallet}
               disabled={loading}
-              className={`inline-flex items-center gap-3 bg-gradient-to-r ${currentTheme.buttonGradient} ${currentTheme.buttonHover} px-10 py-5 rounded-2xl font-bold text-2xl shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
+              className={`inline-flex items-center gap-3 bg-gradient-to-r ${currentTheme.buttonGradient} ${currentTheme.buttonHover} px-10 py-5 rounded-2xl font-bold text-2xl shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed scroll-mt-6`}
             >
               <Wallet size={28} />
               {loading ? 'Connecting...' : 'Connect Wallet to Enter'}
