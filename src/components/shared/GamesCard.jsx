@@ -142,6 +142,11 @@ const GamesCard = ({
                         // Close the games panel after clicking
                         handleSetExpanded(false);
                       }
+
+                      // For Homepage, always scroll to top
+                      if (game.id === 'home') {
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }
                     }}
                     className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all group ${
                       isCurrent
