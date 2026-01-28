@@ -21,6 +21,7 @@ const RecentMatchesCard = ({
   onToggleExpand,
   tierConfig = null,
   isElite = false,
+  disabled = false, // Disable interaction when wallet not connected
 }) => {
   const [internalIsExpanded, setInternalIsExpanded] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
@@ -30,6 +31,7 @@ const RecentMatchesCard = ({
   const [syncing, setSyncing] = useState(false);
   const expandedPanelRef = useRef(null);
   const prevExpandedRef = useRef(false);
+  const [showMobileTooltip, setShowMobileTooltip] = useState(false);
 
   // Use external state if provided, otherwise use internal state
   const isExpanded = externalIsExpanded !== undefined ? externalIsExpanded : internalIsExpanded;
@@ -378,13 +380,24 @@ const RecentMatchesCard = ({
     >
       {/* Toggle Button */}
       <button
-        onClick={() => handleSetExpanded(!isExpanded)}
-        className={`max-md:mx-auto bg-gradient-to-br backdrop-blur-lg rounded-full p-2.5 md:p-4 border-2 transition-all hover:scale-110 shadow-xl relative group from-teal-600/90 to-cyan-600/90 ${
-          isExpanded
+        onClick={() => {
+          if (disabled) {
+            setShowMobileTooltip(true);
+            setTimeout(() => setShowMobileTooltip(false), 2000);
+          } else {
+            handleSetExpanded(!isExpanded);
+          }
+        }}
+        disabled={false}
+        className={`max-md:mx-auto bg-gradient-to-br backdrop-blur-lg rounded-full p-2.5 md:p-4 border-2 transition-all shadow-xl relative group ${
+          disabled
+            ? 'opacity-50 cursor-not-allowed from-gray-600/90 to-gray-700/90 border-gray-500/40'
+            : 'from-teal-600/90 to-cyan-600/90 ' + (isExpanded
             ? 'border-teal-300 shadow-[0_0_20px_rgba(94,234,212,0.6)] scale-105'
-            : 'border-teal-400/40 hover:border-teal-400/70'
+            : 'border-teal-400/40 hover:border-teal-400/70 hover:scale-110')
         }`}
-        aria-label={isExpanded ? "Close recent matches" : "Open recent matches"}
+        aria-label={disabled ? "Connect wallet to access recent matches" : isExpanded ? "Close recent matches" : "Open recent matches"}
+        title={disabled ? "Connect Wallet to View Your Recent Matches" : ""}
       >
         <History size={18} className="text-white md:w-6 md:h-6" />
 
@@ -395,8 +408,16 @@ const RecentMatchesCard = ({
 
         {/* Tooltip - Desktop only */}
         <div className="max-md:hidden absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-          Recent Matches
+          {disabled ? "Connect Wallet to View Your Recent Matches" : "Recent Matches"}
         </div>
+
+        {/* Tooltip - Mobile only */}
+        {showMobileTooltip && disabled && (
+          <div className="md:hidden absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-black/90 text-white text-xs px-3 py-2 rounded whitespace-nowrap z-[100] animate-fade-in">
+            Connect Wallet to View Your Recent Matches
+            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-black/90"></div>
+          </div>
+        )}
       </button>
 
       {/* Expanded State */}

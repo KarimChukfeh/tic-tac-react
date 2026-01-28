@@ -3330,128 +3330,132 @@ export default function ConnectFour() {
       )}
 
       {/* Bottom Navigation Bar - Mobile Only */}
-      {account && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 md:static md:z-auto">
-          {/* Solid background bar on mobile */}
-          <div className="md:hidden bg-gradient-to-b from-slate-800 to-slate-900 border-t border-purple-400/30 px-4 py-2.5 flex items-center justify-between">
-            {/* Games Card */}
-            <GamesCard
-              currentGame="connect4"
-              onHeightChange={setGamesCardHeight}
-              isExpanded={expandedPanel === 'games'}
-              onToggleExpand={() => setExpandedPanel(expandedPanel === 'games' ? null : 'games')}
-            />
+      <div className="fixed bottom-0 left-0 right-0 z-50 md:static md:z-auto">
+        {/* Solid background bar on mobile */}
+        <div className="md:hidden bg-gradient-to-b from-slate-800 to-slate-900 border-t border-purple-400/30 px-4 py-2.5 flex items-center justify-between">
+          {/* Games Card */}
+          <GamesCard
+            currentGame="connect4"
+            onHeightChange={setGamesCardHeight}
+            isExpanded={expandedPanel === 'games'}
+            onToggleExpand={() => setExpandedPanel(expandedPanel === 'games' ? null : 'games')}
+          />
 
-            {/* Player Activity Component */}
-            <PlayerActivity
-              activity={playerActivity.data}
-              loading={playerActivity.loading}
-              syncing={playerActivity.syncing}
-              contract={contract}
-              account={account}
-              onEnterMatch={handlePlayMatch}
-              onEnterTournament={handleEnterTournament}
-              onRefresh={handlePlayerActivityRefresh}
-              onDismissMatch={playerActivity.dismissMatch}
-              gameName="connect4"
-              gameEmoji="🔴"
-              gamesCardHeight={gamesCardHeight}
-              onHeightChange={setPlayerActivityHeight}
-              onCollapse={(collapseFn) => { collapseActivityPanelRef.current = collapseFn; }}
-              isExpanded={expandedPanel === 'playerActivity'}
-              onToggleExpand={() => setExpandedPanel(expandedPanel === 'playerActivity' ? null : 'playerActivity')}
-              tierConfig={TIER_CONFIG}
-            />
+          {/* Player Activity Component */}
+          <PlayerActivity
+            activity={playerActivity.data}
+            loading={playerActivity.loading}
+            syncing={playerActivity.syncing}
+            contract={contract}
+            account={account}
+            onEnterMatch={handlePlayMatch}
+            onEnterTournament={handleEnterTournament}
+            onRefresh={handlePlayerActivityRefresh}
+            onDismissMatch={playerActivity.dismissMatch}
+            gameName="connect4"
+            gameEmoji="🔴"
+            gamesCardHeight={gamesCardHeight}
+            onHeightChange={setPlayerActivityHeight}
+            onCollapse={(collapseFn) => { collapseActivityPanelRef.current = collapseFn; }}
+            isExpanded={expandedPanel === 'playerActivity'}
+            onToggleExpand={() => setExpandedPanel(expandedPanel === 'playerActivity' ? null : 'playerActivity')}
+            tierConfig={TIER_CONFIG}
+            disabled={!account}
+          />
 
-            {/* Recent Matches Card */}
-            <RecentMatchesCard
-              contract={contract}
-              account={account}
-              gameName="connect4"
-              gameEmoji="🔴"
-              gamesCardHeight={gamesCardHeight}
-              playerActivityHeight={playerActivityHeight}
-              onHeightChange={setRecentMatchesCardHeight}
-              isExpanded={expandedPanel === 'recentMatches'}
-              onToggleExpand={() => setExpandedPanel(expandedPanel === 'recentMatches' ? null : 'recentMatches')}
-              tierConfig={TIER_CONFIG}
-            />
+          {/* Recent Matches Card */}
+          <RecentMatchesCard
+            contract={contract}
+            account={account}
+            gameName="connect4"
+            gameEmoji="🔴"
+            gamesCardHeight={gamesCardHeight}
+            playerActivityHeight={playerActivityHeight}
+            onHeightChange={setRecentMatchesCardHeight}
+            isExpanded={expandedPanel === 'recentMatches'}
+            onToggleExpand={() => setExpandedPanel(expandedPanel === 'recentMatches' ? null : 'recentMatches')}
+            tierConfig={TIER_CONFIG}
+            disabled={!account}
+          />
 
-            {/* Community Raffle Card */}
-            <CommunityRaffleCard
-              raffleInfo={raffleInfo}
-              raffleHistory={raffleHistory}
-              gamesCardHeight={gamesCardHeight}
-              playerActivityHeight={playerActivityHeight}
-              recentMatchesCardHeight={recentMatchesCardHeight}
-              onRefresh={fetchRaffleInfo}
-              onFetchHistory={fetchRaffleHistory}
-              onTriggerRaffle={executeRaffle}
-              syncing={raffleSyncing}
-              isExpanded={expandedPanel === 'communityRaffle'}
-              onToggleExpand={() => setExpandedPanel(expandedPanel === 'communityRaffle' ? null : 'communityRaffle')}
-            />
-          </div>
-
-          {/* Desktop positioning (hidden on mobile, shown on desktop with original behavior) */}
-          <div className="hidden md:block">
-            <GamesCard
-              currentGame="connect4"
-              onHeightChange={setGamesCardHeight}
-              isExpanded={expandedPanel === 'games'}
-              onToggleExpand={() => setExpandedPanel(expandedPanel === 'games' ? null : 'games')}
-            />
-
-            <PlayerActivity
-              activity={playerActivity.data}
-              loading={playerActivity.loading}
-              syncing={playerActivity.syncing}
-              contract={contract}
-              account={account}
-              onEnterMatch={handlePlayMatch}
-              onEnterTournament={handleEnterTournament}
-              onRefresh={handlePlayerActivityRefresh}
-              onDismissMatch={playerActivity.dismissMatch}
-              gameName="connect4"
-              gameEmoji="🔴"
-              gamesCardHeight={gamesCardHeight}
-              onHeightChange={setPlayerActivityHeight}
-              onCollapse={(collapseFn) => { collapseActivityPanelRef.current = collapseFn; }}
-              isExpanded={expandedPanel === 'playerActivity'}
-              onToggleExpand={() => setExpandedPanel(expandedPanel === 'playerActivity' ? null : 'playerActivity')}
-              tierConfig={TIER_CONFIG}
-            />
-
-            {/* Recent Matches Card */}
-            <RecentMatchesCard
-              contract={contract}
-              account={account}
-              gameName="connect4"
-              gameEmoji="🔴"
-              gamesCardHeight={gamesCardHeight}
-              playerActivityHeight={playerActivityHeight}
-              onHeightChange={setRecentMatchesCardHeight}
-              isExpanded={expandedPanel === 'recentMatches'}
-              onToggleExpand={() => setExpandedPanel(expandedPanel === 'recentMatches' ? null : 'recentMatches')}
-              tierConfig={TIER_CONFIG}
-            />
-
-            <CommunityRaffleCard
-              raffleInfo={raffleInfo}
-              raffleHistory={raffleHistory}
-              gamesCardHeight={gamesCardHeight}
-              playerActivityHeight={playerActivityHeight}
-              recentMatchesCardHeight={recentMatchesCardHeight}
-              onRefresh={fetchRaffleInfo}
-              onFetchHistory={fetchRaffleHistory}
-              onTriggerRaffle={executeRaffle}
-              syncing={raffleSyncing}
-              isExpanded={expandedPanel === 'communityRaffle'}
-              onToggleExpand={() => setExpandedPanel(expandedPanel === 'communityRaffle' ? null : 'communityRaffle')}
-            />
-          </div>
+          {/* Community Raffle Card */}
+          <CommunityRaffleCard
+            raffleInfo={raffleInfo}
+            raffleHistory={raffleHistory}
+            gamesCardHeight={gamesCardHeight}
+            playerActivityHeight={playerActivityHeight}
+            recentMatchesCardHeight={recentMatchesCardHeight}
+            onRefresh={fetchRaffleInfo}
+            onFetchHistory={fetchRaffleHistory}
+            onTriggerRaffle={executeRaffle}
+            syncing={raffleSyncing}
+            isExpanded={expandedPanel === 'communityRaffle'}
+            onToggleExpand={() => setExpandedPanel(expandedPanel === 'communityRaffle' ? null : 'communityRaffle')}
+            disabled={!account}
+          />
         </div>
-      )}
+
+        {/* Desktop positioning (hidden on mobile, shown on desktop with original behavior) */}
+        <div className="hidden md:block">
+          <GamesCard
+            currentGame="connect4"
+            onHeightChange={setGamesCardHeight}
+            isExpanded={expandedPanel === 'games'}
+            onToggleExpand={() => setExpandedPanel(expandedPanel === 'games' ? null : 'games')}
+          />
+
+          <PlayerActivity
+            activity={playerActivity.data}
+            loading={playerActivity.loading}
+            syncing={playerActivity.syncing}
+            contract={contract}
+            account={account}
+            onEnterMatch={handlePlayMatch}
+            onEnterTournament={handleEnterTournament}
+            onRefresh={handlePlayerActivityRefresh}
+            onDismissMatch={playerActivity.dismissMatch}
+            gameName="connect4"
+            gameEmoji="🔴"
+            gamesCardHeight={gamesCardHeight}
+            onHeightChange={setPlayerActivityHeight}
+            onCollapse={(collapseFn) => { collapseActivityPanelRef.current = collapseFn; }}
+            isExpanded={expandedPanel === 'playerActivity'}
+            onToggleExpand={() => setExpandedPanel(expandedPanel === 'playerActivity' ? null : 'playerActivity')}
+            tierConfig={TIER_CONFIG}
+            disabled={!account}
+          />
+
+          {/* Recent Matches Card */}
+          <RecentMatchesCard
+            contract={contract}
+            account={account}
+            gameName="connect4"
+            gameEmoji="🔴"
+            gamesCardHeight={gamesCardHeight}
+            playerActivityHeight={playerActivityHeight}
+            onHeightChange={setRecentMatchesCardHeight}
+            isExpanded={expandedPanel === 'recentMatches'}
+            onToggleExpand={() => setExpandedPanel(expandedPanel === 'recentMatches' ? null : 'recentMatches')}
+            tierConfig={TIER_CONFIG}
+            disabled={!account}
+          />
+
+          <CommunityRaffleCard
+            raffleInfo={raffleInfo}
+            raffleHistory={raffleHistory}
+            gamesCardHeight={gamesCardHeight}
+            playerActivityHeight={playerActivityHeight}
+            recentMatchesCardHeight={recentMatchesCardHeight}
+            onRefresh={fetchRaffleInfo}
+            onFetchHistory={fetchRaffleHistory}
+            onTriggerRaffle={executeRaffle}
+            syncing={raffleSyncing}
+            isExpanded={expandedPanel === 'communityRaffle'}
+            onToggleExpand={() => setExpandedPanel(expandedPanel === 'communityRaffle' ? null : 'communityRaffle')}
+            disabled={!account}
+          />
+        </div>
+      </div>
 
       {/* Trust Banner */}
       <div style={{

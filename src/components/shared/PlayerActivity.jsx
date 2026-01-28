@@ -36,11 +36,13 @@ const PlayerActivity = ({
   hideOnMobile = false, // Hide this panel on mobile when another panel is expanded
   gamesCardHeight = 0, // Height of the GamesCard above this component
   tierConfig = null, // Tier configuration for match labeling
+  disabled = false, // Disable interaction when wallet not connected
 }) => {
   const [internalIsExpanded, setInternalIsExpanded] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
   const expandedPanelRef = useRef(null);
   const prevExpandedRef = useRef(false);
+  const [showMobileTooltip, setShowMobileTooltip] = useState(false);
 
   // Helper functions for match labels
   const getTierLabel = (tierId) => {
@@ -373,17 +375,28 @@ const PlayerActivity = ({
     >
       {/* Toggle Button */}
       <button
-        onClick={() => handleSetExpanded(!isExpanded)}
-        className={`max-md:mx-auto bg-gradient-to-br backdrop-blur-lg rounded-full p-2.5 md:p-4 border-2 transition-all hover:scale-110 shadow-xl relative group ${
-          isElite
+        onClick={() => {
+          if (disabled) {
+            setShowMobileTooltip(true);
+            setTimeout(() => setShowMobileTooltip(false), 2000);
+          } else {
+            handleSetExpanded(!isExpanded);
+          }
+        }}
+        disabled={false}
+        className={`max-md:mx-auto bg-gradient-to-br backdrop-blur-lg rounded-full p-2.5 md:p-4 border-2 transition-all shadow-xl relative group ${
+          disabled
+            ? 'opacity-50 cursor-not-allowed from-gray-600/90 to-gray-700/90 border-gray-500/40'
+            : isElite
             ? isExpanded
               ? 'from-[#fbbf24]/90 to-[#f59e0b]/90 border-[#fbbf24] shadow-[0_0_20px_rgba(251,191,36,0.6)] scale-105'
-              : 'from-[#fbbf24]/90 to-[#f59e0b]/90 border-[#d4a012]/40 hover:border-[#d4a012]/70'
+              : 'from-[#fbbf24]/90 to-[#f59e0b]/90 border-[#d4a012]/40 hover:border-[#d4a012]/70 hover:scale-110'
             : isExpanded
             ? 'from-purple-600/90 to-blue-600/90 border-purple-300 shadow-[0_0_20px_rgba(192,132,252,0.6)] scale-105'
-            : 'from-purple-600/90 to-blue-600/90 border-purple-400/40 hover:border-purple-400/70'
+            : 'from-purple-600/90 to-blue-600/90 border-purple-400/40 hover:border-purple-400/70 hover:scale-110'
         }`}
-        aria-label={isExpanded ? "Close player activity" : "Open player activity"}
+        aria-label={disabled ? "Connect wallet to access player activity" : isExpanded ? "Close player activity" : "Open player activity"}
+        title={disabled ? "Connect Wallet to View Your Activity" : ""}
       >
         <Users size={18} className="text-white md:w-6 md:h-6" />
 
@@ -406,8 +419,16 @@ const PlayerActivity = ({
 
         {/* Tooltip - Desktop only */}
         <div className="max-md:hidden absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-          Your Activity
+          {disabled ? "Connect Wallet to View Your Activity" : "Your Activity"}
         </div>
+
+        {/* Tooltip - Mobile only */}
+        {showMobileTooltip && disabled && (
+          <div className="md:hidden absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-black/90 text-white text-xs px-3 py-2 rounded whitespace-nowrap z-[100] animate-fade-in">
+            Connect Wallet to View Your Activity
+            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-black/90"></div>
+          </div>
+        )}
       </button>
 
       {/* Expanded State */}

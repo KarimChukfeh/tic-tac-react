@@ -24,9 +24,11 @@ const EliteMatchesCard = ({
   isExpanded: externalIsExpanded, // External control for mobile single-panel coordination
   onToggleExpand, // External toggle handler
   hideOnMobile = false, // Hide this panel on mobile when another panel is expanded
+  disabled = false, // Disable interaction when wallet not connected
 }) => {
   const [internalIsExpanded, setInternalIsExpanded] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
+  const [showMobileTooltip, setShowMobileTooltip] = useState(false);
 
   // Use external state if provided, otherwise use internal state
   const isExpanded = externalIsExpanded !== undefined ? externalIsExpanded : internalIsExpanded;
@@ -159,15 +161,26 @@ const EliteMatchesCard = ({
     >
       {/* Toggle Button */}
       <button
-        onClick={() => handleSetExpanded(!isExpanded)}
-        className={`max-md:mx-auto bg-gradient-to-br from-amber-700/95 to-yellow-800/95 backdrop-blur-lg rounded-full p-2.5 md:p-4 border-2 transition-all hover:scale-110 shadow-xl relative group ${
-          isExpanded
-            ? 'border-amber-400 scale-105'
-            : 'border-amber-600/50 hover:border-amber-500/70'
+        onClick={() => {
+          if (disabled) {
+            setShowMobileTooltip(true);
+            setTimeout(() => setShowMobileTooltip(false), 2000);
+          } else {
+            handleSetExpanded(!isExpanded);
+          }
+        }}
+        disabled={false}
+        className={`max-md:mx-auto bg-gradient-to-br backdrop-blur-lg rounded-full p-2.5 md:p-4 border-2 transition-all shadow-xl relative group ${
+          disabled
+            ? 'opacity-50 cursor-not-allowed from-gray-600/95 to-gray-700/95 border-gray-500/40'
+            : 'from-amber-700/95 to-yellow-800/95 ' + (isExpanded
+            ? 'border-amber-400 scale-105 hover:scale-110'
+            : 'border-amber-600/50 hover:border-amber-500/70 hover:scale-110')
         }`}
-        aria-label={isExpanded ? "Close elite matches" : "Open elite matches"}
+        aria-label={disabled ? "Connect wallet to access elite matches" : isExpanded ? "Close elite matches" : "Open elite matches"}
+        title={disabled ? "Connect Wallet to View Elite Matches" : ""}
         style={{
-          boxShadow: isExpanded
+          boxShadow: disabled ? 'none' : isExpanded
             ? '0 0 30px rgba(251, 191, 36, 0.9), 0 0 60px rgba(251, 191, 36, 0.7), 0 0 90px rgba(251, 191, 36, 0.5)'
             : '0 0 25px rgba(180, 83, 9, 0.9), 0 0 50px rgba(180, 83, 9, 0.7), 0 0 75px rgba(180, 83, 9, 0.5), 0 0 100px rgba(180, 83, 9, 0.3)'
         }}
@@ -188,8 +201,16 @@ const EliteMatchesCard = ({
 
         {/* Tooltip - Desktop only */}
         <div className="max-md:hidden absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-          Elite Matches
+          {disabled ? "Connect Wallet to View Elite Matches" : "Elite Matches"}
         </div>
+
+        {/* Tooltip - Mobile only */}
+        {showMobileTooltip && disabled && (
+          <div className="md:hidden absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-black/90 text-white text-xs px-3 py-2 rounded whitespace-nowrap z-[100] animate-fade-in">
+            Connect Wallet to View Elite Matches
+            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-black/90"></div>
+          </div>
+        )}
       </button>
 
       {/* Expanded State */}

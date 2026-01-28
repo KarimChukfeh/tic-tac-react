@@ -3823,162 +3823,168 @@ export default function Chess() {
       )}
 
       {/* Bottom Navigation Bar - Mobile Only */}
-      {account && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 md:static md:z-auto">
-          {/* Solid background bar on mobile */}
-          <div className="md:hidden bg-gradient-to-b from-slate-800 to-slate-900 border-t border-purple-400/30 px-4 py-2.5 flex items-center justify-between">
-            {/* Games Card */}
-            <GamesCard
-              currentGame="chess"
-              onHeightChange={setGamesCardHeight}
-              isExpanded={expandedPanel === 'games'}
-              onToggleExpand={() => setExpandedPanel(expandedPanel === 'games' ? null : 'games')}
-            />
+      <div className="fixed bottom-0 left-0 right-0 z-50 md:static md:z-auto">
+        {/* Solid background bar on mobile */}
+        <div className="md:hidden bg-gradient-to-b from-slate-800 to-slate-900 border-t border-purple-400/30 px-4 py-2.5 flex items-center justify-between">
+          {/* Games Card */}
+          <GamesCard
+            currentGame="chess"
+            onHeightChange={setGamesCardHeight}
+            isExpanded={expandedPanel === 'games'}
+            onToggleExpand={() => setExpandedPanel(expandedPanel === 'games' ? null : 'games')}
+          />
 
-            {/* Player Activity Component */}
-            <PlayerActivity
-              activity={playerActivity.data}
-              loading={playerActivity.loading}
-              syncing={playerActivity.syncing}
-              contract={contract}
-              account={account}
-              onEnterMatch={handlePlayMatch}
-              onEnterTournament={handleEnterTournament}
-              onRefresh={handlePlayerActivityRefresh}
-              onDismissMatch={playerActivity.dismissMatch}
-              gameName="chess"
-              gameEmoji="♚"
-              gamesCardHeight={gamesCardHeight}
-              onHeightChange={setPlayerActivityHeight}
-              onCollapse={(collapseFn) => { collapseActivityPanelRef.current = collapseFn; }}
-              isElite={isEnrolledInElite}
-              isExpanded={expandedPanel === 'playerActivity'}
-              onToggleExpand={() => setExpandedPanel(expandedPanel === 'playerActivity' ? null : 'playerActivity')}
-              tierConfig={TIER_CONFIG}
-            />
+          {/* Player Activity Component */}
+          <PlayerActivity
+            activity={playerActivity.data}
+            loading={playerActivity.loading}
+            syncing={playerActivity.syncing}
+            contract={contract}
+            account={account}
+            onEnterMatch={handlePlayMatch}
+            onEnterTournament={handleEnterTournament}
+            onRefresh={handlePlayerActivityRefresh}
+            onDismissMatch={playerActivity.dismissMatch}
+            gameName="chess"
+            gameEmoji="♚"
+            gamesCardHeight={gamesCardHeight}
+            onHeightChange={setPlayerActivityHeight}
+            onCollapse={(collapseFn) => { collapseActivityPanelRef.current = collapseFn; }}
+            isElite={isEnrolledInElite}
+            isExpanded={expandedPanel === 'playerActivity'}
+            onToggleExpand={() => setExpandedPanel(expandedPanel === 'playerActivity' ? null : 'playerActivity')}
+            tierConfig={TIER_CONFIG}
+            disabled={!account}
+          />
 
-            {/* Recent Matches Card */}
-            <RecentMatchesCard
-              contract={contract}
-              account={account}
-              gameName="chess"
-              gameEmoji="♚"
-              gamesCardHeight={gamesCardHeight}
-              playerActivityHeight={playerActivityHeight}
-              onHeightChange={setRecentMatchesCardHeight}
-              isExpanded={expandedPanel === 'recentMatches'}
-              onToggleExpand={() => setExpandedPanel(expandedPanel === 'recentMatches' ? null : 'recentMatches')}
-              tierConfig={TIER_CONFIG}
-              isElite={isEnrolledInElite}
-            />
+          {/* Recent Matches Card */}
+          <RecentMatchesCard
+            contract={contract}
+            account={account}
+            gameName="chess"
+            gameEmoji="♚"
+            gamesCardHeight={gamesCardHeight}
+            playerActivityHeight={playerActivityHeight}
+            onHeightChange={setRecentMatchesCardHeight}
+            isExpanded={expandedPanel === 'recentMatches'}
+            onToggleExpand={() => setExpandedPanel(expandedPanel === 'recentMatches' ? null : 'recentMatches')}
+            tierConfig={TIER_CONFIG}
+            isElite={isEnrolledInElite}
+            disabled={!account}
+          />
 
-            {/* Community Raffle Card */}
-            <CommunityRaffleCard
-              raffleInfo={raffleInfo}
-              raffleHistory={raffleHistory}
-              gamesCardHeight={gamesCardHeight}
-              playerActivityHeight={playerActivityHeight}
-              recentMatchesCardHeight={recentMatchesCardHeight}
-              onRefresh={fetchRaffleInfo}
-              onFetchHistory={fetchRaffleHistory}
-              onTriggerRaffle={executeRaffle}
-              syncing={raffleSyncing}
-              onHeightChange={setRaffleCardHeight}
-              isExpanded={expandedPanel === 'communityRaffle'}
-              onToggleExpand={() => setExpandedPanel(expandedPanel === 'communityRaffle' ? null : 'communityRaffle')}
-            />
+          {/* Community Raffle Card */}
+          <CommunityRaffleCard
+            raffleInfo={raffleInfo}
+            raffleHistory={raffleHistory}
+            gamesCardHeight={gamesCardHeight}
+            playerActivityHeight={playerActivityHeight}
+            recentMatchesCardHeight={recentMatchesCardHeight}
+            onRefresh={fetchRaffleInfo}
+            onFetchHistory={fetchRaffleHistory}
+            onTriggerRaffle={executeRaffle}
+            syncing={raffleSyncing}
+            onHeightChange={setRaffleCardHeight}
+            isExpanded={expandedPanel === 'communityRaffle'}
+            onToggleExpand={() => setExpandedPanel(expandedPanel === 'communityRaffle' ? null : 'communityRaffle')}
+            disabled={!account}
+          />
 
-            {/* Elite Matches Card */}
-            <EliteMatchesCard
-              eliteMatches={eliteMatches}
-              gamesCardHeight={gamesCardHeight}
-              playerActivityHeight={playerActivityHeight}
-              recentMatchesCardHeight={recentMatchesCardHeight}
-              raffleCardHeight={raffleCardHeight}
-              onRefresh={fetchEliteMatches}
-              syncing={eliteMatchesSyncing}
-              account={account}
-              onViewMatch={handleViewArchivedMatch}
-              isExpanded={expandedPanel === 'eliteMatches'}
-              onToggleExpand={() => setExpandedPanel(expandedPanel === 'eliteMatches' ? null : 'eliteMatches')}
-            />
-          </div>
-
-          {/* Desktop positioning (hidden on mobile, shown on desktop with original behavior) */}
-          <div className="hidden md:block">
-            <GamesCard
-              currentGame="chess"
-              onHeightChange={setGamesCardHeight}
-              isExpanded={expandedPanel === 'games'}
-              onToggleExpand={() => setExpandedPanel(expandedPanel === 'games' ? null : 'games')}
-            />
-
-            <PlayerActivity
-              activity={playerActivity.data}
-              loading={playerActivity.loading}
-              syncing={playerActivity.syncing}
-              contract={contract}
-              account={account}
-              onEnterMatch={handlePlayMatch}
-              onEnterTournament={handleEnterTournament}
-              onRefresh={handlePlayerActivityRefresh}
-              onDismissMatch={playerActivity.dismissMatch}
-              gameName="chess"
-              gameEmoji="♚"
-              gamesCardHeight={gamesCardHeight}
-              onHeightChange={setPlayerActivityHeight}
-              onCollapse={(collapseFn) => { collapseActivityPanelRef.current = collapseFn; }}
-              isElite={isEnrolledInElite}
-              isExpanded={expandedPanel === 'playerActivity'}
-              onToggleExpand={() => setExpandedPanel(expandedPanel === 'playerActivity' ? null : 'playerActivity')}
-              tierConfig={TIER_CONFIG}
-            />
-
-            <RecentMatchesCard
-              contract={contract}
-              account={account}
-              gameName="chess"
-              gameEmoji="♚"
-              gamesCardHeight={gamesCardHeight}
-              playerActivityHeight={playerActivityHeight}
-              onHeightChange={setRecentMatchesCardHeight}
-              isExpanded={expandedPanel === 'recentMatches'}
-              onToggleExpand={() => setExpandedPanel(expandedPanel === 'recentMatches' ? null : 'recentMatches')}
-              tierConfig={TIER_CONFIG}
-              isElite={isEnrolledInElite}
-            />
-
-            <CommunityRaffleCard
-              raffleInfo={raffleInfo}
-              raffleHistory={raffleHistory}
-              gamesCardHeight={gamesCardHeight}
-              playerActivityHeight={playerActivityHeight}
-              recentMatchesCardHeight={recentMatchesCardHeight}
-              onRefresh={fetchRaffleInfo}
-              onFetchHistory={fetchRaffleHistory}
-              onTriggerRaffle={executeRaffle}
-              syncing={raffleSyncing}
-              onHeightChange={setRaffleCardHeight}
-              isExpanded={expandedPanel === 'communityRaffle'}
-              onToggleExpand={() => setExpandedPanel(expandedPanel === 'communityRaffle' ? null : 'communityRaffle')}
-            />
-
-            <EliteMatchesCard
-              eliteMatches={eliteMatches}
-              gamesCardHeight={gamesCardHeight}
-              playerActivityHeight={playerActivityHeight}
-              recentMatchesCardHeight={recentMatchesCardHeight}
-              raffleCardHeight={raffleCardHeight}
-              onRefresh={fetchEliteMatches}
-              syncing={eliteMatchesSyncing}
-              account={account}
-              onViewMatch={handleViewArchivedMatch}
-              isExpanded={expandedPanel === 'eliteMatches'}
-              onToggleExpand={() => setExpandedPanel(expandedPanel === 'eliteMatches' ? null : 'eliteMatches')}
-            />
-          </div>
+          {/* Elite Matches Card */}
+          <EliteMatchesCard
+            eliteMatches={eliteMatches}
+            gamesCardHeight={gamesCardHeight}
+            playerActivityHeight={playerActivityHeight}
+            recentMatchesCardHeight={recentMatchesCardHeight}
+            raffleCardHeight={raffleCardHeight}
+            onRefresh={fetchEliteMatches}
+            syncing={eliteMatchesSyncing}
+            account={account}
+            onViewMatch={handleViewArchivedMatch}
+            isExpanded={expandedPanel === 'eliteMatches'}
+            onToggleExpand={() => setExpandedPanel(expandedPanel === 'eliteMatches' ? null : 'eliteMatches')}
+            disabled={!account}
+          />
         </div>
-      )}
+
+        {/* Desktop positioning (hidden on mobile, shown on desktop with original behavior) */}
+        <div className="hidden md:block">
+          <GamesCard
+            currentGame="chess"
+            onHeightChange={setGamesCardHeight}
+            isExpanded={expandedPanel === 'games'}
+            onToggleExpand={() => setExpandedPanel(expandedPanel === 'games' ? null : 'games')}
+          />
+
+          <PlayerActivity
+            activity={playerActivity.data}
+            loading={playerActivity.loading}
+            syncing={playerActivity.syncing}
+            contract={contract}
+            account={account}
+            onEnterMatch={handlePlayMatch}
+            onEnterTournament={handleEnterTournament}
+            onRefresh={handlePlayerActivityRefresh}
+            onDismissMatch={playerActivity.dismissMatch}
+            gameName="chess"
+            gameEmoji="♚"
+            gamesCardHeight={gamesCardHeight}
+            onHeightChange={setPlayerActivityHeight}
+            onCollapse={(collapseFn) => { collapseActivityPanelRef.current = collapseFn; }}
+            isElite={isEnrolledInElite}
+            isExpanded={expandedPanel === 'playerActivity'}
+            onToggleExpand={() => setExpandedPanel(expandedPanel === 'playerActivity' ? null : 'playerActivity')}
+            tierConfig={TIER_CONFIG}
+            disabled={!account}
+          />
+
+          <RecentMatchesCard
+            contract={contract}
+            account={account}
+            gameName="chess"
+            gameEmoji="♚"
+            gamesCardHeight={gamesCardHeight}
+            playerActivityHeight={playerActivityHeight}
+            onHeightChange={setRecentMatchesCardHeight}
+            isExpanded={expandedPanel === 'recentMatches'}
+            onToggleExpand={() => setExpandedPanel(expandedPanel === 'recentMatches' ? null : 'recentMatches')}
+            tierConfig={TIER_CONFIG}
+            isElite={isEnrolledInElite}
+            disabled={!account}
+          />
+
+          <CommunityRaffleCard
+            raffleInfo={raffleInfo}
+            raffleHistory={raffleHistory}
+            gamesCardHeight={gamesCardHeight}
+            playerActivityHeight={playerActivityHeight}
+            recentMatchesCardHeight={recentMatchesCardHeight}
+            onRefresh={fetchRaffleInfo}
+            onFetchHistory={fetchRaffleHistory}
+            onTriggerRaffle={executeRaffle}
+            syncing={raffleSyncing}
+            onHeightChange={setRaffleCardHeight}
+            isExpanded={expandedPanel === 'communityRaffle'}
+            onToggleExpand={() => setExpandedPanel(expandedPanel === 'communityRaffle' ? null : 'communityRaffle')}
+            disabled={!account}
+          />
+
+          <EliteMatchesCard
+            eliteMatches={eliteMatches}
+            gamesCardHeight={gamesCardHeight}
+            playerActivityHeight={playerActivityHeight}
+            recentMatchesCardHeight={recentMatchesCardHeight}
+            raffleCardHeight={raffleCardHeight}
+            onRefresh={fetchEliteMatches}
+            syncing={eliteMatchesSyncing}
+            account={account}
+            onViewMatch={handleViewArchivedMatch}
+            isExpanded={expandedPanel === 'eliteMatches'}
+            onToggleExpand={() => setExpandedPanel(expandedPanel === 'eliteMatches' ? null : 'eliteMatches')}
+            disabled={!account}
+          />
+        </div>
+      </div>
 
       {/* Trust Banner */}
       <div style={{

@@ -24,11 +24,13 @@ const CommunityRaffleCard = ({
   isExpanded: externalIsExpanded, // External control for mobile single-panel coordination
   onToggleExpand, // External toggle handler
   hideOnMobile = false, // Hide this panel on mobile when another panel is expanded
+  disabled = false, // Disable interaction when wallet not connected
 }) => {
   const [internalIsExpanded, setInternalIsExpanded] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
   const [historyFetched, setHistoryFetched] = useState(false);
   const expandedPanelRef = useRef(null);
+  const [showMobileTooltip, setShowMobileTooltip] = useState(false);
 
   // Use external state if provided, otherwise use internal state
   const isExpanded = externalIsExpanded !== undefined ? externalIsExpanded : internalIsExpanded;
@@ -163,15 +165,26 @@ const CommunityRaffleCard = ({
     >
       {/* Toggle Button */}
       <button
-        onClick={() => handleSetExpanded(!isExpanded)}
-        className={`max-md:mx-auto rounded-full p-2.5 md:p-4 border-2 transition-all hover:scale-110 shadow-xl relative group ${
-          isExpanded
+        onClick={() => {
+          if (disabled) {
+            setShowMobileTooltip(true);
+            setTimeout(() => setShowMobileTooltip(false), 2000);
+          } else {
+            handleSetExpanded(!isExpanded);
+          }
+        }}
+        disabled={false}
+        className={`max-md:mx-auto rounded-full p-2.5 md:p-4 border-2 transition-all shadow-xl relative group ${
+          disabled
+            ? 'opacity-50 cursor-not-allowed bg-gradient-to-br from-gray-600 to-gray-700 border-gray-500/40'
+            : isExpanded
             ? 'bg-gradient-to-br from-yellow-500 to-amber-500 border-yellow-300 shadow-[0_0_20px_rgba(251,191,36,0.6)] scale-105'
             : isFull
-            ? 'bg-gradient-to-br from-yellow-500 to-amber-500 border-yellow-400/70 hover:border-yellow-400'
-            : 'bg-gradient-to-br from-yellow-600 to-amber-600 border-yellow-400/40 hover:border-yellow-400/70'
+            ? 'bg-gradient-to-br from-yellow-500 to-amber-500 border-yellow-400/70 hover:border-yellow-400 hover:scale-110'
+            : 'bg-gradient-to-br from-yellow-600 to-amber-600 border-yellow-400/40 hover:border-yellow-400/70 hover:scale-110'
         }`}
-        aria-label={isExpanded ? "Close community raffle" : "Open community raffle"}
+        aria-label={disabled ? "Connect wallet to access community raffle" : isExpanded ? "Close community raffle" : "Open community raffle"}
+        title={disabled ? "Connect Wallet to View Community Raffle" : ""}
       >
         <img
           src="/raffle-icon.png"
@@ -194,8 +207,16 @@ const CommunityRaffleCard = ({
 
         {/* Tooltip - Desktop only */}
         <div className="max-md:hidden absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-          Community Raffle
+          {disabled ? "Connect Wallet to View Community Raffle" : "Community Raffle"}
         </div>
+
+        {/* Tooltip - Mobile only */}
+        {showMobileTooltip && disabled && (
+          <div className="md:hidden absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-black/90 text-white text-xs px-3 py-2 rounded whitespace-nowrap z-[100] animate-fade-in">
+            Connect Wallet to View Community Raffle
+            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-black/90"></div>
+          </div>
+        )}
       </button>
 
       {/* Expanded State */}
