@@ -15,7 +15,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useLocation } from 'react-router-dom';
 import {
   Wallet, Grid, Clock, Shield, Lock, Eye, Code, ExternalLink,
   Trophy, Zap, Coins, History,
@@ -691,6 +691,9 @@ export default function ConnectFour() {
   const [urlTournamentParams, setUrlTournamentParams] = useState(null);
   const [hasProcessedUrlParams, setHasProcessedUrlParams] = useState(false);
 
+  // Location state for navigation
+  const location = useLocation();
+
   // Match State
   const [currentMatch, setCurrentMatch] = useState(null);
   const [matchLoading, setMatchLoading] = useState(false);
@@ -747,6 +750,29 @@ export default function ConnectFour() {
   useEffect(() => {
     document.title = 'ETour - Connect Four';
   }, []);
+
+  // Handle scroll to Live Instances when navigating from Games card
+  useEffect(() => {
+    if (location.state?.scrollToLiveInstances) {
+      // Clear any active tournament or match view to return to home view
+      setViewingTournament(null);
+      setCurrentMatch(null);
+      setSearchParams({}); // Clear URL params
+
+      // Small delay to ensure the page has fully rendered
+      setTimeout(() => {
+        const liveInstancesSection = document.getElementById('live-instances');
+        if (liveInstancesSection) {
+          const elementPosition = liveInstancesSection.getBoundingClientRect().top;
+          const offsetPosition = elementPosition + window.pageYOffset - 100; // 100px top margin
+          window.scrollTo({
+            top: offsetPosition,
+            behavior: 'smooth'
+          });
+        }
+      }, 100);
+    }
+  }, [location.state, setSearchParams]);
 
   // Add mobile debugging console (Eruda) on mobile devices
   useEffect(() => {

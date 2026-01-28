@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 const GamesCard = ({
   currentGame, // 'home', 'tictactoe', 'connect4', 'chess'
@@ -18,6 +18,7 @@ const GamesCard = ({
   const [internalIsExpanded, setInternalIsExpanded] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
   const expandedPanelRef = useRef(null);
+  const navigate = useNavigate();
 
   // Use external state if provided, otherwise use internal state
   const isExpanded = externalIsExpanded !== undefined ? externalIsExpanded : internalIsExpanded;
@@ -130,16 +131,14 @@ const GamesCard = ({
                     onClick={(e) => {
                       if (isCurrent) {
                         e.preventDefault();
-                        // Scroll to Live Instances section with top margin
-                        const liveInstancesSection = document.getElementById('live-instances');
-                        if (liveInstancesSection) {
-                          const elementPosition = liveInstancesSection.getBoundingClientRect().top;
-                          const offsetPosition = elementPosition + window.pageYOffset - 100; // 100px top margin
-                          window.scrollTo({
-                            top: offsetPosition,
-                            behavior: 'smooth'
-                          });
-                        }
+
+                        // Always navigate to ensure we're on the game's home view (not a sub-view like tournament bracket)
+                        // The replace option keeps the browser history clean
+                        navigate(game.path, {
+                          replace: true,
+                          state: { scrollToLiveInstances: true }
+                        });
+
                         // Close the games panel after clicking
                         handleSetExpanded(false);
                       }
