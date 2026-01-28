@@ -36,12 +36,7 @@ const CapturedPieces = ({ capturedPieces, color }) => {
   const colorLabel = color === 'white' ? 'White' : 'Black';
 
   if (!capturedPieces || capturedPieces.length === 0) {
-    return (
-      <div className="bg-slate-800/30 rounded-lg p-2 border border-gray-600/30">
-        <div className="text-xs text-gray-400 mb-1 font-semibold">{colorLabel} Lost Pieces</div>
-        <div className="text-xs text-gray-500 italic">None</div>
-      </div>
-    );
+    return null;
   }
 
   // Count pieces by type
@@ -58,20 +53,20 @@ const CapturedPieces = ({ capturedPieces, color }) => {
   const icons = color === 'white' ? PIECE_ICONS.white : PIECE_ICONS.black;
 
   return (
-    <div className="bg-slate-800/30 rounded-lg p-2 border border-gray-600/30">
-      <div className="text-xs text-gray-400 mb-1.5 font-semibold">{colorLabel} Lost Pieces</div>
-      <div className="flex flex-wrap gap-2 items-center">
+    <div className="bg-slate-800/30 rounded-lg px-2 py-1 border border-gray-600/30">
+      <div className="flex items-center gap-1 flex-wrap">
+        <span className="text-[11px] text-gray-400 font-semibold">Lost:</span>
         {sortedPieces.map(([pieceType, count]) => (
           <div
             key={pieceType}
-            className="flex items-center gap-1 bg-slate-700/50 rounded px-1.5 py-0.5"
+            className="flex items-center gap-0.5 bg-slate-700/50 rounded px-1 py-0.5"
             title={`${count} ${PIECE_NAMES[pieceType]}${count > 1 ? 's' : ''}`}
           >
-            <span className="text-xs font-bold text-gray-300">{count}x</span>
+            <span className="text-[11px] font-bold text-gray-300">{count}x</span>
             <img
               src={icons[pieceType]}
               alt={PIECE_NAMES[pieceType]}
-              className="w-5 h-5"
+              className="w-3.5 h-3.5"
               draggable="false"
             />
           </div>

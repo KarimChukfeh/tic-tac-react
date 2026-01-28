@@ -298,11 +298,12 @@ const GameMatchLayout = ({
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <div className="text-xs text-gray-400">{label}</div>
+              <div className="text-xs text-gray-400">
+                {label}
+                {isYou && <span className="text-yellow-300 text-[11px] font-bold ml-1">YOU</span>}
+              </div>
               <div className="font-mono text-xs truncate">{playerAddress ? `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : ''}</div>
-              {isYou && <span className="text-yellow-300 text-[11px] font-bold">YOU</span>}
             </div>
-            {extraContent && <div className="flex-shrink-0">{extraContent}</div>}
           </div>
 
           {/* Timer Section or ML1 CTA */}
@@ -331,6 +332,9 @@ const GameMatchLayout = ({
               </div>
             )
           )}
+
+          {/* Extra Content (Lost Pieces) - Below Timer */}
+          {extraContent && <div>{extraContent}</div>}
         </div>
       );
     };
@@ -381,10 +385,8 @@ const GameMatchLayout = ({
       };
 
       // Check if ML1 CTA should be shown
-      const player1TimedOut = player1TimeLeft <= 0 && isPlayer1Turn && !isPlayer1You;
-      const player2TimedOut = player2TimeLeft <= 0 && isPlayer2Turn && !isPlayer2You;
       const showML1CTAFromTimeout = timeoutState && timeoutState.timeoutActive && matchStatus === 1 && !isYourTurn;
-      const showML1CTAFromTimer = matchStatus === 1 && (player1TimedOut || player2TimedOut);
+      const showML1CTAFromTimer = matchStatus === 1 && ((isPlayer1 && player1TimeLeft <= 0 && isPlayer1Turn && !isYou) || (!isPlayer1 && player2TimeLeft <= 0 && isPlayer2Turn && !isYou));
       const showML1CTA = (showML1CTAFromTimeout || showML1CTAFromTimer) && isTurn;
 
       // Get color config for player card
@@ -443,9 +445,6 @@ const GameMatchLayout = ({
             </div>
           )}
 
-          {/* Extra Content */}
-          {extraContent && <div className="mb-4">{extraContent}</div>}
-
           {/* Timer Section or ML1 CTA */}
           {showTurnTimer && (
             showML1CTA ? (
@@ -472,6 +471,9 @@ const GameMatchLayout = ({
               </div>
             )
           )}
+
+          {/* Extra Content (Lost Pieces) - Below Timer */}
+          {extraContent && <div className="mt-4">{extraContent}</div>}
         </div>
       );
     };
@@ -624,9 +626,6 @@ const GameMatchLayout = ({
             </div>
           </div>
 
-          {/* Extra Content */}
-          {extraContent && <div className="mb-4">{extraContent}</div>}
-
           {/* Timer Section or ML1 CTA */}
           {showTurnTimer && (
             showML1CTA ? (
@@ -653,6 +652,9 @@ const GameMatchLayout = ({
               </div>
             )
           )}
+
+          {/* Extra Content (Lost Pieces) - Below Timer */}
+          {extraContent && <div className="mt-4">{extraContent}</div>}
         </div>
       );
     };
@@ -727,7 +729,6 @@ const GameMatchLayout = ({
       const progress = ((totalTime - timeLeft) / totalTime) * 100;
       const icon = isPlayer1 ? playerConfig?.player1?.icon : playerConfig?.player2?.icon;
       const label = isPlayer1 ? (playerConfig?.player1?.label || 'Player 1') : (playerConfig?.player2?.label || 'Player 2');
-      const colorScheme = isPlayer1 ? theme.player1Color : theme.player2Color;
 
       // Get color scheme based on remaining time
       const getTimeColors = (timeLeft) => {
@@ -747,23 +748,9 @@ const GameMatchLayout = ({
       };
 
       // Check if ML1 CTA should be shown
-      const isPlayer2You = account && player2?.toLowerCase() === account.toLowerCase();
-      const player1TimedOut = player1TimeLeft <= 0 && isPlayer1Turn && !isPlayer1You;
-      const player2TimedOut = player2TimeLeft <= 0 && isPlayer2Turn && !isPlayer2You;
       const showML1CTAFromTimeout = timeoutState && timeoutState.timeoutActive && matchStatus === 1 && !isYourTurn;
-      const showML1CTAFromTimer = matchStatus === 1 && (player1TimedOut || player2TimedOut);
+      const showML1CTAFromTimer = matchStatus === 1 && ((isPlayer1 && player1TimeLeft <= 0 && isPlayer1Turn && !isYou) || (!isPlayer1 && player2TimeLeft <= 0 && isPlayer2Turn && !isYou));
       const showML1CTA = (showML1CTAFromTimeout || showML1CTAFromTimer) && isTurn;
-
-      // Get color config for player card
-      const COLOR_CONFIGS = {
-        blue: { border: 'border-blue-400/30', bg: 'bg-gradient-to-br from-blue-600/20 to-cyan-600/20', iconBg: 'bg-blue-500', text: 'text-blue-300', activeHighlight: 'bg-cyan-500/30 border-cyan-400' },
-        pink: { border: 'border-pink-400/30', bg: 'bg-gradient-to-br from-pink-600/20 to-purple-600/20', iconBg: 'bg-pink-500', text: 'text-pink-300', activeHighlight: 'bg-pink-500/30 border-pink-400' },
-        white: { border: 'border-blue-500/30', bg: 'bg-slate-900/50', iconBg: 'bg-white text-black', text: 'text-blue-300', activeHighlight: 'bg-blue-500/30 border-blue-400' },
-        black: { border: 'border-pink-500/30', bg: 'bg-slate-900/50', iconBg: 'bg-gray-900 text-white', text: 'text-pink-300', activeHighlight: 'bg-pink-500/30 border-pink-400' },
-        neonred: { border: 'border-red-400/30', bg: 'bg-gradient-to-br from-red-600/20 to-rose-600/20', iconBg: 'bg-red-500', text: 'text-red-300', activeHighlight: 'bg-red-500/30 border-red-400' },
-        neonblue: { border: 'border-blue-400/30', bg: 'bg-gradient-to-br from-blue-600/20 to-indigo-600/20', iconBg: 'bg-blue-500', text: 'text-blue-300', activeHighlight: 'bg-blue-500/30 border-blue-400' }
-      };
-      const cardColors = COLOR_CONFIGS[colorScheme] || COLOR_CONFIGS.blue;
 
       return (
         <div className={`flex-1 relative flex flex-col gap-2 p-3 rounded-lg bg-black/30`}>
@@ -958,9 +945,6 @@ const GameMatchLayout = ({
             </div>
           </div>
 
-          {/* Extra Content */}
-          {extraContent && <div className="mb-4">{extraContent}</div>}
-
           {/* Timer Section or ML1 CTA */}
           {showTurnTimer && (
             showML1CTA ? (
@@ -987,6 +971,9 @@ const GameMatchLayout = ({
               </div>
             )
           )}
+
+          {/* Extra Content (Lost Pieces) - Below Timer */}
+          {extraContent && <div className="mt-4">{extraContent}</div>}
         </div>
       );
     };
