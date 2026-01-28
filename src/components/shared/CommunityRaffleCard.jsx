@@ -176,7 +176,7 @@ const CommunityRaffleCard = ({
         disabled={false}
         className={`max-md:mx-auto rounded-full p-2.5 md:p-4 border-2 transition-all shadow-xl relative group ${
           disabled
-            ? 'opacity-50 cursor-not-allowed bg-gradient-to-br from-gray-600 to-gray-700 border-gray-500/40'
+            ? 'opacity-100 cursor-not-allowed bg-gradient-to-br from-gray-600 to-gray-700 border-gray-500/40'
             : isExpanded
             ? 'bg-gradient-to-br from-yellow-500 to-amber-500 border-yellow-300 shadow-[0_0_20px_rgba(251,191,36,0.6)] scale-105'
             : isFull

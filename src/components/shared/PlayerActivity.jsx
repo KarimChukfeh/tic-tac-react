@@ -386,7 +386,7 @@ const PlayerActivity = ({
         disabled={false}
         className={`max-md:mx-auto bg-gradient-to-br backdrop-blur-lg rounded-full p-2.5 md:p-4 border-2 transition-all shadow-xl relative group ${
           disabled
-            ? 'opacity-50 cursor-not-allowed from-gray-600/90 to-gray-700/90 border-gray-500/40'
+            ? 'opacity-100 cursor-not-allowed from-gray-600/90 to-gray-700/90 border-gray-500/40'
             : isElite
             ? isExpanded
               ? 'from-[#fbbf24]/90 to-[#f59e0b]/90 border-[#fbbf24] shadow-[0_0_20px_rgba(251,191,36,0.6)] scale-105'

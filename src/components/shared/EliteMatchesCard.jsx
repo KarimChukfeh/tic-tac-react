@@ -172,7 +172,7 @@ const EliteMatchesCard = ({
         disabled={false}
         className={`max-md:mx-auto bg-gradient-to-br backdrop-blur-lg rounded-full p-2.5 md:p-4 border-2 transition-all shadow-xl relative group ${
           disabled
-            ? 'opacity-50 cursor-not-allowed from-gray-600/95 to-gray-700/95 border-gray-500/40'
+            ? 'opacity-100 cursor-not-allowed from-gray-600/95 to-gray-700/95 border-gray-500/40'
             : 'from-amber-700/95 to-yellow-800/95 ' + (isExpanded
             ? 'border-amber-400 scale-105 hover:scale-110'
             : 'border-amber-600/50 hover:border-amber-500/70 hover:scale-110')
