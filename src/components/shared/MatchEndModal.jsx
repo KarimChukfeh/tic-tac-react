@@ -37,27 +37,55 @@ const MatchEndModal = ({
   completionReason,
   tournamentWinner
 }) => {
-  // Fire confetti for wins
+  // Fire confetti for wins (mobile-optimized)
   const fireConfetti = useCallback(() => {
+    // Detect mobile devices
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth < 768;
+
     const duration = 3000;
     const end = Date.now() + duration;
 
     const colors = ['#ffd700', '#ffb347', '#ff6961', '#77dd77', '#84b6f4', '#fdfd96'];
 
+    // Mobile-specific settings for better performance and visibility
+    const particleCount = isMobile ? 5 : 3; // More particles on mobile for visibility
+    const burstCount = isMobile ? 150 : 100; // Bigger burst on mobile
+
+    // Ensure confetti canvas is created with proper settings
+    const canvasConfig = {
+      resize: true,
+      useWorker: true, // Use web worker for better performance
+      disableForReducedMotion: false // Always show confetti
+    };
+
+    // Create confetti instance with mobile-friendly config
+    const myConfetti = confetti.create(undefined, canvasConfig);
+
     (function frame() {
-      confetti({
-        particleCount: 3,
+      // Left side confetti
+      myConfetti({
+        particleCount: particleCount,
         angle: 60,
         spread: 55,
-        origin: { x: 0, y: 0.8 },
-        colors: colors
+        origin: { x: 0, y: 0.7 }, // Adjusted for mobile viewport
+        colors: colors,
+        ticks: 200,
+        gravity: 1,
+        scalar: isMobile ? 1.2 : 1, // Larger particles on mobile
+        startVelocity: isMobile ? 35 : 30
       });
-      confetti({
-        particleCount: 3,
+
+      // Right side confetti
+      myConfetti({
+        particleCount: particleCount,
         angle: 120,
         spread: 55,
-        origin: { x: 1, y: 0.8 },
-        colors: colors
+        origin: { x: 1, y: 0.7 }, // Adjusted for mobile viewport
+        colors: colors,
+        ticks: 200,
+        gravity: 1,
+        scalar: isMobile ? 1.2 : 1, // Larger particles on mobile
+        startVelocity: isMobile ? 35 : 30
       });
 
       if (Date.now() < end) {
@@ -67,20 +95,58 @@ const MatchEndModal = ({
 
     // Big burst in the middle
     setTimeout(() => {
-      confetti({
-        particleCount: 100,
-        spread: 70,
+      myConfetti({
+        particleCount: burstCount,
+        spread: isMobile ? 90 : 70, // Wider spread on mobile
         origin: { y: 0.6 },
-        colors: colors
+        colors: colors,
+        ticks: 200,
+        gravity: 1,
+        scalar: isMobile ? 1.2 : 1,
+        startVelocity: isMobile ? 40 : 30
       });
     }, 300);
+
+    // Add extra burst for mobile
+    if (isMobile) {
+      setTimeout(() => {
+        myConfetti({
+          particleCount: 50,
+          spread: 60,
+          origin: { x: 0.5, y: 0.5 },
+          colors: colors,
+          ticks: 150
+        });
+      }, 600);
+    }
   }, []);
 
   useEffect(() => {
     if (isVisible && (result === 'win' || result === 'forfeit_win')) {
-      fireConfetti();
+      // Small delay to ensure modal is rendered before confetti
+      const timer = setTimeout(() => {
+        fireConfetti();
+      }, 100);
+      return () => clearTimeout(timer);
     }
   }, [isVisible, result, fireConfetti]);
+
+  // Ensure confetti canvas is on top
+  useEffect(() => {
+    if (isVisible) {
+      // Find confetti canvas and ensure proper z-index
+      const confettiCanvas = document.querySelector('canvas');
+      if (confettiCanvas && confettiCanvas.style) {
+        confettiCanvas.style.position = 'fixed';
+        confettiCanvas.style.top = '0';
+        confettiCanvas.style.left = '0';
+        confettiCanvas.style.width = '100%';
+        confettiCanvas.style.height = '100%';
+        confettiCanvas.style.zIndex = '9999';
+        confettiCanvas.style.pointerEvents = 'none';
+      }
+    }
+  }, [isVisible]);
 
   // Handle escape key
   useEffect(() => {

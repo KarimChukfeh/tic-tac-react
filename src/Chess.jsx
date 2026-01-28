@@ -48,6 +48,7 @@ import GameMatchLayout from './components/shared/GameMatchLayout';
 import TournamentHeader from './components/shared/TournamentHeader';
 import PlayerActivity from './components/shared/PlayerActivity';
 import RecentMatchesCard from './components/shared/RecentMatchesCard';
+import CapturedPieces from './components/shared/CapturedPieces';
 import CommunityRaffleCard from './components/shared/CommunityRaffleCard';
 import GamesCard from './components/shared/GamesCard';
 import EliteMatchesCard from './components/shared/EliteMatchesCard';
@@ -2498,6 +2499,57 @@ export default function Chess() {
     return `${file}${rank}`;
   }, []);
 
+  // Calculate captured pieces by comparing current board to starting position
+  const calculateCapturedPieces = useCallback((board) => {
+    if (!board || board.length !== 64) {
+      return { white: [], black: [] };
+    }
+
+    // Starting piece counts for each side
+    const startingPieces = {
+      1: 8,  // pawns
+      2: 2,  // knights
+      3: 2,  // bishops
+      4: 2,  // rooks
+      5: 1,  // queen
+      6: 1   // king
+    };
+
+    // Count current pieces on board
+    const whitePieces = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+    const blackPieces = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+
+    board.forEach(square => {
+      if (square.pieceType > 0) {
+        if (square.color === 1) {
+          // White piece
+          whitePieces[square.pieceType]++;
+        } else if (square.color === 2) {
+          // Black piece
+          blackPieces[square.pieceType]++;
+        }
+      }
+    });
+
+    // Calculate missing pieces (captured)
+    const whiteCaptured = [];
+    const blackCaptured = [];
+
+    for (let pieceType = 1; pieceType <= 6; pieceType++) {
+      const whiteLost = startingPieces[pieceType] - whitePieces[pieceType];
+      const blackLost = startingPieces[pieceType] - blackPieces[pieceType];
+
+      for (let i = 0; i < whiteLost; i++) {
+        whiteCaptured.push(pieceType);
+      }
+      for (let i = 0; i < blackLost; i++) {
+        blackCaptured.push(pieceType);
+      }
+    }
+
+    return { white: whiteCaptured, black: blackCaptured };
+  }, []);
+
   // Fetch move history from blockchain events with fallback to board state reconstruction
   const fetchMoveHistory = useCallback(async (contractInstance, tierId, instanceId, roundNumber, matchNumber) => {
     try {
@@ -4124,6 +4176,12 @@ export default function Chess() {
                   label="White"
                   colorScheme="white"
                   variant="full"
+                  extraContent={
+                    <CapturedPieces
+                      capturedPieces={calculateCapturedPieces(viewingArchivedMatch.board).white}
+                      color="white"
+                    />
+                  }
                 />
                 <PlayerPanel
                   playerAddress={viewingArchivedMatch.player2}
@@ -4134,6 +4192,12 @@ export default function Chess() {
                   label="Black"
                   colorScheme="black"
                   variant="full"
+                  extraContent={
+                    <CapturedPieces
+                      capturedPieces={calculateCapturedPieces(viewingArchivedMatch.board).black}
+                      color="black"
+                    />
+                  }
                 />
               </div>
 
@@ -4228,16 +4292,32 @@ export default function Chess() {
             }}
             layout="players-board-history"
             isSpectator={isSpectator}
-            renderPlayer1Extra={currentMatch.whiteInCheck ? () => (
-              <div className="bg-red-500/20 border border-red-400 rounded-lg p-2 text-center mt-2">
-                <span className="text-red-300 text-xs font-bold">⚠️ CHECK</span>
-              </div>
-            ) : undefined}
-            renderPlayer2Extra={currentMatch.blackInCheck ? () => (
-              <div className="bg-red-500/20 border border-red-400 rounded-lg p-2 text-center mt-2">
-                <span className="text-red-300 text-xs font-bold">⚠️ CHECK</span>
-              </div>
-            ) : undefined}
+            renderPlayer1Extra={() => {
+              const capturedPieces = calculateCapturedPieces(currentMatch.board);
+              return (
+                <>
+                  <CapturedPieces capturedPieces={capturedPieces.white} color="white" />
+                  {currentMatch.whiteInCheck && (
+                    <div className="bg-red-500/20 border border-red-400 rounded-lg p-2 text-center mt-2">
+                      <span className="text-red-300 text-xs font-bold">⚠️ CHECK</span>
+                    </div>
+                  )}
+                </>
+              );
+            }}
+            renderPlayer2Extra={() => {
+              const capturedPieces = calculateCapturedPieces(currentMatch.board);
+              return (
+                <>
+                  <CapturedPieces capturedPieces={capturedPieces.black} color="black" />
+                  {currentMatch.blackInCheck && (
+                    <div className="bg-red-500/20 border border-red-400 rounded-lg p-2 text-center mt-2">
+                      <span className="text-red-300 text-xs font-bold">⚠️ CHECK</span>
+                    </div>
+                  )}
+                </>
+              );
+            }}
             renderMoveHistory={moveHistory.length > 0 ? () => (
               <>
                 <h3 className="text-xl font-bold text-purple-300 mb-4 flex items-center gap-2">
