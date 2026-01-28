@@ -48,6 +48,17 @@ export function useMetaMaskDeepLink() {
     // Check if user already made a choice this session
     const userChoice = sessionStorage.getItem(USER_CHOICE_KEY);
     if (userChoice) {
+      // If user previously chose MetaMask, automatically redirect to current URL
+      if (userChoice === 'metamask') {
+        try {
+          const currentUrl = window.location.href;
+          const deepLink = buildMetaMaskDeepLink(currentUrl);
+          window.location.href = deepLink;
+        } catch (error) {
+          console.error('Automatic MetaMask redirect failed:', error);
+        }
+      }
+      // If user chose 'continue', do nothing (stay in current browser)
       return;
     }
 
