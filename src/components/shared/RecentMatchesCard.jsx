@@ -7,6 +7,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { X, RefreshCw, History, ChevronDown, ChevronUp, Eye } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
+import CapturedPieces from './CapturedPieces';
 
 const RecentMatchesCard = ({
   contract,
@@ -297,6 +298,57 @@ const RecentMatchesCard = ({
     return [];
   };
 
+  // Calculate captured pieces for chess by comparing current board to starting position
+  const calculateCapturedPieces = (board) => {
+    if (!board || board.length !== 64) {
+      return { white: [], black: [] };
+    }
+
+    // Starting piece counts for each side
+    const startingPieces = {
+      1: 8,  // pawns
+      2: 2,  // knights
+      3: 2,  // bishops
+      4: 2,  // rooks
+      5: 1,  // queen
+      6: 1   // king
+    };
+
+    // Count current pieces on board
+    const whitePieces = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+    const blackPieces = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+
+    board.forEach(square => {
+      if (square.pieceType > 0) {
+        if (square.color === 1) {
+          // White piece
+          whitePieces[square.pieceType]++;
+        } else if (square.color === 2) {
+          // Black piece
+          blackPieces[square.pieceType]++;
+        }
+      }
+    });
+
+    // Calculate missing pieces (captured)
+    const whiteCaptured = [];
+    const blackCaptured = [];
+
+    for (let pieceType = 1; pieceType <= 6; pieceType++) {
+      const whiteLost = startingPieces[pieceType] - whitePieces[pieceType];
+      const blackLost = startingPieces[pieceType] - blackPieces[pieceType];
+
+      for (let i = 0; i < whiteLost; i++) {
+        whiteCaptured.push(pieceType);
+      }
+      for (let i = 0; i < blackLost; i++) {
+        blackCaptured.push(pieceType);
+      }
+    }
+
+    return { white: whiteCaptured, black: blackCaptured };
+  };
+
   // Desktop positioning
   const BASE_TOP_DESKTOP = 80;
   const COLLAPSED_BUTTON_HEIGHT_DESKTOP = 64;
@@ -567,6 +619,19 @@ const RecentMatchesCard = ({
                     {/* Board Display */}
                     {isMatchExpanded && (
                       <div className="mt-3 pt-3 border-t border-slate-600/30">
+                        {/* Lost Pieces for Chess ONLY */}
+                        {gameName === 'chess' && (() => {
+                          const board = unpackBoard(match.board, 'chess');
+                          const capturedPieces = calculateCapturedPieces(board);
+
+                          return (
+                            <div className="mb-4 space-y-2">
+                              <CapturedPieces capturedPieces={capturedPieces.white} color="white" />
+                              <CapturedPieces capturedPieces={capturedPieces.black} color="black" />
+                            </div>
+                          );
+                        })()}
+
                         {gameName === 'tictactoe' && (() => {
                           const board = unpackBoard(match.board, 'tictactoe');
 

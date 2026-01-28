@@ -33,10 +33,12 @@ const PIECE_NAMES = {
 };
 
 const CapturedPieces = ({ capturedPieces, color }) => {
+  const colorLabel = color === 'white' ? 'White' : 'Black';
+
   if (!capturedPieces || capturedPieces.length === 0) {
     return (
       <div className="bg-slate-800/30 rounded-lg p-2 border border-gray-600/30">
-        <div className="text-xs text-gray-400 mb-1 font-semibold">Lost Pieces</div>
+        <div className="text-xs text-gray-400 mb-1 font-semibold">{colorLabel} Lost Pieces</div>
         <div className="text-xs text-gray-500 italic">None</div>
       </div>
     );
@@ -57,7 +59,7 @@ const CapturedPieces = ({ capturedPieces, color }) => {
 
   return (
     <div className="bg-slate-800/30 rounded-lg p-2 border border-gray-600/30">
-      <div className="text-xs text-gray-400 mb-1.5 font-semibold">Lost Pieces</div>
+      <div className="text-xs text-gray-400 mb-1.5 font-semibold">{colorLabel} Lost Pieces</div>
       <div className="flex flex-wrap gap-2 items-center">
         {sortedPieces.map(([pieceType, count]) => (
           <div
