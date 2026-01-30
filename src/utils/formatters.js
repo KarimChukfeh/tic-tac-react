@@ -110,3 +110,23 @@ export const countInstancesByStatus = (statuses, enrolledCounts = []) => {
 export const getTournamentTypeLabel = (playerCount) => {
   return playerCount === 2 ? 'Duel' : 'Tournament';
 };
+
+/**
+ * Convert a tic-tac-toe cell index (0-8) to a human-readable position name
+ * @param {number} cellIndex - The cell index (0-8)
+ * @returns {string} Human-readable position name
+ */
+export const getCellPositionName = (cellIndex) => {
+  const positions = [
+    'Top Left',      // 0
+    'Top Middle',    // 1
+    'Top Right',     // 2
+    'Middle Left',   // 3
+    'Center',        // 4
+    'Middle Right',  // 5
+    'Bottom Left',   // 6
+    'Bottom Middle', // 7
+    'Bottom Right'   // 8
+  ];
+  return positions[cellIndex] || `Cell ${cellIndex}`;
+};

@@ -31,7 +31,7 @@ const CONTRACT_ADDRESS = TicTacChainABIData.address;
 const MODULE_ADDRESSES = TicTacChainABIData.modules;
 
 import { CURRENT_NETWORK, getAddressUrl, getExplorerHomeUrl } from './config/networks';
-import { shortenAddress, formatTime as formatTimeHMS, getTierName, getTournamentTypeLabel } from './utils/formatters';
+import { shortenAddress, formatTime as formatTimeHMS, getTierName, getTournamentTypeLabel, getCellPositionName } from './utils/formatters';
 import { parseTournamentParams } from './utils/urlHelpers';
 import { parseTicTacToeMatch } from './utils/matchDataParser';
 import { determineMatchResult } from './utils/matchCompletionHandler';
@@ -3308,10 +3308,12 @@ export default function TicTacChain() {
                 </h3>
                 <div className="space-y-2">
                   {moveHistory.map((move, idx) => (
-                    <div key={idx} className="flex items-center gap-3 text-sm bg-purple-500/10 p-2 rounded">
+                    <div key={idx} className="flex items-center gap-2 text-sm bg-purple-500/10 p-2 rounded">
                       <span className="text-purple-300">Move {idx + 1}:</span>
-                      <span className="text-white font-bold">{move.player}</span>
-                      <span className="text-purple-400">→ Cell {move.cell}</span>
+                      <span className="text-white">
+                        <span className="font-bold">{move.player}</span>
+                        <span className="text-purple-400"> → {getCellPositionName(move.cell)}</span>
+                      </span>
                     </div>
                   ))}
                 </div>

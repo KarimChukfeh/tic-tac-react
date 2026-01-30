@@ -6,7 +6,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { X, RefreshCw, History, ChevronDown, ChevronUp, Eye } from 'lucide-react';
-import { shortenAddress } from '../../utils/formatters';
+import { shortenAddress, getCellPositionName } from '../../utils/formatters';
 import CapturedPieces from './CapturedPieces';
 
 const RecentMatchesCard = ({
@@ -942,7 +942,7 @@ const RecentMatchesCard = ({
                                   </div>
                                   <span className="text-slate-300 flex-1">
                                     {gameName === 'chess' && move.move}
-                                    {gameName === 'tictactoe' && `Cell ${move.cell}`}
+                                    {gameName === 'tictactoe' && `→ ${getCellPositionName(move.cell)}`}
                                     {gameName === 'connect4' && `Column ${move.column}`}
                                   </span>
                                 </div>
