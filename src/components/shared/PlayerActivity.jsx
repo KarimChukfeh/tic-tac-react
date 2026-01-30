@@ -384,21 +384,21 @@ const PlayerActivity = ({
           }
         }}
         disabled={false}
-        className={`max-md:mx-auto bg-gradient-to-br backdrop-blur-lg rounded-full p-2.5 md:p-4 border-2 transition-all shadow-xl relative group ${
+        className={`max-md:mx-auto md:bg-gradient-to-br md:backdrop-blur-lg rounded-full p-2 md:p-4 md:border-2 transition-all md:shadow-xl relative group ${
           disabled
-            ? 'opacity-100 cursor-not-allowed from-gray-600/90 to-gray-700/90 border-gray-500/40'
+            ? 'opacity-100 cursor-not-allowed md:from-gray-600/90 md:to-gray-700/90 md:border-gray-500/40'
             : isElite
             ? isExpanded
-              ? 'from-[#fbbf24]/90 to-[#f59e0b]/90 border-[#fbbf24] shadow-[0_0_20px_rgba(251,191,36,0.6)] scale-105'
-              : 'from-[#fbbf24]/90 to-[#f59e0b]/90 border-[#d4a012]/40 hover:border-[#d4a012]/70 hover:scale-110'
+              ? 'bg-gradient-to-br from-[#fbbf24]/90 to-[#f59e0b]/90 border-2 border-[#fbbf24] md:shadow-[0_0_20px_rgba(251,191,36,0.6)] scale-105'
+              : 'md:from-[#fbbf24]/90 md:to-[#f59e0b]/90 md:border-[#d4a012]/40 md:hover:border-[#d4a012]/70 hover:scale-110'
             : isExpanded
-            ? 'from-purple-600/90 to-blue-600/90 border-purple-300 shadow-[0_0_20px_rgba(192,132,252,0.6)] scale-105'
-            : 'from-purple-600/90 to-blue-600/90 border-purple-400/40 hover:border-purple-400/70 hover:scale-110'
+            ? 'bg-gradient-to-br from-purple-600/90 to-blue-600/90 border-2 border-purple-300 md:shadow-[0_0_20px_rgba(192,132,252,0.6)] scale-105'
+            : 'md:from-purple-600/90 md:to-blue-600/90 md:border-purple-400/40 md:hover:border-purple-400/70 hover:scale-110'
         }`}
         aria-label={disabled ? "Connect wallet to access player activity" : isExpanded ? "Close player activity" : "Open player activity"}
         title={disabled ? "Connect Wallet to View Your Activity" : ""}
       >
-        <Users size={18} className="text-white md:w-6 md:h-6" />
+        <Users size={16} className="text-white md:w-6 md:h-6" />
 
         {/* Sync Circle Animation */}
         {syncing && (

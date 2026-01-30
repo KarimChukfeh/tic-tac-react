@@ -389,17 +389,17 @@ const RecentMatchesCard = ({
           }
         }}
         disabled={false}
-        className={`max-md:mx-auto bg-gradient-to-br backdrop-blur-lg rounded-full p-2.5 md:p-4 border-2 transition-all shadow-xl relative group ${
+        className={`max-md:mx-auto md:bg-gradient-to-br md:backdrop-blur-lg rounded-full p-2 md:p-4 md:border-2 transition-all md:shadow-xl relative group ${
           disabled
-            ? 'opacity-100 cursor-not-allowed from-gray-600/90 to-gray-700/90 border-gray-500/40'
-            : 'from-teal-600/90 to-cyan-600/90 ' + (isExpanded
-            ? 'border-teal-300 shadow-[0_0_20px_rgba(94,234,212,0.6)] scale-105'
-            : 'border-teal-400/40 hover:border-teal-400/70 hover:scale-110')
+            ? 'opacity-100 cursor-not-allowed md:from-gray-600/90 md:to-gray-700/90 md:border-gray-500/40'
+            : 'md:from-teal-600/90 md:to-cyan-600/90 ' + (isExpanded
+            ? 'bg-gradient-to-br from-teal-600/90 to-cyan-600/90 border-2 border-teal-300 md:shadow-[0_0_20px_rgba(94,234,212,0.6)] scale-105'
+            : 'md:border-teal-400/40 md:hover:border-teal-400/70 hover:scale-110')
         }`}
         aria-label={disabled ? "Connect wallet to access recent matches" : isExpanded ? "Close recent matches" : "Open recent matches"}
         title={disabled ? "Connect Wallet to View Your Match History" : ""}
       >
-        <History size={18} className="text-white md:w-6 md:h-6" />
+        <History size={16} className="text-white md:w-6 md:h-6" />
 
         {/* Sync Circle Animation */}
         {syncing && (

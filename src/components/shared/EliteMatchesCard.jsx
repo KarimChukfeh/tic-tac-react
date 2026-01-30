@@ -170,12 +170,12 @@ const EliteMatchesCard = ({
           }
         }}
         disabled={false}
-        className={`max-md:mx-auto bg-gradient-to-br backdrop-blur-lg rounded-full p-2.5 md:p-4 border-2 transition-all shadow-xl relative group ${
+        className={`max-md:mx-auto md:bg-gradient-to-br md:backdrop-blur-lg rounded-full p-2 md:p-4 md:border-2 transition-all md:shadow-xl relative group ${
           disabled
-            ? 'opacity-100 cursor-not-allowed from-gray-600/95 to-gray-700/95 border-gray-500/40'
-            : 'from-amber-700/95 to-yellow-800/95 ' + (isExpanded
-            ? 'border-amber-400 scale-105 hover:scale-110'
-            : 'border-amber-600/50 hover:border-amber-500/70 hover:scale-110')
+            ? 'opacity-100 cursor-not-allowed md:from-gray-600/95 md:to-gray-700/95 md:border-gray-500/40'
+            : 'md:from-amber-700/95 md:to-yellow-800/95 ' + (isExpanded
+            ? 'bg-gradient-to-br from-amber-700/95 to-yellow-800/95 border-2 border-amber-400 scale-105 hover:scale-110'
+            : 'md:border-amber-600/50 md:hover:border-amber-500/70 hover:scale-110')
         }`}
         aria-label={disabled ? "Connect wallet to access elite matches" : isExpanded ? "Close elite matches" : "Open elite matches"}
         title={disabled ? "Connect Wallet to View Elite Matches" : ""}
@@ -185,7 +185,7 @@ const EliteMatchesCard = ({
             : '0 0 25px rgba(180, 83, 9, 0.9), 0 0 50px rgba(180, 83, 9, 0.7), 0 0 75px rgba(180, 83, 9, 0.5), 0 0 100px rgba(180, 83, 9, 0.3)'
         }}
       >
-        <Crown size={18} className="text-white md:w-6 md:h-6" />
+        <Crown size={16} className="text-white md:w-6 md:h-6" />
 
         {/* Sync Circle Animation */}
         {syncing && (

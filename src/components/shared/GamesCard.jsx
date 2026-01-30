@@ -92,17 +92,17 @@ const GamesCard = ({
       {/* Toggle Button */}
       <button
         onClick={() => handleSetExpanded(!isExpanded)}
-        className={`max-md:mx-auto rounded-full p-2.5 md:p-4 border-2 transition-all hover:scale-110 shadow-xl relative group bg-gradient-to-br from-slate-700 to-slate-800 ${
+        className={`max-md:mx-auto rounded-full p-2 md:p-4 md:border-2 transition-all hover:scale-110 md:shadow-xl relative group md:bg-gradient-to-br md:from-slate-700 md:to-slate-800 ${
           isExpanded
-            ? 'border-slate-400 shadow-[0_0_20px_rgba(148,163,184,0.6)] scale-105'
-            : 'border-slate-600/70 hover:border-slate-500'
+            ? 'bg-gradient-to-br from-slate-700 to-slate-800 border-2 border-slate-400 md:shadow-[0_0_20px_rgba(148,163,184,0.6)] scale-105'
+            : 'md:border-slate-600/70 md:hover:border-slate-500'
         }`}
         aria-label={isExpanded ? "Close games" : "Open games"}
       >
         <img
           src="/games-icon.png"
           alt="Games"
-          className="w-[18px] h-[18px] md:w-6 md:h-6"
+          className="w-4 h-4 md:w-6 md:h-6"
           style={{ filter: 'brightness(0) invert(1)' }}
         />
 

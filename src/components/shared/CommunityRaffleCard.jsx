@@ -174,14 +174,14 @@ const CommunityRaffleCard = ({
           }
         }}
         disabled={false}
-        className={`max-md:mx-auto rounded-full p-2.5 md:p-4 border-2 transition-all shadow-xl relative group ${
+        className={`max-md:mx-auto rounded-full p-2 md:p-4 md:border-2 transition-all md:shadow-xl relative group ${
           disabled
-            ? 'opacity-100 cursor-not-allowed bg-gradient-to-br from-gray-600 to-gray-700 border-gray-500/40'
+            ? 'opacity-100 cursor-not-allowed md:bg-gradient-to-br md:from-gray-600 md:to-gray-700 md:border-gray-500/40'
             : isExpanded
-            ? 'bg-gradient-to-br from-yellow-500 to-amber-500 border-yellow-300 shadow-[0_0_20px_rgba(251,191,36,0.6)] scale-105'
+            ? 'bg-gradient-to-br from-yellow-500 to-amber-500 border-2 border-yellow-300 md:shadow-[0_0_20px_rgba(251,191,36,0.6)] scale-105'
             : isFull
-            ? 'bg-gradient-to-br from-yellow-500 to-amber-500 border-yellow-400/70 hover:border-yellow-400 hover:scale-110'
-            : 'bg-gradient-to-br from-yellow-600 to-amber-600 border-yellow-400/40 hover:border-yellow-400/70 hover:scale-110'
+            ? 'md:bg-gradient-to-br md:from-yellow-500 md:to-amber-500 md:border-yellow-400/70 md:hover:border-yellow-400 hover:scale-110'
+            : 'md:bg-gradient-to-br md:from-yellow-600 md:to-amber-600 md:border-yellow-400/40 md:hover:border-yellow-400/70 hover:scale-110'
         }`}
         aria-label={disabled ? "Connect wallet to access community raffle" : isExpanded ? "Close community raffle" : "Open community raffle"}
         title={disabled ? "Connect Wallet to View Community Raffle" : ""}
@@ -189,7 +189,7 @@ const CommunityRaffleCard = ({
         <img
           src="/raffle-icon.png"
           alt="Raffle"
-          className="w-[18px] h-[18px] md:w-6 md:h-6"
+          className="w-4 h-4 md:w-6 md:h-6"
           style={{ filter: 'brightness(0) invert(1)' }}
         />
 
