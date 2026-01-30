@@ -526,9 +526,16 @@ const RecentMatchesCard = ({
                         : 'bg-gradient-to-br from-red-500/10 to-rose-500/10 border-red-400/30'
                     }`}
                   >
+                    {/* Started Timestamp */}
+                    <div className="mb-2">
+                      <div className="bg-slate-500/20 text-slate-300 text-[10px] font-semibold px-2 py-1 rounded border border-slate-400/30 text-center w-full">
+                        Started {formatTimestamp(match.startTime)}
+                      </div>
+                    </div>
+
                     {/* Match Header */}
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center justify-center gap-2 mb-2">
+                      <div className="flex items-center gap-2 flex-wrap justify-center">
                         {getTierLabel(match.tierId) && (
                           <span className="bg-teal-500/20 text-teal-300 text-[10px] font-semibold px-2 py-0.5 rounded border border-teal-400/30">
                             {getTierLabel(match.tierId)}
@@ -569,71 +576,133 @@ const RecentMatchesCard = ({
                     </div>
 
                     {/* Match Participants */}
-                    <div className="text-slate-300 text-[10px] mb-2">
-                      <span>You: </span>
-                      <span className="font-mono">{account.slice(0, 6)}...{account.slice(-4)}</span>
-                      {accountSymbol && <span> as ({accountSymbol})</span>}
-                      <span className="mx-2">vs</span>
-                      <span className="font-mono">{opponent.slice(0, 6)}...{opponent.slice(-4)}</span>
-                      {opponentSymbol && <span> as ({opponentSymbol})</span>}
-                    </div>
-
-                    {/* Match Details */}
-                    <div className="space-y-1 text-[10px] text-slate-400 mb-2">
-                      <div className="text-slate-300">
-                        <span className="text-slate-400">Started </span>
-                        {formatTimestamp(match.startTime)}
-                      </div>
-                      <div className="text-slate-300">
-                        <span className="text-slate-400">Ended </span>
-                        {formatTimestamp(match.endTime)}
-                      </div>
-                    </div>
-
-                    {/* Winner Info */}
-                    <div className="text-slate-300 text-[10px] mb-2">
-                      {(() => {
-                        const noWinner = match.isDraw || match.reason === 2 || match.reason === 3 || match.reason === 5;
-
-                        if (noWinner) {
-                          return <span className="text-slate-400">No winner</span>;
-                        }
-
-                        if (!match.winner || match.winner === '0x0000000000000000000000000000000000000000') {
-                          return <><span className="text-slate-400">Winner </span><span className="text-slate-500 font-semibold">None</span></>;
-                        }
-
-                        let winnerSymbol = '';
-
-                        if (match.reason === 4) {
-                          winnerSymbol = 'ML3';
-                        } else {
-                          const winnerLowerCase = match.winner?.toLowerCase() || '';
-                          const isWinnerPlayer1 = winnerLowerCase === player1Lower;
-                          const isPlayer1FirstPlayer = player1Lower === firstPlayerLower;
-
-                          const isWinnerFirstPlayer = isWinnerPlayer1 ? isPlayer1FirstPlayer : !isPlayer1FirstPlayer;
-
-                          if (gameName === 'tictactoe') {
-                            winnerSymbol = isWinnerFirstPlayer ? 'X' : 'O';
-                          } else if (gameName === 'connect4') {
-                            winnerSymbol = isWinnerFirstPlayer ? 'Red' : 'Blue';
-                          } else if (gameName === 'chess') {
-                            winnerSymbol = isWinnerFirstPlayer ? 'White' : 'Black';
-                          }
-                        }
-
-                        return (
-                          <>
-                            <span className="text-slate-400">Winner </span>
-                            <span className={`font-mono ${isWinner ? 'text-green-400 font-semibold' : 'text-red-400'}`}>
-                              {shortenAddress(match.winner)}
+                    <div className="flex items-center justify-center gap-2 mb-2 flex-wrap">
+                      <span className="bg-blue-500/20 text-blue-300 text-[10px] px-2 py-1 rounded border border-blue-400/30 font-mono flex flex-col items-center gap-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-normal">You</span>
+                          <span className="font-semibold">{account.slice(0, 6)}...{account.slice(-4)}</span>
+                          <span className="font-normal">as</span>
+                          {gameName === 'chess' ? (
+                            <img
+                              src={accountSymbol === 'White' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
+                              alt={accountSymbol}
+                              className="w-3.5 h-3.5 inline-block"
+                              draggable="false"
+                            />
+                          ) : gameName === 'tictactoe' ? (
+                            <span className={`font-bold text-sm ${accountSymbol === 'X' ? 'text-blue-400' : 'text-red-400'}`}>
+                              {accountSymbol}
                             </span>
-                            {winnerSymbol && <span className="text-slate-400"> ({winnerSymbol})</span>}
-                          </>
-                        );
-                      })()}
+                          ) : gameName === 'connect4' ? (
+                            <span className={`w-3 h-3 rounded-full inline-block ${accountSymbol === 'Red' ? 'bg-red-500' : 'bg-blue-500'}`}></span>
+                          ) : (
+                            <span>({accountSymbol})</span>
+                          )}
+                        </div>
+                        {(() => {
+                          const hasWinner = !match.isDraw && match.winner && match.winner !== '0x0000000000000000000000000000000000000000';
+                          const accountIsWinner = hasWinner && match.winner.toLowerCase() === account.toLowerCase();
+                          const accountIsLoser = hasWinner && match.winner.toLowerCase() !== account.toLowerCase();
+                          const isDraw = match.isDraw || match.reason === 2 || match.reason === 5;
+
+                          if (accountIsWinner) {
+                            return (
+                              <div className="bg-green-500/40 text-green-200 text-[9px] font-semibold px-1.5 py-0.5 rounded">
+                                Victory
+                              </div>
+                            );
+                          } else if (accountIsLoser || isDraw) {
+                            return (
+                              <div className="bg-red-500/40 text-red-200 text-[9px] font-semibold px-1.5 py-0.5 rounded">
+                                Defeat
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </span>
+                      <span className="text-slate-400 text-[10px]">vs</span>
+                      <span className="bg-blue-500/20 text-blue-300 text-[10px] px-2 py-1 rounded border border-blue-400/30 font-mono flex flex-col items-center gap-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-semibold">{opponent.slice(0, 6)}...{opponent.slice(-4)}</span>
+                          <span className="font-normal">as</span>
+                          {gameName === 'chess' ? (
+                            <img
+                              src={opponentSymbol === 'White' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
+                              alt={opponentSymbol}
+                              className="w-3.5 h-3.5 inline-block"
+                              draggable="false"
+                            />
+                          ) : gameName === 'tictactoe' ? (
+                            <span className={`font-bold text-sm ${opponentSymbol === 'X' ? 'text-blue-400' : 'text-red-400'}`}>
+                              {opponentSymbol}
+                            </span>
+                          ) : gameName === 'connect4' ? (
+                            <span className={`w-3 h-3 rounded-full inline-block ${opponentSymbol === 'Red' ? 'bg-red-500' : 'bg-blue-500'}`}></span>
+                          ) : (
+                            <span>({opponentSymbol})</span>
+                          )}
+                        </div>
+                        {(() => {
+                          const hasWinner = !match.isDraw && match.winner && match.winner !== '0x0000000000000000000000000000000000000000';
+                          const opponentIsWinner = hasWinner && match.winner.toLowerCase() === opponent.toLowerCase();
+                          const opponentIsLoser = hasWinner && match.winner.toLowerCase() !== opponent.toLowerCase();
+                          const isDraw = match.isDraw || match.reason === 2 || match.reason === 5;
+
+                          if (opponentIsWinner) {
+                            return (
+                              <div className="bg-green-500/40 text-green-200 text-[9px] font-semibold px-1.5 py-0.5 rounded">
+                                Victory
+                              </div>
+                            );
+                          } else if (opponentIsLoser || isDraw) {
+                            return (
+                              <div className="bg-red-500/40 text-red-200 text-[9px] font-semibold px-1.5 py-0.5 rounded">
+                                Defeat
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </span>
                     </div>
+
+                    {/* Ended Timestamp */}
+                    <div className="mb-2">
+                      <div className="bg-slate-500/20 text-slate-300 text-[10px] font-semibold px-2 py-1 rounded border border-slate-400/30 text-center w-full">
+                        Ended {formatTimestamp(match.endTime)}
+                      </div>
+                    </div>
+
+                    {/* Winner Info - Only show for ML3 wins or no winner cases */}
+                    {(() => {
+                      const noWinner = match.isDraw || match.reason === 2 || match.reason === 3 || match.reason === 5;
+                      const isML3Win = match.reason === 4;
+                      const hasNoWinnerAddress = !match.winner || match.winner === '0x0000000000000000000000000000000000000000';
+
+                      // Only show this section if: no winner, ML3 win, or no winner address
+                      if (!noWinner && !isML3Win && !hasNoWinnerAddress) {
+                        return null;
+                      }
+
+                      return (
+                        <div className="text-slate-300 text-[10px] mb-2 text-center flex justify-center">
+                          {noWinner ? (
+                            <span className="text-slate-400">No winner</span>
+                          ) : hasNoWinnerAddress ? (
+                            <><span className="text-slate-400">Winner </span><span className="text-slate-500 font-semibold">None</span></>
+                          ) : isML3Win ? (
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-slate-400">Winner </span>
+                              <span className={`font-mono ${isWinner ? 'text-green-400 font-semibold' : 'text-red-400'}`}>
+                                {shortenAddress(match.winner)}
+                              </span>
+                              <span className="text-slate-400"> (ML3)</span>
+                            </div>
+                          ) : null}
+                        </div>
+                      );
+                    })()}
 
                     {/* View Board Button */}
                     <button
@@ -647,7 +716,7 @@ const RecentMatchesCard = ({
                       }`}
                     >
                       <Eye size={14} />
-                      {isMatchExpanded ? 'Hide Board' : 'View Match-End Board'}
+                      {isMatchExpanded ? 'Hide Board' : 'View Board'}
                     </button>
 
                     {/* Board Display */}
