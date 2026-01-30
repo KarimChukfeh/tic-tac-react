@@ -91,23 +91,23 @@ const RecentInstanceCard = ({ tierId, instanceId, contract, tierName = 'Tourname
   const getTournamentCompletionText = (reason) => {
     switch (reason) {
       case CompletionReason.NORMAL_WIN:
-        return 'Normal Victory';
+        return { text: 'Normal Victory', link: null };
       case CompletionReason.TIMEOUT:
-        return 'ML1 Timeout Elimination';
+        return { text: 'ML1 Timeout Elimination', link: '#ml1' };
       case CompletionReason.DRAW:
-        return 'Draw Resolution';
+        return { text: 'Draw Resolution', link: null };
       case CompletionReason.FORCE_ELIMINATION:
-        return 'ML2 Advanced Player Elimination';
+        return { text: 'ML2 Advanced Player Elimination', link: '#ml2' };
       case CompletionReason.REPLACEMENT:
-        return 'ML3 External Player Replacement';
+        return { text: 'ML3 External Player Replacement', link: '#ml3' };
       case CompletionReason.ALL_DRAW_SCENARIO:
-        return 'All-Draw Scenario Resolution';
+        return { text: 'All-Draw Scenario Resolution', link: null };
       default:
-        return 'Tournament Completion';
+        return { text: 'Tournament Completion', link: null };
     }
   };
 
-  const reasonText = getTournamentCompletionText(recentData.completionReason);
+  const reasonData = getTournamentCompletionText(recentData.completionReason);
 
   return (
     <div className="bg-gradient-to-br from-purple-900/30 to-blue-900/30 border border-purple-500/30 rounded-xl p-6 shadow-lg">
@@ -169,7 +169,17 @@ const RecentInstanceCard = ({ tierId, instanceId, contract, tierName = 'Tourname
         {/* Completion Reason */}
         <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-3 mt-4">
           <p className="text-sm text-purple-300">
-            Tournament completed via <span className="font-semibold text-white">{reasonText}</span>
+            Tournament completed via{' '}
+            {reasonData.link ? (
+              <a
+                href={reasonData.link}
+                className="font-semibold text-white hover:text-cyan-300 underline transition-colors"
+              >
+                {reasonData.text}
+              </a>
+            ) : (
+              <span className="font-semibold text-white">{reasonData.text}</span>
+            )}
           </p>
         </div>
       </div>
