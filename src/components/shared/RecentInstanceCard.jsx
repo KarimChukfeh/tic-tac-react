@@ -113,7 +113,7 @@ const RecentInstanceCard = ({ tierId, instanceId, contract, tierName = 'Tourname
     <div className="bg-gradient-to-br from-purple-900/30 to-blue-900/30 border border-purple-500/30 rounded-xl p-6 shadow-lg">
       <div className="flex items-center gap-3 mb-6">
         <Trophy className="text-yellow-400" size={28} />
-        <h3 className="text-2xl font-bold text-white">Last Completed Tournament</h3>
+        <h3 className="text-2xl font-bold text-white">Last Instance</h3>
       </div>
 
       <div className="space-y-4">
