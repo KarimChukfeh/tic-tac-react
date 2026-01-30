@@ -6,7 +6,7 @@
 
 import { useEffect, useState } from 'react';
 import { ethers } from 'ethers';
-import { Clock, Trophy, Award } from 'lucide-react';
+import { Clock, Trophy, Award, Users } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
 import { CompletionReason } from '../../utils/completionReasons';
 
@@ -20,7 +20,7 @@ const RecentInstanceCard = ({ tierId, instanceId, contract, tierName = 'Tourname
 
       try {
         setLoading(true);
-        const data = await contract.recentInstances(tierId, instanceId);
+        const data = await contract.getTournamentRecord(tierId, instanceId);
 
         // Check if there's valid history (endTime > 0 means completed tournament exists)
         const endTime = Number(data.endTime);
@@ -33,7 +33,8 @@ const RecentInstanceCard = ({ tierId, instanceId, contract, tierName = 'Tourname
             endTime,
             prizePool: data.prizePool,
             winner: data.winner,
-            completionReason: Number(data.completionReason)
+            completionReason: Number(data.completionReason),
+            players: data.players || []
           });
         }
       } catch (error) {
@@ -144,6 +145,26 @@ const RecentInstanceCard = ({ tierId, instanceId, contract, tierName = 'Tourname
             <p className="text-white font-mono">{shortenAddress(recentData.winner)}</p>
           </div>
         </div>
+
+        {/* Players */}
+        {recentData.players && recentData.players.length > 0 && (
+          <div className="flex items-start gap-3">
+            <Users className="text-cyan-400 mt-1" size={20} />
+            <div className="flex-1">
+              <p className="text-sm text-purple-300 font-semibold mb-2">Players</p>
+              <div className="flex flex-wrap gap-2">
+                {recentData.players.map((player, index) => (
+                  <span
+                    key={index}
+                    className="bg-slate-700/50 border border-cyan-500/30 rounded-lg px-3 py-1 text-white font-mono text-sm"
+                  >
+                    {shortenAddress(player)}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Completion Reason */}
         <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-3 mt-4">
