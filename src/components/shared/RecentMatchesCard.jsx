@@ -520,10 +520,10 @@ const RecentMatchesCard = ({
                     key={matchKey}
                     className={`border-2 rounded-lg p-3 transition-all ${
                       match.isDraw
-                        ? 'bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border-yellow-400/50'
+                        ? 'bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border-yellow-400/80'
                         : isWinner
-                        ? 'bg-gradient-to-br from-green-500/10 to-emerald-500/10 border-green-400/50'
-                        : 'bg-gradient-to-br from-red-500/10 to-rose-500/10 border-red-400/50'
+                        ? 'bg-gradient-to-br from-green-500/10 to-emerald-500/10 border-green-400/80'
+                        : 'bg-gradient-to-br from-red-500/10 to-rose-500/10 border-red-400/80'
                     }`}
                   >
                     {/* Match Number and Details */}
