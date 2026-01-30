@@ -1984,7 +1984,7 @@ export default function ConnectFour() {
               throw result.error;
             }
             const matchData = result.matchData;
-            const parsedMatch = parseConnectFourMatch(matchData);
+            const parsedMatch = parseConnectFourMatch(matchData, tierMatchTime);
 
             // Calculate time remaining client-side (contract stores time at last move)
             // Formula: current player's time = stored time - elapsed since last move
@@ -2173,7 +2173,7 @@ export default function ConnectFour() {
     try {
       // Get match data first
       const matchData = await contractInstance.getMatch(tierId, instanceId, roundNumber, matchNumber);
-      const parsedMatch = parseConnectFourMatch(matchData);
+      const parsedMatch = parseConnectFourMatch(matchData, matchTimePerPlayer);
       let player1 = parsedMatch.player1;
       let player2 = parsedMatch.player2;
       let firstPlayer = parsedMatch.firstPlayer;
@@ -2302,14 +2302,15 @@ export default function ConnectFour() {
   const refreshMatchData = useCallback(async (contractInstance, userAccount, matchInfo, totalMatchTime) => {
     try {
       const { tierId, instanceId, roundNumber, matchNumber } = matchInfo;
-      const matchData = await contractInstance.getMatch(tierId, instanceId, roundNumber, matchNumber);
-      console.log('[refreshMatchData] getMatch() raw response:', matchData);
-      const parsedMatch = parseConnectFourMatch(matchData);
-      console.log('[refreshMatchData] Parsed match data:', parsedMatch);
 
       // Fetch per-tier timeout config to get correct match time (with hardcoded TIER_CONFIG fallback)
       const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, tierId, totalMatchTime, TIER_CONFIG[tierId]);
       const tierMatchTime = timeoutConfig?.matchTimePerPlayer ?? totalMatchTime;
+
+      const matchData = await contractInstance.getMatch(tierId, instanceId, roundNumber, matchNumber);
+      console.log('[refreshMatchData] getMatch() raw response:', matchData);
+      const parsedMatch = parseConnectFourMatch(matchData, tierMatchTime);
+      console.log('[refreshMatchData] Parsed match data:', parsedMatch);
 
       const {
         player1, player2, currentTurn, winner, loser, board, matchStatus, isDraw,
@@ -2751,7 +2752,7 @@ export default function ConnectFour() {
       const prizePool = tournamentInfo[3]; // prizePool is at index 3
 
       const matchData = await contract.getMatch(tierId, instanceId, roundNumber, matchNumber);
-      const parsedMatch = parseConnectFourMatch(matchData);
+      const parsedMatch = parseConnectFourMatch(matchData, tierConfig.timeouts.matchTimePerPlayer);
 
       const player1 = parsedMatch.player1;
       const player2 = parsedMatch.player2;
@@ -2835,7 +2836,7 @@ export default function ConnectFour() {
       const prizePool = tournamentInfo[3]; // prizePool at index 3 in getTournamentInfo
 
       const matchData = await contract.getMatch(tierId, instanceId, roundNumber, matchNumber);
-      const parsedMatch = parseConnectFourMatch(matchData);
+      const parsedMatch = parseConnectFourMatch(matchData, tierConfig.timeouts.matchTimePerPlayer);
 
       const player1 = parsedMatch.player1;
       const player2 = parsedMatch.player2;

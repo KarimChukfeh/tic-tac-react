@@ -64,9 +64,10 @@ const unpackTicTacToeBoard = (packedBoard) => {
 /**
  * Parse TicTacToe match data
  * @param {Object} matchData - Raw match data from TicTacToe contract
+ * @param {number} fallbackTime - Default time if contract doesn't provide it (should be tier's matchTimePerPlayer)
  * @returns {Object} Parsed TicTacToe match with all fields
  */
-export const parseTicTacToeMatch = (matchData) => ({
+export const parseTicTacToeMatch = (matchData, fallbackTime = 300) => ({
   ...parseCommonMatchData(matchData),
 
   // Game-specific fields
@@ -75,8 +76,8 @@ export const parseTicTacToeMatch = (matchData) => ({
   firstPlayer: matchData.firstPlayer,
 
   // Total match time tracking fields
-  player1TimeRemaining: matchData.player1TimeRemaining !== undefined ? Number(matchData.player1TimeRemaining) : 300,
-  player2TimeRemaining: matchData.player2TimeRemaining !== undefined ? Number(matchData.player2TimeRemaining) : 300,
+  player1TimeRemaining: matchData.player1TimeRemaining !== undefined ? Number(matchData.player1TimeRemaining) : fallbackTime,
+  player2TimeRemaining: matchData.player2TimeRemaining !== undefined ? Number(matchData.player2TimeRemaining) : fallbackTime,
   lastMoveTimestamp: matchData.lastMoveTimestamp !== undefined ? Number(matchData.lastMoveTimestamp) : 0,
 });
 
@@ -100,9 +101,10 @@ const unpackConnectFourBoard = (packedBoard) => {
 /**
  * Parse ConnectFour match data
  * @param {Object} matchData - Raw match data from ConnectFour contract
+ * @param {number} fallbackTime - Default time if contract doesn't provide it (should be tier's matchTimePerPlayer)
  * @returns {Object} Parsed ConnectFour match with all fields
  */
-export const parseConnectFourMatch = (matchData) => ({
+export const parseConnectFourMatch = (matchData, fallbackTime = 300) => ({
   ...parseCommonMatchData(matchData),
 
   // Game-specific fields
@@ -111,8 +113,8 @@ export const parseConnectFourMatch = (matchData) => ({
   firstPlayer: matchData.firstPlayer,
 
   // Total match time tracking fields
-  player1TimeRemaining: matchData.player1TimeRemaining !== undefined ? Number(matchData.player1TimeRemaining) : 300,
-  player2TimeRemaining: matchData.player2TimeRemaining !== undefined ? Number(matchData.player2TimeRemaining) : 300,
+  player1TimeRemaining: matchData.player1TimeRemaining !== undefined ? Number(matchData.player1TimeRemaining) : fallbackTime,
+  player2TimeRemaining: matchData.player2TimeRemaining !== undefined ? Number(matchData.player2TimeRemaining) : fallbackTime,
   lastMoveTimestamp: matchData.lastMoveTimestamp !== undefined ? Number(matchData.lastMoveTimestamp) : 0,
 
   // Move history string (returned by getMatch)
@@ -148,13 +150,14 @@ const unpackChessBoard = (packedBoard) => {
 /**
  * Parse Chess match data
  * @param {Object} matchData - Raw match data from Chess contract
+ * @param {number} fallbackTime - Default time if contract doesn't provide it (should be tier's matchTimePerPlayer)
  * @returns {Object} Parsed Chess match with all fields
  *
  * Note: Chess contract can return either:
  * - NESTED structure with 'common' field (from getMatch())
  * - FLAT structure without 'common' field (legacy or from chessMatches mapping)
  */
-export const parseChessMatch = (matchData) => {
+export const parseChessMatch = (matchData, fallbackTime = 300) => {
   // Check if data has nested 'common' structure
   const hasCommon = matchData.common !== undefined;
 
@@ -214,8 +217,8 @@ export const parseChessMatch = (matchData) => {
     moveHistory: matchData.moveHistory || [],
 
     // Time tracking fields
-    player1TimeRemaining: matchData.player1TimeRemaining !== undefined ? Number(matchData.player1TimeRemaining) : 300,
-    player2TimeRemaining: matchData.player2TimeRemaining !== undefined ? Number(matchData.player2TimeRemaining) : 300,
+    player1TimeRemaining: matchData.player1TimeRemaining !== undefined ? Number(matchData.player1TimeRemaining) : fallbackTime,
+    player2TimeRemaining: matchData.player2TimeRemaining !== undefined ? Number(matchData.player2TimeRemaining) : fallbackTime,
     lastMoveTimestamp: matchData.lastMoveTimestamp !== undefined ? Number(matchData.lastMoveTimestamp) : 0,
   };
 };

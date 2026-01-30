@@ -1611,7 +1611,7 @@ export default function TicTacChain() {
               throw result.error;
             }
             const matchData = result.matchData;
-            const parsedMatch = parseTicTacToeMatch(matchData);
+            const parsedMatch = parseTicTacToeMatch(matchData, tierMatchTime);
 
             // Calculate time remaining client-side (contract stores time at last move)
             // Formula: current player's time = stored time - elapsed since last move
@@ -1817,7 +1817,7 @@ export default function TicTacChain() {
     try {
       // Get match data first
       const matchData = await contractInstance.getMatch(tierId, instanceId, roundNumber, matchNumber);
-      const parsedMatch = parseTicTacToeMatch(matchData);
+      const parsedMatch = parseTicTacToeMatch(matchData, matchTimePerPlayer);
       const player1 = parsedMatch.player1;
       const player2 = parsedMatch.player2;
       const firstPlayer = parsedMatch.firstPlayer;
@@ -1926,12 +1926,13 @@ export default function TicTacChain() {
   const refreshMatchData = useCallback(async (contractInstance, userAccount, matchInfo, totalMatchTime) => {
     try {
       const { tierId, instanceId, roundNumber, matchNumber } = matchInfo;
-      const matchData = await contractInstance.getMatch(tierId, instanceId, roundNumber, matchNumber);
-      const parsedMatch = parseTicTacToeMatch(matchData);
 
       // Fetch per-tier timeout config to get correct match time
       const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, tierId, totalMatchTime, TIER_CONFIG[tierId]);
       const tierMatchTime = timeoutConfig?.matchTimePerPlayer ?? totalMatchTime;
+
+      const matchData = await contractInstance.getMatch(tierId, instanceId, roundNumber, matchNumber);
+      const parsedMatch = parseTicTacToeMatch(matchData, tierMatchTime);
 
       const {
         player1, player2, firstPlayer, currentTurn, winner, loser, board, matchStatus, isDraw,
@@ -2404,7 +2405,7 @@ export default function TicTacChain() {
       const prizePool = tournamentInfo[3]; // prizePool is at index 3
 
       const matchData = await contract.getMatch(tierId, instanceId, roundNumber, matchNumber);
-      const parsedMatch = parseTicTacToeMatch(matchData);
+      const parsedMatch = parseTicTacToeMatch(matchData, tierConfig.timeouts.matchTimePerPlayer);
 
       const player1 = parsedMatch.player1;
       const player2 = parsedMatch.player2;
@@ -2487,7 +2488,7 @@ export default function TicTacChain() {
       const prizePool = tournamentInfo[3]; // prizePool at index 3 in getTournamentInfo
 
       const matchData = await contract.getMatch(tierId, instanceId, roundNumber, matchNumber);
-      const parsedMatch = parseTicTacToeMatch(matchData);
+      const parsedMatch = parseTicTacToeMatch(matchData, tierConfig.timeouts.matchTimePerPlayer);
 
       const player1 = parsedMatch.player1;
       const player2 = parsedMatch.player2;
