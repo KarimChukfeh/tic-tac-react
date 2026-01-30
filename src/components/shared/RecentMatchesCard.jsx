@@ -485,7 +485,7 @@ const RecentMatchesCard = ({
               <p className="text-slate-500 text-xs mt-1">Events expire after ~50,000 blocks</p>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-4">
               {recentMatches.map((match, index) => {
                 const accountLower = account?.toLowerCase() || '';
                 const winnerLower = match.winner?.toLowerCase() || '';
@@ -520,22 +520,18 @@ const RecentMatchesCard = ({
                     key={matchKey}
                     className={`border-2 rounded-lg p-3 transition-all ${
                       match.isDraw
-                        ? 'bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border-yellow-400/30'
+                        ? 'bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border-yellow-400/50'
                         : isWinner
-                        ? 'bg-gradient-to-br from-green-500/10 to-emerald-500/10 border-green-400/30'
-                        : 'bg-gradient-to-br from-red-500/10 to-rose-500/10 border-red-400/30'
+                        ? 'bg-gradient-to-br from-green-500/10 to-emerald-500/10 border-green-400/50'
+                        : 'bg-gradient-to-br from-red-500/10 to-rose-500/10 border-red-400/50'
                     }`}
                   >
-                    {/* Started Timestamp */}
-                    <div className="mb-2">
-                      <div className="bg-slate-500/20 text-slate-300 text-[10px] font-semibold px-2 py-1 rounded border border-slate-400/30 text-center w-full">
-                        Started {formatTimestamp(match.startTime)}
-                      </div>
-                    </div>
-
-                    {/* Match Header */}
-                    <div className="flex items-center justify-center gap-2 mb-2">
-                      <div className="flex items-center gap-2 flex-wrap justify-center">
+                    {/* Match Number and Details */}
+                    <div className="mb-2.5">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-slate-400 text-[10px] font-semibold">
+                          Match #{recentMatches.length - index}
+                        </span>
                         {getTierLabel(match.tierId) && (
                           <span className="bg-teal-500/20 text-teal-300 text-[10px] font-semibold px-2 py-0.5 rounded border border-teal-400/30">
                             {getTierLabel(match.tierId)}
@@ -575,9 +571,16 @@ const RecentMatchesCard = ({
                       </div>
                     </div>
 
+                    {/* Started Timestamp */}
+                    <div className="mb-2.5">
+                      <div className="bg-slate-500/20 text-slate-300 text-[10px] font-semibold px-2 py-1 rounded border border-slate-400/30 text-center w-full">
+                        Started {formatTimestamp(match.startTime)}
+                      </div>
+                    </div>
+
                     {/* Match Participants */}
-                    <div className="flex items-center justify-center gap-2 mb-2 flex-wrap">
-                      <span className="bg-blue-500/20 text-blue-300 text-[10px] px-2 py-1 rounded border border-blue-400/30 font-mono flex flex-col items-center gap-1">
+                    <div className="flex items-center justify-between gap-2 mb-2.5 flex-wrap">
+                      <span className="bg-blue-500/20 text-blue-300 text-[10px] px-2 py-1 rounded border border-blue-400/30 font-mono flex flex-col items-center gap-1 max-md:w-full md:flex-1">
                         <div className="flex items-center gap-1.5">
                           <span className="font-normal">You</span>
                           <span className="font-semibold">{account.slice(0, 6)}...{account.slice(-4)}</span>
@@ -590,9 +593,14 @@ const RecentMatchesCard = ({
                               draggable="false"
                             />
                           ) : gameName === 'tictactoe' ? (
-                            <span className={`font-bold text-sm ${accountSymbol === 'X' ? 'text-blue-400' : 'text-red-400'}`}>
-                              {accountSymbol}
-                            </span>
+                            accountSymbol === 'X' ? (
+                              <span className="w-3 h-3 inline-block relative">
+                                <span className="absolute inset-0 bg-blue-500 transform rotate-45" style={{width: '2px', height: '100%', left: '50%', marginLeft: '-1px'}}></span>
+                                <span className="absolute inset-0 bg-blue-500 transform -rotate-45" style={{width: '2px', height: '100%', left: '50%', marginLeft: '-1px'}}></span>
+                              </span>
+                            ) : (
+                              <span className="w-3 h-3 rounded-full inline-block border-2 border-red-500"></span>
+                            )
                           ) : gameName === 'connect4' ? (
                             <span className={`w-3 h-3 rounded-full inline-block ${accountSymbol === 'Red' ? 'bg-red-500' : 'bg-blue-500'}`}></span>
                           ) : (
@@ -621,8 +629,8 @@ const RecentMatchesCard = ({
                           return null;
                         })()}
                       </span>
-                      <span className="text-slate-400 text-[10px]">vs</span>
-                      <span className="bg-blue-500/20 text-blue-300 text-[10px] px-2 py-1 rounded border border-blue-400/30 font-mono flex flex-col items-center gap-1">
+                      <span className="text-slate-400 text-[10px] max-md:w-full max-md:text-center">vs</span>
+                      <span className="bg-blue-500/20 text-blue-300 text-[10px] px-2 py-1 rounded border border-blue-400/30 font-mono flex flex-col items-center gap-1 max-md:w-full md:flex-1">
                         <div className="flex items-center gap-1.5">
                           <span className="font-semibold">{opponent.slice(0, 6)}...{opponent.slice(-4)}</span>
                           <span className="font-normal">as</span>
@@ -634,9 +642,14 @@ const RecentMatchesCard = ({
                               draggable="false"
                             />
                           ) : gameName === 'tictactoe' ? (
-                            <span className={`font-bold text-sm ${opponentSymbol === 'X' ? 'text-blue-400' : 'text-red-400'}`}>
-                              {opponentSymbol}
-                            </span>
+                            opponentSymbol === 'X' ? (
+                              <span className="w-3 h-3 inline-block relative">
+                                <span className="absolute inset-0 bg-blue-500 transform rotate-45" style={{width: '2px', height: '100%', left: '50%', marginLeft: '-1px'}}></span>
+                                <span className="absolute inset-0 bg-blue-500 transform -rotate-45" style={{width: '2px', height: '100%', left: '50%', marginLeft: '-1px'}}></span>
+                              </span>
+                            ) : (
+                              <span className="w-3 h-3 rounded-full inline-block border-2 border-red-500"></span>
+                            )
                           ) : gameName === 'connect4' ? (
                             <span className={`w-3 h-3 rounded-full inline-block ${opponentSymbol === 'Red' ? 'bg-red-500' : 'bg-blue-500'}`}></span>
                           ) : (
@@ -668,7 +681,7 @@ const RecentMatchesCard = ({
                     </div>
 
                     {/* Ended Timestamp */}
-                    <div className="mb-2">
+                    <div className="mb-2.5">
                       <div className="bg-slate-500/20 text-slate-300 text-[10px] font-semibold px-2 py-1 rounded border border-slate-400/30 text-center w-full">
                         Ended {formatTimestamp(match.endTime)}
                       </div>
@@ -686,7 +699,7 @@ const RecentMatchesCard = ({
                       }
 
                       return (
-                        <div className="text-slate-300 text-[10px] mb-2 text-center flex justify-center">
+                        <div className="text-slate-300 text-[10px] mb-2.5 text-center flex justify-center">
                           {noWinner ? (
                             <span className="text-slate-400">No winner</span>
                           ) : hasNoWinnerAddress ? (
@@ -739,7 +752,7 @@ const RecentMatchesCard = ({
                           const board = unpackBoard(match.board, 'tictactoe');
 
                           // Determine which cell value (1 or 2) corresponds to the firstPlayer
-                          // X = firstPlayer, O = second player
+                          // X = firstPlayer (always blue), O = second player (always red)
                           const isPlayer1First = match.firstPlayer?.toLowerCase() === match.player1?.toLowerCase();
 
                           return (
@@ -751,9 +764,17 @@ const RecentMatchesCard = ({
                                     className="aspect-square bg-slate-800/50 border border-slate-600/50 rounded flex items-center justify-center text-xl font-bold"
                                   >
                                     {cell === 1 ? (
-                                      <span className="text-blue-400">{isPlayer1First ? 'X' : 'O'}</span>
+                                      isPlayer1First ? (
+                                        <span className="text-blue-400">X</span>
+                                      ) : (
+                                        <span className="text-red-400">O</span>
+                                      )
                                     ) : cell === 2 ? (
-                                      <span className="text-red-400">{isPlayer1First ? 'O' : 'X'}</span>
+                                      isPlayer1First ? (
+                                        <span className="text-red-400">O</span>
+                                      ) : (
+                                        <span className="text-blue-400">X</span>
+                                      )
                                     ) : null}
                                   </div>
                                 ))}
