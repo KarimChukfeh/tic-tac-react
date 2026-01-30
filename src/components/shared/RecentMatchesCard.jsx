@@ -580,10 +580,10 @@ const RecentMatchesCard = ({
 
                     {/* Match Participants */}
                     <div className="flex items-center justify-between gap-2 mb-2.5 flex-wrap">
-                      <span className="bg-blue-500/20 text-blue-300 text-[10px] px-2 py-1 rounded border border-blue-400/30 font-mono flex flex-col items-center gap-1 max-md:w-full md:flex-1">
+                      <span className="bg-blue-500/20 text-blue-300 text-[10px] px-2 py-1 rounded border border-blue-400/30 font-mono flex flex-col items-center gap-1 flex-1">
                         <div className="flex items-center gap-1.5">
                           <span className="font-normal">You</span>
-                          <span className="font-semibold">{account.slice(0, 6)}...{account.slice(-4)}</span>
+                          <span className="font-semibold">{account.slice(0, 5)}...{account.slice(-2)}</span>
                           <span className="font-normal">as</span>
                           {gameName === 'chess' ? (
                             <img
@@ -629,10 +629,10 @@ const RecentMatchesCard = ({
                           return null;
                         })()}
                       </span>
-                      <span className="text-slate-400 text-[10px] max-md:w-full max-md:text-center">vs</span>
-                      <span className="bg-blue-500/20 text-blue-300 text-[10px] px-2 py-1 rounded border border-blue-400/30 font-mono flex flex-col items-center gap-1 max-md:w-full md:flex-1">
+                      <span className="bg-blue-500/20 text-blue-300 text-[10px] px-2 py-1 rounded border border-blue-400/30 font-mono flex flex-col items-center gap-1 flex-1">
                         <div className="flex items-center gap-1.5">
-                          <span className="font-semibold">{opponent.slice(0, 6)}...{opponent.slice(-4)}</span>
+                          <span className="font-normal">vs</span>
+                          <span className="font-semibold">{opponent.slice(0, 5)}...{opponent.slice(-2)}</span>
                           <span className="font-normal">as</span>
                           {gameName === 'chess' ? (
                             <img
