@@ -236,7 +236,7 @@ const CommunityRaffleCard = ({
       {isExpanded && (
         <div
           ref={expandedPanelRef}
-          className={`max-md:fixed max-md:bottom-20 max-md:left-4 max-md:right-4 max-md:w-auto md:mt-3 bg-gradient-to-br from-yellow-700 to-amber-800 rounded-xl p-4 border-2 transition-all shadow-2xl md:w-[464px] max-h-[calc(100vh-7rem)] overflow-y-auto ${
+          className={`max-md:fixed max-md:bottom-20 max-md:left-4 max-md:right-4 max-md:w-auto md:mt-3 bg-gradient-to-br from-yellow-700 to-amber-800 rounded-xl p-4 border-2 transition-all shadow-2xl md:w-[464px] max-h-[calc(100vh-7rem)] overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-amber-950/40 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-amber-500/70 [&::-webkit-scrollbar-thumb]:to-yellow-600/70 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border [&::-webkit-scrollbar-thumb]:border-amber-400/30 hover:[&::-webkit-scrollbar-thumb]:from-amber-400 hover:[&::-webkit-scrollbar-thumb]:to-yellow-500 [scrollbar-width:thin] [scrollbar-color:rgb(245_158_11_/_0.7)_rgb(69_26_3_/_0.4)] ${
             isFull
               ? 'border-yellow-400 shadow-yellow-500/50'
               : 'border-yellow-400/40'
@@ -367,7 +367,7 @@ const CommunityRaffleCard = ({
                 <Trophy size={14} />
                 Past Raffle Winners
               </h4>
-              <div className="space-y-2 max-h-64 overflow-y-auto scrollbar-thin scrollbar-thumb-yellow-500/30 scrollbar-track-transparent">
+              <div className="space-y-2 max-h-64 overflow-y-auto [&::-webkit-scrollbar]:w-0.5 [&::-webkit-scrollbar-track]:bg-amber-950/40 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-amber-500/70 [&::-webkit-scrollbar-thumb]:to-yellow-600/70 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:from-amber-400 hover:[&::-webkit-scrollbar-thumb]:to-yellow-500 [scrollbar-width:thin] [scrollbar-color:rgb(245_158_11_/_0.7)_rgb(69_26_3_/_0.4)]">
                 {raffleHistory.map((raffle) => (
                   <div
                     key={raffle.raffleNumber}

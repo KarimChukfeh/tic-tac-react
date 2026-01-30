@@ -263,7 +263,7 @@ const EliteMatchesCard = ({
           </div>
 
           {/* Matches List */}
-          <div className="overflow-y-auto flex-1 space-y-2 pr-1 mb-3 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-slate-800/50 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-amber-700/70 [&::-webkit-scrollbar-thumb]:to-yellow-800/70 [&::-webkit-scrollbar-thumb]:rounded-full">
+          <div className="overflow-y-auto flex-1 space-y-2 pr-1 mb-3 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-amber-950/40 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-amber-500/70 [&::-webkit-scrollbar-thumb]:to-yellow-600/70 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border [&::-webkit-scrollbar-thumb]:border-amber-400/30 hover:[&::-webkit-scrollbar-thumb]:from-amber-400 hover:[&::-webkit-scrollbar-thumb]:to-yellow-500 [scrollbar-width:thin] [scrollbar-color:rgb(245_158_11_/_0.7)_rgb(69_26_3_/_0.4)]">
             {!hasMatches ? (
               <div className="text-center py-8 text-amber-400/60">
                 <Swords size={32} className="mx-auto mb-2 opacity-50" />
