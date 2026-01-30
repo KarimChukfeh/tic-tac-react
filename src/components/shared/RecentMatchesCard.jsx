@@ -32,6 +32,7 @@ const RecentMatchesCard = ({
   const expandedPanelRef = useRef(null);
   const prevExpandedRef = useRef(false);
   const [showMobileTooltip, setShowMobileTooltip] = useState(false);
+  const matchCardRefs = useRef({});
 
   // Use external state if provided, otherwise use internal state
   const isExpanded = externalIsExpanded !== undefined ? externalIsExpanded : internalIsExpanded;
@@ -87,6 +88,50 @@ const RecentMatchesCard = ({
       onHeightChange(0);
     }
   }, [isExpanded, recentMatches, expandedRecentMatches, onHeightChange]);
+
+  // Auto-collapse boards when scrolled past
+  useEffect(() => {
+    if (!isExpanded || !expandedPanelRef.current) return;
+
+    const scrollContainer = expandedPanelRef.current;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const matchKey = entry.target.dataset.matchKey;
+
+          // If the match card is scrolled out of view (either direction)
+          // and the board is expanded, collapse it
+          if (!entry.isIntersecting) {
+            const scrolledPastDown = entry.boundingClientRect.top < entry.rootBounds.top;
+            const scrolledPastUp = entry.boundingClientRect.bottom > entry.rootBounds.bottom;
+
+            if ((scrolledPastDown || scrolledPastUp) && expandedRecentMatches.has(matchKey)) {
+              setExpandedRecentMatches(prev => {
+                const next = new Set(prev);
+                next.delete(matchKey);
+                return next;
+              });
+            }
+          }
+        });
+      },
+      {
+        root: scrollContainer,
+        threshold: 0,
+        rootMargin: '0px'
+      }
+    );
+
+    // Observe all match cards
+    Object.values(matchCardRefs.current).forEach(ref => {
+      if (ref) observer.observe(ref);
+    });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [isExpanded, expandedRecentMatches, recentMatches]);
 
   // Fetch recent matches using getPlayerMatches()
   const fetchRecentMatches = async () => {
@@ -518,6 +563,8 @@ const RecentMatchesCard = ({
                 return (
                   <div
                     key={matchKey}
+                    ref={(el) => { matchCardRefs.current[matchKey] = el; }}
+                    data-match-key={matchKey}
                     className={`border-2 rounded-lg p-3 transition-all ${
                       match.isDraw
                         ? 'bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border-yellow-400/80'
