@@ -93,13 +93,13 @@ const RecentInstanceCard = ({ tierId, instanceId, contract, tierName = 'Tourname
       case CompletionReason.NORMAL_WIN:
         return 'Normal Victory';
       case CompletionReason.TIMEOUT:
-        return 'EL1 Timeout Elimination';
+        return 'ML1 Timeout Elimination';
       case CompletionReason.DRAW:
         return 'Draw Resolution';
       case CompletionReason.FORCE_ELIMINATION:
-        return 'EL2 Advanced Player Elimination';
+        return 'ML2 Advanced Player Elimination';
       case CompletionReason.REPLACEMENT:
-        return 'EL3 External Player Replacement';
+        return 'ML3 External Player Replacement';
       case CompletionReason.ALL_DRAW_SCENARIO:
         return 'All-Draw Scenario Resolution';
       default:
