@@ -50,6 +50,7 @@ import RecentMatchesCard from './components/shared/RecentMatchesCard';
 import CommunityRaffleCard from './components/shared/CommunityRaffleCard';
 import GamesCard from './components/shared/GamesCard';
 import BracketScrollHint from './components/shared/BracketScrollHint';
+import RecentInstanceCard from './components/shared/RecentInstanceCard';
 import { usePlayerActivity } from './hooks/usePlayerActivity';
 
 // ConnectFour particle symbols (SVG circles with darker colors)
@@ -518,6 +519,13 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, /* onSpectate
     icon: 'text-purple-400'
   };
 
+  // Check if rounds exist but contain no real match data
+  const hasValidRounds = rounds && rounds.length > 0 && rounds.some(round =>
+    round.matches && round.matches.length > 0 && round.matches.some(match =>
+      match.player1 && match.player1 !== '0x0000000000000000000000000000000000000000'
+    )
+  );
+
   return (
     <div className="mb-16">
       {/* Header */}
@@ -573,7 +581,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, /* onSpectate
           {tournamentTypeLabel} Bracket
         </h3>
 
-        {rounds && rounds.length > 0 ? (
+        {hasValidRounds ? (
           <div className="space-y-8">
             {rounds.map((round, roundIdx) => (
             <div key={roundIdx}>
@@ -623,12 +631,25 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, /* onSpectate
             ))}
           </div>
         ) : (
-          <div className="text-center py-12">
-            <div className={`${colors.text} text-lg`}>
-              {status === 0
-                ? 'Tournament bracket will be generated once the tournament starts.'
-                : 'No bracket data available.'}
+          <div className="space-y-6">
+            {/* Status message */}
+            <div className="text-center py-12">
+              <div className={`${colors.text} text-lg`}>
+                {status === 0
+                  ? 'Tournament bracket will be generated once the tournament starts.'
+                  : 'No bracket data available.'}
+              </div>
             </div>
+
+            {/* Recent instance history (shown when no enrolled players) */}
+            {enrolledCount === 0 && (
+              <RecentInstanceCard
+                tierId={tierId}
+                instanceId={instanceId}
+                contract={contract}
+                tierName={tournamentTypeLabel}
+              />
+            )}
           </div>
         )}
       </div>
@@ -705,6 +726,7 @@ export default function ConnectFour() {
   const [matchEndWinnerLabel, setMatchEndWinnerLabel] = useState('');
   const [matchEndWinner, setMatchEndWinner] = useState(null); // Winner address for modal display
   const [matchEndLoser, setMatchEndLoser] = useState(null); // Loser address for modal display
+  const [nextActiveMatch, setNextActiveMatch] = useState(null); // Next active match info after winning
   const previousBoardRef = useRef(null); // Track previous board state for move history sync
   const tournamentBracketRef = useRef(null); // Ref for auto-scrolling to tournament after URL navigation
   const matchViewRef = useRef(null); // Ref for auto-scrolling to match view
@@ -1729,8 +1751,11 @@ export default function ConnectFour() {
 
       alert('Tournament force-started successfully!');
 
-      // Exit tournament view and go back to tournaments list
-      setViewingTournament(null);
+      // Only exit tournament view if solo enroller (they win immediately)
+      // Otherwise keep them on the bracket view
+      if (enrolledCount === 1) {
+        setViewingTournament(null);
+      }
       setCurrentMatch(null);
 
       // Refresh cached stats
@@ -2938,6 +2963,84 @@ export default function ConnectFour() {
     setMatchEndWinnerLabel('');
   };
 
+  // Check if player has a next active match in the next round
+  const checkForNextActiveMatch = useCallback(async () => {
+    if (!contract || !account || !currentMatch) {
+      setNextActiveMatch(null);
+      return;
+    }
+
+    try {
+      const { tierId, instanceId, roundNumber } = currentMatch;
+      const nextRoundNumber = roundNumber + 1;
+
+      // Get tournament info to determine total rounds
+      const tournamentInfo = await contract.getTournamentInfo(tierId, instanceId);
+      const tierConfig = TIER_CONFIG[tierId];
+      const playerCount = tierConfig.playerCount;
+      const totalRounds = Math.ceil(Math.log2(playerCount));
+
+      // If we're at the final round, no next match
+      if (nextRoundNumber >= totalRounds) {
+        setNextActiveMatch(null);
+        return;
+      }
+
+      // Check all matches in the next round for this player
+      const matchesInNextRound = Math.ceil(playerCount / Math.pow(2, nextRoundNumber + 1));
+
+      for (let matchNumber = 0; matchNumber < matchesInNextRound; matchNumber++) {
+        try {
+          const matchData = await contract.getMatch(tierId, instanceId, nextRoundNumber, matchNumber);
+          const parsedMatch = parseConnectFourMatch(matchData, matchTimePerPlayer);
+
+          // Check if this match is active (status 1) and player is in it
+          if (parsedMatch.matchStatus === 1) {
+            const isPlayerInMatch =
+              parsedMatch.player1.toLowerCase() === account.toLowerCase() ||
+              parsedMatch.player2.toLowerCase() === account.toLowerCase();
+
+            if (isPlayerInMatch) {
+              setNextActiveMatch({
+                tierId,
+                instanceId,
+                roundNumber: nextRoundNumber,
+                matchNumber
+              });
+              return;
+            }
+          }
+        } catch (err) {
+          // Match not found or error, continue to next
+          continue;
+        }
+      }
+
+      // No active match found in next round
+      setNextActiveMatch(null);
+    } catch (error) {
+      console.error('Error checking for next active match:', error);
+      setNextActiveMatch(null);
+    }
+  }, [contract, account, currentMatch, matchTimePerPlayer]);
+
+  // Handle entering the next active match
+  const handleEnterNextMatch = useCallback(() => {
+    if (nextActiveMatch) {
+      handlePlayMatch(
+        nextActiveMatch.tierId,
+        nextActiveMatch.instanceId,
+        nextActiveMatch.roundNumber,
+        nextActiveMatch.matchNumber
+      );
+    }
+  }, [nextActiveMatch]);
+
+  // Handle returning to bracket
+  const handleReturnToBracket = useCallback(() => {
+    closeMatch();
+  }, [closeMatch]);
+
 
   // Go back from tournament bracket to tournaments list
   const handleBackToTournaments = async () => {
@@ -3193,6 +3296,11 @@ export default function ConnectFour() {
               setMatchEndResult({ result: resultType, completionReason: reasonNum });
               setMatchEndWinner(updatedMatch.winner);
               setMatchEndLoser(updatedMatch.loser);
+
+              // Check for next active match if user won
+              if (userWon) {
+                setTimeout(() => checkForNextActiveMatch(), 500);
+              }
             }
 
             return; // Stop polling
@@ -3636,6 +3744,9 @@ export default function ConnectFour() {
             onClaimTimeoutWin={isSpectator ? null : handleClaimTimeoutWin}
             onForceEliminate={isSpectator ? null : handleForceEliminateStalledMatch}
             onClaimReplacement={isSpectator ? null : handleClaimMatchSlotByReplacement}
+            onEnterNextMatch={handleEnterNextMatch}
+            onReturnToBracket={handleReturnToBracket}
+            hasNextActiveMatch={!!nextActiveMatch}
             tournamentRounds={viewingTournament?.rounds || null}
             currentRoundNumber={currentMatch.roundNumber}
             playerCount={viewingTournament?.playerCount || null}

@@ -68,28 +68,6 @@ export const queryMoveMadeEvents = async (contract, matchId, fromBlock = 0) => {
   }
 };
 
-/**
- * Query MatchCompleted event for a specific match
- * @param {Object} contract - Ethers contract instance
- * @param {string} matchId - Match ID (bytes32)
- * @param {number} fromBlock - Optional starting block (default: 0)
- * @returns {Object|null} MatchCompleted event or null
- */
-export const queryMatchCompletedEvent = async (contract, matchId, fromBlock = 0) => {
-  try {
-    const filter = contract.filters.MatchCompleted(matchId);
-    const events = await contract.queryFilter(filter, fromBlock);
-
-    if (events.length > 0) {
-      console.log(`[EventReconstruction] Found MatchCompleted event for matchId ${matchId}`);
-      return events[0];
-    }
-    return null;
-  } catch (error) {
-    console.error('[EventReconstruction] Error querying MatchCompleted event:', error);
-    return null;
-  }
-};
 
 /**
  * Reconstruct TicTacToe board from MoveMade events
@@ -203,7 +181,6 @@ export const reconstructMatchFromEvents = async (
 
     // Query events
     const moveEvents = await queryMoveMadeEvents(contract, matchId);
-    const completedEvent = await queryMatchCompletedEvent(contract, matchId);
 
     // Reconstruct board based on game type
     let board;
@@ -212,16 +189,7 @@ export const reconstructMatchFromEvents = async (
         board = reconstructTicTacToeBoard(moveEvents, player1Address, player2Address);
         break;
       case 'chess':
-        // For chess, prefer using the board from MatchCompleted event
-        // This contains the final board state as a packed uint256
-        if (completedEvent?.args?.board) {
-          console.log('[EventReconstruction] Using board from MatchCompleted event');
-          board = { boardArray: unpackChessBoard(completedEvent.args.board), moveHistory: [] };
-        } else {
-          // Fallback to move-by-move reconstruction
-          console.log('[EventReconstruction] Falling back to move-by-move reconstruction');
-          board = reconstructChessBoard(moveEvents, player1Address, player2Address);
-        }
+        board = reconstructChessBoard(moveEvents, player1Address, player2Address);
         break;
       case 'connect4':
         board = reconstructConnect4Board(moveEvents, player1Address, player2Address);
@@ -232,11 +200,7 @@ export const reconstructMatchFromEvents = async (
 
     return {
       board,
-      winner: completedEvent?.args?.winner || null,
-      isDraw: completedEvent?.args?.isDraw || false,
-      completionReason: completedEvent?.args?.reason ? Number(completedEvent.args.reason) : 0,
       events: moveEvents,
-      completedEvent,
     };
   } catch (error) {
     console.error('[EventReconstruction] Error reconstructing match:', error);

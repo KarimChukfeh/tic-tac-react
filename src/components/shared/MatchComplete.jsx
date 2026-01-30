@@ -7,7 +7,7 @@
  * - If spectator: Shows winner info
  */
 
-import { Trophy, Frown } from 'lucide-react';
+import { Trophy, Frown, ArrowRight } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
 
 const MatchComplete = ({
@@ -15,7 +15,11 @@ const MatchComplete = ({
   winner,
   loser,
   currentAccount,
-  gameSpecificText // Optional override for win text (e.g., "Checkmate!" for chess)
+  gameSpecificText, // Optional override for win text (e.g., "Checkmate!" for chess)
+  // CTA props
+  hasNextActiveMatch = false, // Whether player has an active match in next round
+  onEnterNextMatch, // Callback to enter the next match
+  onReturnToBracket // Callback to return to tournament bracket
 }) => {
   const zeroAddress = '0x0000000000000000000000000000000000000000';
 
@@ -37,7 +41,17 @@ const MatchComplete = ({
         }}
       >
         <p className="text-white font-bold text-xl mb-2">It's a Draw!</p>
-        <p className="text-blue-300 text-sm">Evenly matched</p>
+        <p className="text-blue-300 text-sm mb-3">Evenly matched</p>
+
+        {/* CTA Button */}
+        {onReturnToBracket && (
+          <button
+            onClick={onReturnToBracket}
+            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition-all transform hover:scale-105"
+          >
+            Return to tournament brackets
+          </button>
+        )}
       </div>
     );
   }
@@ -58,9 +72,27 @@ const MatchComplete = ({
           <p className="text-yellow-400 font-bold text-xl">Victory!</p>
           <Trophy className="text-yellow-400" size={24} />
         </div>
-        <p className="text-green-300 text-sm">
+        <p className="text-green-300 text-sm mb-3">
           {gameSpecificText || 'You won the match!'}
         </p>
+
+        {/* CTA Button */}
+        {hasNextActiveMatch && onEnterNextMatch ? (
+          <button
+            onClick={onEnterNextMatch}
+            className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold py-2 px-4 rounded-lg transition-all transform hover:scale-105 flex items-center justify-center gap-2"
+          >
+            <span>You advanced to the next round, enter match</span>
+            <ArrowRight size={18} />
+          </button>
+        ) : onReturnToBracket ? (
+          <button
+            onClick={onReturnToBracket}
+            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition-all transform hover:scale-105"
+          >
+            Return to tournament brackets
+          </button>
+        ) : null}
       </div>
     );
   }
@@ -80,7 +112,17 @@ const MatchComplete = ({
           <Frown className="text-red-400" size={24} />
           <p className="text-red-400 font-bold text-xl">Defeated</p>
         </div>
-        <p className="text-red-300 text-sm">Better luck next time</p>
+        <p className="text-red-300 text-sm mb-3">Better luck next time</p>
+
+        {/* CTA Button */}
+        {onReturnToBracket && (
+          <button
+            onClick={onReturnToBracket}
+            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition-all transform hover:scale-105"
+          >
+            Return to tournament brackets
+          </button>
+        )}
       </div>
     );
   }

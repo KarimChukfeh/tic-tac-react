@@ -76,9 +76,12 @@ const GameMatchLayout = ({
   onClaimTimeoutWin,
   onForceEliminate,
   onClaimReplacement,
+  onEnterNextMatch, // Handler for entering next active match
+  onReturnToBracket, // Handler for returning to tournament bracket
 
   // Tournament metadata
   playerCount = null, // Optional: player count for tournament type label
+  hasNextActiveMatch = false, // Whether player has a next active match
 
   // Player configuration
   playerConfig, // { player1: { icon, label }, player2: { icon, label } }
@@ -522,6 +525,9 @@ const GameMatchLayout = ({
                   loser={loser}
                   currentAccount={account}
                   gameSpecificText={!isDraw ? theme.completeText : undefined}
+                  hasNextActiveMatch={hasNextActiveMatch}
+                  onEnterNextMatch={onEnterNextMatch}
+                  onReturnToBracket={onReturnToBracket}
                 />
               )}
             </div>
@@ -702,6 +708,9 @@ const GameMatchLayout = ({
                   loser={loser}
                   currentAccount={account}
                   gameSpecificText={!isDraw ? theme.completeText : undefined}
+                  hasNextActiveMatch={hasNextActiveMatch}
+                  onEnterNextMatch={onEnterNextMatch}
+                  onReturnToBracket={onReturnToBracket}
                 />
               </div>
             )}
@@ -1016,6 +1025,9 @@ const GameMatchLayout = ({
               loser={loser}
               currentAccount={account}
               gameSpecificText={!isDraw ? theme.completeText : undefined}
+              hasNextActiveMatch={hasNextActiveMatch}
+              onEnterNextMatch={onEnterNextMatch}
+              onReturnToBracket={onReturnToBracket}
             />
           )}
 
@@ -1067,6 +1079,9 @@ const GameMatchLayout = ({
                   loser={loser}
                   currentAccount={account}
                   gameSpecificText={!isDraw ? theme.completeText : undefined}
+                  hasNextActiveMatch={hasNextActiveMatch}
+                  onEnterNextMatch={onEnterNextMatch}
+                  onReturnToBracket={onReturnToBracket}
                 />
               </div>
             )}

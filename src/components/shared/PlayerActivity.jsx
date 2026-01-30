@@ -11,9 +11,6 @@ import { useState, useRef, useEffect } from 'react';
 import { Users, X, Zap, Trophy, Clock, Play, Eye, RefreshCw, ChevronDown, ChevronUp, TrendingUp, AlertCircle, ExternalLink, CheckCircle2 } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
 import { formatTimeRemaining } from '../../utils/activityHelpers';
-import MiniTicTacToeBoard from './MiniTicTacToeBoard';
-import MiniChessBoard from './MiniChessBoard';
-import MiniConnect4Board from './MiniConnect4Board';
 import { ethers } from 'ethers';
 
 const PlayerActivity = ({
