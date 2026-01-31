@@ -576,7 +576,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, /* onSpectate
 
       {/* Bracket View */}
       <div ref={bracketViewRef} className={`bg-gradient-to-br from-slate-900/50 to-purple-900/30 backdrop-blur-lg rounded-2xl p-8 border ${colors.headerBorder}`}>
-        <h3 className={`text-2xl font-bold ${colors.text} mb-6 flex items-center gap-2`}>
+        <h3 className={`text-2xl font-bold ${colors.text} mb-3 flex items-center gap-2`}>
           <Grid size={24} />
           {tournamentTypeLabel} Bracket
         </h3>
@@ -633,13 +633,18 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, /* onSpectate
         ) : (
           <div className="space-y-6">
             {/* Status message */}
-            <div className="text-center py-12">
+            <div className="text-left py-4">
               <div className={`${colors.text} text-lg`}>
                 {status === 0
                   ? 'Tournament bracket will be generated once the tournament starts.'
                   : 'No bracket data available.'}
               </div>
             </div>
+
+            {/* Divider */}
+            {enrolledCount === 0 && (
+              <hr className="border-purple-500/20" />
+            )}
 
             {/* Recent instance history (shown when no enrolled players) */}
             {enrolledCount === 0 && (

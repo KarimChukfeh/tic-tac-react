@@ -63,7 +63,7 @@ const RecentInstanceCard = ({ tierId, instanceId, contract, tierName = 'Tourname
   // Loading state
   if (loading) {
     return (
-      <div className="bg-slate-800/30 border border-purple-500/20 rounded-xl p-8">
+      <div className="py-8">
         <div className="flex items-center justify-center gap-3 text-purple-300">
           <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-400"></div>
           <p>Loading history...</p>
@@ -75,7 +75,7 @@ const RecentInstanceCard = ({ tierId, instanceId, contract, tierName = 'Tourname
   // No history state
   if (!recentData) {
     return (
-      <div className="bg-slate-800/30 border border-purple-500/20 rounded-xl p-8">
+      <div className="py-8">
         <div className="text-center">
           <Clock className="mx-auto mb-3 text-purple-400/50" size={48} />
           <h3 className="text-xl font-bold text-purple-300 mb-2">No History Yet</h3>
@@ -110,7 +110,7 @@ const RecentInstanceCard = ({ tierId, instanceId, contract, tierName = 'Tourname
   const reasonData = getTournamentCompletionText(recentData.completionReason);
 
   return (
-    <div className="bg-gradient-to-br from-purple-900/30 to-blue-900/30 border border-purple-500/30 rounded-xl p-6 shadow-lg">
+    <div className="py-4">
       <div className="flex items-center gap-3 mb-6">
         <Trophy className="text-yellow-400" size={28} />
         <h3 className="text-2xl font-bold text-white">Last Instance</h3>
@@ -167,7 +167,7 @@ const RecentInstanceCard = ({ tierId, instanceId, contract, tierName = 'Tourname
         )}
 
         {/* Completion Reason */}
-        <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-3 mt-4">
+        <div className="pt-2 mt-4 border-t border-purple-500/20">
           <p className="text-sm text-purple-300">
             Tournament completed via{' '}
             {reasonData.link ? (
