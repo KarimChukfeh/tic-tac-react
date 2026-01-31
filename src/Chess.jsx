@@ -3401,7 +3401,7 @@ export default function Chess() {
 
   // Check if player has a next active match in the next round
   const checkForNextActiveMatch = useCallback(async () => {
-    if (!chessContract || !account || !currentMatch) {
+    if (!contract || !account || !currentMatch) {
       setNextActiveMatch(null);
       return;
     }
@@ -3411,7 +3411,7 @@ export default function Chess() {
       const nextRoundNumber = roundNumber + 1;
 
       // Get tournament info to determine total rounds
-      const tournamentInfo = await chessContract.getTournamentInfo(tierId, instanceId);
+      const tournamentInfo = await contract.getTournamentInfo(tierId, instanceId);
       const tierConfig = CHESS_TIER_CONFIG[tierId];
       const playerCount = tierConfig.playerCount;
       const totalRounds = Math.ceil(Math.log2(playerCount));
@@ -3427,7 +3427,7 @@ export default function Chess() {
 
       for (let matchNumber = 0; matchNumber < matchesInNextRound; matchNumber++) {
         try {
-          const matchData = await chessContract.getMatch(tierId, instanceId, nextRoundNumber, matchNumber);
+          const matchData = await contract.getMatch(tierId, instanceId, nextRoundNumber, matchNumber);
           const parsedMatch = parseChessMatch(matchData, matchTimePerPlayer);
 
           // Check if this match is active (status 1) and player is in it
@@ -3458,7 +3458,7 @@ export default function Chess() {
       console.error('Error checking for next active match:', error);
       setNextActiveMatch(null);
     }
-  }, [chessContract, account, currentMatch, matchTimePerPlayer]);
+  }, [contract, account, currentMatch, matchTimePerPlayer]);
 
   // Handle entering the next active match
   const handleEnterNextMatch = useCallback(() => {
