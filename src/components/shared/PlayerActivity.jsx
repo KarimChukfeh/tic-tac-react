@@ -454,26 +454,17 @@ const PlayerActivity = ({
           <div className="mb-4">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                {/* Game Symbols */}
+                {/* Game Symbol */}
                 <div className="flex items-center gap-1.5">
                   {gameName === 'tictactoe' ? (
-                    <>
-                      <span className="w-5 h-5 inline-block relative">
-                        <span className="absolute inset-0 bg-blue-500 transform rotate-45" style={{width: '3px', height: '100%', left: '50%', marginLeft: '-1.5px'}}></span>
-                        <span className="absolute inset-0 bg-blue-500 transform -rotate-45" style={{width: '3px', height: '100%', left: '50%', marginLeft: '-1.5px'}}></span>
-                      </span>
-                      <span className="w-5 h-5 rounded-full inline-block border-[3px] border-pink-500"></span>
-                    </>
+                    <span className="w-5 h-5 inline-block relative">
+                      <span className="absolute inset-0 bg-blue-500 transform rotate-45" style={{width: '3px', height: '100%', left: '50%', marginLeft: '-1.5px'}}></span>
+                      <span className="absolute inset-0 bg-blue-500 transform -rotate-45" style={{width: '3px', height: '100%', left: '50%', marginLeft: '-1.5px'}}></span>
+                    </span>
                   ) : gameName === 'connect4' ? (
-                    <>
-                      <span className="w-5 h-5 rounded-full inline-block bg-red-500"></span>
-                      <span className="w-5 h-5 rounded-full inline-block bg-blue-500"></span>
-                    </>
+                    <span className="w-5 h-5 rounded-full inline-block bg-red-500"></span>
                   ) : (
-                    <>
-                      <span className="text-2xl">♔</span>
-                      <span className="text-2xl">♚</span>
-                    </>
+                    <span className="text-2xl">♔</span>
                   )}
                 </div>
                 <h3 className="text-white font-bold text-lg">Your Activity</h3>
