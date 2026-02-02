@@ -26,7 +26,8 @@ const RecentInstanceCard = ({ tierId, instanceId, contract, tierName = 'Tourname
         const endTime = Number(data.endTime);
         const zeroAddress = '0x0000000000000000000000000000000000000000';
 
-        if (endTime === 0 || data.winner === zeroAddress) {
+        // Only check endTime - winner can be zero address for draws/all-draw scenarios
+        if (endTime === 0) {
           setRecentData(null);
         } else {
           setRecentData({
@@ -146,7 +147,11 @@ const RecentInstanceCard = ({ tierId, instanceId, contract, tierName = 'Tourname
           <Trophy className="text-yellow-400 mt-1" size={20} />
           <div>
             <p className="text-sm text-purple-300 font-semibold">Winner</p>
-            <p className="text-white font-mono">{shortenAddress(recentData.winner)}</p>
+            <p className="text-white font-mono">
+              {recentData.winner === '0x0000000000000000000000000000000000000000'
+                ? 'No Winner (Draw)'
+                : shortenAddress(recentData.winner)}
+            </p>
           </div>
         </div>
 
