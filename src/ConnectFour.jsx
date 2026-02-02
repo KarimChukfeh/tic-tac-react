@@ -636,7 +636,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, /* onSpectate
             <div className="text-left py-4">
               <div className={`${colors.text} text-lg`}>
                 {status === 0
-                  ? 'Tournament bracket will be generated once the tournament starts.'
+                  ? 'Brackets will be generated once the instance starts.'
                   : 'No bracket data available.'}
               </div>
             </div>
