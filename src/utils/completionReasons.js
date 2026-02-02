@@ -7,12 +7,14 @@
 
 // CompletionReason enum values (matches ETour_Storage.CompletionReason)
 export const CompletionReason = {
-  NORMAL_WIN: 0,          // Normal gameplay win (checkmate, connect 4, etc.)
-  TIMEOUT: 1,             // Win by opponent timeout (ML1)
-  DRAW: 2,                // Match/finals ended in a draw
-  FORCE_ELIMINATION: 3,   // ML2 - Advanced players force eliminated both players
-  REPLACEMENT: 4,         // ML3 - External player replaced stalled players
-  ALL_DRAW_SCENARIO: 5    // All matches in a round resulted in draws (tournament only)
+  NORMAL_WIN: 0,                    // Normal gameplay win (checkmate, connect 4, etc.)
+  TIMEOUT: 1,                       // Win by opponent timeout (ML1)
+  DRAW: 2,                          // Match/finals ended in a draw
+  FORCE_ELIMINATION: 3,             // ML2 - Advanced players force eliminated both players
+  REPLACEMENT: 4,                   // ML3 - External player replaced stalled players
+  ALL_DRAW_SCENARIO: 5,             // All matches in a round resulted in draws (tournament only)
+  SOLO_ENROLL_FORCE_START: 6,       // Solo enroller force started tournament (EL1)
+  ABANDONED_TOURNAMENT_CLAIMED: 7   // Abandoned tournament claimed by external player (EL2)
 };
 
 /**
@@ -56,6 +58,12 @@ export const getCompletionReasonText = (reason, userWon, isDraw, gameType = 'tic
     case CompletionReason.ALL_DRAW_SCENARIO:
       return "Tournament Draw";
 
+    case CompletionReason.SOLO_ENROLL_FORCE_START:
+      return 'Solo Force Start';
+
+    case CompletionReason.ABANDONED_TOURNAMENT_CLAIMED:
+      return 'Abandoned Pool Claimed';
+
     default:
       return userWon ? 'Victory!' : 'Defeated';
   }
@@ -94,6 +102,12 @@ export const getCompletionReasonDescription = (reason, userWon, isDraw) => {
     case CompletionReason.ALL_DRAW_SCENARIO:
       return 'All matches in the round resulted in draws';
 
+    case CompletionReason.SOLO_ENROLL_FORCE_START:
+      return 'Solo enrolled player force started the tournament (EL1)';
+
+    case CompletionReason.ABANDONED_TOURNAMENT_CLAIMED:
+      return 'External player claimed the abandoned tournament pool (EL2)';
+
     default:
       return userWon ? 'You won!' : 'You lost';
   }
@@ -123,6 +137,12 @@ export const getCompletionReasonIcon = (reason, userWon, isDraw) => {
 
     case CompletionReason.ALL_DRAW_SCENARIO:
       return 'Equal';
+
+    case CompletionReason.SOLO_ENROLL_FORCE_START:
+      return 'Zap';
+
+    case CompletionReason.ABANDONED_TOURNAMENT_CLAIMED:
+      return 'DollarSign';
 
     default:
       return userWon ? 'Trophy' : 'Frown';

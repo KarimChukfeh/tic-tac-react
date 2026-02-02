@@ -102,6 +102,10 @@ const RecentInstanceCard = ({ tierId, instanceId, contract, tierName = 'Tourname
         return { text: 'ML3 External Player Replacement', link: '#ml3' };
       case CompletionReason.ALL_DRAW_SCENARIO:
         return { text: 'All-Draw Scenario Resolution', link: null };
+      case CompletionReason.SOLO_ENROLL_FORCE_START:
+        return { text: 'EL1 Solo Force Start', link: '#el1' };
+      case CompletionReason.ABANDONED_TOURNAMENT_CLAIMED:
+        return { text: 'EL2 Abandoned Pool Claim', link: '#el2' };
       default:
         return { text: 'Tournament Completion', link: null };
     }
