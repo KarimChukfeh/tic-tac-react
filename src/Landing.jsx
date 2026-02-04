@@ -551,7 +551,7 @@ export default function Landing() {
           <div className="max-w-5xl mx-auto">
             
             <div className="text-center mb-16">
-              <h2 className="text-4xl font-bold text-white mb-4">Turst by Blockchain</h2>
+              <h2 className="text-4xl font-bold text-white mb-4">Trust by Blockchain</h2>
               <p className="text-slate-400 text-lg">Everything runs on Ethereum. Nothing is hidden. Nothing is centralized.</p>
             </div>
             
