@@ -415,7 +415,7 @@ export default function Landing() {
           
           {/* Subheadline */}
           <p className="text-xl md:text-2xl text-slate-400 text-center max-w-2xl mb-12 leading-relaxed">
-            Classic games. ETH stakes. No new tokens.<br/>No hidden costs.
+            Classic games. ETH stakes. No hidden costs.
             <br />
             <span className="text-white font-semibold inline-block mt-4">Skill vs skill. Real ETH on the line.</span>
           </p>
