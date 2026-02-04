@@ -284,6 +284,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, /* onSpectate
                 instanceId={instanceId}
                 contract={contract}
                 tierName={tournamentTypeLabel}
+                walletAddress={account}
               />
             )}
           </div>
