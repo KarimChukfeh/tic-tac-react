@@ -327,9 +327,8 @@ export default function TicTacChain() {
     currentAccumulated: 0n,
     threshold: 0n,
     reserve: 0n,
-    raffleAmount: 0n,
     ownerShare: 0n,
-    winnerShare: 0n,
+    raffleAmount: 0n,
     eligiblePlayerCount: 0n
   });
 
@@ -787,8 +786,14 @@ export default function TicTacChain() {
       setRaffleSyncing(true);
       const readContract = getReadOnlyContract();
 
-      const [raffleIndex, isReady, currentAccumulated, threshold, reserve, raffleAmount, ownerShare, winnerShare, eligiblePlayerCount] =
+      const [raffleIndex, currentAccumulated, threshold, eligiblePlayerCount] =
         await readContract.getRaffleInfo();
+
+      const rafflePot = currentAccumulated;
+      const reserve = (rafflePot * 5n) / 100n;
+      const ownerShare = (rafflePot * 5n) / 100n;
+      const raffleAmount = rafflePot - reserve - ownerShare;
+      const isReady = currentAccumulated >= threshold && eligiblePlayerCount > 0n;
 
       setRaffleInfo({
         raffleIndex,
@@ -796,19 +801,19 @@ export default function TicTacChain() {
         currentAccumulated,
         threshold,
         reserve,
-        raffleAmount,
         ownerShare,
-        winnerShare,
+        raffleAmount,
         eligiblePlayerCount
       });
 
       console.log('Raffle Info:', {
         raffleIndex: raffleIndex.toString(),
-        isReady,
         currentAccumulated: ethers.formatEther(currentAccumulated),
         threshold: ethers.formatEther(threshold),
         reserve: ethers.formatEther(reserve),
+        ownerShare: ethers.formatEther(ownerShare),
         raffleAmount: ethers.formatEther(raffleAmount),
+        isReady,
         eligiblePlayerCount: eligiblePlayerCount.toString()
       });
     } catch (error) {
@@ -824,20 +829,32 @@ export default function TicTacChain() {
     try {
       const readContract = getReadOnlyContract();
 
-      // Fetch all past raffle results using the getRaffleHistory function
-      const results = await readContract.getRaffleHistory();
+      const [raffleIndex] = await readContract.getRaffleInfo();
+      const raffleCount = Number(raffleIndex);
 
-      // Format results and reverse to show newest first
-      const formattedHistory = results.map((result, index) => ({
-        raffleNumber: index,
-        executor: result.executor,
-        timestamp: Number(result.timestamp),
-        rafflePot: result.rafflePot,
-        winner: result.winner,
-        winnerPrize: result.winnerPrize,
-        protocolReserve: result.protocolReserve,
-        ownerShare: result.ownerShare
-      })).reverse(); // Newest first
+      if (raffleCount <= 0) {
+        setRaffleHistory([]);
+        return;
+      }
+
+      const raffleIndexes = Array.from({ length: raffleCount }, (_, i) => i);
+      const results = await Promise.all(raffleIndexes.map((index) => readContract.raffleResults(index)));
+
+      const formattedHistory = results.map((result, index) => {
+        const rafflePot = result.rafflePot;
+        const reserve = (rafflePot * 5n) / 100n;
+        const ownerShare = (rafflePot * 5n) / 100n;
+        const winnerPrize = rafflePot - reserve - ownerShare;
+
+        return {
+          raffleNumber: index,
+          executor: result.executor,
+          timestamp: Number(result.timestamp),
+          rafflePot,
+          winner: result.winner,
+          winnerPrize
+        };
+      }).reverse();
 
       setRaffleHistory(formattedHistory);
 
@@ -3254,6 +3271,7 @@ export default function TicTacChain() {
           <CommunityRaffleCard
             raffleInfo={raffleInfo}
             raffleHistory={raffleHistory}
+            account={account}
             gamesCardHeight={gamesCardHeight}
             playerActivityHeight={playerActivityHeight}
             recentMatchesCardHeight={recentMatchesCardHeight}
@@ -3324,6 +3342,7 @@ export default function TicTacChain() {
           <CommunityRaffleCard
             raffleInfo={raffleInfo}
             raffleHistory={raffleHistory}
+            account={account}
             gamesCardHeight={gamesCardHeight}
             playerActivityHeight={playerActivityHeight}
             recentMatchesCardHeight={recentMatchesCardHeight}

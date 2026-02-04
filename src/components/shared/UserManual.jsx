@@ -104,6 +104,9 @@ const UserManual = ({
         }
         console.log('[UserManual] Fetched tier IDs:', tierIds, `(${tierIds.length} tiers)`);
 
+        const canGetRaffleConfig = typeof contractInstance.getRaffleConfiguration === 'function';
+        const canGetRaffleThresholds = typeof contractInstance.getRaffleThresholds === 'function';
+
         const [
           basisPoints,
           protocolShareBps,
@@ -114,8 +117,8 @@ const UserManual = ({
           contractInstance.BASIS_POINTS(),
           contractInstance.PROTOCOL_SHARE_BPS(),
           contractInstance.getRaffleInfo().catch(() => null),
-          contractInstance.getRaffleConfiguration().catch(() => null),
-          contractInstance.getRaffleThresholds().catch(() => null)
+          canGetRaffleConfig ? contractInstance.getRaffleConfiguration().catch(() => null) : null,
+          canGetRaffleThresholds ? contractInstance.getRaffleThresholds().catch(() => null) : null
         ]);
 
         // Fetch configuration for each tier

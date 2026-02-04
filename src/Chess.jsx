@@ -702,11 +702,11 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
 
 export default function Chess() {
   // Use network config instead of hardcoded values
-  // const EXPECTED_CHAIN_ID = CURRENT_NETWORK.chainId;
-  const EXPECTED_CHAIN_ID = 42161;
-  // const RPC_URL = import.meta.env.VITE_RPC_URL || CURRENT_NETWORK.rpcUrl;
+  const EXPECTED_CHAIN_ID = CURRENT_NETWORK.chainId;
+  // const EXPECTED_CHAIN_ID = 42161;
+  const RPC_URL = import.meta.env.VITE_RPC_URL || CURRENT_NETWORK.rpcUrl;
   // const RPC_URL = "https://arb1.arbitrum.io/rpc";
-  const RPC_URL = "https://rpc.ankr.com/arbitrum/fa78359589ebb4ba1c97e306d5ad98192c1b897a76d2df05acf7ade04aa2687b";
+  // const RPC_URL = "https://rpc.ankr.com/arbitrum/fa78359589ebb4ba1c97e306d5ad98192c1b897a76d2df05acf7ade04aa2687b";
   const EXPLORER_URL = getAddressUrl(CONTRACT_ADDRESS);
 
   // Helper to get read-only contract (bypasses MetaMask for read operations)
@@ -788,9 +788,8 @@ export default function Chess() {
     currentAccumulated: 0n,
     threshold: 0n,
     reserve: 0n,
-    raffleAmount: 0n,
     ownerShare: 0n,
-    winnerShare: 0n,
+    raffleAmount: 0n,
     eligiblePlayerCount: 0n
   });
 
@@ -1240,8 +1239,14 @@ export default function Chess() {
       setRaffleSyncing(true);
       const readOnlyContract = getReadOnlyContract();
 
-      const [raffleIndex, isReady, currentAccumulated, threshold, reserve, raffleAmount, ownerShare, winnerShare, eligiblePlayerCount] =
+      const [raffleIndex, currentAccumulated, threshold, eligiblePlayerCount] =
         await readOnlyContract.getRaffleInfo();
+
+      const rafflePot = currentAccumulated;
+      const reserve = (rafflePot * 5n) / 100n;
+      const ownerShare = (rafflePot * 5n) / 100n;
+      const raffleAmount = rafflePot - reserve - ownerShare;
+      const isReady = currentAccumulated >= threshold && eligiblePlayerCount > 0n;
 
       setRaffleInfo({
         raffleIndex,
@@ -1249,19 +1254,19 @@ export default function Chess() {
         currentAccumulated,
         threshold,
         reserve,
-        raffleAmount,
         ownerShare,
-        winnerShare,
+        raffleAmount,
         eligiblePlayerCount
       });
 
       console.log('Raffle Info:', {
         raffleIndex: raffleIndex.toString(),
-        isReady,
         currentAccumulated: ethers.formatEther(currentAccumulated),
         threshold: ethers.formatEther(threshold),
         reserve: ethers.formatEther(reserve),
+        ownerShare: ethers.formatEther(ownerShare),
         raffleAmount: ethers.formatEther(raffleAmount),
+        isReady,
         eligiblePlayerCount: eligiblePlayerCount.toString()
       });
     } catch (error) {
@@ -1277,20 +1282,32 @@ export default function Chess() {
     try {
       const readContract = getReadOnlyContract();
 
-      // Fetch all past raffle results using the getRaffleHistory function
-      const results = await readContract.getRaffleHistory();
+      const [raffleIndex] = await readContract.getRaffleInfo();
+      const raffleCount = Number(raffleIndex);
 
-      // Format results and reverse to show newest first
-      const formattedHistory = results.map((result, index) => ({
-        raffleNumber: index,
-        executor: result.executor,
-        timestamp: Number(result.timestamp),
-        rafflePot: result.rafflePot,
-        winner: result.winner,
-        winnerPrize: result.winnerPrize,
-        protocolReserve: result.protocolReserve,
-        ownerShare: result.ownerShare
-      })).reverse(); // Newest first
+      if (raffleCount <= 0) {
+        setRaffleHistory([]);
+        return;
+      }
+
+      const raffleIndexes = Array.from({ length: raffleCount }, (_, i) => i);
+      const results = await Promise.all(raffleIndexes.map((index) => readContract.raffleResults(index)));
+
+      const formattedHistory = results.map((result, index) => {
+        const rafflePot = result.rafflePot;
+        const reserve = (rafflePot * 5n) / 100n;
+        const ownerShare = (rafflePot * 5n) / 100n;
+        const winnerPrize = rafflePot - reserve - ownerShare;
+
+        return {
+          raffleNumber: index,
+          executor: result.executor,
+          timestamp: Number(result.timestamp),
+          rafflePot,
+          winner: result.winner,
+          winnerPrize
+        };
+      }).reverse();
 
       setRaffleHistory(formattedHistory);
 
@@ -4085,6 +4102,7 @@ export default function Chess() {
           <CommunityRaffleCard
             raffleInfo={raffleInfo}
             raffleHistory={raffleHistory}
+            account={account}
             gamesCardHeight={gamesCardHeight}
             playerActivityHeight={playerActivityHeight}
             recentMatchesCardHeight={recentMatchesCardHeight}
@@ -4176,6 +4194,7 @@ export default function Chess() {
           <CommunityRaffleCard
             raffleInfo={raffleInfo}
             raffleHistory={raffleHistory}
+            account={account}
             gamesCardHeight={gamesCardHeight}
             playerActivityHeight={playerActivityHeight}
             recentMatchesCardHeight={recentMatchesCardHeight}
