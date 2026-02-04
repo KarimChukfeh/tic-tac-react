@@ -415,7 +415,7 @@ export default function Landing() {
           
           {/* Subheadline */}
           <p className="text-xl md:text-2xl text-slate-400 text-center max-w-2xl mb-12 leading-relaxed">
-            Classic strategy games. Real stakes. No tokens, no tricks.
+            Classic strategy games. Real ETH stakes.<br/> No new tokens. No hidden costs.
             <br />
             <span className="text-white font-semibold inline-block mt-4">Skill vs skill. Real ETH on the line.</span>
           </p>
@@ -531,7 +531,7 @@ export default function Landing() {
                   2
                 </div>
                 <h3 className="text-xl font-bold text-white mb-3">Pick Your Stakes</h3>
-                <p className="text-slate-500">From micro bets to serious money. You choose the tier that fits.</p>
+                <p className="text-slate-500">From micro stakes to serious money. You choose the tier that fits.</p>
               </div>
               
               <div className="text-center">
@@ -539,7 +539,7 @@ export default function Landing() {
                   3
                 </div>
                 <h3 className="text-xl font-bold text-white mb-3">Win & Withdraw</h3>
-                <p className="text-slate-500">Beat your opponent, ETH hits your wallet. No delays, no fees.</p>
+                <p className="text-slate-500">Win and the ETH hits your wallet. Instant, reliable, with minimal fees.</p>
               </div>
               
             </div>
@@ -551,7 +551,7 @@ export default function Landing() {
           <div className="max-w-5xl mx-auto">
             
             <div className="text-center mb-16">
-              <h2 className="text-4xl font-bold text-white mb-4">Why This Isn't a Scam</h2>
+              <h2 className="text-4xl font-bold text-white mb-4">Turst by Blockchain</h2>
               <p className="text-slate-400 text-lg">Everything runs on Ethereum. Nothing is hidden. Nothing is centralized.</p>
             </div>
             
