@@ -818,6 +818,9 @@ export default function Chess() {
   // Mobile Panel Expansion Coordination (only one panel expanded at a time on mobile)
   const [expandedPanel, setExpandedPanel] = useState(null); // 'games' | 'playerActivity' | 'recentMatches' | 'communityRaffle' | 'eliteMatches' | null
 
+  // Mobile Tooltip Coordination (only one tooltip shown at a time on mobile when wallet not connected)
+  const [activeTooltip, setActiveTooltip] = useState(null); // 'playerActivity' | 'recentMatches' | 'communityRaffle' | 'eliteMatches' | null
+
   // Set page title
   useEffect(() => {
     document.title = 'ETour - Chess';
@@ -4035,6 +4038,9 @@ export default function Chess() {
             onToggleExpand={() => setExpandedPanel(expandedPanel === 'playerActivity' ? null : 'playerActivity')}
             tierConfig={TIER_CONFIG}
             disabled={!account}
+            showTooltip={activeTooltip === 'playerActivity'}
+            onShowTooltip={() => setActiveTooltip('playerActivity')}
+            onHideTooltip={() => setActiveTooltip(null)}
           />
 
           {/* Match History Card */}
@@ -4051,6 +4057,9 @@ export default function Chess() {
             tierConfig={TIER_CONFIG}
             isElite={isEnrolledInElite}
             disabled={!account}
+            showTooltip={activeTooltip === 'recentMatches'}
+            onShowTooltip={() => setActiveTooltip('recentMatches')}
+            onHideTooltip={() => setActiveTooltip(null)}
           />
 
           {/* Community Raffle Card */}
@@ -4068,6 +4077,9 @@ export default function Chess() {
             isExpanded={expandedPanel === 'communityRaffle'}
             onToggleExpand={() => setExpandedPanel(expandedPanel === 'communityRaffle' ? null : 'communityRaffle')}
             disabled={!account}
+            showTooltip={activeTooltip === 'communityRaffle'}
+            onShowTooltip={() => setActiveTooltip('communityRaffle')}
+            onHideTooltip={() => setActiveTooltip(null)}
           />
 
           {/* Elite Matches Card */}
@@ -4084,6 +4096,9 @@ export default function Chess() {
             isExpanded={expandedPanel === 'eliteMatches'}
             onToggleExpand={() => setExpandedPanel(expandedPanel === 'eliteMatches' ? null : 'eliteMatches')}
             disabled={!account}
+            showTooltip={activeTooltip === 'eliteMatches'}
+            onShowTooltip={() => setActiveTooltip('eliteMatches')}
+            onHideTooltip={() => setActiveTooltip(null)}
           />
         </div>
 
@@ -4116,6 +4131,9 @@ export default function Chess() {
             onToggleExpand={() => setExpandedPanel(expandedPanel === 'playerActivity' ? null : 'playerActivity')}
             tierConfig={TIER_CONFIG}
             disabled={!account}
+            showTooltip={activeTooltip === 'playerActivity'}
+            onShowTooltip={() => setActiveTooltip('playerActivity')}
+            onHideTooltip={() => setActiveTooltip(null)}
           />
 
           <RecentMatchesCard
@@ -4131,6 +4149,9 @@ export default function Chess() {
             tierConfig={TIER_CONFIG}
             isElite={isEnrolledInElite}
             disabled={!account}
+            showTooltip={activeTooltip === 'recentMatches'}
+            onShowTooltip={() => setActiveTooltip('recentMatches')}
+            onHideTooltip={() => setActiveTooltip(null)}
           />
 
           <CommunityRaffleCard
@@ -4147,6 +4168,9 @@ export default function Chess() {
             isExpanded={expandedPanel === 'communityRaffle'}
             onToggleExpand={() => setExpandedPanel(expandedPanel === 'communityRaffle' ? null : 'communityRaffle')}
             disabled={!account}
+            showTooltip={activeTooltip === 'communityRaffle'}
+            onShowTooltip={() => setActiveTooltip('communityRaffle')}
+            onHideTooltip={() => setActiveTooltip(null)}
           />
 
           <EliteMatchesCard
@@ -4162,6 +4186,9 @@ export default function Chess() {
             isExpanded={expandedPanel === 'eliteMatches'}
             onToggleExpand={() => setExpandedPanel(expandedPanel === 'eliteMatches' ? null : 'eliteMatches')}
             disabled={!account}
+            showTooltip={activeTooltip === 'eliteMatches'}
+            onShowTooltip={() => setActiveTooltip('eliteMatches')}
+            onHideTooltip={() => setActiveTooltip(null)}
           />
         </div>
       </div>

@@ -25,12 +25,14 @@ const CommunityRaffleCard = ({
   onToggleExpand, // External toggle handler
   hideOnMobile = false, // Hide this panel on mobile when another panel is expanded
   disabled = false, // Disable interaction when wallet not connected
+  showTooltip = false, // External control for tooltip visibility
+  onShowTooltip, // Callback to show this component's tooltip
+  onHideTooltip, // Callback to hide this component's tooltip
 }) => {
   const [internalIsExpanded, setInternalIsExpanded] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
   const [historyFetched, setHistoryFetched] = useState(false);
   const expandedPanelRef = useRef(null);
-  const [showMobileTooltip, setShowMobileTooltip] = useState(false);
 
   // Use external state if provided, otherwise use internal state
   const isExpanded = externalIsExpanded !== undefined ? externalIsExpanded : internalIsExpanded;
@@ -167,8 +169,8 @@ const CommunityRaffleCard = ({
       <button
         onClick={() => {
           if (disabled) {
-            setShowMobileTooltip(true);
-            setTimeout(() => setShowMobileTooltip(false), 2000);
+            if (onShowTooltip) onShowTooltip();
+            setTimeout(() => { if (onHideTooltip) onHideTooltip(); }, 2000);
           } else {
             handleSetExpanded(!isExpanded);
           }
@@ -220,14 +222,13 @@ const CommunityRaffleCard = ({
         )}
 
         {/* Tooltip - Mobile only */}
-        {showMobileTooltip && disabled && (
+        {showTooltip && disabled && (
           <a
             href="#connect-wallet-cta"
-            onClick={() => setShowMobileTooltip(false)}
-            className="md:hidden absolute bottom-full mb-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-6 py-3 rounded-xl whitespace-nowrap z-[100] animate-fade-in shadow-2xl border-2 border-purple-400/60 hover:scale-105 transition-transform"
+            onClick={() => { if (onHideTooltip) onHideTooltip(); }}
+            className="md:hidden fixed bottom-20 left-4 right-4 w-auto max-w-[calc(100vw-2rem)] bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-6 py-3 rounded-xl z-[100] animate-fade-in shadow-2xl border-2 border-purple-400/60 hover:scale-105 transition-transform text-center"
           >
             Connect Wallet to View Community Raffle
-            <div className="absolute top-full left-1/2 -translate-x-1/2 border-[6px] border-transparent border-t-purple-600"></div>
           </a>
         )}
       </button>
