@@ -32,7 +32,6 @@ const CommunityRaffleCard = ({
 }) => {
   const [internalIsExpanded, setInternalIsExpanded] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
-  const [historyFetched, setHistoryFetched] = useState(false);
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
   const expandedPanelRef = useRef(null);
 
@@ -92,13 +91,12 @@ const CommunityRaffleCard = ({
       if (onRefresh) {
         onRefresh();
       }
-      // Fetch history on first expansion only
-      if (!historyFetched && onFetchHistory) {
+      // Fetch history whenever expanded so it stays in sync with raffle info
+      if (onFetchHistory) {
         onFetchHistory();
-        setHistoryFetched(true);
       }
     }
-  }, [isExpanded, onRefresh, onFetchHistory, historyFetched]);
+  }, [isExpanded, onRefresh, onFetchHistory]);
 
   const thresholdETH = parseFloat(ethers.formatEther(raffleInfo.threshold || 0n));
   const currentETH = parseFloat(ethers.formatEther(raffleInfo.currentAccumulated || 0n));
