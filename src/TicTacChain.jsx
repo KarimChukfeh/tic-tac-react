@@ -417,6 +417,25 @@ export default function TicTacChain() {
   // Mobile Tooltip Coordination (only one tooltip shown at a time on mobile when wallet not connected)
   const [activeTooltip, setActiveTooltip] = useState(null); // 'playerActivity' | 'recentMatches' | 'communityRaffle' | 'eliteMatches' | null
 
+  // Click-away handler for tooltips
+  useEffect(() => {
+    if (!activeTooltip) return;
+
+    const handleClickAway = () => {
+      setActiveTooltip(null);
+    };
+
+    // Add listener on next tick to avoid closing immediately from the same click that opened it
+    const timer = setTimeout(() => {
+      document.addEventListener('click', handleClickAway);
+    }, 0);
+
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('click', handleClickAway);
+    };
+  }, [activeTooltip]);
+
   // Set page title
   useEffect(() => {
     document.title = 'ETour - TicTacToe';
