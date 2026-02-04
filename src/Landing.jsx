@@ -384,16 +384,15 @@ export default function Landing() {
               </div>
             </div>
           </div>
-        </div>
+	        </div>
 
-        {/* ============ HERO SECTION ============ */}
-        <br/>
-        <br/>
-        <section className="min-h-[70vh] flex flex-col justify-center items-center px-6 py-16">
-          
-          {/* Eyebrow */}
-          <div className="flex items-center gap-4 mb-8">
-            <div className="h-px w-16 bg-gradient-to-r from-transparent to-cyan-500/50" />
+	        {/* ============ HERO SECTION ============ */}
+		        <div className="h-7 md:h-12" aria-hidden="true" />
+		        <section className="min-h-[70vh] flex flex-col justify-center items-center px-6 py-16">
+	          
+	          {/* Eyebrow */}
+	          <div className="flex items-center gap-4 mb-8">
+	            <div className="h-px w-16 bg-gradient-to-r from-transparent to-cyan-500/50" />
             <p
               className="text-cyan-400 text-base md:text-xl font-semibold tracking-widest uppercase hover:text-cyan-300 transition-colors"
             >
