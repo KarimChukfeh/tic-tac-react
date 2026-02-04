@@ -9,6 +9,21 @@ import NotFound from './NotFound.jsx'
 import MetaMaskPrompt from './components/MetaMaskPrompt.jsx'
 import './index.css'
 import { useMetaMaskDeepLink } from './hooks/useMetaMaskDeepLink'
+import { useErudaDebugConsole } from './hooks/useErudaDebugConsole'
+
+function AppRoutes() {
+  useErudaDebugConsole();
+
+  return (
+    <Routes>
+      <Route path="/" element={<Landing />} />
+      <Route path="/tictactoe" element={<TicTacChain />} />
+      <Route path="/chess" element={<Chess />} />
+      <Route path="/connect4" element={<ConnectFour />} />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  )
+}
 
 // Wrapper component to handle MetaMask deep linking on mobile
 function App() {
@@ -26,16 +41,10 @@ function App() {
       )}
 
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Landing />} />
-          <Route path="/tictactoe" element={<TicTacChain />} />
-          <Route path="/chess" element={<Chess />} />
-          <Route path="/connect4" element={<ConnectFour />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AppRoutes />
       </BrowserRouter>
     </>
-  );
+  )
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(

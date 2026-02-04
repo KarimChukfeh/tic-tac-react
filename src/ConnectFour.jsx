@@ -829,19 +829,6 @@ export default function ConnectFour() {
     }
   }, [location.state, setSearchParams]);
 
-  // Add mobile debugging console (Eruda) on mobile devices
-  useEffect(() => {
-    if ('ontouchstart' in window) {
-      const script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/eruda';
-      script.onload = () => {
-        window.eruda.init();
-        console.log('Eruda mobile console initialized');
-      };
-      document.body.appendChild(script);
-    }
-  }, []);
-
   // Parse URL parameters on initial load (for shareable tournament links)
   useEffect(() => {
     if (hasProcessedUrlParams) return;
