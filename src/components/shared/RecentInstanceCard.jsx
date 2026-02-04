@@ -173,13 +173,13 @@ const RecentInstanceCard = ({ tierId, instanceId, contract, tierName = 'Tourname
       <div className="space-y-4">
 
         {/* Prize Pool and Winner */}
-        <div className="flex items-start gap-6">
+        <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-6">
           {/* Prize Pool */}
           <div className="flex items-start gap-3">
-            <Award className="text-green-400 mt-1" size={20} />
-            <div>
-              <p className="text-sm text-purple-300 font-semibold">Prize Pool</p>
-              <p className="text-white font-mono text-lg">
+            <Award className="text-green-400 mt-1 flex-shrink-0" size={20} />
+            <div className="min-w-0">
+              <p className="text-sm text-purple-300 font-semibold whitespace-nowrap">Prize Pool</p>
+              <p className="text-white font-mono text-lg whitespace-nowrap">
                 {ethers.formatEther(recentData.prizePool)} ETH
               </p>
             </div>
@@ -187,10 +187,10 @@ const RecentInstanceCard = ({ tierId, instanceId, contract, tierName = 'Tourname
 
           {/* Winner */}
           <div className="flex items-start gap-3">
-            <Trophy className="text-yellow-400 mt-1" size={20} />
-            <div>
-              <p className="text-sm text-purple-300 font-semibold">Winner</p>
-              <p className={`font-mono ${
+            <Trophy className="text-yellow-400 mt-1 flex-shrink-0" size={20} />
+            <div className="min-w-0">
+              <p className="text-sm text-purple-300 font-semibold whitespace-nowrap">Winner</p>
+              <p className={`font-mono whitespace-nowrap ${
                 recentData.winner === '0x0000000000000000000000000000000000000000'
                   ? 'text-white'
                   : walletAddress && recentData.winner.toLowerCase() === walletAddress.toLowerCase()
