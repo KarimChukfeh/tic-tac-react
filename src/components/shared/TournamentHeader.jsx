@@ -7,7 +7,7 @@
 
 import { Trophy, ChevronDown, Copy, Check, Clock, HelpCircle, Zap, Coins, RefreshCw } from 'lucide-react';
 import { ethers } from 'ethers';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { generateTournamentUrl, copyToClipboard } from '../../utils/urlHelpers';
 import StatsGrid from './StatsGrid';
 import EnrolledPlayersList from './EnrolledPlayersList';
@@ -119,7 +119,37 @@ const TournamentHeader = ({
   // EL1* - Reset enrollment window state
   const [canResetWindow, setCanResetWindow] = useState(false);
 
-  // Escalation polling effect
+  // Visibility tracking: component is visible and tab is active
+  const headerRef = useRef(null);
+  const [isVisible, setIsVisible] = useState(true);
+  const [isTabActive, setIsTabActive] = useState(!document.hidden);
+
+  // Track tab visibility
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsTabActive(!document.hidden);
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
+  // Track component scroll visibility with IntersectionObserver
+  useEffect(() => {
+    if (!headerRef.current) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsVisible(entry.isIntersecting);
+      },
+      { threshold: 0.1 } // Consider visible if at least 10% is in viewport
+    );
+
+    observer.observe(headerRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  // Escalation polling effect - only polls when visible and tab is active
   useEffect(() => {
     if (!enrollmentTimeout) {
       setEscalationState({
@@ -132,6 +162,9 @@ const TournamentHeader = ({
       });
       return;
     }
+
+    // Only poll if component is visible and tab is active
+    if (!isVisible || !isTabActive) return;
 
     const updateEscalationState = async () => {
       const now = Math.floor(Date.now() / 1000);
@@ -161,7 +194,7 @@ const TournamentHeader = ({
         forfeitPool
       });
 
-      // Check canResetEnrollmentWindow every second when enrollment window expires
+      // Check canResetEnrollmentWindow when enrollment window expires
       // Continue checking even when EL2 is active - solo player can still reset
       if ((canStartEscalation1 || canStartEscalation2) && isEnrolled && contract) {
         try {
@@ -179,10 +212,10 @@ const TournamentHeader = ({
     };
 
     updateEscalationState();
-    const interval = setInterval(updateEscalationState, 1000);
+    const interval = setInterval(updateEscalationState, 5000); // Changed from 1000ms to 5000ms
 
     return () => clearInterval(interval);
-  }, [enrollmentTimeout, isEnrolled, contract, tierId, instanceId]);
+  }, [enrollmentTimeout, isEnrolled, contract, tierId, instanceId, isVisible, isTabActive]);
 
   // Generate shareable URL
   const shareUrl = generateTournamentUrl(gameType, tierId, instanceId);
@@ -197,7 +230,7 @@ const TournamentHeader = ({
   };
 
   return (
-    <div className={`bg-gradient-to-r ${colors.headerBg} backdrop-blur-lg rounded-2xl p-4 md:p-8 border ${colors.headerBorder} mb-8`}>
+    <div ref={headerRef} className={`bg-gradient-to-r ${colors.headerBg} backdrop-blur-lg rounded-2xl p-4 md:p-8 border ${colors.headerBorder} mb-8`}>
       {/* Back Button */}
       <button
         onClick={onBack}

@@ -305,8 +305,8 @@ export default function TicTacChain() {
   // const EXPECTED_CHAIN_ID = CURRENT_NETWORK.chainId;
   const EXPECTED_CHAIN_ID = 42161;
   // const RPC_URL = import.meta.env.VITE_RPC_URL || CURRENT_NETWORK.rpcUrl;
-  // const RPC_URL = "https://arb1.arbitrum.io/rpc";
-  const RPC_URL = "https://rpc.ankr.com/arbitrum/fa78359589ebb4ba1c97e306d5ad98192c1b897a76d2df05acf7ade04aa2687b";
+  const RPC_URL = "https://arb1.arbitrum.io/rpc";
+  // const RPC_URL = "https://rpc.ankr.com/arbitrum/fa78359589ebb4ba1c97e306d5ad98192c1b897a76d2df05acf7ade04aa2687b";
   const EXPLORER_URL = getAddressUrl(CONTRACT_ADDRESS);
 
   // Helper to get read-only contract (bypasses MetaMask for read operations)
@@ -359,6 +359,11 @@ export default function TicTacChain() {
   const [expandedTiers, setExpandedTiers] = useState({});
   const [visibleInstancesCount, setVisibleInstancesCount] = useState({}); // { [tierId]: number } - tracks how many instances to show per tier
   const [contractsExpanded, setContractsExpanded] = useState(false);
+
+  // Visibility tracking for home page polling
+  const tierListRef = useRef(null);
+  const [isTierListVisible, setIsTierListVisible] = useState(true);
+  const [isTabActive, setIsTabActive] = useState(!document.hidden);
 
   // URL Parameters State for shareable tournament links
   const [searchParams, setSearchParams] = useSearchParams();
@@ -2791,12 +2796,56 @@ export default function TicTacChain() {
     fetchLeaderboard();
   }, [fetchLeaderboard]);
 
-  // Poll tier metadata and expanded tier instances every 10 seconds on home page
+  // Track tab visibility for home page polling
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsTabActive(!document.hidden);
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
+  // Track tier list scroll visibility with IntersectionObserver
+  useEffect(() => {
+    if (!tierListRef.current) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsTierListVisible(entry.isIntersecting);
+      },
+      { threshold: 0.1 } // Consider visible if at least 10% is in viewport
+    );
+
+    observer.observe(tierListRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  // Poll tier metadata and expanded tier instances every 5 seconds on home page - only when visible
   useEffect(() => {
     // Only poll when on home page (not viewing tournament or match)
-    if (currentMatch || viewingTournament || !contract) return;
+    if (currentMatch || viewingTournament || !contract) {
+      console.log('[Home Page Polling] Paused - Not on home page', {
+        currentMatch: !!currentMatch,
+        viewingTournament: !!viewingTournament,
+        contract: !!contract
+      });
+      return;
+    }
+
+    // Only poll if tier list is visible and tab is active
+    if (!isTierListVisible || !isTabActive) {
+      console.log('[Home Page Polling] Paused - User navigated away', {
+        isTierListVisible,
+        isTabActive
+      });
+      return;
+    }
+
+    console.log('[Home Page Polling] Starting - Tier list visible and tab active');
 
     const pollHomePageData = async () => {
+      console.log('[Home Page Polling] Executing poll...');
       try {
         // Fetch tier metadata silently (no loading indicators)
         await fetchTierMetadata(null, true);
@@ -2806,31 +2855,44 @@ export default function TicTacChain() {
           .filter(id => expandedTiers[id])
           .map(id => parseInt(id));
 
+        if (expandedTierIds.length > 0) {
+          console.log('[Home Page Polling] Fetching instances for expanded tiers:', expandedTierIds);
+        }
+
         for (const tierId of expandedTierIds) {
           await fetchTierInstances(tierId, null, null, null, true);
         }
+        console.log('[Home Page Polling] Poll completed');
       } catch (err) {
-        console.error('Error polling home page data:', err);
+        console.error('[Home Page Polling] Error polling home page data:', err);
       }
     };
 
-    // Set up polling interval - runs every 10 seconds
-    const pollInterval = setInterval(pollHomePageData, 10000);
+    // Initial poll
+    pollHomePageData();
 
-    return () => clearInterval(pollInterval);
-  }, [currentMatch, viewingTournament, contract, expandedTiers, fetchTierMetadata, fetchTierInstances]);
+    // Set up polling interval - runs every 5 seconds (changed from 10s)
+    const pollInterval = setInterval(pollHomePageData, 5000);
+
+    return () => {
+      console.log('[Home Page Polling] Cleanup - Stopping polling');
+      clearInterval(pollInterval);
+    };
+  }, [currentMatch, viewingTournament, contract, expandedTiers, fetchTierMetadata, fetchTierInstances, isTierListVisible, isTabActive]);
 
 
-  // Poll leaderboard every 1 minute (runs globally)
+  // Refresh leaderboard on tab focus
   useEffect(() => {
     if (!contract) return;
 
-    // Set up polling interval - runs every 60 seconds
-    const pollInterval = setInterval(() => {
-      fetchLeaderboard(true); // Silent update (no loading indicator)
-    }, 60000);
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchLeaderboard(true); // Silent update when tab becomes visible
+      }
+    };
 
-    return () => clearInterval(pollInterval);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [contract, fetchLeaderboard]);
 
   // Poll tournament bracket every 3 seconds (using refs for seamless syncing)
@@ -3532,7 +3594,7 @@ export default function TicTacChain() {
 
                 {/* Tournament Cards Grid - Grouped by Tier (Lazy Loading) */}
                 {!metadataLoading && Object.keys(tierMetadata).length > 0 && (
-                  <>
+                  <div ref={tierListRef}>
                     {[0, 6, 1, 2, 3, 4, 5].map((tierId) => {
                       const metadata = tierMetadata[tierId];
                       if (!metadata) return null;
@@ -3627,7 +3689,7 @@ export default function TicTacChain() {
                         </div>
                       );
                     })}
-                  </>
+                  </div>
                 )}
 
                 {/* Connection Error State */}

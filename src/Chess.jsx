@@ -744,6 +744,11 @@ export default function Chess() {
   const [visibleInstancesCount, setVisibleInstancesCount] = useState({}); // { [tierId]: number } - tracks how many instances to show per tier
   const [contractsExpanded, setContractsExpanded] = useState(false);
 
+  // Visibility tracking for home page polling
+  const tierListRef = useRef(null);
+  const [isTierListVisible, setIsTierListVisible] = useState(true);
+  const [isTabActive, setIsTabActive] = useState(!document.hidden);
+
   // URL Parameters State for shareable tournament links
   const [searchParams, setSearchParams] = useSearchParams();
   const [urlTournamentParams, setUrlTournamentParams] = useState(null);
@@ -3572,32 +3577,68 @@ export default function Chess() {
   }, [fetchLeaderboard]);
 
 
-  // Poll elite matches every 30 seconds (runs globally when wallet connected)
+  // Fetch elite matches only when Elite Matches tab is expanded
   useEffect(() => {
-    if (!account) return;
-    fetchEliteMatches();
-    const pollInterval = setInterval(fetchEliteMatches, 30000);
-    return () => clearInterval(pollInterval);
-  }, [account, fetchEliteMatches]);
+    if (!account || expandedPanel !== 'eliteMatches') return;
 
-  // Poll leaderboard every 1 minute (runs globally)
+    // Fetch immediately when tab is opened
+    fetchEliteMatches();
+  }, [account, expandedPanel, fetchEliteMatches]);
+
+  // Refresh leaderboard on tab focus
   useEffect(() => {
     if (!contract) return;
 
-    // Set up polling interval - runs every 60 seconds
-    const pollInterval = setInterval(() => {
-      fetchLeaderboard(true); // Silent update (no loading indicator)
-    }, 60000);
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchLeaderboard(true); // Silent update when tab becomes visible
+      }
+    };
 
-    return () => clearInterval(pollInterval);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [contract, fetchLeaderboard]);
 
-  // Poll tier metadata and expanded tier instances every 10 seconds on home page
+  // Track tier list scroll visibility with IntersectionObserver
+  useEffect(() => {
+    if (!tierListRef.current) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsTierListVisible(entry.isIntersecting);
+      },
+      { threshold: 0.1 } // Consider visible if at least 10% is in viewport
+    );
+
+    observer.observe(tierListRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  // Poll tier metadata and expanded tier instances every 5 seconds on home page - only when visible
   useEffect(() => {
     // Only poll when on home page (not viewing tournament or match)
-    if (currentMatch || viewingTournament || !contract) return;
+    if (currentMatch || viewingTournament || !contract) {
+      console.log('[Home Page Polling] Paused - Not on home page', {
+        currentMatch: !!currentMatch,
+        viewingTournament: !!viewingTournament,
+        contract: !!contract
+      });
+      return;
+    }
+
+    // Only poll if tier list is visible and tab is active
+    if (!isTierListVisible || !isTabActive) {
+      console.log('[Home Page Polling] Paused - User navigated away', {
+        isTierListVisible,
+        isTabActive
+      });
+      return;
+    }
+
+    console.log('[Home Page Polling] Starting - Tier list visible and tab active');
 
     const pollHomePageData = async () => {
+      console.log('[Home Page Polling] Executing poll...');
       try {
         // Fetch tier metadata silently (no loading indicators)
         await fetchTierMetadata(null, true);
@@ -3607,19 +3648,30 @@ export default function Chess() {
           .filter(id => expandedTiers[id])
           .map(id => parseInt(id));
 
+        if (expandedTierIds.length > 0) {
+          console.log('[Home Page Polling] Fetching instances for expanded tiers:', expandedTierIds);
+        }
+
         for (const tierId of expandedTierIds) {
           await fetchTierInstances(tierId, null, null, null, true);
         }
+        console.log('[Home Page Polling] Poll completed');
       } catch (err) {
-        console.error('Error polling home page data:', err);
+        console.error('[Home Page Polling] Error polling home page data:', err);
       }
     };
 
-    // Set up polling interval - runs every 10 seconds
-    const pollInterval = setInterval(pollHomePageData, 10000);
+    // Initial poll
+    pollHomePageData();
 
-    return () => clearInterval(pollInterval);
-  }, [currentMatch, viewingTournament, contract, expandedTiers, fetchTierMetadata, fetchTierInstances]);
+    // Set up polling interval - runs every 5 seconds (changed from 10s)
+    const pollInterval = setInterval(pollHomePageData, 5000);
+
+    return () => {
+      console.log('[Home Page Polling] Cleanup - Stopping polling');
+      clearInterval(pollInterval);
+    };
+  }, [currentMatch, viewingTournament, contract, expandedTiers, fetchTierMetadata, fetchTierInstances, isTierListVisible, isTabActive]);
 
   // Poll tournament bracket every 3 seconds (using refs for seamless syncing)
   const tournamentRef = useRef(viewingTournament);
@@ -4657,7 +4709,7 @@ export default function Chess() {
 
                 {/* Tournament Cards Grid - Grouped by Tier (Lazy Loading) */}
                 {!metadataLoading && Object.keys(tierMetadata).length > 0 && selectedMode && (
-                  <div className="animate-[fadeInSlideUp_0.6s_ease-out]">
+                  <div ref={tierListRef} className="animate-[fadeInSlideUp_0.6s_ease-out]">
                     {/* Back to Mode Selection */}
                     <div className="mb-6 animate-[fadeIn_0.8s_ease-out]">
                       <button
