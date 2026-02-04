@@ -3512,17 +3512,6 @@ export default function ConnectFour() {
         </div>
       )}
 
-      {/* Back to Bracket Button - Mobile Only (Shown during match) */}
-      {account && currentMatch && (
-        <button
-          onClick={() => setCurrentMatch(null)}
-          className="fixed bottom-4 left-4 z-50 md:hidden bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-full p-2.5 shadow-lg border-2 border-purple-400/50 transition-all transform hover:scale-110 active:scale-95"
-          aria-label="Back to bracket"
-        >
-          <ArrowLeft size={20} />
-        </button>
-      )}
-
       {/* Bottom Navigation Bar - Mobile Only */}
       <div className="fixed bottom-0 left-0 right-0 z-50 md:static md:z-auto">
         {/* Solid background bar on mobile */}
