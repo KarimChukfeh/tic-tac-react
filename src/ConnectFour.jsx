@@ -34,7 +34,7 @@ import { parseTournamentParams } from './utils/urlHelpers';
 import { parseConnectFourMatch } from './utils/matchDataParser';
 import { determineMatchResult } from './utils/matchCompletionHandler';
 import { fetchTierTimeoutConfig } from './utils/timeCalculations';
-import { getCompletionReasonText, getCompletionReasonDescription } from './utils/completionReasons';
+import { getCompletionReasonText, getCompletionReasonDescription, isDraw } from './utils/completionReasons';
 import { batchFetchTournaments, batchFetchIsEnrolled } from './utils/multicall';
 import ParticleBackground from './components/shared/ParticleBackground';
 import MatchCard from './components/shared/MatchCard';
@@ -2128,7 +2128,7 @@ export default function ConnectFour() {
               loser: zeroAddress,
               board: [0, 0, 0, 0, 0, 0, 0, 0, 0],
               matchStatus: 0,
-              isDraw: false,
+              completionReason: 0,
               startTime: 0,
               lastMoveTime: 0,
               timeoutState: null,
@@ -2343,7 +2343,7 @@ export default function ConnectFour() {
       console.log('[refreshMatchData] Parsed match data:', parsedMatch);
 
       const {
-        player1, player2, currentTurn, winner, loser, board, matchStatus, isDraw,
+        player1, player2, currentTurn, winner, loser, board, matchStatus, completionReason,
         startTime, lastMoveTime, lastMoveTimestamp, firstPlayer
       } = parsedMatch;
 
@@ -2428,19 +2428,20 @@ export default function ConnectFour() {
             });
 
             if (candidateMatches.length > 0) {
-              foundMatch = candidateMatches.sort((a, b) => Number(b.startTime) - Number(a.startTime))[0];
+              foundMatch = [...candidateMatches].sort((a, b) => Number(b.startTime) - Number(a.startTime))[0];
               console.log('[refreshMatchData] Found match by player addresses and timestamp');
             }
           }
 
           if (foundMatch) {
+            const matchCompletionReason = Number(foundMatch.completionReason);
             console.log('[refreshMatchData] Found matching completed match:', {
               tierId: Number(foundMatch.tierId),
               instanceId: Number(foundMatch.instanceId),
               round: Number(foundMatch.roundNumber),
               match: Number(foundMatch.matchNumber),
               winner: foundMatch.winner,
-              isDraw: foundMatch.isDraw,
+              completionReason: matchCompletionReason,
               movesLength: foundMatch.moves?.length || 0
             });
 
@@ -2458,7 +2459,7 @@ export default function ConnectFour() {
 
             const winnerLower = foundMatch.winner.toLowerCase();
             const p1Lower = foundMatch.player1.toLowerCase();
-            const matchLoser = foundMatch.isDraw ? zeroAddress :
+            const matchLoser = isDraw(matchCompletionReason) ? zeroAddress :
               (winnerLower === p1Lower ? foundMatch.player2 : foundMatch.player1);
 
             return {
@@ -2466,11 +2467,10 @@ export default function ConnectFour() {
               matchStatus: 2,
               winner: foundMatch.winner,
               loser: matchLoser,
-              isDraw: foundMatch.isDraw,
               board: matchBoard,
               isYourTurn: false,
               completedFromEventPoll: true,
-              completionReason: Number(foundMatch.completionReason),
+              completionReason: matchCompletionReason,
               cachedMoves: foundMatch.moves || ''
             };
           }
@@ -2570,7 +2570,7 @@ export default function ConnectFour() {
         loser,
         board: boardState,
         matchStatus,
-        isDraw,
+        completionReason,
         isTimedOut,
         isPlayer1,
         isYourTurn,
@@ -3285,11 +3285,12 @@ export default function ConnectFour() {
             const isParticipant = isPlayer1 || isPlayer2;
 
             if (isParticipant) {
-              const userWon = !updatedMatch.isDraw && updatedMatch.winner.toLowerCase() === userAccount.toLowerCase();
               const reasonNum = updatedMatch.completionReason || 0;
+              const isMatchDraw = isDraw(reasonNum);
+              const userWon = !isMatchDraw && updatedMatch.winner.toLowerCase() === userAccount.toLowerCase();
 
               let resultType = 'lose';
-              if (updatedMatch.isDraw) {
+              if (isMatchDraw) {
                 resultType = 'draw';
               } else if (userWon) {
                 resultType = (reasonNum === 1 || reasonNum === 3 || reasonNum === 4) ? 'forfeit_win' : 'win';
@@ -3336,7 +3337,7 @@ export default function ConnectFour() {
               lastMoveTimestamp: updatedMatch.lastMoveTimestamp,
               lastColumn: updatedMatch.lastColumn, // Update last move for glow effect
               cachedMoves: updatedMatch.cachedMoves, // Update moves string
-              // matchStatus, winner, loser, isDraw are preserved from prev (event-driven)
+              // matchStatus, winner, loser, completionReason are preserved from prev (event-driven)
             };
           });
 

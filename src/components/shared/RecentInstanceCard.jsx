@@ -96,13 +96,13 @@ const RecentInstanceCard = ({ tierId, instanceId, contract, tierName = 'Tourname
       case CompletionReason.TIMEOUT:
         return { text: 'ML1 Timeout Elimination', link: '#ml1' };
       case CompletionReason.DRAW:
-        return { text: 'Draw Resolution', link: null };
+        return { text: 'Draw Resolution', link: '#draws' };
       case CompletionReason.FORCE_ELIMINATION:
         return { text: 'ML2 Advanced Player Elimination', link: '#ml2' };
       case CompletionReason.REPLACEMENT:
         return { text: 'ML3 External Player Replacement', link: '#ml3' };
       case CompletionReason.ALL_DRAW_SCENARIO:
-        return { text: 'All-Draw Scenario Resolution', link: null };
+        return { text: 'All-Draw Scenario Resolution', link: '#draws' };
       case CompletionReason.SOLO_ENROLL_FORCE_START:
         return { text: 'EL1 Solo Force Start', link: '#el1' };
       case CompletionReason.ABANDONED_TOURNAMENT_CLAIMED:

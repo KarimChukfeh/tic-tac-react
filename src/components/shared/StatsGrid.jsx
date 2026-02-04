@@ -14,7 +14,7 @@ const getStatusDisplay = (status) => {
   switch (status) {
     case 0:
       return {
-        text: 'Waiting for more players',
+        text: 'Enrolment',
         color: 'text-yellow-300',
         bgColor: 'bg-yellow-500/20',
         borderColor: 'border-yellow-400',

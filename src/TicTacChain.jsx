@@ -36,7 +36,7 @@ import { parseTournamentParams } from './utils/urlHelpers';
 import { parseTicTacToeMatch } from './utils/matchDataParser';
 import { determineMatchResult } from './utils/matchCompletionHandler';
 import { fetchTierTimeoutConfig } from './utils/timeCalculations';
-import { getCompletionReasonText, getCompletionReasonDescription } from './utils/completionReasons';
+import { getCompletionReasonText, getCompletionReasonDescription, isDraw } from './utils/completionReasons';
 import { batchFetchTournaments, batchFetchIsEnrolled } from './utils/multicall';
 import ParticleBackground from './components/shared/ParticleBackground';
 import MatchCard from './components/shared/MatchCard';
@@ -1772,7 +1772,7 @@ export default function TicTacChain() {
               loser: zeroAddress,
               board: [0, 0, 0, 0, 0, 0, 0, 0, 0],
               matchStatus: 0,
-              isDraw: false,
+              completionReason: 0,
               startTime: 0,
               lastMoveTime: 0,
               timeoutState: null,
@@ -1965,7 +1965,7 @@ export default function TicTacChain() {
       const parsedMatch = parseTicTacToeMatch(matchData, tierMatchTime);
 
       const {
-        player1, player2, firstPlayer, currentTurn, winner, loser, board, matchStatus, isDraw,
+        player1, player2, firstPlayer, currentTurn, winner, loser, board, matchStatus, completionReason,
         startTime, lastMoveTime, lastMoveTimestamp
       } = parsedMatch;
 
@@ -2023,7 +2023,7 @@ export default function TicTacChain() {
             });
 
             if (candidateMatches.length > 0) {
-              foundMatch = candidateMatches.sort((a, b) => Number(b.startTime) - Number(a.startTime))[0];
+              foundMatch = [...candidateMatches].sort((a, b) => Number(b.startTime) - Number(a.startTime))[0];
               console.log('[refreshMatchData] Found match by player addresses and timestamp');
             }
           }
@@ -2035,7 +2035,7 @@ export default function TicTacChain() {
               round: Number(foundMatch.roundNumber),
               match: Number(foundMatch.matchNumber),
               winner: foundMatch.winner,
-              isDraw: foundMatch.isDraw,
+              completionReason: Number(foundMatch.completionReason),
               movesLength: foundMatch.moves?.length || 0
             });
 
@@ -2051,9 +2051,10 @@ export default function TicTacChain() {
             };
             const matchBoard = unpackBoard(foundMatch.packedBoard);
 
+            const matchCompletionReason = Number(foundMatch.completionReason);
             const winnerLower = foundMatch.winner.toLowerCase();
             const p1Lower = foundMatch.player1.toLowerCase();
-            const matchLoser = foundMatch.isDraw ? zeroAddress :
+            const matchLoser = isDraw(matchCompletionReason) ? zeroAddress :
               (winnerLower === p1Lower ? foundMatch.player2 : foundMatch.player1);
 
             return {
@@ -2061,11 +2062,10 @@ export default function TicTacChain() {
               matchStatus: 2,
               winner: foundMatch.winner,
               loser: matchLoser,
-              isDraw: foundMatch.isDraw,
               board: matchBoard,
               isYourTurn: false,
               completedFromEventPoll: true,
-              completionReason: Number(foundMatch.completionReason),
+              completionReason: matchCompletionReason,
               cachedMoves: foundMatch.moves || ''
             };
           }
@@ -2220,7 +2220,7 @@ export default function TicTacChain() {
         loser,
         board: boardState,
         matchStatus,
-        isDraw,
+        completionReason,
         isTimedOut,
         isPlayer1,
         isYourTurn,
@@ -2937,11 +2937,12 @@ export default function TicTacChain() {
             const isParticipant = isPlayer1 || isPlayer2;
 
             if (isParticipant) {
-              const userWon = !updatedMatch.isDraw && updatedMatch.winner.toLowerCase() === userAccount.toLowerCase();
               const reasonNum = updatedMatch.completionReason || 0;
+              const isMatchDraw = isDraw(reasonNum);
+              const userWon = !isMatchDraw && updatedMatch.winner.toLowerCase() === userAccount.toLowerCase();
 
               let resultType = 'lose';
-              if (updatedMatch.isDraw) {
+              if (isMatchDraw) {
                 resultType = 'draw';
               } else if (userWon) {
                 resultType = (reasonNum === 1 || reasonNum === 3 || reasonNum === 4) ? 'forfeit_win' : 'win';
@@ -2986,7 +2987,7 @@ export default function TicTacChain() {
               player2TimeRemaining: updatedMatch.player2TimeRemaining,
               lastMoveTime: updatedMatch.lastMoveTime,
               lastMoveTimestamp: updatedMatch.lastMoveTimestamp,
-              // matchStatus, winner, loser, isDraw are preserved from prev (event-driven)
+              // matchStatus, winner, loser, completionReason are preserved from prev (event-driven)
             };
           });
 

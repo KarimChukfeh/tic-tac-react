@@ -263,8 +263,8 @@ const MatchCard = ({
           Match {matchIdx + 1}
         </span>
         {/* Status */}
-        <span className={`text-xs font-bold ${getMatchStatusColor(match.matchStatus, match.winner, match.isDraw, matchStatusOptions)}`}>
-          {getMatchStatusText(match.matchStatus, match.winner, match.isDraw, matchStatusOptions)}
+        <span className={`text-xs font-bold ${getMatchStatusColor(match.matchStatus, match.winner, match.completionReason, matchStatusOptions)}`}>
+          {getMatchStatusText(match.matchStatus, match.winner, match.completionReason, matchStatusOptions)}
         </span>
       </div>
 

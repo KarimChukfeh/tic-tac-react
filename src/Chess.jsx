@@ -35,7 +35,7 @@ import { shortenAddress, formatTime as formatTimeHMS, getTierName, getTournament
 import { parseTournamentParams } from './utils/urlHelpers';
 import { determineMatchResult } from './utils/matchCompletionHandler';
 import { fetchTierTimeoutConfig } from './utils/timeCalculations';
-import { getCompletionReasonText, getCompletionReasonDescription } from './utils/completionReasons';
+import { getCompletionReasonText, getCompletionReasonDescription, isDraw } from './utils/completionReasons';
 import { batchFetchTournaments, batchFetchIsEnrolled } from './utils/multicall';
 import ParticleBackground from './components/shared/ParticleBackground';
 import MatchCard from './components/shared/MatchCard';
@@ -1301,7 +1301,6 @@ export default function Chess() {
           firstPlayer: match.firstPlayer,
           // Match state
           status: Number(match.status),
-          isDraw: match.isDraw,
           // Timestamps
           startTime: match.startTime,
           endTime: match.endTime,
@@ -1367,7 +1366,7 @@ export default function Chess() {
         currentTurn: matchData.player1, // For archived matches, this doesn't matter
         firstPlayer: matchData.firstPlayer,
         matchStatus: matchData.status,
-        isDraw: matchData.isDraw,
+        completionReason: Number(matchData.completionReason || 0),
         startTime: matchData.startTime,
         lastMoveTime: matchData.endTime, // Use endTime for archived matches
         player1TimeRemaining: 0, // Archived matches don't have time remaining
@@ -2326,7 +2325,7 @@ export default function Chess() {
             const player2 = matchData.common.player2;
             const winner = matchData.common.winner;
             const matchStatus = Number(matchData.common.status);
-            const isDraw = matchData.common.isDraw;
+            const completionReason = Number(matchData.completionReason || 0);
 
             // Get loser from common data
             const loser = matchData.common.loser || zeroAddress;
@@ -2345,7 +2344,7 @@ export default function Chess() {
               winner,
               loser,
               matchStatus,
-              isDraw,
+              completionReason,
               startTime: Number(matchData.common.startTime),
               lastMoveTime: Number(matchData.common.lastMoveTime),
               fullMoveNumber,
@@ -2477,7 +2476,7 @@ export default function Chess() {
               loser: zeroAddress,
               board: [0, 0, 0, 0, 0, 0, 0, 0, 0],
               matchStatus: 0,
-              isDraw: false,
+              completionReason: 0,
               startTime: 0,
               lastMoveTime: 0,
               timeoutState: null,
@@ -2791,7 +2790,6 @@ export default function Chess() {
       const currentTurn = matchData.currentTurn;
       const winner = matchData.common.winner;
       const matchStatus = Number(matchData.common.status);
-      const isDraw = matchData.common.isDraw;
       const startTime = Number(matchData.common.startTime);
       const lastMoveTime = Number(matchData.common.lastMoveTime);
       const completionReason = Number(matchData.completionReason || 0);
@@ -2861,19 +2859,20 @@ export default function Chess() {
 
             // Use the most recent match (likely the correct one)
             if (candidateMatches.length > 0) {
-              foundMatch = candidateMatches.sort((a, b) => Number(b.startTime) - Number(a.startTime))[0];
+              foundMatch = [...candidateMatches].sort((a, b) => Number(b.startTime) - Number(a.startTime))[0];
               console.log('[refreshMatchData] Found match by player addresses and timestamp');
             }
           }
 
           if (foundMatch) {
+            const matchCompletionReason = Number(foundMatch.completionReason);
             console.log('[refreshMatchData] Found matching completed match:', {
               tierId: Number(foundMatch.tierId),
               instanceId: Number(foundMatch.instanceId),
               round: Number(foundMatch.roundNumber),
               match: Number(foundMatch.matchNumber),
               winner: foundMatch.winner,
-              isDraw: foundMatch.isDraw,
+              completionReason: matchCompletionReason,
               movesLength: foundMatch.moves?.length || 0
             });
 
@@ -2901,7 +2900,7 @@ export default function Chess() {
 
             const winnerLower = foundMatch.winner.toLowerCase();
             const p1Lower = foundMatch.player1.toLowerCase();
-            const matchLoser = foundMatch.isDraw ? zeroAddress :
+            const matchLoser = isDraw(matchCompletionReason) ? zeroAddress :
               (winnerLower === p1Lower ? foundMatch.player2 : foundMatch.player1);
 
             return {
@@ -2909,11 +2908,10 @@ export default function Chess() {
               matchStatus: 2,
               winner: foundMatch.winner,
               loser: matchLoser,
-              isDraw: foundMatch.isDraw,
               board: matchBoard,
               isYourTurn: false,
               completedFromEventPoll: true,
-              completionReason: Number(foundMatch.completionReason),
+              completionReason: matchCompletionReason,
               // Store moves for later retrieval by fetchMoveHistory
               cachedMoves: foundMatch.moves || ''
             };
@@ -3015,7 +3013,7 @@ export default function Chess() {
         loser,
         board: boardState,
         matchStatus,
-        isDraw,
+        completionReason, // ML1/ML2/ML3/etc completion reason
         isTimedOut,
         isPlayer1,
         isYourTurn,
@@ -3026,7 +3024,6 @@ export default function Chess() {
         fullMoveNumber,
         whiteInCheck,
         blackInCheck,
-        completionReason, // ML1/ML2/ML3/etc completion reason
         // Time tracking fields
         player1TimeRemaining,
         player2TimeRemaining,
@@ -3752,11 +3749,12 @@ export default function Chess() {
             const isParticipant = isPlayer1 || isPlayer2;
 
             if (isParticipant) {
-              const userWon = !updatedMatch.isDraw && updatedMatch.winner.toLowerCase() === userAccount.toLowerCase();
               const reasonNum = updatedMatch.completionReason || 0;
+              const isMatchDraw = isDraw(reasonNum);
+              const userWon = !isMatchDraw && updatedMatch.winner.toLowerCase() === userAccount.toLowerCase();
 
               let resultType = 'lose';
-              if (updatedMatch.isDraw) {
+              if (isMatchDraw) {
                 resultType = 'draw';
               } else if (userWon) {
                 resultType = (reasonNum === 1 || reasonNum === 3 || reasonNum === 4) ? 'forfeit_win' : 'win';
@@ -3802,7 +3800,7 @@ export default function Chess() {
               lastMoveTime: updatedMatch.lastMoveTime,
               lastMoveTimestamp: updatedMatch.lastMoveTimestamp,
               lastMove: updatedMatch.lastMove, // Update last move for highlighting
-              // matchStatus, winner, loser, isDraw are preserved from prev (event-driven)
+              // matchStatus, winner, loser, completionReason are preserved from prev (event-driven)
             };
           });
 

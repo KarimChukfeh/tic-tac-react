@@ -21,13 +21,12 @@ export const CompletionReason = {
  * Get completion reason text for display
  * @param {number} reason - CompletionReason enum value
  * @param {boolean} userWon - Whether the current user won
- * @param {boolean} isDraw - Whether it was a draw
  * @param {string} gameType - 'tictactoe', 'chess', or 'connect4'
  * @returns {string} User-friendly completion message
  */
-export const getCompletionReasonText = (reason, userWon, isDraw, gameType = 'tictactoe') => {
-  // Check draw first (reason might be DRAW or user's won/lost status shows draw)
-  if (isDraw || reason === CompletionReason.DRAW) {
+export const getCompletionReasonText = (reason, userWon, gameType = 'tictactoe') => {
+  // Check draw first
+  if (reason === CompletionReason.DRAW || reason === CompletionReason.ALL_DRAW_SCENARIO) {
     return "It's a Draw!";
   }
 
@@ -73,12 +72,11 @@ export const getCompletionReasonText = (reason, userWon, isDraw, gameType = 'tic
  * Get detailed completion reason description
  * @param {number} reason - CompletionReason enum value
  * @param {boolean} userWon - Whether the current user won
- * @param {boolean} isDraw - Whether it was a draw
  * @returns {string} Detailed description
  */
-export const getCompletionReasonDescription = (reason, userWon, isDraw) => {
+export const getCompletionReasonDescription = (reason, userWon) => {
   // Check draw first
-  if (isDraw || reason === CompletionReason.DRAW) {
+  if (reason === CompletionReason.DRAW || reason === CompletionReason.ALL_DRAW_SCENARIO) {
     return 'The match ended in a draw';
   }
 
@@ -117,11 +115,10 @@ export const getCompletionReasonDescription = (reason, userWon, isDraw) => {
  * Get icon name for completion reason
  * @param {number} reason - CompletionReason enum value
  * @param {boolean} userWon - Whether the current user won
- * @param {boolean} isDraw - Whether it was a draw
  * @returns {string} Icon name (for lucide-react)
  */
-export const getCompletionReasonIcon = (reason, userWon, isDraw) => {
-  if (isDraw || reason === CompletionReason.DRAW) {
+export const getCompletionReasonIcon = (reason, userWon) => {
+  if (reason === CompletionReason.DRAW || reason === CompletionReason.ALL_DRAW_SCENARIO) {
     return 'Minus';
   }
 
@@ -166,4 +163,13 @@ export const isOpponentAbandonment = (reason) => {
 export const isExternalIntervention = (reason) => {
   return reason === CompletionReason.FORCE_ELIMINATION ||
          reason === CompletionReason.REPLACEMENT;
+};
+
+/**
+ * Check if completion reason indicates a draw
+ * @param {number} reason - CompletionReason enum value
+ * @returns {boolean}
+ */
+export const isDraw = (reason) => {
+  return reason === CompletionReason.DRAW || reason === CompletionReason.ALL_DRAW_SCENARIO;
 };

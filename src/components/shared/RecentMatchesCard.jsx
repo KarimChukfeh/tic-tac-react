@@ -7,6 +7,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { X, RefreshCw, History, ChevronDown, ChevronUp, Eye } from 'lucide-react';
 import { shortenAddress, getCellPositionName } from '../../utils/formatters';
+import { isDraw } from '../../utils/completionReasons';
 import CapturedPieces from './CapturedPieces';
 
 const RecentMatchesCard = ({
@@ -221,7 +222,6 @@ const RecentMatchesCard = ({
           player2: match.player2,
           firstPlayer: match.firstPlayer,
           winner: match.winner,
-          isDraw: match.isDraw,
           reason: Number(match.completionReason),
           board: match.packedBoard,
           startTime: Number(match.startTime),
@@ -268,7 +268,7 @@ const RecentMatchesCard = ({
     return `Round ${roundNumber + 1}`;
   };
 
-  const getOutcomeLabel = (isDraw, isWinner, reason) => {
+  const getOutcomeLabel = (isWinner, reason) => {
     const reasons = {
       0: 'Normal',
       1: 'Timeout (ML1)',
@@ -278,7 +278,7 @@ const RecentMatchesCard = ({
       5: 'All Draw'
     };
 
-    if (isDraw) return 'Draw';
+    if (isDraw(reason)) return 'Draw';
 
     const reasonText = reasons[reason] || `Unknown (${reason})`;
 
@@ -537,7 +537,8 @@ const RecentMatchesCard = ({
                 const player1Lower = match.player1?.toLowerCase() || '';
                 const player2Lower = match.player2?.toLowerCase() || '';
 
-                const isWinner = !match.isDraw && winnerLower === accountLower && winnerLower !== '0x0000000000000000000000000000000000000000';
+                const matchIsDraw = isDraw(match.reason);
+                const isWinner = !matchIsDraw && winnerLower === accountLower && winnerLower !== '0x0000000000000000000000000000000000000000';
 
                 // Check if account is actually one of the players
                 const isAccountPlayer1 = player1Lower === accountLower;
@@ -576,7 +577,7 @@ const RecentMatchesCard = ({
                     ref={(el) => { matchCardRefs.current[matchKey] = el; }}
                     data-match-key={matchKey}
                     className={`border-2 rounded-lg p-3 transition-all ${
-                      match.isDraw
+                      matchIsDraw
                         ? 'bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border-yellow-400/80'
                         : isWinner
                         ? 'bg-gradient-to-br from-green-500/10 to-emerald-500/10 border-green-400/80'
@@ -599,30 +600,42 @@ const RecentMatchesCard = ({
                             {getRoundLabel(match.tierId, match.roundNumber)}
                           </span>
                         )}
-                        {(match.reason === 1 || match.reason === 3 || match.reason === 4) ? (
+                        {(match.reason === 1 || match.reason === 2 || match.reason === 3 || match.reason === 4 || match.reason === 5) ? (
                           <a
-                            href={match.reason === 1 ? '#ml1' : match.reason === 3 ? '#ml2' : '#ml3'}
+                            href={
+                              match.reason === 1 ? '#ml1' :
+                              match.reason === 2 ? '#draws' :
+                              match.reason === 3 ? '#ml2' :
+                              match.reason === 4 ? '#ml3' :
+                              '#draws'
+                            }
                             onClick={() => handleSetExpanded(false)}
                             className={`text-[10px] px-2 py-0.5 rounded font-bold ${
-                              match.isDraw
+                              matchIsDraw
                                 ? 'bg-yellow-500/60 text-white'
                                 : isWinner
                                 ? 'bg-green-500/60 text-white'
                                 : 'bg-red-500/60 text-white'
                             } hover:opacity-80 transition-colors underline decoration-dotted cursor-pointer`}
-                            title={`Learn more about ${match.reason === 1 ? 'ML1' : match.reason === 3 ? 'ML2' : 'ML3'} in the User Manual`}
+                            title={`Learn more about ${
+                              match.reason === 1 ? 'ML1' :
+                              match.reason === 2 ? 'Draws' :
+                              match.reason === 3 ? 'ML2' :
+                              match.reason === 4 ? 'ML3' :
+                              match.reason === 5 ? 'All-Draw Resolution' : ''
+                            } in the User Manual`}
                           >
-                            {getOutcomeLabel(match.isDraw, isWinner, match.reason)}
+                            {getOutcomeLabel(isWinner, match.reason)}
                           </a>
                         ) : (
                           <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${
-                            match.isDraw
+                            matchIsDraw
                               ? 'bg-yellow-500/60 text-white'
                               : isWinner
                               ? 'bg-green-500/60 text-white'
                               : 'bg-red-500/60 text-white'
                           }`}>
-                            {getOutcomeLabel(match.isDraw, isWinner, match.reason)}
+                            {getOutcomeLabel(isWinner, match.reason)}
                           </span>
                         )}
                       </div>
@@ -668,10 +681,10 @@ const RecentMatchesCard = ({
                               )}
                             </div>
                             {(() => {
-                              const hasWinner = !match.isDraw && match.winner && match.winner !== '0x0000000000000000000000000000000000000000';
+                              const hasWinner = !matchIsDraw && match.winner && match.winner !== '0x0000000000000000000000000000000000000000';
                               const accountIsWinner = hasWinner && match.winner.toLowerCase() === account.toLowerCase();
                               const accountIsLoser = hasWinner && match.winner.toLowerCase() !== account.toLowerCase();
-                              const isDraw = match.isDraw || match.reason === 2 || match.reason === 5;
+                              const isMatchDraw = matchIsDraw;
 
                               if (accountIsWinner) {
                                 return (
@@ -679,7 +692,7 @@ const RecentMatchesCard = ({
                                     Victory
                                   </div>
                                 );
-                              } else if (accountIsLoser || isDraw) {
+                              } else if (accountIsLoser || isMatchDraw) {
                                 return (
                                   <div className="bg-red-500/40 text-red-200 text-[9px] font-semibold px-1.5 py-0.5 rounded">
                                     Defeat
@@ -717,10 +730,10 @@ const RecentMatchesCard = ({
                               )}
                             </div>
                             {(() => {
-                              const hasWinner = !match.isDraw && match.winner && match.winner !== '0x0000000000000000000000000000000000000000';
+                              const hasWinner = !matchIsDraw && match.winner && match.winner !== '0x0000000000000000000000000000000000000000';
                               const opponentIsWinner = hasWinner && match.winner.toLowerCase() === opponent.toLowerCase();
                               const opponentIsLoser = hasWinner && match.winner.toLowerCase() !== opponent.toLowerCase();
-                              const isDraw = match.isDraw || match.reason === 2 || match.reason === 5;
+                              const isMatchDraw = matchIsDraw;
 
                               if (opponentIsWinner) {
                                 return (
@@ -728,7 +741,7 @@ const RecentMatchesCard = ({
                                     Victory
                                   </div>
                                 );
-                              } else if (opponentIsLoser || isDraw) {
+                              } else if (opponentIsLoser || isMatchDraw) {
                                 return (
                                   <div className="bg-red-500/40 text-red-200 text-[9px] font-semibold px-1.5 py-0.5 rounded">
                                     Defeat
@@ -769,9 +782,9 @@ const RecentMatchesCard = ({
                               )}
                             </div>
                             {(() => {
-                              const hasWinner = !match.isDraw && match.winner && match.winner !== '0x0000000000000000000000000000000000000000';
+                              const hasWinner = !matchIsDraw && match.winner && match.winner !== '0x0000000000000000000000000000000000000000';
                               const player1IsWinner = hasWinner && match.winner.toLowerCase() === player1Lower;
-                              const isDraw = match.isDraw || match.reason === 2 || match.reason === 5;
+                              const isMatchDraw = matchIsDraw;
 
                               if (player1IsWinner) {
                                 return (
@@ -785,7 +798,7 @@ const RecentMatchesCard = ({
                                     Defeat
                                   </div>
                                 );
-                              } else if (isDraw) {
+                              } else if (isMatchDraw) {
                                 return (
                                   <div className="bg-yellow-500/40 text-yellow-200 text-[9px] font-semibold px-1.5 py-0.5 rounded">
                                     Draw
@@ -823,9 +836,9 @@ const RecentMatchesCard = ({
                               )}
                             </div>
                             {(() => {
-                              const hasWinner = !match.isDraw && match.winner && match.winner !== '0x0000000000000000000000000000000000000000';
+                              const hasWinner = !matchIsDraw && match.winner && match.winner !== '0x0000000000000000000000000000000000000000';
                               const player2IsWinner = hasWinner && match.winner.toLowerCase() === player2Lower;
-                              const isDraw = match.isDraw || match.reason === 2 || match.reason === 5;
+                              const isMatchDraw = matchIsDraw;
 
                               if (player2IsWinner) {
                                 return (
@@ -839,7 +852,7 @@ const RecentMatchesCard = ({
                                     Defeat
                                   </div>
                                 );
-                              } else if (isDraw) {
+                              } else if (isMatchDraw) {
                                 return (
                                   <div className="bg-yellow-500/40 text-yellow-200 text-[9px] font-semibold px-1.5 py-0.5 rounded">
                                     Draw
@@ -862,7 +875,7 @@ const RecentMatchesCard = ({
 
                     {/* Winner Info - Only show for ML3 wins or no winner cases */}
                     {(() => {
-                      const noWinner = match.isDraw || match.reason === 2 || match.reason === 3 || match.reason === 5;
+                      const noWinner = matchIsDraw || match.reason === 3;
                       const isML3Win = match.reason === 4;
                       const hasNoWinnerAddress = !match.winner || match.winner === '0x0000000000000000000000000000000000000000';
 
@@ -894,7 +907,7 @@ const RecentMatchesCard = ({
                     <button
                       onClick={() => toggleRecentMatchExpand(matchKey)}
                       className={`w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg transition-all text-xs font-semibold ${
-                        match.isDraw
+                        matchIsDraw
                           ? 'bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 border border-yellow-400/30'
                           : isWinner
                           ? 'bg-green-500/20 hover:bg-green-500/30 text-green-300 border border-green-400/30'

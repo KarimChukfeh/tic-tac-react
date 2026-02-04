@@ -9,9 +9,10 @@
 
 import { Trophy, Frown, ArrowRight } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
+import { isDraw } from '../../utils/completionReasons';
 
 const MatchComplete = ({
-  isDraw,
+  completionReason,
   winner,
   loser,
   currentAccount,
@@ -23,14 +24,15 @@ const MatchComplete = ({
 }) => {
   const zeroAddress = '0x0000000000000000000000000000000000000000';
 
-  const userWon = winner && currentAccount &&
+  const isMatchDraw = isDraw(completionReason);
+  const userWon = !isMatchDraw && winner && currentAccount &&
     winner.toLowerCase() === currentAccount.toLowerCase();
-  const userLost = loser && currentAccount &&
+  const userLost = !isMatchDraw && loser && currentAccount &&
     loser.toLowerCase() === currentAccount.toLowerCase();
   const isSpectator = !userWon && !userLost;
 
   // Draw scenario
-  if (isDraw) {
+  if (isMatchDraw) {
     return (
       <div
         className="rounded-xl p-4 text-center"
@@ -128,6 +130,21 @@ const MatchComplete = ({
   }
 
   // Spectator view - Show winner info
+  const hasWinner = winner && winner.toLowerCase() !== zeroAddress;
+
+  // Determine appropriate message based on completion reason
+  const getCompletionText = () => {
+    if (gameSpecificText) return gameSpecificText;
+
+    if (isMatchDraw) return 'Draw';
+
+    // ML2 (3) or ML3 (4) - no winner
+    if (completionReason === 3) return 'Force Eliminated (ML2)';
+    if (completionReason === 4) return 'Replacement Claimed (ML3)';
+
+    return hasWinner ? 'Victory!' : 'Match Complete';
+  };
+
   return (
     <div
       className="rounded-xl p-4 text-center"
@@ -142,10 +159,10 @@ const MatchComplete = ({
         <p className="text-green-400 font-bold text-lg">Match Complete</p>
       </div>
       <p className="text-white font-mono text-sm mb-1">
-        Winner: {shortenAddress(winner)}
+        Winner: {hasWinner ? shortenAddress(winner) : 'No winner'}
       </p>
       <p className="text-green-300 text-xs">
-        {gameSpecificText || 'Victory!'}
+        {getCompletionText()}
       </p>
     </div>
   );
