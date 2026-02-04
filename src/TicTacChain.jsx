@@ -307,7 +307,7 @@ export default function TicTacChain() {
   const EXPECTED_CHAIN_ID = 42161;
   // const RPC_URL = import.meta.env.VITE_RPC_URL || CURRENT_NETWORK.rpcUrl;
   // const RPC_URL = "https://arb1.arbitrum.io/rpc";
-  const RPC_URL = "https://rpc.ankr.com/arbitrum/fa78359589ebb4ba1c97e306d5ad98192c1b897a76d2df05acf7ade04aa2687b";
+  const RPC_URL = "https://arb-mainnet.g.alchemy.com/v2/yoftG-myZ5Iur7UklgbJR";
   const EXPLORER_URL = getAddressUrl(CONTRACT_ADDRESS);
 
   // Helper to get read-only contract (bypasses MetaMask for read operations)
