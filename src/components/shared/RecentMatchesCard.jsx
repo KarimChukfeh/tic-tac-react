@@ -976,7 +976,11 @@ const RecentMatchesCard = ({
                         {gameName === 'chess' && (() => {
                           const board = unpackBoard(match.board, 'chess');
                           const pieceTypes = ['', 'pawn', 'knight', 'bishop', 'rook', 'queen', 'king'];
-                          const shouldFlip = isAccountFirstPlayer;
+
+                          // Determine if viewing account is playing white (first player)
+                          // White player needs flip to see their pieces at bottom
+                          const isAccountFirstPlayer = (isAccountPlayer1 && isPlayer1First) || (isAccountPlayer2 && !isPlayer1First);
+                          const shouldFlip = isAccountFirstPlayer; // Flip if playing white
 
                           return (
                             <div className="flex justify-center">
@@ -985,6 +989,7 @@ const RecentMatchesCard = ({
                                   const displayRow = Math.floor(idx / 8);
                                   const displayCol = idx % 8;
 
+                                  // Flip board vertically if playing black
                                   const actualIdx = shouldFlip ? ((7 - displayRow) * 8 + displayCol) : idx;
                                   const actualCell = board[actualIdx];
 
