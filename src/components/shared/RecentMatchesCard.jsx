@@ -595,23 +595,20 @@ const RecentMatchesCard = ({
                         <span className="text-slate-400 text-[10px] font-semibold">
                           Match #{recentMatches.length - index}
                         </span>
-                        {/* Tier-Instance Link */}
-                        <button
-                          onClick={() => {
-                            if (onNavigateToTournament) {
-                              onNavigateToTournament(match.tierId, match.instanceId);
-                              handleSetExpanded(false);
-                            }
-                          }}
-                          className="bg-purple-500/20 text-purple-300 text-[10px] font-semibold px-2 py-0.5 rounded border border-purple-400/30 hover:bg-purple-500/30 transition-colors cursor-pointer"
-                          title="View tournament bracket"
-                        >
-                          Tier-{match.tierId + 1}-Instance-{match.instanceId + 1}
-                        </button>
+                        {/* Tier Type with Instance - Combined Link */}
                         {getTierLabel(match.tierId) && (
-                          <span className="bg-teal-500/20 text-teal-300 text-[10px] font-semibold px-2 py-0.5 rounded border border-teal-400/30">
-                            {getTierLabel(match.tierId)}
-                          </span>
+                          <button
+                            onClick={() => {
+                              if (onNavigateToTournament) {
+                                onNavigateToTournament(match.tierId, match.instanceId);
+                                handleSetExpanded(false);
+                              }
+                            }}
+                            className="bg-teal-500/20 text-teal-300 text-[10px] font-semibold px-2 py-0.5 rounded border border-teal-400/30 hover:bg-teal-500/30 transition-colors cursor-pointer underline decoration-dotted"
+                            title="View tournament bracket"
+                          >
+                            {getTierLabel(match.tierId)} Instance-{match.instanceId + 1}
+                          </button>
                         )}
                         {tierConfig && tierConfig[match.tierId] && tierConfig[match.tierId].playerCount > 2 && (
                           <span className="bg-blue-500/20 text-blue-300 text-[10px] font-semibold px-2 py-0.5 rounded border border-blue-400/30">
