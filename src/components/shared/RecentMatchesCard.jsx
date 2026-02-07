@@ -26,6 +26,7 @@ const RecentMatchesCard = ({
   showTooltip = false, // External control for tooltip visibility
   onShowTooltip, // Callback to show this component's tooltip
   onHideTooltip, // Callback to hide this component's tooltip
+  onNavigateToTournament, // Callback to navigate to tournament bracket view
 }) => {
   const [internalIsExpanded, setInternalIsExpanded] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
@@ -594,6 +595,19 @@ const RecentMatchesCard = ({
                         <span className="text-slate-400 text-[10px] font-semibold">
                           Match #{recentMatches.length - index}
                         </span>
+                        {/* Tier-Instance Link */}
+                        <button
+                          onClick={() => {
+                            if (onNavigateToTournament) {
+                              onNavigateToTournament(match.tierId, match.instanceId);
+                              handleSetExpanded(false);
+                            }
+                          }}
+                          className="bg-purple-500/20 text-purple-300 text-[10px] font-semibold px-2 py-0.5 rounded border border-purple-400/30 hover:bg-purple-500/30 transition-colors cursor-pointer"
+                          title="View tournament bracket"
+                        >
+                          Tier-{match.tierId + 1}-Instance-{match.instanceId + 1}
+                        </button>
                         {getTierLabel(match.tierId) && (
                           <span className="bg-teal-500/20 text-teal-300 text-[10px] font-semibold px-2 py-0.5 rounded border border-teal-400/30">
                             {getTierLabel(match.tierId)}

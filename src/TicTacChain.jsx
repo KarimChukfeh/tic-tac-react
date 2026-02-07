@@ -279,13 +279,15 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, /* onSpectate
 
             {/* Recent instance history (shown when no enrolled players) */}
             {enrolledCount === 0 && (
-              <RecentInstanceCard
-                tierId={tierId}
-                instanceId={instanceId}
-                contract={contract}
-                tierName={tournamentTypeLabel}
-                walletAddress={account}
-              />
+              <div id="last-instance">
+                <RecentInstanceCard
+                  tierId={tierId}
+                  instanceId={instanceId}
+                  contract={contract}
+                  tierName={tournamentTypeLabel}
+                  walletAddress={account}
+                />
+              </div>
             )}
           </div>
         )}
@@ -1863,6 +1865,13 @@ export default function TicTacChain() {
           if (collapseActivityPanelRef.current) {
             collapseActivityPanelRef.current();
           }
+          // Additional scroll to last instance section if it exists
+          setTimeout(() => {
+            const lastInstanceSection = document.getElementById('last-instance');
+            if (lastInstanceSection) {
+              lastInstanceSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          }, 300);
         }, 100);
       }
 
@@ -3252,6 +3261,7 @@ export default function TicTacChain() {
             showTooltip={activeTooltip === 'recentMatches'}
             onShowTooltip={() => setActiveTooltip('recentMatches')}
             onHideTooltip={() => setActiveTooltip(null)}
+            onNavigateToTournament={handleEnterTournament}
           />
 
           {/* Community Raffle Card */}
@@ -3324,6 +3334,7 @@ export default function TicTacChain() {
             showTooltip={activeTooltip === 'recentMatches'}
             onShowTooltip={() => setActiveTooltip('recentMatches')}
             onHideTooltip={() => setActiveTooltip(null)}
+            onNavigateToTournament={handleEnterTournament}
           />
 
           <CommunityRaffleCard

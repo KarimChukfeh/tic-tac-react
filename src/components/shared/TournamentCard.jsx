@@ -212,7 +212,7 @@ const TournamentCard = ({
   }, [enrollmentTimeout, isEnrolled, contract, tierId, instanceId, isVisible, isTabActive, currentEnrolled, maxPlayers]);
 
   return (
-    <div ref={cardRef} className={`bg-gradient-to-br ${colors.cardBg} backdrop-blur-lg rounded-2xl p-6 border-2 ${colors.cardBorder} transition-all hover:shadow-xl ${colors.cardShadow}`}>
+    <div id={`t${tierId}-i${instanceId}`} ref={cardRef} className={`bg-gradient-to-br ${colors.cardBg} backdrop-blur-lg rounded-2xl p-6 border-2 ${colors.cardBorder} transition-all hover:shadow-xl ${colors.cardShadow}`}>
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
