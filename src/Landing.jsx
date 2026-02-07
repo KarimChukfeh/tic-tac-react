@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Shield, Lock, Eye, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Shield, Lock, Eye, CheckCircle, ChevronDown, ChevronUp, HelpCircle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
@@ -414,7 +414,22 @@ export default function Landing() {
           
           {/* Subheadline */}
           <p className="text-xl md:text-2xl text-slate-400 text-center max-w-2xl mb-12 leading-relaxed">
-            Classic games. ETH stakes. <span className="block md:inline">No hidden costs.</span>
+            <a
+              href="#how-does-etour-work"
+              onClick={(e) => {
+                e.preventDefault();
+                const faqSection = document.getElementById('how-does-etour-work');
+                if (faqSection) {
+                  faqSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  // Expand the FAQ item after scrolling
+                  setTimeout(() => setExpandedFaq(0), 500);
+                }
+              }}
+              className="inline-flex items-center gap-2 hover:text-slate-300 transition-colors cursor-pointer underline decoration-dotted decoration-slate-500 underline-offset-4"
+            >
+              Classic games. ETH stakes. No hidden costs.
+              <HelpCircle size={20} className="text-cyan-400" />
+            </a>
             <br />
             <span className="text-white font-semibold inline-block mt-4">Skill vs skill. Real ETH on the line.</span>
           </p>
@@ -602,7 +617,11 @@ export default function Landing() {
             <h2 className="text-4xl font-bold mb-12 text-center text-white">Frequently Asked Questions</h2>
             <div className="space-y-4">
               {faqs.map((faq, idx) => (
-                <div key={idx} className="border border-slate-700/50 rounded-xl overflow-hidden bg-slate-900/60">
+                <div
+                  key={idx}
+                  id={idx === 0 ? 'how-does-etour-work' : undefined}
+                  className="border border-slate-700/50 rounded-xl overflow-hidden bg-slate-900/60"
+                >
                   <button
                     onClick={() => setExpandedFaq(expandedFaq === idx ? null : idx)}
                     className="w-full px-6 py-5 flex items-center justify-between hover:bg-slate-800/50 transition-colors cursor-pointer"
