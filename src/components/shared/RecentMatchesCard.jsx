@@ -7,6 +7,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { X, RefreshCw, History, ChevronDown, ChevronUp, Eye } from 'lucide-react';
 import { shortenAddress, getCellPositionName } from '../../utils/formatters';
+import { isDraw } from '../../utils/completionReasons';
 import CapturedPieces from './CapturedPieces';
 
 const RecentMatchesCard = ({
@@ -22,6 +23,10 @@ const RecentMatchesCard = ({
   tierConfig = null,
   isElite = false,
   disabled = false, // Disable interaction when wallet not connected
+  showTooltip = false, // External control for tooltip visibility
+  onShowTooltip, // Callback to show this component's tooltip
+  onHideTooltip, // Callback to hide this component's tooltip
+  onNavigateToTournament, // Callback to navigate to tournament bracket view
 }) => {
   const [internalIsExpanded, setInternalIsExpanded] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
@@ -31,7 +36,6 @@ const RecentMatchesCard = ({
   const [syncing, setSyncing] = useState(false);
   const expandedPanelRef = useRef(null);
   const prevExpandedRef = useRef(false);
-  const [showMobileTooltip, setShowMobileTooltip] = useState(false);
   const matchCardRefs = useRef({});
 
   // Use external state if provided, otherwise use internal state
@@ -221,7 +225,6 @@ const RecentMatchesCard = ({
           player2: match.player2,
           firstPlayer: match.firstPlayer,
           winner: match.winner,
-          isDraw: match.isDraw,
           reason: Number(match.completionReason),
           board: match.packedBoard,
           startTime: Number(match.startTime),
@@ -268,7 +271,7 @@ const RecentMatchesCard = ({
     return `Round ${roundNumber + 1}`;
   };
 
-  const getOutcomeLabel = (isDraw, isWinner, reason) => {
+  const getOutcomeLabel = (isWinner, reason) => {
     const reasons = {
       0: 'Normal',
       1: 'Timeout (ML1)',
@@ -278,7 +281,7 @@ const RecentMatchesCard = ({
       5: 'All Draw'
     };
 
-    if (isDraw) return 'Draw';
+    if (isDraw(reason)) return 'Draw';
 
     const reasonText = reasons[reason] || `Unknown (${reason})`;
 
@@ -425,10 +428,10 @@ const RecentMatchesCard = ({
     >
       {/* Toggle Button */}
       <button
-        onClick={() => {
+        onClick={(e) => {
+          e.stopPropagation(); // Prevent click from bubbling to document
           if (disabled) {
-            setShowMobileTooltip(true);
-            setTimeout(() => setShowMobileTooltip(false), 2000);
+            if (onShowTooltip) onShowTooltip();
           } else {
             handleSetExpanded(!isExpanded);
           }
@@ -466,14 +469,16 @@ const RecentMatchesCard = ({
         )}
 
         {/* Tooltip - Mobile only */}
-        {showMobileTooltip && disabled && (
+        {showTooltip && disabled && (
           <a
             href="#connect-wallet-cta"
-            onClick={() => setShowMobileTooltip(false)}
-            className="md:hidden absolute bottom-full mb-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-6 py-3 rounded-xl whitespace-nowrap z-[100] animate-fade-in shadow-2xl border-2 border-purple-400/60 hover:scale-105 transition-transform"
+            onClick={(e) => {
+              e.stopPropagation(); // Allow navigation but prevent document click
+              if (onHideTooltip) onHideTooltip();
+            }}
+            className="md:hidden fixed bottom-20 left-4 right-4 w-auto max-w-[calc(100vw-2rem)] bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-6 py-3 rounded-xl z-[100] animate-fade-in shadow-2xl border-2 border-purple-400/60 hover:scale-105 transition-transform text-center"
           >
             Connect Wallet to View Your Match History
-            <div className="absolute top-full left-1/2 -translate-x-1/2 border-[6px] border-transparent border-t-purple-600"></div>
           </a>
         )}
       </button>
@@ -537,28 +542,39 @@ const RecentMatchesCard = ({
                 const player1Lower = match.player1?.toLowerCase() || '';
                 const player2Lower = match.player2?.toLowerCase() || '';
 
-                const isWinner = !match.isDraw && winnerLower === accountLower && winnerLower !== '0x0000000000000000000000000000000000000000';
+                const matchIsDraw = isDraw(match.reason);
+                const isWinner = !matchIsDraw && winnerLower === accountLower && winnerLower !== '0x0000000000000000000000000000000000000000';
 
-                const opponent = player1Lower === accountLower ? match.player2 : match.player1;
+                // Check if account is actually one of the players
+                const isAccountPlayer1 = player1Lower === accountLower;
+                const isAccountPlayer2 = player2Lower === accountLower;
+                const isAccountActualPlayer = isAccountPlayer1 || isAccountPlayer2;
+
+                const opponent = isAccountPlayer1 ? match.player2 : match.player1;
                 const matchKey = `recent-${match.matchId}-${index}`;
                 const isMatchExpanded = expandedRecentMatches.has(matchKey);
 
                 const firstPlayerLower = match.firstPlayer?.toLowerCase() || '';
-                const isAccountFirstPlayer = firstPlayerLower === accountLower;
+                const isPlayer1First = firstPlayerLower === player1Lower;
 
-                let accountSymbol = '';
-                let opponentSymbol = '';
+                // Determine symbols for each player
+                let player1Symbol = '';
+                let player2Symbol = '';
 
                 if (gameName === 'tictactoe') {
-                  accountSymbol = isAccountFirstPlayer ? 'X' : 'O';
-                  opponentSymbol = isAccountFirstPlayer ? 'O' : 'X';
+                  player1Symbol = isPlayer1First ? 'X' : 'O';
+                  player2Symbol = isPlayer1First ? 'O' : 'X';
                 } else if (gameName === 'connect4') {
-                  accountSymbol = isAccountFirstPlayer ? 'Red' : 'Blue';
-                  opponentSymbol = isAccountFirstPlayer ? 'Blue' : 'Red';
+                  player1Symbol = isPlayer1First ? 'Red' : 'Blue';
+                  player2Symbol = isPlayer1First ? 'Blue' : 'Red';
                 } else if (gameName === 'chess') {
-                  accountSymbol = isAccountFirstPlayer ? 'White' : 'Black';
-                  opponentSymbol = isAccountFirstPlayer ? 'Black' : 'White';
+                  player1Symbol = isPlayer1First ? 'White' : 'Black';
+                  player2Symbol = isPlayer1First ? 'Black' : 'White';
                 }
+
+                // For account/opponent display when account is a player
+                const accountSymbol = isAccountPlayer1 ? player1Symbol : player2Symbol;
+                const opponentSymbol = isAccountPlayer1 ? player2Symbol : player1Symbol;
 
                 return (
                   <div
@@ -566,7 +582,7 @@ const RecentMatchesCard = ({
                     ref={(el) => { matchCardRefs.current[matchKey] = el; }}
                     data-match-key={matchKey}
                     className={`border-2 rounded-lg p-3 transition-all ${
-                      match.isDraw
+                      matchIsDraw
                         ? 'bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border-yellow-400/80'
                         : isWinner
                         ? 'bg-gradient-to-br from-green-500/10 to-emerald-500/10 border-green-400/80'
@@ -579,40 +595,62 @@ const RecentMatchesCard = ({
                         <span className="text-slate-400 text-[10px] font-semibold">
                           Match #{recentMatches.length - index}
                         </span>
+                        {/* Tier Type with Instance - Combined Link */}
                         {getTierLabel(match.tierId) && (
-                          <span className="bg-teal-500/20 text-teal-300 text-[10px] font-semibold px-2 py-0.5 rounded border border-teal-400/30">
-                            {getTierLabel(match.tierId)}
-                          </span>
+                          <button
+                            onClick={() => {
+                              if (onNavigateToTournament) {
+                                onNavigateToTournament(match.tierId, match.instanceId);
+                                handleSetExpanded(false);
+                              }
+                            }}
+                            className="bg-teal-500/20 text-teal-300 text-[10px] font-semibold px-2 py-0.5 rounded border border-teal-400/30 hover:bg-teal-500/30 transition-colors cursor-pointer underline decoration-dotted"
+                            title="View tournament bracket"
+                          >
+                            {getTierLabel(match.tierId)} Instance-{match.instanceId + 1}
+                          </button>
                         )}
                         {tierConfig && tierConfig[match.tierId] && tierConfig[match.tierId].playerCount > 2 && (
                           <span className="bg-blue-500/20 text-blue-300 text-[10px] font-semibold px-2 py-0.5 rounded border border-blue-400/30">
                             {getRoundLabel(match.tierId, match.roundNumber)}
                           </span>
                         )}
-                        {(match.reason === 1 || match.reason === 3 || match.reason === 4) ? (
+                        {(match.reason === 1 || match.reason === 2 || match.reason === 3 || match.reason === 4 || match.reason === 5) ? (
                           <a
-                            href={match.reason === 1 ? '#ml1' : match.reason === 3 ? '#ml2' : '#ml3'}
+                            href={
+                              match.reason === 1 ? '#ml1' :
+                              match.reason === 2 ? '#draws' :
+                              match.reason === 3 ? '#ml2' :
+                              match.reason === 4 ? '#ml3' :
+                              '#draws'
+                            }
                             onClick={() => handleSetExpanded(false)}
                             className={`text-[10px] px-2 py-0.5 rounded font-bold ${
-                              match.isDraw
+                              matchIsDraw
                                 ? 'bg-yellow-500/60 text-white'
                                 : isWinner
                                 ? 'bg-green-500/60 text-white'
                                 : 'bg-red-500/60 text-white'
                             } hover:opacity-80 transition-colors underline decoration-dotted cursor-pointer`}
-                            title={`Learn more about ${match.reason === 1 ? 'ML1' : match.reason === 3 ? 'ML2' : 'ML3'} in the User Manual`}
+                            title={`Learn more about ${
+                              match.reason === 1 ? 'ML1' :
+                              match.reason === 2 ? 'Draws' :
+                              match.reason === 3 ? 'ML2' :
+                              match.reason === 4 ? 'ML3' :
+                              match.reason === 5 ? 'All-Draw Resolution' : ''
+                            } in the User Manual`}
                           >
-                            {getOutcomeLabel(match.isDraw, isWinner, match.reason)}
+                            {getOutcomeLabel(isWinner, match.reason)}
                           </a>
                         ) : (
                           <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${
-                            match.isDraw
+                            matchIsDraw
                               ? 'bg-yellow-500/60 text-white'
                               : isWinner
                               ? 'bg-green-500/60 text-white'
                               : 'bg-red-500/60 text-white'
                           }`}>
-                            {getOutcomeLabel(match.isDraw, isWinner, match.reason)}
+                            {getOutcomeLabel(isWinner, match.reason)}
                           </span>
                         )}
                       </div>
@@ -627,104 +665,220 @@ const RecentMatchesCard = ({
 
                     {/* Match Participants */}
                     <div className="flex items-center justify-between gap-2 mb-2.5 flex-wrap">
-                      <span className="bg-blue-500/20 text-blue-300 text-[10px] px-2 py-1 rounded border border-blue-400/30 font-mono flex flex-col items-center gap-1 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-normal">You</span>
-                          <span className="font-semibold">{account.slice(0, 5)}...{account.slice(-2)}</span>
-                          <span className="font-normal">as</span>
-                          {gameName === 'chess' ? (
-                            <img
-                              src={accountSymbol === 'White' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
-                              alt={accountSymbol}
-                              className="w-3.5 h-3.5 inline-block"
-                              draggable="false"
-                            />
-                          ) : gameName === 'tictactoe' ? (
-                            accountSymbol === 'X' ? (
-                              <span className="w-3 h-3 inline-block relative">
-                                <span className="absolute inset-0 bg-blue-500 transform rotate-45" style={{width: '2px', height: '100%', left: '50%', marginLeft: '-1px'}}></span>
-                                <span className="absolute inset-0 bg-blue-500 transform -rotate-45" style={{width: '2px', height: '100%', left: '50%', marginLeft: '-1px'}}></span>
-                              </span>
-                            ) : (
-                              <span className="w-3 h-3 rounded-full inline-block border-2 border-red-500"></span>
-                            )
-                          ) : gameName === 'connect4' ? (
-                            <span className={`w-3 h-3 rounded-full inline-block ${accountSymbol === 'Red' ? 'bg-red-500' : 'bg-blue-500'}`}></span>
-                          ) : (
-                            <span>({accountSymbol})</span>
-                          )}
-                        </div>
-                        {(() => {
-                          const hasWinner = !match.isDraw && match.winner && match.winner !== '0x0000000000000000000000000000000000000000';
-                          const accountIsWinner = hasWinner && match.winner.toLowerCase() === account.toLowerCase();
-                          const accountIsLoser = hasWinner && match.winner.toLowerCase() !== account.toLowerCase();
-                          const isDraw = match.isDraw || match.reason === 2 || match.reason === 5;
+                      {isAccountActualPlayer ? (
+                        <>
+                          {/* When account is a player - show "You" and "vs opponent" */}
+                          <span className="bg-blue-500/20 text-blue-300 text-[10px] px-2 py-1 rounded border border-blue-400/30 font-mono flex flex-col items-center gap-1 flex-1">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-normal">You</span>
+                              <span className="font-semibold">{account.slice(0, 5)}...{account.slice(-2)}</span>
+                              <span className="font-normal">as</span>
+                              {gameName === 'chess' ? (
+                                <img
+                                  src={accountSymbol === 'White' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
+                                  alt={accountSymbol}
+                                  className="w-3.5 h-3.5 inline-block"
+                                  draggable="false"
+                                />
+                              ) : gameName === 'tictactoe' ? (
+                                accountSymbol === 'X' ? (
+                                  <span className="w-3 h-3 inline-block relative">
+                                    <span className="absolute inset-0 bg-blue-500 transform rotate-45" style={{width: '2px', height: '100%', left: '50%', marginLeft: '-1px'}}></span>
+                                    <span className="absolute inset-0 bg-blue-500 transform -rotate-45" style={{width: '2px', height: '100%', left: '50%', marginLeft: '-1px'}}></span>
+                                  </span>
+                                ) : (
+                                  <span className="w-3 h-3 rounded-full inline-block border-2 border-red-500"></span>
+                                )
+                              ) : gameName === 'connect4' ? (
+                                <span className={`w-3 h-3 rounded-full inline-block ${accountSymbol === 'Red' ? 'bg-red-500' : 'bg-blue-500'}`}></span>
+                              ) : (
+                                <span>({accountSymbol})</span>
+                              )}
+                            </div>
+                            {(() => {
+                              const hasWinner = !matchIsDraw && match.winner && match.winner !== '0x0000000000000000000000000000000000000000';
+                              const accountIsWinner = hasWinner && match.winner.toLowerCase() === account.toLowerCase();
+                              const accountIsLoser = hasWinner && match.winner.toLowerCase() !== account.toLowerCase();
+                              const isMatchDraw = matchIsDraw;
 
-                          if (accountIsWinner) {
-                            return (
-                              <div className="bg-green-500/40 text-green-200 text-[9px] font-semibold px-1.5 py-0.5 rounded">
-                                Victory
-                              </div>
-                            );
-                          } else if (accountIsLoser || isDraw) {
-                            return (
-                              <div className="bg-red-500/40 text-red-200 text-[9px] font-semibold px-1.5 py-0.5 rounded">
-                                Defeat
-                              </div>
-                            );
-                          }
-                          return null;
-                        })()}
-                      </span>
-                      <span className="bg-blue-500/20 text-blue-300 text-[10px] px-2 py-1 rounded border border-blue-400/30 font-mono flex flex-col items-center gap-1 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-normal">vs</span>
-                          <span className="font-semibold">{opponent.slice(0, 5)}...{opponent.slice(-2)}</span>
-                          <span className="font-normal">as</span>
-                          {gameName === 'chess' ? (
-                            <img
-                              src={opponentSymbol === 'White' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
-                              alt={opponentSymbol}
-                              className="w-3.5 h-3.5 inline-block"
-                              draggable="false"
-                            />
-                          ) : gameName === 'tictactoe' ? (
-                            opponentSymbol === 'X' ? (
-                              <span className="w-3 h-3 inline-block relative">
-                                <span className="absolute inset-0 bg-blue-500 transform rotate-45" style={{width: '2px', height: '100%', left: '50%', marginLeft: '-1px'}}></span>
-                                <span className="absolute inset-0 bg-blue-500 transform -rotate-45" style={{width: '2px', height: '100%', left: '50%', marginLeft: '-1px'}}></span>
-                              </span>
-                            ) : (
-                              <span className="w-3 h-3 rounded-full inline-block border-2 border-red-500"></span>
-                            )
-                          ) : gameName === 'connect4' ? (
-                            <span className={`w-3 h-3 rounded-full inline-block ${opponentSymbol === 'Red' ? 'bg-red-500' : 'bg-blue-500'}`}></span>
-                          ) : (
-                            <span>({opponentSymbol})</span>
-                          )}
-                        </div>
-                        {(() => {
-                          const hasWinner = !match.isDraw && match.winner && match.winner !== '0x0000000000000000000000000000000000000000';
-                          const opponentIsWinner = hasWinner && match.winner.toLowerCase() === opponent.toLowerCase();
-                          const opponentIsLoser = hasWinner && match.winner.toLowerCase() !== opponent.toLowerCase();
-                          const isDraw = match.isDraw || match.reason === 2 || match.reason === 5;
+                              if (accountIsWinner) {
+                                return (
+                                  <div className="bg-green-500/40 text-green-200 text-[9px] font-semibold px-1.5 py-0.5 rounded">
+                                    Victory
+                                  </div>
+                                );
+                              } else if (accountIsLoser || isMatchDraw) {
+                                return (
+                                  <div className="bg-red-500/40 text-red-200 text-[9px] font-semibold px-1.5 py-0.5 rounded">
+                                    Defeat
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
+                          </span>
+                          <span className="bg-blue-500/20 text-blue-300 text-[10px] px-2 py-1 rounded border border-blue-400/30 font-mono flex flex-col items-center gap-1 flex-1">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-normal">vs</span>
+                              <span className="font-semibold">{opponent.slice(0, 5)}...{opponent.slice(-2)}</span>
+                              <span className="font-normal">as</span>
+                              {gameName === 'chess' ? (
+                                <img
+                                  src={opponentSymbol === 'White' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
+                                  alt={opponentSymbol}
+                                  className="w-3.5 h-3.5 inline-block"
+                                  draggable="false"
+                                />
+                              ) : gameName === 'tictactoe' ? (
+                                opponentSymbol === 'X' ? (
+                                  <span className="w-3 h-3 inline-block relative">
+                                    <span className="absolute inset-0 bg-blue-500 transform rotate-45" style={{width: '2px', height: '100%', left: '50%', marginLeft: '-1px'}}></span>
+                                    <span className="absolute inset-0 bg-blue-500 transform -rotate-45" style={{width: '2px', height: '100%', left: '50%', marginLeft: '-1px'}}></span>
+                                  </span>
+                                ) : (
+                                  <span className="w-3 h-3 rounded-full inline-block border-2 border-red-500"></span>
+                                )
+                              ) : gameName === 'connect4' ? (
+                                <span className={`w-3 h-3 rounded-full inline-block ${opponentSymbol === 'Red' ? 'bg-red-500' : 'bg-blue-500'}`}></span>
+                              ) : (
+                                <span>({opponentSymbol})</span>
+                              )}
+                            </div>
+                            {(() => {
+                              const hasWinner = !matchIsDraw && match.winner && match.winner !== '0x0000000000000000000000000000000000000000';
+                              const opponentIsWinner = hasWinner && match.winner.toLowerCase() === opponent.toLowerCase();
+                              const opponentIsLoser = hasWinner && match.winner.toLowerCase() !== opponent.toLowerCase();
+                              const isMatchDraw = matchIsDraw;
 
-                          if (opponentIsWinner) {
-                            return (
-                              <div className="bg-green-500/40 text-green-200 text-[9px] font-semibold px-1.5 py-0.5 rounded">
-                                Victory
-                              </div>
-                            );
-                          } else if (opponentIsLoser || isDraw) {
-                            return (
-                              <div className="bg-red-500/40 text-red-200 text-[9px] font-semibold px-1.5 py-0.5 rounded">
-                                Defeat
-                              </div>
-                            );
-                          }
-                          return null;
-                        })()}
-                      </span>
+                              if (opponentIsWinner) {
+                                return (
+                                  <div className="bg-green-500/40 text-green-200 text-[9px] font-semibold px-1.5 py-0.5 rounded">
+                                    Victory
+                                  </div>
+                                );
+                              } else if (opponentIsLoser || isMatchDraw) {
+                                return (
+                                  <div className="bg-red-500/40 text-red-200 text-[9px] font-semibold px-1.5 py-0.5 rounded">
+                                    Defeat
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          {/* When account is NOT a player (ML3 winner) - show both players normally */}
+                          <span className="bg-blue-500/20 text-blue-300 text-[10px] px-2 py-1 rounded border border-blue-400/30 font-mono flex flex-col items-center gap-1 flex-1">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-semibold">{match.player1.slice(0, 5)}...{match.player1.slice(-2)}</span>
+                              <span className="font-normal">as</span>
+                              {gameName === 'chess' ? (
+                                <img
+                                  src={player1Symbol === 'White' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
+                                  alt={player1Symbol}
+                                  className="w-3.5 h-3.5 inline-block"
+                                  draggable="false"
+                                />
+                              ) : gameName === 'tictactoe' ? (
+                                player1Symbol === 'X' ? (
+                                  <span className="w-3 h-3 inline-block relative">
+                                    <span className="absolute inset-0 bg-blue-500 transform rotate-45" style={{width: '2px', height: '100%', left: '50%', marginLeft: '-1px'}}></span>
+                                    <span className="absolute inset-0 bg-blue-500 transform -rotate-45" style={{width: '2px', height: '100%', left: '50%', marginLeft: '-1px'}}></span>
+                                  </span>
+                                ) : (
+                                  <span className="w-3 h-3 rounded-full inline-block border-2 border-red-500"></span>
+                                )
+                              ) : gameName === 'connect4' ? (
+                                <span className={`w-3 h-3 rounded-full inline-block ${player1Symbol === 'Red' ? 'bg-red-500' : 'bg-blue-500'}`}></span>
+                              ) : (
+                                <span>({player1Symbol})</span>
+                              )}
+                            </div>
+                            {(() => {
+                              const hasWinner = !matchIsDraw && match.winner && match.winner !== '0x0000000000000000000000000000000000000000';
+                              const player1IsWinner = hasWinner && match.winner.toLowerCase() === player1Lower;
+                              const isMatchDraw = matchIsDraw;
+
+                              if (player1IsWinner) {
+                                return (
+                                  <div className="bg-green-500/40 text-green-200 text-[9px] font-semibold px-1.5 py-0.5 rounded">
+                                    Victory
+                                  </div>
+                                );
+                              } else if (!player1IsWinner && hasWinner) {
+                                return (
+                                  <div className="bg-red-500/40 text-red-200 text-[9px] font-semibold px-1.5 py-0.5 rounded">
+                                    Defeat
+                                  </div>
+                                );
+                              } else if (isMatchDraw) {
+                                return (
+                                  <div className="bg-yellow-500/40 text-yellow-200 text-[9px] font-semibold px-1.5 py-0.5 rounded">
+                                    Draw
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
+                          </span>
+                          <span className="bg-blue-500/20 text-blue-300 text-[10px] px-2 py-1 rounded border border-blue-400/30 font-mono flex flex-col items-center gap-1 flex-1">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-normal">vs</span>
+                              <span className="font-semibold">{match.player2.slice(0, 5)}...{match.player2.slice(-2)}</span>
+                              <span className="font-normal">as</span>
+                              {gameName === 'chess' ? (
+                                <img
+                                  src={player2Symbol === 'White' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
+                                  alt={player2Symbol}
+                                  className="w-3.5 h-3.5 inline-block"
+                                  draggable="false"
+                                />
+                              ) : gameName === 'tictactoe' ? (
+                                player2Symbol === 'X' ? (
+                                  <span className="w-3 h-3 inline-block relative">
+                                    <span className="absolute inset-0 bg-blue-500 transform rotate-45" style={{width: '2px', height: '100%', left: '50%', marginLeft: '-1px'}}></span>
+                                    <span className="absolute inset-0 bg-blue-500 transform -rotate-45" style={{width: '2px', height: '100%', left: '50%', marginLeft: '-1px'}}></span>
+                                  </span>
+                                ) : (
+                                  <span className="w-3 h-3 rounded-full inline-block border-2 border-red-500"></span>
+                                )
+                              ) : gameName === 'connect4' ? (
+                                <span className={`w-3 h-3 rounded-full inline-block ${player2Symbol === 'Red' ? 'bg-red-500' : 'bg-blue-500'}`}></span>
+                              ) : (
+                                <span>({player2Symbol})</span>
+                              )}
+                            </div>
+                            {(() => {
+                              const hasWinner = !matchIsDraw && match.winner && match.winner !== '0x0000000000000000000000000000000000000000';
+                              const player2IsWinner = hasWinner && match.winner.toLowerCase() === player2Lower;
+                              const isMatchDraw = matchIsDraw;
+
+                              if (player2IsWinner) {
+                                return (
+                                  <div className="bg-green-500/40 text-green-200 text-[9px] font-semibold px-1.5 py-0.5 rounded">
+                                    Victory
+                                  </div>
+                                );
+                              } else if (!player2IsWinner && hasWinner) {
+                                return (
+                                  <div className="bg-red-500/40 text-red-200 text-[9px] font-semibold px-1.5 py-0.5 rounded">
+                                    Defeat
+                                  </div>
+                                );
+                              } else if (isMatchDraw) {
+                                return (
+                                  <div className="bg-yellow-500/40 text-yellow-200 text-[9px] font-semibold px-1.5 py-0.5 rounded">
+                                    Draw
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
+                          </span>
+                        </>
+                      )}
                     </div>
 
                     {/* Ended Timestamp */}
@@ -736,7 +890,7 @@ const RecentMatchesCard = ({
 
                     {/* Winner Info - Only show for ML3 wins or no winner cases */}
                     {(() => {
-                      const noWinner = match.isDraw || match.reason === 2 || match.reason === 3 || match.reason === 5;
+                      const noWinner = matchIsDraw || match.reason === 3;
                       const isML3Win = match.reason === 4;
                       const hasNoWinnerAddress = !match.winner || match.winner === '0x0000000000000000000000000000000000000000';
 
@@ -768,7 +922,7 @@ const RecentMatchesCard = ({
                     <button
                       onClick={() => toggleRecentMatchExpand(matchKey)}
                       className={`w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg transition-all text-xs font-semibold ${
-                        match.isDraw
+                        matchIsDraw
                           ? 'bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 border border-yellow-400/30'
                           : isWinner
                           ? 'bg-green-500/20 hover:bg-green-500/30 text-green-300 border border-green-400/30'
@@ -833,7 +987,11 @@ const RecentMatchesCard = ({
                         {gameName === 'chess' && (() => {
                           const board = unpackBoard(match.board, 'chess');
                           const pieceTypes = ['', 'pawn', 'knight', 'bishop', 'rook', 'queen', 'king'];
-                          const shouldFlip = isAccountFirstPlayer;
+
+                          // Determine if viewing account is playing white (first player)
+                          // White player needs flip to see their pieces at bottom
+                          const isAccountFirstPlayer = (isAccountPlayer1 && isPlayer1First) || (isAccountPlayer2 && !isPlayer1First);
+                          const shouldFlip = isAccountFirstPlayer; // Flip if playing white
 
                           return (
                             <div className="flex justify-center">
@@ -842,6 +1000,7 @@ const RecentMatchesCard = ({
                                   const displayRow = Math.floor(idx / 8);
                                   const displayCol = idx % 8;
 
+                                  // Flip board vertically if playing black
                                   const actualIdx = shouldFlip ? ((7 - displayRow) * 8 + displayCol) : idx;
                                   const actualCell = board[actualIdx];
 

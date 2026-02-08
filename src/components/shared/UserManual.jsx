@@ -104,6 +104,9 @@ const UserManual = ({
         }
         console.log('[UserManual] Fetched tier IDs:', tierIds, `(${tierIds.length} tiers)`);
 
+        const canGetRaffleConfig = typeof contractInstance.getRaffleConfiguration === 'function';
+        const canGetRaffleThresholds = typeof contractInstance.getRaffleThresholds === 'function';
+
         const [
           basisPoints,
           protocolShareBps,
@@ -114,8 +117,8 @@ const UserManual = ({
           contractInstance.BASIS_POINTS(),
           contractInstance.PROTOCOL_SHARE_BPS(),
           contractInstance.getRaffleInfo().catch(() => null),
-          contractInstance.getRaffleConfiguration().catch(() => null),
-          contractInstance.getRaffleThresholds().catch(() => null)
+          canGetRaffleConfig ? contractInstance.getRaffleConfiguration().catch(() => null) : null,
+          canGetRaffleThresholds ? contractInstance.getRaffleThresholds().catch(() => null) : null
         ]);
 
         // Fetch configuration for each tier
@@ -558,6 +561,46 @@ const UserManual = ({
             <hr className={colors.borderDark} />
           </>
         )}
+
+        {/* How Are Draws Handled Section */}
+        <div>
+          <h2 id="draws" className={`text-2xl font-bold ${colors.secondary} mb-6 scroll-mt-24`}>How Are Draws Handled?</h2>
+
+          <div className="space-y-3 text-gray-300">
+            <p>
+              In most cases, <span className={colors.highlightText}>a draw means both players are eliminated</span> from the tournament. There is no winner, and neither player advances to the next round.
+            </p>
+
+            <div className={`${colors.accentBg} border ${colors.accentBorder} rounded-lg p-4 mt-4`}>
+              <h4 className={`text-base font-semibold ${colors.highlightText} mb-2`}>Exception: Final Round Draws</h4>
+              <p>
+                If <strong>all matches</strong> in the final round result in draws, the situation is handled differently:
+              </p>
+              <ul className="list-disc list-inside space-y-2 mt-3 ml-2">
+                <li>
+                  <strong>Finals draw:</strong> If the finals match ends in a draw, the two finalists split the prize pool evenly.
+                </li>
+                <li>
+                  <strong>Semi-finals draws:</strong> If both semi-final matches end in draws, all four semi-finalists split the prize pool evenly.
+                </li>
+                <li>
+                  <strong>Quarter-finals draws:</strong> If all quarter-final matches end in draws, all eight quarter-finalists split the prize pool evenly.
+                </li>
+              </ul>
+              <p className="mt-3">
+                This ensures that when the final round concludes with no clear winners, the remaining players share the prize rather than the tournament ending without distribution.
+              </p>
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-gray-700">
+              <p className="text-sm italic text-gray-400">
+                <strong>Note:</strong> Draws are relatively uncommon in most games, but this rule ensures fair outcomes when they do occur at critical moments.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <hr className={colors.borderDark} />
 
         {/* Community Raffles Section */}
         <div>

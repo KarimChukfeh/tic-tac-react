@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Shield, Lock, Eye, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Shield, Lock, Eye, CheckCircle, ChevronDown, ChevronUp, HelpCircle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
@@ -384,16 +384,15 @@ export default function Landing() {
               </div>
             </div>
           </div>
-        </div>
+	        </div>
 
-        {/* ============ HERO SECTION ============ */}
-        <br/>
-        <br/>
-        <section className="min-h-[70vh] flex flex-col justify-center items-center px-6 py-16">
-          
-          {/* Eyebrow */}
-          <div className="flex items-center gap-4 mb-8">
-            <div className="h-px w-16 bg-gradient-to-r from-transparent to-cyan-500/50" />
+	        {/* ============ HERO SECTION ============ */}
+		        <div className="h-7 md:h-12" aria-hidden="true" />
+		        <section className="min-h-[70vh] flex flex-col justify-center items-center px-6 py-16">
+	          
+	          {/* Eyebrow */}
+	          <div className="flex items-center gap-4 mb-8">
+	            <div className="h-px w-16 bg-gradient-to-r from-transparent to-cyan-500/50" />
             <p
               className="text-cyan-400 text-base md:text-xl font-semibold tracking-widest uppercase hover:text-cyan-300 transition-colors"
             >
@@ -415,7 +414,22 @@ export default function Landing() {
           
           {/* Subheadline */}
           <p className="text-xl md:text-2xl text-slate-400 text-center max-w-2xl mb-12 leading-relaxed">
-            Classic strategy games. Real stakes. No tokens, no tricks.
+            <a
+              href="#how-does-etour-work"
+              onClick={(e) => {
+                e.preventDefault();
+                const faqSection = document.getElementById('how-does-etour-work');
+                if (faqSection) {
+                  faqSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  // Expand the FAQ item after scrolling
+                  setTimeout(() => setExpandedFaq(0), 500);
+                }
+              }}
+              className="inline-flex items-center gap-2 hover:text-slate-300 transition-colors cursor-pointer underline decoration-dotted decoration-slate-500 underline-offset-4"
+            >
+              Classic games. ETH stakes. No hidden costs.
+              <HelpCircle size={20} className="text-cyan-400" />
+            </a>
             <br />
             <span className="text-white font-semibold inline-block mt-4">Skill vs skill. Real ETH on the line.</span>
           </p>
@@ -531,7 +545,7 @@ export default function Landing() {
                   2
                 </div>
                 <h3 className="text-xl font-bold text-white mb-3">Pick Your Stakes</h3>
-                <p className="text-slate-500">From micro bets to serious money. You choose the tier that fits.</p>
+                <p className="text-slate-500">From micro stakes to serious money. You choose the tier that fits.</p>
               </div>
               
               <div className="text-center">
@@ -539,7 +553,7 @@ export default function Landing() {
                   3
                 </div>
                 <h3 className="text-xl font-bold text-white mb-3">Win & Withdraw</h3>
-                <p className="text-slate-500">Beat your opponent, ETH hits your wallet. No delays, no fees.</p>
+                <p className="text-slate-500">Win and the ETH hits your wallet. Instant, reliable, with minimal fees.</p>
               </div>
               
             </div>
@@ -551,7 +565,7 @@ export default function Landing() {
           <div className="max-w-5xl mx-auto">
             
             <div className="text-center mb-16">
-              <h2 className="text-4xl font-bold text-white mb-4">Why This Isn't a Scam</h2>
+              <h2 className="text-4xl font-bold text-white mb-4">Trust by Blockchain</h2>
               <p className="text-slate-400 text-lg">Everything runs on Ethereum. Nothing is hidden. Nothing is centralized.</p>
             </div>
             
@@ -603,7 +617,11 @@ export default function Landing() {
             <h2 className="text-4xl font-bold mb-12 text-center text-white">Frequently Asked Questions</h2>
             <div className="space-y-4">
               {faqs.map((faq, idx) => (
-                <div key={idx} className="border border-slate-700/50 rounded-xl overflow-hidden bg-slate-900/60">
+                <div
+                  key={idx}
+                  id={idx === 0 ? 'how-does-etour-work' : undefined}
+                  className="border border-slate-700/50 rounded-xl overflow-hidden bg-slate-900/60"
+                >
                   <button
                     onClick={() => setExpandedFaq(expandedFaq === idx ? null : idx)}
                     className="w-full px-6 py-5 flex items-center justify-between hover:bg-slate-800/50 transition-colors cursor-pointer"

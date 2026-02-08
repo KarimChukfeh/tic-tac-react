@@ -18,6 +18,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
+import { isDraw } from '../../utils/completionReasons';
 import MatchHeader from './MatchHeader';
 import PlayerPanel from './PlayerPanel';
 import TurnIndicator from './TurnIndicator';
@@ -76,9 +77,12 @@ const GameMatchLayout = ({
   onClaimTimeoutWin,
   onForceEliminate,
   onClaimReplacement,
+  onEnterNextMatch, // Handler for entering next active match
+  onReturnToBracket, // Handler for returning to tournament bracket
 
   // Tournament metadata
   playerCount = null, // Optional: player count for tournament type label
+  hasNextActiveMatch = false, // Whether player has a next active match
 
   // Player configuration
   playerConfig, // { player1: { icon, label }, player2: { icon, label } }
@@ -109,7 +113,7 @@ const GameMatchLayout = ({
     firstPlayer,
     currentTurn,
     matchStatus,
-    isDraw,
+    completionReason,
     winner,
     loser,
     lastMoveTime,
@@ -117,6 +121,8 @@ const GameMatchLayout = ({
     isYourTurn,
     timeoutState
   } = match;
+
+  const isMatchDraw = isDraw(completionReason);
 
   // Swap theme colors if player2 is the firstPlayer
   // Connect Four: firstPlayer gets RED card background, other player gets BLUE
@@ -517,11 +523,14 @@ const GameMatchLayout = ({
 
               {isGameOver && (
                 <MatchComplete
-                  isDraw={isDraw}
+                  completionReason={completionReason}
                   winner={winner}
                   loser={loser}
                   currentAccount={account}
-                  gameSpecificText={!isDraw ? theme.completeText : undefined}
+                  gameSpecificText={!isMatchDraw ? theme.completeText : undefined}
+                  hasNextActiveMatch={hasNextActiveMatch}
+                  onEnterNextMatch={onEnterNextMatch}
+                  onReturnToBracket={onReturnToBracket}
                 />
               )}
             </div>
@@ -697,11 +706,14 @@ const GameMatchLayout = ({
             {isGameOver && (
               <div className="w-full max-w-md mt-4">
                 <MatchComplete
-                  isDraw={isDraw}
+                  completionReason={completionReason}
                   winner={winner}
                   loser={loser}
                   currentAccount={account}
-                  gameSpecificText={!isDraw ? theme.completeText : undefined}
+                  gameSpecificText={!isMatchDraw ? theme.completeText : undefined}
+                  hasNextActiveMatch={hasNextActiveMatch}
+                  onEnterNextMatch={onEnterNextMatch}
+                  onReturnToBracket={onReturnToBracket}
                 />
               </div>
             )}
@@ -1011,11 +1023,14 @@ const GameMatchLayout = ({
 
           {isGameOver && (
             <MatchComplete
-              isDraw={isDraw}
+              completionReason={completionReason}
               winner={winner}
               loser={loser}
               currentAccount={account}
-              gameSpecificText={!isDraw ? theme.completeText : undefined}
+              gameSpecificText={!isMatchDraw ? theme.completeText : undefined}
+              hasNextActiveMatch={hasNextActiveMatch}
+              onEnterNextMatch={onEnterNextMatch}
+              onReturnToBracket={onReturnToBracket}
             />
           )}
 
@@ -1062,11 +1077,14 @@ const GameMatchLayout = ({
             {isGameOver && (
               <div className="w-full max-w-md mt-4">
                 <MatchComplete
-                  isDraw={isDraw}
+                  completionReason={completionReason}
                   winner={winner}
                   loser={loser}
                   currentAccount={account}
-                  gameSpecificText={!isDraw ? theme.completeText : undefined}
+                  gameSpecificText={!isMatchDraw ? theme.completeText : undefined}
+                  hasNextActiveMatch={hasNextActiveMatch}
+                  onEnterNextMatch={onEnterNextMatch}
+                  onReturnToBracket={onReturnToBracket}
                 />
               </div>
             )}
@@ -1112,7 +1130,7 @@ const GameMatchLayout = ({
         title={theme.title}
         icon={theme.icon}
         matchStatus={matchStatus}
-        isDraw={isDraw}
+        completionReason={completionReason}
         onClose={onClose}
         tournamentInfo={{
           tierId: match.tierId,

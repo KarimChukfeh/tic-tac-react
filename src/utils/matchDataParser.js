@@ -23,9 +23,8 @@ export const parseCommonMatchData = (matchData) => {
 
     // Match status
     matchStatus: Number(matchData.common.status),
-    isDraw: matchData.common.isDraw,
 
-    // Completion reason (ML1/ML2/ML3/etc)
+    // Completion reason (ML1/ML2/ML3/etc) - use this to determine draws
     completionReason: Number(matchData.completionReason || 0),
 
     // Timestamps (convert BigInt to number)
@@ -64,9 +63,10 @@ const unpackTicTacToeBoard = (packedBoard) => {
 /**
  * Parse TicTacToe match data
  * @param {Object} matchData - Raw match data from TicTacToe contract
+ * @param {number} fallbackTime - Default time if contract doesn't provide it (should be tier's matchTimePerPlayer)
  * @returns {Object} Parsed TicTacToe match with all fields
  */
-export const parseTicTacToeMatch = (matchData) => ({
+export const parseTicTacToeMatch = (matchData, fallbackTime = 300) => ({
   ...parseCommonMatchData(matchData),
 
   // Game-specific fields
@@ -75,8 +75,8 @@ export const parseTicTacToeMatch = (matchData) => ({
   firstPlayer: matchData.firstPlayer,
 
   // Total match time tracking fields
-  player1TimeRemaining: matchData.player1TimeRemaining !== undefined ? Number(matchData.player1TimeRemaining) : 300,
-  player2TimeRemaining: matchData.player2TimeRemaining !== undefined ? Number(matchData.player2TimeRemaining) : 300,
+  player1TimeRemaining: matchData.player1TimeRemaining !== undefined ? Number(matchData.player1TimeRemaining) : fallbackTime,
+  player2TimeRemaining: matchData.player2TimeRemaining !== undefined ? Number(matchData.player2TimeRemaining) : fallbackTime,
   lastMoveTimestamp: matchData.lastMoveTimestamp !== undefined ? Number(matchData.lastMoveTimestamp) : 0,
 });
 
@@ -100,9 +100,10 @@ const unpackConnectFourBoard = (packedBoard) => {
 /**
  * Parse ConnectFour match data
  * @param {Object} matchData - Raw match data from ConnectFour contract
+ * @param {number} fallbackTime - Default time if contract doesn't provide it (should be tier's matchTimePerPlayer)
  * @returns {Object} Parsed ConnectFour match with all fields
  */
-export const parseConnectFourMatch = (matchData) => ({
+export const parseConnectFourMatch = (matchData, fallbackTime = 300) => ({
   ...parseCommonMatchData(matchData),
 
   // Game-specific fields
@@ -111,8 +112,8 @@ export const parseConnectFourMatch = (matchData) => ({
   firstPlayer: matchData.firstPlayer,
 
   // Total match time tracking fields
-  player1TimeRemaining: matchData.player1TimeRemaining !== undefined ? Number(matchData.player1TimeRemaining) : 300,
-  player2TimeRemaining: matchData.player2TimeRemaining !== undefined ? Number(matchData.player2TimeRemaining) : 300,
+  player1TimeRemaining: matchData.player1TimeRemaining !== undefined ? Number(matchData.player1TimeRemaining) : fallbackTime,
+  player2TimeRemaining: matchData.player2TimeRemaining !== undefined ? Number(matchData.player2TimeRemaining) : fallbackTime,
   lastMoveTimestamp: matchData.lastMoveTimestamp !== undefined ? Number(matchData.lastMoveTimestamp) : 0,
 
   // Move history string (returned by getMatch)
@@ -148,13 +149,14 @@ const unpackChessBoard = (packedBoard) => {
 /**
  * Parse Chess match data
  * @param {Object} matchData - Raw match data from Chess contract
+ * @param {number} fallbackTime - Default time if contract doesn't provide it (should be tier's matchTimePerPlayer)
  * @returns {Object} Parsed Chess match with all fields
  *
  * Note: Chess contract can return either:
  * - NESTED structure with 'common' field (from getMatch())
  * - FLAT structure without 'common' field (legacy or from chessMatches mapping)
  */
-export const parseChessMatch = (matchData) => {
+export const parseChessMatch = (matchData, fallbackTime = 300) => {
   // Check if data has nested 'common' structure
   const hasCommon = matchData.common !== undefined;
 
@@ -165,7 +167,7 @@ export const parseChessMatch = (matchData) => {
     winner: matchData.common.winner,
     loser: matchData.common.loser || '0x0000000000000000000000000000000000000000',
     matchStatus: Number(matchData.common.status),
-    isDraw: matchData.common.isDraw,
+    completionReason: Number(matchData.completionReason || 0),
     startTime: Number(matchData.common.startTime),
     lastMoveTime: Number(matchData.common.lastMoveTime),
     endTime: matchData.common.endTime ? Number(matchData.common.endTime) : 0,
@@ -180,7 +182,7 @@ export const parseChessMatch = (matchData) => {
     winner: matchData.winner,
     loser: matchData.loser || '0x0000000000000000000000000000000000000000',
     matchStatus: Number(matchData.status),
-    isDraw: matchData.isDraw,
+    completionReason: Number(matchData.completionReason || 0),
     startTime: Number(matchData.startTime),
     lastMoveTime: Number(matchData.lastMoveTime),
     endTime: matchData.endTime ? Number(matchData.endTime) : 0,
@@ -214,8 +216,8 @@ export const parseChessMatch = (matchData) => {
     moveHistory: matchData.moveHistory || [],
 
     // Time tracking fields
-    player1TimeRemaining: matchData.player1TimeRemaining !== undefined ? Number(matchData.player1TimeRemaining) : 300,
-    player2TimeRemaining: matchData.player2TimeRemaining !== undefined ? Number(matchData.player2TimeRemaining) : 300,
+    player1TimeRemaining: matchData.player1TimeRemaining !== undefined ? Number(matchData.player1TimeRemaining) : fallbackTime,
+    player2TimeRemaining: matchData.player2TimeRemaining !== undefined ? Number(matchData.player2TimeRemaining) : fallbackTime,
     lastMoveTimestamp: matchData.lastMoveTimestamp !== undefined ? Number(matchData.lastMoveTimestamp) : 0,
   };
 };
@@ -226,11 +228,14 @@ export const parseChessMatch = (matchData) => {
  * @returns {boolean} True if valid, false otherwise
  */
 export const validateMatchResult = (match) => {
-  const { winner, loser, player1, player2, isDraw, matchStatus } = match;
+  const { winner, loser, player1, player2, completionReason, matchStatus } = match;
   const zeroAddress = '0x0000000000000000000000000000000000000000';
 
+  // Check if match is a draw
+  const isMatchDraw = completionReason === 2 || completionReason === 5; // CompletionReason.DRAW or ALL_DRAW_SCENARIO
+
   // If match is completed and not a draw
-  if (matchStatus === 2 && !isDraw) {
+  if (matchStatus === 2 && !isMatchDraw) {
     // Winner must be one of the players (unless double forfeit)
     if (winner !== player1 && winner !== player2 && winner !== zeroAddress) {
       console.error('Invalid winner: not a match participant');
@@ -257,7 +262,7 @@ export const validateMatchResult = (match) => {
   }
 
   // If it's a draw, neither should be a winner/loser (should be zero addresses)
-  if (isDraw && matchStatus === 2) {
+  if (isMatchDraw && matchStatus === 2) {
     if (winner !== zeroAddress || loser !== zeroAddress) {
       console.warn('Draw match has winner/loser addresses set');
     }

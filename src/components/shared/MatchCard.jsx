@@ -67,6 +67,7 @@ const getBorderClass = (isUserMatch, isStalled, escL2Available, escL3Available, 
  * @param {boolean} [props.showEscalation=true] - Whether to show escalation features
  * @param {boolean} [props.showThisIsYou=false] - Whether to show "THIS IS YOU" label
  * @param {Object} [props.colors] - Color theme overrides
+ * @param {string} [props.gameName] - Game name ('tictactoe', 'chess', 'connect4')
  */
 const MatchCard = ({
   match,
@@ -85,6 +86,7 @@ const MatchCard = ({
   showEscalation = true,
   showThisIsYou = false,
   colors = {},
+  gameName,
 }) => {
   const isUserMatch =
     match.player1?.toLowerCase() === account?.toLowerCase() ||
@@ -126,40 +128,76 @@ const MatchCard = ({
   // Player time display
   const times = calculatePlayerTimes(match, account, match.matchTimePerPlayer);
   const isPlayer1Turn = match.currentTurn?.toLowerCase() === match.player1?.toLowerCase();
-  const activePlayerTime = isPlayer1Turn ? times.player1.remaining : times.player2.remaining;
-  const timeRemaining = match.matchStatus === 1 ? activePlayerTime : null;
+  const player1TimeRemaining = match.matchStatus === 1 ? times.player1.remaining : null;
+  const player2TimeRemaining = match.matchStatus === 1 ? times.player2.remaining : null;
 
-  // Client-side countdown ticking for smoother UI
-  const [tickingTimeRemaining, setTickingTimeRemaining] = useState(timeRemaining);
-  const lastServerTimeRef = useRef(timeRemaining);
+  // Client-side countdown ticking for smoother UI - separate for each player
+  const [tickingPlayer1Time, setTickingPlayer1Time] = useState(player1TimeRemaining);
+  const [tickingPlayer2Time, setTickingPlayer2Time] = useState(player2TimeRemaining);
+  const lastServerPlayer1TimeRef = useRef(player1TimeRemaining);
+  const lastServerPlayer2TimeRef = useRef(player2TimeRemaining);
   const lastUpdateRef = useRef(Date.now());
 
   // Update ticking time when server data changes (on poll)
   useEffect(() => {
-    if (timeRemaining !== lastServerTimeRef.current) {
-      setTickingTimeRemaining(timeRemaining);
-      lastServerTimeRef.current = timeRemaining;
+    if (player1TimeRemaining !== lastServerPlayer1TimeRef.current) {
+      setTickingPlayer1Time(player1TimeRemaining);
+      lastServerPlayer1TimeRef.current = player1TimeRemaining;
       lastUpdateRef.current = Date.now();
     }
-  }, [timeRemaining]);
+  }, [player1TimeRemaining]);
 
-  // Tick down the countdown every second
   useEffect(() => {
-    if (match.matchStatus !== 1 || !showEscalation || timeRemaining === null) {
+    if (player2TimeRemaining !== lastServerPlayer2TimeRef.current) {
+      setTickingPlayer2Time(player2TimeRemaining);
+      lastServerPlayer2TimeRef.current = player2TimeRemaining;
+      lastUpdateRef.current = Date.now();
+    }
+  }, [player2TimeRemaining]);
+
+  // Tick down the countdown every second for the active player
+  useEffect(() => {
+    if (match.matchStatus !== 1 || !showEscalation) {
       return;
     }
 
     const interval = setInterval(() => {
       const now = Date.now();
       const elapsedSeconds = Math.floor((now - lastUpdateRef.current) / 1000);
-      const newTime = Math.max(0, lastServerTimeRef.current - elapsedSeconds);
-      setTickingTimeRemaining(newTime);
+
+      if (isPlayer1Turn && lastServerPlayer1TimeRef.current !== null) {
+        const newTime = Math.max(0, lastServerPlayer1TimeRef.current - elapsedSeconds);
+        setTickingPlayer1Time(newTime);
+      } else if (!isPlayer1Turn && lastServerPlayer2TimeRef.current !== null) {
+        const newTime = Math.max(0, lastServerPlayer2TimeRef.current - elapsedSeconds);
+        setTickingPlayer2Time(newTime);
+      }
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [match.matchStatus, showEscalation, timeRemaining]);
+  }, [match.matchStatus, showEscalation, isPlayer1Turn]);
 
-  const displayTimeRemaining = tickingTimeRemaining !== null ? tickingTimeRemaining : timeRemaining;
+  const displayPlayer1Time = tickingPlayer1Time !== null ? tickingPlayer1Time : player1TimeRemaining;
+  const displayPlayer2Time = tickingPlayer2Time !== null ? tickingPlayer2Time : player2TimeRemaining;
+
+  // Determine player symbols based on game type and firstPlayer
+  let player1Symbol = '';
+  let player2Symbol = '';
+
+  if (gameName && match.firstPlayer) {
+    const isPlayer1First = match.firstPlayer?.toLowerCase() === match.player1?.toLowerCase();
+
+    if (gameName === 'tictactoe') {
+      player1Symbol = isPlayer1First ? 'X' : 'O';
+      player2Symbol = isPlayer1First ? 'O' : 'X';
+    } else if (gameName === 'connect4') {
+      player1Symbol = isPlayer1First ? 'Red' : 'Blue';
+      player2Symbol = isPlayer1First ? 'Blue' : 'Red';
+    } else if (gameName === 'chess') {
+      player1Symbol = isPlayer1First ? 'White' : 'Black';
+      player2Symbol = isPlayer1First ? 'Black' : 'White';
+    }
+  }
 
   // Debug logging for escalation issues - always log for active matches we're not in
   if (showEscalation && match.matchStatus === 1 && !isUserMatch) {
@@ -224,23 +262,10 @@ const MatchCard = ({
         <span className={colors.matchLabel || "text-purple-300 text-sm font-semibold"}>
           Match {matchIdx + 1}
         </span>
-        <div className="flex items-center gap-2">
-          {/* Move timer */}
-          {showEscalation && displayTimeRemaining !== null && match.matchStatus === 1 && (
-            <span className={`text-xs font-bold px-2 py-1 rounded font-mono ${
-              displayTimeRemaining === 0 ? 'bg-red-500/30 text-red-300 animate-pulse' :
-              displayTimeRemaining <= 10 ? 'bg-red-500/20 text-red-300' :
-              displayTimeRemaining <= 30 ? 'bg-yellow-500/20 text-yellow-300' :
-              'bg-blue-500/20 text-blue-300'
-            }`}>
-              {Math.floor(displayTimeRemaining / 60)}:{(displayTimeRemaining % 60).toString().padStart(2, '0')}
-            </span>
-          )}
-          {/* Status */}
-          <span className={`text-xs font-bold ${getMatchStatusColor(match.matchStatus, match.winner, match.isDraw, matchStatusOptions)}`}>
-            {getMatchStatusText(match.matchStatus, match.winner, match.isDraw, matchStatusOptions)}
-          </span>
-        </div>
+        {/* Status */}
+        <span className={`text-xs font-bold ${getMatchStatusColor(match.matchStatus, match.winner, match.completionReason, matchStatusOptions)}`}>
+          {getMatchStatusText(match.matchStatus, match.winner, match.completionReason, matchStatusOptions)}
+        </span>
       </div>
 
       {/* Escalation countdown timers - show only the next pending timer */}
@@ -293,19 +318,60 @@ const MatchCard = ({
         {/* Player 1 */}
         <div className={`flex items-center justify-between p-2 rounded ${getPlayer1BgClass()}`}>
           <div className="flex flex-col">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               {playerIcons?.player1 && <span className="text-lg">{playerIcons.player1}</span>}
               <span className="text-white font-mono text-sm">
                 {shortenAddress(match.player1)}
               </span>
+              {player1Symbol && (
+                <>
+                  <span className="text-gray-400 text-xs">as</span>
+                  {gameName === 'chess' ? (
+                    <img
+                      src={player1Symbol === 'White' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
+                      alt={player1Symbol}
+                      className="w-3.5 h-3.5"
+                      draggable="false"
+                    />
+                  ) : gameName === 'tictactoe' ? (
+                    player1Symbol === 'X' ? (
+                      <span className="w-3 h-3 inline-block relative">
+                        <span className="absolute inset-0 bg-blue-500 transform rotate-45" style={{width: '2px', height: '100%', left: '50%', marginLeft: '-1px'}}></span>
+                        <span className="absolute inset-0 bg-blue-500 transform -rotate-45" style={{width: '2px', height: '100%', left: '50%', marginLeft: '-1px'}}></span>
+                      </span>
+                    ) : (
+                      <span className="w-3 h-3 rounded-full inline-block border-2 border-red-500"></span>
+                    )
+                  ) : gameName === 'connect4' ? (
+                    <span className={`w-3 h-3 rounded-full inline-block ${player1Symbol === 'Red' ? 'bg-red-500' : 'bg-blue-500'}`}></span>
+                  ) : (
+                    <span className="text-gray-300 text-xs">({player1Symbol})</span>
+                  )}
+                </>
+              )}
             </div>
             {showThisIsYou && isPlayer1 && (
               <span className="text-yellow-300 text-xs font-bold mt-0.5">THIS IS YOU</span>
             )}
           </div>
-          {match.winner?.toLowerCase() === match.player1?.toLowerCase() && (
-            <Award className="text-green-400" size={16} />
-          )}
+          <div className="flex items-center gap-2">
+            {/* Player 1 timer - always visible when match is active */}
+            {showEscalation && displayPlayer1Time !== null && match.matchStatus === 1 && (
+              <span className={`text-xs font-bold px-2 py-0.5 rounded font-mono ${
+                isPlayer1Turn ? (
+                  displayPlayer1Time === 0 ? 'bg-red-500/30 text-red-300 animate-pulse' :
+                  displayPlayer1Time <= 10 ? 'bg-red-500/20 text-red-300' :
+                  displayPlayer1Time <= 30 ? 'bg-yellow-500/20 text-yellow-300' :
+                  'bg-blue-500/20 text-blue-300'
+                ) : 'bg-gray-500/20 text-gray-400'
+              }`}>
+                {Math.floor(displayPlayer1Time / 60)}:{(displayPlayer1Time % 60).toString().padStart(2, '0')}
+              </span>
+            )}
+            {match.winner?.toLowerCase() === match.player1?.toLowerCase() && (
+              <Award className="text-green-400" size={16} />
+            )}
+          </div>
         </div>
 
         <div className={colors.vsText || "text-center text-purple-400 font-bold"}>VS</div>
@@ -313,19 +379,60 @@ const MatchCard = ({
         {/* Player 2 */}
         <div className={`flex items-center justify-between p-2 rounded ${getPlayer2BgClass()}`}>
           <div className="flex flex-col">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               {playerIcons?.player2 && <span className="text-lg">{playerIcons.player2}</span>}
               <span className="text-white font-mono text-sm">
                 {shortenAddress(match.player2)}
               </span>
+              {player2Symbol && (
+                <>
+                  <span className="text-gray-400 text-xs">as</span>
+                  {gameName === 'chess' ? (
+                    <img
+                      src={player2Symbol === 'White' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
+                      alt={player2Symbol}
+                      className="w-3.5 h-3.5"
+                      draggable="false"
+                    />
+                  ) : gameName === 'tictactoe' ? (
+                    player2Symbol === 'X' ? (
+                      <span className="w-3 h-3 inline-block relative">
+                        <span className="absolute inset-0 bg-blue-500 transform rotate-45" style={{width: '2px', height: '100%', left: '50%', marginLeft: '-1px'}}></span>
+                        <span className="absolute inset-0 bg-blue-500 transform -rotate-45" style={{width: '2px', height: '100%', left: '50%', marginLeft: '-1px'}}></span>
+                      </span>
+                    ) : (
+                      <span className="w-3 h-3 rounded-full inline-block border-2 border-red-500"></span>
+                    )
+                  ) : gameName === 'connect4' ? (
+                    <span className={`w-3 h-3 rounded-full inline-block ${player2Symbol === 'Red' ? 'bg-red-500' : 'bg-blue-500'}`}></span>
+                  ) : (
+                    <span className="text-gray-300 text-xs">({player2Symbol})</span>
+                  )}
+                </>
+              )}
             </div>
             {showThisIsYou && isPlayer2 && (
               <span className="text-yellow-300 text-xs font-bold mt-0.5">THIS IS YOU</span>
             )}
           </div>
-          {match.winner?.toLowerCase() === match.player2?.toLowerCase() && (
-            <Award className="text-green-400" size={16} />
-          )}
+          <div className="flex items-center gap-2">
+            {/* Player 2 timer - always visible when match is active */}
+            {showEscalation && displayPlayer2Time !== null && match.matchStatus === 1 && (
+              <span className={`text-xs font-bold px-2 py-0.5 rounded font-mono ${
+                !isPlayer1Turn ? (
+                  displayPlayer2Time === 0 ? 'bg-red-500/30 text-red-300 animate-pulse' :
+                  displayPlayer2Time <= 10 ? 'bg-red-500/20 text-red-300' :
+                  displayPlayer2Time <= 30 ? 'bg-yellow-500/20 text-yellow-300' :
+                  'bg-blue-500/20 text-blue-300'
+                ) : 'bg-gray-500/20 text-gray-400'
+              }`}>
+                {Math.floor(displayPlayer2Time / 60)}:{(displayPlayer2Time % 60).toString().padStart(2, '0')}
+              </span>
+            )}
+            {match.winner?.toLowerCase() === match.player2?.toLowerCase() && (
+              <Award className="text-green-400" size={16} />
+            )}
+          </div>
         </div>
 
         {/* Enter Match Button for user's matches */}

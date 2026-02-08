@@ -7,6 +7,7 @@
 
 import { ChevronDown } from 'lucide-react';
 import { getTournamentTypeLabel } from '../../utils/formatters';
+import { isDraw } from '../../utils/completionReasons';
 
 const MatchHeader = ({
   // gameType available for future game-specific customization
@@ -14,7 +15,7 @@ const MatchHeader = ({
   title,
   icon,
   matchStatus,
-  isDraw,
+  completionReason,
   onClose,
   tournamentInfo, // { tierId, instanceId, roundNumber, matchNumber, playerCount }
   theme
@@ -27,7 +28,7 @@ const MatchHeader = ({
       return { text: 'In Progress', className: 'bg-yellow-500/20 text-yellow-300' };
     }
     if (matchStatus === 2) {
-      return { text: isDraw ? 'Draw' : 'Complete', className: 'bg-green-500/20 text-green-300' };
+      return { text: isDraw(completionReason) ? 'Draw' : 'Complete', className: 'bg-green-500/20 text-green-300' };
     }
     return { text: 'Unknown', className: 'bg-gray-500/20 text-gray-300' };
   };

@@ -7,25 +7,26 @@
 
 // CompletionReason enum values (matches ETour_Storage.CompletionReason)
 export const CompletionReason = {
-  NORMAL_WIN: 0,          // Normal gameplay win (checkmate, connect 4, etc.)
-  TIMEOUT: 1,             // Win by opponent timeout (ML1)
-  DRAW: 2,                // Match/finals ended in a draw
-  FORCE_ELIMINATION: 3,   // ML2 - Advanced players force eliminated both players
-  REPLACEMENT: 4,         // ML3 - External player replaced stalled players
-  ALL_DRAW_SCENARIO: 5    // All matches in a round resulted in draws (tournament only)
+  NORMAL_WIN: 0,                    // Normal gameplay win (checkmate, connect 4, etc.)
+  TIMEOUT: 1,                       // Win by opponent timeout (ML1)
+  DRAW: 2,                          // Match/finals ended in a draw
+  FORCE_ELIMINATION: 3,             // ML2 - Advanced players force eliminated both players
+  REPLACEMENT: 4,                   // ML3 - External player replaced stalled players
+  ALL_DRAW_SCENARIO: 5,             // All matches in a round resulted in draws (tournament only)
+  SOLO_ENROLL_FORCE_START: 6,       // Solo enroller force started tournament (EL1)
+  ABANDONED_TOURNAMENT_CLAIMED: 7   // Abandoned tournament claimed by external player (EL2)
 };
 
 /**
  * Get completion reason text for display
  * @param {number} reason - CompletionReason enum value
  * @param {boolean} userWon - Whether the current user won
- * @param {boolean} isDraw - Whether it was a draw
  * @param {string} gameType - 'tictactoe', 'chess', or 'connect4'
  * @returns {string} User-friendly completion message
  */
-export const getCompletionReasonText = (reason, userWon, isDraw, gameType = 'tictactoe') => {
-  // Check draw first (reason might be DRAW or user's won/lost status shows draw)
-  if (isDraw || reason === CompletionReason.DRAW) {
+export const getCompletionReasonText = (reason, userWon, gameType = 'tictactoe') => {
+  // Check draw first
+  if (reason === CompletionReason.DRAW || reason === CompletionReason.ALL_DRAW_SCENARIO) {
     return "It's a Draw!";
   }
 
@@ -56,6 +57,12 @@ export const getCompletionReasonText = (reason, userWon, isDraw, gameType = 'tic
     case CompletionReason.ALL_DRAW_SCENARIO:
       return "Tournament Draw";
 
+    case CompletionReason.SOLO_ENROLL_FORCE_START:
+      return 'Solo Force Start';
+
+    case CompletionReason.ABANDONED_TOURNAMENT_CLAIMED:
+      return 'Abandoned Pool Claimed';
+
     default:
       return userWon ? 'Victory!' : 'Defeated';
   }
@@ -65,12 +72,11 @@ export const getCompletionReasonText = (reason, userWon, isDraw, gameType = 'tic
  * Get detailed completion reason description
  * @param {number} reason - CompletionReason enum value
  * @param {boolean} userWon - Whether the current user won
- * @param {boolean} isDraw - Whether it was a draw
  * @returns {string} Detailed description
  */
-export const getCompletionReasonDescription = (reason, userWon, isDraw) => {
+export const getCompletionReasonDescription = (reason, userWon) => {
   // Check draw first
-  if (isDraw || reason === CompletionReason.DRAW) {
+  if (reason === CompletionReason.DRAW || reason === CompletionReason.ALL_DRAW_SCENARIO) {
     return 'The match ended in a draw';
   }
 
@@ -94,6 +100,12 @@ export const getCompletionReasonDescription = (reason, userWon, isDraw) => {
     case CompletionReason.ALL_DRAW_SCENARIO:
       return 'All matches in the round resulted in draws';
 
+    case CompletionReason.SOLO_ENROLL_FORCE_START:
+      return 'Solo enrolled player force started the tournament (EL1)';
+
+    case CompletionReason.ABANDONED_TOURNAMENT_CLAIMED:
+      return 'External player claimed the abandoned tournament pool (EL2)';
+
     default:
       return userWon ? 'You won!' : 'You lost';
   }
@@ -103,11 +115,10 @@ export const getCompletionReasonDescription = (reason, userWon, isDraw) => {
  * Get icon name for completion reason
  * @param {number} reason - CompletionReason enum value
  * @param {boolean} userWon - Whether the current user won
- * @param {boolean} isDraw - Whether it was a draw
  * @returns {string} Icon name (for lucide-react)
  */
-export const getCompletionReasonIcon = (reason, userWon, isDraw) => {
-  if (isDraw || reason === CompletionReason.DRAW) {
+export const getCompletionReasonIcon = (reason, userWon) => {
+  if (reason === CompletionReason.DRAW || reason === CompletionReason.ALL_DRAW_SCENARIO) {
     return 'Minus';
   }
 
@@ -123,6 +134,12 @@ export const getCompletionReasonIcon = (reason, userWon, isDraw) => {
 
     case CompletionReason.ALL_DRAW_SCENARIO:
       return 'Equal';
+
+    case CompletionReason.SOLO_ENROLL_FORCE_START:
+      return 'Zap';
+
+    case CompletionReason.ABANDONED_TOURNAMENT_CLAIMED:
+      return 'DollarSign';
 
     default:
       return userWon ? 'Trophy' : 'Frown';
@@ -146,4 +163,13 @@ export const isOpponentAbandonment = (reason) => {
 export const isExternalIntervention = (reason) => {
   return reason === CompletionReason.FORCE_ELIMINATION ||
          reason === CompletionReason.REPLACEMENT;
+};
+
+/**
+ * Check if completion reason indicates a draw
+ * @param {number} reason - CompletionReason enum value
+ * @returns {boolean}
+ */
+export const isDraw = (reason) => {
+  return reason === CompletionReason.DRAW || reason === CompletionReason.ALL_DRAW_SCENARIO;
 };

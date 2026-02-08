@@ -5,7 +5,7 @@
  * Used in the tournament list view across all games.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Trophy, Play, Users, Zap, Coins, Eye, RefreshCw } from 'lucide-react';
 import { ethers } from 'ethers';
 import EscalationTimer from './EscalationTimer';
@@ -91,6 +91,37 @@ const TournamentCard = ({
   // EL1* - Reset enrollment window state
   const [canResetWindow, setCanResetWindow] = useState(false);
 
+  // Visibility tracking: card is visible and tab is active
+  const cardRef = useRef(null);
+  const [isVisible, setIsVisible] = useState(true);
+  const [isTabActive, setIsTabActive] = useState(!document.hidden);
+
+  // Track tab visibility
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsTabActive(!document.hidden);
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
+  // Track card scroll visibility with IntersectionObserver
+  useEffect(() => {
+    if (!cardRef.current) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsVisible(entry.isIntersecting);
+      },
+      { threshold: 0.1 } // Consider visible if at least 10% is in viewport
+    );
+
+    observer.observe(cardRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  // Escalation polling effect - only polls when visible and tab is active
   useEffect(() => {
     if (!enrollmentTimeout) {
       setEscalationState({
@@ -103,6 +134,9 @@ const TournamentCard = ({
       });
       return;
     }
+
+    // Only poll if card is visible and tab is active
+    if (!isVisible || !isTabActive) return;
 
     const updateEscalationState = async () => {
       const now = Math.floor(Date.now() / 1000);
@@ -132,7 +166,7 @@ const TournamentCard = ({
         forfeitPool
       });
 
-      // Check canResetEnrollmentWindow every second when enrollment window expires
+      // Check canResetEnrollmentWindow when enrollment window expires
       // Continue checking even when EL2 is active - solo player can still reset
       if ((canStartEscalation1 || canStartEscalation2) && isEnrolled && contract) {
         try {
@@ -172,13 +206,13 @@ const TournamentCard = ({
     };
 
     updateEscalationState();
-    const interval = setInterval(updateEscalationState, 1000);
+    const interval = setInterval(updateEscalationState, 5000); // Changed from 1000ms to 5000ms
 
     return () => clearInterval(interval);
-  }, [enrollmentTimeout, isEnrolled, contract, tierId, instanceId]);
+  }, [enrollmentTimeout, isEnrolled, contract, tierId, instanceId, isVisible, isTabActive, currentEnrolled, maxPlayers]);
 
   return (
-    <div className={`bg-gradient-to-br ${colors.cardBg} backdrop-blur-lg rounded-2xl p-6 border-2 ${colors.cardBorder} transition-all hover:shadow-xl ${colors.cardShadow}`}>
+    <div id={`t${tierId}-i${instanceId}`} ref={cardRef} className={`bg-gradient-to-br ${colors.cardBg} backdrop-blur-lg rounded-2xl p-6 border-2 ${colors.cardBorder} transition-all hover:shadow-xl ${colors.cardShadow}`}>
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">

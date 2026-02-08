@@ -11,9 +11,6 @@ import { useState, useRef, useEffect } from 'react';
 import { Users, X, Zap, Trophy, Clock, Play, Eye, RefreshCw, ChevronDown, ChevronUp, TrendingUp, AlertCircle, ExternalLink, CheckCircle2 } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
 import { formatTimeRemaining } from '../../utils/activityHelpers';
-import MiniTicTacToeBoard from './MiniTicTacToeBoard';
-import MiniChessBoard from './MiniChessBoard';
-import MiniConnect4Board from './MiniConnect4Board';
 import { ethers } from 'ethers';
 
 const PlayerActivity = ({
@@ -37,12 +34,14 @@ const PlayerActivity = ({
   gamesCardHeight = 0, // Height of the GamesCard above this component
   tierConfig = null, // Tier configuration for match labeling
   disabled = false, // Disable interaction when wallet not connected
+  showTooltip = false, // External control for tooltip visibility
+  onShowTooltip, // Callback to show this component's tooltip
+  onHideTooltip, // Callback to hide this component's tooltip
 }) => {
   const [internalIsExpanded, setInternalIsExpanded] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
   const expandedPanelRef = useRef(null);
   const prevExpandedRef = useRef(false);
-  const [showMobileTooltip, setShowMobileTooltip] = useState(false);
 
   // Helper functions for match labels
   const getTierLabel = (tierId) => {
@@ -375,10 +374,10 @@ const PlayerActivity = ({
     >
       {/* Toggle Button */}
       <button
-        onClick={() => {
+        onClick={(e) => {
+          e.stopPropagation(); // Prevent click from bubbling to document
           if (disabled) {
-            setShowMobileTooltip(true);
-            setTimeout(() => setShowMobileTooltip(false), 2000);
+            if (onShowTooltip) onShowTooltip();
           } else {
             handleSetExpanded(!isExpanded);
           }
@@ -432,14 +431,16 @@ const PlayerActivity = ({
         )}
 
         {/* Tooltip - Mobile only */}
-        {showMobileTooltip && disabled && (
+        {showTooltip && disabled && (
           <a
             href="#connect-wallet-cta"
-            onClick={() => setShowMobileTooltip(false)}
-            className="md:hidden absolute bottom-full mb-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-6 py-3 rounded-xl whitespace-nowrap z-[100] animate-fade-in shadow-2xl border-2 border-purple-400/60 hover:scale-105 transition-transform"
+            onClick={(e) => {
+              e.stopPropagation(); // Allow navigation but prevent document click
+              if (onHideTooltip) onHideTooltip();
+            }}
+            className="md:hidden fixed bottom-20 left-4 right-4 w-auto max-w-[calc(100vw-2rem)] bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-6 py-3 rounded-xl z-[100] animate-fade-in shadow-2xl border-2 border-purple-400/60 hover:scale-105 transition-transform text-center"
           >
             Connect Wallet to View Your Activity
-            <div className="absolute top-full left-1/2 -translate-x-1/2 border-[6px] border-transparent border-t-purple-600"></div>
           </a>
         )}
       </button>
@@ -457,8 +458,20 @@ const PlayerActivity = ({
           <div className="mb-4">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <span className="text-2xl">{gameEmoji}</span>
-                <h3 className="text-white font-bold text-lg">{getGameTitle(gameName)}</h3>
+                {/* Game Symbol */}
+                <div className="flex items-center gap-1.5">
+                  {gameName === 'tictactoe' ? (
+                    <span className="w-5 h-5 inline-block relative">
+                      <span className="absolute inset-0 bg-blue-500 transform rotate-45" style={{width: '3px', height: '100%', left: '50%', marginLeft: '-1.5px'}}></span>
+                      <span className="absolute inset-0 bg-blue-500 transform -rotate-45" style={{width: '3px', height: '100%', left: '50%', marginLeft: '-1.5px'}}></span>
+                    </span>
+                  ) : gameName === 'connect4' ? (
+                    <span className="w-5 h-5 rounded-full inline-block bg-red-500"></span>
+                  ) : (
+                    <span className="text-2xl">♔</span>
+                  )}
+                </div>
+                <h3 className="text-white font-bold text-lg">Your Activity</h3>
               </div>
               <div className="flex items-center gap-1">
                 {/* Refresh Button */}

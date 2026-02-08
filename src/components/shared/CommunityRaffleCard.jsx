@@ -6,13 +6,14 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { X, RefreshCw, Zap, Trophy } from 'lucide-react';
+import { X, RefreshCw, Zap, Trophy, ChevronDown, ChevronUp } from 'lucide-react';
 import { ethers } from 'ethers';
 import { shortenAddress } from '../../utils/formatters';
 
 const CommunityRaffleCard = ({
   raffleInfo,
   raffleHistory = [],
+  account,
   gamesCardHeight = 0,
   playerActivityHeight,
   recentMatchesCardHeight = 0,
@@ -25,12 +26,14 @@ const CommunityRaffleCard = ({
   onToggleExpand, // External toggle handler
   hideOnMobile = false, // Hide this panel on mobile when another panel is expanded
   disabled = false, // Disable interaction when wallet not connected
+  showTooltip = false, // External control for tooltip visibility
+  onShowTooltip, // Callback to show this component's tooltip
+  onHideTooltip, // Callback to hide this component's tooltip
 }) => {
   const [internalIsExpanded, setInternalIsExpanded] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
-  const [historyFetched, setHistoryFetched] = useState(false);
+  const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
   const expandedPanelRef = useRef(null);
-  const [showMobileTooltip, setShowMobileTooltip] = useState(false);
 
   // Use external state if provided, otherwise use internal state
   const isExpanded = externalIsExpanded !== undefined ? externalIsExpanded : internalIsExpanded;
@@ -88,21 +91,22 @@ const CommunityRaffleCard = ({
       if (onRefresh) {
         onRefresh();
       }
-      // Fetch history on first expansion only
-      if (!historyFetched && onFetchHistory) {
+      // Fetch history whenever expanded so it stays in sync with raffle info
+      if (onFetchHistory) {
         onFetchHistory();
-        setHistoryFetched(true);
       }
     }
-  }, [isExpanded, onRefresh, onFetchHistory, historyFetched]);
+  }, [isExpanded, onRefresh, onFetchHistory]);
 
   const thresholdETH = parseFloat(ethers.formatEther(raffleInfo.threshold || 0n));
   const currentETH = parseFloat(ethers.formatEther(raffleInfo.currentAccumulated || 0n));
   const reserveETH = parseFloat(ethers.formatEther(raffleInfo.reserve || 0n));
+  const ownerShareETH = parseFloat(ethers.formatEther(raffleInfo.ownerShare || 0n));
   const raffleAmountETH = parseFloat(ethers.formatEther(raffleInfo.raffleAmount || 0n));
   const percentage = thresholdETH > 0 ? Math.min((currentETH / thresholdETH) * 100, 100) : 0;
   const isFull = raffleInfo.isReady; // Use isReady flag from contract
   const raffleNumber = Number(raffleInfo.raffleIndex || 0n) + 1; // Display as 1-indexed
+  const normalizedAccount = account ? account.toLowerCase() : null;
 
   // Handle anchor link click with collapse after scroll
   const handleCommunityRafflesClick = (e) => {
@@ -165,10 +169,10 @@ const CommunityRaffleCard = ({
     >
       {/* Toggle Button */}
       <button
-        onClick={() => {
+        onClick={(e) => {
+          e.stopPropagation(); // Prevent click from bubbling to document
           if (disabled) {
-            setShowMobileTooltip(true);
-            setTimeout(() => setShowMobileTooltip(false), 2000);
+            if (onShowTooltip) onShowTooltip();
           } else {
             handleSetExpanded(!isExpanded);
           }
@@ -220,14 +224,16 @@ const CommunityRaffleCard = ({
         )}
 
         {/* Tooltip - Mobile only */}
-        {showMobileTooltip && disabled && (
+        {showTooltip && disabled && (
           <a
             href="#connect-wallet-cta"
-            onClick={() => setShowMobileTooltip(false)}
-            className="md:hidden absolute bottom-full mb-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-6 py-3 rounded-xl whitespace-nowrap z-[100] animate-fade-in shadow-2xl border-2 border-purple-400/60 hover:scale-105 transition-transform"
+            onClick={(e) => {
+              e.stopPropagation(); // Allow navigation but prevent document click
+              if (onHideTooltip) onHideTooltip();
+            }}
+            className="md:hidden fixed bottom-20 left-4 right-4 w-auto max-w-[calc(100vw-2rem)] bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-6 py-3 rounded-xl z-[100] animate-fade-in shadow-2xl border-2 border-purple-400/60 hover:scale-105 transition-transform text-center"
           >
             Connect Wallet to View Community Raffle
-            <div className="absolute top-full left-1/2 -translate-x-1/2 border-[6px] border-transparent border-t-purple-600"></div>
           </a>
         )}
       </button>
@@ -325,10 +331,20 @@ const CommunityRaffleCard = ({
                   <span>Current Pool:</span>
                   <span className="font-mono">{currentETH.toFixed(4)} ETH</span>
                 </div>
+                <div className="flex justify-between text-yellow-300/70">
+                  <span>Eligible Players:</span>
+                  <span className="font-mono">{Number(raffleInfo.eligiblePlayerCount || 0n)}</span>
+                </div>
                 {reserveETH > 0 && (
                   <div className="flex justify-between text-yellow-300/60">
                     <span>- Contract Reserve:</span>
                     <span className="font-mono">-{reserveETH.toFixed(4)} ETH</span>
+                  </div>
+                )}
+                {ownerShareETH > 0 && (
+                  <div className="flex justify-between text-yellow-300/60">
+                    <span>- Owner Share:</span>
+                    <span className="font-mono">-{ownerShareETH.toFixed(4)} ETH</span>
                   </div>
                 )}
                 <div className="flex justify-between text-yellow-300 font-semibold border-t border-yellow-400/20 pt-1">
@@ -361,51 +377,66 @@ const CommunityRaffleCard = ({
           </a>
 
           {/* Raffle History Section */}
-          {raffleHistory.length > 0 && (
-            <div className="mt-4 border-t border-yellow-400/20 pt-4">
-              <h4 className="text-yellow-300 font-semibold text-xs mb-2 flex items-center gap-1">
+          <div className="mt-4 border-t border-yellow-400/20 pt-4">
+            <button
+              type="button"
+              onClick={() => setIsHistoryExpanded(!isHistoryExpanded)}
+              className="w-full flex items-center justify-between text-yellow-300 font-semibold text-xs bg-yellow-900/40 hover:bg-yellow-900/60 border border-yellow-400/20 rounded-lg px-3 py-2 transition-colors"
+              aria-expanded={isHistoryExpanded}
+            >
+              <span className="flex items-center gap-1">
                 <Trophy size={14} />
                 Past Raffle Winners
-              </h4>
-              <div className="space-y-2 max-h-64 overflow-y-auto [&::-webkit-scrollbar]:w-0.5 [&::-webkit-scrollbar-track]:bg-amber-950/40 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-amber-500/70 [&::-webkit-scrollbar-thumb]:to-yellow-600/70 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:from-amber-400 hover:[&::-webkit-scrollbar-thumb]:to-yellow-500 [scrollbar-width:thin] [scrollbar-color:rgb(245_158_11_/_0.7)_rgb(69_26_3_/_0.4)]">
-                {raffleHistory.map((raffle) => (
-                  <div
-                    key={raffle.raffleNumber}
-                    className="bg-yellow-900/60 rounded-lg p-2.5 border border-yellow-400/10 hover:border-yellow-400/30 transition-colors"
-                  >
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-yellow-300 font-semibold text-xs">
-                        Raffle #{raffle.raffleNumber + 1}
-                      </span>
-                      <span className="text-yellow-300/50 text-[10px]">
-                        {new Date(raffle.timestamp * 1000).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <div className="space-y-1 text-[11px]">
-                      <div className="flex justify-between text-yellow-300/70">
-                        <span>Winner:</span>
-                        <span className="font-mono text-yellow-200">
-                          {shortenAddress(raffle.winner)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-yellow-300/70">
-                        <span>Prize:</span>
-                        <span className="font-mono text-amber-400 font-semibold">
-                          {parseFloat(ethers.formatEther(raffle.winnerPrize)).toFixed(4)} ETH
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-yellow-300/50">
-                        <span>Total Pot:</span>
-                        <span className="font-mono">
-                          {parseFloat(ethers.formatEther(raffle.rafflePot)).toFixed(4)} ETH
-                        </span>
-                      </div>
-                    </div>
+              </span>
+              {isHistoryExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
+            {isHistoryExpanded && (
+              <div className="mt-3 space-y-2 max-h-64 overflow-y-auto [&::-webkit-scrollbar]:w-0.5 [&::-webkit-scrollbar-track]:bg-amber-950/40 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-amber-500/70 [&::-webkit-scrollbar-thumb]:to-yellow-600/70 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:from-amber-400 hover:[&::-webkit-scrollbar-thumb]:to-yellow-500 [scrollbar-width:thin] [scrollbar-color:rgb(245_158_11_/_0.7)_rgb(69_26_3_/_0.4)]">
+                {raffleHistory.length === 0 ? (
+                  <div className="text-[11px] text-yellow-300/70 bg-yellow-900/40 border border-yellow-400/10 rounded-lg p-3 text-center">
+                    No community raffles have been executed yet
                   </div>
-                ))}
+                ) : (
+                  raffleHistory.map((raffle) => {
+                    const isWinner = normalizedAccount && raffle.winner?.toLowerCase() === normalizedAccount;
+                    return (
+                      <div
+                        key={raffle.raffleNumber}
+                        className={`rounded-lg p-2.5 border transition-colors ${
+                          isWinner
+                            ? 'bg-amber-600/30 border-amber-300/60 shadow-[0_0_12px_rgba(251,191,36,0.35)]'
+                            : 'bg-yellow-900/60 border-yellow-400/10 hover:border-yellow-400/30'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-yellow-300 font-semibold text-xs">
+                            Raffle #{raffle.raffleNumber + 1}
+                          </span>
+                          <span className="text-yellow-300/50 text-[10px]">
+                            {new Date(raffle.timestamp * 1000).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <div className="space-y-1 text-[11px]">
+                          <div className="flex justify-between text-yellow-300/70">
+                            <span>Winner:</span>
+                            <span className={`font-mono ${isWinner ? 'text-amber-200 font-semibold' : 'text-yellow-200'}`}>
+                              {shortenAddress(raffle.winner)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-yellow-300/70">
+                            <span>Prize:</span>
+                            <span className="font-mono text-amber-400 font-semibold">
+                              {parseFloat(ethers.formatEther(raffle.winnerPrize)).toFixed(4)} ETH
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
     </div>

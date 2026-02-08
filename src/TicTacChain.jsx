@@ -36,7 +36,7 @@ import { parseTournamentParams } from './utils/urlHelpers';
 import { parseTicTacToeMatch } from './utils/matchDataParser';
 import { determineMatchResult } from './utils/matchCompletionHandler';
 import { fetchTierTimeoutConfig } from './utils/timeCalculations';
-import { getCompletionReasonText, getCompletionReasonDescription } from './utils/completionReasons';
+import { getCompletionReasonText, getCompletionReasonDescription, isDraw } from './utils/completionReasons';
 import { batchFetchTournaments, batchFetchIsEnrolled } from './utils/multicall';
 import ParticleBackground from './components/shared/ParticleBackground';
 import MatchCard from './components/shared/MatchCard';
@@ -52,6 +52,7 @@ import RecentMatchesCard from './components/shared/RecentMatchesCard';
 import CommunityRaffleCard from './components/shared/CommunityRaffleCard';
 import GamesCard from './components/shared/GamesCard';
 import BracketScrollHint from './components/shared/BracketScrollHint';
+import RecentInstanceCard from './components/shared/RecentInstanceCard';
 import { usePlayerActivity } from './hooks/usePlayerActivity';
 
 // TicTacToe particle symbols (matching landing page style)
@@ -164,6 +165,13 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, /* onSpectate
     icon: 'text-purple-400'
   };
 
+  // Check if rounds exist but contain no real match data
+  const hasValidRounds = rounds && rounds.length > 0 && rounds.some(round =>
+    round.matches && round.matches.length > 0 && round.matches.some(match =>
+      match.player1 && match.player1 !== '0x0000000000000000000000000000000000000000'
+    )
+  );
+
   return (
     <div className="mb-16">
       {/* Header */}
@@ -209,12 +217,12 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, /* onSpectate
 
       {/* Bracket View */}
       <div ref={bracketViewRef} className={`bg-gradient-to-br from-slate-900/50 to-purple-900/30 backdrop-blur-lg rounded-2xl p-8 border ${colors.headerBorder}`}>
-        <h3 className={`text-2xl font-bold ${colors.text} mb-6 flex items-center gap-2`}>
+        <h3 className={`text-2xl font-bold ${colors.text} mb-3 flex items-center gap-2`}>
           <Grid size={24} />
           {tournamentTypeLabel} Bracket
         </h3>
 
-        {rounds && rounds.length > 0 ? (
+        {hasValidRounds ? (
           <div className="space-y-8">
             {rounds.map((round, roundIdx) => (
             <div key={roundIdx}>
@@ -244,6 +252,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, /* onSpectate
                         matchStatusOptions={matchStatusOptions}
                         showEscalation={true}
                         showThisIsYou={true}
+                        gameName="tictactoe"
                       />
                     </div>
                   );
@@ -253,12 +262,33 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, /* onSpectate
             ))}
           </div>
         ) : (
-          <div className="text-center py-12">
-            <div className={`${colors.text} text-lg`}>
-              {status === 0
-                ? 'Tournament bracket will be generated once the tournament starts.'
-                : 'No bracket data available.'}
+          <div className="space-y-6">
+            {/* Status message */}
+            <div className="text-left py-4">
+              <div className={`${colors.text} text-lg`}>
+                {status === 0
+                  ? 'Brackets will be generated once the instance starts.'
+                  : 'No bracket data available.'}
+              </div>
             </div>
+
+            {/* Divider */}
+            {enrolledCount === 0 && (
+              <hr className="border-purple-500/20" />
+            )}
+
+            {/* Recent instance history (shown when no enrolled players) */}
+            {enrolledCount === 0 && (
+              <div id="last-instance">
+                <RecentInstanceCard
+                  tierId={tierId}
+                  instanceId={instanceId}
+                  contract={contract}
+                  tierName={tournamentTypeLabel}
+                  walletAddress={account}
+                />
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -279,7 +309,7 @@ export default function TicTacChain() {
   const EXPECTED_CHAIN_ID = 42161;
   // const RPC_URL = import.meta.env.VITE_RPC_URL || CURRENT_NETWORK.rpcUrl;
   // const RPC_URL = "https://arb1.arbitrum.io/rpc";
-  const RPC_URL = "https://rpc.ankr.com/arbitrum/fa78359589ebb4ba1c97e306d5ad98192c1b897a76d2df05acf7ade04aa2687b";
+  const RPC_URL = "https://arb-mainnet.g.alchemy.com/v2/yoftG-myZ5Iur7UklgbJR";
   const EXPLORER_URL = getAddressUrl(CONTRACT_ADDRESS);
 
   // Helper to get read-only contract (bypasses MetaMask for read operations)
@@ -299,9 +329,8 @@ export default function TicTacChain() {
     currentAccumulated: 0n,
     threshold: 0n,
     reserve: 0n,
-    raffleAmount: 0n,
     ownerShare: 0n,
-    winnerShare: 0n,
+    raffleAmount: 0n,
     eligiblePlayerCount: 0n
   });
 
@@ -333,6 +362,11 @@ export default function TicTacChain() {
   const [visibleInstancesCount, setVisibleInstancesCount] = useState({}); // { [tierId]: number } - tracks how many instances to show per tier
   const [contractsExpanded, setContractsExpanded] = useState(false);
 
+  // Visibility tracking for home page polling
+  const tierListRef = useRef(null);
+  const [isTierListVisible, setIsTierListVisible] = useState(true);
+  const [isTabActive, setIsTabActive] = useState(!document.hidden);
+
   // URL Parameters State for shareable tournament links
   const [searchParams, setSearchParams] = useSearchParams();
   const [urlTournamentParams, setUrlTournamentParams] = useState(null);
@@ -351,6 +385,7 @@ export default function TicTacChain() {
   const [matchEndWinnerLabel, setMatchEndWinnerLabel] = useState('');
   const [matchEndWinner, setMatchEndWinner] = useState(null); // Winner address for modal display
   const [matchEndLoser, setMatchEndLoser] = useState(null); // Loser address for modal display
+  const [nextActiveMatch, setNextActiveMatch] = useState(null); // Next active match info after winning
   const previousBoardRef = useRef(null); // Track previous board state for move history sync
   const tournamentBracketRef = useRef(null); // Ref for auto-scrolling to tournament after URL navigation
   const matchViewRef = useRef(null); // Ref for auto-scrolling to match view
@@ -380,6 +415,28 @@ export default function TicTacChain() {
   // Mobile Panel Expansion Coordination (only one panel expanded at a time on mobile)
   const [expandedPanel, setExpandedPanel] = useState(null); // 'games' | 'playerActivity' | 'recentMatches' | 'communityRaffle' | null
 
+  // Mobile Tooltip Coordination (only one tooltip shown at a time on mobile when wallet not connected)
+  const [activeTooltip, setActiveTooltip] = useState(null); // 'playerActivity' | 'recentMatches' | 'communityRaffle' | 'eliteMatches' | null
+
+  // Click-away handler for tooltips
+  useEffect(() => {
+    if (!activeTooltip) return;
+
+    const handleClickAway = () => {
+      setActiveTooltip(null);
+    };
+
+    // Add listener on next tick to avoid closing immediately from the same click that opened it
+    const timer = setTimeout(() => {
+      document.addEventListener('click', handleClickAway);
+    }, 0);
+
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('click', handleClickAway);
+    };
+  }, [activeTooltip]);
+
   // Set page title
   useEffect(() => {
     document.title = 'ETour - TicTacToe';
@@ -407,19 +464,6 @@ export default function TicTacChain() {
       }, 100);
     }
   }, [location.state, setSearchParams]);
-
-  // Add mobile debugging console (Eruda) on mobile devices
-  useEffect(() => {
-    if ('ontouchstart' in window) {
-      const script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/eruda';
-      script.onload = () => {
-        window.eruda.init();
-        console.log('Eruda mobile console initialized');
-      };
-      document.body.appendChild(script);
-    }
-  }, []);
 
   // Parse URL parameters on initial load (for shareable tournament links)
   useEffect(() => {
@@ -731,8 +775,14 @@ export default function TicTacChain() {
       setRaffleSyncing(true);
       const readContract = getReadOnlyContract();
 
-      const [raffleIndex, isReady, currentAccumulated, threshold, reserve, raffleAmount, ownerShare, winnerShare, eligiblePlayerCount] =
+      const [raffleIndex, currentAccumulated, threshold, eligiblePlayerCount] =
         await readContract.getRaffleInfo();
+
+      const rafflePot = currentAccumulated;
+      const reserve = (rafflePot * 5n) / 100n;
+      const ownerShare = (rafflePot * 5n) / 100n;
+      const raffleAmount = rafflePot - reserve - ownerShare;
+      const isReady = currentAccumulated >= threshold && eligiblePlayerCount > 0n;
 
       setRaffleInfo({
         raffleIndex,
@@ -740,19 +790,19 @@ export default function TicTacChain() {
         currentAccumulated,
         threshold,
         reserve,
-        raffleAmount,
         ownerShare,
-        winnerShare,
+        raffleAmount,
         eligiblePlayerCount
       });
 
       console.log('Raffle Info:', {
         raffleIndex: raffleIndex.toString(),
-        isReady,
         currentAccumulated: ethers.formatEther(currentAccumulated),
         threshold: ethers.formatEther(threshold),
         reserve: ethers.formatEther(reserve),
+        ownerShare: ethers.formatEther(ownerShare),
         raffleAmount: ethers.formatEther(raffleAmount),
+        isReady,
         eligiblePlayerCount: eligiblePlayerCount.toString()
       });
     } catch (error) {
@@ -768,20 +818,32 @@ export default function TicTacChain() {
     try {
       const readContract = getReadOnlyContract();
 
-      // Fetch all past raffle results using the getRaffleHistory function
-      const results = await readContract.getRaffleHistory();
+      const [raffleIndex] = await readContract.getRaffleInfo();
+      const raffleCount = Number(raffleIndex);
 
-      // Format results and reverse to show newest first
-      const formattedHistory = results.map((result, index) => ({
-        raffleNumber: index,
-        executor: result.executor,
-        timestamp: Number(result.timestamp),
-        rafflePot: result.rafflePot,
-        winner: result.winner,
-        winnerPrize: result.winnerPrize,
-        protocolReserve: result.protocolReserve,
-        ownerShare: result.ownerShare
-      })).reverse(); // Newest first
+      if (raffleCount <= 0) {
+        setRaffleHistory([]);
+        return;
+      }
+
+      const raffleIndexes = Array.from({ length: raffleCount }, (_, i) => i);
+      const results = await Promise.all(raffleIndexes.map((index) => readContract.raffleResults(index)));
+
+      const formattedHistory = results.map((result, index) => {
+        const rafflePot = result.rafflePot;
+        const reserve = (rafflePot * 5n) / 100n;
+        const ownerShare = (rafflePot * 5n) / 100n;
+        const winnerPrize = rafflePot - reserve - ownerShare;
+
+        return {
+          raffleNumber: index,
+          executor: result.executor,
+          timestamp: Number(result.timestamp),
+          rafflePot,
+          winner: result.winner,
+          winnerPrize
+        };
+      }).reverse();
 
       setRaffleHistory(formattedHistory);
 
@@ -1355,8 +1417,11 @@ export default function TicTacChain() {
 
       alert('Tournament force-started successfully!');
 
-      // Exit tournament view and go back to tournaments list
-      setViewingTournament(null);
+      // Only exit tournament view if solo enroller (they win immediately)
+      // Otherwise keep them on the bracket view
+      if (enrolledCount === 1) {
+        setViewingTournament(null);
+      }
       setCurrentMatch(null);
 
       // Refresh cached stats
@@ -1610,7 +1675,7 @@ export default function TicTacChain() {
               throw result.error;
             }
             const matchData = result.matchData;
-            const parsedMatch = parseTicTacToeMatch(matchData);
+            const parsedMatch = parseTicTacToeMatch(matchData, tierMatchTime);
 
             // Calculate time remaining client-side (contract stores time at last move)
             // Formula: current player's time = stored time - elapsed since last move
@@ -1741,7 +1806,7 @@ export default function TicTacChain() {
               loser: zeroAddress,
               board: [0, 0, 0, 0, 0, 0, 0, 0, 0],
               matchStatus: 0,
-              isDraw: false,
+              completionReason: 0,
               startTime: 0,
               lastMoveTime: 0,
               timeoutState: null,
@@ -1800,6 +1865,13 @@ export default function TicTacChain() {
           if (collapseActivityPanelRef.current) {
             collapseActivityPanelRef.current();
           }
+          // Additional scroll to last instance section if it exists
+          setTimeout(() => {
+            const lastInstanceSection = document.getElementById('last-instance');
+            if (lastInstanceSection) {
+              lastInstanceSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          }, 300);
         }, 100);
       }
 
@@ -1816,7 +1888,7 @@ export default function TicTacChain() {
     try {
       // Get match data first
       const matchData = await contractInstance.getMatch(tierId, instanceId, roundNumber, matchNumber);
-      const parsedMatch = parseTicTacToeMatch(matchData);
+      const parsedMatch = parseTicTacToeMatch(matchData, matchTimePerPlayer);
       const player1 = parsedMatch.player1;
       const player2 = parsedMatch.player2;
       const firstPlayer = parsedMatch.firstPlayer;
@@ -1925,15 +1997,16 @@ export default function TicTacChain() {
   const refreshMatchData = useCallback(async (contractInstance, userAccount, matchInfo, totalMatchTime) => {
     try {
       const { tierId, instanceId, roundNumber, matchNumber } = matchInfo;
-      const matchData = await contractInstance.getMatch(tierId, instanceId, roundNumber, matchNumber);
-      const parsedMatch = parseTicTacToeMatch(matchData);
 
       // Fetch per-tier timeout config to get correct match time
       const timeoutConfig = await fetchTierTimeoutConfig(contractInstance, tierId, totalMatchTime, TIER_CONFIG[tierId]);
       const tierMatchTime = timeoutConfig?.matchTimePerPlayer ?? totalMatchTime;
 
+      const matchData = await contractInstance.getMatch(tierId, instanceId, roundNumber, matchNumber);
+      const parsedMatch = parseTicTacToeMatch(matchData, tierMatchTime);
+
       const {
-        player1, player2, firstPlayer, currentTurn, winner, loser, board, matchStatus, isDraw,
+        player1, player2, firstPlayer, currentTurn, winner, loser, board, matchStatus, completionReason,
         startTime, lastMoveTime, lastMoveTimestamp
       } = parsedMatch;
 
@@ -1991,7 +2064,7 @@ export default function TicTacChain() {
             });
 
             if (candidateMatches.length > 0) {
-              foundMatch = candidateMatches.sort((a, b) => Number(b.startTime) - Number(a.startTime))[0];
+              foundMatch = [...candidateMatches].sort((a, b) => Number(b.startTime) - Number(a.startTime))[0];
               console.log('[refreshMatchData] Found match by player addresses and timestamp');
             }
           }
@@ -2003,7 +2076,7 @@ export default function TicTacChain() {
               round: Number(foundMatch.roundNumber),
               match: Number(foundMatch.matchNumber),
               winner: foundMatch.winner,
-              isDraw: foundMatch.isDraw,
+              completionReason: Number(foundMatch.completionReason),
               movesLength: foundMatch.moves?.length || 0
             });
 
@@ -2019,9 +2092,10 @@ export default function TicTacChain() {
             };
             const matchBoard = unpackBoard(foundMatch.packedBoard);
 
+            const matchCompletionReason = Number(foundMatch.completionReason);
             const winnerLower = foundMatch.winner.toLowerCase();
             const p1Lower = foundMatch.player1.toLowerCase();
-            const matchLoser = foundMatch.isDraw ? zeroAddress :
+            const matchLoser = isDraw(matchCompletionReason) ? zeroAddress :
               (winnerLower === p1Lower ? foundMatch.player2 : foundMatch.player1);
 
             return {
@@ -2029,11 +2103,10 @@ export default function TicTacChain() {
               matchStatus: 2,
               winner: foundMatch.winner,
               loser: matchLoser,
-              isDraw: foundMatch.isDraw,
               board: matchBoard,
               isYourTurn: false,
               completedFromEventPoll: true,
-              completionReason: Number(foundMatch.completionReason),
+              completionReason: matchCompletionReason,
               cachedMoves: foundMatch.moves || ''
             };
           }
@@ -2188,7 +2261,7 @@ export default function TicTacChain() {
         loser,
         board: boardState,
         matchStatus,
-        isDraw,
+        completionReason,
         isTimedOut,
         isPlayer1,
         isYourTurn,
@@ -2403,7 +2476,7 @@ export default function TicTacChain() {
       const prizePool = tournamentInfo[3]; // prizePool is at index 3
 
       const matchData = await contract.getMatch(tierId, instanceId, roundNumber, matchNumber);
-      const parsedMatch = parseTicTacToeMatch(matchData);
+      const parsedMatch = parseTicTacToeMatch(matchData, tierConfig.timeouts.matchTimePerPlayer);
 
       const player1 = parsedMatch.player1;
       const player2 = parsedMatch.player2;
@@ -2486,7 +2559,7 @@ export default function TicTacChain() {
       const prizePool = tournamentInfo[3]; // prizePool at index 3 in getTournamentInfo
 
       const matchData = await contract.getMatch(tierId, instanceId, roundNumber, matchNumber);
-      const parsedMatch = parseTicTacToeMatch(matchData);
+      const parsedMatch = parseTicTacToeMatch(matchData, tierConfig.timeouts.matchTimePerPlayer);
 
       const player1 = parsedMatch.player1;
       const player2 = parsedMatch.player2;
@@ -2588,6 +2661,84 @@ export default function TicTacChain() {
     setMatchEndWinnerLabel('');
   };
 
+  // Check if player has a next active match in the next round
+  const checkForNextActiveMatch = useCallback(async () => {
+    if (!contract || !account || !currentMatch) {
+      setNextActiveMatch(null);
+      return;
+    }
+
+    try {
+      const { tierId, instanceId, roundNumber } = currentMatch;
+      const nextRoundNumber = roundNumber + 1;
+
+      // Get tournament info to determine total rounds
+      const tournamentInfo = await contract.getTournamentInfo(tierId, instanceId);
+      const tierConfig = TIER_CONFIG[tierId];
+      const playerCount = tierConfig.playerCount;
+      const totalRounds = Math.ceil(Math.log2(playerCount));
+
+      // If we're at the final round, no next match
+      if (nextRoundNumber >= totalRounds) {
+        setNextActiveMatch(null);
+        return;
+      }
+
+      // Check all matches in the next round for this player
+      const matchesInNextRound = Math.ceil(playerCount / Math.pow(2, nextRoundNumber + 1));
+
+      for (let matchNumber = 0; matchNumber < matchesInNextRound; matchNumber++) {
+        try {
+          const matchData = await contract.getMatch(tierId, instanceId, nextRoundNumber, matchNumber);
+          const parsedMatch = parseTicTacToeMatch(matchData, matchTimePerPlayer);
+
+          // Check if this match is active (status 1) and player is in it
+          if (parsedMatch.matchStatus === 1) {
+            const isPlayerInMatch =
+              parsedMatch.player1.toLowerCase() === account.toLowerCase() ||
+              parsedMatch.player2.toLowerCase() === account.toLowerCase();
+
+            if (isPlayerInMatch) {
+              setNextActiveMatch({
+                tierId,
+                instanceId,
+                roundNumber: nextRoundNumber,
+                matchNumber
+              });
+              return;
+            }
+          }
+        } catch (err) {
+          // Match not found or error, continue to next
+          continue;
+        }
+      }
+
+      // No active match found in next round
+      setNextActiveMatch(null);
+    } catch (error) {
+      console.error('Error checking for next active match:', error);
+      setNextActiveMatch(null);
+    }
+  }, [contract, account, currentMatch, matchTimePerPlayer]);
+
+  // Handle entering the next active match
+  const handleEnterNextMatch = useCallback(() => {
+    if (nextActiveMatch) {
+      handlePlayMatch(
+        nextActiveMatch.tierId,
+        nextActiveMatch.instanceId,
+        nextActiveMatch.roundNumber,
+        nextActiveMatch.matchNumber
+      );
+    }
+  }, [nextActiveMatch]);
+
+  // Handle returning to bracket
+  const handleReturnToBracket = useCallback(() => {
+    closeMatch();
+  }, [closeMatch]);
+
 
   // Go back from tournament bracket to tournaments list
   const handleBackToTournaments = async () => {
@@ -2681,12 +2832,56 @@ export default function TicTacChain() {
     fetchLeaderboard();
   }, [fetchLeaderboard]);
 
-  // Poll tier metadata and expanded tier instances every 10 seconds on home page
+  // Track tab visibility for home page polling
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsTabActive(!document.hidden);
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
+  // Track tier list scroll visibility with IntersectionObserver
+  useEffect(() => {
+    if (!tierListRef.current) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsTierListVisible(entry.isIntersecting);
+      },
+      { threshold: 0.1 } // Consider visible if at least 10% is in viewport
+    );
+
+    observer.observe(tierListRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  // Poll tier metadata and expanded tier instances every 5 seconds on home page - only when visible
   useEffect(() => {
     // Only poll when on home page (not viewing tournament or match)
-    if (currentMatch || viewingTournament || !contract) return;
+    if (currentMatch || viewingTournament || !contract) {
+      console.log('[Home Page Polling] Paused - Not on home page', {
+        currentMatch: !!currentMatch,
+        viewingTournament: !!viewingTournament,
+        contract: !!contract
+      });
+      return;
+    }
+
+    // Only poll if tier list is visible and tab is active
+    if (!isTierListVisible || !isTabActive) {
+      console.log('[Home Page Polling] Paused - User navigated away', {
+        isTierListVisible,
+        isTabActive
+      });
+      return;
+    }
+
+    console.log('[Home Page Polling] Starting - Tier list visible and tab active');
 
     const pollHomePageData = async () => {
+      console.log('[Home Page Polling] Executing poll...');
       try {
         // Fetch tier metadata silently (no loading indicators)
         await fetchTierMetadata(null, true);
@@ -2696,31 +2891,44 @@ export default function TicTacChain() {
           .filter(id => expandedTiers[id])
           .map(id => parseInt(id));
 
+        if (expandedTierIds.length > 0) {
+          console.log('[Home Page Polling] Fetching instances for expanded tiers:', expandedTierIds);
+        }
+
         for (const tierId of expandedTierIds) {
           await fetchTierInstances(tierId, null, null, null, true);
         }
+        console.log('[Home Page Polling] Poll completed');
       } catch (err) {
-        console.error('Error polling home page data:', err);
+        console.error('[Home Page Polling] Error polling home page data:', err);
       }
     };
 
-    // Set up polling interval - runs every 10 seconds
-    const pollInterval = setInterval(pollHomePageData, 10000);
+    // Initial poll
+    pollHomePageData();
 
-    return () => clearInterval(pollInterval);
-  }, [currentMatch, viewingTournament, contract, expandedTiers, fetchTierMetadata, fetchTierInstances]);
+    // Set up polling interval - runs every 5 seconds (changed from 10s)
+    const pollInterval = setInterval(pollHomePageData, 5000);
+
+    return () => {
+      console.log('[Home Page Polling] Cleanup - Stopping polling');
+      clearInterval(pollInterval);
+    };
+  }, [currentMatch, viewingTournament, contract, expandedTiers, fetchTierMetadata, fetchTierInstances, isTierListVisible, isTabActive]);
 
 
-  // Poll leaderboard every 1 minute (runs globally)
+  // Refresh leaderboard on tab focus
   useEffect(() => {
     if (!contract) return;
 
-    // Set up polling interval - runs every 60 seconds
-    const pollInterval = setInterval(() => {
-      fetchLeaderboard(true); // Silent update (no loading indicator)
-    }, 60000);
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchLeaderboard(true); // Silent update when tab becomes visible
+      }
+    };
 
-    return () => clearInterval(pollInterval);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [contract, fetchLeaderboard]);
 
   // Poll tournament bracket every 3 seconds (using refs for seamless syncing)
@@ -2827,11 +3035,12 @@ export default function TicTacChain() {
             const isParticipant = isPlayer1 || isPlayer2;
 
             if (isParticipant) {
-              const userWon = !updatedMatch.isDraw && updatedMatch.winner.toLowerCase() === userAccount.toLowerCase();
               const reasonNum = updatedMatch.completionReason || 0;
+              const isMatchDraw = isDraw(reasonNum);
+              const userWon = !isMatchDraw && updatedMatch.winner.toLowerCase() === userAccount.toLowerCase();
 
               let resultType = 'lose';
-              if (updatedMatch.isDraw) {
+              if (isMatchDraw) {
                 resultType = 'draw';
               } else if (userWon) {
                 resultType = (reasonNum === 1 || reasonNum === 3 || reasonNum === 4) ? 'forfeit_win' : 'win';
@@ -2843,6 +3052,11 @@ export default function TicTacChain() {
               setMatchEndResult({ result: resultType, completionReason: reasonNum });
               setMatchEndWinner(updatedMatch.winner);
               setMatchEndLoser(updatedMatch.loser);
+
+              // Check for next active match if user won
+              if (userWon) {
+                setTimeout(() => checkForNextActiveMatch(), 500);
+              }
             }
 
             return; // Stop polling
@@ -2871,7 +3085,7 @@ export default function TicTacChain() {
               player2TimeRemaining: updatedMatch.player2TimeRemaining,
               lastMoveTime: updatedMatch.lastMoveTime,
               lastMoveTimestamp: updatedMatch.lastMoveTimestamp,
-              // matchStatus, winner, loser, isDraw are preserved from prev (event-driven)
+              // matchStatus, winner, loser, completionReason are preserved from prev (event-driven)
             };
           });
 
@@ -2994,17 +3208,6 @@ export default function TicTacChain() {
         </div>
       )}
 
-      {/* Back to Bracket Button - Mobile Only (Shown during match) */}
-      {account && currentMatch && (
-        <button
-          onClick={() => setCurrentMatch(null)}
-          className="fixed bottom-4 left-4 z-50 md:hidden bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-full p-2.5 shadow-lg border-2 border-purple-400/50 transition-all transform hover:scale-110 active:scale-95"
-          aria-label="Back to bracket"
-        >
-          <ArrowLeft size={20} />
-        </button>
-      )}
-
       {/* Bottom Navigation Bar - Mobile Only */}
       <div className="fixed bottom-0 left-0 right-0 z-50 md:static md:z-auto">
         {/* Solid background bar on mobile */}
@@ -3037,6 +3240,9 @@ export default function TicTacChain() {
             onToggleExpand={() => setExpandedPanel(expandedPanel === 'playerActivity' ? null : 'playerActivity')}
             tierConfig={TIER_CONFIG}
             disabled={!account}
+            showTooltip={activeTooltip === 'playerActivity'}
+            onShowTooltip={() => setActiveTooltip('playerActivity')}
+            onHideTooltip={() => setActiveTooltip(null)}
           />
 
           {/* Match History Card */}
@@ -3052,12 +3258,17 @@ export default function TicTacChain() {
             onToggleExpand={() => setExpandedPanel(expandedPanel === 'recentMatches' ? null : 'recentMatches')}
             tierConfig={TIER_CONFIG}
             disabled={!account}
+            showTooltip={activeTooltip === 'recentMatches'}
+            onShowTooltip={() => setActiveTooltip('recentMatches')}
+            onHideTooltip={() => setActiveTooltip(null)}
+            onNavigateToTournament={handleEnterTournament}
           />
 
           {/* Community Raffle Card */}
           <CommunityRaffleCard
             raffleInfo={raffleInfo}
             raffleHistory={raffleHistory}
+            account={account}
             gamesCardHeight={gamesCardHeight}
             playerActivityHeight={playerActivityHeight}
             recentMatchesCardHeight={recentMatchesCardHeight}
@@ -3068,6 +3279,9 @@ export default function TicTacChain() {
             isExpanded={expandedPanel === 'communityRaffle'}
             onToggleExpand={() => setExpandedPanel(expandedPanel === 'communityRaffle' ? null : 'communityRaffle')}
             disabled={!account}
+            showTooltip={activeTooltip === 'communityRaffle'}
+            onShowTooltip={() => setActiveTooltip('communityRaffle')}
+            onHideTooltip={() => setActiveTooltip(null)}
           />
         </div>
 
@@ -3099,6 +3313,9 @@ export default function TicTacChain() {
             onToggleExpand={() => setExpandedPanel(expandedPanel === 'playerActivity' ? null : 'playerActivity')}
             tierConfig={TIER_CONFIG}
             disabled={!account}
+            showTooltip={activeTooltip === 'playerActivity'}
+            onShowTooltip={() => setActiveTooltip('playerActivity')}
+            onHideTooltip={() => setActiveTooltip(null)}
           />
 
           {/* Match History Card */}
@@ -3114,11 +3331,16 @@ export default function TicTacChain() {
             onToggleExpand={() => setExpandedPanel(expandedPanel === 'recentMatches' ? null : 'recentMatches')}
             tierConfig={TIER_CONFIG}
             disabled={!account}
+            showTooltip={activeTooltip === 'recentMatches'}
+            onShowTooltip={() => setActiveTooltip('recentMatches')}
+            onHideTooltip={() => setActiveTooltip(null)}
+            onNavigateToTournament={handleEnterTournament}
           />
 
           <CommunityRaffleCard
             raffleInfo={raffleInfo}
             raffleHistory={raffleHistory}
+            account={account}
             gamesCardHeight={gamesCardHeight}
             playerActivityHeight={playerActivityHeight}
             recentMatchesCardHeight={recentMatchesCardHeight}
@@ -3129,6 +3351,9 @@ export default function TicTacChain() {
             isExpanded={expandedPanel === 'communityRaffle'}
             onToggleExpand={() => setExpandedPanel(expandedPanel === 'communityRaffle' ? null : 'communityRaffle')}
             disabled={!account}
+            showTooltip={activeTooltip === 'communityRaffle'}
+            onShowTooltip={() => setActiveTooltip('communityRaffle')}
+            onHideTooltip={() => setActiveTooltip(null)}
           />
         </div>
       </div>
@@ -3282,6 +3507,9 @@ export default function TicTacChain() {
             onClaimTimeoutWin={isSpectator ? null : handleClaimTimeoutWin}
             onForceEliminate={isSpectator ? null : handleForceEliminateStalledMatch}
             onClaimReplacement={isSpectator ? null : handleClaimMatchSlotByReplacement}
+            onEnterNextMatch={handleEnterNextMatch}
+            onReturnToBracket={handleReturnToBracket}
+            hasNextActiveMatch={!!nextActiveMatch}
             playerCount={viewingTournament?.playerCount || null}
             playerConfig={(() => {
               // Determine which player is the first player (X) and which is second (O)
@@ -3413,7 +3641,7 @@ export default function TicTacChain() {
 
                 {/* Tournament Cards Grid - Grouped by Tier (Lazy Loading) */}
                 {!metadataLoading && Object.keys(tierMetadata).length > 0 && (
-                  <>
+                  <div ref={tierListRef}>
                     {[0, 6, 1, 2, 3, 4, 5].map((tierId) => {
                       const metadata = tierMetadata[tierId];
                       if (!metadata) return null;
@@ -3508,7 +3736,7 @@ export default function TicTacChain() {
                         </div>
                       );
                     })}
-                  </>
+                  </div>
                 )}
 
                 {/* Connection Error State */}
