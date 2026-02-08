@@ -1098,9 +1098,9 @@ const RecentMatchesCard = ({
                           const isAccountFirstPlayer = (isAccountPlayer1 && isPlayer1First) || (isAccountPlayer2 && !isPlayer1First);
                           const shouldFlip = isAccountFirstPlayer; // Flip if playing white
 
-                          // Always show labels from white's perspective (standard orientation)
-                          const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
-                          const ranks = ['8', '7', '6', '5', '4', '3', '2', '1'];
+                          // Adjust labels based on perspective
+                          const files = shouldFlip ? ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] : ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a'];
+                          const ranks = shouldFlip ? ['8', '7', '6', '5', '4', '3', '2', '1'] : ['1', '2', '3', '4', '5', '6', '7', '8'];
 
                           return (
                             <div className="flex justify-center">
@@ -1378,8 +1378,8 @@ const RecentMatchesCard = ({
         const isAccountFirstPlayer = (isAccountPlayer1 && isPlayer1First) || (isAccountPlayer2 && !isPlayer1First);
         const shouldFlip = isAccountFirstPlayer;
 
-        const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
-        const ranks = ['8', '7', '6', '5', '4', '3', '2', '1'];
+        const files = shouldFlip ? ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] : ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a'];
+        const ranks = shouldFlip ? ['8', '7', '6', '5', '4', '3', '2', '1'] : ['1', '2', '3', '4', '5', '6', '7', '8'];
 
         return (
           <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[200] flex items-center justify-center p-8">
