@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { X, RefreshCw, History, ChevronDown, ChevronUp, Eye } from 'lucide-react';
+import { X, RefreshCw, History, ChevronDown, ChevronUp, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 import { shortenAddress, getCellPositionName } from '../../utils/formatters';
 import { isDraw } from '../../utils/completionReasons';
 import CapturedPieces from './CapturedPieces';
@@ -34,6 +34,7 @@ const RecentMatchesCard = ({
   const [loadingRecentMatches, setLoadingRecentMatches] = useState(false);
   const [expandedRecentMatches, setExpandedRecentMatches] = useState(new Set());
   const [syncing, setSyncing] = useState(false);
+  const [moveIndices, setMoveIndices] = useState({}); // Track current move index for each match
   const expandedPanelRef = useRef(null);
   const prevExpandedRef = useRef(false);
   const matchCardRefs = useRef({});
@@ -397,6 +398,88 @@ const RecentMatchesCard = ({
     }
 
     return { white: whiteCaptured, black: blackCaptured };
+  };
+
+  // Reconstruct chess board state at a specific move index
+  const reconstructChessBoardAtMove = (moveHistory, moveIndex) => {
+    // Start with the initial chess board position
+    const board = [];
+
+    // Initialize empty board
+    for (let i = 0; i < 64; i++) {
+      board.push({ pieceType: 0, color: 0 });
+    }
+
+    // Set up initial position
+    // White pieces (color 1)
+    // Pawns
+    for (let i = 8; i < 16; i++) {
+      board[i] = { pieceType: 1, color: 1 };
+    }
+    // Rooks
+    board[0] = { pieceType: 4, color: 1 };
+    board[7] = { pieceType: 4, color: 1 };
+    // Knights
+    board[1] = { pieceType: 2, color: 1 };
+    board[6] = { pieceType: 2, color: 1 };
+    // Bishops
+    board[2] = { pieceType: 3, color: 1 };
+    board[5] = { pieceType: 3, color: 1 };
+    // Queen
+    board[3] = { pieceType: 5, color: 1 };
+    // King
+    board[4] = { pieceType: 6, color: 1 };
+
+    // Black pieces (color 2)
+    // Pawns
+    for (let i = 48; i < 56; i++) {
+      board[i] = { pieceType: 1, color: 2 };
+    }
+    // Rooks
+    board[56] = { pieceType: 4, color: 2 };
+    board[63] = { pieceType: 4, color: 2 };
+    // Knights
+    board[57] = { pieceType: 2, color: 2 };
+    board[62] = { pieceType: 2, color: 2 };
+    // Bishops
+    board[58] = { pieceType: 3, color: 2 };
+    board[61] = { pieceType: 3, color: 2 };
+    // Queen
+    board[59] = { pieceType: 5, color: 2 };
+    // King
+    board[60] = { pieceType: 6, color: 2 };
+
+    // Apply moves up to moveIndex
+    for (let i = 0; i <= moveIndex && i < moveHistory.length; i++) {
+      const move = moveHistory[i];
+      const fromPos = move.from;
+      const toPos = move.to;
+
+      // Move piece from source to destination
+      if (fromPos >= 0 && fromPos < 64 && toPos >= 0 && toPos < 64) {
+        board[toPos] = board[fromPos];
+        board[fromPos] = { pieceType: 0, color: 0 };
+      }
+    }
+
+    return board;
+  };
+
+  // Handle move navigation
+  const handlePreviousMove = (matchKey, moveHistory) => {
+    setMoveIndices(prev => {
+      const currentIndex = prev[matchKey] ?? moveHistory.length - 1;
+      const newIndex = Math.max(-1, currentIndex - 1);
+      return { ...prev, [matchKey]: newIndex };
+    });
+  };
+
+  const handleNextMove = (matchKey, moveHistory) => {
+    setMoveIndices(prev => {
+      const currentIndex = prev[matchKey] ?? moveHistory.length - 1;
+      const newIndex = Math.min(moveHistory.length - 1, currentIndex + 1);
+      return { ...prev, [matchKey]: newIndex };
+    });
   };
 
   // Desktop positioning
@@ -938,7 +1021,11 @@ const RecentMatchesCard = ({
                       <div className="mt-3 pt-3 border-t border-slate-600/30">
                         {/* Lost Pieces for Chess ONLY */}
                         {gameName === 'chess' && (() => {
-                          const board = unpackBoard(match.board, 'chess');
+                          const currentMoveIndex = moveIndices[matchKey] ?? match.moveHistory.length - 1;
+                          // Use reconstructed board if navigating through moves, otherwise use final board
+                          const board = (currentMoveIndex < match.moveHistory.length - 1 || currentMoveIndex === -1)
+                            ? reconstructChessBoardAtMove(match.moveHistory, currentMoveIndex)
+                            : unpackBoard(match.board, 'chess');
                           const capturedPieces = calculateCapturedPieces(board);
 
                           return (
@@ -985,7 +1072,11 @@ const RecentMatchesCard = ({
                         })()}
 
                         {gameName === 'chess' && (() => {
-                          const board = unpackBoard(match.board, 'chess');
+                          const currentMoveIndex = moveIndices[matchKey] ?? match.moveHistory.length - 1;
+                          // Use reconstructed board if navigating through moves, otherwise use final board
+                          const board = (currentMoveIndex < match.moveHistory.length - 1 || currentMoveIndex === -1)
+                            ? reconstructChessBoardAtMove(match.moveHistory, currentMoveIndex)
+                            : unpackBoard(match.board, 'chess');
                           const pieceTypes = ['', 'pawn', 'knight', 'bishop', 'rook', 'queen', 'king'];
 
                           // Determine if viewing account is playing white (first player)
@@ -993,39 +1084,126 @@ const RecentMatchesCard = ({
                           const isAccountFirstPlayer = (isAccountPlayer1 && isPlayer1First) || (isAccountPlayer2 && !isPlayer1First);
                           const shouldFlip = isAccountFirstPlayer; // Flip if playing white
 
+                          // Always show labels from white's perspective (standard orientation)
+                          const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+                          const ranks = ['8', '7', '6', '5', '4', '3', '2', '1'];
+
                           return (
                             <div className="flex justify-center">
-                              <div className="grid grid-cols-8 grid-rows-8 gap-0 w-full max-w-[256px] aspect-square border border-slate-600">
-                                {board.map((_cell, idx) => {
-                                  const displayRow = Math.floor(idx / 8);
-                                  const displayCol = idx % 8;
+                              <div className="relative inline-block">
+                                <div className="flex">
+                                  {/* Row labels (ranks) - left */}
+                                  <div className="flex flex-col justify-around w-3 mr-1">
+                                    {ranks.map((rank, idx) => (
+                                      <div key={idx} className="text-center text-[10px] text-slate-400 font-semibold flex items-center justify-center" style={{ height: 'calc(256px / 8)' }}>
+                                        {rank}
+                                      </div>
+                                    ))}
+                                  </div>
 
-                                  // Flip board vertically if playing black
-                                  const actualIdx = shouldFlip ? ((7 - displayRow) * 8 + displayCol) : idx;
-                                  const actualCell = board[actualIdx];
+                                  {/* Chess board */}
+                                  <div className="grid grid-cols-8 grid-rows-8 gap-0 w-full max-w-[256px] aspect-square border border-slate-600">
+                                    {board.map((_cell, idx) => {
+                                      const displayRow = Math.floor(idx / 8);
+                                      const displayCol = idx % 8;
 
-                                  const row = Math.floor(actualIdx / 8);
-                                  const col = actualIdx % 8;
-                                  const isLight = (row + col) % 2 === 0;
+                                      // Flip board vertically if playing black
+                                      const actualIdx = shouldFlip ? ((7 - displayRow) * 8 + displayCol) : idx;
+                                      const actualCell = board[actualIdx];
 
-                                  let svgPath = '';
-                                  if (actualCell.pieceType > 0) {
-                                    const pieceName = pieceTypes[actualCell.pieceType];
-                                    const colorSuffix = actualCell.color === 1 ? 'w' : 'b';
-                                    svgPath = `/chess-pieces/${pieceName}-${colorSuffix}.svg`;
-                                  }
+                                      const row = Math.floor(actualIdx / 8);
+                                      const col = actualIdx % 8;
+                                      const isLight = (row + col) % 2 === 0;
 
-                                  return (
-                                    <div
-                                      key={idx}
-                                      className={`flex items-center justify-center p-0.5 min-h-0 min-w-0 ${
-                                        isLight ? 'bg-amber-200/20' : 'bg-amber-900/20'
-                                      }`}
-                                    >
-                                      {svgPath && <img src={svgPath} alt="" className="w-full h-full object-contain" draggable="false" />}
-                                    </div>
-                                  );
-                                })}
+                                      let svgPath = '';
+                                      if (actualCell.pieceType > 0) {
+                                        const pieceName = pieceTypes[actualCell.pieceType];
+                                        const colorSuffix = actualCell.color === 1 ? 'w' : 'b';
+                                        svgPath = `/chess-pieces/${pieceName}-${colorSuffix}.svg`;
+                                      }
+
+                                      // Highlight the current move being viewed
+                                      const currentMoveIndex = moveIndices[matchKey] ?? match.moveHistory.length - 1;
+                                      const currentMove = currentMoveIndex >= 0 && currentMoveIndex < match.moveHistory.length
+                                        ? match.moveHistory[currentMoveIndex]
+                                        : null;
+
+                                      const isCurrentMoveFrom = currentMove && currentMove.from === actualIdx;
+                                      const isCurrentMoveTo = currentMove && currentMove.to === actualIdx;
+
+                                      // Determine if the current move is the player's move
+                                      const isPlayerMove = currentMove && (currentMoveIndex % 2 === 0
+                                        ? (isAccountPlayer1 && isPlayer1First) || (isAccountPlayer2 && !isPlayer1First)
+                                        : (isAccountPlayer1 && !isPlayer1First) || (isAccountPlayer2 && isPlayer1First));
+
+                                      // Calculate highlighting classes and styles
+                                      const getHighlightClass = () => {
+                                        if (isCurrentMoveFrom) {
+                                          return isPlayerMove ? 'ring-2 ring-purple-400 ring-inset' : 'ring-2 ring-yellow-400 ring-inset';
+                                        }
+                                        if (isCurrentMoveTo) {
+                                          return isPlayerMove ? 'ring-2 ring-blue-400 ring-inset' : 'ring-2 ring-red-400 ring-inset';
+                                        }
+                                        return '';
+                                      };
+
+                                      const getHighlightBg = () => {
+                                        if (isCurrentMoveFrom) {
+                                          return isPlayerMove
+                                            ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.5), rgba(147, 51, 234, 0.5))'
+                                            : 'linear-gradient(135deg, rgba(234, 179, 8, 0.5), rgba(202, 138, 4, 0.5))';
+                                        }
+                                        if (isCurrentMoveTo) {
+                                          return isPlayerMove
+                                            ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.5), rgba(29, 78, 216, 0.5))'
+                                            : 'linear-gradient(135deg, rgba(239, 68, 68, 0.5), rgba(220, 38, 38, 0.5))';
+                                        }
+                                        return undefined;
+                                      };
+
+                                      const getHighlightShadow = () => {
+                                        if (isCurrentMoveTo) {
+                                          return isPlayerMove
+                                            ? 'inset 0 0 25px rgba(59, 130, 246, 0.6), 0 0 15px rgba(59, 130, 246, 0.4)'
+                                            : 'inset 0 0 25px rgba(239, 68, 68, 0.6), 0 0 15px rgba(239, 68, 68, 0.4)';
+                                        }
+                                        if (isCurrentMoveFrom) {
+                                          return isPlayerMove
+                                            ? 'inset 0 0 20px rgba(168, 85, 247, 0.5), 0 0 12px rgba(168, 85, 247, 0.3)'
+                                            : 'inset 0 0 20px rgba(234, 179, 8, 0.5), 0 0 12px rgba(234, 179, 8, 0.3)';
+                                        }
+                                        return undefined;
+                                      };
+
+                                      return (
+                                        <div
+                                          key={idx}
+                                          className={`flex items-center justify-center p-0.5 min-h-0 min-w-0 ${
+                                            isLight ? 'bg-amber-200/20' : 'bg-amber-900/20'
+                                          } ${getHighlightClass()}`}
+                                          style={{
+                                            background: getHighlightBg() || undefined,
+                                            boxShadow: getHighlightShadow() || undefined,
+                                          }}
+                                        >
+                                          {svgPath && <img src={svgPath} alt="" className="w-full h-full object-contain" draggable="false" />}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+
+                                {/* Column labels (files) - bottom */}
+                                <div className="flex justify-center mt-1">
+                                  <div className="w-3"></div>
+                                  <div className="grid grid-cols-8 gap-0 w-full max-w-[256px]">
+                                    {files.map((file, idx) => (
+                                      <div key={idx} className="text-center text-[10px] text-slate-400 font-semibold">
+                                        {file}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
                               </div>
                             </div>
                           );
@@ -1079,14 +1257,45 @@ const RecentMatchesCard = ({
                               <h5 className="text-xs font-semibold text-slate-300 uppercase">
                                 Move History ({match.moveHistory.length} moves)
                               </h5>
+                              {gameName === 'chess' && (
+                                <div className="flex items-center gap-1 ml-auto">
+                                  <button
+                                    onClick={() => handlePreviousMove(matchKey, match.moveHistory)}
+                                    disabled={(moveIndices[matchKey] ?? match.moveHistory.length - 1) <= -1}
+                                    className="p-1 rounded bg-slate-700/50 hover:bg-slate-600/50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                    title="Previous move"
+                                  >
+                                    <ChevronLeft size={16} className="text-teal-300" />
+                                  </button>
+                                  <span className="text-[10px] text-slate-400 min-w-[3rem] text-center">
+                                    {moveIndices[matchKey] === -1 ? 'Start' : moveIndices[matchKey] !== undefined ? `Move ${moveIndices[matchKey] + 1}` : 'Final'}
+                                  </span>
+                                  <button
+                                    onClick={() => handleNextMove(matchKey, match.moveHistory)}
+                                    disabled={(moveIndices[matchKey] ?? match.moveHistory.length - 1) >= match.moveHistory.length - 1}
+                                    className="p-1 rounded bg-slate-700/50 hover:bg-slate-600/50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                    title="Next move"
+                                  >
+                                    <ChevronRight size={16} className="text-teal-300" />
+                                  </button>
+                                </div>
+                              )}
                             </div>
                             <div className="max-h-40 overflow-y-auto space-y-1 [&::-webkit-scrollbar]:w-0.5 [&::-webkit-scrollbar-track]:bg-teal-950/40 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-teal-500/70 [&::-webkit-scrollbar-thumb]:to-cyan-500/70 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:from-teal-400 hover:[&::-webkit-scrollbar-thumb]:to-cyan-400 [scrollbar-width:thin] [scrollbar-color:rgb(20_184_166_/_0.7)_rgb(4_47_46_/_0.4)]">
-                              {match.moveHistory.map((move, idx) => (
-                                <div
-                                  key={idx}
-                                  className="flex items-center gap-2 text-xs bg-slate-800/30 rounded px-2 py-1"
-                                >
-                                  <span className="text-slate-500 font-mono w-6">{idx + 1}.</span>
+                              {[...match.moveHistory].reverse().map((move, reverseIdx) => {
+                                const idx = match.moveHistory.length - 1 - reverseIdx;
+                                const currentMoveIndex = moveIndices[matchKey] ?? match.moveHistory.length - 1;
+                                const isCurrentMove = idx === currentMoveIndex;
+                                return (
+                                  <div
+                                    key={idx}
+                                    className={`flex items-center gap-2 text-xs rounded px-2 py-1 transition-colors ${
+                                      isCurrentMove
+                                        ? 'bg-teal-500/30 border border-teal-400/50'
+                                        : 'bg-slate-800/30'
+                                    }`}
+                                  >
+                                    <span className={`font-mono w-6 ${isCurrentMove ? 'text-teal-300 font-bold' : 'text-slate-500'}`}>{idx + 1}.</span>
                                   <div className="w-6 h-6 flex items-center justify-center">
                                     {gameName === 'chess' ? (
                                       <img
@@ -1105,7 +1314,8 @@ const RecentMatchesCard = ({
                                     {gameName === 'connect4' && `Column ${move.column}`}
                                   </span>
                                 </div>
-                              ))}
+                              );
+                              })}
                             </div>
                           </div>
                         )}
