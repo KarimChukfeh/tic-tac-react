@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { X, RefreshCw, History, ChevronDown, ChevronUp, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, RefreshCw, History, ChevronDown, ChevronUp, Eye, ChevronLeft, ChevronRight, ArrowUpRight } from 'lucide-react';
 import { shortenAddress, getCellPositionName } from '../../utils/formatters';
 import { isDraw } from '../../utils/completionReasons';
 import CapturedPieces from './CapturedPieces';
@@ -35,6 +35,7 @@ const RecentMatchesCard = ({
   const [expandedRecentMatches, setExpandedRecentMatches] = useState(new Set());
   const [syncing, setSyncing] = useState(false);
   const [moveIndices, setMoveIndices] = useState({}); // Track current move index for each match
+  const [expandedModalMatch, setExpandedModalMatch] = useState(null); // Track which match is in modal view
   const expandedPanelRef = useRef(null);
   const prevExpandedRef = useRef(false);
   const matchCardRefs = useRef({});
@@ -674,10 +675,23 @@ const RecentMatchesCard = ({
                   >
                     {/* Match Number and Details */}
                     <div className="mb-2.5">
-                      <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-center gap-2 flex-wrap relative">
                         <span className="text-slate-400 text-[10px] font-semibold">
                           Match #{recentMatches.length - index}
                         </span>
+                        {/* Expand to Modal Button - Chess only, Desktop only */}
+                        {gameName === 'chess' && isDesktop && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setExpandedModalMatch({ match, matchKey, index });
+                            }}
+                            className="absolute top-0 right-0 p-1 rounded bg-slate-700/50 hover:bg-slate-600/70 text-teal-300 hover:text-teal-200 transition-colors"
+                            title="Expand to full view"
+                          >
+                            <ArrowUpRight size={14} />
+                          </button>
+                        )}
                         {/* Tier Type with Instance - Combined Link */}
                         {getTierLabel(match.tierId) && (
                           <button
@@ -1328,6 +1342,331 @@ const RecentMatchesCard = ({
           )}
         </div>
       )}
+
+      {/* Expanded Modal View - Desktop only */}
+      {expandedModalMatch && isDesktop && (() => {
+        const { match, matchKey, index } = expandedModalMatch;
+        const accountLower = account?.toLowerCase() || '';
+        const winnerLower = match.winner?.toLowerCase() || '';
+        const player1Lower = match.player1?.toLowerCase() || '';
+        const player2Lower = match.player2?.toLowerCase() || '';
+
+        const matchIsDraw = isDraw(match.reason);
+        const isWinner = !matchIsDraw && winnerLower === accountLower && winnerLower !== '0x0000000000000000000000000000000000000000';
+
+        const isAccountPlayer1 = player1Lower === accountLower;
+        const isAccountPlayer2 = player2Lower === accountLower;
+        const isAccountActualPlayer = isAccountPlayer1 || isAccountPlayer2;
+
+        const opponent = isAccountPlayer1 ? match.player2 : match.player1;
+
+        const firstPlayerLower = match.firstPlayer?.toLowerCase() || '';
+        const isPlayer1First = firstPlayerLower === player1Lower;
+
+        const player1Symbol = isPlayer1First ? 'White' : 'Black';
+        const player2Symbol = isPlayer1First ? 'Black' : 'White';
+        const accountSymbol = isAccountPlayer1 ? player1Symbol : player2Symbol;
+        const opponentSymbol = isAccountPlayer1 ? player2Symbol : player1Symbol;
+
+        const currentMoveIndex = moveIndices[matchKey] ?? match.moveHistory.length - 1;
+        const board = (currentMoveIndex < match.moveHistory.length - 1 || currentMoveIndex === -1)
+          ? reconstructChessBoardAtMove(match.moveHistory, currentMoveIndex)
+          : unpackBoard(match.board, 'chess');
+        const capturedPieces = calculateCapturedPieces(board);
+        const pieceTypes = ['', 'pawn', 'knight', 'bishop', 'rook', 'queen', 'king'];
+
+        const isAccountFirstPlayer = (isAccountPlayer1 && isPlayer1First) || (isAccountPlayer2 && !isPlayer1First);
+        const shouldFlip = isAccountFirstPlayer;
+
+        const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+        const ranks = ['8', '7', '6', '5', '4', '3', '2', '1'];
+
+        return (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[200] flex items-center justify-center p-8">
+            <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl border-2 border-teal-400/40 shadow-2xl max-w-7xl w-full max-h-[90vh] overflow-y-auto p-8">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-white flex items-center gap-3">
+                  <History size={28} className="text-teal-400" />
+                  Match #{recentMatches.length - index}
+                </h2>
+                <button
+                  onClick={() => setExpandedModalMatch(null)}
+                  className="text-slate-400 hover:text-white transition-colors p-2 hover:bg-slate-700/50 rounded"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              {/* Main Content Grid */}
+              <div className="grid grid-cols-12 gap-6">
+                {/* Left Column - Match Stats */}
+                <div className="col-span-3 space-y-4">
+                  <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700/50">
+                    <h3 className="text-sm font-semibold text-slate-300 uppercase mb-3">Match Info</h3>
+
+                    {/* Tier and Instance */}
+                    {getTierLabel(match.tierId) && (
+                      <div className="mb-2">
+                        <button
+                          onClick={() => {
+                            if (onNavigateToTournament) {
+                              onNavigateToTournament(match.tierId, match.instanceId);
+                              setExpandedModalMatch(null);
+                            }
+                          }}
+                          className="bg-teal-500/20 text-teal-300 text-xs font-semibold px-2 py-1 rounded border border-teal-400/30 hover:bg-teal-500/30 transition-colors w-full"
+                        >
+                          {getTierLabel(match.tierId)} Instance-{match.instanceId + 1}
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Outcome */}
+                    <div className="mb-3">
+                      <span className={`text-xs px-2 py-1 rounded font-bold block text-center ${
+                        matchIsDraw
+                          ? 'bg-yellow-500/60 text-white'
+                          : isWinner
+                          ? 'bg-green-500/60 text-white'
+                          : 'bg-red-500/60 text-white'
+                      }`}>
+                        {getOutcomeLabel(isWinner, match.reason)}
+                      </span>
+                    </div>
+
+                    {/* Started */}
+                    <div className="text-xs text-slate-400 mb-1">
+                      Started: <span className="text-slate-300">{formatTimestamp(match.startTime)}</span>
+                    </div>
+
+                    {/* Ended */}
+                    <div className="text-xs text-slate-400">
+                      Ended: <span className="text-slate-300">{formatTimestamp(match.endTime)}</span>
+                    </div>
+                  </div>
+
+                  {/* Players */}
+                  <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700/50">
+                    <h3 className="text-sm font-semibold text-slate-300 uppercase mb-3">Players</h3>
+
+                    {isAccountActualPlayer ? (
+                      <>
+                        <div className="mb-3 p-2 bg-blue-500/10 rounded border border-blue-400/30">
+                          <div className="text-xs text-blue-300 mb-1">You ({accountSymbol})</div>
+                          <div className="text-xs font-mono text-slate-300">{account.slice(0, 10)}...{account.slice(-6)}</div>
+                        </div>
+                        <div className="p-2 bg-slate-700/30 rounded border border-slate-600/30">
+                          <div className="text-xs text-slate-400 mb-1">Opponent ({opponentSymbol})</div>
+                          <div className="text-xs font-mono text-slate-300">{opponent.slice(0, 10)}...{opponent.slice(-6)}</div>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="mb-3 p-2 bg-slate-700/30 rounded border border-slate-600/30">
+                          <div className="text-xs text-slate-400 mb-1">Player 1 ({player1Symbol})</div>
+                          <div className="text-xs font-mono text-slate-300">{match.player1.slice(0, 10)}...{match.player1.slice(-6)}</div>
+                        </div>
+                        <div className="p-2 bg-slate-700/30 rounded border border-slate-600/30">
+                          <div className="text-xs text-slate-400 mb-1">Player 2 ({player2Symbol})</div>
+                          <div className="text-xs font-mono text-slate-300">{match.player2.slice(0, 10)}...{match.player2.slice(-6)}</div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Captured Pieces */}
+                  <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700/50">
+                    <h3 className="text-sm font-semibold text-slate-300 uppercase mb-3">Captured</h3>
+                    <div className="space-y-2">
+                      <CapturedPieces capturedPieces={capturedPieces.white} color="white" />
+                      <CapturedPieces capturedPieces={capturedPieces.black} color="black" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Center Column - Chess Board */}
+                <div className="col-span-6 flex items-center justify-center">
+                  <div className="relative inline-block">
+                    <div className="flex">
+                      {/* Row labels (ranks) - left */}
+                      <div className="flex flex-col justify-around w-5 mr-2">
+                        {ranks.map((rank, idx) => (
+                          <div key={idx} className="text-center text-sm text-slate-400 font-semibold flex items-center justify-center" style={{ height: 'calc(512px / 8)' }}>
+                            {rank}
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Chess board - 512px (2x the size) */}
+                      <div className="grid grid-cols-8 grid-rows-8 gap-0 w-[512px] h-[512px] border-2 border-slate-600 shadow-2xl">
+                        {board.map((_cell, idx) => {
+                          const displayRow = Math.floor(idx / 8);
+                          const displayCol = idx % 8;
+
+                          const actualIdx = shouldFlip ? ((7 - displayRow) * 8 + displayCol) : idx;
+                          const actualCell = board[actualIdx];
+
+                          const row = Math.floor(actualIdx / 8);
+                          const col = actualIdx % 8;
+                          const isLight = (row + col) % 2 === 0;
+
+                          let svgPath = '';
+                          if (actualCell.pieceType > 0) {
+                            const pieceName = pieceTypes[actualCell.pieceType];
+                            const colorSuffix = actualCell.color === 1 ? 'w' : 'b';
+                            svgPath = `/chess-pieces/${pieceName}-${colorSuffix}.svg`;
+                          }
+
+                          const currentMove = currentMoveIndex >= 0 && currentMoveIndex < match.moveHistory.length
+                            ? match.moveHistory[currentMoveIndex]
+                            : null;
+
+                          const isCurrentMoveFrom = currentMove && currentMove.from === actualIdx;
+                          const isCurrentMoveTo = currentMove && currentMove.to === actualIdx;
+
+                          const isPlayerMove = currentMove && (currentMoveIndex % 2 === 0
+                            ? (isAccountPlayer1 && isPlayer1First) || (isAccountPlayer2 && !isPlayer1First)
+                            : (isAccountPlayer1 && !isPlayer1First) || (isAccountPlayer2 && isPlayer1First));
+
+                          const getHighlightClass = () => {
+                            if (isCurrentMoveFrom) {
+                              return isPlayerMove ? 'ring-4 ring-purple-400 ring-inset' : 'ring-4 ring-yellow-400 ring-inset';
+                            }
+                            if (isCurrentMoveTo) {
+                              return isPlayerMove ? 'ring-4 ring-blue-400 ring-inset' : 'ring-4 ring-red-400 ring-inset';
+                            }
+                            return '';
+                          };
+
+                          const getHighlightBg = () => {
+                            if (isCurrentMoveFrom) {
+                              return isPlayerMove
+                                ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.5), rgba(147, 51, 234, 0.5))'
+                                : 'linear-gradient(135deg, rgba(234, 179, 8, 0.5), rgba(202, 138, 4, 0.5))';
+                            }
+                            if (isCurrentMoveTo) {
+                              return isPlayerMove
+                                ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.5), rgba(29, 78, 216, 0.5))'
+                                : 'linear-gradient(135deg, rgba(239, 68, 68, 0.5), rgba(220, 38, 38, 0.5))';
+                            }
+                            return undefined;
+                          };
+
+                          const getHighlightShadow = () => {
+                            if (isCurrentMoveTo) {
+                              return isPlayerMove
+                                ? 'inset 0 0 30px rgba(59, 130, 246, 0.7), 0 0 20px rgba(59, 130, 246, 0.5)'
+                                : 'inset 0 0 30px rgba(239, 68, 68, 0.7), 0 0 20px rgba(239, 68, 68, 0.5)';
+                            }
+                            if (isCurrentMoveFrom) {
+                              return isPlayerMove
+                                ? 'inset 0 0 25px rgba(168, 85, 247, 0.6), 0 0 15px rgba(168, 85, 247, 0.4)'
+                                : 'inset 0 0 25px rgba(234, 179, 8, 0.6), 0 0 15px rgba(234, 179, 8, 0.4)';
+                            }
+                            return undefined;
+                          };
+
+                          return (
+                            <div
+                              key={idx}
+                              className={`flex items-center justify-center p-1 ${
+                                isLight ? 'bg-amber-200/20' : 'bg-amber-900/20'
+                              } ${getHighlightClass()}`}
+                              style={{
+                                background: getHighlightBg() || undefined,
+                                boxShadow: getHighlightShadow() || undefined,
+                              }}
+                            >
+                              {svgPath && <img src={svgPath} alt="" className="w-full h-full object-contain" draggable="false" />}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Column labels (files) - bottom */}
+                    <div className="flex justify-center mt-2">
+                      <div className="w-5 mr-2"></div>
+                      <div className="grid grid-cols-8 gap-0 w-[512px]">
+                        {files.map((file, idx) => (
+                          <div key={idx} className="text-center text-sm text-slate-400 font-semibold">
+                            {file}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Column - Move History */}
+                <div className="col-span-3">
+                  <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700/50 h-full">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-sm font-semibold text-slate-300 uppercase flex items-center gap-2">
+                        <History size={16} className="text-teal-400" />
+                        Move History ({match.moveHistory.length})
+                      </h3>
+                    </div>
+
+                    {/* Navigation Controls */}
+                    <div className="flex items-center justify-center gap-2 mb-4 bg-slate-700/30 rounded-lg p-3">
+                      <button
+                        onClick={() => handlePreviousMove(matchKey, match.moveHistory)}
+                        disabled={(moveIndices[matchKey] ?? match.moveHistory.length - 1) <= -1}
+                        className="p-2 rounded bg-slate-600/50 hover:bg-slate-500/50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        title="Previous move"
+                      >
+                        <ChevronLeft size={20} className="text-teal-300" />
+                      </button>
+                      <span className="text-sm text-slate-300 min-w-[5rem] text-center font-semibold">
+                        {moveIndices[matchKey] === -1 ? 'Start' : moveIndices[matchKey] !== undefined ? `Move ${moveIndices[matchKey] + 1}` : 'Final'}
+                      </span>
+                      <button
+                        onClick={() => handleNextMove(matchKey, match.moveHistory)}
+                        disabled={(moveIndices[matchKey] ?? match.moveHistory.length - 1) >= match.moveHistory.length - 1}
+                        className="p-2 rounded bg-slate-600/50 hover:bg-slate-500/50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        title="Next move"
+                      >
+                        <ChevronRight size={20} className="text-teal-300" />
+                      </button>
+                    </div>
+
+                    {/* Move List */}
+                    <div className="space-y-2 max-h-[600px] overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-teal-950/40 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-teal-500/70 [&::-webkit-scrollbar-thumb]:to-cyan-500/70 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:from-teal-400 hover:[&::-webkit-scrollbar-thumb]:to-cyan-400">
+                      {[...match.moveHistory].reverse().map((move, reverseIdx) => {
+                        const idx = match.moveHistory.length - 1 - reverseIdx;
+                        const isCurrentMove = idx === currentMoveIndex;
+                        return (
+                          <div
+                            key={idx}
+                            className={`flex items-center gap-3 text-sm rounded-lg px-3 py-2 transition-colors ${
+                              isCurrentMove
+                                ? 'bg-teal-500/30 border-2 border-teal-400/50'
+                                : 'bg-slate-700/30'
+                            }`}
+                          >
+                            <span className={`font-mono w-8 ${isCurrentMove ? 'text-teal-300 font-bold' : 'text-slate-500'}`}>{idx + 1}.</span>
+                            <div className="w-8 h-8 flex items-center justify-center">
+                              <img
+                                src={move.player === '♚' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
+                                alt={move.player === '♚' ? 'White' : 'Black'}
+                                className="w-6 h-6"
+                                draggable="false"
+                              />
+                            </div>
+                            <span className="text-slate-200 flex-1 font-medium">{move.move}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };
