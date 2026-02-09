@@ -43,6 +43,7 @@ import TournamentCard from './components/shared/TournamentCard';
 import WinnersLeaderboard from './components/shared/WinnersLeaderboard';
 import UserManual from './components/shared/UserManual';
 import MatchEndModal from './components/shared/MatchEndModal';
+import ActiveMatchAlertModal from './components/shared/ActiveMatchAlertModal';
 import WhyArbitrum from './components/shared/WhyArbitrum';
 import GameMatchLayout from './components/shared/GameMatchLayout';
 import TournamentHeader from './components/shared/TournamentHeader';
@@ -847,6 +848,53 @@ export default function Chess() {
 
   // Mobile Tooltip Coordination (only one tooltip shown at a time on mobile when wallet not connected)
   const [activeTooltip, setActiveTooltip] = useState(null); // 'playerActivity' | 'recentMatches' | 'communityRaffle' | 'eliteMatches' | null
+
+  // Active Match Alert Modal State
+  const [showMatchAlert, setShowMatchAlert] = useState(false);
+  const [alertMatch, setAlertMatch] = useState(null);
+  // Track which matches have been shown in this tab session (not persisted)
+  const shownAlertsRef = useRef(new Set());
+
+  // Active Match Alert Modal Logic
+  useEffect(() => {
+    // Only show alert if:
+    // 1. There's a matchAlert from the hook
+    // 2. We're NOT currently viewing a match (location.state?.view !== 'match')
+    // 3. This match hasn't been shown before in this tab session
+    if (playerActivity.matchAlert) {
+      const match = playerActivity.matchAlert;
+      const matchKey = `${match.tierId}-${match.instanceId}-${match.roundIdx}-${match.matchIdx}`;
+
+      // Check if we're currently viewing this match
+      const currentView = location.state?.view;
+      const isViewingMatch = currentView === 'match' &&
+        location.state?.tierId === match.tierId &&
+        location.state?.instanceId === match.instanceId &&
+        location.state?.roundIdx === match.roundIdx &&
+        location.state?.matchIdx === match.matchIdx;
+
+      // Check if modal has been shown for this match before in this session
+      const hasBeenShown = shownAlertsRef.current.has(matchKey);
+
+      console.log('[ActiveMatchAlert] Match alert detected:', matchKey, {
+        isViewingMatch,
+        hasBeenShown,
+        currentView
+      });
+
+      if (!isViewingMatch && !hasBeenShown) {
+        console.log('[ActiveMatchAlert] Showing alert modal for match:', matchKey);
+        setAlertMatch(match);
+        setShowMatchAlert(true);
+
+        // Mark this match as shown in this session
+        shownAlertsRef.current.add(matchKey);
+      }
+
+      // Clear the alert from the hook
+      playerActivity.clearMatchAlert();
+    }
+  }, [playerActivity.matchAlert, location.state, playerActivity]);
 
   // Click-away handler for tooltips
   useEffect(() => {
@@ -3490,6 +3538,12 @@ export default function Chess() {
     setMatchEndWinnerLabel('');
   };
 
+  // Handle closing the active match alert modal
+  const handleMatchAlertClose = () => {
+    setShowMatchAlert(false);
+    setAlertMatch(null);
+  };
+
   // Check if player has a next active match in the next round
   const checkForNextActiveMatch = useCallback(async () => {
     if (!contract || !account || !currentMatch) {
@@ -5554,6 +5608,15 @@ export default function Chess() {
         totalRounds={currentMatch?.playerCount ? Math.ceil(Math.log2(currentMatch.playerCount)) : undefined}
         prizePool={currentMatch?.prizePool}
       />
+
+      {/* Active Match Alert Modal */}
+      {showMatchAlert && alertMatch && (
+        <ActiveMatchAlertModal
+          match={alertMatch}
+          onClose={handleMatchAlertClose}
+          onEnterMatch={handlePlayMatch}
+        />
+      )}
 
     </div>
   );

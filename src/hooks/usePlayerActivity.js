@@ -40,6 +40,8 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
   const previousActiveMatchesRef = useRef(new Set());
   // Track player's enrolled tier/instances from events
   const [playerEnrollments, setPlayerEnrollments] = useState([]);
+  // Track match alert to show (single match to trigger modal)
+  const [matchAlert, setMatchAlert] = useState(null);
 
   // Query player enrollment events to get tier/instance combinations
   const fetchPlayerEnrollments = useCallback(async () => {
@@ -465,6 +467,24 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
         return a.timeRemaining - b.timeRemaining;
       });
 
+      // Check if we should trigger the active match alert modal
+      // Only trigger for in-progress matches (status === 1), not completed matches
+      const inProgressMatches = activeMatches.filter(m => m.matchStatus === 1);
+      if (inProgressMatches.length > 0) {
+        // Take the highest priority match (already sorted by turn + time remaining)
+        const priorityMatch = inProgressMatches[0];
+        const matchKey = `${priorityMatch.tierId}-${priorityMatch.instanceId}-${priorityMatch.roundIdx}-${priorityMatch.matchIdx}`;
+
+        // On initial load: always set alert for the first in-progress match found
+        // On subsequent polls: only set alert if this match wasn't in the previous poll
+        // (to avoid re-triggering on every poll for the same match)
+        const isNewMatch = !previousActiveMatchesRef.current.has(matchKey);
+        if (isInitialLoad || isNewMatch) {
+          console.log('[PlayerActivity] ACTIVE MATCH DETECTED - Setting alert for:', matchKey, { isInitialLoad, isNewMatch });
+          setMatchAlert(priorityMatch);
+        }
+      }
+
       // Update tracking of active matches for next poll
       previousActiveMatchesRef.current = new Set(
         activeMatches.map(m => `${m.tierId}-${m.instanceId}-${m.roundIdx}-${m.matchIdx}`)
@@ -549,6 +569,11 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
     await fetchPlayerEnrollments();
   }, [fetchPlayerEnrollments]);
 
+  // Clear match alert (called when modal is dismissed)
+  const clearMatchAlert = useCallback(() => {
+    setMatchAlert(null);
+  }, []);
+
   return {
     data,
     loading,
@@ -556,7 +581,9 @@ export const usePlayerActivity = (contract, account, gameName, tierConfig = null
     error,
     refetch,
     refetchEnrollments, // New: Expose for calling after enrollment transactions
-    dismissMatch
+    dismissMatch,
+    matchAlert, // New: Active match that should trigger alert modal
+    clearMatchAlert // New: Clear the alert
   };
 };
 
