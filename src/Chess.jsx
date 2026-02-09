@@ -204,10 +204,34 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, /* onSpectate
   // Ref for scroll hint component
   const bracketViewRef = useRef(null);
 
+  // Track previous status for auto-scroll detection
+  const prevStatusRef = useRef(status);
+
   // Countdown timer logic for enrollment
   const ENROLLMENT_DURATION = 1 * 60; // 1 minute in seconds (matches contract)
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [countdownExpired, setCountdownExpired] = useState(false);
+
+  // Auto-scroll to brackets when tournament starts after enrollment
+  useEffect(() => {
+    // Check if status changed from 0 (enrolling) to 1 (in progress)
+    // AND the user is enrolled in this tournament
+    if (prevStatusRef.current === 0 && status === 1 && isEnrolled && bracketViewRef.current) {
+      // Small delay to ensure DOM has updated with bracket data
+      const scrollTimer = setTimeout(() => {
+        bracketViewRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+          inline: 'nearest'
+        });
+      }, 300);
+
+      return () => clearTimeout(scrollTimer);
+    }
+
+    // Update the previous status reference
+    prevStatusRef.current = status;
+  }, [status, isEnrolled]);
 
   useEffect(() => {
     if (!countdownActive || !firstEnrollmentTime || status !== 0) {
