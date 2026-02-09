@@ -15,7 +15,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Link, useSearchParams, useLocation } from 'react-router-dom';
+import { Link, useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import {
   Wallet, Grid, Clock, Shield, Lock, Eye, Code, ExternalLink,
   Trophy, Zap, Coins, History,
@@ -728,6 +728,7 @@ export default function ConnectFour() {
 
   // Location state for navigation
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Match State
   const [currentMatch, setCurrentMatch] = useState(null);
@@ -2212,6 +2213,12 @@ export default function ConnectFour() {
       if (bracketData) {
         setViewingTournament(bracketData);
 
+        // Push to browser history for proper back button behavior
+        navigate('/connect4', {
+          replace: false,
+          state: { view: 'bracket', tierId, instanceId, from: location.state?.view || 'landing' }
+        });
+
         // Scroll to tournament bracket after rendering
         setTimeout(() => {
           if (tournamentBracketRef.current) {
@@ -2867,6 +2874,19 @@ export default function ConnectFour() {
         const history = await fetchMoveHistory(contract, tierId, instanceId, roundNumber, matchNumber);
         setMoveHistory(history);
 
+        // Push to browser history for proper back button behavior
+        navigate('/connect4', {
+          replace: false,
+          state: {
+            view: 'match',
+            tierId,
+            instanceId,
+            roundNumber,
+            matchNumber,
+            from: location.state?.view || 'bracket'
+          }
+        });
+
         // Scroll to match view after rendering
         setTimeout(() => {
           if (matchViewRef.current) {
@@ -2990,6 +3010,9 @@ export default function ConnectFour() {
     setIsSpectator(false); // Reset spectator mode
     previousBoardRef.current = null;
 
+    // Use browser back navigation
+    navigate(-1);
+
     // Refresh tournament bracket and cached stats (with loading indicator)
     if (tournamentInfo && contract) {
       setTournamentsLoading(true);
@@ -3093,6 +3116,9 @@ export default function ConnectFour() {
     setViewingTournament(null);
     setSearchParams({}); // Clear URL params when going back
 
+    // Use browser back navigation
+    navigate(-1);
+
     // Refresh tier metadata and cached stats (lazy loading)
     if (contract) {
       await refreshAfterAction();
@@ -3144,6 +3170,90 @@ export default function ConnectFour() {
       });
     }
   }, []);
+
+  // Handle browser back/forward navigation
+  useEffect(() => {
+    const handleLocationChange = async () => {
+      const state = location.state;
+
+      if (!state || !state.view) {
+        // No state means we're at the landing page
+        if (currentMatch || viewingTournament) {
+          setCurrentMatch(null);
+          setViewingTournament(null);
+        }
+        return;
+      }
+
+      if (state.view === 'bracket' && state.tierId !== undefined && state.instanceId !== undefined) {
+        // Navigate to bracket view
+        const needsUpdate = !viewingTournament ||
+          viewingTournament.tierId !== state.tierId ||
+          viewingTournament.instanceId !== state.instanceId;
+
+        if (needsUpdate && contract) {
+          setCurrentMatch(null);
+          const bracketData = await refreshTournamentBracket(contract, state.tierId, state.instanceId, matchTimePerPlayer);
+          if (bracketData) {
+            setViewingTournament(bracketData);
+          }
+        } else if (currentMatch) {
+          // Just clear the match if we're already viewing the right bracket
+          setCurrentMatch(null);
+        }
+      } else if (state.view === 'match' && state.tierId !== undefined && state.instanceId !== undefined && state.roundNumber !== undefined && state.matchNumber !== undefined) {
+        // Navigate to match view - need to manually load match without pushing history again
+        const needsUpdate = !currentMatch ||
+          currentMatch.tierId !== state.tierId ||
+          currentMatch.instanceId !== state.instanceId ||
+          currentMatch.roundNumber !== state.roundNumber ||
+          currentMatch.matchNumber !== state.matchNumber;
+
+        if (needsUpdate && contract && account) {
+          try {
+            setMatchLoading(true);
+            const tournamentInfo = await contract.getTournamentInfo(state.tierId, state.instanceId);
+            const tierConfig = TIER_CONFIG[state.tierId];
+            const playerCount = tierConfig.playerCount;
+            const prizePool = tournamentInfo[3];
+
+            const matchData = await contract.getMatch(state.tierId, state.instanceId, state.roundNumber, state.matchNumber);
+            const parsedMatch = parseConnectFourMatch(matchData, tierConfig.timeouts.matchTimePerPlayer);
+
+            const updated = await refreshMatchData(contract, account, {
+              tierId: state.tierId,
+              instanceId: state.instanceId,
+              roundNumber: state.roundNumber,
+              matchNumber: state.matchNumber,
+              player1: parsedMatch.player1,
+              player2: parsedMatch.player2,
+              playerCount,
+              prizePool
+            }, matchTimePerPlayer);
+
+            if (updated) {
+              setCurrentMatch(updated);
+              previousBoardRef.current = [...updated.board];
+              const history = await fetchMoveHistory(contract, state.tierId, state.instanceId, state.roundNumber, state.matchNumber);
+              setMoveHistory(history);
+            }
+            setMatchLoading(false);
+          } catch (error) {
+            console.error('Error loading match from history:', error);
+            setMatchLoading(false);
+          }
+        }
+      } else if (state.view === 'landing') {
+        // Navigate to landing page
+        if (currentMatch || viewingTournament) {
+          setCurrentMatch(null);
+          setViewingTournament(null);
+        }
+      }
+    };
+
+    handleLocationChange();
+  }, [location.state?.view, location.state?.tierId, location.state?.instanceId, location.state?.roundNumber, location.state?.matchNumber]);
 
   // Update enrollment status for all loaded tiers when account changes
   useEffect(() => {
