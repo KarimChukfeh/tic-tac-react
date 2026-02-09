@@ -51,6 +51,7 @@ import CommunityRaffleCard from './components/shared/CommunityRaffleCard';
 import GamesCard from './components/shared/GamesCard';
 import BracketScrollHint from './components/shared/BracketScrollHint';
 import RecentInstanceCard from './components/shared/RecentInstanceCard';
+import InviteModal from './components/shared/InviteModal';
 import { usePlayerActivity } from './hooks/usePlayerActivity';
 
 // ConnectFour particle symbols (SVG circles with darker colors)
@@ -3631,32 +3632,13 @@ export default function ConnectFour() {
       {/* Particle Background */}
       <ParticleBackground colors={currentTheme.particleColors} symbols={CONNECTFOUR_SYMBOLS} fontSize="24px" count={38} />
 
-      {/* Tournament Invitation Banner - shown when URL params present but not connected */}
-      {urlTournamentParams && !account && (
-        <div className="fixed top-4 left-4 right-4 z-50">
-          <div className="max-w-2xl mx-auto bg-gradient-to-r from-purple-600/90 to-blue-600/90 backdrop-blur-lg rounded-xl p-4 border border-purple-400/50 shadow-2xl">
-            <div className="flex items-start gap-3">
-              <Trophy className="text-yellow-400 shrink-0 mt-1" size={24} />
-              <div className="flex-1 min-w-0">
-                <p className="text-white font-semibold mb-1">
-                  Tournament Invitation
-                </p>
-                <p className="text-purple-100 text-sm mb-3">
-                  You've been invited to Tournament T{urlTournamentParams.tierId + 1}-I{urlTournamentParams.instanceId + 1}.
-                  Connect your wallet to view and join!
-                </p>
-                <button
-                  onClick={connectWallet}
-                  className="bg-white/20 hover:bg-white/30 text-white font-semibold py-2 px-4 rounded-lg transition-all flex items-center gap-2"
-                >
-                  <Wallet size={18} />
-                  Connect Wallet
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Tournament Invitation Modal - shown when URL params present but not connected */}
+      <InviteModal
+        tournamentParams={urlTournamentParams}
+        onConnect={connectWallet}
+        gameName="Connect Four"
+        playerCount={urlTournamentParams ? TIER_CONFIG[urlTournamentParams.tierId]?.playerCount : 2}
+      />
 
       {/* Bottom Navigation Bar - Mobile Only */}
       <div className="fixed bottom-0 left-0 right-0 z-50 md:static md:z-auto">
