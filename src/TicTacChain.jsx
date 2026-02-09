@@ -1078,12 +1078,14 @@ export default function TicTacChain() {
     if (!silentUpdate) setTierLoading(prev => ({ ...prev, [tierId]: true }));
 
     try {
-      // Get existing instances from state
+      // Fetch new data first - using MULTICALL
+      const provider = readContract.runner?.provider || readContract.provider;
+
+      // Get existing instances to fetch updated data
       const existingInstances = tierInstancesRef.current[tierId];
 
       if (existingInstances && existingInstances.length > 0) {
-        // Update enrollment status only
-        const provider = readContract.runner?.provider || readContract.provider;
+        // Update enrollment status only - using MULTICALL
         let enrollmentStatuses = [];
 
         if (currentAccount) {
@@ -1092,23 +1094,8 @@ export default function TicTacChain() {
           enrollmentStatuses = Array(existingInstances.length).fill(false);
         }
 
-        // Update instances with new enrollment status
-        const updatedInstances = existingInstances.map((instance, i) => ({
-          ...instance,
-          isEnrolled: enrollmentStatuses[i]
-        }));
-
-        // Debug: Log status of all instances
-        console.log(`[TicTacChain Update Path] Tier ${tierId} - All instance statuses:`, updatedInstances.map(inst => ({
-          id: inst.instanceId,
-          status: inst.tournamentStatus,
-          round: inst.currentRound,
-          enrolled: inst.enrolledCount
-        })));
-
-        // Check for escalations in active tournaments (any active tournament, regardless of round)
-        const activeTournamentsUpdate = updatedInstances.filter(inst => inst.tournamentStatus === 1);
-        console.log(`[TicTacChain Update Path] Tier ${tierId} - Total instances: ${updatedInstances.length}, Active tournaments: ${activeTournamentsUpdate.length}`, activeTournamentsUpdate.map(t => ({ id: t.instanceId, round: t.currentRound })));
+        // Check for escalations in active tournaments - using MULTICALL
+        const activeTournamentsUpdate = existingInstances.filter(inst => inst.tournamentStatus === 1);
 
         const escalationChecks = activeTournamentsUpdate
           .map(inst =>
@@ -1121,88 +1108,102 @@ export default function TicTacChain() {
           );
 
         const escalationResults = await Promise.all(escalationChecks);
-        console.log('[TicTacChain Update Path] Escalation results:', escalationResults);
-
-        // Update instances with escalation data
-        for (const result of escalationResults) {
-          const instance = updatedInstances.find(inst => inst.instanceId === result.instanceId);
-          if (instance) {
-            instance.hasEscalations = result.hasEscalations;
-            instance.escL2Count = result.escL2Count;
-            instance.escL3Count = result.escL3Count;
-            instance.firstML3Match = result.firstML3Match;
-            console.log(`[TicTacChain Update Path] Updated instance ${instance.instanceId} with escalations:`, {
-              hasEscalations: instance.hasEscalations,
-              escL3Count: instance.escL3Count,
-              firstML3Match: instance.firstML3Match
-            });
-          }
-        }
 
         // Sort instances by priority
-        const getSortPriority = (instance) => {
-          const { tournamentStatus, isEnrolled, enrolledCount, hasEscalations, escL3Count } = instance;
-
-          // Debug log for each instance
-          const debugInfo = {
-            instanceId: instance.instanceId,
-            tournamentStatus,
-            isEnrolled,
-            enrolledCount,
-            hasEscalations,
-            escL3Count
-          };
+        const getSortPriority = (instance, newIsEnrolled, newEscalationData) => {
+          const { tournamentStatus, enrolledCount } = instance;
+          const isEnrolled = newIsEnrolled !== undefined ? newIsEnrolled : instance.isEnrolled;
+          const hasEscalations = newEscalationData?.hasEscalations ?? instance.hasEscalations;
+          const escL3Count = newEscalationData?.escL3Count ?? instance.escL3Count;
 
           // 1. Tournaments where player is enrolled and tournament is active
-          if (tournamentStatus === 1 && isEnrolled) {
-            console.log('[getSortPriority] Priority 1:', debugInfo);
-            return 1;
-          }
+          if (tournamentStatus === 1 && isEnrolled) return 1;
 
           // 2. Tournaments where player is enrolled and tournament is not active
-          if (tournamentStatus === 0 && isEnrolled) {
-            console.log('[getSortPriority] Priority 2:', debugInfo);
-            return 2;
-          }
+          if (tournamentStatus === 0 && isEnrolled) return 2;
 
           // 3. Tournaments waiting for players but player isn't enrolled
-          if (tournamentStatus === 0 && !isEnrolled && enrolledCount > 0) {
-            console.log('[getSortPriority] Priority 3:', debugInfo);
-            return 3;
-          }
+          if (tournamentStatus === 0 && !isEnrolled && enrolledCount > 0) return 3;
 
           // 4. (Skip to maintain numbering requested by user)
 
           // 5. Tournaments with EL2 or ML3 escalations available/active
-          if (tournamentStatus === 1 && !isEnrolled && hasEscalations) {
-            console.log('[getSortPriority] Priority 5 (ML3!):', debugInfo);
-            return 5;
-          }
+          if (tournamentStatus === 1 && !isEnrolled && hasEscalations) return 5;
 
           // 6. Tournaments with no enrolled players
-          if (tournamentStatus === 0 && !isEnrolled && enrolledCount === 0) {
-            console.log('[getSortPriority] Priority 6:', debugInfo);
-            return 6;
-          }
+          if (tournamentStatus === 0 && !isEnrolled && enrolledCount === 0) return 6;
 
           // 7. Everything else (active tournaments without enrollment and no escalations)
-          console.log('[getSortPriority] Priority 7 (default):', debugInfo);
           return 7;
         };
 
-        updatedInstances.sort((a, b) => getSortPriority(a) - getSortPriority(b));
+        // NOW do the atomic state update with the fetched data
+        setTierInstances(prev => {
+          const currentInstances = prev[tierId];
+          if (!currentInstances) return prev;
 
-        // Debug log sorting
-        console.log('[TicTacChain Update Path] Sorted instances:', updatedInstances.map(inst => ({
-          instanceId: inst.instanceId,
-          priority: getSortPriority(inst),
-          tournamentStatus: inst.tournamentStatus,
-          isEnrolled: inst.isEnrolled,
-          hasEscalations: inst.hasEscalations,
-          escL3Count: inst.escL3Count
-        })));
+          // Check if sort order would change with new data
+          const currentOrder = currentInstances.map(inst => inst.instanceId);
+          const newOrder = [...currentInstances]
+            .sort((a, b) => {
+              const aEscalation = escalationResults.find(r => r.instanceId === a.instanceId);
+              const bEscalation = escalationResults.find(r => r.instanceId === b.instanceId);
+              const aIdx = currentInstances.indexOf(a);
+              const bIdx = currentInstances.indexOf(b);
+              return getSortPriority(a, enrollmentStatuses[aIdx], aEscalation) -
+                     getSortPriority(b, enrollmentStatuses[bIdx], bEscalation);
+            })
+            .map(inst => inst.instanceId);
 
-        setTierInstances(prev => ({ ...prev, [tierId]: updatedInstances }));
+          const sortOrderChanged = currentOrder.some((id, i) => id !== newOrder[i]);
+
+          console.log(`[TicTacChain Update Path] Tier ${tierId} order check:`, {
+            currentOrder,
+            newOrder,
+            sortOrderChanged
+          });
+
+          // Only update state if sort order actually changed
+          if (!sortOrderChanged) {
+            console.log(`[TicTacChain Update Path] No order change for tier ${tierId}, skipping state update`);
+            return prev; // Return same reference, no update
+          }
+
+          console.log('[TicTacChain Update Path] Sort order changed, updating state');
+
+          // Create the new array with updated data and sorted order
+          const updatedInstances = currentInstances.map((instance, i) => {
+            const escalationData = escalationResults.find(r => r.instanceId === instance.instanceId);
+            const needsUpdate =
+              instance.isEnrolled !== enrollmentStatuses[i] ||
+              (escalationData && (
+                instance.hasEscalations !== escalationData.hasEscalations ||
+                instance.escL2Count !== escalationData.escL2Count ||
+                instance.escL3Count !== escalationData.escL3Count ||
+                JSON.stringify(instance.firstML3Match) !== JSON.stringify(escalationData.firstML3Match)
+              ));
+
+            if (needsUpdate) {
+              return {
+                ...instance,
+                isEnrolled: enrollmentStatuses[i],
+                ...(escalationData && {
+                  hasEscalations: escalationData.hasEscalations,
+                  escL2Count: escalationData.escL2Count,
+                  escL3Count: escalationData.escL3Count,
+                  firstML3Match: escalationData.firstML3Match
+                })
+              };
+            }
+            return instance;
+          });
+
+          updatedInstances.sort((a, b) => getSortPriority(a) - getSortPriority(b));
+
+          console.log(`[TicTacChain Update Path] Setting new order:`, updatedInstances.map(inst => inst.instanceId));
+
+          return { ...prev, [tierId]: updatedInstances };
+        });
       } else {
         // Fallback: fetch full tier data if not already loaded
         const tierConfig = TIER_CONFIG[tierId];
@@ -1569,339 +1570,6 @@ export default function TicTacChain() {
     await playerActivity.refetch();
   }, [contract, account, playerActivity]);
 
-  // Handle tournament enrollment
-  const handleEnroll = async (tierId, instanceId, entryFee) => {
-    if (!contract || !account) {
-      alert('Please connect your wallet first');
-      return;
-    }
-
-    try {
-      setTournamentsLoading(true);
-
-      // Convert entry fee to wei
-      const feeInWei = ethers.parseEther(entryFee);
-
-      // Call enrollInTournament function with entry fee as value
-      const tx = await contract.enrollInTournament(tierId, instanceId, { value: feeInWei });
-      await tx.wait();
-
-      // Refresh player activity panel immediately after enrollment
-      playerActivity.refetch();
-
-      alert('Successfully enrolled in tournament!');
-
-      // Navigate to tournament bracket view
-      const bracketData = await refreshTournamentBracket(contract, tierId, instanceId, matchTimePerPlayer);
-      if (bracketData) {
-        setViewingTournament(bracketData);
-      }
-
-      // Refresh tier data (lazy loading)
-      await refreshAfterAction(tierId);
-
-      setTournamentsLoading(false);
-    } catch (error) {
-      console.error('Error enrolling:', error);
-      let errorMessage = error.message || 'Unknown error';
-
-      if (error.message?.includes('"TE"') || error.reason === 'TE') {
-        errorMessage = 'Tournament enrollment tracking failed. This may be a contract configuration issue. Please contact support.';
-      } else if (error.message?.includes('insufficient funds')) {
-        errorMessage = 'Insufficient funds to cover entry fee and gas';
-      } else if (error.message?.includes('user rejected')) {
-        errorMessage = 'Transaction rejected';
-      }
-
-      alert(`Error enrolling: ${errorMessage}`);
-      setTournamentsLoading(false);
-    }
-  };
-
-  // Handle force start tournament (with timeout tier system)
-  const handleManualStart = async (tierId, instanceId) => {
-    if (!contract || !account) {
-      alert('Please connect your wallet first');
-      return;
-    }
-
-    try {
-      setTournamentsLoading(true);
-
-      // Get tournament info to validate
-      const tournamentInfo = await contract.tournaments(tierId, instanceId);
-      const enrolledCount = Number(tournamentInfo.enrolledCount);
-      const status = Number(tournamentInfo.status);
-      const enrollmentTimeout = tournamentInfo.enrollmentTimeout;
-
-      // Extract escalation level information
-      const escalation1Start = Number(enrollmentTimeout.escalation1Start);
-      const escalation2Start = Number(enrollmentTimeout.escalation2Start);
-      const forfeitPool = enrollmentTimeout.forfeitPool;
-
-      // Calculate client-side escalation availability
-      const now = Math.floor(Date.now() / 1000);
-      const canStartEscalation1 = escalation1Start > 0 && now >= escalation1Start;
-      const canStartEscalation2 = escalation2Start > 0 && now >= escalation2Start;
-
-      // Validation checks
-      if (status !== 0) {
-        alert('Tournament has already started or completed');
-        setTournamentsLoading(false);
-        return;
-      }
-
-      // Check if any escalation window is open
-      if (!canStartEscalation1 && !canStartEscalation2) {
-        let timeUntilCanStart = 0;
-
-        if (escalation1Start > 0) {
-          timeUntilCanStart = escalation1Start - now;
-        }
-
-        if (timeUntilCanStart > 0) {
-          const minutes = Math.floor(timeUntilCanStart / 60);
-          const seconds = timeUntilCanStart % 60;
-          alert(`Tournament cannot be force-started yet. Wait ${minutes}m ${seconds}s for the escalation window to open.`);
-        } else {
-          alert('Tournament cannot be force-started at this time');
-        }
-        setTournamentsLoading(false);
-        return;
-      }
-
-      if (enrolledCount < 1) {
-        alert('Tournament has no enrolled players');
-        setTournamentsLoading(false);
-        return;
-      }
-
-      // Check if user is enrolled
-      const isEnrolled = await contract.isEnrolled(tierId, instanceId, account);
-
-      // Only enrolled players can force start
-      if (!isEnrolled) {
-        alert('You must be enrolled in the tournament to force-start it.');
-        setTournamentsLoading(false);
-        return;
-      }
-
-      // Build warning message for Escalation 1 force start
-      let warningMessage = '';
-
-      if (enrolledCount === 1) {
-        // Escalation 1: Only you are enrolled
-        warningMessage = 'You are the only enrolled player. Force-starting will declare you the winner and award you the prize pool';
-        if (forfeitPool && forfeitPool > 0n) {
-          warningMessage += ` plus any forfeited fees (${ethers.formatEther(forfeitPool)} ETH)`;
-        }
-        warningMessage += '. Continue?';
-      } else {
-        // Escalation 1: Multiple players enrolled
-        warningMessage = `Force-starting will begin the tournament with ${enrolledCount} players`;
-        if (forfeitPool && forfeitPool > 0n) {
-          warningMessage += `. Forfeit pool of ${ethers.formatEther(forfeitPool)} ETH will be distributed`;
-        }
-        warningMessage += '. Continue?';
-      }
-
-      const confirmStart = window.confirm(warningMessage);
-      if (!confirmStart) {
-        setTournamentsLoading(false);
-        return;
-      }
-
-      const tx = await contract.forceStartTournament(tierId, instanceId);
-      await tx.wait();
-
-      alert('Tournament force-started successfully!');
-
-      // Only exit tournament view if solo enroller (they win immediately)
-      // Otherwise keep them on the bracket view
-      if (enrolledCount === 1) {
-        setViewingTournament(null);
-      }
-      setCurrentMatch(null);
-
-      // Refresh cached stats
-      await fetchLeaderboard(true);
-
-      // Refresh tier data (lazy loading)
-      await refreshAfterAction(tierId);
-
-      setTournamentsLoading(false);
-    } catch (error) {
-      console.error('Error force-starting tournament:', error);
-      let errorMessage = error.message;
-      if (error.message.includes('ARRAY_RANGE_ERROR')) {
-        errorMessage = `Tournament cannot be started. This may be due to:\n- Invalid tier ID (${tierId + 1}) or instance ID (${instanceId + 1})\n- Tournament already started\n- Contract state issue\n\nCheck console for full error details.`;
-      } else if (error.message.includes('TimeoutNotReached')) {
-        errorMessage = 'Enrollment timeout window has not been reached yet';
-      } else if (error.message.includes('NotEnrolled')) {
-        errorMessage = 'You must be enrolled to force-start the tournament';
-      } else if (error.message.includes('TournamentAlreadyStarted')) {
-        errorMessage = 'Tournament has already been started';
-      } else if (error.message.includes('InvalidTournamentStatus')) {
-        errorMessage = 'Tournament is not in enrollment phase';
-      } else if (error.message.includes('CannotForceStart')) {
-        errorMessage = 'Tournament cannot be force-started yet - timeout tier requirements not met';
-      }
-
-      alert(`Error force-starting tournament: ${errorMessage}`);
-      setTournamentsLoading(false);
-    }
-  };
-
-  // Handle resetting enrollment window (EL1*)
-  const handleResetEnrollmentWindow = useCallback(async (tierId, instanceId) => {
-    if (!contract || !account) {
-      alert('Please connect your wallet first');
-      return;
-    }
-
-    try {
-      setTournamentsLoading(true);
-
-      // Confirm action with user
-      const confirmed = window.confirm(
-        `Reset Enrollment Window\n\n` +
-        `This will restart the enrollment period for this tournament, ` +
-        `allowing new players to join.\n\n` +
-        `Continue?`
-      );
-
-      if (!confirmed) {
-        setTournamentsLoading(false);
-        return;
-      }
-
-      // Call contract function
-      const tx = await contract.resetEnrollmentWindow(tierId, instanceId);
-      console.log('Reset enrollment window transaction submitted:', tx.hash);
-      alert('Transaction submitted! Waiting for confirmation...');
-
-      const receipt = await tx.wait();
-      console.log('Reset enrollment window confirmed:', receipt);
-
-      alert('Enrollment window has been reset successfully! New players can now join.');
-
-      // Refresh tournament data
-      await fetchTierInstances(tierId, null, null, null, true);
-
-      setTournamentsLoading(false);
-    } catch (error) {
-      console.error('Error resetting enrollment window:', error);
-
-      let errorMessage = error.message || 'Unknown error';
-
-      // Parse common error messages
-      if (error.message?.includes('NotSoloEnrolled')) {
-        errorMessage = 'Only solo enrolled players can reset the enrollment window';
-      } else if (error.message?.includes('EnrollmentNotExpired')) {
-        errorMessage = 'Enrollment window has not expired yet';
-      } else if (error.message?.includes('TournamentNotInEnrollment')) {
-        errorMessage = 'Tournament is no longer in enrollment phase';
-      } else if (error.message?.includes('user rejected')) {
-        errorMessage = 'Transaction cancelled';
-      }
-
-      alert(`Failed to reset enrollment window: ${errorMessage}`);
-      setTournamentsLoading(false);
-    }
-  }, [contract, account, fetchTierInstances]);
-
-  // Handle claiming abandoned enrollment pool
-  const handleClaimAbandonedPool = async (tierId, instanceId) => {
-    if (!contract || !account) {
-      alert('Please connect your wallet first');
-      return;
-    }
-
-    try {
-      setTournamentsLoading(true);
-
-      // Get tournament info to validate
-      const tournamentInfo = await contract.tournaments(tierId, instanceId);
-      const status = Number(tournamentInfo.status);
-      const enrolledCount = Number(tournamentInfo.enrolledCount);
-      const enrollmentTimeout = tournamentInfo.enrollmentTimeout;
-      const forfeitPool = enrollmentTimeout.forfeitPool || 0n;
-
-      // Calculate escalation availability
-      const escalation2Start = Number(enrollmentTimeout.escalation2Start);
-      const now = Math.floor(Date.now() / 1000);
-      const canStartEscalation2 = escalation2Start > 0 && now >= escalation2Start;
-
-      // For ongoing tournaments (status 0), check if we're in Escalation 2
-      if (status === 0) {
-        if (!canStartEscalation2) {
-          alert('Escalation 2 has not opened yet. Wait for the escalation period to complete.');
-          setTournamentsLoading(false);
-          return;
-        }
-
-        const confirmClaim = window.confirm(
-          `Claim the abandoned enrollment pool (Escalation 2)?\n\n` +
-          `This tournament has ${enrolledCount} enrolled player${enrolledCount !== 1 ? 's' : ''} but failed to start in time.\n` +
-          `You will receive the entire enrollment pool${forfeitPool > 0n ? ` plus ${ethers.formatEther(forfeitPool)} ETH in forfeited fees` : ''}.\n\n` +
-          `The tournament will be terminated and reset.`
-        );
-
-        if (!confirmClaim) {
-          setTournamentsLoading(false);
-          return;
-        }
-      } else {
-        // For completed tournaments (status >= 2)
-        if (forfeitPool <= 0n) {
-          alert('No forfeited funds to claim');
-          setTournamentsLoading(false);
-          return;
-        }
-
-        const confirmClaim = window.confirm(
-          `Claim ${ethers.formatEther(forfeitPool)} ETH from abandoned enrollment pool?\n\nThis pool consists of forfeited entry fees from players who did not start the tournament.`
-        );
-
-        if (!confirmClaim) {
-          setTournamentsLoading(false);
-          return;
-        }
-      }
-
-      const tx = await contract.claimAbandonedEnrollmentPool(tierId, instanceId);
-      await tx.wait();
-
-      alert('Abandoned enrollment pool claimed successfully!');
-
-      // Exit tournament view and go back to tournaments list
-      setViewingTournament(null);
-      setCurrentMatch(null);
-
-      // Refresh cached stats
-      await fetchLeaderboard(true);
-
-      // Refresh tier data (lazy loading)
-      await refreshAfterAction(tierId);
-
-      setTournamentsLoading(false);
-    } catch (error) {
-      console.error('Error claiming abandoned pool:', error);
-
-      let errorMessage = error.message;
-      if (error.message.includes('NothingToClaim')) {
-        errorMessage = 'No forfeited funds available to claim';
-      } else if (error.message.includes('TournamentNotEnded')) {
-        errorMessage = 'Tournament must be completed before claiming abandoned pool';
-      } else if (error.message.includes('ClaimWindowNotOpen')) {
-        errorMessage = 'Claim window is not open yet';
-      }
-
-      alert(`Error claiming abandoned pool: ${errorMessage}`);
-      setTournamentsLoading(false);
-    }
-  };
-
   // Refresh tournament bracket data
   const refreshTournamentBracket = useCallback(async (contractInstance, tierId, instanceId, totalMatchTime) => {
     try {
@@ -2144,8 +1812,341 @@ export default function TicTacChain() {
     }
   }, [escalationInterval, account]);
 
+  // Handle tournament enrollment
+  const handleEnroll = useCallback(async (tierId, instanceId, entryFee) => {
+    if (!contract || !account) {
+      alert('Please connect your wallet first');
+      return;
+    }
+
+    try {
+      setTournamentsLoading(true);
+
+      // Convert entry fee to wei
+      const feeInWei = ethers.parseEther(entryFee);
+
+      // Call enrollInTournament function with entry fee as value
+      const tx = await contract.enrollInTournament(tierId, instanceId, { value: feeInWei });
+      await tx.wait();
+
+      // Refresh player activity panel immediately after enrollment
+      playerActivity.refetch();
+
+      alert('Successfully enrolled in tournament!');
+
+      // Navigate to tournament bracket view
+      const bracketData = await refreshTournamentBracket(contract, tierId, instanceId, matchTimePerPlayer);
+      if (bracketData) {
+        setViewingTournament(bracketData);
+      }
+
+      // Refresh tier data (lazy loading)
+      await refreshAfterAction(tierId);
+
+      setTournamentsLoading(false);
+    } catch (error) {
+      console.error('Error enrolling:', error);
+      let errorMessage = error.message || 'Unknown error';
+
+      if (error.message?.includes('"TE"') || error.reason === 'TE') {
+        errorMessage = 'Tournament enrollment tracking failed. This may be a contract configuration issue. Please contact support.';
+      } else if (error.message?.includes('insufficient funds')) {
+        errorMessage = 'Insufficient funds to cover entry fee and gas';
+      } else if (error.message?.includes('user rejected')) {
+        errorMessage = 'Transaction rejected';
+      }
+
+      alert(`Error enrolling: ${errorMessage}`);
+      setTournamentsLoading(false);
+    }
+  }, [contract, account, playerActivity, refreshTournamentBracket, matchTimePerPlayer, refreshAfterAction]);
+
+  // Handle force start tournament (with timeout tier system)
+  const handleManualStart = useCallback(async (tierId, instanceId) => {
+    if (!contract || !account) {
+      alert('Please connect your wallet first');
+      return;
+    }
+
+    try {
+      setTournamentsLoading(true);
+
+      // Get tournament info to validate
+      const tournamentInfo = await contract.tournaments(tierId, instanceId);
+      const enrolledCount = Number(tournamentInfo.enrolledCount);
+      const status = Number(tournamentInfo.status);
+      const enrollmentTimeout = tournamentInfo.enrollmentTimeout;
+
+      // Extract escalation level information
+      const escalation1Start = Number(enrollmentTimeout.escalation1Start);
+      const escalation2Start = Number(enrollmentTimeout.escalation2Start);
+      const forfeitPool = enrollmentTimeout.forfeitPool;
+
+      // Calculate client-side escalation availability
+      const now = Math.floor(Date.now() / 1000);
+      const canStartEscalation1 = escalation1Start > 0 && now >= escalation1Start;
+      const canStartEscalation2 = escalation2Start > 0 && now >= escalation2Start;
+
+      // Validation checks
+      if (status !== 0) {
+        alert('Tournament has already started or completed');
+        setTournamentsLoading(false);
+        return;
+      }
+
+      // Check if any escalation window is open
+      if (!canStartEscalation1 && !canStartEscalation2) {
+        let timeUntilCanStart = 0;
+
+        if (escalation1Start > 0) {
+          timeUntilCanStart = escalation1Start - now;
+        }
+
+        if (timeUntilCanStart > 0) {
+          const minutes = Math.floor(timeUntilCanStart / 60);
+          const seconds = timeUntilCanStart % 60;
+          alert(`Tournament cannot be force-started yet. Wait ${minutes}m ${seconds}s for the escalation window to open.`);
+        } else {
+          alert('Tournament cannot be force-started at this time');
+        }
+        setTournamentsLoading(false);
+        return;
+      }
+
+      if (enrolledCount < 1) {
+        alert('Tournament has no enrolled players');
+        setTournamentsLoading(false);
+        return;
+      }
+
+      // Check if user is enrolled
+      const isEnrolled = await contract.isEnrolled(tierId, instanceId, account);
+
+      // Only enrolled players can force start
+      if (!isEnrolled) {
+        alert('You must be enrolled in the tournament to force-start it.');
+        setTournamentsLoading(false);
+        return;
+      }
+
+      // Build warning message for Escalation 1 force start
+      let warningMessage = '';
+
+      if (enrolledCount === 1) {
+        // Escalation 1: Only you are enrolled
+        warningMessage = 'You are the only enrolled player. Force-starting will declare you the winner and award you the prize pool';
+        if (forfeitPool && forfeitPool > 0n) {
+          warningMessage += ` plus any forfeited fees (${ethers.formatEther(forfeitPool)} ETH)`;
+        }
+        warningMessage += '. Continue?';
+      } else {
+        // Escalation 1: Multiple players enrolled
+        warningMessage = `Force-starting will begin the tournament with ${enrolledCount} players`;
+        if (forfeitPool && forfeitPool > 0n) {
+          warningMessage += `. Forfeit pool of ${ethers.formatEther(forfeitPool)} ETH will be distributed`;
+        }
+        warningMessage += '. Continue?';
+      }
+
+      const confirmStart = window.confirm(warningMessage);
+      if (!confirmStart) {
+        setTournamentsLoading(false);
+        return;
+      }
+
+      const tx = await contract.forceStartTournament(tierId, instanceId);
+      await tx.wait();
+
+      alert('Tournament force-started successfully!');
+
+      // Only exit tournament view if solo enroller (they win immediately)
+      // Otherwise keep them on the bracket view
+      if (enrolledCount === 1) {
+        setViewingTournament(null);
+      }
+      setCurrentMatch(null);
+
+      // Refresh cached stats
+      await fetchLeaderboard(true);
+
+      // Refresh tier data (lazy loading)
+      await refreshAfterAction(tierId);
+
+      setTournamentsLoading(false);
+    } catch (error) {
+      console.error('Error force-starting tournament:', error);
+      let errorMessage = error.message;
+      if (error.message.includes('ARRAY_RANGE_ERROR')) {
+        errorMessage = `Tournament cannot be started. This may be due to:\n- Invalid tier ID (${tierId + 1}) or instance ID (${instanceId + 1})\n- Tournament already started\n- Contract state issue\n\nCheck console for full error details.`;
+      } else if (error.message.includes('TimeoutNotReached')) {
+        errorMessage = 'Enrollment timeout window has not been reached yet';
+      } else if (error.message.includes('NotEnrolled')) {
+        errorMessage = 'You must be enrolled to force-start the tournament';
+      } else if (error.message.includes('TournamentAlreadyStarted')) {
+        errorMessage = 'Tournament has already been started';
+      } else if (error.message.includes('InvalidTournamentStatus')) {
+        errorMessage = 'Tournament is not in enrollment phase';
+      } else if (error.message.includes('CannotForceStart')) {
+        errorMessage = 'Tournament cannot be force-started yet - timeout tier requirements not met';
+      }
+
+      alert(`Error force-starting tournament: ${errorMessage}`);
+      setTournamentsLoading(false);
+    }
+  }, [contract, account, fetchLeaderboard, refreshAfterAction]);
+
+  // Handle resetting enrollment window (EL1*)
+  const handleResetEnrollmentWindow = useCallback(async (tierId, instanceId) => {
+    if (!contract || !account) {
+      alert('Please connect your wallet first');
+      return;
+    }
+
+    try {
+      setTournamentsLoading(true);
+
+      // Confirm action with user
+      const confirmed = window.confirm(
+        `Reset Enrollment Window\n\n` +
+        `This will restart the enrollment period for this tournament, ` +
+        `allowing new players to join.\n\n` +
+        `Continue?`
+      );
+
+      if (!confirmed) {
+        setTournamentsLoading(false);
+        return;
+      }
+
+      // Call contract function
+      const tx = await contract.resetEnrollmentWindow(tierId, instanceId);
+      console.log('Reset enrollment window transaction submitted:', tx.hash);
+      alert('Transaction submitted! Waiting for confirmation...');
+
+      const receipt = await tx.wait();
+      console.log('Reset enrollment window confirmed:', receipt);
+
+      alert('Enrollment window has been reset successfully! New players can now join.');
+
+      // Refresh tournament data
+      await fetchTierInstances(tierId, null, null, null, true);
+
+      setTournamentsLoading(false);
+    } catch (error) {
+      console.error('Error resetting enrollment window:', error);
+
+      let errorMessage = error.message || 'Unknown error';
+
+      // Parse common error messages
+      if (error.message?.includes('NotSoloEnrolled')) {
+        errorMessage = 'Only solo enrolled players can reset the enrollment window';
+      } else if (error.message?.includes('EnrollmentNotExpired')) {
+        errorMessage = 'Enrollment window has not expired yet';
+      } else if (error.message?.includes('TournamentNotInEnrollment')) {
+        errorMessage = 'Tournament is no longer in enrollment phase';
+      } else if (error.message?.includes('user rejected')) {
+        errorMessage = 'Transaction cancelled';
+      }
+
+      alert(`Failed to reset enrollment window: ${errorMessage}`);
+      setTournamentsLoading(false);
+    }
+  }, [contract, account, fetchTierInstances]);
+
+  // Handle claiming abandoned enrollment pool
+  const handleClaimAbandonedPool = useCallback(async (tierId, instanceId) => {
+    if (!contract || !account) {
+      alert('Please connect your wallet first');
+      return;
+    }
+
+    try {
+      setTournamentsLoading(true);
+
+      // Get tournament info to validate
+      const tournamentInfo = await contract.tournaments(tierId, instanceId);
+      const status = Number(tournamentInfo.status);
+      const enrolledCount = Number(tournamentInfo.enrolledCount);
+      const enrollmentTimeout = tournamentInfo.enrollmentTimeout;
+      const forfeitPool = enrollmentTimeout.forfeitPool || 0n;
+
+      // Calculate escalation availability
+      const escalation2Start = Number(enrollmentTimeout.escalation2Start);
+      const now = Math.floor(Date.now() / 1000);
+      const canStartEscalation2 = escalation2Start > 0 && now >= escalation2Start;
+
+      // For ongoing tournaments (status 0), check if we're in Escalation 2
+      if (status === 0) {
+        if (!canStartEscalation2) {
+          alert('Escalation 2 has not opened yet. Wait for the escalation period to complete.');
+          setTournamentsLoading(false);
+          return;
+        }
+
+        const confirmClaim = window.confirm(
+          `Claim the abandoned enrollment pool (Escalation 2)?\n\n` +
+          `This tournament has ${enrolledCount} enrolled player${enrolledCount !== 1 ? 's' : ''} but failed to start in time.\n` +
+          `You will receive the entire enrollment pool${forfeitPool > 0n ? ` plus ${ethers.formatEther(forfeitPool)} ETH in forfeited fees` : ''}.\n\n` +
+          `The tournament will be terminated and reset.`
+        );
+
+        if (!confirmClaim) {
+          setTournamentsLoading(false);
+          return;
+        }
+      } else {
+        // For completed tournaments (status >= 2)
+        if (forfeitPool <= 0n) {
+          alert('No forfeited funds to claim');
+          setTournamentsLoading(false);
+          return;
+        }
+
+        const confirmClaim = window.confirm(
+          `Claim ${ethers.formatEther(forfeitPool)} ETH from abandoned enrollment pool?\n\nThis pool consists of forfeited entry fees from players who did not start the tournament.`
+        );
+
+        if (!confirmClaim) {
+          setTournamentsLoading(false);
+          return;
+        }
+      }
+
+      const tx = await contract.claimAbandonedEnrollmentPool(tierId, instanceId);
+      await tx.wait();
+
+      alert('Abandoned enrollment pool claimed successfully!');
+
+      // Exit tournament view and go back to tournaments list
+      setViewingTournament(null);
+      setCurrentMatch(null);
+
+      // Refresh cached stats
+      await fetchLeaderboard(true);
+
+      // Refresh tier data (lazy loading)
+      await refreshAfterAction(tierId);
+
+      setTournamentsLoading(false);
+    } catch (error) {
+      console.error('Error claiming abandoned pool:', error);
+
+      let errorMessage = error.message;
+      if (error.message.includes('NothingToClaim')) {
+        errorMessage = 'No forfeited funds available to claim';
+      } else if (error.message.includes('TournamentNotEnded')) {
+        errorMessage = 'Tournament must be completed before claiming abandoned pool';
+      } else if (error.message.includes('ClaimWindowNotOpen')) {
+        errorMessage = 'Claim window is not open yet';
+      }
+
+      alert(`Error claiming abandoned pool: ${errorMessage}`);
+      setTournamentsLoading(false);
+    }
+  }, [contract, account, fetchLeaderboard, refreshAfterAction]);
+
   // Handle entering tournament (fetch and display bracket)
-  const handleEnterTournament = async (tierId, instanceId, ml3Match = null) => {
+  const handleEnterTournament = useCallback(async (tierId, instanceId, ml3Match = null) => {
     if (!contract) return;
 
     try {
@@ -2203,7 +2204,7 @@ export default function TicTacChain() {
       alert(`Error loading tournament: ${error.message}`);
       setTournamentsLoading(false);
     }
-  };
+  }, [contract, refreshTournamentBracket, matchTimePerPlayer, navigate, location.state?.view, tournamentBracketRef, collapseActivityPanelRef]);
 
   // Fetch move history from blockchain events
   const fetchMoveHistory = useCallback(async (contractInstance, tierId, instanceId, roundNumber, matchNumber) => {
@@ -4104,7 +4105,7 @@ export default function TicTacChain() {
                                   <p className="text-purple-300 text-sm">Loading {getTierName(metadata.playerCount)} instances...</p>
                                 </div>
                               ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" style={{ minHeight: instances.length > 0 ? 'auto' : '0' }}>
                                   {instances.map((tournament) => (
                                     <TournamentCard
                                       key={`${tournament.tierId}-${tournament.instanceId}`}
@@ -4115,8 +4116,8 @@ export default function TicTacChain() {
                                       entryFee={tournament.entryFee}
                                       prizePool={tournament.prizePool}
                                       isEnrolled={tournament.isEnrolled}
-                                      onEnroll={() => handleEnroll(tournament.tierId, tournament.instanceId, tournament.entryFee)}
-                                      onEnter={() => handleEnterTournament(tournament.tierId, tournament.instanceId)}
+                                      onEnroll={handleEnroll}
+                                      onEnter={handleEnterTournament}
                                       loading={tournamentsLoading}
                                       tierName={getTierName(tournament.maxPlayers)}
                                       enrollmentTimeout={tournament.enrollmentTimeout}
@@ -4130,7 +4131,6 @@ export default function TicTacChain() {
                                       hasEscalations={tournament.hasEscalations}
                                       escL3Count={tournament.escL3Count}
                                       firstML3Match={tournament.firstML3Match}
-                                      onEnterML3={() => handleEnterTournament(tournament.tierId, tournament.instanceId, tournament.firstML3Match)}
                                     />
                                   ))}
                                 </div>

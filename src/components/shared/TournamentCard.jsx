@@ -5,7 +5,7 @@
  * Used in the tournament list view across all games.
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, memo } from 'react';
 import { Trophy, Play, Users, Zap, Coins, Eye, RefreshCw } from 'lucide-react';
 import { ethers } from 'ethers';
 import EscalationTimer from './EscalationTimer';
@@ -35,17 +35,17 @@ const DEFAULT_COLORS = {
  * @param {string} props.entryFee - Entry fee in ETH
  * @param {string} props.prizePool - Total prize pool in ETH
  * @param {boolean} props.isEnrolled - Whether current user is enrolled
- * @param {Function} props.onEnroll - Handler for enrollment
- * @param {Function} props.onEnter - Handler for entering/viewing tournament
+ * @param {Function} props.onEnroll - Handler for enrollment (called with tierId, instanceId, entryFee)
+ * @param {Function} props.onEnter - Handler for entering/viewing tournament (called with tierId, instanceId, ml3Match)
  * @param {boolean} props.loading - Loading state
  * @param {string} props.tierName - Display name for the tier
  * @param {Object|null} props.enrollmentTimeout - Enrollment timeout data
- * @param {Function} props.onManualStart - Handler for force starting tournament
- * @param {Function} [props.onClaimAbandonedPool] - Handler for claiming abandoned pool
+ * @param {Function} props.onManualStart - Handler for force starting tournament (called with tierId, instanceId)
+ * @param {Function} [props.onClaimAbandonedPool] - Handler for claiming abandoned pool (called with tierId, instanceId)
  * @param {number} props.tournamentStatus - Tournament status (0=enrollment, 1=active, 2+=completed)
  * @param {string|null} props.account - Current user's wallet address
  * @param {Object} [props.colors] - Custom color theme
- * @param {Function} [props.onResetEnrollmentWindow] - Handler for resetting enrollment window
+ * @param {Function} [props.onResetEnrollmentWindow] - Handler for resetting enrollment window (called with tierId, instanceId)
  * @param {Object} [props.contract] - Contract instance for calling canResetEnrollmentWindow
  */
 const TournamentCard = ({
@@ -71,7 +71,6 @@ const TournamentCard = ({
   hasEscalations,
   escL3Count,
   firstML3Match,
-  onEnterML3,
 }) => {
   const isFull = currentEnrolled >= maxPlayers;
   const enrollmentPercentage = (currentEnrolled / maxPlayers) * 100;
@@ -371,10 +370,10 @@ const TournamentCard = ({
       />
 
       {/* ML3 Available Button - Show when tournament is active and has ML3 escalations */}
-      {tournamentStatus === 1 && escL3Count > 0 && firstML3Match && onEnterML3 && (
+      {tournamentStatus === 1 && escL3Count > 0 && firstML3Match && onEnter && (
         <div className="mb-4">
           <button
-            onClick={onEnterML3}
+            onClick={() => onEnter(tierId, instanceId, firstML3Match)}
             disabled={loading}
             className="w-full bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-xs"
           >
@@ -447,7 +446,7 @@ const TournamentCard = ({
 
       {isEnrolled ? (
         <button
-          onClick={onEnter}
+          onClick={() => onEnter(tierId, instanceId)}
           disabled={loading || !account}
           className={`w-full bg-gradient-to-r ${colors.buttonEnter} text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2`}
         >
@@ -459,7 +458,7 @@ const TournamentCard = ({
           {/* Enroll button for non-enrolled users (only during enrollment phase) */}
           {tournamentStatus === 0 && !isFull && (
             <button
-              onClick={onEnroll}
+              onClick={() => onEnroll(tierId, instanceId, entryFee)}
               disabled={loading || !account}
               className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
             >
@@ -470,7 +469,7 @@ const TournamentCard = ({
 
           {/* Enter Tournament / View Bracket button for non-enrolled users */}
           <button
-            onClick={onEnter}
+            onClick={() => onEnter(tierId, instanceId)}
             disabled={loading}
             className={`w-full ${tournamentStatus === 0 && !isFull ? 'mt-2' : ''} bg-gradient-to-r ${colors.buttonEnter} text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 border ${colors.cardBorder}`}
           >
@@ -504,4 +503,5 @@ const TournamentCard = ({
   );
 };
 
-export default TournamentCard;
+// Memoize the component to prevent unnecessary re-renders during polling
+export default memo(TournamentCard);

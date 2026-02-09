@@ -1694,15 +1694,10 @@ export default function Chess() {
           enrollmentStatuses = Array(existingInstances.length).fill(false);
         }
 
-        // Update instances with new enrollment status
-        const updatedInstances = existingInstances.map((instance, i) => ({
-          ...instance,
-          isEnrolled: enrollmentStatuses[i]
-        }));
-
         // Sort instances by priority
-        const getSortPriority = (instance) => {
-          const { tournamentStatus, isEnrolled, enrolledCount } = instance;
+        const getSortPriority = (instance, newIsEnrolled) => {
+          const { tournamentStatus, enrolledCount } = instance;
+          const isEnrolled = newIsEnrolled !== undefined ? newIsEnrolled : instance.isEnrolled;
 
           if (tournamentStatus === 1 && isEnrolled) return 1;
           if (tournamentStatus === 0 && isEnrolled) return 2;
@@ -1712,9 +1707,37 @@ export default function Chess() {
           return 6;
         };
 
-        updatedInstances.sort((a, b) => getSortPriority(a) - getSortPriority(b));
+        // Check if sort order would change with new data (without mutating)
+        const currentOrder = existingInstances.map(inst => inst.instanceId);
+        const newOrder = [...existingInstances]
+          .sort((a, b) => {
+            const aIdx = existingInstances.indexOf(a);
+            const bIdx = existingInstances.indexOf(b);
+            return getSortPriority(a, enrollmentStatuses[aIdx]) -
+                   getSortPriority(b, enrollmentStatuses[bIdx]);
+          })
+          .map(inst => inst.instanceId);
 
-        setTierInstances(prev => ({ ...prev, [tierId]: updatedInstances }));
+        const sortOrderChanged = currentOrder.some((id, i) => id !== newOrder[i]);
+
+        // Only update state if sort order actually changed
+        if (sortOrderChanged) {
+          console.log('[Chess Update Path] Sort order changed, updating state');
+
+          // Now create the new array with updated data and sorted order
+          const updatedInstances = existingInstances.map((instance, i) => {
+            if (instance.isEnrolled !== enrollmentStatuses[i]) {
+              return { ...instance, isEnrolled: enrollmentStatuses[i] };
+            }
+            return instance;
+          });
+
+          updatedInstances.sort((a, b) => getSortPriority(a) - getSortPriority(b));
+
+          setTierInstances(prev => ({ ...prev, [tierId]: updatedInstances }));
+        } else {
+          console.log(`[Chess Update Path] No order change for tier ${tierId}, skipping state update`);
+        }
       } else {
         // Fallback: fetch full tier data if not already loaded
         const tierConfig = TIER_CONFIG[tierId];
@@ -5036,7 +5059,7 @@ export default function Chess() {
                                   }`}>Loading {getTierName(metadata.playerCount, tierId)} instances...</p>
                                 </div>
                               ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" style={{ minHeight: instances.length > 0 ? 'auto' : '0' }}>
                                   {instances.map((tournament) => {
                                     const isEliteCard = tournament.tierId === 3 || tournament.tierId === 7;
                                     const eliteColors = isEliteCard ? {
