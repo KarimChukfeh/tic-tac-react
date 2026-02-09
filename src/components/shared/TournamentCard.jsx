@@ -68,9 +68,24 @@ const TournamentCard = ({
   colors: customColors,
   onResetEnrollmentWindow,
   contract,
+  hasEscalations,
+  escL3Count,
+  firstML3Match,
+  onEnterML3,
 }) => {
   const isFull = currentEnrolled >= maxPlayers;
   const enrollmentPercentage = (currentEnrolled / maxPlayers) * 100;
+
+  // Debug logging for ML3
+  if (escL3Count > 0 || hasEscalations) {
+    console.log(`[TournamentCard T${tierId}I${instanceId}] ML3 Props:`, {
+      tournamentStatus,
+      hasEscalations,
+      escL3Count,
+      firstML3Match,
+      hasOnEnterML3: !!onEnterML3
+    });
+  }
 
   // Merge custom colors with defaults
   const colors = { ...DEFAULT_COLORS, ...customColors };
@@ -354,6 +369,26 @@ const TournamentCard = ({
         enrollmentTimeout={enrollmentTimeout}
         isEnrolled={isEnrolled}
       />
+
+      {/* ML3 Available Button - Show when tournament is active and has ML3 escalations */}
+      {tournamentStatus === 1 && escL3Count > 0 && firstML3Match && onEnterML3 && (
+        <div className="mb-4">
+          <button
+            onClick={onEnterML3}
+            disabled={loading}
+            className="w-full bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-xs"
+          >
+            <Users size={14} />
+            {loading ? 'Loading...' : 'ML3: Replace & Claim Match'}
+          </button>
+          <a
+            href="#ml3"
+            className="block w-full text-center text-red-300 hover:text-red-200 hover:bg-red-500/10 text-xs mt-2 py-2 px-4 rounded-lg border border-red-400/30 hover:border-red-400/50 transition-all"
+          >
+            Learn more about ML3 (Replace Players)
+          </a>
+        </div>
+      )}
 
       {/* Action Buttons */}
       {/* EL1*: Reset Enrollment Window - Solo player can extend enrollment */}

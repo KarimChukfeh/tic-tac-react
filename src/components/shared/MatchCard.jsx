@@ -256,7 +256,10 @@ const MatchCard = ({
   };
 
   return (
-    <div className={`bg-black/30 rounded-xl p-4 border-2 transition-all ${borderClass}`}>
+    <div
+      id={`r${roundIdx}m${matchIdx}`}
+      className={`bg-black/30 rounded-xl p-4 border-2 transition-all ${borderClass}`}
+    >
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <span className={colors.matchLabel || "text-purple-300 text-sm font-semibold"}>

@@ -37,7 +37,7 @@ import { parseTicTacToeMatch } from './utils/matchDataParser';
 import { determineMatchResult } from './utils/matchCompletionHandler';
 import { fetchTierTimeoutConfig } from './utils/timeCalculations';
 import { getCompletionReasonText, getCompletionReasonDescription, isDraw } from './utils/completionReasons';
-import { batchFetchTournaments, batchFetchIsEnrolled } from './utils/multicall';
+import { batchFetchTournaments, batchFetchIsEnrolled, checkInstanceEscalations } from './utils/multicall';
 import ParticleBackground from './components/shared/ParticleBackground';
 import MatchCard from './components/shared/MatchCard';
 import TournamentCard from './components/shared/TournamentCard';
@@ -997,8 +997,48 @@ export default function TicTacChain() {
             isEnrolled: false, // Will be updated when wallet connects
             enrollmentTimeout: enrollmentTimeouts[i],
             hasStartedViaTimeout: hasStartedViaTimeouts[i],
-            tournamentStatus: statuses[i]
+            tournamentStatus: statuses[i],
+            hasEscalations: false, // Will be populated below
+            escL2Count: 0,
+            escL3Count: 0,
+            firstML3Match: null
           });
+        }
+
+        // Debug: Log status of all instances
+        console.log(`[TicTacChain Initial Load] Tier ${tierId} - All instance statuses:`, instances.map(inst => ({
+          id: inst.instanceId,
+          status: inst.tournamentStatus,
+          round: inst.currentRound,
+          enrolled: inst.enrolledCount
+        })));
+
+        // Check for escalations in active tournaments (any active tournament, regardless of round)
+        const activeTournamentsInitial = instances.filter(inst => inst.tournamentStatus === 1);
+        console.log(`[TicTacChain Initial Load] Tier ${tierId} - Total instances: ${instances.length}, Active tournaments: ${activeTournamentsInitial.length}`, activeTournamentsInitial.map(t => ({ id: t.instanceId, round: t.currentRound })));
+
+        const escalationChecks = activeTournamentsInitial
+          .map(inst =>
+            checkInstanceEscalations(readContract, inst.tierId, inst.instanceId, inst.currentRound, provider)
+              .then(escalationData => ({ instanceId: inst.instanceId, ...escalationData }))
+              .catch(err => {
+                console.debug(`Failed to check escalations for instance ${inst.instanceId}:`, err);
+                return { instanceId: inst.instanceId, hasEscalations: false, escL2Count: 0, escL3Count: 0, firstML3Match: null };
+              })
+          );
+
+        const escalationResults = await Promise.all(escalationChecks);
+        console.log(`[TicTacChain Initial Load] Tier ${tierId} escalation results:`, escalationResults);
+
+        // Update instances with escalation data
+        for (const result of escalationResults) {
+          const instance = instances.find(inst => inst.instanceId === result.instanceId);
+          if (instance) {
+            instance.hasEscalations = result.hasEscalations;
+            instance.escL2Count = result.escL2Count;
+            instance.escL3Count = result.escL3Count;
+            instance.firstML3Match = result.firstML3Match;
+          }
         }
 
         allInstances[tierId] = instances;
@@ -1058,19 +1098,109 @@ export default function TicTacChain() {
           isEnrolled: enrollmentStatuses[i]
         }));
 
+        // Debug: Log status of all instances
+        console.log(`[TicTacChain Update Path] Tier ${tierId} - All instance statuses:`, updatedInstances.map(inst => ({
+          id: inst.instanceId,
+          status: inst.tournamentStatus,
+          round: inst.currentRound,
+          enrolled: inst.enrolledCount
+        })));
+
+        // Check for escalations in active tournaments (any active tournament, regardless of round)
+        const activeTournamentsUpdate = updatedInstances.filter(inst => inst.tournamentStatus === 1);
+        console.log(`[TicTacChain Update Path] Tier ${tierId} - Total instances: ${updatedInstances.length}, Active tournaments: ${activeTournamentsUpdate.length}`, activeTournamentsUpdate.map(t => ({ id: t.instanceId, round: t.currentRound })));
+
+        const escalationChecks = activeTournamentsUpdate
+          .map(inst =>
+            checkInstanceEscalations(readContract, inst.tierId, inst.instanceId, inst.currentRound, provider)
+              .then(escalationData => ({ instanceId: inst.instanceId, ...escalationData }))
+              .catch(err => {
+                console.debug(`Failed to check escalations for instance ${inst.instanceId}:`, err);
+                return { instanceId: inst.instanceId, hasEscalations: false, escL2Count: 0, escL3Count: 0, firstML3Match: null };
+              })
+          );
+
+        const escalationResults = await Promise.all(escalationChecks);
+        console.log('[TicTacChain Update Path] Escalation results:', escalationResults);
+
+        // Update instances with escalation data
+        for (const result of escalationResults) {
+          const instance = updatedInstances.find(inst => inst.instanceId === result.instanceId);
+          if (instance) {
+            instance.hasEscalations = result.hasEscalations;
+            instance.escL2Count = result.escL2Count;
+            instance.escL3Count = result.escL3Count;
+            instance.firstML3Match = result.firstML3Match;
+            console.log(`[TicTacChain Update Path] Updated instance ${instance.instanceId} with escalations:`, {
+              hasEscalations: instance.hasEscalations,
+              escL3Count: instance.escL3Count,
+              firstML3Match: instance.firstML3Match
+            });
+          }
+        }
+
         // Sort instances by priority
         const getSortPriority = (instance) => {
-          const { tournamentStatus, isEnrolled, enrolledCount } = instance;
+          const { tournamentStatus, isEnrolled, enrolledCount, hasEscalations, escL3Count } = instance;
 
-          if (tournamentStatus === 1 && isEnrolled) return 1;
-          if (tournamentStatus === 0 && isEnrolled) return 2;
-          if (tournamentStatus === 0 && !isEnrolled && enrolledCount > 0) return 3;
-          if (tournamentStatus === 0 && !isEnrolled && enrolledCount === 0) return 4;
-          if (tournamentStatus === 1 && !isEnrolled) return 5;
-          return 6;
+          // Debug log for each instance
+          const debugInfo = {
+            instanceId: instance.instanceId,
+            tournamentStatus,
+            isEnrolled,
+            enrolledCount,
+            hasEscalations,
+            escL3Count
+          };
+
+          // 1. Tournaments where player is enrolled and tournament is active
+          if (tournamentStatus === 1 && isEnrolled) {
+            console.log('[getSortPriority] Priority 1:', debugInfo);
+            return 1;
+          }
+
+          // 2. Tournaments where player is enrolled and tournament is not active
+          if (tournamentStatus === 0 && isEnrolled) {
+            console.log('[getSortPriority] Priority 2:', debugInfo);
+            return 2;
+          }
+
+          // 3. Tournaments waiting for players but player isn't enrolled
+          if (tournamentStatus === 0 && !isEnrolled && enrolledCount > 0) {
+            console.log('[getSortPriority] Priority 3:', debugInfo);
+            return 3;
+          }
+
+          // 4. (Skip to maintain numbering requested by user)
+
+          // 5. Tournaments with EL2 or ML3 escalations available/active
+          if (tournamentStatus === 1 && !isEnrolled && hasEscalations) {
+            console.log('[getSortPriority] Priority 5 (ML3!):', debugInfo);
+            return 5;
+          }
+
+          // 6. Tournaments with no enrolled players
+          if (tournamentStatus === 0 && !isEnrolled && enrolledCount === 0) {
+            console.log('[getSortPriority] Priority 6:', debugInfo);
+            return 6;
+          }
+
+          // 7. Everything else (active tournaments without enrollment and no escalations)
+          console.log('[getSortPriority] Priority 7 (default):', debugInfo);
+          return 7;
         };
 
         updatedInstances.sort((a, b) => getSortPriority(a) - getSortPriority(b));
+
+        // Debug log sorting
+        console.log('[TicTacChain Update Path] Sorted instances:', updatedInstances.map(inst => ({
+          instanceId: inst.instanceId,
+          priority: getSortPriority(inst),
+          tournamentStatus: inst.tournamentStatus,
+          isEnrolled: inst.isEnrolled,
+          hasEscalations: inst.hasEscalations,
+          escL3Count: inst.escL3Count
+        })));
 
         setTierInstances(prev => ({ ...prev, [tierId]: updatedInstances }));
       } else {
@@ -1141,22 +1271,117 @@ export default function TicTacChain() {
             isEnrolled: enrollmentStatuses[i],
             enrollmentTimeout: metadata.enrollmentTimeouts[i],
             hasStartedViaTimeout: metadata.hasStartedViaTimeouts[i],
-            tournamentStatus: metadata.statuses[i]
+            tournamentStatus: metadata.statuses[i],
+            hasEscalations: false, // Will be populated below
+            escL2Count: 0,
+            escL3Count: 0,
+            firstML3Match: null // Will be populated below { round: X, match: Y }
           });
         }
 
-        const getSortPriority = (instance) => {
-          const { tournamentStatus, isEnrolled, enrolledCount } = instance;
+        // Debug: Log status of all instances
+        console.log(`[TicTacChain Main Path] Tier ${tierId} - All instance statuses:`, instances.map(inst => ({
+          id: inst.instanceId,
+          status: inst.tournamentStatus,
+          round: inst.currentRound,
+          enrolled: inst.enrolledCount
+        })));
 
-          if (tournamentStatus === 1 && isEnrolled) return 1;
-          if (tournamentStatus === 0 && isEnrolled) return 2;
-          if (tournamentStatus === 0 && !isEnrolled && enrolledCount > 0) return 3;
-          if (tournamentStatus === 0 && !isEnrolled && enrolledCount === 0) return 4;
-          if (tournamentStatus === 1 && !isEnrolled) return 5;
-          return 6;
+        // Check for escalations in active tournaments (any active tournament, regardless of round)
+        const activeTournamentsMain = instances.filter(inst => inst.tournamentStatus === 1);
+        console.log(`[TicTacChain Main Path] Tier ${tierId} - Total instances: ${instances.length}, Active tournaments: ${activeTournamentsMain.length}`, activeTournamentsMain.map(t => ({ id: t.instanceId, round: t.currentRound })));
+
+        const escalationChecks = activeTournamentsMain
+          .map(inst =>
+            checkInstanceEscalations(readContract, inst.tierId, inst.instanceId, inst.currentRound, provider)
+              .then(escalationData => ({ instanceId: inst.instanceId, ...escalationData }))
+              .catch(err => {
+                console.debug(`Failed to check escalations for instance ${inst.instanceId}:`, err);
+                return { instanceId: inst.instanceId, hasEscalations: false, escL2Count: 0, escL3Count: 0, firstML3Match: null };
+              })
+          );
+
+        const escalationResults = await Promise.all(escalationChecks);
+        console.log('[TicTacChain Main Path] Escalation results:', escalationResults);
+
+        // Update instances with escalation data
+        for (const result of escalationResults) {
+          const instance = instances.find(inst => inst.instanceId === result.instanceId);
+          if (instance) {
+            instance.hasEscalations = result.hasEscalations;
+            instance.escL2Count = result.escL2Count;
+            instance.escL3Count = result.escL3Count;
+            instance.firstML3Match = result.firstML3Match;
+            console.log(`[TicTacChain] Updated instance ${instance.instanceId} with escalations:`, {
+              hasEscalations: instance.hasEscalations,
+              escL2Count: instance.escL2Count,
+              escL3Count: instance.escL3Count,
+              firstML3Match: instance.firstML3Match
+            });
+          }
+        }
+
+        const getSortPriority = (instance) => {
+          const { tournamentStatus, isEnrolled, enrolledCount, hasEscalations, escL3Count } = instance;
+
+          // Debug log for each instance
+          const debugInfo = {
+            instanceId: instance.instanceId,
+            tournamentStatus,
+            isEnrolled,
+            enrolledCount,
+            hasEscalations,
+            escL3Count
+          };
+
+          // 1. Tournaments where player is enrolled and tournament is active
+          if (tournamentStatus === 1 && isEnrolled) {
+            console.log('[getSortPriority Main] Priority 1:', debugInfo);
+            return 1;
+          }
+
+          // 2. Tournaments where player is enrolled and tournament is not active
+          if (tournamentStatus === 0 && isEnrolled) {
+            console.log('[getSortPriority Main] Priority 2:', debugInfo);
+            return 2;
+          }
+
+          // 3. Tournaments waiting for players but player isn't enrolled
+          if (tournamentStatus === 0 && !isEnrolled && enrolledCount > 0) {
+            console.log('[getSortPriority Main] Priority 3:', debugInfo);
+            return 3;
+          }
+
+          // 4. (Skip to maintain numbering requested by user)
+
+          // 5. Tournaments with EL2 or ML3 escalations available/active
+          if (tournamentStatus === 1 && !isEnrolled && hasEscalations) {
+            console.log('[getSortPriority Main] Priority 5 (ML3!):', debugInfo);
+            return 5;
+          }
+
+          // 6. Tournaments with no enrolled players
+          if (tournamentStatus === 0 && !isEnrolled && enrolledCount === 0) {
+            console.log('[getSortPriority Main] Priority 6:', debugInfo);
+            return 6;
+          }
+
+          // 7. Everything else (active tournaments without enrollment and no escalations)
+          console.log('[getSortPriority Main] Priority 7 (default):', debugInfo);
+          return 7;
         };
 
         instances.sort((a, b) => getSortPriority(a) - getSortPriority(b));
+
+        // Debug log sorting
+        console.log('[TicTacChain Main Path] Sorted instances:', instances.map(inst => ({
+          instanceId: inst.instanceId,
+          priority: getSortPriority(inst),
+          tournamentStatus: inst.tournamentStatus,
+          isEnrolled: inst.isEnrolled,
+          hasEscalations: inst.hasEscalations,
+          escL3Count: inst.escL3Count
+        })));
 
         setTierInstances(prev => ({ ...prev, [tierId]: instances }));
       }
@@ -1920,7 +2145,7 @@ export default function TicTacChain() {
   }, [escalationInterval, account]);
 
   // Handle entering tournament (fetch and display bracket)
-  const handleEnterTournament = async (tierId, instanceId) => {
+  const handleEnterTournament = async (tierId, instanceId, ml3Match = null) => {
     if (!contract) return;
 
     try {
@@ -1945,6 +2170,23 @@ export default function TicTacChain() {
           if (collapseActivityPanelRef.current) {
             collapseActivityPanelRef.current();
           }
+
+          // If ML3 match specified, scroll to that match
+          if (ml3Match) {
+            setTimeout(() => {
+              const matchElement = document.getElementById(`r${ml3Match.round}m${ml3Match.match}`);
+              if (matchElement) {
+                matchElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                // Add a brief highlight effect
+                matchElement.style.transition = 'box-shadow 0.3s ease-in-out';
+                matchElement.style.boxShadow = '0 0 20px 5px rgba(239, 68, 68, 0.6)';
+                setTimeout(() => {
+                  matchElement.style.boxShadow = '';
+                }, 2000);
+              }
+            }, 800); // Wait for bracket scroll to complete
+          }
+
           // Additional scroll to last instance section if it exists
           setTimeout(() => {
             const lastInstanceSection = document.getElementById('last-instance');
@@ -3885,6 +4127,10 @@ export default function TicTacChain() {
                                       onResetEnrollmentWindow={handleResetEnrollmentWindow}
                                       account={account}
                                       contract={contract}
+                                      hasEscalations={tournament.hasEscalations}
+                                      escL3Count={tournament.escL3Count}
+                                      firstML3Match={tournament.firstML3Match}
+                                      onEnterML3={() => handleEnterTournament(tournament.tierId, tournament.instanceId, tournament.firstML3Match)}
                                     />
                                   ))}
                                 </div>

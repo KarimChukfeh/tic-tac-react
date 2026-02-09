@@ -265,3 +265,71 @@ export async function batchFetchTournamentInfo(contract, tierId, instanceCount, 
 
   return transformed;
 }
+
+/**
+ * Specialized function for checking if any matches in an active tournament have escalations available
+ * This checks all matches in the current round of a tournament
+ *
+ * @param {ethers.Contract} contract - The tournament contract
+ * @param {number} tierId - The tier ID
+ * @param {number} instanceId - The instance ID
+ * @param {number} currentRound - Current round number
+ * @param {ethers.Provider} provider - The provider to use
+ * @returns {Promise<{hasEscalations: boolean, escL2Count: number, escL3Count: number}>}
+ */
+export async function checkInstanceEscalations(contract, tierId, instanceId, currentRound, provider) {
+  try {
+    // Get round info to determine how many matches to check
+    // Note: currentRound might be 0 if the tournament just started - we'll check anyway
+    const roundInfo = await contract.getRoundInfo(tierId, instanceId, currentRound);
+    const totalMatches = Number(roundInfo.totalMatches || roundInfo[0]);
+
+    if (totalMatches === 0) {
+      return { hasEscalations: false, escL2Count: 0, escL3Count: 0, firstML3Match: null };
+    }
+
+    // Create parameter arrays for checking escalations on all matches
+    const paramsArrayL2 = Array.from(
+      { length: totalMatches },
+      (_, matchNum) => [tierId, instanceId, currentRound, matchNum]
+    );
+    const paramsArrayL3 = [...paramsArrayL2];
+
+    // Execute multicalls for both L2 and L3 escalations
+    // Note: These functions revert if escalation isn't available, so we allow failures
+    const [resultsL2, resultsL3] = await Promise.all([
+      multicall(contract, 'isMatchEscL2Available', paramsArrayL2, provider, true),
+      multicall(contract, 'isMatchEscL3Available', paramsArrayL3, provider, true)
+    ]);
+
+    // Count how many matches have escalations available and track first match with ML3
+    let escL2Count = 0;
+    let escL3Count = 0;
+    let firstML3Match = null; // Track first match with ML3 for scrolling
+
+    for (let i = 0; i < resultsL2.length; i++) {
+      if (resultsL2[i].success && resultsL2[i].result === true) {
+        escL2Count++;
+      }
+    }
+
+    for (let i = 0; i < resultsL3.length; i++) {
+      if (resultsL3[i].success && resultsL3[i].result === true) {
+        escL3Count++;
+        if (firstML3Match === null) {
+          firstML3Match = { round: currentRound, match: i };
+        }
+      }
+    }
+
+    return {
+      hasEscalations: escL2Count > 0 || escL3Count > 0,
+      escL2Count,
+      escL3Count,
+      firstML3Match // { round: X, match: Y } or null
+    };
+  } catch (error) {
+    console.debug(`Could not check escalations for tier ${tierId} instance ${instanceId}:`, error);
+    return { hasEscalations: false, escL2Count: 0, escL3Count: 0, firstML3Match: null };
+  }
+}
