@@ -5,19 +5,19 @@
 
 ## Abstract
 
-ETour is EVM freeware for on-chain competitive play. 
+ETour is EVM freeware for on-chain competitive play.
 
-Every move is a transaction. Every outcome is immutable. The smart contract handles matchmaking, brackets, timeouts, and prize distribution. 
+Every move is a transaction. Every outcome is immutable. The smart contract handles matchmaking, brackets, timeouts, and prize distribution.
 
-Developers inherit this infrastructure by implementing a simple abstract contract. Players just connect and compete.
+Developers inherit this infrastructure by implementing a simple abstract contract. Players connect and compete.
 
-<strong> ETH in ETH out. No servers, no admins to trust, no way to cheat.</strong>
+**ETH in, ETH out. No servers, no admins, no way to cheat.**
 
 ---
 
-This whitepaper explains ETour's philosophy and how it makes trustless competition possible. 
+This whitepaper explains ETour's philosophy and how it makes trustless competition possible.
 
-**It's intended for those who want to understand not just what ETour does but why it was built this way.**
+**It's for those who want to understand not just what ETour does but why it was built this way.**
 
 ---
 
@@ -37,10 +37,11 @@ This whitepaper explains ETour's philosophy and how it makes trustless competiti
    - [2.5 Why Not Battleship?](#25-why-not-battleship)
 
 3. [Protocol Architecture](#3-protocol-architecture)
-   - [3.1 Separation of Concerns](#31-separation-of-concerns)
-   - [3.2 The Abstract Contract Pattern](#32-the-abstract-contract-pattern)
-   - [3.3 Game Implementation Requirements](#33-game-implementation-requirements)
-   - [3.4 Shared Infrastructure Benefits](#34-shared-infrastructure-benefits)
+   - [3.1 Modular Design](#31-modular-design)
+   - [3.2 ETour_Base: The Foundation](#32-etour_base-the-foundation)
+   - [3.3 How Games Use Modules](#33-how-games-use-modules)
+   - [3.4 Game Implementation Requirements](#34-game-implementation-requirements)
+   - [3.5 Shared Infrastructure Benefits](#35-shared-infrastructure-benefits)
 
 4. [Tournament Mechanics](#4-tournament-mechanics)
    - [4.1 Tier System](#41-tier-system)
@@ -71,28 +72,22 @@ This whitepaper explains ETour's philosophy and how it makes trustless competiti
    - [8.1 The Five Principles](#81-the-five-principles)
    - [8.2 How ETour Meets Each Principle](#82-how-etour-meets-each-principle)
 
-9. [Technical Specification](#9-technical-specification)
+9. [Technical Overview](#9-technical-overview)
    - [9.1 Contract Structure](#91-contract-structure)
    - [9.2 Key Data Structures](#92-key-data-structures)
    - [9.3 Core Functions](#93-core-functions)
-   - [9.4 Events](#94-events)
-   - [9.5 Gas Optimization](#95-gas-optimization)
+   - [9.4 Gas Optimization](#94-gas-optimization)
 
-10. [Conclusion](#10-conclusion)
+10. [Building on ETour](#10-building-on-etour)
+    - [10.1 The Modular Approach](#101-the-modular-approach)
+    - [10.2 What You Need to Implement](#102-what-you-need-to-implement)
+    - [10.3 What You Get for Free](#103-what-you-get-for-free)
+    - [10.4 Getting Started](#104-getting-started)
+
+11. [Conclusion](#11-conclusion)
 
 **Appendices:**
-- [Appendix A: Complete Implementation Walkthrough](#appendix-a-complete-implementation-walkthrough)
-   - [A.1 Prerequisites](#a1-prerequisites)
-   - [A.2 Step 1: Define Your Game's Data Structures](#a2-step-1-define-your-games-data-structures)
-   - [A.3 Step 2: Configure Tournament Tiers](#a3-step-2-configure-tournament-tiers)
-   - [A.4 Step 3: Implement Abstract Functions](#a4-step-3-implement-abstract-functions)
-   - [A.5 Step 4: Implement Game Logic](#a5-step-4-implement-game-logic)
-   - [A.6 Step 5: Implement Timeout Claims](#a6-step-5-implement-timeout-claims)
-   - [A.7 Step 6: Add View Functions](#a7-step-6-add-view-functions)
-   - [A.8 Step 7: Deploy and Test](#a8-step-7-deploy-and-test)
-   - [A.9 Frontend Integration](#a9-frontend-integration)
-   - [A.10 Complete Implementation Checklist](#a10-complete-implementation-checklist)
-- [Appendix B: Economic Projections](#appendix-b-economic-projections)
+- [Appendix A: Economic Projections](#appendix-a-economic-projections)
 
 </details>
 
@@ -102,15 +97,17 @@ This whitepaper explains ETour's philosophy and how it makes trustless competiti
 
 ### 1.1 The Problem with Web3 Gaming
 
-Web3 gaming has a credibility problem. The phrase "play and earn" has been used so many times by scams, rugpulls, and tokenomics that don't work that it makes people doubt it, rightfully so. **Players have learned that "earn" usually means "lose money slowly while enriching early adopters."**
+Web3 gaming has a credibility problem. The phrase "play and earn" has been used so many times by scams and failed tokenomics that it makes people skeptical.
 
-Most Web3 gaming projects make the same fundamental mistake: they lead with blockchain technology and financial incentives rather than compelling gameplay. They're selling infrastructure, tokens, and economic mechanisms to people who just want to play games.
+**Players have learned that "earn" usually means "lose money slowly while enriching early adopters."**
+
+Most Web3 gaming projects make the same mistake: they lead with blockchain technology and financial incentives rather than compelling gameplay. They're selling infrastructure, tokens, and economic mechanisms to people who just want to play games.
 
 This approach fails because:
 
-- **Players don't care about infrastructure.** They care about fair competition and real outcomes.
-- **"Earn" messaging attracts speculators, not gamers.** The community becomes focused on extraction rather than competition.
-- **Technical complexity creates barriers.** Explaining on-chain verification to someone who wants to play chess is backwards.
+- **Players don't care about infrastructure** — They care about fair competition and real outcomes
+- **"Earn" messaging attracts speculators, not gamers** — The community focuses on extraction rather than competition
+- **Technical complexity creates barriers** — Explaining on-chain verification to someone who wants to play chess is backwards
 
 ### 1.2 What Players Actually Want
 
@@ -121,23 +118,21 @@ Competitive players want simple things:
 3. **Skill determines results** — Not luck, not who bought more tokens
 4. **Instant resolution** — Win and get paid, no waiting periods
 
-These desires exist independently of blockchain. Chess players have always wanted fair competition with meaningful stakes. The question is whether blockchain adds value to this experience and that value can manifest without drowning the player in technical jargon.
+These desires exist independently of blockchain. Chess players have always wanted fair competition with meaningful stakes. The question is whether blockchain adds value to this experience without drowning the player in technical jargon.
 
 ### 1.3 The ETour Approach
 
 ETour turns the usual Web3 gaming pitch on its head:
 
-#### **Traditional Web3 Gaming** 
+#### **Traditional Web3 Gaming**
 
-> Here's our "revolutionary blockchain protocol". It has tokenomics, staking mechanisms, and governance.<br>Oh, and you can play games on it.
+> Here's our revolutionary blockchain protocol. It has tokenomics, staking mechanisms, and governance.<br>Oh, and you can play games on it.
 
-<br> 
-
-#### **ETour** 
+#### **ETour**
 
 > Here are classic games you already know.<br>Play for real ETH stakes. The better player claims the pot.
 
-The blockchain infrastructure exists to serve the games, not the other way around. ETour Protocol is the engine under the hood that makes this competition possible, but not the selling point.
+The blockchain infrastructure exists to serve the games, not the other way around. ETour Protocol is the engine under the hood that makes this competition possible, not the selling point.
 
 **This whitepaper exists for those who want to look under the hood.** If you're a player who just wants to compete, the landing page tells you everything you need: pick a game, connect your wallet, prove you're good.
 
@@ -149,14 +144,13 @@ The blockchain infrastructure exists to serve the games, not the other way aroun
 
 ETour's flagship games were chosen based on strict criteria that ensure full on-chain verifiability:
 
-1. **Complete Information** — All game state must be visible to all players. No hidden hands, no fog of war.
-2. **Deterministic Rules** — Given the same inputs, the same output must always result. No randomness mid-game.
-3. **Discrete Turns** — Games must have clear turn boundaries suitable for blockchain transaction timing.
-4. **Reasonable Complexity** — Game logic must be implementable within smart contract gas limits.
-5. **Cultural Recognition** — Games should be widely known, requiring no rule explanation.
+1. **Complete Information** — All game state must be visible to all players
+2. **Deterministic Rules** — Same inputs always produce same outputs
+3. **Discrete Turns** — Clear turn boundaries suitable for blockchain transaction timing
+4. **Reasonable Complexity** — Game logic must fit within smart contract gas limits
+5. **Cultural Recognition** — Games should be widely known, requiring no rule explanation
 
 These criteria eliminate entire categories of games. Poker requires hidden cards. Real-time games can't wait for block confirmation. Complex simulations exceed gas limits. But within these constraints, several classic games fit perfectly.
-
 
 ### 2.2 Tic-Tac-Toe
 
@@ -164,38 +158,38 @@ These criteria eliminate entire categories of games. Poker requires hidden cards
 
 Tic-tac-toe serves as the accessible entry point to ETour. Everyone knows the rules. Games complete quickly. The low stakes allow new players to experience the platform mechanics without significant risk.
 
-> But tic-tac-toe is solved, perfect play always draws.
+> But tic-tac-toe is solved. Perfect play always draws.
 
-Exactly! And that's the point. Tic-tac-toe's high draw rate makes it the perfect demonstration of ETour's draw economics. When a match ends in a draw, both players receive most of their entry fee back. On a $3 entry, approximately $2.50 returns to each player. The draw essentially costs each player $0.50, a fee for playing a fair, verified game.
+Exactly. And that's the point. Tic-tac-toe's high draw rate makes it the perfect demonstration of ETour's draw economics. When a match ends in a draw, both players receive most of their entry fee back. On a 0.003 ETH entry, approximately 0.0027 ETH returns to each player. The draw costs each player about 0.0003 ETH, a small fee for playing a fair, verified game.
 
 This transforms tic-tac-toe's "flaw" into a feature:
 
-- **Low-risk learning environment** — New players can experience the full platform flow (enroll, play, payout) with minimal downside
+- **Low-risk learning environment** — New players experience the full platform flow with minimal downside
 - **Draw mechanics demonstration** — Players see exactly how ETour handles non-decisive outcomes
 - **Economic transparency** — The refund math is simple enough to verify immediately
 
-Tic-tac-toe is the "Hello World" of ETour - not because it's competitive at the highest level, but because it proves the system works. Fair games, instant payouts, sensible draw handling. If you can trust ETour with tic-tac-toe, you can trust it with chess.
+Tic-tac-toe is the "Hello World" of ETour—not because it's competitive at the highest level, but because it proves the system works. Fair games, instant payouts, sensible draw handling. If you trust ETour with tic-tac-toe, you can trust it with chess.
 
 ### 2.3 Chess
 
 **Entry Point: 0.01 – 0.02 ETH**
 
-Chess is ETour's flagship serious competition. 
+Chess is ETour's flagship serious competition.
 
-Full chess rules: castling, en passant, pawn promotion, fifty-move rule, threefold repetition. **All verified on-chain.** 
+Full chess rules: castling, en passant, pawn promotion, fifty-move rule, threefold repetition. **All verified on-chain.**
 
 Every move is permanently recorded, creating an immutable record of every game.
 
-We chose chess because: 
+We chose chess because:
 
-- **Deep strategic complexity** that makes the stakes worth it
-- **Established competitive culture** gives you an audience right away
-- **Full information** is a perfect match for blockchain transparency 
+- **Deep strategic complexity** makes the stakes worth it
+- **Established competitive culture** provides an existing audience
+- **Complete information** is a perfect match for blockchain transparency
 - **Existing rating systems** give players benchmarks to prove
 
-Chess on chain has something that no other centralized platform can offer serious chess players: 
+Chess on chain offers something no centralized platform can give serious chess players:
 
-**They are 100% sure that their opponent isn't using engine assistance (each move is a transaction from their wallet), and they will get paid if they win.** 
+**100% certainty that their opponent isn't using engine assistance (each move is a transaction from their wallet), and they will get paid if they win.**
 
 ### 2.4 Connect Four
 
@@ -213,13 +207,12 @@ Connect Four was added because:
 
 Battleship was initially considered as the third flagship game. It was rejected because it fundamentally conflicts with blockchain's transparency properties.
 
-Battleship requires **hidden information**—players place ships secretly, then guess opponent positions. To make this work on-chain, you have to make one of two compromises: 
+Battleship requires **hidden information**—players place ships secretly, then guess opponent positions. To make this work on-chain requires compromises:
 
-1. **Commit-reveal schemes** —  Players agree to send their positions cryptographically, and they will be revealed after the game.
+1. **Commit-reveal schemes** — Players cryptographically commit to positions revealed after the game
+2. **Off-chain computation** — Ship positions stored off-chain, only results posted on-chain
 
-2. **Off-chain computation** — Ship positions stored off-chain, only results posted on-chain. This breaks the "fully on-chain" principle entirely.
-
-Neither option aligns with ETour's principles. Hidden information games require trusting some mechanism beyond the blockchain itself. Rather than compromise, we replaced Battleship with Connect Four; a game that needs no hidden state and can be fully verified in a single transaction per move.
+Neither option aligns with ETour's principles. Hidden information games require trusting some mechanism beyond the blockchain itself. Rather than compromise, we replaced Battleship with Connect Four—a game that needs no hidden state and can be fully verified in a single transaction per move.
 
 This decision exemplifies ETour's philosophy: **accept blockchain's constraints and build games that naturally fit, rather than forcing incompatible designs.**
 
@@ -227,55 +220,71 @@ This decision exemplifies ETour's philosophy: **accept blockchain's constraints 
 
 ## 3. Protocol Architecture
 
-### 3.1 Separation of Concerns
+### 3.1 Modular Design
 
-ETour's architecture separates **universal tournament mechanics** from **game-specific logic**:
+ETour uses a modular architecture where shared tournament infrastructure is deployed as separate library contracts that multiple games can use. This design separates **universal tournament mechanics** from **game-specific logic**.
 
-**ETour Protocol (Universal):**
-- Tournament enrollment and matchmaking
-- Bracket management and round progression
-- Timeout detection and escalation
-- Prize pool calculation and distribution
-- Player statistics tracking
-- Permanent earnings history and leaderboard
+**Core Infrastructure Modules (Shared):**
+- **ETour_Core** — Tournament enrollment, tier management, and tournament status
+- **ETour_Matches** — Match management, bracket progression, and round tracking
+- **ETour_Prizes** — Prize pool calculation and distribution logic
+- **ETour_Raffle** — Community raffle system for protocol fee redistribution
+- **ETour_Escalation** — Anti-griefing timeout escalation for enrollment and matches
 
 **Game Contracts (Specific):**
 - Move validation rules
 - Win/draw detection
 - Board state representation
-- Game-specific data structures
+- Game-specific data structures (boards, pieces, positions)
 
-This separation means that once ETour's tournament logic is audited and battle-tested, new games can be added with confidence that the competitive infrastructure works correctly. Each new game only needs to implement its own rules correctly.
+Each game contract is deployed with references to the shared module addresses. This means:
 
-### 3.2 The Abstract Contract Pattern
+- **Gas Efficiency** — Shared logic is deployed once, not duplicated per game
+- **Battle-Tested Code** — New games inherit proven, audited infrastructure
+- **Consistent Behavior** — All games follow identical tournament mechanics
+- **Simpler Game Implementation** — Developers focus only on game rules
 
-ETour is implemented as an abstract Solidity contract. Game implementations inherit from ETour and override specific functions:
+### 3.2 ETour_Base: The Foundation
 
-```solidity
-abstract contract ETour is ReentrancyGuard {
-    // Universal tournament mechanics implemented here
-    
-    // Game-specific functions to be implemented by child contracts
-    function _createMatchGame(...) internal virtual;
-    function _resetMatchGame(bytes32 matchId) internal virtual;
-    function _getMatchResult(bytes32 matchId) internal view virtual 
-        returns (address winner, bool isDraw, MatchStatus status);
-    function _getMatchPlayers(bytes32 matchId) internal view virtual 
-        returns (address player1, address player2);
-    // ... additional abstract functions
-}
+**ETour_Base.sol** serves as the foundational contract that defines common types, enums, and structures used across all ETour modules and games:
 
-contract ChessOnChain is ETour {
-    // Chess-specific implementation of abstract functions
-    // Plus chess rules, board state, move validation
-}
-```
+**Core Data Types:**
+- `TournamentStatus` — Enrolling, Active, Completed
+- `MatchStatus` — NotStarted, InProgress, Completed
+- `EscalationLevel` — None, Level1, Level2, Level3
+- `CompletionReason` — Victory, Draw, Timeout, Forfeit
 
-This pattern provides compile-time guarantees that game implementations provide all required functions while inheriting all tournament functionality automatically.
+**Shared Structures:**
+- `CommonMatchData` — Player addresses, status, timestamps, timeout states
+- `EnrollmentTimeoutState` — Escalation tracking for unfilled tournaments
+- `LeaderboardEntry` — Player address and net earnings
 
-### 3.3 Game Implementation Requirements
+All modules and game contracts reference ETour_Base types, ensuring consistency across the entire system. Think of it as the common language that all ETour components speak.
 
-To build a game on ETour, developers implement these core functions:
+### 3.3 How Games Use Modules
+
+Game contracts are deployed with addresses to each module. When a player enrolls, makes a move, or triggers an escalation, the game contract delegates to the appropriate module:
+
+**Example Flow - Player Enrollment:**
+1. Player calls `enrollInTournament()` on the game contract
+2. Game contract delegates to **ETour_Core** for enrollment logic
+3. ETour_Core validates payment, adds player to tournament
+4. If tournament fills, ETour_Core signals **ETour_Matches** to start Round 0
+5. ETour_Matches creates match pairings and calls back to game contract for game setup
+
+**Example Flow - Timeout Claim:**
+1. Player calls timeout claim function on game contract
+2. Game contract delegates to **ETour_Escalation** to validate timeout
+3. ETour_Escalation confirms escalation level reached
+4. Game contract updates match result
+5. ETour_Matches advances tournament bracket
+6. ETour_Prizes calculates and distributes winnings
+
+This modular delegation keeps game contracts lean while providing full tournament infrastructure.
+
+### 3.4 Game Implementation Requirements
+
+To build a game on ETour, you implement these core functions:
 
 | Function | Purpose |
 |----------|---------|
@@ -285,43 +294,21 @@ To build a game on ETour, developers implement these core functions:
 | `_getMatchPlayers` | Return both players' addresses |
 | `_initializeMatchForPlay` | Set up match for active gameplay |
 | `_completeMatchWithResult` | Finalize match with outcome |
-| `_setMatchPlayer` | Assign player to match slot |
-| `_setMatchTimeoutState` | Update timeout tracking |
-| `_getMatchTimeoutState` | Read timeout state |
 
-Additionally, games define their tier structure in the constructor:
+Plus functions for timeout state management and player assignment.
 
-```solidity
-constructor() {
-    // Tier 0: 2-player, 0.001 ETH entry
-    uint8[] memory tier0Prizes = new uint8[](2);
-    tier0Prizes[0] = 100; // Winner takes all
-    tier0Prizes[1] = 0;
-    
-    _registerTier(
-        0,              // tierId
-        2,              // playerCount
-        10,             // instances
-        0.001 ether,    // entryFee
-        Mode.Classic,   // mode
-        30 minutes,     // enrollmentWindow
-        10 minutes,     // matchMoveTimeout
-        1 hours,        // escalationInterval
-        tier0Prizes     // prize distribution
-    );
-}
-```
+You also define your tier structure in the constructor—entry fees, player counts, prize distributions, and timeout settings.
 
-### 3.4 Shared Infrastructure Benefits
+### 3.5 Shared Infrastructure Benefits
 
-Games built on ETour inherit:
+Games built on ETour modules inherit:
 
 - **Proven tournament logic** — Bracket progression, round management, and advancement handling
 - **Economic sustainability** — Fee splitting, prize distribution, forfeit handling
 - **Anti-griefing protection** — Timeout escalation across enrollment and matches
 - **Player statistics** — Cross-game win/loss tracking
-- **Permanent earnings history** — Per-player prize records (`playerPrizes`) and net earnings (`playerEarnings`) stored permanently on-chain, enabling lifetime leaderboards
-- **Security patterns** — ReentrancyGuard, access controls, prize isolation
+- **Permanent earnings history** — Per-player prize records stored permanently on-chain, enabling lifetime leaderboards
+- **Security patterns** — Reentrancy guards, access controls, prize isolation
 
 This shared foundation means game developers focus purely on game rules, confident that the competitive infrastructure handles edge cases correctly.
 
@@ -333,7 +320,7 @@ This shared foundation means game developers focus purely on game rules, confide
 
 ETour supports configurable tournament tiers, each defining:
 
-- **Player count** — Tournament size (powers of 2 for clean brackets, or any number with walkover handling)
+- **Player count** — Tournament size (powers of 2 for clean brackets)
 - **Instance count** — Concurrent tournaments at this tier
 - **Entry fee** — Stakes required to join
 - **Mode** — Classic or Pro variations
@@ -365,15 +352,14 @@ This design ensures:
 
 Tournaments follow single-elimination bracket format:
 
-
-1. Players sign up until the tier is full or the time runs out and the games start
-2. Round 0 puts players together for their first matches
-3. Winners move on to the next round. Losers are kicked out
-4. This goes on until the finals decide the champion
+1. Players sign up until the tier is full or time runs out
+2. Round 0 creates matches for all players
+3. Winners advance to the next round, losers are eliminated
+4. This continues until the finals decide the champion
 5. Prizes distribute automatically upon completion
 6. Tournament automatically resets for new enrollment
 
-The protocol handles odd player counts through walkover advancement. One randomly selected player advances without playing, ensuring brackets remain functional.
+The protocol handles odd player counts through walkover advancement when necessary.
 
 ### 4.4 Draw Handling
 
@@ -392,9 +378,9 @@ If the championship match draws, both finalists are declared co-winners and spli
 
 When draws eliminate players without producing winners, bracket structures can become unbalanced. ETour's consolidation logic handles these edge cases:
 
-- **Orphaned winners** — A player who won their match but has no opponent in the next round (because that opponent's match drew) advances automatically
+- **Orphaned winners** — A player who won their match but has no opponent in the next round advances automatically
 - **Scattered players** — When odd numbers of players remain in a round, the protocol consolidates them into valid matchups
-- **Solo survivor** — If only one player remains active, they're declared tournament winner regardless of round number
+- **Solo survivor** — If only one player remains active, they're declared tournament winner
 
 This logic ensures tournaments always reach resolution rather than getting stuck in unplayable states.
 
@@ -412,7 +398,7 @@ Entry fees are split at enrollment time:
 | Owner | 7.5% | Operational sustainability |
 | Protocol | 2.5% | Future development fund |
 
-This split is hardcoded in the contract. No admin function can modify it once deployed and players know exactly where their entry fee goes.
+This split is hardcoded in the contract. No admin function can modify it once deployed. Players know exactly where their entry fee goes.
 
 ### 5.2 Prize Distribution
 
@@ -473,29 +459,21 @@ When a player enrolls in an unfilled tournament, a countdown begins. If the tour
 
 **Escalation Level 1 — Force Start Tournament**
 
-*Trigger:* Enrollment window expires with fewer than maximum players enrolled.
+After the enrollment window expires with fewer than maximum players enrolled, any enrolled player can force-start the tournament with current enrollment.
 
-*Who can act:* Any enrolled player.
+Tournament begins immediately with available players. If only one player enrolled, they win by default and receive the prize pool.
 
-*Action:* Force-start the tournament with current enrollment, regardless of count.
-
-*Outcome:* Tournament begins immediately with available players. If only one player enrolled, they win and receive the prize pool.
-
-*Who cannot act:* Non-enrolled players cannot trigger this level.
+This gives enrolled players the power to begin the tournament they paid to enter.
 
 ---
 
 **Escalation Level 2 — Claim Abandoned Pool**
 
-*Trigger:* Additional timeout period elapses after Level 1 becomes available, with no player having force-started.
+After an additional timeout period following Level 1, anyone can claim the entire abandoned prize pool.
 
-*Who can act:* Anyone—enrolled players, non-enrolled observers, any wallet.
+Tournament ends. All enrolled players forfeit. Claimer receives the full prize pool (90% of all entry fees collected).
 
-*Action:* Claim the entire abandoned prize pool.
-
-*Outcome:* Tournament ends. All enrolled players forfeit. Claimer receives the full prize pool (90% of all entry fees collected).
-
-*Critical detail:* Level 1 remains active when Level 2 unlocks. Both options exist simultaneously, creating a race condition where enrolled players can still force-start while external observers can claim the pool.
+Both options exist simultaneously once Level 2 unlocks, creating a race condition where enrolled players can still force-start while external observers can claim the pool.
 
 ---
 
@@ -503,112 +481,48 @@ This creates a strong economic incentive for resolution. Rather than funds sitti
 
 ### 6.3 Match Timeout Escalation
 
-During active matches, each player receives a total time allocation for all their moves (e.g., 5 minutes). When a player exhausts their time, three escalation levels activate progressively:
+During active matches, each player receives a total time allocation for all their moves. When a player exhausts their time, three escalation levels activate progressively:
 
 **Escalation Level 1 — Claim Victory by Forfeit**
 
-*Trigger:* Opponent exhausts their total match time.
+When your opponent exhausts their total match time, you can claim victory by opponent timeout.
 
-*Who can act:* The specific opponent in that match only.
-
-*Action:* Claim victory by opponent timeout.
-
-*Outcome:* Match ends. Claimer wins and advances to the next round. Timed-out player is eliminated.
-
-*Who cannot act:* Advanced players, other tournament participants, and external observers cannot trigger this level.
-
-*Time window:* Opponent has a defined period (e.g., 2 minutes) to claim.
+Match ends. You win and advance to the next round. Timed-out player is eliminated.
 
 ---
 
 **Escalation Level 2 — Eliminate Stalled Players**
 
-*Trigger:* Opponent fails to claim victory within their time window.
+If your opponent fails to claim victory within their time window, players who have already advanced to higher tournament rounds can step in.
 
-*Who can act:* Advanced players only—players who have already progressed to higher tournament rounds. In a quarterfinal stall, only semifinal players can act.
-
-*Action:* Eliminate both players from the stalled match.
-
-*Outcome:* Both players are removed from the tournament. Neither advances. The advanced player who triggers elimination advances in place of the eliminated players' would-be opponent slot.
-
-*Who cannot act:* The original match opponent, players in the same or earlier rounds, eliminated players, and non-enrolled observers.
-
-*Time window:* Advanced players have a defined period (e.g., 2 minutes) to act.
+Both players in the stalled match are removed from the tournament. Neither advances. The advanced player who triggers elimination advances in place of the eliminated players.
 
 ---
 
 **Escalation Level 3 — Replace Stalled Players**
 
-*Trigger:* Advanced players fail to act within their time window.
+If advanced players fail to act within their time window, anyone can replace both stalled players and take their tournament position.
 
-*Who can act:* Anyone—eliminated players, non-enrolled observers, players from other tournaments, any wallet.
-
-*Action:* Replace both stalled players and take their tournament position.
-
-*Outcome:* Both original players are eliminated. Replacer becomes the match winner, advances to the next round, and can compete for the full prize pool without having paid entry.
-
-*Who cannot act:* No restrictions.
+Both original players are eliminated. Replacer becomes the match winner, advances to the next round, and can compete for the full prize pool without having paid entry.
 
 ---
 
-Each escalation level expands who can resolve the situation, guaranteeing that no match stalls indefinitely. The incentives shift from "claim the stalled match" to "become a participant and compete for the prize."
+Each escalation level expands who can resolve the situation, guaranteeing that no match stalls indefinitely.
 
-### 6.4 Escalation System Summary
+### 6.4 Economic Incentives for Resolution
 
-| Category | Level | Trigger | Who Can Act | Outcome |
-|----------|-------|---------|-------------|---------|
-| Enrollment | 1 | Enrollment window expires | Enrolled players only | Tournament force-starts |
-| Enrollment | 2 | Level 1 + additional timeout | Anyone | Claimer takes entire pool |
-| Match | 1 | Player exhausts match time | Opponent only | Opponent claims victory |
-| Match | 2 | Opponent fails to claim | Advanced players only | Both players eliminated |
-| Match | 3 | Advanced players don't act | Anyone | Replacer takes tournament spot |
-
-### 6.5 Economic Incentives for Resolution
-
-The escalation system transforms stalling from a grief vector into an opportunity matrix:
+The escalation system transforms stalling from a grief vector into an opportunity:
 
 **During Enrollment:**
 - Enrolled players can force-start with fewer players, competing for the existing prize pool
 - External observers can claim the entire abandoned prize pool for themselves
 
 **During Matches:**
-- The opponent benefits with a free win and tournament advancement
-- Advanced players benefit by unblocking their path to the finals and the prize pool
-- External observers benefit by joining the tournament mid-competition and potentially winning the entire prize without paying entry
+- Your opponent's timeout benefits you with a free win and tournament advancement
+- Advanced players benefit by unblocking their path to the finals
+- External observers benefit by joining the tournament mid-competition and potentially winning without paying entry
 
-The incentive structure ensures everyone except the staller has reason to resolve the situation. For enrollment timeouts, the reward is direct and substantial—the full pool. For match timeouts, the reward is participation: the chance to compete for prizes in a tournament you didn't have to pay to enter.
-
-### 6.6 Design Principles
-
-The escalation system embodies several core principles:
-
-**Progressive Access:** Each level expands who can take action, from specific participants to universal access.
-
-**Economic Alignment:** Every escalation level provides clear financial or competitive incentives for resolution.
-
-**Punishment Asymmetry:** Stallers face severe consequences (elimination, forfeiture) while resolvers receive rewards (prizes, tournament spots).
-
-**Guaranteed Resolution:** The combination of expanding access and increasing rewards ensures someone will always resolve any stuck state.
-
-**No Admin Required:** The entire system operates autonomously through smart contract logic. No human intervention needed.
-
-This alignment ensures rapid resolution without requiring centralized adjudication.
-
----
-
-## CLIENT CTA REFERENCE
-
-For frontend implementation, each escalation level maps to a specific call-to-action:
-
-1. **Enrollment Level 1** — **"Force Start Tournament"** — Available to any enrolled player when the tournament has not filled all slots within the enrollment window. Only enrolled players see this button. Unenrolled players cannot trigger it.
-
-2. **Enrollment Level 2** — **"Claim Abandoned Pool"** — Available to anyone when an unfilled tournament has not been force-started within the Level 1 timeout period. Any wallet can trigger it. No restrictions.
-
-3. **Match Level 1** — **"Claim Victory by Forfeit"** — Available to the opponent only when a player exhausts their match time. Only the specific opponent in that match sees this button. Advanced players, other participants, and external observers cannot trigger it.
-
-4. **Match Level 2** — **"Eliminate Stalled Players"** — Available to advanced players only when an opponent fails to claim victory within their timeout window. Only players in higher rounds see this button. The match opponent, same-round players, eliminated players, and external observers cannot trigger it.
-
-5. **Match Level 3** — **"Replace Stalled Players"** — Available to anyone when advanced players fail to eliminate stalled players within their timeout window. Any wallet can trigger it, including eliminated players and non-enrolled observers.
+The incentive structure ensures everyone except the staller has reason to resolve the situation. For enrollment timeouts, the reward is direct—the full pool. For match timeouts, the reward is participation: the chance to compete for prizes in a tournament you didn't pay to enter.
 
 ---
 
@@ -646,13 +560,13 @@ Given identical inputs, ETour always produces identical outputs. There is no:
 - External calls to other contracts that could fail
 - Admin discretion in any decision
 
-This determinism enables complete verification. Anyone can reconstruct a tournament's history from emitted events and transaction logs to confirm the outcome matches.
+This determinism enables complete verification. Anyone can reconstruct a tournament's history from emitted events and transaction logs to confirm the outcome.
 
 ### 7.4 Open Source Verification
 
-All contract code is verified on Arbiscan. Players can:
+All contract code is verified on Arbiscan. You can:
 
-- Read the exact code governing their competition
+- Read the exact code governing your competition
 - Verify fee percentages match documentation
 - Confirm no hidden admin functions exist
 - Audit game rules for fairness
@@ -665,7 +579,7 @@ No trust required. Verification is available to anyone willing to read Solidity.
 
 ### 8.1 The Five Principles
 
-ETour is built according to RW3 (Reclaim Web3) principles. A movement committed to rebuilding blockchain applications that deliver genuine utility without compromising decentralization:
+ETour is built according to RW3 (Reclaim Web3) principles—a movement committed to rebuilding blockchain applications that deliver genuine utility without compromising decentralization:
 
 1. **Real Utility** — Solve an actual problem, not a manufactured one
 2. **Fully On-Chain** — Execute core logic on blockchain, not centralized servers
@@ -676,10 +590,10 @@ ETour is built according to RW3 (Reclaim Web3) principles. A movement committed 
 ### 8.2 How ETour Meets Each Principle
 
 **Real Utility:**
-ETour enables skill-based competition with guaranteed fair outcomes and instant payouts. Players get something that centralized platforms can't give them: absolute certainty that nobody can cheat, steal funds, or manipulate results.
+ETour enables skill-based competition with guaranteed fair outcomes and instant payouts. Players get something centralized platforms can't give them: absolute certainty that nobody can cheat, steal funds, or manipulate results.
 
 **Fully On-Chain:**
-All tournament logic, game rules, and financial operations execute via smart contract. The only off-chain component is this interface which is purely cosmetic. A different frontend, or direct contract interaction, produces exactly the same results.
+All tournament logic, game rules, and financial operations execute via smart contract. The only off-chain component is the interface, which is purely cosmetic. A different frontend, or direct contract interaction, produces exactly the same results.
 
 **Self-Sustaining:**
 The 10% operational fee funds ongoing development and hosting costs. No external funding required. No token sales. No investor extraction.
@@ -692,160 +606,77 @@ ETour uses only ETH. No governance tokens. No utility tokens. No "reward tokens.
 
 ---
 
-## 9. Technical Specification
+## 9. Technical Overview
 
 ### 9.1 Contract Structure
 
-```
-ETour.sol (abstract)
-├── State Management
-│   ├── Tier configuration
-│   ├── Tournament instances
-│   ├── Round tracking
-│   └── Player statistics
-├── Enrollment Logic
-│   ├── Fee processing
-│   ├── Player registration
-│   └── Timeout escalation
-├── Tournament Management
-│   ├── Round initialization
-│   ├── Match advancement
-│   └── Winner determination
-├── Prize Distribution
-│   ├── Ranking calculation
-│   ├── Prize calculation
-│   └── Payout execution
-└── Abstract Functions (game-specific)
-    ├── _createMatchGame
-    ├── _resetMatchGame
-    ├── _getMatchResult
-    └── ... (others)
-```
+ETour uses a modular contract architecture where functionality is distributed across specialized modules:
+
+**ETour_Base.sol (Foundation):**
+- Common types and enums (TournamentStatus, MatchStatus, EscalationLevel)
+- Shared data structures (CommonMatchData, EnrollmentTimeoutState)
+- Type definitions used across all modules
+
+**ETour_Core.sol (Tournament Management):**
+- Tier configuration storage
+- Tournament instance tracking
+- Enrollment processing
+- Fee collection and splitting
+- Tournament status management
+
+**ETour_Matches.sol (Match & Bracket Logic):**
+- Match pairing and creation
+- Round initialization and progression
+- Bracket advancement logic
+- Draw and walkover handling
+
+**ETour_Prizes.sol (Prize Distribution):**
+- Prize pool calculation
+- Ranking determination
+- Winner payout execution
+- Earnings tracking and leaderboard
+
+**ETour_Escalation.sol (Anti-Griefing):**
+- Enrollment timeout tracking
+- Match timeout tracking
+- Escalation level progression
+- Claim validation for all timeout scenarios
+
+**ETour_Raffle.sol (Community Raffles):**
+- Raffle threshold management
+- Random winner selection (weighted by enrollment)
+- Prize distribution from accumulated protocol fees
+
+**Game Contracts (TicTacChain, ChessOnChain, ConnectFourOnChain):**
+- Game-specific state (boards, pieces, positions)
+- Move validation and game rules
+- Win/draw/timeout detection
+- Module callbacks for tournament integration
 
 ### 9.2 Key Data Structures
 
-**TierConfig:**
-```solidity
-struct TierConfig {
-    uint8 playerCount;
-    uint8 instanceCount;
-    uint256 entryFee;
-    Mode mode;
-    uint256 enrollmentWindow;
-    uint256 matchMoveTimeout;
-    uint256 escalationInterval;
-    uint8 totalRounds;
-    bool initialized;
-}
-```
+**TierConfig** stores tournament parameters: player count, instance count, entry fee, mode, timeouts, and rounds.
 
-**TournamentInstance:**
-```solidity
-struct TournamentInstance {
-    uint8 tierId;
-    uint8 instanceId;
-    TournamentStatus status;
-    Mode mode;
-    uint8 currentRound;
-    uint8 enrolledCount;
-    uint256 prizePool;
-    uint256 startTime;
-    address winner;
-    address coWinner;
-    bool finalsWasDraw;
-    bool allDrawResolution;
-    uint8 allDrawRound;
-    EnrollmentTimeoutState enrollmentTimeout;
-    bool hasStartedViaTimeout;
-    // ... additional tracking fields
-}
-```
+**TournamentInstance** tracks the state of a single tournament: status, current round, enrolled players, prize pool, winner, and timeout states.
 
-**PlayerStats:**
-```solidity
-struct PlayerStats {
-    uint256 tournamentsWon;
-    uint256 tournamentsPlayed;
-    uint256 matchesWon;
-    uint256 matchesPlayed;
-}
-```
+**PlayerStats** records performance: tournaments won/played, matches won/played.
 
-**Permanent Earnings Tracking:**
-```solidity
-// Prize amount each player received per tournament (permanent, never deleted)
-mapping(uint8 => mapping(uint8 => mapping(address => uint256))) public playerPrizes;
-
-// Net earnings per player across ALL tournaments (prizes minus entry fees)
-mapping(address => int256) public playerEarnings;
-
-// All players who have ever participated (for leaderboard)
-address[] internal _leaderboardPlayers;
-```
-
-**LeaderboardEntry:**
-```solidity
-struct LeaderboardEntry {
-    address player;
-    int256 earnings;  // Net profit/loss across all tournaments
-}
-```
+**Permanent Earnings Tracking** maintains prize history per player and net earnings across all tournaments, enabling lifetime leaderboards.
 
 ### 9.3 Core Functions
 
-**Enrollment:**
-```solidity
-function enrollInTournament(uint8 tierId, uint8 instanceId) external payable
-```
+Players interact with ETour through these primary functions:
 
-**Force Start (after enrollment timeout):**
-```solidity
-function forceStartTournament(uint8 tierId, uint8 instanceId) external
-```
+- **enrollInTournament** — Join a tournament at a specific tier
+- **forceStartTournament** — Trigger EL1 enrollment escalation
+- **claimAbandonedEnrollmentPool** — Trigger EL2 enrollment escalation
+- **Game-specific move functions** — Make moves in your matches
 
-**Claim Abandoned Enrollment:**
-```solidity
-function claimAbandonedEnrollmentPool(uint8 tierId, uint8 instanceId) external
-```
+View functions allow frontends to query tournament info, player stats, tier overviews, and leaderboard data.
 
-**View Functions:**
-```solidity
-function getTournamentInfo(uint8 tierId, uint8 instanceId) external view 
-    returns (TournamentStatus, Mode, uint8 currentRound, uint8 enrolledCount, uint256 prizePool, address winner)
+Events are emitted for every significant action, enabling complete historical reconstruction and frontend real-time updates.
 
-function getPlayerStats(address player) external view 
-    returns (uint256 tournamentsWon, uint256 tournamentsPlayed, uint256 matchesWon, uint256 matchesPlayed)
-
-function getTierOverview(uint8 tierId) external view 
-    returns (TournamentStatus[] memory, uint8[] memory enrolledCounts, uint256[] memory prizePools)
-```
-
-### 9.4 Events
-
-ETour emits comprehensive events for frontend integration and historical analysis:
-
-```solidity
-event TierRegistered(uint8 indexed tierId, uint8 playerCount, uint8 instanceCount, uint256 entryFee);
-event TournamentInitialized(uint8 indexed tierId, uint8 indexed instanceId);
-event PlayerEnrolled(uint8 indexed tierId, uint8 indexed instanceId, address indexed player, uint8 enrolledCount);
-event TournamentStarted(uint8 indexed tierId, uint8 indexed instanceId, uint8 playerCount);
-event MatchStarted(uint8 indexed tierId, uint8 indexed instanceId, uint8 roundNumber, uint8 matchNumber, address player1, address player2);
-event MatchCompleted(bytes32 indexed matchId, address winner, bool isDraw);
-event RoundCompleted(uint8 indexed tierId, uint8 indexed instanceId, uint8 roundNumber);
-event TournamentCompleted(uint8 indexed tierId, uint8 indexed instanceId, address winner, uint256 prizeAmount, bool finalsWasDraw, address coWinner);
-event PrizeDistributed(uint8 indexed tierId, uint8 indexed instanceId, address indexed player, uint8 rank, uint256 amount);
-event TimeoutVictoryClaimed(uint8 indexed tierId, uint8 indexed instanceId, uint8 roundNum, uint8 matchNum, address indexed winner, address loser);
-event TournamentCached(uint8 indexed tierId, uint8 indexed instanceId, address winner);  // Emitted when earnings are recorded
-event PlayerForfeited(uint8 indexed tierId, uint8 indexed instanceId, address indexed player, uint256 amount, string reason);
-```
-
-**Leaderboard View Functions:**
-```solidity
-function getLeaderboard() external view returns (LeaderboardEntry[] memory);
-function getLeaderboardCount() external view returns (uint256);
-```
-
-### 9.5 Gas Optimization
+### 9.4 Gas Optimization
 
 ETour employs several gas optimization strategies:
 
@@ -853,7 +684,7 @@ ETour employs several gas optimization strategies:
 - **Minimal storage writes** — Derived values computed rather than stored
 - **Efficient mappings** — Direct lookups rather than array iteration
 - **Bounded loops** — All iterations have known maximum bounds
-- **Selective permanent storage** — Only essential historical data (`playerPrizes`, `playerEarnings`) is stored permanently; detailed match history is reconstructable from events
+- **Selective permanent storage** — Only essential historical data is stored permanently
 
 Typical gas costs on Arbitrum:
 
@@ -867,9 +698,85 @@ These costs are negligible relative to entry fees, ensuring game economics aren'
 
 ---
 
-## 10. Conclusion
+## 10. Building on ETour
 
-ETour Protocol demonstrates that blockchain gaming can focus on games rather than financial mechanisms. By accepting blockchain's constraints: transparency, determinism, discrete transactions, and building games that naturally fit within them. We've created infrastructure for genuine skill-based competition.
+### 10.1 The Modular Approach
+
+Building a game on ETour means creating a game contract that interfaces with the shared ETour module system. You don't deploy your own tournament infrastructure—you reference the existing, audited modules.
+
+**Your Game Contract:**
+- Receives module addresses in the constructor
+- Implements game-specific logic (move validation, win detection)
+- Delegates tournament operations to modules
+- Focuses purely on your game's rules
+
+**The Modules (Already Deployed):**
+- ETour_Core handles enrollment and tier management
+- ETour_Matches manages brackets and round progression
+- ETour_Prizes calculates and distributes winnings
+- ETour_Escalation handles all timeout scenarios
+- ETour_Raffle runs community prize drawings
+
+This means you're building on battle-tested, gas-optimized infrastructure used by all ETour games.
+
+### 10.2 What You Need to Implement
+
+Building a game on ETour requires implementing about a dozen functions:
+
+**Game State Management:**
+- Create and reset match state
+- Track game-specific data (board, pieces, etc.)
+
+**Result Reporting:**
+- Determine when games end (win/draw/timeout)
+- Return match results to modules via callbacks
+
+**Timeout Integration:**
+- Update timeout state after each move
+- Provide functions for players to claim timeout victories
+
+**Module Communication:**
+- Receive callbacks from modules (e.g., when a match starts)
+- Call module functions when game events occur (e.g., match ends)
+
+**Configuration:**
+- Define your tier structure (entry fees, prize splits, timeouts)
+
+That's it. The tournament framework, prize distribution, anti-griefing, and statistics are all handled by the modules.
+
+### 10.3 What You Get for Free
+
+When you build on ETour modules, you inherit:
+
+- **Tournament bracket system** — Single-elimination with proper advancement logic
+- **Prize distribution** — Automatic payout according to your configured splits
+- **Anti-griefing escalation** — Both enrollment and match timeout handling
+- **Player statistics** — Win/loss tracking across all games on your contract
+- **Earnings leaderboard** — Permanent history of player performance and prizes
+- **Security patterns** — Reentrancy protection, access controls, tested edge cases
+
+You focus on your game's rules. ETour modules handle everything else.
+
+### 10.4 Getting Started
+
+The basic pattern:
+
+1. **Reference the modules** — Your contract receives module addresses in the constructor
+2. **Implement ETour_Base types** — Use the common types defined in ETour_Base.sol
+3. **Define your game structures** — Board state, player positions, whatever your game needs
+4. **Configure tiers** — Set entry fees, player counts, prize distributions
+5. **Implement callback functions** — Handle module callbacks for match lifecycle events
+6. **Deploy and verify** — Deploy to Arbitrum with module addresses and verify your contract
+
+The implementation is straightforward because ETour handles all the complex tournament mechanics. You're just telling it how your specific game works.
+
+For detailed implementation guidance, refer to the ETour documentation and example contracts.
+
+---
+
+## 11. Conclusion
+
+ETour Protocol demonstrates that blockchain gaming can focus on games rather than financial mechanisms. By accepting blockchain's constraints—transparency, determinism, discrete transactions—and building games that naturally fit within them, we've created infrastructure for genuine skill-based competition.
 
 The three flagship games serve different audiences and skill levels:
 
@@ -881,7 +788,7 @@ All three share the same guarantees: fair play, instant payouts, no cheating pos
 
 For players, the message is simple: **Think you're good? Prove it.**
 
-For developers, ETour offers battle-tested tournament infrastructure. Build your game's rules; we handle the rest.
+For developers, ETour offers battle-tested tournament infrastructure. Build your game's rules; ETour handles the rest.
 
 For skeptics, all code is open source and verified. **Trust nothing. Verify everything.**
 
@@ -889,626 +796,7 @@ This is what Web3 gaming should have been from the start: technology enabling ex
 
 ---
 
-## Appendix A: Complete Implementation Walkthrough
-
-This appendix provides a comprehensive, step-by-step guide to building a game on ETour, using **TicTacChain** (our production Tic-Tac-Toe implementation) as the reference example. By the end, you'll understand exactly how to take a game from idea to deployed smart contract.
-
-### A.1 Prerequisites
-
-Before starting, ensure you have:
-
-- **Solidity ^0.8.20** development environment (Hardhat or Foundry)
-- **OpenZeppelin Contracts** for ReentrancyGuard
-- **ETour.sol** abstract contract
-- Basic understanding of smart contract development
-
-### A.2 Step 1: Define Your Game's Data Structures
-
-First, define the structures that represent your game's state. For TicTacChain:
-
-```solidity
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
-
-import "./ETour.sol";
-
-contract TicTacChain is ETour {
-
-    // ============ Game-Specific Constants ============
-    uint8 public constant NO_CELL = 255;
-
-    // ============ Game-Specific Enums ============
-    enum Cell { Empty, X, O }
-
-    // ============ Game-Specific Structs ============
-    struct Match {
-        address player1;
-        address player2;
-        address currentTurn;
-        address winner;
-        Cell[9] board;              // 3x3 board as flat array
-        MatchStatus status;         // From ETour
-        uint256 lastMoveTime;
-        uint256 startTime;
-        address firstPlayer;
-        bool isDraw;
-        MatchTimeoutState timeoutState;  // From ETour
-        bool isTimedOut;
-        address timeoutClaimant;
-    }
-
-    // ============ Game-Specific State ============
-    mapping(bytes32 => Match) public matches;
-```
-
-**Key Design Decisions:**
-- Use `bytes32` match IDs (generated by ETour's `_getMatchId()`)
-- Include all ETour-required fields: `player1`, `player2`, `winner`, `status`, `isDraw`, `timeoutState`
-- Add game-specific fields: `board`, `currentTurn`, `firstPlayer`
-
-### A.3 Step 2: Configure Tournament Tiers
-
-In your constructor, register the tournament tiers your game will support. This is where you define entry fees, player counts, prize distributions, and timeout configurations:
-
-```solidity
-constructor() ETour() {
-    _registerTicTacChainTiers();
-}
-
-function _registerTicTacChainTiers() internal {
-    // ============ Tier 0: 2-Player (Entry Level) ============
-    // Simple head-to-head, winner takes all
-    uint8[] memory tier0Prizes = new uint8[](2);
-    tier0Prizes[0] = 100;  // 1st place: 100%
-    tier0Prizes[1] = 0;    // 2nd place: 0%
-
-    _registerTier(
-        0,                      // tierId
-        2,                      // playerCount
-        64,                     // instanceCount (64 concurrent tournaments)
-        0.001 ether,            // entryFee
-        Mode.Classic,           // mode
-        2 minutes,              // enrollmentWindow
-        1 minutes,              // matchMoveTimeout
-        1 minutes,              // escalationInterval
-        tier0Prizes             // prizeDistribution
-    );
-
-    // ============ Tier 1: 4-Player ============
-    // Semi-final + Final bracket
-    uint8[] memory tier1Prizes = new uint8[](4);
-    tier1Prizes[0] = 60;   // 1st: 60%
-    tier1Prizes[1] = 30;   // 2nd: 30%
-    tier1Prizes[2] = 10;   // 3rd: 10%
-    tier1Prizes[3] = 0;    // 4th: 0%
-
-    _registerTier(
-        1,                      // tierId
-        4,                      // playerCount
-        10,                     // instanceCount
-        0.002 ether,            // entryFee
-        Mode.Classic,
-        2 minutes,
-        1 minutes,
-        1 minutes,
-        tier1Prizes
-    );
-
-    // ============ Tier 2: 8-Player ============
-    uint8[] memory tier2Prizes = new uint8[](8);
-    tier2Prizes[0] = 50;   // 1st
-    tier2Prizes[1] = 25;   // 2nd
-    tier2Prizes[2] = 15;   // 3rd
-    tier2Prizes[3] = 10;   // 4th
-    tier2Prizes[4] = 0;    // 5th-8th
-    tier2Prizes[5] = 0;
-    tier2Prizes[6] = 0;
-    tier2Prizes[7] = 0;
-
-    _registerTier(
-        2,                      // tierId
-        8,                      // playerCount
-        16,                     // instanceCount
-        0.004 ether,            // entryFee
-        Mode.Classic,
-        2 minutes,
-        1 minutes,
-        1 minutes,
-        tier2Prizes
-    );
-}
-```
-
-**Tier Configuration Parameters Explained:**
-| Parameter | Description |
-|-----------|-------------|
-| `tierId` | Unique identifier (0, 1, 2, ...) |
-| `playerCount` | Players per tournament (should be power of 2) |
-| `instanceCount` | Concurrent tournaments at this tier |
-| `entryFee` | Cost to enter in wei |
-| `mode` | `Mode.Classic` or `Mode.Pro` |
-| `enrollmentWindow` | Time before force-start becomes available |
-| `matchMoveTimeout` | Time per move before opponent can claim timeout |
-| `escalationInterval` | Time between escalation levels |
-| `prizeDistribution` | Array of percentages (must sum to 100) |
-
-### A.4 Step 3: Implement Abstract Functions
-
-ETour requires you to implement several abstract functions that bridge the protocol's tournament mechanics with your game's logic:
-
-#### A.4.1 `_createMatchGame` — Initialize a New Match
-
-Called by ETour when two players are paired for a match:
-
-```solidity
-function _createMatchGame(
-    uint8 tierId,
-    uint8 instanceId,
-    uint8 roundNumber,
-    uint8 matchNumber,
-    address player1,
-    address player2
-) internal override {
-    require(player1 != player2, "Cannot match player against themselves");
-    require(player1 != address(0) && player2 != address(0), "Invalid player");
-
-    bytes32 matchId = _getMatchId(tierId, instanceId, roundNumber, matchNumber);
-    Match storage matchData = matches[matchId];
-
-    // Set players
-    matchData.player1 = player1;
-    matchData.player2 = player2;
-    matchData.status = MatchStatus.InProgress;
-    matchData.lastMoveTime = block.timestamp;
-    matchData.startTime = block.timestamp;
-    matchData.isDraw = false;
-
-    // Randomly determine who goes first
-    uint256 randomness = uint256(keccak256(abi.encodePacked(
-        block.prevrandao,
-        block.timestamp,
-        player1,
-        player2,
-        matchId
-    )));
-    matchData.currentTurn = (randomness % 2 == 0) ? player1 : player2;
-    matchData.firstPlayer = matchData.currentTurn;
-
-    // Initialize empty board
-    for (uint8 i = 0; i < 9; i++) {
-        matchData.board[i] = Cell.Empty;
-    }
-
-    // Initialize timeout state (ETour helper)
-    _initializeMatchTimeoutState(matchId, tierId);
-
-    emit MatchStarted(tierId, instanceId, roundNumber, matchNumber, player1, player2);
-}
-```
-
-#### A.4.2 `_resetMatchGame` — Clean Up After Match
-
-Called when a tournament resets to prepare for new enrollment:
-
-```solidity
-function _resetMatchGame(bytes32 matchId) internal override {
-    Match storage matchData = matches[matchId];
-
-    matchData.player1 = address(0);
-    matchData.player2 = address(0);
-    matchData.currentTurn = address(0);
-    matchData.winner = address(0);
-    matchData.status = MatchStatus.NotStarted;
-    matchData.lastMoveTime = 0;
-    matchData.startTime = 0;
-    matchData.firstPlayer = address(0);
-    matchData.isDraw = false;
-    matchData.isTimedOut = false;
-    matchData.timeoutClaimant = address(0);
-
-    // Reset timeout state
-    matchData.timeoutState.escalation1Start = 0;
-    matchData.timeoutState.escalation2Start = 0;
-    matchData.timeoutState.escalation3Start = 0;
-    matchData.timeoutState.activeEscalation = EscalationLevel.None;
-    matchData.timeoutState.timeoutActive = false;
-
-    // Clear board
-    for (uint8 i = 0; i < 9; i++) {
-        matchData.board[i] = Cell.Empty;
-    }
-}
-```
-
-#### A.4.3 `_getMatchResult` — Return Match Outcome
-
-ETour calls this to determine match results for bracket progression:
-
-```solidity
-function _getMatchResult(bytes32 matchId)
-    internal view override
-    returns (address winner, bool isDraw, MatchStatus status)
-{
-    Match storage matchData = matches[matchId];
-    return (matchData.winner, matchData.isDraw, matchData.status);
-}
-```
-
-#### A.4.4 `_getMatchPlayers` — Return Player Addresses
-
-```solidity
-function _getMatchPlayers(bytes32 matchId)
-    internal view override
-    returns (address player1, address player2)
-{
-    Match storage matchData = matches[matchId];
-    return (matchData.player1, matchData.player2);
-}
-```
-
-#### A.4.5 `_completeMatchWithResult` — Finalize Match
-
-Called when match ends (win, draw, or timeout):
-
-```solidity
-function _completeMatchWithResult(bytes32 matchId, address winner, bool isDraw)
-    internal override
-{
-    Match storage matchData = matches[matchId];
-    matchData.status = MatchStatus.Completed;
-    matchData.winner = winner;
-    matchData.isDraw = isDraw;
-}
-```
-
-#### A.4.6 Timeout State Management
-
-These functions integrate with ETour's anti-stalling system:
-
-```solidity
-function _setMatchTimeoutState(bytes32 matchId, MatchTimeoutState memory state)
-    internal override
-{
-    matches[matchId].timeoutState = state;
-}
-
-function _getMatchTimeoutState(bytes32 matchId)
-    internal view override
-    returns (MatchTimeoutState memory)
-{
-    return matches[matchId].timeoutState;
-}
-
-function _setMatchTimedOut(bytes32 matchId, address claimant, EscalationLevel level)
-    internal override
-{
-    Match storage matchData = matches[matchId];
-    matchData.isTimedOut = true;
-    matchData.timeoutClaimant = claimant;
-    matchData.timeoutState.activeEscalation = level;
-    matchData.timeoutState.timeoutActive = true;
-}
-
-function _setMatchPlayer(bytes32 matchId, uint8 slot, address player)
-    internal override
-{
-    Match storage matchData = matches[matchId];
-    if (slot == 0) {
-        matchData.player1 = player;
-    } else {
-        matchData.player2 = player;
-    }
-}
-
-function _initializeMatchForPlay(bytes32 matchId, uint8 tierId) internal override {
-    Match storage matchData = matches[matchId];
-    matchData.status = MatchStatus.InProgress;
-    matchData.lastMoveTime = block.timestamp;
-    matchData.startTime = block.timestamp;
-
-    // Random first player
-    uint256 randomness = uint256(keccak256(abi.encodePacked(
-        block.prevrandao, block.timestamp, matchData.player1, matchData.player2, matchId
-    )));
-    matchData.firstPlayer = (randomness % 2 == 0) ? matchData.player1 : matchData.player2;
-    matchData.currentTurn = matchData.firstPlayer;
-
-    // Clear board
-    for (uint8 i = 0; i < 9; i++) {
-        matchData.board[i] = Cell.Empty;
-    }
-
-    _initializeMatchTimeoutState(matchId, tierId);
-}
-```
-
-### A.5 Step 4: Implement Game Logic
-
-Now implement your game's core mechanics. For Tic-Tac-Toe:
-
-#### A.5.1 The Move Function
-
-```solidity
-event MoveMade(bytes32 indexed matchId, address indexed player, uint8 cellIndex);
-
-function makeMove(
-    uint8 tierId,
-    uint8 instanceId,
-    uint8 roundNumber,
-    uint8 matchNumber,
-    uint8 cellIndex
-) external nonReentrant {
-    bytes32 matchId = _getMatchId(tierId, instanceId, roundNumber, matchNumber);
-    Match storage matchData = matches[matchId];
-
-    // Validation
-    require(matchData.status == MatchStatus.InProgress, "Match not active");
-    require(msg.sender == matchData.player1 || msg.sender == matchData.player2, "Not a player");
-    require(msg.sender == matchData.currentTurn, "Not your turn");
-    require(cellIndex < 9, "Invalid cell index");
-    require(matchData.board[cellIndex] == Cell.Empty, "Cell occupied");
-
-    // Make the move
-    matchData.board[cellIndex] = (msg.sender == matchData.player1) ? Cell.X : Cell.O;
-    matchData.lastMoveTime = block.timestamp;
-
-    // Reset timeout timer
-    _initializeMatchTimeoutState(matchId, tierId);
-
-    emit MoveMade(matchId, msg.sender, cellIndex);
-
-    // Check for win
-    if (_checkWin(matchData.board)) {
-        _completeMatch(tierId, instanceId, roundNumber, matchNumber, msg.sender, false);
-        return;
-    }
-
-    // Check for draw
-    if (_checkDraw(matchData.board)) {
-        _completeMatch(tierId, instanceId, roundNumber, matchNumber, address(0), true);
-        return;
-    }
-
-    // Switch turns
-    matchData.currentTurn = (matchData.currentTurn == matchData.player1)
-        ? matchData.player2
-        : matchData.player1;
-}
-```
-
-#### A.5.2 Win Detection
-
-```solidity
-function _checkWin(Cell[9] memory board) internal pure returns (bool) {
-    // All winning lines: rows, columns, diagonals
-    uint8[3][8] memory lines = [
-        [uint8(0), 1, 2], [3, 4, 5], [6, 7, 8],  // Rows
-        [uint8(0), 3, 6], [1, 4, 7], [2, 5, 8],  // Columns
-        [uint8(0), 4, 8], [2, 4, 6]              // Diagonals
-    ];
-
-    for (uint256 i = 0; i < 8; i++) {
-        uint8 a = lines[i][0];
-        uint8 b = lines[i][1];
-        uint8 c = lines[i][2];
-
-        if (board[a] != Cell.Empty && board[a] == board[b] && board[b] == board[c]) {
-            return true;
-        }
-    }
-    return false;
-}
-
-function _checkDraw(Cell[9] memory board) internal pure returns (bool) {
-    for (uint256 i = 0; i < 9; i++) {
-        if (board[i] == Cell.Empty) return false;
-    }
-    return true;
-}
-```
-
-### A.6 Step 5: Implement Timeout Claims
-
-Allow players to claim victory when opponent times out:
-
-```solidity
-function claimTimeoutWin(
-    uint8 tierId,
-    uint8 instanceId,
-    uint8 roundNumber,
-    uint8 matchNumber
-) external nonReentrant {
-    bytes32 matchId = _getMatchId(tierId, instanceId, roundNumber, matchNumber);
-    Match storage matchData = matches[matchId];
-
-    require(matchData.status == MatchStatus.InProgress, "Match not active");
-    require(msg.sender == matchData.player1 || msg.sender == matchData.player2, "Not a player");
-    require(msg.sender != matchData.currentTurn, "Cannot claim on your turn");
-    require(block.timestamp >= matchData.timeoutState.escalation1Start, "Timeout not reached");
-
-    matchData.isTimedOut = true;
-    matchData.timeoutClaimant = msg.sender;
-    matchData.timeoutState.activeEscalation = EscalationLevel.Escalation1_OpponentClaim;
-
-    address loser = (msg.sender == matchData.player1) ? matchData.player2 : matchData.player1;
-
-    emit TimeoutVictoryClaimed(tierId, instanceId, roundNumber, matchNumber, msg.sender, loser);
-
-    _completeMatch(tierId, instanceId, roundNumber, matchNumber, msg.sender, false);
-}
-```
-
-### A.7 Step 6: Add View Functions
-
-Provide functions for frontends to read game state:
-
-```solidity
-function getMatch(
-    uint8 tierId,
-    uint8 instanceId,
-    uint8 roundNumber,
-    uint8 matchNumber
-) external view returns (
-    address player1,
-    address player2,
-    address currentTurn,
-    address winner,
-    Cell[9] memory board,
-    MatchStatus status,
-    bool isDraw,
-    uint256 startTime,
-    uint256 lastMoveTime,
-    address firstPlayer
-) {
-    bytes32 matchId = _getMatchId(tierId, instanceId, roundNumber, matchNumber);
-    Match storage matchData = matches[matchId];
-    return (
-        matchData.player1,
-        matchData.player2,
-        matchData.currentTurn,
-        matchData.winner,
-        matchData.board,
-        matchData.status,
-        matchData.isDraw,
-        matchData.startTime,
-        matchData.lastMoveTime,
-        matchData.firstPlayer
-    );
-}
-```
-
-### A.8 Step 7: Deploy and Test
-
-#### A.8.1 Deployment Script (Hardhat)
-
-```javascript
-const { ethers } = require("hardhat");
-
-async function main() {
-    const TicTacChain = await ethers.getContractFactory("TicTacChain");
-    const contract = await TicTacChain.deploy();
-    await contract.waitForDeployment();
-
-    console.log("TicTacChain deployed to:", await contract.getAddress());
-}
-
-main().catch(console.error);
-```
-
-#### A.8.2 Testing Flow
-
-```javascript
-// 1. Player A enrolls
-await contract.connect(playerA).enrollInTournament(0, 0, { value: ethers.parseEther("0.001") });
-
-// 2. Player B enrolls (tournament auto-starts with 2 players)
-await contract.connect(playerB).enrollInTournament(0, 0, { value: ethers.parseEther("0.001") });
-
-// 3. Get match info
-const match = await contract.getMatch(0, 0, 0, 0);
-console.log("Current turn:", match.currentTurn);
-
-// 4. Players make moves
-await contract.connect(playerA).makeMove(0, 0, 0, 0, 4); // Center
-await contract.connect(playerB).makeMove(0, 0, 0, 0, 0); // Corner
-await contract.connect(playerA).makeMove(0, 0, 0, 0, 1); // Top middle
-await contract.connect(playerB).makeMove(0, 0, 0, 0, 7); // Block
-await contract.connect(playerA).makeMove(0, 0, 0, 0, 2); // Win (if available)
-
-// 5. Check result
-const result = await contract.getMatch(0, 0, 0, 0);
-console.log("Winner:", result.winner);
-```
-
-### A.9 Frontend Integration
-
-The frontend connects to your deployed contract using ethers.js:
-
-```javascript
-import { ethers } from 'ethers';
-import CONTRACT_ABI from './TicTacChainABI.json';
-
-const CONTRACT_ADDRESS = "0x..."; // Your deployed address
-
-// Connect wallet
-const provider = new ethers.BrowserProvider(window.ethereum);
-const signer = await provider.getSigner();
-const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
-
-// Enroll in tournament
-const entryFee = ethers.parseEther("0.001");
-const tx = await contract.enrollInTournament(0, 0, { value: entryFee });
-await tx.wait();
-
-// Make a move
-const moveTx = await contract.makeMove(0, 0, 0, 0, 4); // Center cell
-await moveTx.wait();
-
-// Read match state
-const match = await contract.getMatch(0, 0, 0, 0);
-console.log("Board:", match.board);
-console.log("Current turn:", match.currentTurn);
-```
-
-### A.10 Complete Implementation Checklist
-
-Use this checklist when building your ETour game:
-
-- [ ] **Contract Setup**
-  - [ ] Import ETour.sol
-  - [ ] Inherit from ETour
-  - [ ] Define game-specific enums and structs
-
-- [ ] **Tier Configuration**
-  - [ ] Define prize distributions (must sum to 100)
-  - [ ] Choose appropriate timeouts for your game
-  - [ ] Register all tiers in constructor
-
-- [ ] **Abstract Functions**
-  - [ ] `_createMatchGame` — Initialize game state
-  - [ ] `_resetMatchGame` — Clean up match data
-  - [ ] `_getMatchResult` — Return winner/draw/status
-  - [ ] `_getMatchPlayers` — Return player addresses
-  - [ ] `_completeMatchWithResult` — Finalize match
-  - [ ] `_setMatchTimeoutState` — Update timeout state
-  - [ ] `_getMatchTimeoutState` — Read timeout state
-  - [ ] `_setMatchTimedOut` — Mark match as timed out
-  - [ ] `_setMatchPlayer` — Assign player to slot
-  - [ ] `_initializeMatchForPlay` — Prepare for active play
-  - [ ] `_addToMatchCacheGame` — Optional: cache match for history
-
-- [ ] **Game Logic**
-  - [ ] Move validation function
-  - [ ] Win condition detection
-  - [ ] Draw condition detection
-  - [ ] Turn management
-
-- [ ] **Timeout Integration**
-  - [ ] Call `_initializeMatchTimeoutState` after each move
-  - [ ] Implement `claimTimeoutWin` function
-
-- [ ] **View Functions**
-  - [ ] Match state getter
-  - [ ] Board/game state getter
-
-- [ ] **Events**
-  - [ ] MoveMade event
-  - [ ] Game-specific events as needed
-
-- [ ] **Testing**
-  - [ ] Full game flow (enroll → play → win)
-  - [ ] Draw scenario
-  - [ ] Timeout scenario
-  - [ ] Multi-round tournament
-
-- [ ] **Deployment**
-  - [ ] Deploy to testnet
-  - [ ] Verify contract on explorer
-  - [ ] Deploy to mainnet (Arbitrum One)
-
----
-
-## Appendix B: Economic Projections
+## Appendix A: Economic Projections
 
 Conservative scenario (1,000 daily active players):
 
@@ -1519,7 +807,7 @@ Conservative scenario (1,000 daily active players):
 | Prize Pools | 2.7 ETH | 81 ETH | 972 ETH |
 | Operational Revenue | 0.3 ETH | 9 ETH | 108 ETH |
 
-At ETH = $2,000, this yields ~$216,000/year operational revenue. It's more than sufficient for hosting, development, and maintenance.
+At ETH = $2,000, this yields ~$216,000/year operational revenue—more than sufficient for hosting, development, and maintenance.
 
 Growth scenario (10,000 daily active players):
 
@@ -1534,11 +822,12 @@ At scale, operational revenue provides significant runway for development, audit
 
 ---
 
-**Contract Addresses:** [To be added upon deployment]  
-**Source Code:** [GitHub repository]  
-**Frontend:** [etour.games]  
+**Contract Addresses:** [To be added upon deployment]
+**Source Code:** [GitHub repository]
+**Frontend:** [etour.games]
 **RW3 Manifesto:** [reclaimweb3.com]
 
 ---
 
 *This whitepaper describes ETour Protocol as designed for deployment on Arbitrum One. The protocol operates autonomously according to its smart contract code. This document is for informational purposes and does not constitute financial advice.*
+
