@@ -2,8 +2,8 @@ import React from 'react';
 import { Trophy, Wallet, X } from 'lucide-react';
 
 /**
- * InviteModal - Full-screen modal for tournament invitations
- * Displays a prominent, centered modal when a user arrives via invite link without wallet connected
+ * InviteModal - Top banner for tournament invitations
+ * Displays a prominent banner at the top when a user arrives via invite link without wallet connected
  *
  * @param {Object} props
  * @param {Object} props.tournamentParams - Tournament parameters { tierId, instanceId }
@@ -17,68 +17,54 @@ const InviteModal = ({ tournamentParams, onConnect, isElite = false, gameName = 
 
   const { tierId, instanceId } = tournamentParams;
 
-  // Generate tournament type label (e.g., "Chess Duel", "Connect Four 8-Player Tournament")
-  const getTournamentLabel = () => {
+  // Generate tournament type label (e.g., "duel", "4-player tournament")
+  const getTournamentType = () => {
     if (playerCount === 2) {
-      return `${gameName} Duel`;
+      return 'duel';
     } else {
-      return `${gameName} ${playerCount}-Player Tournament`;
+      return `${playerCount}-player tournament`;
     }
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      {/* Backdrop with blur */}
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
-
-      {/* Modal Content */}
-      <div className="relative z-10 w-full max-w-md">
-        <div className={`rounded-2xl p-8 shadow-2xl border-2 ${
-          isElite
-            ? 'bg-gradient-to-br from-[#fbbf24] via-[#f59e0b] to-[#d97706] border-[#d4a012]'
-            : 'bg-gradient-to-br from-purple-600 via-blue-600 to-indigo-600 border-purple-400'
-        }`}>
-          {/* Trophy Icon */}
-          <div className="flex justify-center mb-6">
-            <div className={`rounded-full p-4 ${
+    <div className="fixed top-0 left-0 right-0 z-[100] p-4">
+      {/* Banner Content */}
+      <div className={`max-w-3xl mx-auto rounded-xl shadow-2xl border-2 ${
+        isElite
+          ? 'bg-gradient-to-r from-[#fbbf24] via-[#f59e0b] to-[#d97706] border-[#d4a012]'
+          : 'bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 border-purple-400'
+      }`}>
+        <div className="flex flex-col gap-4 p-4 md:p-6">
+          {/* Top Section - Trophy & Info */}
+          <div className="flex items-center gap-4">
+            {/* Trophy Icon */}
+            <div className={`rounded-full p-3 flex-shrink-0 ${
               isElite ? 'bg-[#fff8e7]/20' : 'bg-white/20'
             }`}>
               <Trophy
                 className={isElite ? 'text-[#fff8e7]' : 'text-yellow-400'}
-                size={48}
+                size={32}
                 strokeWidth={2}
               />
             </div>
+
+            {/* Text Content */}
+            <div className={isElite ? 'text-[#fff8e7]' : 'text-white'}>
+              <h3 className="font-bold text-lg md:text-xl">
+                You're Invited to Play {gameName}
+              </h3>
+              <p className={`text-sm md:text-base ${
+                isElite ? 'text-[#f5e6c8]' : 'text-purple-100'
+              }`}>
+                Connect your wallet to join this <span className="font-semibold">{getTournamentType()}</span>!
+              </p>
+            </div>
           </div>
 
-          {/* Title */}
-          <h2 className={`text-3xl font-bold text-center mb-4 ${
-            isElite ? 'text-[#fff8e7]' : 'text-white'
-          }`}>
-            Tournament Invitation
-          </h2>
-
-          {/* Description */}
-          <div className={`text-center mb-8 space-y-2 ${
-            isElite ? 'text-[#f5e6c8]' : 'text-purple-100'
-          }`}>
-            <p className="text-lg font-semibold">
-              You've been invited to join
-            </p>
-            <p className={`text-2xl font-bold ${
-              isElite ? 'text-[#fff8e7]' : 'text-white'
-            }`}>
-              {getTournamentLabel()}
-            </p>
-            <p className="text-base mt-4">
-              Connect your wallet to view tournament details and enroll!
-            </p>
-          </div>
-
-          {/* Connect Wallet Button */}
+          {/* Bottom Section - Full Width Connect Button */}
           <button
             onClick={onConnect}
-            className={`w-full py-4 px-6 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-3 ${
+            className={`w-full py-2 md:py-4 px-6 rounded-lg font-extrabold text-lg md:text-xl transition-all flex items-center justify-center gap-2 ${
               isElite
                 ? 'bg-[#fff8e7] hover:bg-white text-[#d97706] hover:scale-105 shadow-lg'
                 : 'bg-white hover:bg-gray-100 text-purple-600 hover:scale-105 shadow-lg'
@@ -87,13 +73,6 @@ const InviteModal = ({ tournamentParams, onConnect, isElite = false, gameName = 
             <Wallet size={24} />
             Connect Wallet
           </button>
-
-          {/* Helper Text */}
-          <p className={`text-center text-sm mt-6 ${
-            isElite ? 'text-[#f5e6c8]/80' : 'text-purple-200/80'
-          }`}>
-            Don't have a wallet? We recommend MetaMask
-          </p>
         </div>
       </div>
     </div>
