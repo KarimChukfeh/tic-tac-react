@@ -646,19 +646,32 @@ export default function Landing() {
             Ready to Prove Yourself?
           </h2>
           <p className="text-xl text-slate-400 mb-12 max-w-xl mx-auto">
-            No more playing for points. No more fake rankings. 
+            No more playing for points. No more fake rankings.
             Put real ETH on the line and see where you stand.
           </p>
-          <button
-            onClick={() => document.getElementById('games')?.scrollIntoView({ behavior: 'smooth' })}
-            className="px-16 py-6 rounded-2xl font-bold text-xl text-white transition-all duration-300 hover:-translate-y-1 cursor-pointer"
-            style={{ 
-              background: 'linear-gradient(135deg, #06b6d4, #3b82f6)',
-              boxShadow: '0 8px 40px rgba(6, 182, 212, 0.4)'
-            }}
-          >
-            Start Playing
-          </button>
+          <div className="flex flex-col items-center justify-center gap-4">
+            <button
+              onClick={() => document.getElementById('games')?.scrollIntoView({ behavior: 'smooth' })}
+              className="px-16 py-6 rounded-2xl font-bold text-xl text-white transition-all duration-300 hover:-translate-y-1 cursor-pointer"
+              style={{
+                background: 'linear-gradient(135deg, #06b6d4, #3b82f6)',
+                boxShadow: '0 8px 40px rgba(6, 182, 212, 0.4)'
+              }}
+            >
+              Start Playing
+            </button>
+            <span className="text-slate-500 text-lg font-medium">or</span>
+            <Link
+              to="/whitepaper"
+              className="px-16 py-6 rounded-2xl font-bold text-xl text-white transition-all duration-300 hover:-translate-y-1 border-2"
+              style={{
+                borderColor: '#06b6d4',
+                background: 'rgba(6, 182, 212, 0.1)',
+              }}
+            >
+              Read The Whitepaper
+            </Link>
+          </div>
         </section>
         
         {/* ============ FOOTER ============ */}

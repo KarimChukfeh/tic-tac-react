@@ -1,17 +1,24 @@
-# ETOUR
 ### Tournament Infrastructure for Skill-Based Competition
 
 ---
 
 ## Abstract
 
-ETour is competitive gaming infrastructure for the blockchain era. Players compete in skill-based tournaments for ETH prizes with guaranteed fair outcomes and instant payouts.
+ETour is competitive gaming infrastructure on the blockchain. 
+
+Players compete in skill-based tournaments for ETH prizes with guaranteed fair outcomes and instant payouts.
 
 Every move is a transaction. Every outcome is immutable. The smart contract handles matchmaking, brackets, timeouts, and prize distribution. No servers, no admins, no possibility of manipulation.
 
 Developers inherit this infrastructure by implementing a simple game contract. Players connect their wallets and compete.
 
 **ETH in, ETH out. Pure competition, pure meritocracy.**
+
+---
+
+This whitepaper explains ETour's philosophy and how it makes trustless competition possible.
+
+**It's intended for those who want to understand not just what ETour does but why it was built this way.**
 
 ---
 
@@ -553,7 +560,3 @@ Game contracts interface with modules to inherit functionality.
 ### Contract Verification
 
 All contracts are verified on Arbiscan for complete transparency.
-
----
-
-*ETour operates autonomously according to its smart contract code. This document describes the protocol's design and philosophy. Always verify contract implementations before interacting.*
