@@ -57,21 +57,12 @@ These desires exist independently of technology. Chess players in coffee shops b
 
 ETour inverts the typical Web3 gaming approach:
 
-**Traditional Web3 Gaming:**
-"Here's our revolutionary blockchain protocol with tokenomics, governance, and yield farming. You can also play some games on it."
+**Traditional Web3 Gaming**
+> Here's our revolutionary blockchain protocol with tokenomics, governance, and yield farming. You can also play some games on it.
 
-**ETour:**
-"Here are games you already know and love. Play them for real ETH stakes. The better player takes the pot. That's it."
+**ETour**
+> Here are games you already know and love. Play them for real ETH stakes. The better player takes the pot.
 
------ 
-
-**The blockchain isn't the product.**
-
-It's the invisible infrastructure ensuring fair play. Players don't need to understand smart contracts any more than poker players need to understand casino security systems. 
-
-They just need to trust that the game is fair and they'll get paid if they win.
-
------
 
 ### Pure Competition, No Speculation
 
