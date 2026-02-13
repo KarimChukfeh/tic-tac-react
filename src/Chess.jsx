@@ -800,6 +800,7 @@ export default function Chess() {
   const [matchEndLoser, setMatchEndLoser] = useState(null); // Loser address for modal display
   const [nextActiveMatch, setNextActiveMatch] = useState(null); // Next active match info after winning
   const previousBoardRef = useRef(null); // Track previous board state for move history sync
+  const moveTxInProgressRef = useRef(false); // Prevent polling from overwriting state during move tx
   const tournamentBracketRef = useRef(null); // Ref for auto-scrolling to tournament after URL navigation
   const matchViewRef = useRef(null); // Ref for auto-scrolling to match view
 
@@ -3203,6 +3204,7 @@ export default function Chess() {
     // Attempt to make the move
     try {
       setMatchLoading(true);
+      moveTxInProgressRef.current = true; // Lock to prevent polling interference
       const { tierId, instanceId, roundNumber, matchNumber } = currentMatch;
 
       console.log('Making chess move:', { from: fromSquare, to: toSquare, promotion });
@@ -3237,9 +3239,11 @@ export default function Chess() {
         setMoveHistory(history);
       }
 
+      moveTxInProgressRef.current = false; // Release lock
       setMatchLoading(false);
     } catch (error) {
       console.error('Error making chess move:', error);
+      moveTxInProgressRef.current = false; // Release lock on error
 
       // Parse error message for user-friendly display
       let errorMsg = 'Invalid Move';
@@ -4002,6 +4006,12 @@ export default function Chess() {
       // IMPORTANT: Don't refresh completed matches to preserve board/move history state
       if (match.matchStatus === 2) {
         console.log('[Chess Polling] Skipping poll for completed match');
+        return;
+      }
+
+      // Skip polling if a move transaction is in progress to prevent state overwrites
+      if (moveTxInProgressRef.current) {
+        console.debug('[Chess Polling] Skipping sync - move transaction in progress');
         return;
       }
 

@@ -769,6 +769,7 @@ export default function ConnectFour() {
   const [matchEndLoser, setMatchEndLoser] = useState(null); // Loser address for modal display
   const [nextActiveMatch, setNextActiveMatch] = useState(null); // Next active match info after winning
   const previousBoardRef = useRef(null); // Track previous board state for move history sync
+  const moveTxInProgressRef = useRef(false); // Prevent polling from overwriting state during move tx
   const tournamentBracketRef = useRef(null); // Ref for auto-scrolling to tournament after URL navigation
   const matchViewRef = useRef(null); // Ref for auto-scrolling to match view
 
@@ -2775,6 +2776,7 @@ export default function ConnectFour() {
 
     try {
       setMatchLoading(true);
+      moveTxInProgressRef.current = true; // Lock to prevent polling interference
       const { tierId, instanceId, roundNumber, matchNumber } = currentMatch;
 
       const tx = await contract.makeMove(tierId, instanceId, roundNumber, matchNumber, columnIndex);
@@ -2789,9 +2791,11 @@ export default function ConnectFour() {
         const history = await fetchMoveHistory(contract, currentMatch.tierId, currentMatch.instanceId, currentMatch.roundNumber, currentMatch.matchNumber);
         setMoveHistory(history);
       }
+      moveTxInProgressRef.current = false; // Release lock
       setMatchLoading(false);
     } catch (error) {
       console.error('Error making move:', error);
+      moveTxInProgressRef.current = false; // Release lock on error
 
       // Parse error message for user-friendly display
       let errorMsg = 'Invalid Move';
@@ -3552,6 +3556,12 @@ export default function ConnectFour() {
 
       // Skip polling if match is completed - events have set final state
       if (match.matchStatus === 2) {
+        return;
+      }
+
+      // Skip polling if a move transaction is in progress to prevent state overwrites
+      if (moveTxInProgressRef.current) {
+        console.debug('[Connect4 Polling] Skipping sync - move transaction in progress');
         return;
       }
 
