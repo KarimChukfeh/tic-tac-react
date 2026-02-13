@@ -43,6 +43,7 @@ import WinnersLeaderboard from './components/shared/WinnersLeaderboard';
 import UserManual from './components/shared/UserManual';
 import MatchEndModal from './components/shared/MatchEndModal';
 import ActiveMatchAlertModal from './components/shared/ActiveMatchAlertModal';
+import ErrorModal from './components/shared/ErrorModal';
 import WhyArbitrum from './components/shared/WhyArbitrum';
 import GameMatchLayout from './components/shared/GameMatchLayout';
 import TournamentHeader from './components/shared/TournamentHeader';
@@ -778,6 +779,9 @@ export default function ConnectFour() {
   // Connection Error State
   const [connectionError, setConnectionError] = useState(null); // null = no error, string = error message
   const [leaderboardError, setLeaderboardError] = useState(false);
+
+  // Enrollment Error State
+  const [enrollmentError, setEnrollmentError] = useState(null); // null = no error, string = error message
 
   // Raffle Info State
   const [raffleInfo, setRaffleInfo] = useState({
@@ -1730,7 +1734,7 @@ export default function ConnectFour() {
   // Handle tournament enrollment
   const handleEnroll = async (tierId, instanceId, entryFee) => {
     if (!contract || !account) {
-      alert('Please connect your wallet first');
+      setEnrollmentError('Please connect your wallet first');
       return;
     }
 
@@ -1740,7 +1744,7 @@ export default function ConnectFour() {
       // Use hardcoded tier config (tierConfigs removed from contract ABI)
       const tierConfig = TIER_CONFIG[tierId];
       if (!tierConfig) {
-        alert(`Invalid tier ID: ${tierId}`);
+        setEnrollmentError(`Invalid tier ID: ${tierId}`);
         setTournamentsLoading(false);
         return;
       }
@@ -1756,8 +1760,6 @@ export default function ConnectFour() {
       // Refresh player activity panel immediately after enrollment
       playerActivity.refetch();
 
-      alert('Successfully enrolled in tournament!');
-
       // Navigate to tournament bracket view
       const bracketData = await refreshTournamentBracket(contract, tierId, instanceId, matchTimePerPlayer);
       if (bracketData) {
@@ -1770,7 +1772,15 @@ export default function ConnectFour() {
       setTournamentsLoading(false);
     } catch (error) {
       console.error('Error enrolling:', error);
-      alert(`Error enrolling: ${error.message}`);
+      let errorMessage = error.message || 'Unknown error';
+
+      if (error.message?.includes('insufficient funds')) {
+        errorMessage = "You don't have enough ETH to enrol in this instance!";
+      } else if (error.message?.includes('user rejected')) {
+        errorMessage = 'Transaction rejected';
+      }
+
+      setEnrollmentError(errorMessage);
       setTournamentsLoading(false);
     }
   };
@@ -4750,6 +4760,12 @@ export default function ConnectFour() {
           onEnterMatch={handlePlayMatch}
         />
       )}
+
+      {/* Enrollment Error Modal */}
+      <ErrorModal
+        message={enrollmentError}
+        onClose={() => setEnrollmentError(null)}
+      />
 
     </div>
   );

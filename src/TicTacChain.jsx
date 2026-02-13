@@ -45,6 +45,7 @@ import WinnersLeaderboard from './components/shared/WinnersLeaderboard';
 import UserManual from './components/shared/UserManual';
 import MatchEndModal from './components/shared/MatchEndModal';
 import ActiveMatchAlertModal from './components/shared/ActiveMatchAlertModal';
+import ErrorModal from './components/shared/ErrorModal';
 import WhyArbitrum from './components/shared/WhyArbitrum';
 import GameMatchLayout from './components/shared/GameMatchLayout';
 import TournamentHeader from './components/shared/TournamentHeader';
@@ -424,6 +425,9 @@ export default function TicTacChain() {
   // Connection Error State
   const [connectionError, setConnectionError] = useState(null); // null = no error, string = error message
   const [leaderboardError, setLeaderboardError] = useState(false);
+
+  // Enrollment Error State
+  const [enrollmentError, setEnrollmentError] = useState(null); // null = no error, string = error message
 
   // Player Activity Hook
   const playerActivity = usePlayerActivity(contract, account, 'tictactoe', TIER_CONFIG);
@@ -1815,7 +1819,7 @@ export default function TicTacChain() {
   // Handle tournament enrollment
   const handleEnroll = useCallback(async (tierId, instanceId, entryFee) => {
     if (!contract || !account) {
-      alert('Please connect your wallet first');
+      setEnrollmentError('Please connect your wallet first');
       return;
     }
 
@@ -1831,8 +1835,6 @@ export default function TicTacChain() {
 
       // Refresh player activity panel immediately after enrollment
       playerActivity.refetch();
-
-      alert('Successfully enrolled in tournament!');
 
       // Navigate to tournament bracket view
       const bracketData = await refreshTournamentBracket(contract, tierId, instanceId, matchTimePerPlayer);
@@ -1851,12 +1853,12 @@ export default function TicTacChain() {
       if (error.message?.includes('"TE"') || error.reason === 'TE') {
         errorMessage = 'Tournament enrollment tracking failed. This may be a contract configuration issue. Please contact support.';
       } else if (error.message?.includes('insufficient funds')) {
-        errorMessage = 'Insufficient funds to cover entry fee and gas';
+        errorMessage = "You don't have enough ETH to enrol in this instance!";
       } else if (error.message?.includes('user rejected')) {
         errorMessage = 'Transaction rejected';
       }
 
-      alert(`Error enrolling: ${errorMessage}`);
+      setEnrollmentError(errorMessage);
       setTournamentsLoading(false);
     }
   }, [contract, account, playerActivity, refreshTournamentBracket, matchTimePerPlayer, refreshAfterAction]);
@@ -4578,6 +4580,12 @@ export default function TicTacChain() {
           onEnterMatch={handlePlayMatch}
         />
       )}
+
+      {/* Enrollment Error Modal */}
+      <ErrorModal
+        message={enrollmentError}
+        onClose={() => setEnrollmentError(null)}
+      />
 
     </div>
   );
