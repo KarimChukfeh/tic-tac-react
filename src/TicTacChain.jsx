@@ -1852,7 +1852,11 @@ export default function TicTacChain() {
 
       if (error.message?.includes('"TE"') || error.reason === 'TE') {
         errorMessage = 'Tournament enrollment tracking failed. This may be a contract configuration issue. Please contact support.';
-      } else if (error.message?.includes('insufficient funds')) {
+      } else if (
+        error.message?.includes('insufficient funds') ||
+        error.code === 'INSUFFICIENT_FUNDS' ||
+        (error.code === 'CALL_EXCEPTION' && error.action === 'estimateGas' && !error.data)
+      ) {
         errorMessage = "You don't have enough ETH to enrol in this instance!";
       } else if (error.message?.includes('user rejected')) {
         errorMessage = 'Transaction rejected';

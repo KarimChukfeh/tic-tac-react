@@ -1774,7 +1774,11 @@ export default function ConnectFour() {
       console.error('Error enrolling:', error);
       let errorMessage = error.message || 'Unknown error';
 
-      if (error.message?.includes('insufficient funds')) {
+      if (
+        error.message?.includes('insufficient funds') ||
+        error.code === 'INSUFFICIENT_FUNDS' ||
+        (error.code === 'CALL_EXCEPTION' && error.action === 'estimateGas' && !error.data)
+      ) {
         errorMessage = "You don't have enough ETH to enrol in this instance!";
       } else if (error.message?.includes('user rejected')) {
         errorMessage = 'Transaction rejected';
