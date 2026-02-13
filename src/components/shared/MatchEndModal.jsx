@@ -426,9 +426,6 @@ const MatchEndModal = ({
             </a>
             {' '}due to match escalation.
           </p>
-          <p className="text-white/70 mt-4">
-            You have been eliminated from the tournament.
-          </p>
         </div>
       ) : winnerAddress && loserAddress ? (
         <div className="space-y-2">
@@ -444,11 +441,8 @@ const MatchEndModal = ({
               {shortenAddress(loserAddress)}
             </span>
           </div>
-          <p className="text-white/70 mt-4">
-            {winnerLabel} wins this match. You have been eliminated from the tournament.
-          </p>
         </div>
-      ) : `${winnerLabel} wins this match. You have been eliminated from the tournament.`,
+      ) : null,
       bgGradient: completionReason === 3 || completionReason === 4 ? 'from-orange-500/20 via-amber-500/20 to-yellow-500/20' : 'from-red-500/20 via-rose-500/20 to-pink-500/20',
       borderColor: completionReason === 3 || completionReason === 4 ? 'border-orange-400/50' : 'border-red-400/50',
       iconColor: completionReason === 3 || completionReason === 4 ? 'text-orange-400' : 'text-red-400',
