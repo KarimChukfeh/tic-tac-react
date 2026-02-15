@@ -28,7 +28,7 @@ This whitepaper explains ETour's philosophy and how it makes trustless competiti
 
 ---
 
-## 1. Philosophy: Why ETour Exists
+## 1. Philosophy - Why ETour Exists
 
 ### The Failed Promise of Web3 Gaming
 
@@ -101,11 +101,15 @@ ETour never holds player funds. Entry fees go directly to smart contract prize p
 
 ---
 
-## 3. The Three Games That Define ETour
+## 3. The Three Games - ETour In a Nutshell
 
 ### The Selection Criteria
 
-Not every game belongs on blockchain. We chose games that naturally align with blockchain's constraints while providing compelling competition. Each game had to meet strict criteria:
+Not every game belongs on blockchain. 
+
+We chose games that naturally align with blockchain's constraints while providing compelling competition. 
+
+Each game had to meet strict criteria:
 
 - **Perfect information** — All players see complete game state
 - **Turn-based** — Clear boundaries for blockchain transactions
@@ -174,7 +178,7 @@ This decision embodies ETour's philosophy:
 
 ## 4. How Competition Works
 
-### Tournament Structure
+### ETour's Tournament Structure
 
 ETour uses single-elimination tournaments, i.e the simplest, most exciting format. 
 
@@ -348,7 +352,7 @@ Run low on time? You must play faster, potentially making mistakes. But your opp
 
 ---
 
-## 7. Technical Architecture
+## 7. Separation of Concerns
 
 ### The Modular Approach
 
@@ -395,7 +399,7 @@ Negligible compared to entry fees, but enough to prevent spam. Players naturally
 
 ---
 
-## 8. Building on ETour
+## 8. ETour is a Protocol
 
 ### For Developers
 
@@ -425,40 +429,7 @@ ETour isn't just transparent in principle—it's transparent in practice. Every 
 
 ---
 
-## 9. Trust Through Transparency
-
-### What the Owner Can Do
-
-The owner address can withdraw accumulated operational fees. That's it.
-
-### What the Owner Cannot Do
-
-The owner cannot:
-- Change game rules
-- Override match results
-- Freeze player funds
-- Modify fee percentages
-- Pause tournaments
-- Add special privileges
-- Grant advantages
-
-These aren't policy decisions—they're architectural impossibilities. The code doesn't contain functions for these actions.
-
-### Verification Over Trust
-
-All ETour contracts are verified and open source. Read the code yourself. Confirm our claims. Find bugs and report them.
-
-We don't ask for trust because trust isn't necessary. The code is the specification, the implementation, and the guarantee.
-
-### Deterministic Resolution
-
-Given identical inputs, ETour always produces identical outputs. No randomness in game outcomes (only in tiebreakers). No external dependencies. No oracle risks.
-
-This determinism enables complete verification. Anyone can replay any tournament from events and confirm the results.
-
----
-
-## 10. The Future of Competition
+## 9. The Future of Competition
 
 ### What We've Built
 
@@ -499,13 +470,13 @@ ETour is one example of blockchain's true potential: not as financial engineerin
 
 ---
 
-## ETour is simple
+## 10. ETour is simple
 
 # Think you're good? Prove it.
 
 ---
 
-### Contract Verification
+### Appendix - Contract Verification
 
 All contracts are verified on Arbiscan for complete transparency.
 
