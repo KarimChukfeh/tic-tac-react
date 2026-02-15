@@ -500,3 +500,18 @@ ETour isn't asking for your backing. It just offers you a simple service.
 ### Contract Verification
 
 All contracts are verified on Arbiscan for complete transparency.
+
+**ETour Core Modules**
+- [ETour_Core.sol](https://arbiscan.io/address/0x3C86Fd676574528321fd47d21658bCf066a38b76#code)
+- [ETour_Matches.sol](https://arbiscan.io/address/0xfC3c8c7a3DC6E3a8025eAD0B1fb9e1347df30b6F#code)
+- [ETour_Prizes.sol](https://arbiscan.io/address/0x48D4772B6273799Ece6bb7E41254F57e076a6eE3#code)
+- [ETour_Raffle.sol](https://arbiscan.io/address/0xfA1B58c9AE68d29EF0aC239dAAdd13a149cb96f8#code)
+- [ETour_Escalation.sol](https://arbiscan.io/address/0x59Cc2cB8FD70b9407a06082d976C7fa5eCC29178#code)
+
+**Game Contracts**
+- [TicTacChain.sol](https://arbiscan.io/address/0x89464650B9987994222aE227303cd51dBC2d89B0#code)
+- [ChessOnChain.sol](https://arbiscan.io/address/0x81bb603C84aFE5817d85Fe5D3fd1Dcf606Ff566D#code)
+- [ConnectFourOnChain.sol](https://arbiscan.io/address/0x2036db40a00258cAF033049EBc2f7961C67Dfa68#code)
+
+**Game-Specific Modules**
+- [ChessRules.sol](https://arbiscan.io/address/0x2C48FFB461Cb603351FC903F582329eECf05BF33#code)
