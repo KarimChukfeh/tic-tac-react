@@ -491,78 +491,11 @@ If you're a developer: Build your game on ETour. Inherit our infrastructure and 
 
 If you're a skeptic: Read the code. Verify our claims. Try to find flaws.
 
-ETour isn't asking you to believe in blockchain or buy into a vision. We're offering a service: fair competition with guaranteed payouts.
+ETour isn't asking for your backing. It just offers you a simple service. 
 
-**Think you're good? Prove it.**
-
----
-
-## Appendix A: Economic Projections
-
-### Conservative Scenario (1,000 Daily Players)
-
-| Metric | Daily | Monthly | Yearly |
-|--------|-------|---------|--------|
-| Tournaments | 300 | 9,000 | 108,000 |
-| Entry Volume | 3 ETH | 90 ETH | 1,080 ETH |
-| Prize Pools | 2.7 ETH | 81 ETH | 972 ETH |
-| Operational Revenue | 0.225 ETH | 6.75 ETH | 81 ETH |
-| Raffle Accumulation | 0.075 ETH | 2.25 ETH | 27 ETH |
-
-At $3,000/ETH: $243,000 annual operational revenue
-
-### Growth Scenario (10,000 Daily Players)
-
-| Metric | Daily | Monthly | Yearly |
-|--------|-------|---------|--------|
-| Tournaments | 3,000 | 90,000 | 1,080,000 |
-| Entry Volume | 30 ETH | 900 ETH | 10,800 ETH |
-| Prize Pools | 27 ETH | 810 ETH | 9,720 ETH |
-| Operational Revenue | 2.25 ETH | 67.5 ETH | 810 ETH |
-| Raffle Accumulation | 0.75 ETH | 22.5 ETH | 270 ETH |
-
-At $3,000/ETH: $2,430,000 annual operational revenue
-
-Self-sustaining at any adoption level above ~100 daily players.
+# Think you're good? Prove it.
 
 ---
-
-## Appendix B: Technical Reference
-
-### Core Concepts
-
-**Tournament Instance**: A single tournament from enrollment to completion
-
-**Tier**: A configuration defining player count, entry fee, and rules
-
-**Match**: A single game between two players
-
-**Escalation**: Progressive expansion of who can resolve stalled states
-
-**Prize Pool**: 90% of all entry fees for a tournament
-
-### Key Mechanics
-
-**Winner-Takes-All**: Tournament champion receives entire prize pool
-
-**Draw Elimination**: Drawing players both eliminated from advancement
-
-**Force Start**: Starting tournament with fewer than maximum players
-
-**Timeout Victory**: Claiming victory when opponent exhausts time
-
-**Match Replacement**: Taking over stalled player positions
-
-### Module System
-
-ETour uses five core modules:
-- Core: Tournament and tier management
-- Matches: Bracket and pairing logic
-- Prizes: Distribution calculations
-- Escalation: Timeout handling
-- Raffle: Community prize draws
-
-Game contracts interface with modules to inherit functionality.
 
 ### Contract Verification
 
