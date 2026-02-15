@@ -124,14 +124,16 @@ const WinnersLeaderboard = ({
                     <span className={`font-bold w-10 ${color}`}>
                       {medal}
                     </span>
-                    <span className="font-mono text-sm">
-                      {shortenAddress(entry.player)}
-                    </span>
-                    {isCurrentUser && (
-                      <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full font-bold">
-                        YOU
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
+                      <span className="font-mono text-sm">
+                        {shortenAddress(entry.player)}
                       </span>
-                    )}
+                      {isCurrentUser && (
+                        <span className="text-[10px] sm:text-xs bg-green-500 text-white px-1.5 py-0.5 sm:px-2 rounded-full font-bold w-fit">
+                          YOU
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <span className={`font-mono font-bold ${
                     isPositive ? 'text-green-400' : 'text-red-400'
