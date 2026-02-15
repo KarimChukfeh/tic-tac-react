@@ -1,18 +1,17 @@
-### Tournament Infrastructure for Skill-Based Competition
+# Tournament Infrastructure for Skill-Based Competition
 
 ---
 
 ## Abstract
 
-ETour is competitive gaming infrastructure on the blockchain. 
+ETour is competitive gaming infrastructure on the blockchain.
 
 Players compete in skill-based tournaments for ETH prizes with guaranteed fair outcomes and instant payouts.
 
+Every move is a transaction.
+Every outcome is immutable.
 
-Every move is a transaction. 
-Every outcome is immutable. 
-
-The smart contract handles matchmaking, brackets, timeouts, and prize distribution. 
+The smart contract handles matchmaking, brackets, timeouts, and prize distribution.
 
 No servers, no admins, no possibility of manipulation.
 
@@ -28,7 +27,7 @@ This whitepaper explains ETour's philosophy and how it makes trustless competiti
 
 ---
 
-## 1. Philosophy - Why ETour Exists
+## 1. The Philosophy — Why ETour Exists
 
 ### The Failed Promise of Web3 Gaming
 
@@ -45,7 +44,7 @@ Competitive players have simple desires that haven't changed since the dawn of g
 - **Instant resolution** with no payment delays
 - **Transparent rules** that apply equally to everyone
 
-These desires exist independently of technology. Chess players in coffee shops betting $20 want the same things as esports professionals competing for millions. The question isn't whether blockchain adds value to competition, it's whether we can deliver that value without drowning players in complexity.
+These desires exist independently of technology. Chess players in coffee shops betting $20 want the same things as esports professionals competing for millions. The question isn't whether blockchain adds value to competition — it's whether we can deliver that value without drowning players in complexity.
 
 ### The ETour Thesis
 
@@ -56,7 +55,6 @@ ETour inverts the typical Web3 gaming approach:
 
 **ETour**
 > Here are games you already know and love. Play them for real ETH stakes. The better player takes the pot.
-
 
 ### Pure Competition, No Speculation
 
@@ -73,7 +71,7 @@ The only way to profit from ETour is to be good at games. This aligns every part
 
 ---
 
-## 2. The Problem with Trust
+## 2. The Problem — Trust is an Issue
 
 ### Centralized Gaming's Hidden Failures
 
@@ -84,32 +82,33 @@ Every online game requires trusting multiple parties:
 - **Payment processors** not to reverse transactions
 - **The company** not to shut down tomorrow
 
-Most of the time, this trust is justified. But when real money is involved, "most of the time" isn't good enough.
+Most of the time, this trust is justified. 
 
-### The Payout Problem
+**But when real money is involved, "most of the time" isn't good enough.**
 
-Traditional gaming platforms hold player funds in custody. Withdrawals require:
-- Identity verification
-- Waiting periods
-- Withdrawal fees
-- Geographic restrictions
-- Minimum amounts
+### Why Blockchain?
 
-Players routinely report frozen funds, delayed payments, and arbitrary account closures. Even legitimate platforms can fail, taking player balances with them.
+Blockchain provides three irreplaceable properties for competitive gaming:
 
-ETour never holds player funds. Entry fees go directly to smart contract prize pools. Winners receive ETH instantly upon victory. No withdrawals, no custody, no trust required.
+**Transparency** — Every game state, every move, every outcome is visible on-chain. Not just verifiable — actually visible. Anyone can reconstruct any game from transaction history.
+
+**Immutability** — Once a move is made, it cannot be changed. Once a winner is determined, it cannot be overridden. Once prizes are distributed, they cannot be clawed back.
+
+**Autonomy** — No servers to maintain. No admins to trust. No company to depend on. ETour runs itself according to its code, forever.
+
+These aren't "extra features". These are properties we inherited by building on blockchain. 
+
+**Trustless competition is a new paradigm to think about online competion.**
 
 ---
 
-## 3. The Three Games - ETour In a Nutshell
+## 3. The Demo — Three Games
 
 ### The Selection Criteria
 
-Not every game belongs on blockchain. 
+Not every game belongs on blockchain.
 
-We chose games that naturally align with blockchain's constraints while providing compelling competition. 
-
-Each game had to meet strict criteria:
+We chose games that naturally align with blockchain's constraints while providing compelling competition. Each game had to meet strict criteria:
 
 - **Perfect information** — All players see complete game state
 - **Turn-based** — Clear boundaries for blockchain transactions
@@ -117,72 +116,84 @@ Each game had to meet strict criteria:
 - **Culturally universal** — Rules known worldwide
 - **Strategically rich** — Skill clearly determines winners
 
-### Tic-Tac-Toe: The Gateway
+#### A) The Gateway - TicTacToe
 
 **Entry: 0.001 ETH**
 
-Everyone dismisses tic-tac-toe as "solved": perfect play always draws. **That's exactly why we chose it.**
+> But TicTacToe is solved, perfect play always draws. 
 
-Tic-tac-toe serves as ETour's tutorial. New players can learn the platform mechanics with minimal risk. The high draw rate demonstrates our refund system: when both players draw, they split the prize pool minus a small protocol fee. It's training wheels for trustless competition.
+**That's exactly why we chose it.**
 
-But more importantly, tic-tac-toe proves a point: even the simplest game becomes interesting with real stakes. 
+TicTacToe serves as ETour's tutorial. 
 
-That moment when you realize your opponent might not play perfectly; who might crack under pressure. 
+New players can learn the platform mechanics with minimal risk. 
 
-**That's when tic-tac-toe transforms from child's game to psychological battle.**
+The high draw rate demonstrates our refund system: when both players draw, they split the prize pool minus a small protocol fee. 
 
-### Chess: The Main Event
+It's training wheels for trustless competition.
 
-**Entry: 0.01 - 0.1 ETH**
+But more importantly, TicTacToe proves a point: **even the simplest game becomes interesting with real stakes.** 
 
-Chess needs no introduction. It's the ultimate test of strategic thinking, played by millions worldwide. 
+That moment when you realize your opponent might not play perfectly. That they might crack under pressure. **That's when tic-tac-toe transforms from child's game to psychological battle.**
 
-We implemented complete chess rules: castling, en passant, pawn promotion, fifty-move rule, threefold repetition, fully **on-chain,** 
+#### B) The Flagship - Chess
 
-Not because we had to, but because chess players deserve respect. 
+**Entry: 0.01 — 0.1 ETH**
+
+Chess needs no introduction. It's the ultimate test of strategic thinking, played by millions worldwide.
+
+We implemented complete chess rules — castling, en passant, pawn promotion, fifty-move rule, threefold repetition — fully **on-chain.** 
+
+Not because we had to, but because chess players deserve respect.
 
 **If you're going to play chess for real stakes, then you deserve real chess.**
 
-### Connect Four: The Dark Horse
+#### C) The Dark Horse - Connect Four
 
-**Entry: 0.001 - 0.01 ETH**
+**Entry: 0.001 — 0.01 ETH**
 
-Connect Four occupies the sweet spot. It's more complex than tic-tac-toe, faster than chess, but still familiar to everyone. 
+Connect Four occupies the sweet spot. 
 
-The vertical drop mechanic creates unique tactical patterns. It's a game where beginners can get lucky but experts dominate over time.
+It's more complex than tic-tac-toe, faster than chess, but still familiar to everyone.
 
-We added Connect Four because variety matters. Some days you want the intense strategic depth of chess. Other days you want quick tactical skirmishes. 
+We added Connect Four because variety matters. Some days you want the intense strategic depth of chess. Other days you want quick tactical skirmishes.
 
 **Connect Four delivers satisfaction in five-minute bursts.**
 
 ### Why Not Battleship?
 
-We initially planned to include Battleship. It's beloved, strategic, and everyone knows the rules. But Battleship requires hidden information. 
+We initially planned to include Battleship. It's beloved, strategic, and everyone knows the rules. 
 
-**Ship positions must remain secret until revealed.**
+But Battleship requires hidden information. 
+
+> **Ship positions must remain secret until revealed.**
 
 Blockchain's fundamental nature is transparency. Every piece of data on-chain is visible to everyone. 
 
 To implement Battleship would require either:
+- Commit-reveal schemes that confuse players*
+or
+- Off-chain logic that defeat the purpose of trustless competition
 
-1. **Commit-reveal schemes** — Complex cryptographic proofs that confuse players
-2. **Off-chain components** — Defeating the purpose of trustless competition
-
-Rather than compromise our principles, we rejected Battleship. 
+So rather than compromise our principles, we rejected Battleship **for now.**
 
 This decision embodies ETour's philosophy:
 
-> **Work within blockchain's constraints rather than fighting them.**
+> **Ship fully on-chain applications or don't ship anything at all.**
 
 ---
 
-## 4. How Competition Works
+## 4. The Fix — Back to Basics
 
-### ETour's Tournament Structure
+### Simple is Good
 
-ETour uses single-elimination tournaments, i.e the simplest, most exciting format. 
+ETour uses single-elimination tournaments.
 
-Winners advance, losers go home. No complex Swiss pairings, no round-robin calculations. Pure knockout competition.
+It's the simplest, most exciting format that a 4 year-old can understand. 
+
+Winners advance, losers go home. 
+
+No complex Swiss pairings, no round-robin calculations. Pure knockout competition.
 
 Tournaments come in any size:
 
@@ -190,110 +201,73 @@ Tournaments come in any size:
 - **4 players** — Mini-tournaments with semifinals
 - **8 players** — Full bracket experience
 - **16 players** — Extended competition for serious players
+- **...+**
 
-Each tier operates multiple concurrent instances. While you're competing in one tournament, others are enrolling, playing, completing. The system never sleeps.
+Each tier operates multiple concurrent instances per the developer's design and configuration. 
 
-### The Life of a Tournament
+### Enrolment
 
-**Enrollment**
-Players join by paying the entry fee. The moment your ETH arrives, you're enrolled. No forms, no accounts, no waiting for approval. The tournament waits for enough players or until the enrollment window expires.
+**Enrollment** — Players join by paying the entry fee. The moment your ETH arrives, you're enrolled. No forms, no accounts, no waiting for approval. The tournament waits for enough players or until the enrollment window expires.
 
-**The Bracket**
-When a tournament begins, players are paired into matches. Round 0 starts immediately. In an 8-player tournament, four matches begin 
-simultaneously. 
+**The Bracket** — When a tournament begins, players are paired into matches. Round 0 starts immediately. In an 8-player tournament, four matches begin simultaneously. Winners advance round by round until the finals.
 
-Winners advance to Round 1, then Round 2, etc, until the finals.
-
-**Victory**
-The tournament champion takes everything. No second place or consolation prizes. 
-
-This isn't about participation, **it's about winning.**
+**Victory** — The tournament champion takes everything. No second place, no consolation prizes. This isn't about participation — **it's about winning.**
 
 ### When Games Draw
 
 Some games can end in draws. In chess, perpetual check or insufficient material. In tic-tac-toe, perfect play.
 
-Regular draws eliminate both players so neither player advances. This creates natural pressure to play for wins rather than safe draws.
+Regular draws eliminate both players — neither advances. This creates natural pressure to play for wins rather than safe draws.
 
-##### But what if the finals draw? 
+But what if the finals draw? Both finalists split the prize pool equally. They've proven themselves equally matched and share the victory.
 
-Both finalists split the prize pool equally. They've proven themselves equally matched and share the victory.
-
-What if every match in a round draws? The tournament cannot continue. All remaining players split the prize pool equally. 
-
-Rare, **but handled fairly.**
+What if every match in a round draws? The tournament cannot continue. All remaining players split the prize pool equally. Rare, **but handled fairly.**
 
 ### Edge Cases and Elegance
 
-Tournaments are messy. Players get eliminated asymmetrically. Odd numbers emerge from draw-heavy rounds. 
+Tournaments are messy. Players get eliminated asymmetrically. Odd numbers emerge from draw-heavy rounds.
 
-##### ETour handles every scenario
+ETour handles every scenario: odd advancement gives one player a walkover, orphaned winners automatically advance, and incomplete brackets consolidate remaining players.
 
-- **Odd advancement** — One player randomly selected for walkover
-- **Orphaned winners** — Automatically advance to next round
-- **Incomplete brackets** — Consolidate remaining players
-
-These aren't patches or hacks. 
-
-**They're deliberate design decisions ensuring tournaments always resolve fairly.**
+These aren't patches or hacks. **They're deliberate design decisions ensuring tournaments always resolve fairly.**
 
 ---
 
-## 5. The Economics of Fair Play
+## 5. The Economics — Fair Play
 
 ### The Fee Split
 
 Every entry fee divides three ways:
 
 - **90%** — to the tournament winner
-- **2.5%** — to subsidize the contract
-- **7.5%** — to reward ETour's creator
+- **7.5%** — to ETour's creator
+- **2.5%** — to the contract subsidy pool
 
-These percentages are hardcoded and unchangeable. 
-
-**No governance votes, no admin adjustments.**
-**The economics are transparent and permanent.**
+These percentages are hardcoded and unchangeable. No governance votes, no admin adjustments. The economics are transparent and permanent.
 
 ### Why This Breakdown
 
-**The winner gets 90%** — because that's fair. 
+**The winner gets 90%** because that's fair. You put in skill, time, and money. You win, you get paid. Straightforward.
 
-When you compete, you're putting in skill, time, and money. You win, you get paid. It's that straightforward.
-The remaining 10% is split wo ways:
+**7.5% goes to ETour's creator** as profit for building and operating the platform, including hosting the frontend. This is honest revenue for honest work.
 
-**7.5% percent goes to me** - as the creator and operator of each tournament. 
-This is my profit. My chosen cut for building ETour. I'm also hosting the frontend myself, which is part of what that seven point five percent funds. 
+**2.5% accumulates in the contract** until it hits game-specific thresholds, keeping the system self-sustaining. Any excess gets raffled back to active players as a way of giving back to the community.
 
-**The other 2.5% accumalates in the contract** until it hits game-specific thresholds. 
-This is necessary to keep the game itselft self-sustaining. Any excess gets raffled back to active players as a way of giving back to the community.
-
-**There's no hidden costs. You know exactly where your entry fee goes.**
-
-### Sustainable Economics
-
-At just 1,000 daily players averaging 0.01 ETH entries, ETour generates enough revenue to operate indefinitely. No token sales needed. No venture funding required. No complex financial engineering.
-
-This sustainability matters because it ensures ETour's permanence. We're not racing to find product-market fit before funding runs out. We're not dependent on token prices or speculation. As long as people want to compete, ETour survives.
+There are no hidden costs. You know exactly where your entry fee goes.
 
 ### The Anti-Token
 
-ETour will never have a token. Not because we couldn't create one, but because tokens corrupt competitive gaming.
+ETour will never have a token. Not because we couldn't create one, but because tokens corrupt competitive gaming. With a token, players become investors, competition becomes secondary to price action, and complexity obscures the product. Without a token, players remain players, competition is the only focus, and simplicity enhances the product.
 
-With a token:
-- Players become investors
-- Competition becomes secondary to price action
-- Early adopters extract value from later players
-- Governance creates politics
-- Complexity obscures the product
+**ETH in, ETH out. Nothing more needed.**
 
-Without a token:
-- Players remain players
-- Competition is the only focus
-- No one gets advantaged by arriving early
-- No governance drama
-- Simplicity enhances the product
+### Sustainable by Design
 
-ETH in, ETH out. Nothing more needed.
+ETour doesn't need token sales, venture funding, or financial engineering to survive. As long as people want to compete, ETour generates revenue. The protocol is built to run unchanged for years — not racing to find product-market fit before funding runs out, not dependent on speculation. Permanence through simplicity.
+
+### Gas Economics
+
+Every action costs gas on Arbitrum — enrollment (~$0.05), moves (~$0.02), claims (~$0.04). Negligible compared to entry fees, but enough to prevent spam. Players naturally optimize their moves, adding another strategic layer to competition.
 
 ---
 
@@ -303,9 +277,7 @@ ETH in, ETH out. Nothing more needed.
 
 Every competitive system faces the same problem: losing players stalling to avoid defeat. In chess, letting the clock run. In poker, tanking every decision. Online, disconnecting and hoping opponents quit.
 
-Traditional solutions require human intervention: moderators, support tickets, manual reviews. 
-
-**These introduce bias that goes against what Web3 stands for.**
+Traditional solutions require human intervention — moderators, support tickets, manual reviews. **These introduce bias that goes against what Web3 stands for.**
 
 ### Escalating Incentives
 
@@ -313,170 +285,65 @@ ETour solves stalling through economic incentives that escalate over time. The l
 
 **For Enrollment Stalling:**
 
-When tournaments don't fill naturally, two options emerge:
-
-First, enrolled players can force-start with whoever joined. Three players in an 8-player tournament? Start a 3-player tournament. The prize pool adjusts accordingly.
-
-If nobody acts, eventually anyone **- even non-enrolled players -** can claim the entire abandoned prize pool. 
-
-**This is the nuclear option that ensures tournaments are never stuck forever.**
+When tournaments don't fill naturally, two options emerge. First, enrolled players can force-start with whoever joined — three players in an 8-player tournament start a 3-player tournament, with the prize pool adjusting accordingly. If nobody acts, eventually anyone — even non-enrolled players — can claim the entire abandoned prize pool. **This is the nuclear option that ensures tournaments are never stuck forever.**
 
 **For Match Stalling:**
 
 When a player stops moving, escalation begins:
 
-Level 1: Their opponent can claim victory by timeout. Simple and fair.
+**Level 1:** Their opponent can claim victory by timeout. Simple and fair.
 
-Level 2: Players already advanced to later rounds can eliminate both stalled players. Why should their tournament be held up by others' inaction?
+**Level 2:** Players already advanced to later rounds can eliminate both stalled players. Why should their tournament be held up by others' inaction?
 
-Level 3: Anyone can replace both stalled players and take their spot in the tournament. Free entry to potentially win the entire prize pool.
+**Level 3:** Anyone can replace both stalled players and take their spot in the tournament. Free entry to potentially win the entire prize pool.
 
 ### Incentive Alignment
 
-Notice how each escalation level benefits someone:
-
-- Opponents benefit from free wins
-- Advanced players benefit from cleared paths
-- External observers benefit from free tournament entry
-- The protocol benefits from resolved states
-
-The only party that doesn't benefit is the staller. This isn't punishment, it's game theory. 
+Notice how each escalation level benefits someone: opponents get free wins, advanced players get cleared paths, external observers get free tournament entry, and the protocol gets resolved states. The only party that doesn't benefit is the staller. This isn't punishment — it's game theory.
 
 **ETour makes stalling costly and resolution profitable.**
 
 ### Time as a Resource
 
-Each player receives a time bank for their moves, plus increment per move (like professional chess). This isn't arbitrary pressure—it's resource management. Time becomes another strategic dimension.
-
-Run low on time? You must play faster, potentially making mistakes. But your opponent knows you're under pressure and might try to complicate positions. Time management becomes part of the game.
+Each player receives a time bank for their moves, plus increment per move. This isn't arbitrary pressure — it's resource management. Time becomes another strategic dimension. Run low on time and you must play faster, potentially making mistakes. But your opponent knows you're under pressure and might try to complicate positions. Time management becomes part of the game.
 
 ---
 
-## 7. Separation of Concerns
-
-### The Modular Approach
-
-ETour separates universal tournament logic from game-specific rules. Think of it like a gaming console: the console handles controllers, display, and system functions while game cartridges provide unique experiences.
-
-The ETour modules handle:
-- Tournament enrollment and brackets
-- Match creation and advancement
-- Timeout and escalation logic
-- Prize calculation and distribution
-- Statistics and leaderboards
-
-Game contracts only implement:
-- Move validation
-- Win/draw detection
-- Game state management
-
-This separation means new games inherit battle-tested tournament infrastructure. Developers focus on what makes their game unique rather than reimplementing brackets and payouts.
-
-### Why Blockchain?
-
-Blockchain provides three irreplaceable properties:
-
-**Transparency**
-Every game state, every move, every outcome is visible on-chain. Not just verifiable—actually visible. Anyone can reconstruct any game from transaction history.
-
-**Immutability**
-Once a move is made, it cannot be changed. Once a winner is determined, it cannot be overridden. Once prizes are distributed, they cannot be clawed back.
-
-**Autonomy**
-No servers to maintain. No admins to trust. No company to depend on. ETour runs itself according to its code, forever.
-
-These aren't features we built—they're properties we inherited by building on blockchain.
-
-### Gas Economics
-
-Every action costs gas: enrolling, moving, claiming victory. On Arbitrum, these costs are minimal:
-
-- Enrollment: ~$0.05
-- Move: ~$0.02
-- Claim: ~$0.04
-
-Negligible compared to entry fees, but enough to prevent spam. Players naturally optimize their moves, adding another strategic layer.
-
----
-
-## 8. ETour is a Protocol
-
-### For Developers
-
-Building a game on ETour requires implementing roughly a dozen functions. Define how pieces move, how winners are determined, how draws are detected. ETour handles everything else.
-
-You inherit:
-- Complete tournament system
-- Anti-griefing mechanisms
-- Prize distribution
-- Player statistics
-- Permanent leaderboards
-- Security guarantees
-
-Focus on making your game fun and strategic. Let ETour handle the competitive infrastructure.
-
-### For Players
-
-Playing on ETour requires only a wallet and ETH. No signup, no KYC, no email verification. Your wallet is your identity, your signature is your move.
-
-Connect to any game's frontend or interact directly with contracts. The experience remains identical—frontends are just convenience, not requirements.
-
-### For Observers
-
-Every tournament is public. Watch matches unfold in real-time. Study historical games. Verify outcomes yourself.
-
-ETour isn't just transparent in principle—it's transparent in practice. Every piece of data that determines outcomes is on-chain and queryable.
-
----
-
-## 9. The Future of Competition
+## 7. The Future of Competition
 
 ### What We've Built
 
-ETour demonstrates that blockchain gaming doesn't need complex tokenomics or speculative mechanisms. By focusing on pure competition with transparent rules and guaranteed payouts, we've created what competitive players actually want.
+ETour demonstrates that blockchain gaming doesn't need complex tokenomics or speculative mechanisms. By focusing on pure competition with transparent rules and guaranteed payouts, we've created what competitive players actually want: games with real stakes and fair outcomes.
 
-No tokens to pump. No yields to farm. No governance to navigate. Just games with real stakes and fair outcomes.
+### ETour as Infrastructure
 
-### What Comes Next
+ETour separates universal tournament logic from game-specific rules. Game contracts only need to implement move validation, win detection, and state management. Everything else — brackets, matchmaking, timeouts, escalation, prizes, leaderboards — is inherited.
 
-ETour is infrastructure, not a destination. As more games build on the protocol, network effects emerge:
+This means any developer can build a game on ETour by implementing roughly a dozen functions. Focus on making your game fun and strategic. Let ETour handle the competitive infrastructure.
 
-- Shared player base across all games
-- Unified leaderboards and statistics
-- Cross-game tournaments and achievements
-- Emerging competitive meta-games
+### The Broader Vision
 
-But growth isn't the goal—sustainability is. ETour succeeds if it's still running unchanged in ten years, facilitating fair competition for whoever wants to play.
+ETour proves that blockchain applications can be simple, useful, and sustainable without tokens or speculation. This model — fee-based services with transparent economics — represents blockchain's true potential: not as financial engineering, but as trust infrastructure for human coordination.
 
-### The Broader Implications
-
-ETour proves that blockchain applications can be simple, useful, and sustainable without tokens or speculation. This model—fee-based services with transparent economics—could reshape how we think about blockchain products.
-
-Imagine:
-- Decentralized marketplaces taking transaction fees
-- Content platforms sharing revenue with creators
-- Prediction markets operating on commissions
-- All without tokens, governance, or complexity
-
-ETour is one example of blockchain's true potential: not as financial engineering, but as trust infrastructure for human coordination.
+As more games build on the protocol, network effects emerge: shared player bases, unified leaderboards, cross-game achievements. But growth isn't the goal — sustainability is. ETour succeeds if it's still running unchanged in ten years, facilitating fair competition for whoever wants to play.
 
 ### An Invitation
 
-**If you're a player** then pick a game and compete. Test yourself against others with real stakes on the line.
+**If you're a player** — pick a game and compete. Test yourself against others with real stakes on the line.
 
-**If you're a developer** then build your game on ETour. Inherit our infrastructure and focus on what makes your game special.
+**If you're a developer** — build your game on ETour. Inherit our infrastructure and focus on what makes your game special.
 
-**If you're a skeptic** then read the code. Verify our claims. Try to find flaws.
+**If you're a skeptic** — read the code. Verify our claims. Try to find flaws.
 
 ---
 
-## 10. ETour is simple
+## ETour is simple.
 
 # Think you're good? Prove it.
 
 ---
 
-### Appendix - Contract Verification
+### Appendix — Contract Verification
 
 All contracts are verified on Arbiscan for complete transparency.
 
@@ -490,7 +357,7 @@ All contracts are verified on Arbiscan for complete transparency.
 **Game Contracts**
 - [TicTacChain.sol](https://arbiscan.io/address/0x89464650B9987994222aE227303cd51dBC2d89B0#code)
 - [ChessOnChain.sol](https://arbiscan.io/address/0x81bb603C84aFE5817d85Fe5D3fd1Dcf606Ff566D#code)
-- [ConnectFourOnChain.sol](https://arbiscan.io/address/0x2036db40a00258cAF033049EBc2f7961C67Dfa68#code)
+- [ConnectFourOnChain.sol](https://arbiscan.io/address/0x2036db40a00258cAF033049EBc2d7961C67Dfa68#code)
 
 **Game-Specific Modules**
 - [ChessRules.sol](https://arbiscan.io/address/0x2C48FFB461Cb603351FC903F582329eECf05BF33#code)
