@@ -8,7 +8,13 @@ ETour is competitive gaming infrastructure on the blockchain.
 
 Players compete in skill-based tournaments for ETH prizes with guaranteed fair outcomes and instant payouts.
 
-Every move is a transaction. Every outcome is immutable. The smart contract handles matchmaking, brackets, timeouts, and prize distribution. No servers, no admins, no possibility of manipulation.
+
+Every move is a transaction. 
+Every outcome is immutable. 
+
+The smart contract handles matchmaking, brackets, timeouts, and prize distribution. 
+
+No servers, no admins, no possibility of manipulation.
 
 Developers inherit this infrastructure by implementing a simple game contract. Players connect their wallets and compete.
 
