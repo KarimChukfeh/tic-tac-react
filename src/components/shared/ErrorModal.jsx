@@ -20,9 +20,7 @@ const ErrorModal = ({ message, onClose }) => {
 
         {/* Message */}
         <div className="bg-white/10 backdrop-blur-sm rounded-lg p-5 mb-5">
-          <p className="text-lg text-white text-center">
-            {message}
-          </p>
+          <p className="text-lg text-white text-center" dangerouslySetInnerHTML={{ __html: message }} />
         </div>
 
         {/* Button */}

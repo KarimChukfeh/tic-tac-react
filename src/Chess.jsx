@@ -2070,7 +2070,15 @@ export default function Chess() {
         error.code === 'INSUFFICIENT_FUNDS' ||
         (error.code === 'CALL_EXCEPTION' && error.action === 'estimateGas' && !error.data)
       ) {
-        errorMessage = "You don't have enough ETH to enrol in this instance!";
+        // Get user's current balance to show in error message
+        try {
+          const provider = new ethers.BrowserProvider(window.ethereum);
+          const userBalance = await provider.getBalance(account);
+          const userBalanceInEth = parseFloat(ethers.formatEther(userBalance)).toFixed(5);
+          errorMessage = `You don't have enough ETH to enrol in this instance!<br/>This tier requires <strong>${entryFee} ETH</strong> for entry but you only have <strong>${userBalanceInEth} ETH</strong>.`;
+        } catch {
+          errorMessage = "You don't have enough ETH to enrol in this instance!";
+        }
       } else if (error.message?.includes('user rejected')) {
         errorMessage = 'Transaction rejected';
       }
