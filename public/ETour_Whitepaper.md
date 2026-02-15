@@ -485,13 +485,15 @@ ETour is one example of blockchain's true potential: not as financial engineerin
 
 ### An Invitation
 
-If you're a player: Pick a game and compete. Test yourself against others with real stakes on the line.
+**If you're a player** then pick a game and compete. Test yourself against others with real stakes on the line.
 
-If you're a developer: Build your game on ETour. Inherit our infrastructure and focus on what makes your game special.
+**If you're a developer** then build your game on ETour. Inherit our infrastructure and focus on what makes your game special.
 
-If you're a skeptic: Read the code. Verify our claims. Try to find flaws.
+**If you're a skeptic** then read the code. Verify our claims. Try to find flaws.
 
-ETour isn't asking for your backing. It just offers you a simple service. 
+--- 
+
+## ETour is simple
 
 # Think you're good? Prove it.
 
