@@ -94,23 +94,10 @@ Every online game requires trusting multiple parties:
 
 - **The server** not to manipulate game state
 - **The operator** not to freeze your funds
-- **Other players** not to exploit or cheat
 - **Payment processors** not to reverse transactions
 - **The company** not to shut down tomorrow
 
 Most of the time, this trust is justified. But when real money is involved, "most of the time" isn't good enough.
-
-### The Cheating Arms Race
-
-Competitive gaming has always battled cheating. Anti-cheat software, server-side validation, player reporting systems—the industry spends millions trying to ensure fair play. Yet cheating persists because the fundamental architecture allows it.
-
-In centralized systems:
-- Game state can be manipulated
-- Results can be overridden
-- Admins can intervene
-- Servers can be compromised
-
-ETour eliminates these vulnerabilities not through better security, but through architectural impossibility. When every move is a blockchain transaction and all logic executes on-chain, cheating becomes as impossible as double-spending Bitcoin.
 
 ### The Payout Problem
 
@@ -153,11 +140,11 @@ But more importantly, tic-tac-toe proves a point: even the simplest game becomes
 
 **Entry: 0.01 - 0.1 ETH**
 
-Chess needs no introduction. It's the ultimate test of strategic thinking, played by millions worldwide. Every serious chess player has wondered if their opponent is using an engine. Every online tournament deals with cheating allegations.
+Chess needs no introduction. It's the ultimate test of strategic thinking, played by millions worldwide. 
 
-ETour chess eliminates doubt. Every move requires a blockchain transaction from the player's wallet. You can't hide behind anonymous accounts or run engines in the background. It's just you, your wallet signature, and your ability to play chess.
+We implemented complete chess rules: castling, en passant, pawn promotion, fifty-move rule, threefold repetition, fully **on-chain,** 
 
-We implemented complete chess rules: castling, en passant, pawn promotion, fifty-move rule, threefold repetition. Not because we had to, but because chess players deserve respect. If you're going to play chess for real stakes, it should be real chess.
+Not because we had to, but because chess players deserve respect. If you're going to play chess for real stakes, it should be real chess.
 
 ### Connect Four: The Dark Horse
 
