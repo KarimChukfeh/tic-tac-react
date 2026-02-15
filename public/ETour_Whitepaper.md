@@ -130,11 +130,15 @@ Not every game belongs on blockchain. We chose games that naturally align with b
 
 **Entry: 0.001 ETH**
 
-Everyone dismisses tic-tac-toe as "solved"—perfect play always draws. That's exactly why we chose it.
+Everyone dismisses tic-tac-toe as "solved": perfect play always draws. **That's exactly why we chose it.**
 
 Tic-tac-toe serves as ETour's tutorial. New players can learn the platform mechanics with minimal risk. The high draw rate demonstrates our refund system: when both players draw, they split the prize pool minus a small protocol fee. It's training wheels for trustless competition.
 
-But more importantly, tic-tac-toe proves a point: even the simplest game becomes interesting with real stakes. That moment when you realize your opponent might not play perfectly, that they might crack under pressure—that's when tic-tac-toe transforms from child's game to psychological battle.
+But more importantly, tic-tac-toe proves a point: even the simplest game becomes interesting with real stakes. 
+
+That moment when you realize your opponent might not play perfectly; who might crack under pressure. 
+
+**That's when tic-tac-toe transforms from child's game to psychological battle.**
 
 ### Chess: The Main Event
 
@@ -144,15 +148,21 @@ Chess needs no introduction. It's the ultimate test of strategic thinking, playe
 
 We implemented complete chess rules: castling, en passant, pawn promotion, fifty-move rule, threefold repetition, fully **on-chain,** 
 
-Not because we had to, but because chess players deserve respect. If you're going to play chess for real stakes, it should be real chess.
+Not because we had to, but because chess players deserve respect. 
+
+**If you're going to play chess for real stakes, then you deserve real chess.**
 
 ### Connect Four: The Dark Horse
 
 **Entry: 0.001 - 0.01 ETH**
 
-Connect Four occupies the sweet spot—more complex than tic-tac-toe, faster than chess, familiar to everyone. The vertical drop mechanic creates unique tactical patterns. It's a game where beginners can get lucky but experts dominate over time.
+Connect Four occupies the sweet spot. It's more complex than tic-tac-toe, faster than chess, but still familiar to everyone. 
 
-We added Connect Four because variety matters. Some days you want the intense strategic depth of chess. Other days you want quick tactical skirmishes. Connect Four delivers satisfaction in five-minute bursts.
+The vertical drop mechanic creates unique tactical patterns. It's a game where beginners can get lucky but experts dominate over time.
+
+We added Connect Four because variety matters. Some days you want the intense strategic depth of chess. Other days you want quick tactical skirmishes. 
+
+**Connect Four delivers satisfaction in five-minute bursts.**
 
 ### Why Not Battleship?
 
@@ -279,7 +289,9 @@ ETH in, ETH out. Nothing more needed.
 
 Every competitive system faces the same problem: losing players stalling to avoid defeat. In chess, letting the clock run. In poker, tanking every decision. Online, disconnecting and hoping opponents quit.
 
-Traditional solutions require human intervention—moderators, support tickets, manual reviews. These don't scale and introduce bias.
+Traditional solutions require human intervention: moderators, support tickets, manual reviews. 
+
+**These introduce bias that goes against what Web3 stands for.**
 
 ### Escalating Incentives
 
@@ -291,7 +303,9 @@ When tournaments don't fill naturally, two options emerge:
 
 First, enrolled players can force-start with whoever joined. Three players in an 8-player tournament? Start a 3-player tournament. The prize pool adjusts accordingly.
 
-If nobody acts, eventually anyone—even non-enrolled players—can claim the entire abandoned prize pool. This nuclear option ensures tournaments never remain stuck forever.
+If nobody acts, eventually anyone **- even non-enrolled players -** can claim the entire abandoned prize pool. 
+
+**This is the nuclear option that ensures tournaments are never stuck forever.**
 
 **For Match Stalling:**
 
@@ -312,7 +326,9 @@ Notice how each escalation level benefits someone:
 - External observers benefit from free tournament entry
 - The protocol benefits from resolved states
 
-The only party that doesn't benefit is the staller. This isn't punishment—it's incentive design. Make stalling costly and resolution profitable.
+The only party that doesn't benefit is the staller. This isn't punishment, it's game theory. 
+
+**ETour makes stalling costly and resolution profitable.**
 
 ### Time as a Resource
 
