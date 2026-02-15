@@ -491,7 +491,7 @@ ETour is one example of blockchain's true potential: not as financial engineerin
 
 **If you're a skeptic** then read the code. Verify our claims. Try to find flaws.
 
---- 
+---
 
 ## ETour is simple
 
