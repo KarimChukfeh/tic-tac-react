@@ -22,25 +22,6 @@ This whitepaper explains ETour's philosophy and how it makes trustless competiti
 
 ---
 
-## Table of Contents
-
-1. [Philosophy: Why ETour Exists](#1-philosophy-why-etour-exists)
-2. [The Problem with Trust](#2-the-problem-with-trust)
-3. [The Three Games That Define ETour](#3-the-three-games-that-define-etour)
-4. [How Competition Works](#4-how-competition-works)
-5. [The Economics of Fair Play](#5-the-economics-of-fair-play)
-6. [Solving the Stalling Problem](#6-solving-the-stalling-problem)
-7. [Technical Architecture](#7-technical-architecture)
-8. [Building on ETour](#8-building-on-etour)
-9. [Trust Through Transparency](#9-trust-through-transparency)
-10. [The Future of Competition](#10-the-future-of-competition)
-
-**Appendices:**
-- [Appendix A: Economic Projections](#appendix-a-economic-projections)
-- [Appendix B: Technical Reference](#appendix-b-technical-reference)
-
----
-
 ## 1. Philosophy: Why ETour Exists
 
 ### The Failed Promise of Web3 Gaming
@@ -166,16 +147,22 @@ We added Connect Four because variety matters. Some days you want the intense st
 
 ### Why Not Battleship?
 
-We initially planned to include Battleship. It's beloved, strategic, and everyone knows the rules. But Battleship requires hidden information—ship positions must remain secret until revealed.
+We initially planned to include Battleship. It's beloved, strategic, and everyone knows the rules. But Battleship requires hidden information. 
 
-Blockchain's fundamental nature is transparency. Every piece of data on-chain is visible to everyone. To implement Battleship would require either:
+**Ship positions must remain secret until revealed.**
+
+Blockchain's fundamental nature is transparency. Every piece of data on-chain is visible to everyone. 
+
+To implement Battleship would require either:
 
 1. **Commit-reveal schemes** — Complex cryptographic proofs that confuse players
 2. **Off-chain components** — Defeating the purpose of trustless competition
 
-Rather than compromise our principles, we rejected Battleship. This decision embodies ETour's philosophy: work within blockchain's constraints rather than fighting them. Build games that thrive on transparency rather than requiring secrecy.
+Rather than compromise our principles, we rejected Battleship. 
 
-The games that don't work on blockchain teach us as much as the ones that do. By accepting limitations, we discover possibilities.
+This decision embodies ETour's philosophy:
+
+> **Work within blockchain's constraints rather than fighting them.**
 
 ---
 
@@ -187,7 +174,7 @@ ETour uses single-elimination tournaments, i.e the simplest, most exciting forma
 
 Winners advance, losers go home. No complex Swiss pairings, no round-robin calculations. Pure knockout competition.
 
-Tournaments come in different sizes and stakes:
+Tournaments come in any size:
 
 - **2 players** — Quick heads-up matches
 - **4 players** — Mini-tournaments with semifinals
@@ -202,10 +189,15 @@ Each tier operates multiple concurrent instances. While you're competing in one 
 Players join by paying the entry fee. The moment your ETH arrives, you're enrolled. No forms, no accounts, no waiting for approval. The tournament waits for enough players or until the enrollment window expires.
 
 **The Bracket**
-When a tournament begins, players are paired into matches. Round 0 starts immediately. In an 8-player tournament, four matches begin simultaneously. Winners advance to Round 1, then Round 2 (the finals).
+When a tournament begins, players are paired into matches. Round 0 starts immediately. In an 8-player tournament, four matches begin 
+simultaneously. 
+
+Winners advance to Round 1, then Round 2, etc, until the finals.
 
 **Victory**
-The tournament champion takes everything. No second place, no consolation prizes. This isn't about participation, **it's about winning.**
+The tournament champion takes everything. No second place or consolation prizes. 
+
+This isn't about participation, **it's about winning.**
 
 ### When Games Draw
 
@@ -213,21 +205,27 @@ Some games can end in draws. In chess, perpetual check or insufficient material.
 
 Regular draws eliminate both players so neither player advances. This creates natural pressure to play for wins rather than safe draws.
 
-But what if the finals draw? Both finalists split the prize pool equally. They've proven themselves equally matched and share the victory.
+##### But what if the finals draw? 
+
+Both finalists split the prize pool equally. They've proven themselves equally matched and share the victory.
 
 What if every match in a round draws? The tournament cannot continue. All remaining players split the prize pool equally. 
 
-Rare, but handled fairly.
+Rare, **but handled fairly.**
 
 ### Edge Cases and Elegance
 
-Tournaments are messy. Players get eliminated asymmetrically. Odd numbers emerge from draw-heavy rounds. ETour handles every scenario:
+Tournaments are messy. Players get eliminated asymmetrically. Odd numbers emerge from draw-heavy rounds. 
+
+##### ETour handles every scenario
 
 - **Odd advancement** — One player randomly selected for walkover
 - **Orphaned winners** — Automatically advance to next round
 - **Incomplete brackets** — Consolidate remaining players
 
-These aren't patches or hacks. They're deliberate design decisions ensuring tournaments always resolve fairly.
+These aren't patches or hacks. 
+
+**They're deliberate design decisions ensuring tournaments always resolve fairly.**
 
 ---
 
@@ -238,22 +236,28 @@ These aren't patches or hacks. They're deliberate design decisions ensuring tour
 Every entry fee divides three ways:
 
 - **90%** — to the tournament winner
-- **2.5%** — to sustaining the contract
-- **7.5%** — to rewarding ETour's creator
+- **2.5%** — to subsidize the contract
+- **7.5%** — to reward ETour's creator
 
-These percentages are hardcoded and unchangeable. No governance votes, no admin adjustments. The economics are transparent and permanent.
+These percentages are hardcoded and unchangeable. 
 
-### Why We Take Fees
+**No governance votes, no admin adjustments.**
+**The economics are transparent and permanent.**
 
-Running ETour costs money:
-- Frontend hosting
-- Development and maintenance
-- Security audits
-- Legal compliance
+### Why This Breakdown
 
-The 7.5% operational fee funds these necessities. We could have created a token and sold it to VCs. We could have taken protocol fees in a governance token. We chose the honest path: a simple percentage of entry fees.
+**The winner gets 90%** — because that's fair. 
 
-The 2.5% raffle fee accumulates until reaching game-specific thresholds, then gets raffled to active players. It's our way of giving back while encouraging continued play. Every enrolled player has a chance to win, weighted by their participation.
+When you compete, you're putting in skill, time, and money. You win, you get paid. It's that straightforward.
+The remaining 10% is split wo ways:
+
+**7.5% percent goes to me** - as the creator and operator of each tournament. 
+This is my profit. My chosen cut for building ETour. I'm also hosting the frontend myself, which is part of what that seven point five percent funds. 
+
+**The other 2.5% accumalates in the contract** until it hits game-specific thresholds. 
+This is necessary to keep the game itselft self-sustaining. Any excess gets raffled back to active players as a way of giving back to the community.
+
+**There's no hidden costs. You know exactly where your entry fee goes.**
 
 ### Sustainable Economics
 
