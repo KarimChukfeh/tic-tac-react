@@ -22,7 +22,7 @@ This whitepaper explains how ETour makes trustless competition possible.
 
 ---
 
-## 1. The Philosophy — Why ETour Exists
+## 1. The Philosophy of ETour
 
 ### The Failed Promise of Web3 Gaming
 
@@ -60,7 +60,7 @@ The winner takes the pot.
 
 ---
 
-## 2. The Problem — Trusting a Company Sucks
+## 2. The Problem With Turst
 
 ### Centralized Gaming's Hidden Failures
 
@@ -93,11 +93,9 @@ These aren't "extra features". These are properties we inherited by building on 
 
 ---
 
-## 3. The Demo — Three Games
+## 3. The Three-Game Demo
 
-### The Selection Criteria
-
-Not every game belongs on ETour. Not yet at least.
+Not every game belongs on ETour. At least no yet.
 
 We chose games that naturally align with blockchain's current constraints while providing compelling competition. 
 
@@ -179,7 +177,7 @@ So rather than compromising our principles, we rejected Battleship for now.
 
 ---
 
-## 4. The Lifecycle — Phases of ETournaments 
+## 4. The Lifecycle of Tournaments 
 
 ETour uses single-elimination brackets. It's the simplest, most exciting format that a 4 year-old can understand.
 
@@ -223,7 +221,7 @@ These aren't patches or hacks. **They're deliberate design decisions ensuring to
 
 ---
 
-## 5. The Economics — Fair Play
+## 5. The Economics of Fair Play
 
 ### The Fee Split
 
@@ -261,13 +259,15 @@ Every action costs gas on Arbitrum — enrollment (~$0.05), moves (~$0.02), clai
 
 ---
 
-## 6. Solving the Stalling Problem
+## 6. The Grefing Problem
 
-### The Universal Griefing Vector
+### Solving Stalls Without Admins
 
 Every competitive system faces the same problem: losing players stalling to avoid defeat. In chess, letting the clock run. In poker, tanking every decision. Online, disconnecting and hoping opponents quit.
 
-Traditional solutions require human intervention — moderators, support tickets, manual reviews. **These introduce bias that goes against what Web3 stands for.**
+Traditional solutions require human intervention — moderators, support tickets, manual reviews. 
+
+**These introduce bias that goes against what Web3 stands for.**
 
 ### Escalating Incentives
 
@@ -327,15 +327,11 @@ As more games build on the protocol, network effects emerge: shared player bases
 
 ---
 
-## ETour is simple.
-
 # Think you're good? Prove it.
 
 ---
 
-### Appendix — Contract Verification
-
-All contracts are verified on Arbiscan for complete transparency.
+### Appendix 
 
 **ETour Core Modules**
 - [ETour_Core.sol](https://arbiscan.io/address/0x3C86Fd676574528321fd47d21658bCf066a38b76#code)
