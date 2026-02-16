@@ -140,10 +140,11 @@ const Whitepaper = () => {
           </h1>
         );
       } else if (line.startsWith('## ')) {
-        const id = line.substring(3).toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+        const headerText = line.substring(3).trim();
+        const id = headerText.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
         elements.push(
           <h2 key={i} id={id} className={`text-2xl font-bold ${colors.secondary} mb-4 mt-8 scroll-mt-24`}>
-            {line.substring(3)}
+            {headerText}
           </h2>
         );
       } else if (line.startsWith('### ')) {
@@ -154,14 +155,16 @@ const Whitepaper = () => {
           </h3>
         );
       } else if (line.startsWith('#### ')) {
+        const id = line.substring(5).toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
         elements.push(
-          <h4 key={i} className={`text-lg font-semibold ${colors.highlightText} mb-2 mt-4`}>
+          <h4 key={i} id={id} className={`text-lg font-semibold ${colors.highlightText} mb-2 mt-4 scroll-mt-24`}>
             {line.substring(5)}
           </h4>
         );
       } else if (line.startsWith('##### ')) {
+        const id = line.substring(6).toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
         elements.push(
-          <h5 key={i} className={`text-md font-semibold ${colors.secondary} mb-2 mt-3`}>
+          <h5 key={i} id={id} className={`text-md font-semibold ${colors.secondary} mb-2 mt-3 scroll-mt-24`}>
             {line.substring(6)}
           </h5>
         );
@@ -222,11 +225,44 @@ const Whitepaper = () => {
       }
       // Handle regular paragraphs
       else if (line.trim()) {
-        elements.push(
-          <p key={i} className="text-gray-300 my-3">
-            {parseInlineMarkdown(line)}
-          </p>
-        );
+        // Check if this is a standalone link (TOC style)
+        const standaloneLinkMatch = line.match(/^\[(.+)\]\((.+)\)$/);
+        if (standaloneLinkMatch) {
+          const linkText = standaloneLinkMatch[1];
+          const linkUrl = standaloneLinkMatch[2];
+          elements.push(
+            <div key={i} className="my-2">
+              <a
+                href={linkUrl}
+                className={`${colors.primary} hover:${colors.secondary} text-lg font-medium transition-colors cursor-pointer`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  // Use setTimeout to ensure DOM is fully rendered
+                  setTimeout(() => {
+                    const targetId = linkUrl.substring(1); // Remove the #
+                    const element = document.getElementById(targetId);
+                    if (element) {
+                      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      // Add highlight animation
+                      element.classList.add('highlight-target');
+                      setTimeout(() => {
+                        element.classList.remove('highlight-target');
+                      }, 3500);
+                    }
+                  }, 50);
+                }}
+              >
+                {linkText}
+              </a>
+            </div>
+          );
+        } else {
+          elements.push(
+            <p key={i} className="text-gray-300 my-3">
+              {parseInlineMarkdown(line)}
+            </p>
+          );
+        }
       }
     }
 

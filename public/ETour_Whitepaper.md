@@ -22,6 +22,26 @@ This whitepaper explains how ETour makes trustless competition possible.
 
 ---
 
+# Table of Contents
+
+[1. The Philosophy of ETour](#1-the-philosophy-of-etour)
+
+[2. The Problem With Trust](#2-the-problem-with-turst)
+
+[3. The Three-Game Demo](#3-the-three-game-demo)
+
+[4. The Lifecycle of Tournaments](#4-the-lifecycle-of-tournaments)
+
+[5. The Economics of Fair Play](#5-the-economics-of-fair-play)
+
+[6. The Griefing Problem](#6-the-grefing-problem)
+
+[7. The Future of Competition](#7-the-future-of-competition)
+
+[8. The Appendix](#appendix)
+
+---
+
 ## 1. The Philosophy of ETour
 
 ### The Failed Promise of Web3 Gaming
@@ -331,7 +351,7 @@ As more games build on the protocol, network effects emerge: shared player bases
 
 ---
 
-### Appendix 
+### The Appendix 
 
 **ETour Core Modules**
 - [ETour_Core.sol](https://arbiscan.io/address/0x3C86Fd676574528321fd47d21658bCf066a38b76#code)
