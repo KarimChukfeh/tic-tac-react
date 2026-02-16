@@ -32,13 +32,13 @@ This whitepaper explains how ETour makes trustless competition possible.
 
 [4. The Lifecycle of Tournaments](#4-the-lifecycle-of-tournaments)
 
-[5. The Economics of Fair Play](#5-the-economics-of-fair-play)
+[5. The Gas Fee](#5-the-gas-fee)
 
-[6. The Griefing Problem](#6-the-grefing-problem)
+[6. The Economics of Fair Play](#6-the-economics-of-fair-play)
 
-[7. The Future of Competition](#7-the-future-of-competition)
+[7. The Griefing Problem](#7-the-grefing-problem)
 
-[8. The Appendix](#appendix)
+[8. The Future of Competition](#8-the-future-of-competition)
 
 ---
 
@@ -241,11 +241,23 @@ These aren't patches or hacks. **They're deliberate design decisions ensuring to
 
 ---
 
-## 5. The Economics of Fair Play
+## 5. The Gas Fee
 
-### The Fee Split
+Every action on ETour costs gas that's paid for by the player. 
 
-Every entry fee divides three ways:
+On Arbitrum, these costs are minimal:
+
+- **Enrollment:** ~$0.03 per tournament entry
+- **Moves:** ~$0.01 per move
+- **Claims:** ~$0.03 per victory claim
+
+These fees are negligible compared to entry fees.
+
+---
+
+## 6. The Economics of Fair Play
+
+Every entry fee is split three ways:
 
 - **90%** — to the tournament winner
 - **7.5%** — to ETour's creator
@@ -261,25 +273,29 @@ These percentages are hardcoded and unchangeable. No governance votes, no admin 
 
 **2.5% accumulates in the contract** until it hits game-specific thresholds, keeping the system self-sustaining. Any excess gets raffled back to active players as a way of giving back to the community.
 
-There are no hidden costs. You know exactly where your entry fee goes.
+That's it. You always know exactly where your entry fee goes.
 
-### The Anti-Token
+### ETour is Anti-Token
 
-ETour will never have a token. Not because we couldn't create one, but because tokens corrupt competitive gaming. With a token, players become investors, competition becomes secondary to price action, and complexity obscures the product. Without a token, players remain players, competition is the only focus, and simplicity enhances the product.
+ETour will never have a token. Not because we couldn't create one, but because tokens corrupt competitive gaming. 
+
+With a token, players become investors, competition becomes secondary to price action, and complexity obscures the product. 
+
+Without a token, players remain players, competition is the only focus, and simplicity enhances the product.
 
 **ETH in, ETH out. Nothing more needed.**
 
 ### Sustainable by Design
 
-ETour doesn't need token sales, venture funding, or financial engineering to survive. As long as people want to compete, ETour generates revenue. The protocol is built to run unchanged for years — not racing to find product-market fit before funding runs out, not dependent on speculation. Permanence through simplicity.
+ETour doesn't need token sales, venture funding, or financial engineering to survive. 
 
-### Gas Economics
+As long as people want to compete, ETour generates revenue. 
 
-Every action costs gas on Arbitrum — enrollment (~$0.05), moves (~$0.02), claims (~$0.04). Negligible compared to entry fees, but enough to prevent spam. Players naturally optimize their moves, adding another strategic layer to competition.
+**ETour is not dependent on speculation.**
 
 ---
 
-## 6. The Grefing Problem
+## 7. The Grefing Problem
 
 ### Solving Stalls Without Admins
 
@@ -319,7 +335,7 @@ Each player receives a time bank for their moves, plus increment per move. This 
 
 ---
 
-## 7. The Future of Competition
+## 8. The Future of Competition
 
 ### What We've Built
 
