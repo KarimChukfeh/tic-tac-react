@@ -5,10 +5,11 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { X, RefreshCw, History, ChevronDown, ChevronUp, Eye, ChevronLeft, ChevronRight, ArrowUpRight } from 'lucide-react';
+import { X, RefreshCw, History, ChevronDown, ChevronUp, Eye, ChevronLeft, ChevronRight, ArrowUpRight, TrendingUp, ExternalLink } from 'lucide-react';
 import { shortenAddress, getCellPositionName } from '../../utils/formatters';
 import { isDraw } from '../../utils/completionReasons';
 import CapturedPieces from './CapturedPieces';
+import { ethers } from 'ethers';
 
 const RecentMatchesCard = ({
   contract,
@@ -36,6 +37,11 @@ const RecentMatchesCard = ({
   const [syncing, setSyncing] = useState(false);
   const [moveIndices, setMoveIndices] = useState({}); // Track current move index for each match
   const [expandedModalMatch, setExpandedModalMatch] = useState(null); // Track which match is in modal view
+  // Transaction history state
+  const [showTransactionHistory, setShowTransactionHistory] = useState(false);
+  const [transactionHistory, setTransactionHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [totalEarnings, setTotalEarnings] = useState(0n);
   const expandedPanelRef = useRef(null);
   const prevExpandedRef = useRef(false);
   const matchCardRefs = useRef({});
@@ -70,6 +76,7 @@ const RecentMatchesCard = ({
   useEffect(() => {
     if (isExpanded && !prevExpandedRef.current) {
       fetchRecentMatches();
+      fetchTransactionHistory();
     }
     prevExpandedRef.current = isExpanded;
   }, [isExpanded]);
@@ -249,6 +256,67 @@ const RecentMatchesCard = ({
   const handleRefresh = () => {
     setRecentMatches([]);
     fetchRecentMatches();
+    // Also refresh transaction history if it's visible
+    if (showTransactionHistory) {
+      fetchTransactionHistory();
+    }
+  };
+
+  // Fetch Transfer events for transaction history
+  const fetchTransactionHistory = async () => {
+    if (!contract || !account) return;
+
+    setLoadingHistory(true);
+    try {
+      // Query Transfer events where `to` is the player's address
+      const filter = contract.filters.Transfer(null, account);
+      const events = await contract.queryFilter(filter);
+
+      // Process events with transaction details
+      const historyWithTxHash = await Promise.all(
+        events.map(async (event) => {
+          try {
+            return {
+              from: event.args.from,
+              to: event.args.to,
+              value: event.args.value,
+              gameName: event.args.gameName,
+              txHash: event.transactionHash,
+              blockNumber: event.blockNumber,
+            };
+          } catch (err) {
+            console.error('Error processing Transfer event:', err);
+            return null;
+          }
+        })
+      );
+
+      // Filter out any failed event processing and sort by block number (most recent first)
+      const validHistory = historyWithTxHash
+        .filter(item => item !== null)
+        .sort((a, b) => b.blockNumber - a.blockNumber);
+
+      setTransactionHistory(validHistory);
+
+      // Calculate total earnings
+      const total = validHistory.reduce((sum, item) => sum + item.value, 0n);
+      setTotalEarnings(total);
+    } catch (err) {
+      console.error('Error fetching transaction history:', err);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  // Toggle transaction history and fetch if needed
+  const toggleTransactionHistory = () => {
+    const willShow = !showTransactionHistory;
+    setShowTransactionHistory(willShow);
+
+    // Fetch transaction history when opening for the first time
+    if (willShow && transactionHistory.length === 0) {
+      fetchTransactionHistory();
+    }
   };
 
   // Helper functions
@@ -581,7 +649,7 @@ const RecentMatchesCard = ({
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <History size={24} className="text-teal-400" />
-                <h3 className="text-white font-bold text-lg">Match History</h3>
+                <h3 className="text-white font-bold text-lg">Your History</h3>
               </div>
               <div className="flex items-center gap-1">
                 {/* Refresh Button */}
@@ -606,7 +674,84 @@ const RecentMatchesCard = ({
             </div>
           </div>
 
+          {/* You earned section */}
+          {totalEarnings !== 0n && (
+            <div className="mb-4 space-y-2">
+              <h3 className="text-white font-semibold text-md mb-3">Payout History</h3>
+              <div className="flex items-center gap-1.5 text-xs">
+                <span className="text-green-400">You earned:</span>
+                <TrendingUp className={`${totalEarnings >= 0n ? 'text-green-400' : 'text-red-400'}`} size={14} />
+                <span className={`font-semibold font-mono ${totalEarnings >= 0n ? 'text-green-400' : 'text-red-400'}`}>
+                  {totalEarnings >= 0n ? '+' : ''}{ethers.formatEther(totalEarnings)} ETH
+                </span>
+                <button
+                  onClick={toggleTransactionHistory}
+                  className="ml-1 text-slate-400 hover:text-white transition-colors p-0.5"
+                  title={showTransactionHistory ? "Hide transaction history" : "Show transaction history"}
+                >
+                  {showTransactionHistory ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                </button>
+              </div>
+
+              {/* Transaction History */}
+              {showTransactionHistory && (
+                <div className="bg-black/30 border border-green-400/20 rounded-lg p-3 mt-2">
+                  <div className="flex items-start gap-2 mb-2">
+                    <p className="text-yellow-300/80 text-[10px]">
+                      Your recent ETH payouts
+                    </p>
+                  </div>
+
+                  {loadingHistory ? (
+                    <div className="text-center py-4">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-400 mx-auto"></div>
+                      <p className="text-slate-400 mt-1 text-[10px]">Loading history...</p>
+                    </div>
+                  ) : transactionHistory.length === 0 ? (
+                    <p className="text-slate-400 text-[10px] text-center py-2">No prize awards found</p>
+                  ) : (
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto [&::-webkit-scrollbar]:w-0.5 [&::-webkit-scrollbar-track]:bg-green-950/40 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-green-500/70 [&::-webkit-scrollbar-thumb]:to-emerald-500/70 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:from-green-400 hover:[&::-webkit-scrollbar-thumb]:to-emerald-400 [scrollbar-width:thin] [scrollbar-color:rgb(34_197_94_/_0.7)_rgb(5_46_22_/_0.4)]">
+                      {transactionHistory.map((tx, index) => (
+                        <div
+                          key={`${tx.txHash}-${index}`}
+                          className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-400/20 rounded p-2 hover:border-green-400/40 transition-all"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 mb-0.5">
+                                <TrendingUp className="text-green-400 flex-shrink-0" size={12} />
+                                <span className="text-green-400 font-mono font-semibold text-xs">
+                                  +{ethers.formatEther(tx.value)} ETH
+                                </span>
+                              </div>
+                              <p className="text-slate-300 text-[10px] truncate">
+                                {tx.gameName}
+                              </p>
+                            </div>
+                            <a
+                              href={`https://arbiscan.io/tx/${tx.txHash}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-400 hover:text-blue-300 transition-colors flex-shrink-0"
+                              title="View on Arbiscan"
+                            >
+                              <ExternalLink size={12} />
+                            </a>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          <hr className="border-purple-100/20" />
+          <br/>
+
           {/* Content */}
+          <h3 className="text-white font-semibold text-md mb-3">Match History</h3>
           {loadingRecentMatches ? (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-teal-400 mx-auto"></div>

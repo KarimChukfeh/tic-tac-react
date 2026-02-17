@@ -8,10 +8,9 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { Users, X, Zap, Trophy, Clock, Play, Eye, RefreshCw, ChevronDown, ChevronUp, TrendingUp, AlertCircle, ExternalLink, CheckCircle2 } from 'lucide-react';
+import { Users, X, Zap, Trophy, Clock, Play, Eye, RefreshCw, ChevronDown, ChevronUp, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
 import { formatTimeRemaining } from '../../utils/activityHelpers';
-import { ethers } from 'ethers';
 
 const PlayerActivity = ({
   activity,
@@ -111,10 +110,6 @@ const PlayerActivity = ({
   const [completedMatches, setCompletedMatches] = useState(new Map());
   // Track dismissed matches locally for immediate filtering (before refetch completes)
   const [localDismissedMatches, setLocalDismissedMatches] = useState(new Set());
-  // Transaction history state
-  const [showTransactionHistory, setShowTransactionHistory] = useState(false);
-  const [transactionHistory, setTransactionHistory] = useState([]);
-  const [loadingHistory, setLoadingHistory] = useState(false);
 
   // Expose collapse function via callback
   useEffect(() => {
@@ -201,71 +196,12 @@ const PlayerActivity = ({
     setRefreshTrigger(prev => prev + 1);
 
     // Clear and refetch transaction history if visible
-    if (showTransactionHistory) {
-      setTransactionHistory([]);
-      fetchTransactionHistory();
-    }
-
     // Clear local completed matches state to get fresh data
     setCompletedMatches(new Map());
 
     // Clear local dismissed matches to get fresh state
     setLocalDismissedMatches(new Set());
   };
-
-  // Fetch Transfer events for transaction history
-  const fetchTransactionHistory = async () => {
-    if (!contract || !account) return;
-
-    setLoadingHistory(true);
-    try {
-      // Query Transfer events where `to` is the player's address
-      const filter = contract.filters.Transfer(null, account);
-      const events = await contract.queryFilter(filter);
-
-      // Process events with transaction details
-      const historyWithTxHash = await Promise.all(
-        events.map(async (event) => {
-          try {
-            return {
-              from: event.args.from,
-              to: event.args.to,
-              value: event.args.value,
-              gameName: event.args.gameName,
-              txHash: event.transactionHash,
-              blockNumber: event.blockNumber,
-            };
-          } catch (err) {
-            console.error('Error processing Transfer event:', err);
-            return null;
-          }
-        })
-      );
-
-      // Filter out any failed event processing and sort by block number (most recent first)
-      const validHistory = historyWithTxHash
-        .filter(item => item !== null)
-        .sort((a, b) => b.blockNumber - a.blockNumber);
-
-      setTransactionHistory(validHistory);
-    } catch (err) {
-      console.error('Error fetching transaction history:', err);
-    } finally {
-      setLoadingHistory(false);
-    }
-  };
-
-  // Toggle transaction history and fetch if needed
-  const toggleTransactionHistory = () => {
-    const willShow = !showTransactionHistory;
-    setShowTransactionHistory(willShow);
-
-    // Fetch transaction history when opening for the first time
-    if (willShow && transactionHistory.length === 0) {
-      fetchTransactionHistory();
-    }
-  };
-
 
   // Handler when a match completes - add it to completed matches to keep it visible
   const handleMatchCompleted = (match) => {
@@ -501,77 +437,6 @@ const PlayerActivity = ({
                 <span className={isElite ? 'text-[#fbbf24]' : 'text-blue-400'}>You are: </span>
                 <span className={`font-mono font-bold ${isElite ? 'text-[#fbbf24]' : 'text-blue-400'}`}>{shortenAddress(account)}</span>
               </div>
-              {!loading && activity?.totalEarnings !== undefined && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-1.5 text-xs">
-                    <span className="text-green-400">You earned:</span>
-                    <TrendingUp className={`${activity.totalEarnings >= 0n ? 'text-green-400' : 'text-red-400'}`} size={14} />
-                    <span className={`font-semibold font-mono ${activity.totalEarnings >= 0n ? 'text-green-400' : 'text-red-400'}`}>
-                      {activity.totalEarnings >= 0n ? '+' : ''}{ethers.formatEther(activity.totalEarnings)} ETH
-                    </span>
-                    <button
-                      onClick={toggleTransactionHistory}
-                      className="ml-1 text-slate-400 hover:text-white transition-colors p-0.5"
-                      title={showTransactionHistory ? "Hide transaction history" : "Show transaction history"}
-                    >
-                      {showTransactionHistory ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                    </button>
-                  </div>
-
-                  {/* Transaction History */}
-                  {showTransactionHistory && (
-                    <div className="bg-black/30 border border-green-400/20 rounded-lg p-3 mt-2">
-                      <div className="flex items-start gap-2 mb-2">
-                        <AlertCircle size={12} className="text-yellow-400 flex-shrink-0 mt-0.5" />
-                        <p className="text-yellow-300/80 text-[10px]">
-                          Recent prize awards (events expire after ~50,000 blocks on Arbitrum)
-                        </p>
-                      </div>
-
-                      {loadingHistory ? (
-                        <div className="text-center py-4">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-400 mx-auto"></div>
-                          <p className="text-slate-400 mt-1 text-[10px]">Loading history...</p>
-                        </div>
-                      ) : transactionHistory.length === 0 ? (
-                        <p className="text-slate-400 text-[10px] text-center py-2">No prize awards found</p>
-                      ) : (
-                        <div className="space-y-1.5 max-h-48 overflow-y-auto [&::-webkit-scrollbar]:w-0.5 [&::-webkit-scrollbar-track]:bg-green-950/40 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-green-500/70 [&::-webkit-scrollbar-thumb]:to-emerald-500/70 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:from-green-400 hover:[&::-webkit-scrollbar-thumb]:to-emerald-400 [scrollbar-width:thin] [scrollbar-color:rgb(34_197_94_/_0.7)_rgb(5_46_22_/_0.4)]">
-                          {transactionHistory.map((tx, index) => (
-                            <div
-                              key={`${tx.txHash}-${index}`}
-                              className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-400/20 rounded p-2 hover:border-green-400/40 transition-all"
-                            >
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-1.5 mb-0.5">
-                                    <TrendingUp className="text-green-400 flex-shrink-0" size={12} />
-                                    <span className="text-green-400 font-mono font-semibold text-xs">
-                                      +{ethers.formatEther(tx.value)} ETH
-                                    </span>
-                                  </div>
-                                  <p className="text-slate-300 text-[10px] truncate">
-                                    {tx.gameName}
-                                  </p>
-                                </div>
-                                <a
-                                  href={`https://arbiscan.io/tx/${tx.txHash}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-blue-400 hover:text-blue-300 transition-colors flex-shrink-0"
-                                  title="View on Arbiscan"
-                                >
-                                  <ExternalLink size={12} />
-                                </a>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           </div>
 
