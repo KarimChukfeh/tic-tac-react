@@ -424,20 +424,46 @@ const RecentMatchesCard = ({
 
     const actualMatch = recentMatches[index];
     const matchKey = `recent-${actualMatch.matchId}-${index}`;
-    const matchElement = matchCardRefs.current[matchKey];
 
-    if (matchElement) {
-      matchElement.scrollIntoView({
-        behavior: 'smooth',
-        block: 'center'
-      });
+    // Calculate which page this match is on
+    const pageForMatch = Math.floor(index / itemsPerPage) + 1;
 
-      // Highlight the match briefly
-      matchElement.style.transition = 'box-shadow 0.3s';
-      matchElement.style.boxShadow = '0 0 20px rgba(34, 197, 94, 0.6)';
+    // Navigate to the correct page first if needed
+    if (pageForMatch !== currentPage) {
+      setCurrentPage(pageForMatch);
+      // Wait for page change to render, then scroll
       setTimeout(() => {
-        matchElement.style.boxShadow = '';
-      }, 2000);
+        const matchElement = matchCardRefs.current[matchKey];
+        if (matchElement) {
+          matchElement.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center'
+          });
+
+          // Highlight the match briefly
+          matchElement.style.transition = 'box-shadow 0.3s';
+          matchElement.style.boxShadow = '0 0 20px rgba(34, 197, 94, 0.6)';
+          setTimeout(() => {
+            matchElement.style.boxShadow = '';
+          }, 2000);
+        }
+      }, 100);
+    } else {
+      // Already on the right page, just scroll
+      const matchElement = matchCardRefs.current[matchKey];
+      if (matchElement) {
+        matchElement.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center'
+        });
+
+        // Highlight the match briefly
+        matchElement.style.transition = 'box-shadow 0.3s';
+        matchElement.style.boxShadow = '0 0 20px rgba(34, 197, 94, 0.6)';
+        setTimeout(() => {
+          matchElement.style.boxShadow = '';
+        }, 2000);
+      }
     }
   };
 
