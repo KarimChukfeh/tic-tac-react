@@ -7,6 +7,7 @@ import remarkGfm from 'remark-gfm';
 import tttABI from './TTTABI-modular.json';
 import chessABI from './ChessOnChain-ABI-modular.json';
 import connectFourABI from './ConnectFourABI-modular.json';
+import TotalEarningsCard from './components/shared/TotalEarningsCard';
 
 // Floating Game Particles with cursor attraction
 function FloatingParticles() {
@@ -459,15 +460,18 @@ export default function Landing() {
         
         {/* ============ GAMES SECTION ============ */}
         <section id="games" className="px-6 py-0 max-w-7xl mx-auto">
-          
+
           {/* Section Header */}
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
               Pick Your Arena
             </h2>
-            <p className="text-slate-400 text-lg">
+            <p className="text-slate-400 text-lg mb-3">
               Three games. Multiple stake levels. One rule: <span className="text-cyan-400">winner takes all.</span>
             </p>
+
+            {/* Total Earnings Card */}
+            <TotalEarningsCard />
           </div>
           
           {/* Games Grid */}
