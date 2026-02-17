@@ -770,6 +770,7 @@ export default function ConnectFour() {
   const [nextActiveMatch, setNextActiveMatch] = useState(null); // Next active match info after winning
   const previousBoardRef = useRef(null); // Track previous board state for move history sync
   const moveTxInProgressRef = useRef(false); // Prevent polling from overwriting state during move tx
+  const matchEndModalShownRef = useRef(false); // Prevent duplicate modal triggers from polling
   const tournamentBracketRef = useRef(null); // Ref for auto-scrolling to tournament after URL navigation
   const matchViewRef = useRef(null); // Ref for auto-scrolling to match view
 
@@ -2642,12 +2643,21 @@ export default function ConnectFour() {
             };
           }
 
-          console.log('[refreshMatchData] No matching completed match found in getPlayerMatches(), continuing to poll');
+          console.log('[refreshMatchData] No matching completed match found in getPlayerMatches() yet');
+          console.log('[refreshMatchData] This likely means match just completed and blockchain is still indexing');
+          console.log('[refreshMatchData] Will retry on next poll cycle');
         } catch (err) {
           console.error('[refreshMatchData] Error fetching from getPlayerMatches():', err);
         }
 
-        return null;
+        // Return a partial match object indicating we're waiting for completion data
+        // This keeps polling alive and prevents the "match not found" error
+        return {
+          ...matchInfo,
+          matchStatus: 1, // Keep status as active so polling continues
+          waitingForCompletionData: true, // Flag for debugging
+          board: board
+        };
       }
 
       let actualPlayer1 = player1;
@@ -2992,6 +3002,8 @@ export default function ConnectFour() {
         setCurrentMatch(updated);
         // Initialize board ref for move detection
         previousBoardRef.current = [...updated.board];
+        // Reset modal shown ref for new match
+        matchEndModalShownRef.current = false;
         // Fetch move history from blockchain events
         const history = await fetchMoveHistory(contract, tierId, instanceId, roundNumber, matchNumber);
         setMoveHistory(history);
@@ -3152,6 +3164,9 @@ export default function ConnectFour() {
     // Clear the modal state only - no navigation
     setMatchEndResult(null);
     setMatchEndWinnerLabel('');
+    // DON'T reset matchEndModalShownRef here - we want to keep it true
+    // so the modal doesn't show again for this same match
+    // It will be reset when entering a new match
   };
 
   // Handle closing the active match alert modal
@@ -3562,9 +3577,15 @@ export default function ConnectFour() {
 
       if (!match || !contractInstance || !userAccount) return;
 
-      // Skip polling if match is completed - events have set final state
-      if (match.matchStatus === 2) {
+      // Skip polling if match is completed AND modal has been shown
+      // IMPORTANT: Keep polling if modal hasn't been shown yet to ensure it triggers
+      if (match.matchStatus === 2 && matchEndModalShownRef.current) {
+        console.log('[Connect4 Polling] Skipping poll - match already completed and modal shown');
         return;
+      }
+
+      if (match.matchStatus === 2 && !matchEndModalShownRef.current) {
+        console.log('[Connect4 Polling] Match completed but modal not shown yet, continuing to poll');
       }
 
       // Skip polling if a move transaction is in progress to prevent state overwrites
@@ -3582,9 +3603,24 @@ export default function ConnectFour() {
         );
 
         if (updatedMatch) {
+          // Check if we're waiting for completion data from blockchain indexing
+          if (updatedMatch.waitingForCompletionData) {
+            console.log('[Connect4 Polling] Waiting for match completion data to be indexed in getPlayerMatches()...');
+            // Keep polling - don't update state yet
+            return;
+          }
+
           // If match just completed (detected via event query in refreshMatchData)
           if (updatedMatch.matchStatus === 2) {
-            console.log('[Connect4 Polling] Match completion detected, updating state and showing modal');
+            console.log('[Connect4 Polling] ===== MATCH COMPLETION DETECTED =====');
+            console.log('[Connect4 Polling] Updated match data:', {
+              matchStatus: updatedMatch.matchStatus,
+              winner: updatedMatch.winner,
+              loser: updatedMatch.loser,
+              completionReason: updatedMatch.completionReason,
+              currentUser: userAccount
+            });
+            console.log('[Connect4 Polling] matchEndModalShownRef.current:', matchEndModalShownRef.current);
 
             // CRITICAL: Fetch final move history from getPlayerMatches()
             // This ensures the loser sees the opponent's final winning move
@@ -3612,6 +3648,12 @@ export default function ConnectFour() {
             });
 
             // Show completion modal (in case event listener missed it)
+            // Guard: Only show modal once per match completion
+            if (matchEndModalShownRef.current) {
+              console.log('[Connect4 Polling] Match completion already processed, skipping modal trigger');
+              return;
+            }
+
             const isPlayer1 = match.player1?.toLowerCase() === userAccount.toLowerCase();
             const isPlayer2 = match.player2?.toLowerCase() === userAccount.toLowerCase();
             const isParticipant = isPlayer1 || isPlayer2;
@@ -3619,7 +3661,34 @@ export default function ConnectFour() {
             if (isParticipant) {
               const reasonNum = updatedMatch.completionReason || 0;
               const isMatchDraw = isDraw(reasonNum);
-              const userWon = !isMatchDraw && updatedMatch.winner.toLowerCase() === userAccount.toLowerCase();
+
+              // Validate winner and loser addresses
+              const winnerAddress = updatedMatch.winner?.toLowerCase();
+              const loserAddress = updatedMatch.loser?.toLowerCase();
+              const zeroAddress = '0x0000000000000000000000000000000000000000';
+
+              // For non-draw matches, ensure winner/loser are valid and one matches current user
+              if (!isMatchDraw) {
+                if (!winnerAddress || !loserAddress || winnerAddress === zeroAddress || loserAddress === zeroAddress) {
+                  console.error('[Connect4 Polling] Invalid winner/loser addresses:', { winnerAddress, loserAddress });
+                  return;
+                }
+
+                // Ensure current user is either winner or loser (not neither)
+                const userIsWinner = winnerAddress === userAccount.toLowerCase();
+                const userIsLoser = loserAddress === userAccount.toLowerCase();
+
+                if (!userIsWinner && !userIsLoser) {
+                  console.error('[Connect4 Polling] User is neither winner nor loser. Addresses:', {
+                    user: userAccount.toLowerCase(),
+                    winner: winnerAddress,
+                    loser: loserAddress
+                  });
+                  return;
+                }
+              }
+
+              const userWon = !isMatchDraw && winnerAddress === userAccount.toLowerCase();
 
               let resultType = 'lose';
               if (isMatchDraw) {
@@ -3630,10 +3699,29 @@ export default function ConnectFour() {
                 resultType = (reasonNum === 1 || reasonNum === 3 || reasonNum === 4) ? 'forfeit_lose' : 'lose';
               }
 
+              console.log('[Connect4 Polling] ===== ABOUT TO SHOW MODAL =====');
               console.log('[Connect4 Polling] Setting match end result:', resultType, 'with completion reason:', reasonNum);
+              console.log('[Connect4 Polling] Match end details:', {
+                resultType,
+                reasonNum,
+                userAccount: userAccount.toLowerCase(),
+                winner: winnerAddress,
+                loser: loserAddress,
+                isPlayer1,
+                isPlayer2
+              });
+
+              // Mark modal as shown before setting state
+              matchEndModalShownRef.current = true;
+              console.log('[Connect4 Polling] Set matchEndModalShownRef.current to true');
+
               setMatchEndResult({ result: resultType, completionReason: reasonNum });
+              console.log('[Connect4 Polling] Called setMatchEndResult');
               setMatchEndWinner(updatedMatch.winner);
+              console.log('[Connect4 Polling] Called setMatchEndWinner');
               setMatchEndLoser(updatedMatch.loser);
+              console.log('[Connect4 Polling] Called setMatchEndLoser');
+              console.log('[Connect4 Polling] ===== MODAL STATE UPDATES COMPLETE =====');
 
               // Check for next active match if user won
               if (userWon) {

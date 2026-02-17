@@ -37,6 +37,16 @@ const MatchEndModal = ({
   completionReason,
   tournamentWinner
 }) => {
+  // Debug logging for modal visibility
+  useEffect(() => {
+    if (isVisible) {
+      console.log('[MatchEndModal] Modal now visible with result:', result, 'completionReason:', completionReason);
+      console.log('[MatchEndModal] Winner:', winnerAddress, 'Loser:', loserAddress, 'Current user:', currentAccount);
+    } else {
+      console.log('[MatchEndModal] Modal hidden');
+    }
+  }, [isVisible, result, completionReason, winnerAddress, loserAddress, currentAccount]);
+
   // Fire confetti for wins (mobile-optimized)
   const fireConfetti = useCallback(() => {
     // Detect mobile devices
