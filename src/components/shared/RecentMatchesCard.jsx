@@ -38,6 +38,9 @@ const RecentMatchesCard = ({
   const [syncing, setSyncing] = useState(false);
   const [moveIndices, setMoveIndices] = useState({}); // Track current move index for each match
   const [expandedModalMatch, setExpandedModalMatch] = useState(null); // Track which match is in modal view
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
   // Transaction history state
   const [showTransactionHistory, setShowTransactionHistory] = useState(false);
   const [transactionHistory, setTransactionHistory] = useState([]);
@@ -90,11 +93,20 @@ const RecentMatchesCard = ({
   // Fetch fresh data when panel transitions from collapsed to expanded
   useEffect(() => {
     if (isExpanded && !prevExpandedRef.current) {
+      setCurrentPage(1); // Reset to first page when opening
       fetchRecentMatches();
       fetchTransactionHistory();
     }
     prevExpandedRef.current = isExpanded;
   }, [isExpanded]);
+
+  // Reset to page 1 if current page exceeds total pages after matches update
+  useEffect(() => {
+    const totalPages = Math.ceil(recentMatches.length / itemsPerPage);
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    }
+  }, [recentMatches.length, currentPage, itemsPerPage]);
 
   // Measure and report height whenever content changes
   useEffect(() => {
@@ -269,6 +281,7 @@ const RecentMatchesCard = ({
 
   const handleRefresh = () => {
     setRecentMatches([]);
+    setCurrentPage(1); // Reset to first page on refresh
     fetchRecentMatches();
     // Also refresh transaction history if it's visible
     if (showTransactionHistory) {
@@ -1006,7 +1019,15 @@ const RecentMatchesCard = ({
             </div>
           ) : (
             <div className="space-y-6">
-              {recentMatches.map((match, index) => {
+              {/* Pagination calculations */}
+              {(() => {
+                const totalPages = Math.ceil(recentMatches.length / itemsPerPage);
+                const startIndex = (currentPage - 1) * itemsPerPage;
+                const endIndex = startIndex + itemsPerPage;
+                const paginatedMatches = recentMatches.slice(startIndex, endIndex);
+
+                return paginatedMatches.map((match, paginatedIndex) => {
+                  const index = startIndex + paginatedIndex; // Global index for match numbering
                 const accountLower = account?.toLowerCase() || '';
                 const winnerLower = match.winner?.toLowerCase() || '';
                 const player1Lower = match.player1?.toLowerCase() || '';
@@ -1641,7 +1662,53 @@ const RecentMatchesCard = ({
                     )}
                   </div>
                 );
-              })}
+              });
+              })()}
+
+              {/* Pagination Controls */}
+              {(() => {
+                const totalPages = Math.ceil(recentMatches.length / itemsPerPage);
+                if (totalPages <= 1) return null;
+
+                return (
+                  <div className="flex items-center justify-center gap-3 mt-6 pt-4 border-t border-slate-700/50">
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                      className={`p-2 rounded transition-colors ${
+                        currentPage === 1
+                          ? 'text-slate-600 cursor-not-allowed'
+                          : 'text-teal-300 hover:bg-teal-500/20 hover:text-teal-200'
+                      }`}
+                      title="Previous page"
+                    >
+                      <ChevronLeft size={20} />
+                    </button>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-400 text-sm">
+                        Page {currentPage} of {totalPages}
+                      </span>
+                      <span className="text-slate-500 text-xs">
+                        ({recentMatches.length} total matches)
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage === totalPages}
+                      className={`p-2 rounded transition-colors ${
+                        currentPage === totalPages
+                          ? 'text-slate-600 cursor-not-allowed'
+                          : 'text-teal-300 hover:bg-teal-500/20 hover:text-teal-200'
+                      }`}
+                      title="Next page"
+                    >
+                      <ChevronRight size={20} />
+                    </button>
+                  </div>
+                );
+              })()}
             </div>
           )}
           </div>
