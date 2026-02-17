@@ -133,7 +133,7 @@ const CommunityRaffleCard = ({
   const BASE_TOP_DESKTOP = 80; // md:top-20 in pixels
   const COLLAPSED_BUTTON_HEIGHT_DESKTOP = 64; // collapsed button height on desktop
   const SPACING_DESKTOP = 16; // gap between collapsed circles
-  const EXPANDED_BOTTOM_MARGIN = 120; // margin below expanded cards
+  const EXPANDED_BOTTOM_MARGIN = 160; // margin below expanded cards
 
   // Calculate desktop top position accounting for both GamesCard and PlayerActivity
   let topPositionDesktop = BASE_TOP_DESKTOP;
