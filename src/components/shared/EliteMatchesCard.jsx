@@ -162,73 +162,78 @@ const EliteMatchesCard = ({
       }}
     >
       {/* Toggle Button */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation(); // Prevent click from bubbling to document
-          if (disabled) {
-            if (onShowTooltip) onShowTooltip();
-          } else {
-            handleSetExpanded(!isExpanded);
-          }
-        }}
-        disabled={false}
-        className={`max-md:mx-auto md:bg-gradient-to-br md:backdrop-blur-lg rounded-full p-2 md:p-4 md:border-2 transition-all md:shadow-xl relative group ${
-          disabled
-            ? 'opacity-100 cursor-not-allowed md:from-gray-600/95 md:to-gray-700/95 md:border-gray-500/40'
-            : 'md:from-amber-700/95 md:to-yellow-800/95 ' + (isExpanded
-            ? 'bg-gradient-to-br from-amber-700/95 to-yellow-800/95 border-2 border-amber-400 scale-105 hover:scale-110'
-            : 'md:border-amber-600/50 md:hover:border-amber-500/70 hover:scale-110')
-        }`}
-        aria-label={disabled ? "Connect wallet to access elite matches" : isExpanded ? "Close elite matches" : "Open elite matches"}
-        title={disabled ? "Connect Wallet to View Elite Matches" : ""}
-        style={{
-          boxShadow: disabled ? 'none' : isExpanded
-            ? '0 0 30px rgba(251, 191, 36, 0.9), 0 0 60px rgba(251, 191, 36, 0.7), 0 0 90px rgba(251, 191, 36, 0.5)'
-            : '0 0 25px rgba(180, 83, 9, 0.9), 0 0 50px rgba(180, 83, 9, 0.7), 0 0 75px rgba(180, 83, 9, 0.5), 0 0 100px rgba(180, 83, 9, 0.3)'
-        }}
-      >
-        <Crown size={16} className="text-white md:w-6 md:h-6" />
+      <div className="max-md:flex max-md:flex-col max-md:items-center max-md:gap-1">
+        <button
+          onClick={(e) => {
+            e.stopPropagation(); // Prevent click from bubbling to document
+            if (disabled) {
+              if (onShowTooltip) onShowTooltip();
+            } else {
+              handleSetExpanded(!isExpanded);
+            }
+          }}
+          disabled={false}
+          className={`max-md:mx-auto md:bg-gradient-to-br md:backdrop-blur-lg rounded-full p-2 md:p-4 md:border-2 transition-all md:shadow-xl relative group ${
+            disabled
+              ? 'opacity-100 cursor-not-allowed md:from-gray-600/95 md:to-gray-700/95 md:border-gray-500/40'
+              : 'md:from-amber-700/95 md:to-yellow-800/95 ' + (isExpanded
+              ? 'bg-gradient-to-br from-amber-700/95 to-yellow-800/95 border-2 border-amber-400 scale-105 hover:scale-110'
+              : 'md:border-amber-600/50 md:hover:border-amber-500/70 hover:scale-110')
+          }`}
+          aria-label={disabled ? "Connect wallet to access elite matches" : isExpanded ? "Close elite matches" : "Open elite matches"}
+          title={disabled ? "Connect Wallet to View Elite Matches" : ""}
+          style={{
+            boxShadow: disabled ? 'none' : isExpanded
+              ? '0 0 30px rgba(251, 191, 36, 0.9), 0 0 60px rgba(251, 191, 36, 0.7), 0 0 90px rgba(251, 191, 36, 0.5)'
+              : '0 0 25px rgba(180, 83, 9, 0.9), 0 0 50px rgba(180, 83, 9, 0.7), 0 0 75px rgba(180, 83, 9, 0.5), 0 0 100px rgba(180, 83, 9, 0.3)'
+          }}
+        >
+          <Crown size={16} className="text-white md:w-6 md:h-6" />
 
-        {/* Sync Circle Animation */}
-        {syncing && (
-          <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-cyan-400 animate-spin"></div>
-        )}
+          {/* Sync Circle Animation */}
+          {syncing && (
+            <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-cyan-400 animate-spin"></div>
+          )}
 
-        {/* Match Count Badge */}
-        {hasMatches && (
-          <div className="absolute -top-1 -right-1 bg-amber-800 rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center">
-            <span className="text-white text-[10px] md:text-xs font-bold">{eliteMatches.length}</span>
-          </div>
-        )}
+          {/* Match Count Badge */}
+          {hasMatches && (
+            <div className="absolute -top-1 -right-1 bg-amber-800 rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center">
+              <span className="text-white text-[10px] md:text-xs font-bold">{eliteMatches.length}</span>
+            </div>
+          )}
 
-        {/* Tooltip - Desktop only */}
-        {disabled ? (
-          <a
-            href="#connect-wallet-cta"
-            className="max-md:hidden absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all shadow-2xl border-2 border-purple-400/60 hover:scale-105"
-          >
-            Connect Wallet to View Elite Matches
-          </a>
-        ) : (
-          <div className="max-md:hidden absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-            Elite Matches
-          </div>
-        )}
+          {/* Tooltip - Desktop only */}
+          {disabled ? (
+            <a
+              href="#connect-wallet-cta"
+              className="max-md:hidden absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all shadow-2xl border-2 border-purple-400/60 hover:scale-105"
+            >
+              Connect Wallet to View Elite Matches
+            </a>
+          ) : (
+            <div className="max-md:hidden absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+              Elite Matches
+            </div>
+          )}
 
-        {/* Tooltip - Mobile only */}
-        {showTooltip && disabled && (
-          <a
-            href="#connect-wallet-cta"
-            onClick={(e) => {
-              e.stopPropagation(); // Allow navigation but prevent document click
-              if (onHideTooltip) onHideTooltip();
-            }}
-            className="md:hidden fixed bottom-20 left-4 right-4 w-auto max-w-[calc(100vw-2rem)] bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-6 py-3 rounded-xl z-[100] animate-fade-in shadow-2xl border-2 border-purple-400/60 hover:scale-105 transition-transform text-center"
-          >
-            Connect Wallet to View Elite Matches
-          </a>
-        )}
-      </button>
+          {/* Tooltip - Mobile only */}
+          {showTooltip && disabled && (
+            <a
+              href="#connect-wallet-cta"
+              onClick={(e) => {
+                e.stopPropagation(); // Allow navigation but prevent document click
+                if (onHideTooltip) onHideTooltip();
+              }}
+              className="md:hidden fixed bottom-20 left-4 right-4 w-auto max-w-[calc(100vw-2rem)] bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-6 py-3 rounded-xl z-[100] animate-fade-in shadow-2xl border-2 border-purple-400/60 hover:scale-105 transition-transform text-center"
+            >
+              Connect Wallet to View Elite Matches
+            </a>
+          )}
+        </button>
+
+        {/* Label - Mobile only */}
+        <span className="md:hidden text-[10px] text-white/80 font-medium">Elite</span>
+      </div>
 
       {/* Expanded State */}
       {isExpanded && (

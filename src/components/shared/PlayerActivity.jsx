@@ -309,48 +309,49 @@ const PlayerActivity = ({
       }}
     >
       {/* Toggle Button */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation(); // Prevent click from bubbling to document
-          if (disabled) {
-            if (onShowTooltip) onShowTooltip();
-          } else {
-            handleSetExpanded(!isExpanded);
-          }
-        }}
-        disabled={false}
-        className={`max-md:mx-auto bg-gradient-to-br backdrop-blur-lg rounded-full p-2 md:p-4 transition-all md:shadow-xl relative group ${
-          disabled
-            ? 'opacity-100 cursor-not-allowed from-gray-600/90 to-gray-700/90 border-2 border-gray-500/40'
-            : isElite
-            ? isExpanded
-              ? 'from-[#fbbf24]/90 to-[#f59e0b]/90 border-2 border-[#fbbf24] md:shadow-[0_0_20px_rgba(251,191,36,0.6)] scale-105'
-              : 'from-[#fbbf24]/90 to-[#f59e0b]/90 md:border-2 md:border-[#d4a012]/40 md:hover:border-[#d4a012]/70 hover:scale-110'
-            : isExpanded
-            ? 'from-purple-600/90 to-blue-600/90 border-2 border-purple-300 md:shadow-[0_0_20px_rgba(192,132,252,0.6)] scale-105'
-            : 'from-purple-600/90 to-blue-600/90 md:border-2 md:border-purple-400/40 md:hover:border-purple-400/70 hover:scale-110'
-        }`}
-        aria-label={disabled ? "Connect wallet to access player activity" : isExpanded ? "Close player activity" : "Open player activity"}
-        title={disabled ? "Connect Wallet to View Your Activity" : ""}
-      >
-        <Users size={16} className="text-white md:w-6 md:h-6" />
+      <div className="max-md:flex max-md:flex-col max-md:items-center max-md:gap-1">
+        <button
+          onClick={(e) => {
+            e.stopPropagation(); // Prevent click from bubbling to document
+            if (disabled) {
+              if (onShowTooltip) onShowTooltip();
+            } else {
+              handleSetExpanded(!isExpanded);
+            }
+          }}
+          disabled={false}
+          className={`max-md:mx-auto bg-gradient-to-br backdrop-blur-lg rounded-full p-2 md:p-4 transition-all md:shadow-xl relative group ${
+            disabled
+              ? 'opacity-100 cursor-not-allowed from-gray-600/90 to-gray-700/90 border-2 border-gray-500/40'
+              : isElite
+              ? isExpanded
+                ? 'from-[#fbbf24]/90 to-[#f59e0b]/90 border-2 border-[#fbbf24] md:shadow-[0_0_20px_rgba(251,191,36,0.6)] scale-105'
+                : 'from-[#fbbf24]/90 to-[#f59e0b]/90 md:border-2 md:border-[#d4a012]/40 md:hover:border-[#d4a012]/70 hover:scale-110'
+              : isExpanded
+              ? 'from-purple-600/90 to-blue-600/90 border-2 border-purple-300 md:shadow-[0_0_20px_rgba(192,132,252,0.6)] scale-105'
+              : 'from-purple-600/90 to-blue-600/90 md:border-2 md:border-purple-400/40 md:hover:border-purple-400/70 hover:scale-110'
+          }`}
+          aria-label={disabled ? "Connect wallet to access player activity" : isExpanded ? "Close player activity" : "Open player activity"}
+          title={disabled ? "Connect Wallet to View Your Activity" : ""}
+        >
+          <Users size={16} className="text-white md:w-6 md:h-6" />
 
-        {/* Sync Circle Animation */}
-        {syncing && (
-          <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-cyan-400 animate-spin"></div>
-        )}
+          {/* Sync Circle Animation */}
+          {syncing && (
+            <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-cyan-400 animate-spin"></div>
+          )}
 
-        {/* Activity Badges */}
-        {enrolledTournamentCount > 0 && (
-          <div className="absolute -top-1 -right-1 bg-orange-500 rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center animate-pulse">
-            <span className="text-white text-[10px] md:text-xs font-bold">{enrolledTournamentCount}</span>
-          </div>
-        )}
-        {activeMatchCount > 0 && (
-          <div className="absolute -top-1 -left-1 bg-red-500 rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center animate-pulse">
-            <span className="text-white text-[10px] md:text-xs font-bold">{activeMatchCount}</span>
-          </div>
-        )}
+          {/* Activity Badges */}
+          {enrolledTournamentCount > 0 && (
+            <div className="absolute -top-1 -right-1 bg-orange-500 rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center animate-pulse">
+              <span className="text-white text-[10px] md:text-xs font-bold">{enrolledTournamentCount}</span>
+            </div>
+          )}
+          {activeMatchCount > 0 && (
+            <div className="absolute -top-1 -left-1 bg-red-500 rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center animate-pulse">
+              <span className="text-white text-[10px] md:text-xs font-bold">{activeMatchCount}</span>
+            </div>
+          )}
 
         {/* Tooltip - Desktop only */}
         {disabled ? (
@@ -380,6 +381,10 @@ const PlayerActivity = ({
           </a>
         )}
       </button>
+
+      {/* Label - Mobile only */}
+      <span className="md:hidden text-[10px] text-white/80 font-medium">Activity</span>
+    </div>
 
       {/* Expanded State */}
       {isExpanded && (

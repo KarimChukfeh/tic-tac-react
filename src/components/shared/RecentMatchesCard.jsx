@@ -871,61 +871,66 @@ const RecentMatchesCard = ({
       }}
     >
       {/* Toggle Button */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation(); // Prevent click from bubbling to document
-          if (disabled) {
-            if (onShowTooltip) onShowTooltip();
-          } else {
-            handleSetExpanded(!isExpanded);
-          }
-        }}
-        disabled={false}
-        className={`max-md:mx-auto bg-gradient-to-br backdrop-blur-lg rounded-full p-2 md:p-4 transition-all md:shadow-xl relative group ${
-          disabled
-            ? 'opacity-100 cursor-not-allowed from-gray-600/90 to-gray-700/90 border-2 border-gray-500/40'
-            : 'from-teal-600/90 to-cyan-600/90 ' + (isExpanded
-            ? 'border-2 border-teal-300 md:shadow-[0_0_20px_rgba(94,234,212,0.6)] scale-105'
-            : 'md:border-2 md:border-teal-400/40 md:hover:border-teal-400/70 hover:scale-110')
-        }`}
-        aria-label={disabled ? "Connect wallet to access recent matches" : isExpanded ? "Close recent matches" : "Open recent matches"}
-        title={disabled ? "Connect Wallet to View Your Match History" : ""}
-      >
-        <History size={16} className="text-white md:w-6 md:h-6" />
+      <div className="max-md:flex max-md:flex-col max-md:items-center max-md:gap-1">
+        <button
+          onClick={(e) => {
+            e.stopPropagation(); // Prevent click from bubbling to document
+            if (disabled) {
+              if (onShowTooltip) onShowTooltip();
+            } else {
+              handleSetExpanded(!isExpanded);
+            }
+          }}
+          disabled={false}
+          className={`max-md:mx-auto bg-gradient-to-br backdrop-blur-lg rounded-full p-2 md:p-4 transition-all md:shadow-xl relative group ${
+            disabled
+              ? 'opacity-100 cursor-not-allowed from-gray-600/90 to-gray-700/90 border-2 border-gray-500/40'
+              : 'from-teal-600/90 to-cyan-600/90 ' + (isExpanded
+              ? 'border-2 border-teal-300 md:shadow-[0_0_20px_rgba(94,234,212,0.6)] scale-105'
+              : 'md:border-2 md:border-teal-400/40 md:hover:border-teal-400/70 hover:scale-110')
+          }`}
+          aria-label={disabled ? "Connect wallet to access recent matches" : isExpanded ? "Close recent matches" : "Open recent matches"}
+          title={disabled ? "Connect Wallet to View Your Match History" : ""}
+        >
+          <History size={16} className="text-white md:w-6 md:h-6" />
 
-        {/* Sync Circle Animation */}
-        {syncing && (
-          <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-cyan-400 animate-spin"></div>
-        )}
+          {/* Sync Circle Animation */}
+          {syncing && (
+            <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-cyan-400 animate-spin"></div>
+          )}
 
-        {/* Tooltip - Desktop only */}
-        {disabled ? (
-          <a
-            href="#connect-wallet-cta"
-            className="max-md:hidden absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all shadow-2xl border-2 border-purple-400/60 hover:scale-105"
-          >
-            Connect Wallet to View Your Match History
-          </a>
-        ) : (
-          <div className="max-md:hidden absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-            Match History
-          </div>
-        )}
+          {/* Tooltip - Desktop only */}
+          {disabled ? (
+            <a
+              href="#connect-wallet-cta"
+              className="max-md:hidden absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all shadow-2xl border-2 border-purple-400/60 hover:scale-105"
+            >
+              Connect Wallet to View Your Match History
+            </a>
+          ) : (
+            <div className="max-md:hidden absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+              Match History
+            </div>
+          )}
 
-        {/* Tooltip - Mobile only */}
-        {showTooltip && disabled && (
-          <a
-            href="#connect-wallet-cta"
-            onClick={(e) => {
-              e.stopPropagation(); // Allow navigation but prevent document click
-              if (onHideTooltip) onHideTooltip();
-            }}
-            className="md:hidden fixed bottom-20 left-4 right-4 w-auto max-w-[calc(100vw-2rem)] bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-6 py-3 rounded-xl z-[100] animate-fade-in shadow-2xl border-2 border-purple-400/60 hover:scale-105 transition-transform text-center"
-          >
-            Connect Wallet to View Your Match History
-          </a>
-        )}
-      </button>
+          {/* Tooltip - Mobile only */}
+          {showTooltip && disabled && (
+            <a
+              href="#connect-wallet-cta"
+              onClick={(e) => {
+                e.stopPropagation(); // Allow navigation but prevent document click
+                if (onHideTooltip) onHideTooltip();
+              }}
+              className="md:hidden fixed bottom-20 left-4 right-4 w-auto max-w-[calc(100vw-2rem)] bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-6 py-3 rounded-xl z-[100] animate-fade-in shadow-2xl border-2 border-purple-400/60 hover:scale-105 transition-transform text-center"
+            >
+              Connect Wallet to View Your Match History
+            </a>
+          )}
+        </button>
+
+        {/* Label - Mobile only */}
+        <span className="md:hidden text-[10px] text-white/80 font-medium">History</span>
+      </div>
 
       {/* Expanded State */}
       {isExpanded && (

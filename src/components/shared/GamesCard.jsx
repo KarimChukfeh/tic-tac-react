@@ -90,27 +90,32 @@ const GamesCard = ({
       }}
     >
       {/* Toggle Button */}
-      <button
-        onClick={() => handleSetExpanded(!isExpanded)}
-        className={`max-md:mx-auto rounded-full p-2 md:p-4 transition-all hover:scale-110 md:shadow-xl relative group ${
-          isExpanded
-            ? 'bg-gradient-to-br from-slate-700 to-slate-800 border-2 border-slate-400 md:shadow-[0_0_20px_rgba(148,163,184,0.6)] scale-105'
-            : 'bg-gradient-to-br from-slate-700 to-slate-800 md:border-2 md:border-slate-600/70 md:hover:border-slate-500'
-        }`}
-        aria-label={isExpanded ? "Close games" : "Open games"}
-      >
-        <img
-          src="/games-icon.png"
-          alt="Games"
-          className="w-4 h-4 md:w-6 md:h-6"
-          style={{ filter: 'brightness(0) invert(1)' }}
-        />
+      <div className="max-md:flex max-md:flex-col max-md:items-center max-md:gap-1">
+        <button
+          onClick={() => handleSetExpanded(!isExpanded)}
+          className={`max-md:mx-auto rounded-full p-2 md:p-4 transition-all hover:scale-110 md:shadow-xl relative group ${
+            isExpanded
+              ? 'bg-gradient-to-br from-slate-700 to-slate-800 border-2 border-slate-400 md:shadow-[0_0_20px_rgba(148,163,184,0.6)] scale-105'
+              : 'bg-gradient-to-br from-slate-700 to-slate-800 md:border-2 md:border-slate-600/70 md:hover:border-slate-500'
+          }`}
+          aria-label={isExpanded ? "Close games" : "Open games"}
+        >
+          <img
+            src="/games-icon.png"
+            alt="Games"
+            className="w-4 h-4 md:w-6 md:h-6"
+            style={{ filter: 'brightness(0) invert(1)' }}
+          />
 
-        {/* Tooltip - Desktop only */}
-        <div className="max-md:hidden absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-slate-800 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border border-cyan-400/30">
-          Games
-        </div>
-      </button>
+          {/* Tooltip - Desktop only */}
+          <div className="max-md:hidden absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-slate-800 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border border-cyan-400/30">
+            Games
+          </div>
+        </button>
+
+        {/* Label - Mobile only */}
+        <span className="md:hidden text-[10px] text-white/80 font-medium">Games</span>
+      </div>
 
       {/* Expanded Panel */}
       {isExpanded && (

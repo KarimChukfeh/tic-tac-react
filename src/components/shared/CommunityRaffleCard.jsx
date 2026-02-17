@@ -168,75 +168,80 @@ const CommunityRaffleCard = ({
       }}
     >
       {/* Toggle Button */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation(); // Prevent click from bubbling to document
-          if (disabled) {
-            if (onShowTooltip) onShowTooltip();
-          } else {
-            handleSetExpanded(!isExpanded);
-          }
-        }}
-        disabled={false}
-        className={`max-md:mx-auto rounded-full p-2 md:p-4 transition-all md:shadow-xl relative group ${
-          disabled
-            ? 'opacity-100 cursor-not-allowed bg-gradient-to-br from-gray-600 to-gray-700 border-2 border-gray-500/40'
-            : isExpanded
-            ? 'bg-gradient-to-br from-yellow-500 to-amber-500 border-2 border-yellow-300 md:shadow-[0_0_20px_rgba(251,191,36,0.6)] scale-105'
-            : isFull
-            ? 'bg-gradient-to-br from-yellow-500 to-amber-500 md:border-2 md:border-yellow-400/70 md:hover:border-yellow-400 hover:scale-110'
-            : 'bg-gradient-to-br from-yellow-600 to-amber-600 md:border-2 md:border-yellow-400/40 md:hover:border-yellow-400/70 hover:scale-110'
-        }`}
-        aria-label={disabled ? "Connect wallet to access community raffle" : isExpanded ? "Close community raffle" : "Open community raffle"}
-        title={disabled ? "Connect Wallet to View Community Raffle" : ""}
-      >
-        <img
-          src="/raffle-icon.png"
-          alt="Raffle"
-          className="w-4 h-4 md:w-6 md:h-6"
-          style={{ filter: 'brightness(0) invert(1)' }}
-        />
+      <div className="max-md:flex max-md:flex-col max-md:items-center max-md:gap-1">
+        <button
+          onClick={(e) => {
+            e.stopPropagation(); // Prevent click from bubbling to document
+            if (disabled) {
+              if (onShowTooltip) onShowTooltip();
+            } else {
+              handleSetExpanded(!isExpanded);
+            }
+          }}
+          disabled={false}
+          className={`max-md:mx-auto rounded-full p-2 md:p-4 transition-all md:shadow-xl relative group ${
+            disabled
+              ? 'opacity-100 cursor-not-allowed bg-gradient-to-br from-gray-600 to-gray-700 border-2 border-gray-500/40'
+              : isExpanded
+              ? 'bg-gradient-to-br from-yellow-500 to-amber-500 border-2 border-yellow-300 md:shadow-[0_0_20px_rgba(251,191,36,0.6)] scale-105'
+              : isFull
+              ? 'bg-gradient-to-br from-yellow-500 to-amber-500 md:border-2 md:border-yellow-400/70 md:hover:border-yellow-400 hover:scale-110'
+              : 'bg-gradient-to-br from-yellow-600 to-amber-600 md:border-2 md:border-yellow-400/40 md:hover:border-yellow-400/70 hover:scale-110'
+          }`}
+          aria-label={disabled ? "Connect wallet to access community raffle" : isExpanded ? "Close community raffle" : "Open community raffle"}
+          title={disabled ? "Connect Wallet to View Community Raffle" : ""}
+        >
+          <img
+            src="/raffle-icon.png"
+            alt="Raffle"
+            className="w-4 h-4 md:w-6 md:h-6"
+            style={{ filter: 'brightness(0) invert(1)' }}
+          />
 
-        {/* Sync Circle Animation */}
-        {syncing && (
-          <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-cyan-400 animate-spin"></div>
-        )}
+          {/* Sync Circle Animation */}
+          {syncing && (
+            <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-cyan-400 animate-spin"></div>
+          )}
 
-        {/* Full Badge */}
-        {isFull && (
-          <div className="absolute -top-1 -right-1 bg-yellow-500 rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center">
-            <span className="text-white text-[10px] md:text-xs font-bold">✓</span>
-          </div>
-        )}
+          {/* Full Badge */}
+          {isFull && (
+            <div className="absolute -top-1 -right-1 bg-yellow-500 rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center">
+              <span className="text-white text-[10px] md:text-xs font-bold">✓</span>
+            </div>
+          )}
 
-        {/* Tooltip - Desktop only */}
-        {disabled ? (
-          <a
-            href="#connect-wallet-cta"
-            className="max-md:hidden absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all shadow-2xl border-2 border-purple-400/60 hover:scale-105"
-          >
-            Connect Wallet to View Community Raffle
-          </a>
-        ) : (
-          <div className="max-md:hidden absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-            Community Raffle
-          </div>
-        )}
+          {/* Tooltip - Desktop only */}
+          {disabled ? (
+            <a
+              href="#connect-wallet-cta"
+              className="max-md:hidden absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all shadow-2xl border-2 border-purple-400/60 hover:scale-105"
+            >
+              Connect Wallet to View Community Raffle
+            </a>
+          ) : (
+            <div className="max-md:hidden absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+              Community Raffle
+            </div>
+          )}
 
-        {/* Tooltip - Mobile only */}
-        {showTooltip && disabled && (
-          <a
-            href="#connect-wallet-cta"
-            onClick={(e) => {
-              e.stopPropagation(); // Allow navigation but prevent document click
-              if (onHideTooltip) onHideTooltip();
-            }}
-            className="md:hidden fixed bottom-20 left-4 right-4 w-auto max-w-[calc(100vw-2rem)] bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-6 py-3 rounded-xl z-[100] animate-fade-in shadow-2xl border-2 border-purple-400/60 hover:scale-105 transition-transform text-center"
-          >
-            Connect Wallet to View Community Raffle
-          </a>
-        )}
-      </button>
+          {/* Tooltip - Mobile only */}
+          {showTooltip && disabled && (
+            <a
+              href="#connect-wallet-cta"
+              onClick={(e) => {
+                e.stopPropagation(); // Allow navigation but prevent document click
+                if (onHideTooltip) onHideTooltip();
+              }}
+              className="md:hidden fixed bottom-20 left-4 right-4 w-auto max-w-[calc(100vw-2rem)] bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-6 py-3 rounded-xl z-[100] animate-fade-in shadow-2xl border-2 border-purple-400/60 hover:scale-105 transition-transform text-center"
+            >
+              Connect Wallet to View Community Raffle
+            </a>
+          )}
+        </button>
+
+        {/* Label - Mobile only */}
+        <span className="md:hidden text-[10px] text-white/80 font-medium">Raffle</span>
+      </div>
 
       {/* Expanded State */}
       {isExpanded && (
