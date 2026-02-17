@@ -232,7 +232,7 @@ const CommunityRaffleCard = ({
                 e.stopPropagation(); // Allow navigation but prevent document click
                 if (onHideTooltip) onHideTooltip();
               }}
-              className="md:hidden fixed bottom-20 left-4 right-4 w-auto max-w-[calc(100vw-2rem)] bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-6 py-3 rounded-xl z-[100] animate-fade-in shadow-2xl border-2 border-purple-400/60 hover:scale-105 transition-transform text-center"
+              className="md:hidden fixed bottom-20 left-4 right-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-6 py-3 rounded-xl z-[100] animate-fade-in shadow-2xl border-2 border-purple-400/60 hover:scale-105 transition-transform text-center"
             >
               Connect Wallet to View Community Raffle
             </a>
