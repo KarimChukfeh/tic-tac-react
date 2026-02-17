@@ -178,14 +178,14 @@ const CommunityRaffleCard = ({
           }
         }}
         disabled={false}
-        className={`max-md:mx-auto rounded-full p-2 md:p-4 md:border-2 transition-all md:shadow-xl relative group ${
+        className={`max-md:mx-auto rounded-full p-2 md:p-4 transition-all md:shadow-xl relative group ${
           disabled
-            ? 'opacity-100 cursor-not-allowed md:bg-gradient-to-br md:from-gray-600 md:to-gray-700 md:border-gray-500/40'
+            ? 'opacity-100 cursor-not-allowed bg-gradient-to-br from-gray-600 to-gray-700 border-2 border-gray-500/40'
             : isExpanded
             ? 'bg-gradient-to-br from-yellow-500 to-amber-500 border-2 border-yellow-300 md:shadow-[0_0_20px_rgba(251,191,36,0.6)] scale-105'
             : isFull
-            ? 'md:bg-gradient-to-br md:from-yellow-500 md:to-amber-500 md:border-yellow-400/70 md:hover:border-yellow-400 hover:scale-110'
-            : 'md:bg-gradient-to-br md:from-yellow-600 md:to-amber-600 md:border-yellow-400/40 md:hover:border-yellow-400/70 hover:scale-110'
+            ? 'bg-gradient-to-br from-yellow-500 to-amber-500 md:border-2 md:border-yellow-400/70 md:hover:border-yellow-400 hover:scale-110'
+            : 'bg-gradient-to-br from-yellow-600 to-amber-600 md:border-2 md:border-yellow-400/40 md:hover:border-yellow-400/70 hover:scale-110'
         }`}
         aria-label={disabled ? "Connect wallet to access community raffle" : isExpanded ? "Close community raffle" : "Open community raffle"}
         title={disabled ? "Connect Wallet to View Community Raffle" : ""}
