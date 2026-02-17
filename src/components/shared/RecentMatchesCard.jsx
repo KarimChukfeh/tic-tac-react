@@ -957,7 +957,7 @@ const RecentMatchesCard = ({
                               }`}>
                                 {getMatchResolution(tx.matchId, tx.timestamp)}
                               </span>
-                              <span>on</span>
+                              <span>•</span>
                               <button
                                 onClick={() => scrollToMatch(tx.matchId, tx.timestamp)}
                                 className="text-blue-400 hover:text-blue-300 underline"
@@ -1143,12 +1143,12 @@ const RecentMatchesCard = ({
                       </div>
                     </div>
 
-                    {/* Match Participants with View Board Button */}
+                    {/* Match Participants */}
                     <div className="flex items-center justify-between gap-2 mb-2.5">
                       {isAccountActualPlayer ? (
                         <>
                           {/* When account is a player - show "You" and "vs opponent" */}
-                          <span className="bg-blue-500/20 text-blue-300 text-[10px] px-2 py-1 rounded border border-blue-400/30 font-mono flex flex-col items-center gap-0.5" style={{flex: '0 1 35%'}}>
+                          <span className="bg-blue-500/20 text-blue-300 text-[10px] px-2 py-1 rounded border border-blue-400/30 font-mono flex flex-col items-center gap-0.5" style={{flex: '1'}}>
                             <div className="flex items-center gap-1.5">
                               <span className="font-normal">You</span>
                               <span className="font-semibold">{account.slice(0, 5)}...{account.slice(-2)}</span>
@@ -1179,23 +1179,7 @@ const RecentMatchesCard = ({
                             </div>
                           </span>
 
-                          {/* View Board Button */}
-                          <button
-                            onClick={() => toggleRecentMatchExpand(matchKey)}
-                            className={`flex flex-col items-center justify-center gap-0.5 py-1.5 px-4 rounded-lg transition-all text-xs font-semibold ${
-                              matchIsDraw
-                                ? 'bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 border border-yellow-400/30'
-                                : isWinner
-                                ? 'bg-green-500/20 hover:bg-green-500/30 text-green-300 border border-green-400/30'
-                                : 'bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-400/30'
-                            }`}
-                            style={{flex: '0 1 30%'}}
-                          >
-                            <span>{isMatchExpanded ? 'Hide' : 'View'}</span>
-                            <span className="leading-tight text-center">Board</span>
-                          </button>
-
-                          <span className="bg-blue-500/20 text-blue-300 text-[10px] px-2 py-1 rounded border border-blue-400/30 font-mono flex flex-col items-center gap-0.5" style={{flex: '0 1 35%'}}>
+                          <span className="bg-blue-500/20 text-blue-300 text-[10px] px-2 py-1 rounded border border-blue-400/30 font-mono flex flex-col items-center gap-0.5" style={{flex: '1'}}>
                             <div className="flex items-center gap-1.5">
                               <span className="font-normal">vs</span>
                               <span className="font-semibold">{opponent.slice(0, 5)}...{opponent.slice(-2)}</span>
@@ -1229,7 +1213,7 @@ const RecentMatchesCard = ({
                       ) : (
                         <>
                           {/* When account is NOT a player (ML3 winner) - show both players normally */}
-                          <span className="bg-blue-500/20 text-blue-300 text-[10px] px-2 py-1 rounded border border-blue-400/30 font-mono flex flex-col items-center gap-0.5" style={{flex: '0 1 35%'}}>
+                          <span className="bg-blue-500/20 text-blue-300 text-[10px] px-2 py-1 rounded border border-blue-400/30 font-mono flex flex-col items-center gap-0.5" style={{flex: '1'}}>
                             <div className="flex items-center gap-1.5">
                               <span className="font-semibold">{match.player1.slice(0, 5)}...{match.player1.slice(-2)}</span>
                             </div>
@@ -1259,23 +1243,7 @@ const RecentMatchesCard = ({
                             </div>
                           </span>
 
-                          {/* View Board Button */}
-                          <button
-                            onClick={() => toggleRecentMatchExpand(matchKey)}
-                            className={`flex flex-col items-center justify-center gap-0.5 py-1.5 px-4 rounded-lg transition-all text-xs font-semibold ${
-                              matchIsDraw
-                                ? 'bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 border border-yellow-400/30'
-                                : isWinner
-                                ? 'bg-green-500/20 hover:bg-green-500/30 text-green-300 border border-green-400/30'
-                                : 'bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-400/30'
-                            }`}
-                            style={{flex: '0 1 30%'}}
-                          >
-                            <span>{isMatchExpanded ? 'Hide' : 'View'}</span>
-                            <span className="leading-tight text-center">Board</span>
-                          </button>
-
-                          <span className="bg-blue-500/20 text-blue-300 text-[10px] px-2 py-1 rounded border border-blue-400/30 font-mono flex flex-col items-center gap-0.5" style={{flex: '0 1 35%'}}>
+                          <span className="bg-blue-500/20 text-blue-300 text-[10px] px-2 py-1 rounded border border-blue-400/30 font-mono flex flex-col items-center gap-0.5" style={{flex: '1'}}>
                             <div className="flex items-center gap-1.5">
                               <span className="font-normal">vs</span>
                               <span className="font-semibold">{match.player2.slice(0, 5)}...{match.player2.slice(-2)}</span>
@@ -1307,6 +1275,23 @@ const RecentMatchesCard = ({
                           </span>
                         </>
                       )}
+                    </div>
+
+                    {/* View Board Button - Full Width */}
+                    <div className="mb-2.5">
+                      <button
+                        onClick={() => toggleRecentMatchExpand(matchKey)}
+                        className={`w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg transition-all text-xs font-semibold ${
+                          matchIsDraw
+                            ? 'bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 border border-yellow-400/30'
+                            : isWinner
+                            ? 'bg-green-500/20 hover:bg-green-500/30 text-green-300 border border-green-400/30'
+                            : 'bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-400/30'
+                        }`}
+                      >
+                        <span>{isMatchExpanded ? 'Hide Board' : 'View Board'}</span>
+                        {isMatchExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                      </button>
                     </div>
 
                     {/* Ended Timestamp */}
