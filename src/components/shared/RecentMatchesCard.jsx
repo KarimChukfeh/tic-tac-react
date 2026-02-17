@@ -1088,8 +1088,8 @@ const RecentMatchesCard = ({
           ) : recentMatches.length === 0 ? (
             <div className="text-center py-6">
               <History className="text-slate-500 mx-auto mb-2" size={32} />
-              <p className="text-slate-400 text-xs">No recent matches found</p>
-              <p className="text-slate-500 text-xs mt-1">Events expire after ~50,000 blocks</p>
+              <p className="text-slate-400 text-xs">No match history found</p>
+              <p className="text-slate-500 text-xs mt-1">Join a tournament to get started!</p>
             </div>
           ) : (
             <div className="space-y-6">
