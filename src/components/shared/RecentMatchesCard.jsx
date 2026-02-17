@@ -379,8 +379,8 @@ const RecentMatchesCard = ({
 
   // Scroll to a specific match in the list
   const scrollToMatch = (matchId, timestamp) => {
-    // Grace period to account for timestamp misalignment (30 seconds before/after)
-    const GRACE_PERIOD = 30;
+    // Grace period to account for timestamp misalignment (5 seconds before/after)
+    const GRACE_PERIOD = 5;
 
     // First, try exact matchId match
     let index = recentMatches.findIndex(m => {
@@ -430,8 +430,8 @@ const RecentMatchesCard = ({
 
   // Get match resolution label (Victory, Defeat, Draw)
   const getMatchResolution = (matchId, timestamp) => {
-    // Grace period to account for timestamp misalignment (30 seconds before/after)
-    const GRACE_PERIOD = 30;
+    // Grace period to account for timestamp misalignment (5 seconds before/after)
+    const GRACE_PERIOD = 5;
 
     // First, try exact matchId match
     let matchIndex = recentMatches.findIndex(m => {
@@ -470,8 +470,8 @@ const RecentMatchesCard = ({
 
   // Find match number by matchId and timestamp
   const getMatchNumber = (matchId, timestamp) => {
-    // Grace period to account for timestamp misalignment (30 seconds before/after)
-    const GRACE_PERIOD = 30;
+    // Grace period to account for timestamp misalignment (5 seconds before/after)
+    const GRACE_PERIOD = 5;
 
     // First, try exact matchId match
     let index = recentMatches.findIndex(m => {
