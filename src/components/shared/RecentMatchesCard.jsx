@@ -619,7 +619,7 @@ const RecentMatchesCard = ({
               <p className="text-slate-500 text-xs mt-1">Events expire after ~50,000 blocks</p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-6">
               {recentMatches.map((match, index) => {
                 const accountLower = account?.toLowerCase() || '';
                 const winnerLower = match.winner?.toLowerCase() || '';
@@ -665,7 +665,7 @@ const RecentMatchesCard = ({
                     key={matchKey}
                     ref={(el) => { matchCardRefs.current[matchKey] = el; }}
                     data-match-key={matchKey}
-                    className={`border-2 rounded-lg p-3 transition-all ${
+                    className={`border-[3px] rounded-lg p-3 transition-all ${
                       matchIsDraw
                         ? 'bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border-yellow-400/80'
                         : isWinner
@@ -704,7 +704,7 @@ const RecentMatchesCard = ({
                             className="bg-teal-500/20 text-teal-300 text-[10px] font-semibold px-2 py-0.5 rounded border border-teal-400/30 hover:bg-teal-500/30 transition-colors cursor-pointer underline decoration-dotted"
                             title="View tournament bracket"
                           >
-                            {getTierLabel(match.tierId)} Instance-{match.instanceId + 1}
+                            {getTierLabel(match.tierId)}
                           </button>
                         )}
                         {tierConfig && tierConfig[match.tierId] && tierConfig[match.tierId].playerCount > 2 && (
@@ -755,21 +755,23 @@ const RecentMatchesCard = ({
 
                     {/* Started Timestamp */}
                     <div className="mb-2.5">
-                      <div className="bg-slate-500/20 text-slate-300 text-[10px] font-semibold px-2 py-1 rounded border border-slate-400/30 text-center w-full">
+                      <div className="bg-purple-500/20 text-purple-300 text-[10px] font-semibold px-2 py-1 rounded border border-purple-400/30 text-center w-full">
                         Started {formatTimestamp(match.startTime)}
                       </div>
                     </div>
 
-                    {/* Match Participants */}
-                    <div className="flex items-center justify-between gap-2 mb-2.5 flex-wrap">
+                    {/* Match Participants with View Board Button */}
+                    <div className="flex items-center justify-between gap-2 mb-2.5">
                       {isAccountActualPlayer ? (
                         <>
                           {/* When account is a player - show "You" and "vs opponent" */}
-                          <span className="bg-blue-500/20 text-blue-300 text-[10px] px-2 py-1 rounded border border-blue-400/30 font-mono flex flex-col items-center gap-1 flex-1">
+                          <span className="bg-blue-500/20 text-blue-300 text-[10px] px-2 py-1 rounded border border-blue-400/30 font-mono flex flex-col items-center gap-0.5" style={{flex: '0 1 35%'}}>
                             <div className="flex items-center gap-1.5">
                               <span className="font-normal">You</span>
                               <span className="font-semibold">{account.slice(0, 5)}...{account.slice(-2)}</span>
-                              <span className="font-normal">as</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <span className="font-normal text-[9px]">as</span>
                               {gameName === 'chess' ? (
                                 <img
                                   src={accountSymbol === 'White' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
@@ -792,33 +794,31 @@ const RecentMatchesCard = ({
                                 <span>({accountSymbol})</span>
                               )}
                             </div>
-                            {(() => {
-                              const hasWinner = !matchIsDraw && match.winner && match.winner !== '0x0000000000000000000000000000000000000000';
-                              const accountIsWinner = hasWinner && match.winner.toLowerCase() === account.toLowerCase();
-                              const accountIsLoser = hasWinner && match.winner.toLowerCase() !== account.toLowerCase();
-                              const isMatchDraw = matchIsDraw;
-
-                              if (accountIsWinner) {
-                                return (
-                                  <div className="bg-green-500/40 text-green-200 text-[9px] font-semibold px-1.5 py-0.5 rounded">
-                                    Victory
-                                  </div>
-                                );
-                              } else if (accountIsLoser || isMatchDraw) {
-                                return (
-                                  <div className="bg-red-500/40 text-red-200 text-[9px] font-semibold px-1.5 py-0.5 rounded">
-                                    Defeat
-                                  </div>
-                                );
-                              }
-                              return null;
-                            })()}
                           </span>
-                          <span className="bg-blue-500/20 text-blue-300 text-[10px] px-2 py-1 rounded border border-blue-400/30 font-mono flex flex-col items-center gap-1 flex-1">
+
+                          {/* View Board Button */}
+                          <button
+                            onClick={() => toggleRecentMatchExpand(matchKey)}
+                            className={`flex flex-col items-center justify-center gap-0.5 py-1.5 px-4 rounded-lg transition-all text-xs font-semibold ${
+                              matchIsDraw
+                                ? 'bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 border border-yellow-400/30'
+                                : isWinner
+                                ? 'bg-green-500/20 hover:bg-green-500/30 text-green-300 border border-green-400/30'
+                                : 'bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-400/30'
+                            }`}
+                            style={{flex: '0 1 30%'}}
+                          >
+                            <span>{isMatchExpanded ? 'Hide' : 'View'}</span>
+                            <span className="leading-tight text-center">Board</span>
+                          </button>
+
+                          <span className="bg-blue-500/20 text-blue-300 text-[10px] px-2 py-1 rounded border border-blue-400/30 font-mono flex flex-col items-center gap-0.5" style={{flex: '0 1 35%'}}>
                             <div className="flex items-center gap-1.5">
                               <span className="font-normal">vs</span>
                               <span className="font-semibold">{opponent.slice(0, 5)}...{opponent.slice(-2)}</span>
-                              <span className="font-normal">as</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <span className="font-normal text-[9px]">as</span>
                               {gameName === 'chess' ? (
                                 <img
                                   src={opponentSymbol === 'White' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
@@ -841,36 +841,17 @@ const RecentMatchesCard = ({
                                 <span>({opponentSymbol})</span>
                               )}
                             </div>
-                            {(() => {
-                              const hasWinner = !matchIsDraw && match.winner && match.winner !== '0x0000000000000000000000000000000000000000';
-                              const opponentIsWinner = hasWinner && match.winner.toLowerCase() === opponent.toLowerCase();
-                              const opponentIsLoser = hasWinner && match.winner.toLowerCase() !== opponent.toLowerCase();
-                              const isMatchDraw = matchIsDraw;
-
-                              if (opponentIsWinner) {
-                                return (
-                                  <div className="bg-green-500/40 text-green-200 text-[9px] font-semibold px-1.5 py-0.5 rounded">
-                                    Victory
-                                  </div>
-                                );
-                              } else if (opponentIsLoser || isMatchDraw) {
-                                return (
-                                  <div className="bg-red-500/40 text-red-200 text-[9px] font-semibold px-1.5 py-0.5 rounded">
-                                    Defeat
-                                  </div>
-                                );
-                              }
-                              return null;
-                            })()}
                           </span>
                         </>
                       ) : (
                         <>
                           {/* When account is NOT a player (ML3 winner) - show both players normally */}
-                          <span className="bg-blue-500/20 text-blue-300 text-[10px] px-2 py-1 rounded border border-blue-400/30 font-mono flex flex-col items-center gap-1 flex-1">
+                          <span className="bg-blue-500/20 text-blue-300 text-[10px] px-2 py-1 rounded border border-blue-400/30 font-mono flex flex-col items-center gap-0.5" style={{flex: '0 1 35%'}}>
                             <div className="flex items-center gap-1.5">
                               <span className="font-semibold">{match.player1.slice(0, 5)}...{match.player1.slice(-2)}</span>
-                              <span className="font-normal">as</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <span className="font-normal text-[9px]">as</span>
                               {gameName === 'chess' ? (
                                 <img
                                   src={player1Symbol === 'White' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
@@ -893,38 +874,31 @@ const RecentMatchesCard = ({
                                 <span>({player1Symbol})</span>
                               )}
                             </div>
-                            {(() => {
-                              const hasWinner = !matchIsDraw && match.winner && match.winner !== '0x0000000000000000000000000000000000000000';
-                              const player1IsWinner = hasWinner && match.winner.toLowerCase() === player1Lower;
-                              const isMatchDraw = matchIsDraw;
-
-                              if (player1IsWinner) {
-                                return (
-                                  <div className="bg-green-500/40 text-green-200 text-[9px] font-semibold px-1.5 py-0.5 rounded">
-                                    Victory
-                                  </div>
-                                );
-                              } else if (!player1IsWinner && hasWinner) {
-                                return (
-                                  <div className="bg-red-500/40 text-red-200 text-[9px] font-semibold px-1.5 py-0.5 rounded">
-                                    Defeat
-                                  </div>
-                                );
-                              } else if (isMatchDraw) {
-                                return (
-                                  <div className="bg-yellow-500/40 text-yellow-200 text-[9px] font-semibold px-1.5 py-0.5 rounded">
-                                    Draw
-                                  </div>
-                                );
-                              }
-                              return null;
-                            })()}
                           </span>
-                          <span className="bg-blue-500/20 text-blue-300 text-[10px] px-2 py-1 rounded border border-blue-400/30 font-mono flex flex-col items-center gap-1 flex-1">
+
+                          {/* View Board Button */}
+                          <button
+                            onClick={() => toggleRecentMatchExpand(matchKey)}
+                            className={`flex flex-col items-center justify-center gap-0.5 py-1.5 px-4 rounded-lg transition-all text-xs font-semibold ${
+                              matchIsDraw
+                                ? 'bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 border border-yellow-400/30'
+                                : isWinner
+                                ? 'bg-green-500/20 hover:bg-green-500/30 text-green-300 border border-green-400/30'
+                                : 'bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-400/30'
+                            }`}
+                            style={{flex: '0 1 30%'}}
+                          >
+                            <span>{isMatchExpanded ? 'Hide' : 'View'}</span>
+                            <span className="leading-tight text-center">Board</span>
+                          </button>
+
+                          <span className="bg-blue-500/20 text-blue-300 text-[10px] px-2 py-1 rounded border border-blue-400/30 font-mono flex flex-col items-center gap-0.5" style={{flex: '0 1 35%'}}>
                             <div className="flex items-center gap-1.5">
                               <span className="font-normal">vs</span>
                               <span className="font-semibold">{match.player2.slice(0, 5)}...{match.player2.slice(-2)}</span>
-                              <span className="font-normal">as</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <span className="font-normal text-[9px]">as</span>
                               {gameName === 'chess' ? (
                                 <img
                                   src={player2Symbol === 'White' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
@@ -947,32 +921,6 @@ const RecentMatchesCard = ({
                                 <span>({player2Symbol})</span>
                               )}
                             </div>
-                            {(() => {
-                              const hasWinner = !matchIsDraw && match.winner && match.winner !== '0x0000000000000000000000000000000000000000';
-                              const player2IsWinner = hasWinner && match.winner.toLowerCase() === player2Lower;
-                              const isMatchDraw = matchIsDraw;
-
-                              if (player2IsWinner) {
-                                return (
-                                  <div className="bg-green-500/40 text-green-200 text-[9px] font-semibold px-1.5 py-0.5 rounded">
-                                    Victory
-                                  </div>
-                                );
-                              } else if (!player2IsWinner && hasWinner) {
-                                return (
-                                  <div className="bg-red-500/40 text-red-200 text-[9px] font-semibold px-1.5 py-0.5 rounded">
-                                    Defeat
-                                  </div>
-                                );
-                              } else if (isMatchDraw) {
-                                return (
-                                  <div className="bg-yellow-500/40 text-yellow-200 text-[9px] font-semibold px-1.5 py-0.5 rounded">
-                                    Draw
-                                  </div>
-                                );
-                              }
-                              return null;
-                            })()}
                           </span>
                         </>
                       )}
@@ -980,7 +928,7 @@ const RecentMatchesCard = ({
 
                     {/* Ended Timestamp */}
                     <div className="mb-2.5">
-                      <div className="bg-slate-500/20 text-slate-300 text-[10px] font-semibold px-2 py-1 rounded border border-slate-400/30 text-center w-full">
+                      <div className="bg-purple-500/20 text-purple-300 text-[10px] font-semibold px-2 py-1 rounded border border-purple-400/30 text-center w-full">
                         Ended {formatTimestamp(match.endTime)}
                       </div>
                     </div>
@@ -1014,21 +962,6 @@ const RecentMatchesCard = ({
                         </div>
                       );
                     })()}
-
-                    {/* View Board Button */}
-                    <button
-                      onClick={() => toggleRecentMatchExpand(matchKey)}
-                      className={`w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg transition-all text-xs font-semibold ${
-                        matchIsDraw
-                          ? 'bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 border border-yellow-400/30'
-                          : isWinner
-                          ? 'bg-green-500/20 hover:bg-green-500/30 text-green-300 border border-green-400/30'
-                          : 'bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-400/30'
-                      }`}
-                    >
-                      <Eye size={14} />
-                      {isMatchExpanded ? 'Hide Board' : 'View Board'}
-                    </button>
 
                     {/* Board Display */}
                     {isMatchExpanded && (
@@ -1417,7 +1350,7 @@ const RecentMatchesCard = ({
                           }}
                           className="bg-teal-500/20 text-teal-300 text-xs font-semibold px-2 py-1 rounded border border-teal-400/30 hover:bg-teal-500/30 transition-colors w-full"
                         >
-                          {getTierLabel(match.tierId)} Instance-{match.instanceId + 1}
+                          {getTierLabel(match.tierId)}
                         </button>
                       </div>
                     )}
