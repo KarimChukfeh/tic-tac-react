@@ -26,19 +26,21 @@ This whitepaper explains how ETour makes trustless competition possible.
 
 [1. The Philosophy of ETour](#1-the-philosophy-of-etour)
 
-[2. The Problem With Trust](#2-the-problem-with-turst)
+[2. The Trust Problem](#2-the-turst-problem)
 
 [3. The Three-Game Demo](#3-the-three-game-demo)
 
 [4. The Lifecycle of Tournaments](#4-the-lifecycle-of-tournaments)
 
-[5. The Gas Fee](#5-the-gas-fee)
+[5. The Gas Problem](#5-the-gas-problem)
 
 [6. The Economics of Fair Play](#6-the-economics-of-fair-play)
 
 [7. The Griefing Problem](#7-the-grefing-problem)
 
-[8. The Future of Competition](#8-the-future-of-competition)
+[8. The Bot Problem](#8-the-bot-problem)
+
+[9. The Future of Competition](#9-the-future-of-competition)
 
 ---
 
@@ -80,7 +82,7 @@ The winner takes the pot.
 
 ---
 
-## 2. The Problem With Turst
+## 2. The Turst Problem
 
 ### Centralized Gaming's Hidden Failures
 
@@ -241,7 +243,7 @@ These aren't patches or hacks. **They're deliberate design decisions ensuring to
 
 ---
 
-## 5. The Gas Fee
+## 5. The Gas Problem
 
 Every action on ETour costs gas that's paid for by the player. 
 
@@ -335,7 +337,26 @@ Each player receives a time bank for their moves, plus increment per move. This 
 
 ---
 
-## 8. The Future of Competition
+## 8. The Bot Problem
+
+Bots will always be a problem in online competitive gaming.
+
+Instead of falsely pretending that ETour solves the bot problem, we chose to deliver a solution that focuses on solving other fundamental issues with on-chain gaming: griefing, storage, trustless settlement, and more.
+
+### Zero-Trust. Zero Overpromises
+
+Detecting bots is a never ending cat-and-mouse game:
+• **Let's be real** - Billion dollar projects with dedicated anti-cheat departments cannot guarantee 100% bot protection.
+• **The resulting risk** — Because money is involved, bots can, and probably will, exist on etour.games.
+• **Focus on Infrastructure** — This reality does not take away from the fact that etour.games delivers a 100% on-chain system for playing chess over ETH stakes without a centralized authority.
+
+### ETour's Value Remains Unchanged
+
+ETour remains a robust, zero-trust tool for competitive stakes. If you can verify your opponent, such as playing with a friend or within a community, then ETour still provides a perfect, tamper-proof decentralized gameplay over ETH stakes.
+
+---
+
+## 9. The Future of Competition
 
 ### What We've Built
 
