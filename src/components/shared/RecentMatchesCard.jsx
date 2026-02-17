@@ -865,7 +865,7 @@ const RecentMatchesCard = ({
           ref={expandedPanelRef}
           className="max-md:fixed max-md:bottom-20 max-md:left-4 max-md:right-4 max-md:w-auto md:mt-3 bg-gradient-to-br from-teal-900/95 to-cyan-900/95 backdrop-blur-lg rounded-2xl p-4 md:p-6 pb-8 border-2 border-teal-400/40 shadow-2xl md:w-[464px] overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-teal-950/40 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-teal-500/70 [&::-webkit-scrollbar-thumb]:to-cyan-500/70 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border [&::-webkit-scrollbar-thumb]:border-teal-400/30 hover:[&::-webkit-scrollbar-thumb]:from-teal-400 hover:[&::-webkit-scrollbar-thumb]:to-cyan-400 [scrollbar-width:thin] [scrollbar-color:rgb(20_184_166_/_0.7)_rgb(4_47_46_/_0.4)]"
           style={{
-            maxHeight: isDesktop ? `calc(100vh - ${topPositionDesktop}px - 6rem)` : 'calc(100vh - 7rem)'
+            maxHeight: isDesktop ? `calc(100vh - ${topPositionDesktop}px - 6rem)` : 'min(60vh, calc(100vh - 7rem))'
           }}
         >
           {/* Header */}
@@ -900,10 +900,10 @@ const RecentMatchesCard = ({
 
           {/* You earned section */}
           <div className="mb-4 space-y-2">
-            <h3 className="text-white font-semibold text-md mb-3">Payout History</h3>
-            <div className="flex items-center gap-1.5 text-xs">
+            <h3 className="text-white font-semibold text-lg md:text-md mb-3">Payout History</h3>
+            <div className="flex items-center gap-1.5 text-sm md:text-xs">
               <span className="text-green-400">You earned:</span>
-              <TrendingUp className={`${totalEarnings >= 0n ? 'text-green-400' : 'text-red-400'}`} size={14} />
+              <TrendingUp className={`${totalEarnings >= 0n ? 'text-green-400' : 'text-red-400'}`} size={16} />
               <span className={`font-semibold font-mono ${totalEarnings >= 0n ? 'text-green-400' : 'text-red-400'}`}>
                 {totalEarnings >= 0n ? '+' : ''}{ethers.formatEther(totalEarnings)} ETH
               </span>
@@ -989,7 +989,7 @@ const RecentMatchesCard = ({
           <br/>
 
           {/* Content */}
-          <h3 className="text-white font-semibold text-md mb-3">Match History</h3>
+          <h3 className="text-white font-semibold text-lg md:text-md mb-3">Match History</h3>
           {loadingRecentMatches ? (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-teal-400 mx-auto"></div>
