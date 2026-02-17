@@ -625,9 +625,18 @@ const RecentMatchesCard = ({
     }
   };
 
-  const formatTimestamp = (timestamp) => {
+  const formatTimestamp = (timestamp, label = 'Started') => {
     const date = new Date(timestamp * 1000);
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase().replace(' ', '');
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const month = monthNames[date.getMonth()];
+    const day = date.getDate();
+    const year = String(date.getFullYear()).slice(-2);
+    return {
+      label,
+      time,
+      date: `(${month} ${day}, ${year})`
+    };
   };
 
   const toggleRecentMatchExpand = (matchKey) => {
@@ -1189,7 +1198,10 @@ const RecentMatchesCard = ({
                     {/* Started Timestamp */}
                     <div className="mb-2.5">
                       <div className="bg-purple-500/20 text-purple-300 text-[10px] font-semibold px-2 py-1 rounded border border-purple-400/30 text-center w-full">
-                        Started {formatTimestamp(match.startTime)}
+                        {(() => {
+                          const ts = formatTimestamp(match.startTime, 'Started');
+                          return <span className="font-normal">{ts.label} <span className="font-semibold">{ts.time}</span> {ts.date}</span>;
+                        })()}
                       </div>
                     </div>
 
@@ -1347,7 +1359,10 @@ const RecentMatchesCard = ({
                     {/* Ended Timestamp */}
                     <div className="mb-2.5">
                       <div className="bg-purple-500/20 text-purple-300 text-[10px] font-semibold px-2 py-1 rounded border border-purple-400/30 text-center w-full">
-                        Ended {formatTimestamp(match.endTime)}
+                        {(() => {
+                          const ts = formatTimestamp(match.endTime, 'Ended');
+                          return <span className="font-normal">{ts.label} <span className="font-semibold">{ts.time}</span> {ts.date}</span>;
+                        })()}
                       </div>
                     </div>
 
@@ -1835,12 +1850,22 @@ const RecentMatchesCard = ({
 
                     {/* Started */}
                     <div className="text-xs text-slate-400 mb-1">
-                      Started: <span className="text-slate-300">{formatTimestamp(match.startTime)}</span>
+                      <span className="text-slate-300">
+                        {(() => {
+                          const ts = formatTimestamp(match.startTime, 'Started');
+                          return <>{ts.label} <span className="font-bold">{ts.time}</span> {ts.date}</>;
+                        })()}
+                      </span>
                     </div>
 
                     {/* Ended */}
                     <div className="text-xs text-slate-400">
-                      Ended: <span className="text-slate-300">{formatTimestamp(match.endTime)}</span>
+                      <span className="text-slate-300">
+                        {(() => {
+                          const ts = formatTimestamp(match.endTime, 'Ended');
+                          return <>{ts.label} <span className="font-bold">{ts.time}</span> {ts.date}</>;
+                        })()}
+                      </span>
                     </div>
                   </div>
 
