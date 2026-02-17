@@ -517,10 +517,14 @@ const RecentMatchesCard = ({
     const winnerLower = match.winner?.toLowerCase() || '';
     const isDraw = winnerLower === ethers.ZeroAddress.toLowerCase();
 
-    if (isDraw) return 'Draw';
+    // Get tier type prefix
+    const tierLabel = getTierLabel(match.tierId);
+    const tierPrefix = tierLabel === 'Duel' ? 'Duel' : 'Tournament';
+
+    if (isDraw) return `${tierPrefix} Draw`;
 
     const isWinner = winnerLower === accountLower;
-    return isWinner ? 'Victory' : 'Defeat';
+    return isWinner ? `${tierPrefix} Victory` : `${tierPrefix} Defeat`;
   };
 
   // Find match number by matchId and timestamp
@@ -979,6 +983,7 @@ const RecentMatchesCard = ({
               </div>
             </div>
           </div>
+          <hr className="border-purple-100/10" />
 
           {/* Scrollable Content */}
           <div
@@ -988,8 +993,7 @@ const RecentMatchesCard = ({
 
           {/* You earned section */}
           <div className="mb-4 space-y-2">
-          <hr className="border-purple-100/10" />
-            <h3 className="text-white font-semibold text-lg md:text-md py-3">Payout History</h3>
+            <h3 className="text-white font-semibold text-lg md:text-md">Payout History</h3>
             <div className="flex items-center gap-1.5 text-sm md:text-xs">
               <span className="text-green-400">You earned:</span>
               <TrendingUp className={`${totalEarnings >= 0n ? 'text-green-400' : 'text-red-400'}`} size={16} />
@@ -1038,9 +1042,9 @@ const RecentMatchesCard = ({
                             </div>
                             <p className="text-slate-300 text-[10px] flex items-center gap-1">
                               <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${
-                                getMatchResolution(tx.matchId, tx.timestamp) === 'Victory'
+                                getMatchResolution(tx.matchId, tx.timestamp).includes('Victory')
                                   ? 'bg-green-500/20 text-green-400'
-                                  : getMatchResolution(tx.matchId, tx.timestamp) === 'Draw'
+                                  : getMatchResolution(tx.matchId, tx.timestamp).includes('Draw')
                                   ? 'bg-yellow-500/20 text-yellow-400'
                                   : 'bg-red-500/20 text-red-400'
                               }`}>
@@ -1073,9 +1077,6 @@ const RecentMatchesCard = ({
               </div>
             )}
           </div>
-
-          <hr className="border-purple-100/20" />
-          <br/>
 
           {/* Content */}
           <h3 className="text-white font-semibold text-lg md:text-md mb-3">Match History</h3>
