@@ -25,22 +25,44 @@ This whitepaper explains how ETour makes trustless competition possible.
 # Table of Contents
 
 [1. The Philosophy of ETour](#1-the-philosophy-of-etour)
+  - [The Failed Promise of Web3 Gaming](#the-failed-promise-of-web3-gaming)
+  - [What Players Actually Want](#what-players-actually-want)
+  - [The ETour Thesis](#the-etour-thesis)
 
 [2. The Trust Problem](#2-the-turst-problem)
+  - [Centralized Gaming's Hidden Failures](#centralized-gamings-hidden-failures)
+  - [Why Blockchain?](#why-blockchain)
 
 [3. The Three-Game Demo](#3-the-three-game-demo)
+  - [TicTacToe — The Gateway](#a-tictactoe--the-gateway)
+  - [Chess — The Flagship](#b-chess--the-flagship)
+  - [Connect Four — The Dark Horse](#c-connect-four--the-dark-horse)
 
 [4. The Lifecycle of Tournaments](#4-the-lifecycle-of-tournaments)
+  - [Enrollment](#a-enrollment)
+  - [Victory](#c-victory)
+  - [When Games Draw](#d-when-games-draw)
 
 [5. The Gas Problem](#5-the-gas-problem)
 
-[6. The Economics of Fair Play](#6-the-economics-of-fair-play)
+[6. The Economics of Fair Play](#6-the-economics-of-fair-pay)
+  - [Why This Breakdown](#why-this-breakdown)
+  - [ETour is Anti-Token](#etour-is-anti-token)
+  - [Community Raffles](#community-raffles)
 
 [7. The Griefing Problem](#7-the-grefing-problem)
+  - [Solving Stalls Without Admins](#solving-stalls-without-admins)
+  - [Escalating Incentives](#escalating-incentives)
+  - [Incentive Alignment](#incentive-alignment)
 
 [8. The Bot Problem](#8-the-bot-problem)
+  - [Zero-Trust. Zero Overpromises](#zero-trust-zero-overpromises)
+  - [ETour's Value Remains Unchanged](#etours-value-remains-unchanged)
 
 [9. The Future of Competition](#9-the-future-of-competition)
+  - [What We've Built](#what-weve-built)
+  - [ETour as Infrastructure](#etour-as-infrastructure)
+  - [The Broader Vision](#the-broader-vision)
 
 ---
 
