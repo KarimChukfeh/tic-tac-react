@@ -180,8 +180,7 @@ const RecentMatchesCard = ({
           const endTime = Number(m.endTime);
           return status === 2 || endTime > 0;
         })
-        .sort((a, b) => Number(b.endTime) - Number(a.endTime))
-        .slice(0, 20);
+        .sort((a, b) => Number(b.endTime) - Number(a.endTime));
 
       console.log('[RecentMatches] Recent completed matches:', recentCompletedMatches.length);
 
@@ -291,14 +290,62 @@ const RecentMatchesCard = ({
       const historyWithTxHash = await Promise.all(
         events.map(async (event) => {
           try {
-            return {
+            // Get the transaction that triggered this Transfer event
+            const tx = await event.getTransaction();
+
+            // Get the block to extract timestamp
+            const provider = contract.provider || contract.runner.provider;
+            const block = await provider.getBlock(event.blockNumber);
+            console.log('[Transfer Debug] Block data:', { blockNumber: event.blockNumber, block, timestamp: block?.timestamp });
+
+            // Decode the function call from transaction data
+            let functionName = 'Unknown';
+            let functionParams = null;
+            let matchId = null;
+
+            try {
+              const description = contract.interface.parseTransaction({
+                data: tx.data,
+                value: tx.value
+              });
+              functionName = description.name;
+              functionParams = description.args;
+
+              // Extract match information from function parameters
+              // Most functions have: tierId, instanceId, roundIdx, matchIdx
+              if (functionParams && (functionParams.tierId !== undefined || functionParams[0] !== undefined)) {
+                const tierId = functionParams.tierId !== undefined ? Number(functionParams.tierId) : Number(functionParams[0]);
+                const instanceId = functionParams.instanceId !== undefined ? Number(functionParams.instanceId) : Number(functionParams[1]);
+                const roundIdx = functionParams.roundIdx !== undefined ? Number(functionParams.roundIdx) : Number(functionParams[2]);
+                const matchIdx = functionParams.matchIdx !== undefined ? Number(functionParams.matchIdx) : Number(functionParams[3]);
+
+                console.log('[Transfer Debug] Extracted params:', { functionName, tierId, instanceId, roundIdx, matchIdx });
+
+                if (tierId !== undefined && instanceId !== undefined && roundIdx !== undefined && matchIdx !== undefined) {
+                  matchId = `${tierId}-${instanceId}-${roundIdx}-${matchIdx}`;
+                }
+              } else {
+                console.log('[Transfer Debug] No function params found for:', functionName);
+              }
+            } catch (decodeErr) {
+              console.warn('Could not decode transaction:', decodeErr);
+            }
+
+            const result = {
               from: event.args.from,
               to: event.args.to,
               value: event.args.value,
-              gameName: event.args.gameName,
               txHash: event.transactionHash,
               blockNumber: event.blockNumber,
+              timestamp: block?.timestamp,
+              functionName: functionName,
+              functionParams: functionParams,
+              txFrom: tx.from, // Who called the function
+              matchId: matchId, // Match identifier for linking
             };
+
+            console.log('[Transfer Debug] Transaction history entry:', result);
+            return result;
           } catch (err) {
             console.error('Error processing Transfer event:', err);
             return null;
@@ -330,6 +377,157 @@ const RecentMatchesCard = ({
     }
   };
 
+  // Scroll to a specific match in the list
+  const scrollToMatch = (matchId, timestamp) => {
+    // Grace period to account for timestamp misalignment (30 seconds before/after)
+    const GRACE_PERIOD = 30;
+
+    // First, try exact matchId match
+    let index = recentMatches.findIndex(m => {
+      const matchesId = m.matchId === matchId;
+      const startTime = m.startTime || 0;
+      const endTime = m.endTime || 0;
+      const inTimeRange = timestamp >= (startTime - GRACE_PERIOD) && timestamp <= (endTime + GRACE_PERIOD);
+
+      return matchesId && inTimeRange;
+    });
+
+    // If no exact match, try matching by tournament (same tierId and instanceId) and timestamp
+    if (index === -1 && matchId) {
+      const [tierId, instanceId] = matchId.split('-');
+
+      index = recentMatches.findIndex(m => {
+        const [mTierId, mInstanceId] = m.matchId.split('-');
+        const sameTournament = mTierId === tierId && mInstanceId === instanceId;
+        const startTime = m.startTime || 0;
+        const endTime = m.endTime || 0;
+        const inTimeRange = timestamp >= (startTime - GRACE_PERIOD) && timestamp <= (endTime + GRACE_PERIOD);
+
+        return sameTournament && inTimeRange;
+      });
+    }
+
+    if (index === -1) return;
+
+    const actualMatch = recentMatches[index];
+    const matchKey = `recent-${actualMatch.matchId}-${index}`;
+    const matchElement = matchCardRefs.current[matchKey];
+
+    if (matchElement) {
+      matchElement.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      });
+
+      // Highlight the match briefly
+      matchElement.style.transition = 'box-shadow 0.3s';
+      matchElement.style.boxShadow = '0 0 20px rgba(34, 197, 94, 0.6)';
+      setTimeout(() => {
+        matchElement.style.boxShadow = '';
+      }, 2000);
+    }
+  };
+
+  // Get match resolution label (Victory, Defeat, Draw)
+  const getMatchResolution = (matchId, timestamp) => {
+    // Grace period to account for timestamp misalignment (30 seconds before/after)
+    const GRACE_PERIOD = 30;
+
+    // First, try exact matchId match
+    let matchIndex = recentMatches.findIndex(m => {
+      const matchesId = m.matchId === matchId;
+      const startTime = m.startTime || 0;
+      const endTime = m.endTime || 0;
+      const inTimeRange = timestamp >= (startTime - GRACE_PERIOD) && timestamp <= (endTime + GRACE_PERIOD);
+      return matchesId && inTimeRange;
+    });
+
+    // If no exact match, try matching by tournament and timestamp
+    if (matchIndex === -1 && matchId) {
+      const [tierId, instanceId] = matchId.split('-');
+      matchIndex = recentMatches.findIndex(m => {
+        const [mTierId, mInstanceId] = m.matchId.split('-');
+        const sameTournament = mTierId === tierId && mInstanceId === instanceId;
+        const startTime = m.startTime || 0;
+        const endTime = m.endTime || 0;
+        const inTimeRange = timestamp >= (startTime - GRACE_PERIOD) && timestamp <= (endTime + GRACE_PERIOD);
+        return sameTournament && inTimeRange;
+      });
+    }
+
+    if (matchIndex === -1) return 'Unknown';
+
+    const match = recentMatches[matchIndex];
+    const accountLower = account?.toLowerCase() || '';
+    const winnerLower = match.winner?.toLowerCase() || '';
+    const isDraw = winnerLower === ethers.ZeroAddress.toLowerCase();
+
+    if (isDraw) return 'Draw';
+
+    const isWinner = winnerLower === accountLower;
+    return isWinner ? 'Victory' : 'Defeat';
+  };
+
+  // Find match number by matchId and timestamp
+  const getMatchNumber = (matchId, timestamp) => {
+    // Grace period to account for timestamp misalignment (30 seconds before/after)
+    const GRACE_PERIOD = 30;
+
+    // First, try exact matchId match
+    let index = recentMatches.findIndex(m => {
+      const matchesId = m.matchId === matchId;
+      const startTime = m.startTime || 0;
+      const endTime = m.endTime || 0;
+      const inTimeRange = timestamp >= (startTime - GRACE_PERIOD) && timestamp <= (endTime + GRACE_PERIOD);
+
+      if (matchesId) {
+        console.log('[Transfer Debug] Match correlation attempt (exact):', {
+          matchId,
+          timestamp,
+          startTime,
+          endTime,
+          inTimeRange,
+          matchFound: matchesId && inTimeRange
+        });
+      }
+
+      return matchesId && inTimeRange;
+    });
+
+    // If no exact match, try matching by tournament (same tierId and instanceId) and timestamp
+    if (index === -1 && matchId) {
+      const [tierId, instanceId] = matchId.split('-');
+
+      index = recentMatches.findIndex(m => {
+        const [mTierId, mInstanceId] = m.matchId.split('-');
+        const sameTournament = mTierId === tierId && mInstanceId === instanceId;
+        const startTime = m.startTime || 0;
+        const endTime = m.endTime || 0;
+        const inTimeRange = timestamp >= (startTime - GRACE_PERIOD) && timestamp <= (endTime + GRACE_PERIOD);
+
+        if (sameTournament && inTimeRange) {
+          console.log('[Transfer Debug] Match correlation attempt (same tournament):', {
+            originalMatchId: matchId,
+            foundMatchId: m.matchId,
+            timestamp,
+            startTime,
+            endTime,
+            inTimeRange,
+            matchFound: true
+          });
+        }
+
+        return sameTournament && inTimeRange;
+      });
+    }
+
+    if (index === -1) {
+      console.warn('[Transfer Debug] No match found for:', { matchId, timestamp, availableMatches: recentMatches.map(m => ({ matchId: m.matchId, startTime: m.startTime, endTime: m.endTime })) });
+      return null;
+    }
+    return recentMatches.length - index;
+  };
+
   // Helper functions
   const getTierLabel = (tierId) => {
     if (!tierConfig || !tierConfig[tierId]) return null;
@@ -338,6 +536,21 @@ const RecentMatchesCard = ({
     if (playerCount === 4) return '4-Players';
     if (playerCount === 8) return '8-Players';
     return `${playerCount}-Players`;
+  };
+
+  // Format timestamp as "X time ago"
+  const getTimeAgo = (timestamp) => {
+    if (!timestamp) return 'Unknown';
+
+    const now = Math.floor(Date.now() / 1000);
+    const diff = now - timestamp;
+
+    if (diff < 0) return 'Just now';
+    if (diff < 60) return `${diff}s ago`;
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    if (diff < 2592000) return `${Math.floor(diff / 86400)}d ago`;
+    return `${Math.floor(diff / 2592000)}mo ago`;
   };
 
   const getRoundLabel = (tierId, roundNumber) => {
@@ -734,8 +947,24 @@ const RecentMatchesCard = ({
                                 +{ethers.formatEther(tx.value)} ETH
                               </span>
                             </div>
-                            <p className="text-slate-300 text-[10px] truncate">
-                              {tx.gameName}
+                            <p className="text-slate-300 text-[10px] flex items-center gap-1">
+                              <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${
+                                getMatchResolution(tx.matchId, tx.timestamp) === 'Victory'
+                                  ? 'bg-green-500/20 text-green-400'
+                                  : getMatchResolution(tx.matchId, tx.timestamp) === 'Draw'
+                                  ? 'bg-yellow-500/20 text-yellow-400'
+                                  : 'bg-red-500/20 text-red-400'
+                              }`}>
+                                {getMatchResolution(tx.matchId, tx.timestamp)}
+                              </span>
+                              <span>on</span>
+                              <button
+                                onClick={() => scrollToMatch(tx.matchId, tx.timestamp)}
+                                className="text-blue-400 hover:text-blue-300 underline"
+                              >
+                                Match #{getMatchNumber(tx.matchId, tx.timestamp)}
+                              </button>
+                              <span>• {getTimeAgo(tx.timestamp)}</span>
                             </p>
                           </div>
                           <a
