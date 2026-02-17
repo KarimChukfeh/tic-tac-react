@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { X, RefreshCw, History, ChevronDown, ChevronUp, Eye, ChevronLeft, ChevronRight, ArrowUpRight, TrendingUp, ExternalLink } from 'lucide-react';
+import { X, RefreshCw, History, ChevronDown, ChevronUp, Eye, ChevronLeft, ChevronRight, ArrowUpRight, TrendingUp, ExternalLink, ArrowUp } from 'lucide-react';
 import { shortenAddress, getCellPositionName } from '../../utils/formatters';
 import { isDraw } from '../../utils/completionReasons';
 import CapturedPieces from './CapturedPieces';
@@ -46,6 +46,7 @@ const RecentMatchesCard = ({
   const [transactionHistory, setTransactionHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [totalEarnings, setTotalEarnings] = useState(0n);
+  const [isScrolled, setIsScrolled] = useState(false); // Track if user has scrolled
   const expandedPanelRef = useRef(null);
   const prevExpandedRef = useRef(false);
   const matchCardRefs = useRef({});
@@ -94,10 +95,25 @@ const RecentMatchesCard = ({
   useEffect(() => {
     if (isExpanded && !prevExpandedRef.current) {
       setCurrentPage(1); // Reset to first page when opening
+      setIsScrolled(false); // Reset scroll state when opening
       fetchRecentMatches();
       fetchTransactionHistory();
     }
     prevExpandedRef.current = isExpanded;
+  }, [isExpanded]);
+
+  // Handle scroll events to show/hide header styling and scroll-to-top button
+  useEffect(() => {
+    const scrollContainer = expandedPanelRef.current;
+    if (!scrollContainer) return;
+
+    const handleScroll = () => {
+      const scrollTop = scrollContainer.scrollTop;
+      setIsScrolled(scrollTop > 20); // Show enhancements after scrolling 20px
+    };
+
+    scrollContainer.addEventListener('scroll', handleScroll);
+    return () => scrollContainer.removeEventListener('scroll', handleScroll);
   }, [isExpanded]);
 
   // Reset to page 1 if current page exceeds total pages after matches update
@@ -915,18 +931,33 @@ const RecentMatchesCard = ({
             maxHeight: isDesktop ? `calc(100vh - ${topPositionDesktop}px - 6rem)` : 'min(60vh, calc(100vh - 7rem))'
           }}
         >
-          <div
-            ref={expandedPanelRef}
-            className="p-4 md:p-6 pb-8 overflow-y-auto overflow-x-hidden flex-1 min-h-0 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-teal-950/40 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-teal-500/70 [&::-webkit-scrollbar-thumb]:to-cyan-500/70 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border [&::-webkit-scrollbar-thumb]:border-teal-400/30 hover:[&::-webkit-scrollbar-thumb]:from-teal-400 hover:[&::-webkit-scrollbar-thumb]:to-cyan-400 [scrollbar-width:thin] [scrollbar-color:rgb(20_184_166_/_0.7)_rgb(4_47_46_/_0.4)]"
-          >
-          {/* Header */}
-          <div className="mb-4">
-            <div className="flex items-center justify-between mb-2">
+          {/* Sticky Header */}
+          <div className={`sticky top-0 z-10 px-4 md:px-6 pt-4 md:pt-5 pb-2 transition-all duration-300 ${
+            isScrolled
+              ? 'bg-gradient-to-br from-teal-900/95 to-cyan-900/95 backdrop-blur-lg border-b border-teal-400/20 shadow-lg'
+              : ''
+          }`}>
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <History size={24} className="text-teal-400" />
                 <h3 className="text-white font-bold text-lg">Your History</h3>
               </div>
               <div className="flex items-center gap-1">
+                {/* Scroll to Top Button - only show when scrolled */}
+                {isScrolled && (
+                  <button
+                    onClick={() => {
+                      if (expandedPanelRef.current) {
+                        expandedPanelRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+                      }
+                    }}
+                    className="text-slate-400 hover:text-white transition-colors p-1 hover:bg-slate-700/50 rounded animate-fade-in"
+                    aria-label="Scroll to top"
+                    title="Scroll to top"
+                  >
+                    <ArrowUp size={18} />
+                  </button>
+                )}
                 {/* Refresh Button */}
                 <button
                   onClick={handleRefresh}
@@ -949,9 +980,16 @@ const RecentMatchesCard = ({
             </div>
           </div>
 
+          {/* Scrollable Content */}
+          <div
+            ref={expandedPanelRef}
+            className="p-4 md:p-6 pb-8 overflow-y-auto overflow-x-hidden flex-1 min-h-0 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-teal-950/40 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-teal-500/70 [&::-webkit-scrollbar-thumb]:to-cyan-500/70 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border [&::-webkit-scrollbar-thumb]:border-teal-400/30 hover:[&::-webkit-scrollbar-thumb]:from-teal-400 hover:[&::-webkit-scrollbar-thumb]:to-cyan-400 [scrollbar-width:thin] [scrollbar-color:rgb(20_184_166_/_0.7)_rgb(4_47_46_/_0.4)]"
+          >
+
           {/* You earned section */}
           <div className="mb-4 space-y-2">
-            <h3 className="text-white font-semibold text-lg md:text-md mb-3">Payout History</h3>
+          <hr className="border-purple-100/10" />
+            <h3 className="text-white font-semibold text-lg md:text-md py-3">Payout History</h3>
             <div className="flex items-center gap-1.5 text-sm md:text-xs">
               <span className="text-green-400">You earned:</span>
               <TrendingUp className={`${totalEarnings >= 0n ? 'text-green-400' : 'text-red-400'}`} size={16} />
