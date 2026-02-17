@@ -3700,6 +3700,7 @@ export default function TicTacChain() {
             onShowTooltip={() => setActiveTooltip('recentMatches')}
             onHideTooltip={() => setActiveTooltip(null)}
             onNavigateToTournament={handleEnterTournament}
+            leaderboard={leaderboard}
           />
 
           {/* Community Raffle Card */}
@@ -3773,6 +3774,7 @@ export default function TicTacChain() {
             onShowTooltip={() => setActiveTooltip('recentMatches')}
             onHideTooltip={() => setActiveTooltip(null)}
             onNavigateToTournament={handleEnterTournament}
+            leaderboard={leaderboard}
           />
 
           <CommunityRaffleCard

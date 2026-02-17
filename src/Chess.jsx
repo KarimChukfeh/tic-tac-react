@@ -4323,6 +4323,7 @@ export default function Chess() {
             onShowTooltip={() => setActiveTooltip('recentMatches')}
             onHideTooltip={() => setActiveTooltip(null)}
             onNavigateToTournament={handleEnterTournament}
+            leaderboard={leaderboard}
           />
 
           {/* Community Raffle Card */}
