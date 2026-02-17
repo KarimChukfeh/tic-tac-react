@@ -291,9 +291,19 @@ Without a token, players remain players, competition is the only focus, and simp
 
 ETour doesn't need token sales, venture funding, or financial engineering to survive. 
 
-As long as people want to compete, ETour generates revenue. 
+As long as people want to compete, ETour generates enough revenue to run itself. 
 
 **ETour is not dependent on speculation.**
+
+### Community Raffles
+
+ETour contracts keep 2.5% of every entry fee to ensure the protocol remains healthy and operational.
+
+Rather than letting this ETH accumulate indefinitely, ETour redistributes it back to the community through periodic raffle events.
+
+ETour rewards a random enrolled player with accumulated ETH
+
+This is part of ETour's commitment to **sustainable & fair** distribution of funds.
 
 ---
 
