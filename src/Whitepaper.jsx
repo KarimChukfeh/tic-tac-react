@@ -227,7 +227,40 @@ const Whitepaper = () => {
       else if (line.trim()) {
         // Check if this is a standalone link (TOC style)
         const standaloneLinkMatch = line.match(/^\[(.+)\]\((.+)\)$/);
-        if (standaloneLinkMatch) {
+        // Check if this is an indented subheader link (starts with spaces/bullet)
+        const indentedLinkMatch = line.match(/^\s+[•\-]\s*\[(.+)\]\((.+)\)$/);
+
+        if (indentedLinkMatch) {
+          const linkText = indentedLinkMatch[1];
+          const linkUrl = indentedLinkMatch[2];
+          elements.push(
+            <div key={i} className="my-1 ml-6 flex items-start gap-2">
+              <span className="text-purple-400 mt-1">•</span>
+              <a
+                href={linkUrl}
+                className={`${colors.primary} hover:${colors.secondary} text-base font-normal transition-colors cursor-pointer`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  // Use setTimeout to ensure DOM is fully rendered
+                  setTimeout(() => {
+                    const targetId = linkUrl.substring(1); // Remove the #
+                    const element = document.getElementById(targetId);
+                    if (element) {
+                      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      // Add highlight animation
+                      element.classList.add('highlight-target');
+                      setTimeout(() => {
+                        element.classList.remove('highlight-target');
+                      }, 3500);
+                    }
+                  }, 50);
+                }}
+              >
+                {linkText}
+              </a>
+            </div>
+          );
+        } else if (standaloneLinkMatch) {
           const linkText = standaloneLinkMatch[1];
           const linkUrl = standaloneLinkMatch[2];
           elements.push(
