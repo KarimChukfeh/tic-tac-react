@@ -85,11 +85,11 @@ export default function TotalEarningsCard() {
   return (
     <div className="inline-block mt-4 px-4 py-2 rounded-lg bg-slate-800/40 border border-slate-700/50">
       <p className="text-slate-400 text-sm">
-        Winners have earned{' '}
+        In the last 24 hours{' '}
         <span className="text-cyan-400 font-semibold">
           {totalEarnings.toFixed(4)} ETH
         </span>
-        {' '}in the last 24 hours
+        {' '} have been sent to winners
       </p>
     </div>
   );

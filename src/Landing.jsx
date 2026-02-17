@@ -469,9 +469,6 @@ export default function Landing() {
             <p className="text-slate-400 text-lg mb-3">
               Three games. Multiple stake levels. One rule: <span className="text-cyan-400">winner takes all.</span>
             </p>
-
-            {/* Total Earnings Card */}
-            <TotalEarningsCard />
           </div>
           
           {/* Games Grid */}
@@ -521,12 +518,17 @@ export default function Landing() {
               href="/chess"
               accentColor="#fbbf24"
             />
-            
+
+          </div>
+
+          {/* Total Earnings Card */}
+          <div className="text-center mt-12">
+            <TotalEarningsCard />
           </div>
         </section>
-        
+
         {/* ============ HOW IT WORKS ============ */}
-        <section className="px-6 py-24 border-t border-slate-800/50">
+        <section className="px-6 py-24">
           <div className="max-w-4xl mx-auto">
             
             <div className="text-center mb-16">
