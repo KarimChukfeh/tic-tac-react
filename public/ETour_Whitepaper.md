@@ -321,9 +321,9 @@ This means that the billionth ETour game move cost the same as the first move.
 
 The history exists purely for retrieval, with no computation performed on it during live gameplay.
 
-This separation means ETour's economics hold at any scale. The protocol doesn't get more expensive to use as it grows. 
+This separation means ETour's economics hold at any scale.
 
-Adoption makes ETour stronger, not slower.
+The protocol doesn't get more expensive as adoption it grows.
 
 #### Community Raffles
 
