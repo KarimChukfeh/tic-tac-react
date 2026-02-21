@@ -655,7 +655,7 @@ export default function Landing() {
             No more playing for points. No more fake rankings.
             Put real ETH on the line and see where you stand.
           </p>
-          <div className="flex flex-col items-center justify-center gap-4">
+          <div className="flex items-center justify-center gap-4">
             <button
               onClick={() => document.getElementById('games')?.scrollIntoView({ behavior: 'smooth' })}
               className="px-16 py-6 rounded-2xl font-bold text-xl text-white transition-all duration-300 hover:-translate-y-1 cursor-pointer"
@@ -669,11 +669,7 @@ export default function Landing() {
             <span className="text-slate-500 text-lg font-medium">or</span>
             <Link
               to="/whitepaper"
-              className="px-16 py-6 rounded-2xl font-bold text-xl text-white transition-all duration-300 hover:-translate-y-1 border-2"
-              style={{
-                borderColor: '#06b6d4',
-                background: 'rgba(6, 182, 212, 0.1)',
-              }}
+              className="font-bold text-xl text-cyan-400 transition-all duration-300 hover:text-cyan-300"
             >
               Read The Whitepaper
             </Link>
