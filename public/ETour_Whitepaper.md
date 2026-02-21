@@ -50,6 +50,10 @@ This whitepaper explains how ETour makes trustless competition possible.
   • [ETour as Infrastructure](#etour-as-infrastructure)
   • [The Broader Vision](#the-broader-vision)
 
+[6. Conclusion](#6-an-invitation)
+[7. Appendix](#7-the-appendix)
+
+
 ---
 
 ## 1. The Philosophy of ETour
@@ -445,21 +449,17 @@ ETour proves that blockchain applications can be simple, useful, and sustainable
 
 As more games build on the protocol, network effects emerge: shared player bases, unified leaderboards, cross-game achievements. But growth isn't the goal — sustainability is. ETour succeeds if it's still running unchanged in ten years, facilitating fair competition for whoever wants to play.
 
-### An Invitation
+## 6. An Invitation
 
-**If you're a player** — pick a game and compete. Test yourself against others with real stakes on the line.
+**If you're a player** — Pick a game and compete. Test yourself against others with real stakes on the line.
 
-**If you're a developer** — build your game on ETour. Inherit our infrastructure and focus on what makes your game special.
+**If you're a developer** — Build your game on ETour. Inherit our infrastructure and focus on what makes your game special.
 
-**If you're a skeptic** — read the code. Verify our claims. Try to find flaws.
-
----
-
-# Think you're good? Prove it.
+**If you're a skeptic** — Read the code. Verify the claims. Find flaws.
 
 ---
 
-### The Appendix 
+## 7. The Appendix 
 
 **ETour Core Modules**
 - [ETour_Core.sol](https://arbiscan.io/address/0x3C86Fd676574528321fd47d21658bCf066a38b76#code)
