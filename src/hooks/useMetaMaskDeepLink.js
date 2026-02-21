@@ -35,6 +35,11 @@ export function useMetaMaskDeepLink() {
 
     hasChecked.current = true;
 
+    // Skip MetaMask prompt on whitepaper page
+    if (window.location.pathname === '/whitepaper') {
+      return;
+    }
+
     // Check if mobile device
     if (!isMobileDevice()) {
       return;
