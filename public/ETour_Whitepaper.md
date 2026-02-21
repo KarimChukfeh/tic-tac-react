@@ -462,16 +462,16 @@ As more games build on the protocol, network effects emerge: shared player bases
 ## 7. The Appendix 
 
 **ETour Core Modules**
-- [ETour_Core.sol](https://arbiscan.io/address/0x3C86Fd676574528321fd47d21658bCf066a38b76#code)
-- [ETour_Matches.sol](https://arbiscan.io/address/0xfC3c8c7a3DC6E3a8025eAD0B1fb9e1347df30b6F#code)
-- [ETour_Prizes.sol](https://arbiscan.io/address/0x48D4772B6273799Ece6bb7E41254F57e076a6eE3#code)
-- [ETour_Raffle.sol](https://arbiscan.io/address/0xfA1B58c9AE68d29EF0aC239dAAdd13a149cb96f8#code)
-- [ETour_Escalation.sol](https://arbiscan.io/address/0x59Cc2cB8FD70b9407a06082d976C7fa5eCC29178#code)
+- [ETour_Core.sol](https://arbiscan.io/address/0xc39985E520bDcB6c551591a0afE9B76b4B4EEED4#code)
+- [ETour_Matches.sol](https://arbiscan.io/address/0xa6e29A8C842AC39416be48Ca26F5274b87FB2118#code)
+- [ETour_Prizes.sol](https://arbiscan.io/address/0x93A4524571AEBCf81e443D8707E8DbDB6Db3C73C#code)
+- [ETour_Raffle.sol](https://arbiscan.io/address/0xd64CC3B13f71E1D357F83F8A9433D0B31fa28973#code)
+- [ETour_Escalation.sol](https://arbiscan.io/address/0x9B59380DDA483F21B6c0E8E778e3ACF47D9E5462#code)
 
 **Game Contracts**
-- [TicTacChain.sol](https://arbiscan.io/address/0x89464650B9987994222aE227303cd51dBC2d89B0#code)
-- [ChessOnChain.sol](https://arbiscan.io/address/0x81bb603C84aFE5817d85Fe5D3fd1Dcf606Ff566D#code)
-- [ConnectFourOnChain.sol](https://arbiscan.io/address/0x2036db40a00258cAF033049EBc2d7961C67Dfa68#code)
+- [TicTacChain.sol](https://arbiscan.io/address/0x3544bf202b7C1A9111a5F65eaAB6E79E61eec4cA#code)
+- [ChessOnChain.sol](https://arbiscan.io/address/0xDD730f00973389DfB1e669c8E024166C96dc1a7d#code)
+- [ConnectFourOnChain.sol](https://arbiscan.io/address/0xd3DFcFcCC8248946731efe7091a59B1E12353ea1#code)
 
 **Game-Specific Modules**
-- [ChessRules.sol](https://arbiscan.io/address/0x2C48FFB461Cb603351FC903F582329eECf05BF33#code)
+- [ChessRules.sol](https://arbiscan.io/address/0x1CB99D88175f015fB1299B359AFD14f229267921#code)
