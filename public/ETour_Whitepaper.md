@@ -29,37 +29,23 @@ This whitepaper explains how ETour makes trustless competition possible.
   • [What Players Actually Want](#what-players-actually-want)
   • [The ETour Thesis](#the-etour-thesis)
 
-[2. The Trust Problem](#2-the-turst-problem)
-  • [Centralized Gaming's Hidden Failures](#centralized-gamings-hidden-failures)
-  • [Why Blockchain?](#why-blockchain)
+[2. The Problems with Competitive Gaming](#2-the-problems-with-competitive-gaming)
+  • [The Trust Problem](#the-trust-problem)
+  • [The Griefing Problem](#the-griefing-problem)
+  • [The Bot Problem](#the-bot-problem)
+  • [The Gas Problem](#the-gas-problem)
 
-[3. The Three-Game Demo](#3-the-three-game-demo)
+[3. How ETour Works](#3-how-etour-works)
+  • [The Lifecycle of Tournaments](#the-lifecycle-of-tournaments)
+  • [The Economics of Fair Play](#the-economics-of-fair-play)
+  • [Solving Stalls Without Admins](#solving-stalls-without-admins)
+
+[4. The Three-Game Demo](#4-the-three-game-demo)
   • [TicTacToe — The Gateway](#a-tictactoe--the-gateway)
   • [Chess — The Flagship](#b-chess--the-flagship)
   • [Connect Four — The Dark Horse](#c-connect-four--the-dark-horse)
 
-[4. The Lifecycle of Tournaments](#4-the-lifecycle-of-tournaments)
-  • [Enrollment](#a-enrollment)
-  • [Victory](#c-victory)
-  • [When Games Draw](#d-when-games-draw)
-
-[5. The Gas Problem](#5-the-gas-problem)
-
-[6. The Economics of Fair Play](#6-the-economics-of-fair-pay)
-  • [Why This Breakdown](#why-this-breakdown)
-  • [ETour is Anti-Token](#etour-is-anti-token)
-  • [Community Raffles](#community-raffles)
-
-[7. The Griefing Problem](#7-the-grefing-problem)
-  • [Solving Stalls Without Admins](#solving-stalls-without-admins)
-  • [Escalating Incentives](#escalating-incentives)
-  • [Incentive Alignment](#incentive-alignment)
-
-[8. The Bot Problem](#8-the-bot-problem)
-  • [Zero-Trust. Zero Overpromises](#zero-trust-zero-overpromises)
-  • [ETour's Value Remains Unchanged](#etours-value-remains-unchanged)
-
-[9. The Future of Competition](#9-the-future-of-competition)
+[5. The Future of Competition](#5-the-future-of-competition)
   • [What We've Built](#what-weve-built)
   • [ETour as Infrastructure](#etour-as-infrastructure)
   • [The Broader Vision](#the-broader-vision)
@@ -104,9 +90,11 @@ The winner takes the pot.
 
 ---
 
-## 2. The Turst Problem
+## 2. The Problems with Competitive Gaming
 
-### Centralized Gaming's Hidden Failures
+### The Trust Problem
+
+#### Centralized Gaming's Hidden Failures
 
 Every online game requires trusting multiple parties:
 
@@ -119,7 +107,7 @@ Most of the time, this trust is justified.
 
 But when real money is involved, **"most of the time" isn't good enough.**
 
-### Why Blockchain?
+#### Why Blockchain?
 
 The blockchain provides three irreplaceable properties for competitive gaming:
 
@@ -134,10 +122,184 @@ These aren't "extra features". These are properties we inherited by building on 
 
 **ETour runs itself forever according to its code.**
 
+---
+
+### The Griefing Problem
+
+#### Solving Stalls Without Admins
+
+Every competitive system faces the same problem: losing players stalling to avoid defeat. In chess, letting the clock run. In poker, tanking every decision. Online, disconnecting and hoping opponents quit.
+
+Traditional solutions require human intervention — moderators, support tickets, manual reviews.
+
+**These introduce bias that goes against what Web3 stands for.**
+
+#### Escalating Incentives
+
+ETour solves stalling through economic incentives that escalate over time. The longer someone stalls, the more people can claim their position.
+
+**For Enrollment Stalling:**
+
+When tournaments don't fill naturally, two options emerge. First, enrolled players can force-start with whoever joined — three players in an 8-player tournament start a 3-player tournament, with the prize pool adjusting accordingly. If nobody acts, eventually anyone — even non-enrolled players — can claim the entire abandoned prize pool. **This is the nuclear option that ensures tournaments are never stuck forever.**
+
+**For Match Stalling:**
+
+When a player stops moving, escalation begins:
+
+**Level 1:** Their opponent can claim victory by timeout. Simple and fair.
+
+**Level 2:** Players already advanced to later rounds can eliminate both stalled players. Why should their tournament be held up by others' inaction?
+
+**Level 3:** Anyone can replace both stalled players and take their spot in the tournament. Free entry to potentially win the entire prize pool.
+
+#### Incentive Alignment
+
+Notice how each escalation level benefits someone: opponents get free wins, advanced players get cleared paths, external observers get free tournament entry, and the protocol gets resolved states. The only party that doesn't benefit is the staller. This isn't punishment — it's game theory.
+
+**ETour makes stalling costly and resolution profitable.**
+
+#### Time as a Resource
+
+Each player receives a time bank for their moves, plus increment per move. This isn't arbitrary pressure — it's resource management. Time becomes another strategic dimension. Run low on time and you must play faster, potentially making mistakes. But your opponent knows you're under pressure and might try to complicate positions. Time management becomes part of the game.
 
 ---
 
-## 3. The Three-Game Demo
+### The Bot Problem
+
+Bots will always be a problem in online competitive gaming.
+
+Instead of falsely pretending that ETour solves the bot problem, we chose to deliver a solution that focuses on solving other fundamental issues with on-chain gaming: griefing, storage, trustless settlement, and more.
+
+#### Zero-Trust. Zero Overpromises
+
+Detecting bots is a never ending cat-and-mouse game:
+• **Let's be real** - Billion dollar projects with dedicated anti-cheat departments cannot guarantee 100% bot protection.
+• **The resulting risk** — Because money is involved, bots can, and probably will, exist on etour.games.
+• **Focus on Infrastructure** — This reality does not take away from the fact that etour.games delivers a 100% on-chain system for playing chess over ETH stakes without a centralized authority.
+
+#### ETour's Value Remains Unchanged
+
+ETour remains a robust, zero-trust tool for competitive stakes. If you can verify your opponent, such as playing with a friend or within a community, then ETour still provides a perfect, tamper-proof decentralized gameplay over ETH stakes.
+
+---
+
+### The Gas Problem
+
+Every action on ETour costs gas that's paid for by the player.
+
+On Arbitrum, these costs are minimal:
+
+- **Enrollment:** ~$0.03 per tournament entry
+- **Moves:** ~$0.01 per move
+- **Claims:** ~$0.03 per victory claim
+
+These fees are negligible compared to entry fees.
+
+---
+
+## 3. How ETour Works
+
+### The Lifecycle of Tournaments
+
+ETour uses single-elimination brackets. It's the simplest, most exciting format that a 4 year-old can understand.
+
+Tournament tiers come in any size:
+
+- **2 players** — Quick heads-up matches
+- **4 players** — Mini-tournaments with semifinals
+- **8 players** — Full bracket experience
+- **16 players** — Extended competition for serious players
+- **...+**
+
+#### A) Enrollment
+
+Players join by paying the entry fee. The moment your ETH arrives, you're enrolled. No forms, no accounts, no waiting for approval. The tournament waits for enough players or until the enrollment window expires.
+
+#### B) Matchmaking
+When a tournament begins, players are paired into matches. Round 0 starts immediately. In an 8-player tournament, four matches begin simultaneously. Winners advance round by round until the finals.
+
+#### C) Victory
+The tournament champion takes everything. No second place, no consolation prizes.
+
+This isn't about participation.  **It's about winning.**
+
+#### D) Draws
+
+Some games can end in draws. In chess, perpetual check or insufficient material. In tic-tac-toe, perfect play.
+
+Regular draws eliminate both players — neither advances. This creates natural pressure to play for wins rather than safe draws.
+
+But what if the finals draw? Both finalists split the prize pool equally. They've proven themselves equally matched and share the victory.
+
+What if every match in a round draws? The tournament cannot continue. All remaining players split the prize pool equally. Rare, **but handled fairly.**
+
+#### E) Other Edge Cases
+
+Tournaments are messy. Players get eliminated asymmetrically. Odd numbers emerge from draw-heavy rounds.
+
+ETour handles every scenario: odd advancement gives one player a walkover, orphaned winners automatically advance, and incomplete brackets consolidate remaining players.
+
+These aren't patches or hacks. **They're deliberate design decisions ensuring tournaments always resolve fairly.**
+
+---
+
+### The Economics of Fair Play
+
+Every entry fee is split three ways:
+
+- **90%** — to the tournament winner
+- **7.5%** — to ETour's creator
+- **2.5%** — to the contract subsidy pool
+
+These percentages are hardcoded and unchangeable. No governance votes, no admin adjustments. The economics are transparent and permanent.
+
+#### Why This Breakdown
+
+**The winner gets 90%** because that's fair. You put in skill, time, and money. You win, you get paid. Straightforward.
+
+**7.5% goes to ETour's creator** as profit for building and operating the platform, including hosting the frontend. This is honest revenue for honest work.
+
+**2.5% accumulates in the contract** until it hits game-specific thresholds, keeping the system self-sustaining. Any excess gets raffled back to active players as a way of giving back to the community.
+
+That's it. You always know exactly where your entry fee goes.
+
+#### ETour is Anti-Token
+
+ETour will never have a token. Not because we couldn't create one, but because tokens corrupt competitive gaming.
+
+With a token, players become investors, competition becomes secondary to price action, and complexity obscures the product.
+
+Without a token, players remain players, competition is the only focus, and simplicity enhances the product.
+
+**ETH in, ETH out. Nothing more needed.**
+
+#### Sustainable by Design
+
+ETour doesn't need token sales, venture funding, or financial engineering to survive.
+
+As long as people want to compete, ETour generates enough revenue to run itself.
+
+**ETour is not dependent on speculation.**
+
+#### Community Raffles
+
+ETour contracts keep 2.5% of every entry fee to ensure the protocol remains healthy and operational.
+
+Rather than letting this ETH accumulate indefinitely, ETour redistributes it back to the community through periodic raffle events.
+
+ETour rewards a random enrolled player with accumulated ETH
+
+This is part of ETour's commitment to **sustainable & fair** distribution of funds.
+
+---
+
+### Solving Stalls Without Admins
+
+This section details ETour's approach to handling player griefing and stalling through escalating economic incentives. Rather than relying on admins, the protocol uses game theory to ensure tournaments always resolve. See Section 2 for the full explanation of the griefing problem and how ETour's escalation system works.
+
+---
+
+## 4. The Three-Game Demo
 
 Not every game belongs on ETour. At least no yet.
 
@@ -221,174 +383,7 @@ So rather than compromising our principles, we rejected Battleship for now.
 
 ---
 
-## 4. The Lifecycle of Tournaments 
-
-ETour uses single-elimination brackets. It's the simplest, most exciting format that a 4 year-old can understand.
-
-Tournament tiers come in any size:
-
-- **2 players** — Quick heads-up matches
-- **4 players** — Mini-tournaments with semifinals
-- **8 players** — Full bracket experience
-- **16 players** — Extended competition for serious players
-- **...+**
-
-### A) Enrollment
-
-Players join by paying the entry fee. The moment your ETH arrives, you're enrolled. No forms, no accounts, no waiting for approval. The tournament waits for enough players or until the enrollment window expires.
-
-### B) Matchmaking
-When a tournament begins, players are paired into matches. Round 0 starts immediately. In an 8-player tournament, four matches begin simultaneously. Winners advance round by round until the finals.
-
-### C) Victory
-The tournament champion takes everything. No second place, no consolation prizes. 
-
-This isn't about participation.  **It's about winning.**
-
-### D) When Games Draw
-
-Some games can end in draws. In chess, perpetual check or insufficient material. In tic-tac-toe, perfect play.
-
-Regular draws eliminate both players — neither advances. This creates natural pressure to play for wins rather than safe draws.
-
-But what if the finals draw? Both finalists split the prize pool equally. They've proven themselves equally matched and share the victory.
-
-What if every match in a round draws? The tournament cannot continue. All remaining players split the prize pool equally. Rare, **but handled fairly.**
-
-### E) Edge Cases and Elegance
-
-Tournaments are messy. Players get eliminated asymmetrically. Odd numbers emerge from draw-heavy rounds.
-
-ETour handles every scenario: odd advancement gives one player a walkover, orphaned winners automatically advance, and incomplete brackets consolidate remaining players.
-
-These aren't patches or hacks. **They're deliberate design decisions ensuring tournaments always resolve fairly.**
-
----
-
-## 5. The Gas Problem
-
-Every action on ETour costs gas that's paid for by the player. 
-
-On Arbitrum, these costs are minimal:
-
-- **Enrollment:** ~$0.03 per tournament entry
-- **Moves:** ~$0.01 per move
-- **Claims:** ~$0.03 per victory claim
-
-These fees are negligible compared to entry fees.
-
----
-
-## 6. The Economics of Fair Play
-
-Every entry fee is split three ways:
-
-- **90%** — to the tournament winner
-- **7.5%** — to ETour's creator
-- **2.5%** — to the contract subsidy pool
-
-These percentages are hardcoded and unchangeable. No governance votes, no admin adjustments. The economics are transparent and permanent.
-
-### Why This Breakdown
-
-**The winner gets 90%** because that's fair. You put in skill, time, and money. You win, you get paid. Straightforward.
-
-**7.5% goes to ETour's creator** as profit for building and operating the platform, including hosting the frontend. This is honest revenue for honest work.
-
-**2.5% accumulates in the contract** until it hits game-specific thresholds, keeping the system self-sustaining. Any excess gets raffled back to active players as a way of giving back to the community.
-
-That's it. You always know exactly where your entry fee goes.
-
-### ETour is Anti-Token
-
-ETour will never have a token. Not because we couldn't create one, but because tokens corrupt competitive gaming. 
-
-With a token, players become investors, competition becomes secondary to price action, and complexity obscures the product. 
-
-Without a token, players remain players, competition is the only focus, and simplicity enhances the product.
-
-**ETH in, ETH out. Nothing more needed.**
-
-### Sustainable by Design
-
-ETour doesn't need token sales, venture funding, or financial engineering to survive. 
-
-As long as people want to compete, ETour generates enough revenue to run itself. 
-
-**ETour is not dependent on speculation.**
-
-### Community Raffles
-
-ETour contracts keep 2.5% of every entry fee to ensure the protocol remains healthy and operational.
-
-Rather than letting this ETH accumulate indefinitely, ETour redistributes it back to the community through periodic raffle events.
-
-ETour rewards a random enrolled player with accumulated ETH
-
-This is part of ETour's commitment to **sustainable & fair** distribution of funds.
-
----
-
-## 7. The Grefing Problem
-
-### Solving Stalls Without Admins
-
-Every competitive system faces the same problem: losing players stalling to avoid defeat. In chess, letting the clock run. In poker, tanking every decision. Online, disconnecting and hoping opponents quit.
-
-Traditional solutions require human intervention — moderators, support tickets, manual reviews. 
-
-**These introduce bias that goes against what Web3 stands for.**
-
-### Escalating Incentives
-
-ETour solves stalling through economic incentives that escalate over time. The longer someone stalls, the more people can claim their position.
-
-**For Enrollment Stalling:**
-
-When tournaments don't fill naturally, two options emerge. First, enrolled players can force-start with whoever joined — three players in an 8-player tournament start a 3-player tournament, with the prize pool adjusting accordingly. If nobody acts, eventually anyone — even non-enrolled players — can claim the entire abandoned prize pool. **This is the nuclear option that ensures tournaments are never stuck forever.**
-
-**For Match Stalling:**
-
-When a player stops moving, escalation begins:
-
-**Level 1:** Their opponent can claim victory by timeout. Simple and fair.
-
-**Level 2:** Players already advanced to later rounds can eliminate both stalled players. Why should their tournament be held up by others' inaction?
-
-**Level 3:** Anyone can replace both stalled players and take their spot in the tournament. Free entry to potentially win the entire prize pool.
-
-### Incentive Alignment
-
-Notice how each escalation level benefits someone: opponents get free wins, advanced players get cleared paths, external observers get free tournament entry, and the protocol gets resolved states. The only party that doesn't benefit is the staller. This isn't punishment — it's game theory.
-
-**ETour makes stalling costly and resolution profitable.**
-
-### Time as a Resource
-
-Each player receives a time bank for their moves, plus increment per move. This isn't arbitrary pressure — it's resource management. Time becomes another strategic dimension. Run low on time and you must play faster, potentially making mistakes. But your opponent knows you're under pressure and might try to complicate positions. Time management becomes part of the game.
-
----
-
-## 8. The Bot Problem
-
-Bots will always be a problem in online competitive gaming.
-
-Instead of falsely pretending that ETour solves the bot problem, we chose to deliver a solution that focuses on solving other fundamental issues with on-chain gaming: griefing, storage, trustless settlement, and more.
-
-### Zero-Trust. Zero Overpromises
-
-Detecting bots is a never ending cat-and-mouse game:
-• **Let's be real** - Billion dollar projects with dedicated anti-cheat departments cannot guarantee 100% bot protection.
-• **The resulting risk** — Because money is involved, bots can, and probably will, exist on etour.games.
-• **Focus on Infrastructure** — This reality does not take away from the fact that etour.games delivers a 100% on-chain system for playing chess over ETH stakes without a centralized authority.
-
-### ETour's Value Remains Unchanged
-
-ETour remains a robust, zero-trust tool for competitive stakes. If you can verify your opponent, such as playing with a friend or within a community, then ETour still provides a perfect, tamper-proof decentralized gameplay over ETH stakes.
-
----
-
-## 9. The Future of Competition
+## 5. The Future of Competition
 
 ### What We've Built
 
