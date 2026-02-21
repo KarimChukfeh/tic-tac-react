@@ -315,7 +315,7 @@ The storage slot gets reused rather than abandoned.
 
 Stats, match history, and outcomes are append-only/read-only records. 
 
-They grow indefinitely, and that's fine. But they are never userd active tournament logic. 
+They grow indefinitely, and that's fine. But they are never used in active tournament logic. 
 
 This means that the billionth ETour game move cost the same as the first move. 
 
