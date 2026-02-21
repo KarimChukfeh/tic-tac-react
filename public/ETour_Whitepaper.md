@@ -33,12 +33,12 @@ This whitepaper explains how ETour makes trustless competition possible.
   • [The Trust Problem](#the-trust-problem)
   • [The Griefing Problem](#the-griefing-problem)
   • [The Bot Problem](#the-bot-problem)
-  • [The Gas Problem](#the-gas-problem)
+  • [The Cost Problem](#the-cost-problem)
 
 [3. How ETour Works](#3-how-etour-works)
   • [The Lifecycle of Tournaments](#the-lifecycle-of-tournaments)
   • [The Economics of Fair Play](#the-economics-of-fair-play)
-  • [Solving Stalls Without Admins](#solving-stalls-without-admins)
+  • [Solving Stalls Without Admins](#solving-stalls-without-admins-1)
 
 [4. The Three-Game Demo](#4-the-three-game-demo)
   • [TicTacToe — The Gateway](#a-tictactoe--the-gateway)
@@ -183,7 +183,7 @@ ETour remains a robust, zero-trust tool for competitive stakes. If you can verif
 
 ---
 
-### The Gas Problem
+### The Cost Problem
 
 Every action on ETour costs gas that's paid for by the player.
 
@@ -194,6 +194,22 @@ On Arbitrum, these costs are minimal:
 - **Claims:** ~$0.03 per victory claim
 
 These fees are negligible compared to entry fees.
+
+#### The Deeper Issue With Cost
+
+Traditional Web3 games are built without deliberate storage design. 
+
+Every move, every match, every outcome gets written to contract storage indiscriminately. 
+
+This accumulates, **fast**, because Ethereum charges gas proportional to storage reads and writes. 
+
+The cost of a single move on the billionth match can be disproportionately more expensive than the cost of the very first move.
+
+The more people play, the more expensive it gets. The more expensive it gets, the fewer people play. The sooner the game collapses.
+
+This isn't a gas problem. It's a design problem.
+
+**ETour was built to avoid this trap from day one.**
 
 ---
 
@@ -211,19 +227,19 @@ Tournament tiers come in any size:
 - **16 players** — Extended competition for serious players
 - **...+**
 
-#### A) Enrollment
+#### Enrollment
 
 Players join by paying the entry fee. The moment your ETH arrives, you're enrolled. No forms, no accounts, no waiting for approval. The tournament waits for enough players or until the enrollment window expires.
 
-#### B) Matchmaking
+#### Matchmaking
 When a tournament begins, players are paired into matches. Round 0 starts immediately. In an 8-player tournament, four matches begin simultaneously. Winners advance round by round until the finals.
 
-#### C) Victory
+#### Victory
 The tournament champion takes everything. No second place, no consolation prizes.
 
 This isn't about participation.  **It's about winning.**
 
-#### D) Draws
+#### Draws
 
 Some games can end in draws. In chess, perpetual check or insufficient material. In tic-tac-toe, perfect play.
 
@@ -233,13 +249,17 @@ But what if the finals draw? Both finalists split the prize pool equally. They'v
 
 What if every match in a round draws? The tournament cannot continue. All remaining players split the prize pool equally. Rare, **but handled fairly.**
 
-#### E) Other Edge Cases
+#### Other Edge Cases
 
-Tournaments are messy. Players get eliminated asymmetrically. Odd numbers emerge from draw-heavy rounds.
+Tournaments are messy. 
+
+Players get eliminated asymmetrically. Odd numbers emerge from draw-heavy rounds.
 
 ETour handles every scenario: odd advancement gives one player a walkover, orphaned winners automatically advance, and incomplete brackets consolidate remaining players.
 
-These aren't patches or hacks. **They're deliberate design decisions ensuring tournaments always resolve fairly.**
+These aren't patches or hacks. 
+
+**They're deliberate design decisions ensuring tournaments always resolve fairly.**
 
 ---
 
@@ -279,7 +299,31 @@ ETour doesn't need token sales, venture funding, or financial engineering to sur
 
 As long as people want to compete, ETour generates enough revenue to run itself.
 
-**ETour is not dependent on speculation.**
+**Dynamic Storage is Temproray**
+
+During a tournament: move data, game state, and round progress live in contract storage **only as long as they're needed.**
+
+Once a tournament concludes, that data is reset and recycled for the next round of the same tournament. 
+
+The storage slot gets reused rather than abandoned. 
+
+**This means the gas cost of making a move in round one of the millionth tournament is identical to the gas cost of making a move in round one of the very first tournament.**
+
+> What about stats?
+
+**Historical data is cold storage.**
+
+Stats, match history, and outcomes are append-only/read-only records. 
+
+They grow indefinitely, and that's fine. But they are never userd active tournament logic. 
+
+This means that the billionth ETour game move cost the same as the first move. 
+
+The history exists purely for retrieval, with no computation performed on it during live gameplay.
+
+This separation means ETour's economics hold at any scale. The protocol doesn't get more expensive to use as it grows. 
+
+Adoption makes ETour stronger, not slower.
 
 #### Community Raffles
 
