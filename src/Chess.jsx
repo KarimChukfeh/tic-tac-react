@@ -4748,6 +4748,8 @@ export default function Chess() {
             showTooltip={activeTooltip === 'recentMatches'}
             onShowTooltip={() => setActiveTooltip('recentMatches')}
             onHideTooltip={() => setActiveTooltip(null)}
+            onNavigateToTournament={handleEnterTournament}
+            leaderboard={leaderboard}
           />
 
           <CommunityRaffleCard
