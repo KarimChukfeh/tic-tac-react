@@ -47,6 +47,7 @@ import MatchEndModal from './components/shared/MatchEndModal';
 import ActiveMatchAlertModal from './components/shared/ActiveMatchAlertModal';
 import ErrorModal from './components/shared/ErrorModal';
 import WhyArbitrum from './components/shared/WhyArbitrum';
+import ConnectedWalletCard from './components/shared/ConnectedWalletCard';
 import GameMatchLayout from './components/shared/GameMatchLayout';
 import TournamentHeader from './components/shared/TournamentHeader';
 import PlayerActivity from './components/shared/PlayerActivity';
@@ -431,6 +432,7 @@ export default function TicTacChain() {
   // Leaderboard State
   const [leaderboard, setLeaderboard] = useState([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+  const [recentMatchesData, setRecentMatchesData] = useState([]);
 
   // Connection Error State
   const [connectionError, setConnectionError] = useState(null); // null = no error, string = error message
@@ -4071,6 +4073,7 @@ export default function TicTacChain() {
             onHideTooltip={() => setActiveTooltip(null)}
             onNavigateToTournament={handleEnterTournament}
             leaderboard={leaderboard}
+            onMatchesLoad={setRecentMatchesData}
           />
 
           {/* Community Raffle Card */}
@@ -4296,32 +4299,24 @@ export default function TicTacChain() {
               </button>
             </div>
           ) : (
-            <div className="w-full max-w-lg mx-auto">
-              <div className="flex items-start gap-4 bg-green-500/40 border border-green-400/50 px-8 py-4 rounded-2xl">
-                <div className="flex items-center h-6">
-                  <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-                </div>
-                <div className="flex flex-col items-start gap-2">
-                  <span className="text-base text-white">
-                    Connected: <strong className="font-mono">{shortenAddress(account)}</strong>
-                  </span>
-                  <div className="w-full h-[1px] bg-green-400/30"></div>
-                  <span className="text-base text-green-200">
-                    Balance: <strong>{balance ? `${parseFloat(balance).toFixed(6)} ETH` : 'N/A'}</strong>
-                  </span>
-                  <span className="text-base text-green-200">
-                    Contract: <a
-                      href={`https://arbiscan.io/address/${CONTRACT_ADDRESS}#code`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-semibold text-blue-300 hover:text-blue-200 underline decoration-blue-300/50 hover:decoration-blue-200 transition-colors"
-                    >
-                      {shortenAddress(CONTRACT_ADDRESS)}
-                    </a>
-                  </span>
-                </div>
-              </div>
-            </div>
+            <ConnectedWalletCard
+              account={account}
+              balance={balance}
+              contractAddress={CONTRACT_ADDRESS}
+              shortenAddress={shortenAddress}
+              payout={(() => {
+                const entry = leaderboard.find(e => e.player?.toLowerCase() === account?.toLowerCase());
+                if (!entry) return null;
+                const amt = BigInt(entry.earnings);
+                const isPositive = amt >= 0n;
+                return `${isPositive ? '+' : '-'}${ethers.formatEther(isPositive ? amt : -amt)} ETH`;
+              })()}
+              lastWin={(() => {
+                const wins = recentMatchesData.filter(m => m.winner?.toLowerCase() === account?.toLowerCase());
+                if (!wins.length) return null;
+                return wins.reduce((a, b) => (b.timestamp > a.timestamp ? b : a)).timestamp;
+              })()}
+            />
           )}
 
           {/* Why Arbitrum Info */}

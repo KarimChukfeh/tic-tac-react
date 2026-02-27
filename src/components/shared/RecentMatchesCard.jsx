@@ -29,6 +29,7 @@ const RecentMatchesCard = ({
   onHideTooltip, // Callback to hide this component's tooltip
   onNavigateToTournament, // Callback to navigate to tournament bracket view
   leaderboard = [], // Leaderboard data to find player earnings
+  onMatchesLoad, // Callback(matches) fired after matches are fetched
 }) => {
   const [internalIsExpanded, setInternalIsExpanded] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
@@ -90,6 +91,13 @@ const RecentMatchesCard = ({
       }
     }
   }, [account, leaderboard]);
+
+  // Pre-fetch matches silently when wallet connects so ConnectedWalletCard stats are ready
+  useEffect(() => {
+    if (account && contract) {
+      fetchRecentMatches();
+    }
+  }, [account, contract]);
 
   // Fetch fresh data when panel transitions from collapsed to expanded
   useEffect(() => {
@@ -287,6 +295,7 @@ const RecentMatchesCard = ({
 
       console.log('[RecentMatches] Parsed matches with move history:', matchesWithMoveHistory.length);
       setRecentMatches(matchesWithMoveHistory);
+      if (onMatchesLoad) onMatchesLoad(matchesWithMoveHistory);
     } catch (err) {
       console.error('[RecentMatches] Error fetching recent matches:', err);
     } finally {
