@@ -7,9 +7,9 @@ import Chess from './Chess.jsx'
 import ConnectFour from './ConnectFour.jsx'
 import Whitepaper from './Whitepaper.jsx'
 import NotFound from './NotFound.jsx'
-import MetaMaskPrompt from './components/MetaMaskPrompt.jsx'
+import WalletBrowserPrompt from './components/WalletBrowserPrompt.jsx'
 import './index.css'
-import { useMetaMaskDeepLink } from './hooks/useMetaMaskDeepLink'
+import { useWalletBrowserPrompt } from './hooks/useWalletBrowserPrompt'
 import { useErudaDebugConsole } from './hooks/useErudaDebugConsole'
 
 function AppRoutes() {
@@ -27,17 +27,17 @@ function AppRoutes() {
   )
 }
 
-// Wrapper component to handle MetaMask deep linking on mobile
+// Wrapper component to handle wallet browser deep linking on mobile
 function App() {
-  // Get MetaMask prompt state and handlers
-  const { showPrompt, handleMetaMaskChoice, handleContinueChoice } = useMetaMaskDeepLink();
+  // Get wallet browser prompt state and handlers
+  const { showPrompt, handleWalletChoice, handleContinueChoice } = useWalletBrowserPrompt();
 
   return (
     <>
-      {/* Show MetaMask choice prompt on mobile */}
+      {/* Show wallet browser choice prompt on mobile */}
       {showPrompt && (
-        <MetaMaskPrompt
-          onMetaMaskChoice={handleMetaMaskChoice}
+        <WalletBrowserPrompt
+          onWalletChoice={handleWalletChoice}
           onContinueChoice={handleContinueChoice}
         />
       )}
