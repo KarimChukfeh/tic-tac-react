@@ -55,9 +55,14 @@ export default function WalletBrowserPrompt({ onWalletChoice, onContinueChoice }
         </div>
 
         {/* Title */}
-        <h2 className="text-xl font-bold text-white text-center mb-6">
+        <h2 className="text-xl font-bold text-white text-center mb-3">
           Choose Wallet Browser
         </h2>
+
+        {/* Explanation Text */}
+        <p className="text-slate-400 text-center mb-5 text-xs leading-relaxed">
+          Traditional Web2 mobile browsers such as Chrome and Safari don't support wallet connections. Open ETour in a Web3 browser in order to connect and play.
+        </p>
 
         {/* Open With Label */}
         <p className="text-slate-300 text-center mb-3 text-sm font-medium">
