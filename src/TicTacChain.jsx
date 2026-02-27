@@ -351,6 +351,9 @@ export default function TicTacChain() {
   const [balance, setBalance] = useState(null); // ETH balance in wallet (Arbitrum bridged)
   const [lifetimeEarnings, setLifetimeEarnings] = useState(0n); // Total earnings from leaderboard
 
+  // UI State
+  const [isWhyArbitrumExpanded, setIsWhyArbitrumExpanded] = useState(true);
+
   // Raffle Info State
   const [raffleInfo, setRaffleInfo] = useState({
     raffleIndex: 0n,
@@ -763,6 +766,9 @@ export default function TicTacChain() {
 
       setAccount(accounts[0]);
       setContract(contractInstance);
+
+      // Auto-collapse WhyArbitrum card when wallet connects
+      setIsWhyArbitrumExpanded(false);
 
       // Fetch wallet balance (Arbitrum bridged ETH)
       const userBalance = await web3Provider.getBalance(accounts[0]);
@@ -4126,37 +4132,52 @@ export default function TicTacChain() {
 
           {/* Connect Wallet CTA */}
           {!account ? (
-            <button
-              id="connect-wallet-cta"
-              onClick={connectWallet}
-              disabled={loading}
-              className={`inline-flex items-center gap-3 bg-gradient-to-r ${currentTheme.buttonGradient} ${currentTheme.buttonHover} px-10 py-5 rounded-2xl font-bold text-2xl shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed scroll-mt-6`}
-            >
-              <Wallet size={28} />
-              {loading ? 'Connecting...' : 'Connect Wallet to Enter'}
-            </button>
+            <div className="w-full max-w-lg mx-auto">
+              <button
+                id="connect-wallet-cta"
+                onClick={connectWallet}
+                disabled={loading}
+                className={`w-full flex items-center justify-center gap-3 bg-gradient-to-r ${currentTheme.buttonGradient} ${currentTheme.buttonHover} px-10 py-5 rounded-2xl font-bold text-2xl shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed scroll-mt-6`}
+              >
+                <Wallet size={28} />
+                {loading ? 'Connecting...' : 'Connect Wallet to Enter'}
+              </button>
+            </div>
           ) : (
-            <div className="inline-flex items-start gap-4 bg-green-500/40 border border-green-400/50 px-8 py-4 rounded-2xl">
-              <div className="flex items-center h-6">
-                <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-              </div>
-              <div className="flex flex-col items-start gap-2">
-                <span className="text-base text-white">
-                  Connected as: <strong className="font-mono">{shortenAddress(account)}</strong>
-                </span>
-                <div className="w-full h-[1px] bg-green-400/30"></div>
-                <span className="text-base text-green-200">
-                  Balance: <strong>{balance ? `${parseFloat(balance).toFixed(4)} ETH` : 'N/A'}</strong>
-                </span>
-                <span className="text-base text-green-200">
-                  Earnings: <strong>{lifetimeEarnings > 0n ? `${ethers.formatEther(lifetimeEarnings)} ETH` : 'N/A'}</strong>
-                </span>
+            <div className="w-full max-w-lg mx-auto">
+              <div className="flex items-start gap-4 bg-green-500/40 border border-green-400/50 px-8 py-4 rounded-2xl">
+                <div className="flex items-center h-6">
+                  <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+                </div>
+                <div className="flex flex-col items-start gap-2">
+                  <span className="text-base text-white">
+                    Connected: <strong className="font-mono">{shortenAddress(account)}</strong>
+                  </span>
+                  <div className="w-full h-[1px] bg-green-400/30"></div>
+                  <span className="text-base text-green-200">
+                    Balance: <strong>{balance ? `${parseFloat(balance).toFixed(4)} ETH` : 'N/A'}</strong>
+                  </span>
+                  <span className="text-base text-green-200">
+                    Contract: <a
+                      href={`https://arbiscan.io/address/${CONTRACT_ADDRESS}#code`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-semibold text-blue-300 hover:text-blue-200 underline decoration-blue-300/50 hover:decoration-blue-200 transition-colors"
+                    >
+                      {shortenAddress(CONTRACT_ADDRESS)}
+                    </a>
+                  </span>
+                </div>
               </div>
             </div>
           )}
 
           {/* Why Arbitrum Info */}
-          <WhyArbitrum variant="blue" />
+          <WhyArbitrum
+            variant="blue"
+            isExpanded={isWhyArbitrumExpanded}
+            onToggle={() => setIsWhyArbitrumExpanded(!isWhyArbitrumExpanded)}
+          />
         </div>
 
         {/* Match View - Shows when player enters a match or spectates */}
