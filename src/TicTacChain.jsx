@@ -348,6 +348,8 @@ export default function TicTacChain() {
   // Wallet & Contract State
   const [account, setAccount] = useState(null);
   const [contract, setContract] = useState(null); // This contract has signer for write ops
+  const [balance, setBalance] = useState(null); // ETH balance in wallet (Arbitrum bridged)
+  const [lifetimeEarnings, setLifetimeEarnings] = useState(0n); // Total earnings from leaderboard
 
   // Raffle Info State
   const [raffleInfo, setRaffleInfo] = useState({
@@ -762,9 +764,33 @@ export default function TicTacChain() {
       setAccount(accounts[0]);
       setContract(contractInstance);
 
+      // Fetch wallet balance (Arbitrum bridged ETH)
+      const userBalance = await web3Provider.getBalance(accounts[0]);
+      const balanceInEth = ethers.formatEther(userBalance);
+      setBalance(balanceInEth);
+
       // Refresh tier data with new account (lazy loading)
       await refreshAfterAction(null, contractInstance, accounts[0]);
       await fetchLeaderboard(false);
+
+      // Fetch total earnings from Transfer events
+      try {
+        const filter = contractInstance.filters.Transfer(null, accounts[0]);
+        const events = await contractInstance.queryFilter(filter);
+
+        let totalEarnings = 0n;
+        for (const event of events) {
+          if (event.args && event.args.value) {
+            totalEarnings += BigInt(event.args.value);
+          }
+        }
+
+        setLifetimeEarnings(totalEarnings);
+      } catch (error) {
+        console.error('Error fetching earnings:', error);
+        setLifetimeEarnings(0n);
+      }
+
       setLoading(false);
     } catch (error) {
       console.error('Error connecting wallet:', error);
@@ -785,6 +811,40 @@ export default function TicTacChain() {
       setLoading(false);
     }
   };
+
+  // Update balance periodically and on account changes
+  useEffect(() => {
+    if (!account || !window.ethereum) return;
+
+    const updateBalance = async () => {
+      try {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const userBalance = await provider.getBalance(account);
+        const balanceInEth = ethers.formatEther(userBalance);
+        setBalance(balanceInEth);
+      } catch (error) {
+        console.error('Error fetching balance:', error);
+      }
+    };
+
+    // Initial balance fetch
+    updateBalance();
+
+    // Update balance every 15 seconds
+    const balanceInterval = setInterval(updateBalance, 15000);
+
+    // Listen for new blocks (balance might have changed)
+    const handleBlock = () => {
+      updateBalance();
+    };
+
+    window.ethereum.on('block', handleBlock);
+
+    return () => {
+      clearInterval(balanceInterval);
+      window.ethereum.removeListener('block', handleBlock);
+    };
+  }, [account]);
 
   // Load contract data (simplified - matches ConnectFour pattern)
   // Uses lazy loading: only fetch tier metadata initially, instances load on expand
@@ -835,6 +895,19 @@ export default function TicTacChain() {
       })).sort((a, b) => (b.earnings > a.earnings ? 1 : b.earnings < a.earnings ? -1 : 0));
 
       setLeaderboard(entries);
+
+      // Update lifetime earnings for current account
+      if (account) {
+        const playerEntry = entries.find(
+          entry => entry.player.toLowerCase() === account.toLowerCase()
+        );
+        if (playerEntry) {
+          setLifetimeEarnings(BigInt(playerEntry.earnings));
+        } else {
+          setLifetimeEarnings(0n);
+        }
+      }
+
       setLeaderboardError(false);
       if (!silent) {
         setLeaderboardLoading(false);
@@ -847,7 +920,50 @@ export default function TicTacChain() {
         setLeaderboardLoading(false);
       }
     }
-  }, [getReadOnlyContract]);
+  }, [getReadOnlyContract, account]);
+
+
+  // Fetch total earnings from Transfer events
+  const fetchTotalEarnings = useCallback(async () => {
+    if (!contract || !account) return;
+
+    try {
+      // Query Transfer events where `to` is the player's address
+      const filter = contract.filters.Transfer(null, account);
+      const events = await contract.queryFilter(filter);
+
+      // Calculate total earnings from all Transfer events
+      let totalEarnings = 0n;
+      for (const event of events) {
+        if (event.args && event.args.value) {
+          totalEarnings += BigInt(event.args.value);
+        }
+      }
+
+      setLifetimeEarnings(totalEarnings);
+    } catch (error) {
+      console.error('Error fetching total earnings:', error);
+      // Fall back to leaderboard data if Transfer events fail
+    }
+  }, [contract, account]);
+
+
+  // Update earnings periodically
+  useEffect(() => {
+    if (!contract || !account) return;
+
+    const updateData = () => {
+      fetchTotalEarnings();
+    };
+
+    // Initial fetch
+    updateData();
+
+    // Update every 60 seconds
+    const dataInterval = setInterval(updateData, 60000);
+
+    return () => clearInterval(dataInterval);
+  }, [contract, account, fetchTotalEarnings]);
 
   // Fetch raffle information from contract
   const fetchRaffleInfo = useCallback(async () => {
@@ -4020,9 +4136,22 @@ export default function TicTacChain() {
               {loading ? 'Connecting...' : 'Connect Wallet to Enter'}
             </button>
           ) : (
-            <div className="inline-flex items-center gap-4 bg-green-500/20 border border-green-400/50 px-8 py-4 rounded-2xl">
-              <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-              <span className="font-mono text-lg">{shortenAddress(account)}</span>
+            <div className="inline-flex items-start gap-4 bg-green-500/40 border border-green-400/50 px-8 py-4 rounded-2xl">
+              <div className="flex items-center h-6">
+                <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+              </div>
+              <div className="flex flex-col items-start gap-2">
+                <span className="text-base text-white">
+                  Connected as: <strong className="font-mono">{shortenAddress(account)}</strong>
+                </span>
+                <div className="w-full h-[1px] bg-green-400/30"></div>
+                <span className="text-base text-green-200">
+                  Balance: <strong>{balance ? `${parseFloat(balance).toFixed(4)} ETH` : 'N/A'}</strong>
+                </span>
+                <span className="text-base text-green-200">
+                  Earnings: <strong>{lifetimeEarnings > 0n ? `${ethers.formatEther(lifetimeEarnings)} ETH` : 'N/A'}</strong>
+                </span>
+              </div>
             </div>
           )}
 
