@@ -4388,6 +4388,7 @@ export default function ConnectFour() {
               account={account}
               balance={balance}
               contractAddress={CONTRACT_ADDRESS}
+              contractName="ConnectFourOnChain"
               shortenAddress={shortenAddress}
               payout={(() => {
                 const entry = leaderboard.find(e => e.player?.toLowerCase() === account?.toLowerCase());

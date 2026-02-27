@@ -4303,6 +4303,7 @@ export default function TicTacChain() {
               account={account}
               balance={balance}
               contractAddress={CONTRACT_ADDRESS}
+              contractName="TicTacChain"
               shortenAddress={shortenAddress}
               payout={(() => {
                 const entry = leaderboard.find(e => e.player?.toLowerCase() === account?.toLowerCase());

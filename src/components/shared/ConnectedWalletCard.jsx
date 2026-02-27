@@ -8,6 +8,7 @@ import { timeAgo } from '../../utils/formatters';
  *   account          - connected wallet address
  *   balance          - ETH balance string
  *   contractAddress  - contract address to link
+ *   contractName     - human-readable contract name (e.g. "TicTacChain")
  *   shortenAddress   - function(addr) => shortened string
  *   payout           - formatted payout string (e.g. "+0.012 ETH"), or null
  *   lastWin          - Unix timestamp (seconds) of the latest win, or null
@@ -18,6 +19,7 @@ export default function ConnectedWalletCard({
   account,
   balance,
   contractAddress,
+  contractName,
   shortenAddress,
   payout = null,
   lastWin = null,
@@ -42,28 +44,29 @@ export default function ConnectedWalletCard({
         </div>
         <div className="flex flex-col items-start gap-2">
           <span className={`text-base ${addressTextCls}`}>
-            Connected: <strong className="font-mono">{shortenAddress(account)}</strong>
-          </span>
-          <div className={`w-full h-[1px] ${dividerCls}`}></div>
-          <span className={`text-base ${metaTextCls}`}>
-            Balance: <strong>{balance ? `${parseFloat(balance).toFixed(6)} ETH` : 'N/A'}</strong>
-          </span>
-          <span className={`text-base ${metaTextCls}`}>
-            Payouts: <strong>{payout ?? 'N/A'}</strong>
-          </span>
-          <span className={`text-base ${metaTextCls}`}>
-            Last Win: <strong>{lastWin != null ? timeAgo(lastWin) : 'N/A'}</strong>
-          </span>
-          <span className={`text-base ${metaTextCls}`}>
-            Contract:{' '}
+            Connected as <strong className="font-mono">{shortenAddress(account)}</strong>
+            {' '}to{' '}
             <a
               href={`https://arbiscan.io/address/${contractAddress}#code`}
               target="_blank"
               rel="noopener noreferrer"
               className="font-semibold text-blue-300 hover:text-blue-200 underline decoration-blue-300/50 hover:decoration-blue-200 transition-colors"
             >
-              {shortenAddress(contractAddress)}
+              {contractName ?? shortenAddress(contractAddress)}
             </a>
+          </span>
+          <div className={`w-full h-[1px] ${dividerCls}`}></div>
+          <span className={`text-base ${metaTextCls}`}>
+            You earned a total of <strong>{payout != null ? (() => {
+              const stripped = payout.replace(/^[+-]/, '').replace(/\s*ETH\s*$/i, '').trim();
+              return `${parseFloat(stripped).toFixed(6)} ETH`;
+            })() : 'N/A'}</strong>
+          </span>
+          <span className={`text-base ${metaTextCls}`}>
+            Your current balance is <strong>{balance ? `${parseFloat(balance).toFixed(6)} ETH` : 'N/A'}</strong>
+          </span>
+          <span className={`text-base ${metaTextCls}`}>
+            Your last victory was <strong>{lastWin != null ? timeAgo(lastWin) : 'N/A'}</strong>
           </span>
         </div>
       </div>

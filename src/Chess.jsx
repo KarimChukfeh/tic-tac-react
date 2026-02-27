@@ -4948,6 +4948,7 @@ export default function Chess() {
               account={account}
               balance={balance}
               contractAddress={CONTRACT_ADDRESS}
+              contractName="ChessOnChain"
               shortenAddress={shortenAddress}
               isEnrolledInElite={isEnrolledInElite}
               currentTheme={currentTheme}
