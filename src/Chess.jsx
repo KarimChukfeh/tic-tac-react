@@ -1783,7 +1783,39 @@ export default function Chess() {
           });
         }
 
-        allInstances[tierId] = instances;
+        // Sort instances by priority
+        const sortedInstances = [...instances].sort((a, b) => {
+          const getSortPriority = (inst) => {
+            const { tournamentStatus, enrolledCount } = inst;
+            // Priority order (lower number = higher priority):
+            // 1. Enrolled & Active (status 1)
+            // 2. Enrolled & Enrolling (status 0)
+            // 3. Not enrolled & Active (status 1)
+            // 4. Not enrolled & Enrolling with players (status 0, enrolledCount > 0)
+            // 5. Not enrolled & Enrolling empty (status 0, enrolledCount === 0)
+            // 6. Completed (status 2)
+            // 7. Others (status > 2)
+
+            if (inst.isEnrolled && tournamentStatus === 1) return 1;
+            if (inst.isEnrolled && tournamentStatus === 0) return 2;
+            if (!inst.isEnrolled && tournamentStatus === 1) return 3;
+            if (!inst.isEnrolled && tournamentStatus === 0 && enrolledCount > 0) return 4;
+            if (!inst.isEnrolled && tournamentStatus === 0 && enrolledCount === 0) return 5;
+            if (tournamentStatus === 2) return 6;
+            return 7;
+          };
+
+          const aPriority = getSortPriority(a);
+          const bPriority = getSortPriority(b);
+
+          if (aPriority !== bPriority) {
+            return aPriority - bPriority;
+          }
+          // If same priority, sort by instanceId for consistency
+          return a.instanceId - b.instanceId;
+        });
+
+        allInstances[tierId] = sortedInstances;
       }
 
       setTierMetadata(metadata);
@@ -1826,12 +1858,14 @@ export default function Chess() {
       if (existingInstances && existingInstances.length > 0) {
         // Update enrollment status only
         const provider = readContract.runner?.provider || readContract.provider;
-        let enrollmentStatuses = [];
+        const enrollmentMap = new Map();
 
         if (currentAccount) {
-          enrollmentStatuses = await batchFetchIsEnrolled(readContract, tierId, existingInstances.length, currentAccount, provider);
-        } else {
-          enrollmentStatuses = Array(existingInstances.length).fill(false);
+          const enrollmentStatuses = await batchFetchIsEnrolled(readContract, tierId, existingInstances.length, currentAccount, provider);
+          // Map the enrollment statuses by instanceId (0, 1, 2...)
+          enrollmentStatuses.forEach((status, instanceId) => {
+            enrollmentMap.set(instanceId, status);
+          });
         }
 
         // Sort instances by priority
@@ -1860,24 +1894,92 @@ export default function Chess() {
 
         const sortOrderChanged = currentOrder.some((id, i) => id !== newOrder[i]);
 
-        // Only update state if sort order actually changed
-        if (sortOrderChanged) {
-          console.log('[Chess Update Path] Sort order changed, updating state');
+        // Calculate the new sorted order in the background without modifying state
+        const currentInstances = tierInstancesRef.current[tierId];
+        if (!currentInstances) {
+          console.log(`[Chess Update Path] No current instances for tier ${tierId}`);
+          return;
+        }
 
-          // Now create the new array with updated data and sorted order
-          const updatedInstances = existingInstances.map((instance, i) => {
-            if (instance.isEnrolled !== enrollmentStatuses[i]) {
-              return { ...instance, isEnrolled: enrollmentStatuses[i] };
-            }
-            return instance;
+        // enrollmentMap was already created above with the correct instanceId mapping
+
+        // Update instances with latest data, but preserve object references when possible
+        const updatedInstancesWithData = currentInstances.map(instance => {
+          const newEnrollment = enrollmentMap.get(instance.instanceId);
+
+          // Check if enrollment actually changed
+          const enrollmentChanged = newEnrollment !== undefined && instance.isEnrolled !== newEnrollment;
+
+          // Only create a new object if something changed
+          if (enrollmentChanged) {
+            return {
+              ...instance,
+              isEnrolled: newEnrollment
+            };
+          }
+
+          // Return the same object reference if nothing changed
+          return instance;
+        });
+
+        // Calculate what the new sorted order should be
+        const sortedInstances = [...updatedInstancesWithData].sort((a, b) =>
+          getSortPriority(a) - getSortPriority(b)
+        );
+
+        // Compare ONLY if the final sorted order is different
+        // This is what matters for visual stability
+        const orderSame = currentInstances.length === sortedInstances.length &&
+          sortedInstances.every((inst, i) => {
+            const current = currentInstances[i];
+            // Only check if the same instance is at the same position
+            return inst.instanceId === current.instanceId;
           });
 
-          updatedInstances.sort((a, b) => getSortPriority(a) - getSortPriority(b));
+        const hasOrderOrStatusChange = !orderSame;
 
-          setTierInstances(prev => ({ ...prev, [tierId]: updatedInstances }));
-        } else {
-          console.log(`[Chess Update Path] No order change for tier ${tierId}, skipping state update`);
+        console.log(`[Chess Update Path] Tier ${tierId} comparison:`, {
+          hasOrderOrStatusChange,
+          currentOrder: currentInstances.map(i => i.instanceId),
+          newSortedOrder: sortedInstances.map(i => i.instanceId)
+        });
+
+        // Only update state if the order has changed OR if any objects were updated
+        const anyDataChanged = updatedInstancesWithData.some((inst, i) => inst !== currentInstances[i]);
+
+        if (!hasOrderOrStatusChange && !anyDataChanged) {
+          console.log(`✅ [Chess] No changes for tier ${tierId} - SKIPPING UPDATE COMPLETELY`);
+          if (!silentUpdate) setTierLoading(prev => ({ ...prev, [tierId]: false }));
+          return; // Don't update state at all - everything is identical
         }
+
+        if (!hasOrderOrStatusChange && anyDataChanged) {
+          console.log(`📝 [Chess] Data changed but order same for tier ${tierId} - updating in place`);
+          // Update the instances with new data but keep the same order
+          setTierInstances(prev => {
+            const latestInstances = prev[tierId];
+            if (!latestInstances || latestInstances !== currentInstances) {
+              return prev;
+            }
+            // Use the updated instances but maintain current order
+            return { ...prev, [tierId]: updatedInstancesWithData };
+          });
+          if (!silentUpdate) setTierLoading(prev => ({ ...prev, [tierId]: false }));
+          return;
+        }
+
+        // Apply the update atomically
+        console.log(`🔄 [Chess] Updating tier ${tierId} - applying new sorted list`);
+        setTierInstances(prev => {
+          // Double-check that the state hasn't changed while we were calculating
+          const latestInstances = prev[tierId];
+          if (!latestInstances || latestInstances !== currentInstances) {
+            console.log(`[Chess Update Path] State changed during calculation for tier ${tierId}, aborting update`);
+            return prev;
+          }
+
+          return { ...prev, [tierId]: sortedInstances };
+        });
       } else {
         // Fallback: fetch full tier data if not already loaded
         const tierConfig = TIER_CONFIG[tierId];
@@ -2077,7 +2179,6 @@ export default function Chess() {
   // Toggle tier expansion (no lazy loading - data already fetched on page load)
   const toggleTier = useCallback(async (tierId) => {
     const isCurrentlyExpanded = expandedTiersRef.current[tierId];
-    const alreadyLoaded = tierInstancesRef.current[tierId];
 
     // Toggle expansion
     setExpandedTiers(prev => ({ ...prev, [tierId]: !prev[tierId] }));
@@ -2086,16 +2187,10 @@ export default function Chess() {
       // When expanding, ensure visible count is set
       setVisibleInstancesCount(prev => ({ ...prev, [tierId]: prev[tierId] || 4 }));
 
-      // If wallet is connected and we have instances, update enrollment status
-      if (account && alreadyLoaded && alreadyLoaded.length > 0) {
-        // Check if we need to update enrollment status
-        const needsEnrollmentUpdate = alreadyLoaded.every(inst => !inst.isEnrolled);
-        if (needsEnrollmentUpdate) {
-          await fetchTierInstances(tierId);
-        }
-      }
+      // Always fetch fresh data when expanding a tier
+      await fetchTierInstances(tierId);
     }
-  }, [account, fetchTierInstances]);
+  }, [fetchTierInstances]);
 
   // Show more instances for a tier
   const showMoreInstances = useCallback((tierId) => {
@@ -4095,8 +4190,8 @@ export default function Chess() {
     // Initial poll
     pollHomePageData();
 
-    // Set up polling interval - runs every 5 seconds (changed from 10s)
-    const pollInterval = setInterval(pollHomePageData, 5000);
+    // Set up polling interval - runs every 6 seconds
+    const pollInterval = setInterval(pollHomePageData, 6000);
 
     return () => {
       console.log('[Home Page Polling] Cleanup - Stopping polling');

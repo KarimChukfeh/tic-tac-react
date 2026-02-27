@@ -1181,6 +1181,24 @@ export default function TicTacChain() {
           }
         }
 
+        // Sort instances before storing them
+        instances.sort((a, b) => {
+          const getSortPriority = (instance) => {
+            const { tournamentStatus, isEnrolled, enrolledCount, hasEscalations, escL3Count } = instance;
+
+            // Same sorting logic as in fetchTierInstances
+            if (tournamentStatus === 1 && isEnrolled) return 1;
+            if (tournamentStatus === 0 && isEnrolled) return 2;
+            if (tournamentStatus === 0 && !isEnrolled && enrolledCount > 0) return 3;
+            if (hasEscalations && escL3Count > 0) return 4;
+            if (tournamentStatus === 1 && !isEnrolled && hasEscalations) return 5;
+            if (tournamentStatus === 0 && !isEnrolled && enrolledCount === 0) return 6;
+            return 7;
+          };
+
+          return getSortPriority(a) - getSortPriority(b);
+        });
+
         allInstances[tierId] = instances;
       }
 
@@ -1226,12 +1244,16 @@ export default function TicTacChain() {
 
       if (existingInstances && existingInstances.length > 0) {
         // Update enrollment status only - using MULTICALL
-        let enrollmentStatuses = [];
+        // IMPORTANT: batchFetchIsEnrolled fetches for instanceIds 0, 1, 2... in order
+        // So we need to map those results to our actual instances
+        const enrollmentMap = new Map();
 
         if (currentAccount) {
-          enrollmentStatuses = await batchFetchIsEnrolled(readContract, tierId, existingInstances.length, currentAccount, provider);
-        } else {
-          enrollmentStatuses = Array(existingInstances.length).fill(false);
+          const enrollmentStatuses = await batchFetchIsEnrolled(readContract, tierId, existingInstances.length, currentAccount, provider);
+          // Map the enrollment statuses by instanceId (0, 1, 2...)
+          enrollmentStatuses.forEach((status, instanceId) => {
+            enrollmentMap.set(instanceId, status);
+          });
         }
 
         // Check for escalations in active tournaments - using MULTICALL
@@ -1277,73 +1299,187 @@ export default function TicTacChain() {
           return 7;
         };
 
-        // NOW do the atomic state update with the fetched data
-        setTierInstances(prev => {
-          const currentInstances = prev[tierId];
-          if (!currentInstances) return prev;
+        // Get the current instances fresh right before comparison to avoid stale data
+        const currentInstances = tierInstancesRef.current[tierId];
+        if (!currentInstances) {
+          console.log(`[TicTacChain Update Path] No current instances for tier ${tierId}`);
+          return;
+        }
 
-          // Check if sort order would change with new data
-          const currentOrder = currentInstances.map(inst => inst.instanceId);
-          const newOrder = [...currentInstances]
-            .sort((a, b) => {
-              const aEscalation = escalationResults.find(r => r.instanceId === a.instanceId);
-              const bEscalation = escalationResults.find(r => r.instanceId === b.instanceId);
-              const aIdx = currentInstances.indexOf(a);
-              const bIdx = currentInstances.indexOf(b);
-              return getSortPriority(a, enrollmentStatuses[aIdx], aEscalation) -
-                     getSortPriority(b, enrollmentStatuses[bIdx], bEscalation);
-            })
-            .map(inst => inst.instanceId);
+        // Create a map for quick escalation data lookup
+        const escalationMap = new Map(
+          escalationResults.map(r => [r.instanceId, r])
+        );
 
-          const sortOrderChanged = currentOrder.some((id, i) => id !== newOrder[i]);
+        // enrollmentMap was already created above with the correct instanceId mapping
 
-          console.log(`[TicTacChain Update Path] Tier ${tierId} order check:`, {
-            currentOrder,
-            newOrder,
-            sortOrderChanged
-          });
+        // Update instances with latest data, but preserve object references when possible
+        const updatedInstancesWithData = currentInstances.map(instance => {
+          const newEnrollment = enrollmentMap.get(instance.instanceId);
+          const escalationData = escalationMap.get(instance.instanceId);
 
-          // Only update state if sort order actually changed
-          if (!sortOrderChanged) {
-            console.log(`[TicTacChain Update Path] No order change for tier ${tierId}, skipping state update`);
-            return prev; // Return same reference, no update
+          // Check if anything actually changed
+          const enrollmentChanged = newEnrollment !== undefined && instance.isEnrolled !== newEnrollment;
+          const escalationChanged = escalationData && (
+            instance.hasEscalations !== escalationData.hasEscalations ||
+            instance.escL2Count !== escalationData.escL2Count ||
+            instance.escL3Count !== escalationData.escL3Count ||
+            JSON.stringify(instance.firstML3Match) !== JSON.stringify(escalationData.firstML3Match)
+          );
+
+          // Only create a new object if something changed
+          if (enrollmentChanged || escalationChanged) {
+            return {
+              ...instance,
+              ...(enrollmentChanged && { isEnrolled: newEnrollment }),
+              ...(escalationChanged && {
+                hasEscalations: escalationData.hasEscalations,
+                escL2Count: escalationData.escL2Count,
+                escL3Count: escalationData.escL3Count,
+                firstML3Match: escalationData.firstML3Match
+              })
+            };
           }
 
-          console.log('[TicTacChain Update Path] Sort order changed, updating state');
+          // Return the same object reference if nothing changed
+          return instance;
+        });
 
-          // Create the new array with updated data and sorted order
-          const updatedInstances = currentInstances.map((instance, i) => {
-            const escalationData = escalationResults.find(r => r.instanceId === instance.instanceId);
-            const needsUpdate =
-              instance.isEnrolled !== enrollmentStatuses[i] ||
-              (escalationData && (
-                instance.hasEscalations !== escalationData.hasEscalations ||
-                instance.escL2Count !== escalationData.escL2Count ||
-                instance.escL3Count !== escalationData.escL3Count ||
-                JSON.stringify(instance.firstML3Match) !== JSON.stringify(escalationData.firstML3Match)
-              ));
+        // Calculate what the new sorted order should be
+        const sortedInstances = [...updatedInstancesWithData].sort((a, b) =>
+          getSortPriority(a) - getSortPriority(b)
+        );
 
-            if (needsUpdate) {
-              return {
-                ...instance,
-                isEnrolled: enrollmentStatuses[i],
-                ...(escalationData && {
-                  hasEscalations: escalationData.hasEscalations,
-                  escL2Count: escalationData.escL2Count,
-                  escL3Count: escalationData.escL3Count,
-                  firstML3Match: escalationData.firstML3Match
-                })
-              };
-            }
-            return instance;
+        // Compare ONLY if the final sorted order is different
+        // This is what matters for visual stability
+        const orderSame = currentInstances.length === sortedInstances.length &&
+          sortedInstances.every((inst, i) => {
+            const current = currentInstances[i];
+            // Only check if the same instance is at the same position
+            return inst.instanceId === current.instanceId;
           });
 
-          updatedInstances.sort((a, b) => getSortPriority(a) - getSortPriority(b));
+        const hasOrderOrStatusChange = !orderSame;
 
-          console.log(`[TicTacChain Update Path] Setting new order:`, updatedInstances.map(inst => inst.instanceId));
+        // Debug: Log the actual order comparison
+        if (!orderSame) {
+          console.log(`[TicTacChain] Order different for tier ${tierId}:`, {
+            currentOrder: currentInstances.slice(0, 5).map(i => i.instanceId),
+            newOrder: sortedInstances.slice(0, 5).map(i => i.instanceId)
+          });
+        }
 
-          return { ...prev, [tierId]: updatedInstances };
+        // Detailed change detection for debugging
+        if (hasOrderOrStatusChange && currentInstances.length === sortedInstances.length) {
+          const changes = sortedInstances.map((inst, i) => {
+            const current = currentInstances[i];
+            if (inst.instanceId !== current.instanceId) {
+              return `Position ${i}: Order changed (was ${current.instanceId}, now ${inst.instanceId})`;
+            } else if (inst.tournamentStatus !== current.tournamentStatus) {
+              return `Position ${i}: Status changed for instance ${inst.instanceId} (was ${current.tournamentStatus}, now ${inst.tournamentStatus})`;
+            }
+            return null;
+          }).filter(Boolean);
+          if (changes.length > 0) {
+            console.log(`[TicTacChain Update Path] Order/Status changes:`, changes);
+          }
+        }
+
+        // Add detailed debugging for wallet connected case
+        if (currentAccount) {
+          const enrollmentChanges = sortedInstances.map((inst, i) => {
+            const current = currentInstances[i];
+            if (current && inst.instanceId === current.instanceId && inst.isEnrolled !== current.isEnrolled) {
+              return `Instance ${inst.instanceId}: enrollment ${current.isEnrolled} -> ${inst.isEnrolled}`;
+            }
+            return null;
+          }).filter(Boolean);
+
+          if (enrollmentChanges.length > 0) {
+            console.log(`[TicTacChain] Enrollment changes detected:`, enrollmentChanges);
+          }
+        }
+
+        console.log(`[TicTacChain Update Path] Tier ${tierId} comparison:`, {
+          hasOrderOrStatusChange,
+          currentOrder: currentInstances.map(i => i.instanceId),
+          newSortedOrder: sortedInstances.map(i => i.instanceId)
         });
+
+        // Check if any data actually changed by comparing values, not references
+        const anyDataChanged = updatedInstancesWithData.some((inst, i) => {
+          const current = currentInstances[i];
+          if (!current) return true;
+
+          // Compare actual values that we care about
+          return (
+            inst.instanceId !== current.instanceId ||
+            inst.isEnrolled !== current.isEnrolled ||
+            inst.hasEscalations !== current.hasEscalations ||
+            inst.escL2Count !== current.escL2Count ||
+            inst.escL3Count !== current.escL3Count ||
+            JSON.stringify(inst.firstML3Match) !== JSON.stringify(current.firstML3Match)
+          );
+        });
+
+        // Debug exactly what changed
+        if (anyDataChanged && !hasOrderOrStatusChange) {
+          const changedIndices = [];
+          updatedInstancesWithData.forEach((inst, i) => {
+            if (inst !== currentInstances[i]) {
+              changedIndices.push(i);
+            }
+          });
+          console.log(`[TicTacChain] Data changed at indices:`, changedIndices);
+        }
+
+        if (!hasOrderOrStatusChange && !anyDataChanged) {
+          console.log(`✅ [TicTacChain] No changes for tier ${tierId} - SKIPPING UPDATE COMPLETELY`);
+          // Still need to clear loading state even when skipping update
+          if (!silentUpdate) setTierLoading(prev => ({ ...prev, [tierId]: false }));
+          return; // Don't update state at all - everything is identical
+        }
+
+        if (!hasOrderOrStatusChange && anyDataChanged) {
+          console.log(`📝 [TicTacChain] Data changed but order same for tier ${tierId} - updating in place`);
+          console.log(`[TicTacChain] Changed objects:`, anyDataChanged);
+
+          // IMPORTANT: Even this "in place" update causes React to re-render
+          // because we're setting state with a new array
+          setTierInstances(prev => {
+            const latestInstances = prev[tierId];
+            if (!latestInstances) {
+              console.log(`[TicTacChain] No instances for tier ${tierId}, aborting update`);
+              return prev;
+            }
+            console.log(`[TicTacChain] Applying in-place update`);
+            // Use the updated instances but maintain current order
+            return { ...prev, [tierId]: updatedInstancesWithData };
+          });
+          // Clear loading state after in-place update
+          if (!silentUpdate) setTierLoading(prev => ({ ...prev, [tierId]: false }));
+          return;
+        }
+
+        // Apply the update atomically
+        console.log(`🔄 [TicTacChain] Updating tier ${tierId} - applying new sorted list`);
+        console.log(`[TicTacChain] New order will be:`, sortedInstances.slice(0, 5).map(i => i.instanceId));
+
+        setTierInstances(prev => {
+          // Double-check that we have instances for this tier
+          const latestInstances = prev[tierId];
+          if (!latestInstances) {
+            console.log(`[TicTacChain Update Path] No instances for tier ${tierId}, aborting update`);
+            return prev;
+          }
+
+          // Log what we're setting
+          console.log(`[TicTacChain] Actually setting tier ${tierId} to:`, sortedInstances.slice(0, 5).map(i => i.instanceId));
+          console.log(`[TicTacChain] Previous order was:`, latestInstances.slice(0, 5).map(i => i.instanceId));
+          return { ...prev, [tierId]: sortedInstances };
+        });
+        // Clear loading state after sorted update
+        if (!silentUpdate) setTierLoading(prev => ({ ...prev, [tierId]: false }));
       } else {
         // Fallback: fetch full tier data if not already loaded
         const tierConfig = TIER_CONFIG[tierId];
@@ -1642,14 +1778,10 @@ export default function TicTacChain() {
       // When expanding, ensure visible count is set
       setVisibleInstancesCount(prev => ({ ...prev, [tierId]: prev[tierId] || 4 }));
 
-      // If wallet is connected and we have instances, update enrollment status
-      if (account && alreadyLoaded && alreadyLoaded.length > 0) {
-        // Check if we need to update enrollment status
-        const needsEnrollmentUpdate = alreadyLoaded.every(inst => !inst.isEnrolled);
-        if (needsEnrollmentUpdate) {
-          await fetchTierInstances(tierId);
-        }
-      }
+      // ALWAYS fetch fresh data when expanding a tier
+      // This ensures we get the latest enrollment status and tournament states
+      console.log(`[TicTacChain] Tier ${tierId} expanded - fetching fresh data`);
+      await fetchTierInstances(tierId);
     }
   }, [account, fetchTierInstances]);
 
@@ -3507,8 +3639,8 @@ export default function TicTacChain() {
     // Initial poll
     pollHomePageData();
 
-    // Set up polling interval - runs every 5 seconds (changed from 10s)
-    const pollInterval = setInterval(pollHomePageData, 5000);
+    // Set up polling interval - runs every 6 seconds
+    const pollInterval = setInterval(pollHomePageData, 6000);
 
     return () => {
       console.log('[Home Page Polling] Cleanup - Stopping polling');
@@ -4397,33 +4529,40 @@ export default function TicTacChain() {
                                   <p className="text-purple-300 text-sm">Loading {getTierName(metadata.playerCount)} instances...</p>
                                 </div>
                               ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" style={{ minHeight: instances.length > 0 ? 'auto' : '0' }}>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 tournament-grid" style={{ minHeight: instances.length > 0 ? 'auto' : '0' }}>
                                   {instances.map((tournament) => (
-                                    <TournamentCard
+                                    <div
                                       key={`${tournament.tierId}-${tournament.instanceId}`}
-                                      tierId={tournament.tierId}
-                                      instanceId={tournament.instanceId}
-                                      maxPlayers={tournament.maxPlayers}
-                                      currentEnrolled={tournament.enrolledCount}
-                                      entryFee={tournament.entryFee}
-                                      prizePool={tournament.prizePool}
-                                      isEnrolled={tournament.isEnrolled}
-                                      onEnroll={handleEnroll}
-                                      onEnter={handleEnterTournament}
-                                      loading={tournamentsLoading}
-                                      tierName={getTierName(tournament.maxPlayers)}
-                                      enrollmentTimeout={tournament.enrollmentTimeout}
-                                      hasStartedViaTimeout={tournament.hasStartedViaTimeout}
-                                      tournamentStatus={tournament.tournamentStatus}
-                                      onManualStart={handleManualStart}
-                                      onClaimAbandonedPool={handleClaimAbandonedPool}
-                                      onResetEnrollmentWindow={handleResetEnrollmentWindow}
-                                      account={account}
-                                      contract={contract}
-                                      hasEscalations={tournament.hasEscalations}
-                                      escL3Count={tournament.escL3Count}
-                                      firstML3Match={tournament.firstML3Match}
-                                    />
+                                      className="tournament-card-wrapper"
+                                      style={{
+                                        transition: 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.5s ease-in-out',
+                                      }}
+                                    >
+                                      <TournamentCard
+                                        tierId={tournament.tierId}
+                                        instanceId={tournament.instanceId}
+                                        maxPlayers={tournament.maxPlayers}
+                                        currentEnrolled={tournament.enrolledCount}
+                                        entryFee={tournament.entryFee}
+                                        prizePool={tournament.prizePool}
+                                        isEnrolled={tournament.isEnrolled}
+                                        onEnroll={handleEnroll}
+                                        onEnter={handleEnterTournament}
+                                        loading={tournamentsLoading}
+                                        tierName={getTierName(tournament.maxPlayers)}
+                                        enrollmentTimeout={tournament.enrollmentTimeout}
+                                        hasStartedViaTimeout={tournament.hasStartedViaTimeout}
+                                        tournamentStatus={tournament.tournamentStatus}
+                                        onManualStart={handleManualStart}
+                                        onClaimAbandonedPool={handleClaimAbandonedPool}
+                                        onResetEnrollmentWindow={handleResetEnrollmentWindow}
+                                        account={account}
+                                        contract={contract}
+                                        hasEscalations={tournament.hasEscalations}
+                                        escL3Count={tournament.escL3Count}
+                                        firstML3Match={tournament.firstML3Match}
+                                      />
+                                    </div>
                                   ))}
                                 </div>
                               )}
@@ -4776,6 +4915,21 @@ export default function TicTacChain() {
               opacity: 0;
             }
           }
+        }
+
+        /* Tournament grid smooth transitions */
+        .tournament-grid {
+          position: relative;
+        }
+
+        .tournament-card-wrapper {
+          will-change: transform, opacity;
+          transform-origin: center;
+        }
+
+        /* Prevent layout shift during reordering */
+        .tournament-grid > * {
+          transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         /* Mobile text size reduction - reduce all text by 4 points */
