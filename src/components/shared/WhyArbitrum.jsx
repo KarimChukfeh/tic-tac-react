@@ -67,7 +67,8 @@ export default function WhyArbitrum({ variant = 'blue', isExpanded = true, onTog
                   <li>Bridge ETH from Ethereum mainnet to Arbitrum</li>
                 </ol>
                 <p><strong className={theme.text}>Already have Arbitrum ETH?</strong> Just connect and play.</p>
-                <p className="pt-1"><span className={theme.text}>Lower fees. Same ETH.</span></p>
+                <hr className={`my-3 border-t ${theme.border}`} />
+                <p><strong className={theme.text}>Why Arbitrum?</strong><br />Lower fees. Same ETH.</p>
               </div>
             </div>
           </div>
