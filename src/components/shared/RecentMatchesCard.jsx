@@ -1504,12 +1504,14 @@ const RecentMatchesCard = ({
                             : unpackBoard(match.board, 'chess');
                           const pieceTypes = ['', 'pawn', 'knight', 'bishop', 'rook', 'queen', 'king'];
 
-                          // Determine if viewing account is playing white (first player)
-                          // White player needs flip to see their pieces at bottom
-                          const isAccountFirstPlayer = (isAccountPlayer1 && isPlayer1First) || (isAccountPlayer2 && !isPlayer1First);
-                          const shouldFlip = isAccountFirstPlayer; // Flip if playing white
+                          // Determine if viewing account is playing white
+                          // Need to flip when playing white since board is stored with black at top
+                          const isAccountPlayingWhite = (isAccountPlayer1 && isPlayer1First) || (isAccountPlayer2 && !isPlayer1First);
+                          const shouldFlip = isAccountPlayingWhite; // Flip if playing white
 
                           // Adjust labels based on perspective
+                          // When playing white: a-h from left to right, ranks 1-8 from bottom to top
+                          // When playing black: h-a from left to right, ranks 8-1 from bottom to top
                           const files = shouldFlip ? ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] : ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a'];
                           const ranks = shouldFlip ? ['8', '7', '6', '5', '4', '3', '2', '1'] : ['1', '2', '3', '4', '5', '6', '7', '8'];
 
@@ -1532,8 +1534,11 @@ const RecentMatchesCard = ({
                                       const displayRow = Math.floor(idx / 8);
                                       const displayCol = idx % 8;
 
-                                      // Flip board vertically if playing black
-                                      const actualIdx = shouldFlip ? ((7 - displayRow) * 8 + displayCol) : idx;
+                                      // When playing white: flip vertically only
+                                      // When playing black: flip horizontally (to get h-a orientation)
+                                      const actualIdx = shouldFlip ?
+                                        ((7 - displayRow) * 8 + displayCol) : // White: flip vertically only
+                                        (displayRow * 8 + (7 - displayCol)); // Black: flip horizontally only
                                       const actualCell = board[actualIdx];
 
                                       const row = Math.floor(actualIdx / 8);
@@ -1833,9 +1838,11 @@ const RecentMatchesCard = ({
         const capturedPieces = calculateCapturedPieces(board);
         const pieceTypes = ['', 'pawn', 'knight', 'bishop', 'rook', 'queen', 'king'];
 
-        const isAccountFirstPlayer = (isAccountPlayer1 && isPlayer1First) || (isAccountPlayer2 && !isPlayer1First);
-        const shouldFlip = isAccountFirstPlayer;
+        const isAccountPlayingWhite = (isAccountPlayer1 && isPlayer1First) || (isAccountPlayer2 && !isPlayer1First);
+        const shouldFlip = isAccountPlayingWhite; // Flip if playing white
 
+        // When playing white: a-h from left to right, ranks 1-8 from bottom to top
+        // When playing black: h-a from left to right, ranks 8-1 from bottom to top
         const files = shouldFlip ? ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] : ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a'];
         const ranks = shouldFlip ? ['8', '7', '6', '5', '4', '3', '2', '1'] : ['1', '2', '3', '4', '5', '6', '7', '8'];
 
@@ -1972,7 +1979,11 @@ const RecentMatchesCard = ({
                           const displayRow = Math.floor(idx / 8);
                           const displayCol = idx % 8;
 
-                          const actualIdx = shouldFlip ? ((7 - displayRow) * 8 + displayCol) : idx;
+                          // When playing white: flip vertically only
+                          // When playing black: flip horizontally (to get h-a orientation)
+                          const actualIdx = shouldFlip ?
+                            ((7 - displayRow) * 8 + displayCol) : // White: flip vertically only
+                            (displayRow * 8 + (7 - displayCol)); // Black: flip horizontally only
                           const actualCell = board[actualIdx];
 
                           const row = Math.floor(actualIdx / 8);
