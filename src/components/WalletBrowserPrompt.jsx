@@ -61,7 +61,7 @@ export default function WalletBrowserPrompt({ onWalletChoice, onContinueChoice }
 
         {/* Explanation Text */}
         <p className="text-slate-400 text-center mb-5 text-xs leading-relaxed">
-          Traditional Web2 mobile browsers such as Chrome and Safari don't support wallet connections. Open ETour in a Web3 browser in order to connect and play.
+          Chrome and Safari block wallet connections. Pick a Web3 browser to connect and play.
         </p>
 
         {/* Open With Label */}
