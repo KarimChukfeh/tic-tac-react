@@ -58,7 +58,10 @@ import EliteMatchesCard from './components/shared/EliteMatchesCard';
 import PlayerPanel from './components/shared/PlayerPanel';
 import BracketScrollHint from './components/shared/BracketScrollHint';
 import InviteModal from './components/shared/InviteModal';
+import WalletBrowserPrompt from './components/WalletBrowserPrompt';
 import { usePlayerActivity } from './hooks/usePlayerActivity';
+import { useWalletBrowserPrompt } from './hooks/useWalletBrowserPrompt';
+import { isMobileDevice, isWalletBrowser } from './utils/mobileDetection';
 
 // Chess piece symbols for particles
 const CHESS_PIECES = ['♔', '♕', '♖', '♗', '♘', '♙', '♚', '♛', '♜', '♝', '♞', '♟'];
@@ -846,6 +849,10 @@ export default function Chess() {
 
   // Player Activity Hook
   const playerActivity = usePlayerActivity(contract, account, 'chess', TIER_CONFIG);
+
+  // Wallet Browser Prompt Hook (for mobile)
+  const { showPrompt, handleWalletChoice, handleContinueChoice, triggerWalletPrompt } = useWalletBrowserPrompt();
+
   const [gamesCardHeight, setGamesCardHeight] = useState(0);
   const [playerActivityHeight, setPlayerActivityHeight] = useState(0);
   const [recentMatchesCardHeight, setRecentMatchesCardHeight] = useState(0);
@@ -1162,6 +1169,12 @@ export default function Chess() {
   const connectWallet = async () => {
     try {
       if (!window.ethereum) {
+        // On mobile non-web3 browsers, show the wallet prompt modal instead of alert
+        if (isMobileDevice() && !isWalletBrowser()) {
+          triggerWalletPrompt();
+          return;
+        }
+        // On desktop or unknown scenarios, show the alert
         alert('Please install MetaMask to use this dApp!');
         return;
       }
@@ -4481,6 +4494,14 @@ export default function Chess() {
         gameName="Chess"
         playerCount={urlTournamentParams ? TIER_CONFIG[urlTournamentParams.tierId]?.playerCount : 2}
       />
+
+      {/* Wallet Browser Prompt Modal - shown on mobile when user needs to select a Web3 browser */}
+      {showPrompt && (
+        <WalletBrowserPrompt
+          onWalletChoice={handleWalletChoice}
+          onContinueChoice={handleContinueChoice}
+        />
+      )}
 
       {/* Bottom Navigation Bar - Mobile Only */}
       <div className="fixed bottom-0 left-0 right-0 z-50 md:static md:z-auto">

@@ -457,14 +457,33 @@ const TournamentCard = ({
         <>
           {/* Enroll button for non-enrolled users (only during enrollment phase) */}
           {tournamentStatus === 0 && !isFull && (
-            <button
-              onClick={() => onEnroll(tierId, instanceId, entryFee)}
-              disabled={loading || !account}
-              className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
-            >
-              <Trophy size={18} />
-              {loading ? 'Enrolling...' : !account ? 'Connect Wallet to Enroll' : 'Enroll Now'}
-            </button>
+            <>
+              {!account ? (
+                <a
+                  href="#connect-wallet-cta"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    document.getElementById('connect-wallet-cta')?.scrollIntoView({
+                      behavior: 'smooth',
+                      block: 'center'
+                    });
+                  }}
+                  className="w-full bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 flex items-center justify-center gap-2"
+                >
+                  <Trophy size={18} />
+                  Connect to Enrol
+                </a>
+              ) : (
+                <button
+                  onClick={() => onEnroll(tierId, instanceId, entryFee)}
+                  disabled={loading}
+                  className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
+                >
+                  <Trophy size={18} />
+                  {loading ? 'Enrolling...' : 'Enroll Now'}
+                </button>
+              )}
+            </>
           )}
 
           {/* Enter Tournament / View Bracket button for non-enrolled users */}

@@ -102,10 +102,16 @@ export function useWalletBrowserPrompt() {
     setShowPrompt(false);
   };
 
+  // Function to manually trigger the wallet prompt
+  const triggerWalletPrompt = () => {
+    setShowPrompt(true);
+  };
+
   return {
     showPrompt,
     handleWalletChoice,
     handleContinueChoice,
+    triggerWalletPrompt,
   };
 }
 
