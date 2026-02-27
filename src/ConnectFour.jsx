@@ -4296,7 +4296,7 @@ export default function ConnectFour() {
                   </span>
                   <div className="w-full h-[1px] bg-green-400/30"></div>
                   <span className="text-base text-green-200">
-                    Balance: <strong>{balance ? `${parseFloat(balance).toFixed(4)} ETH` : 'N/A'}</strong>
+                    Balance: <strong>{balance ? `${parseFloat(balance).toFixed(6)} ETH` : 'N/A'}</strong>
                   </span>
                   <span className="text-base text-green-200">
                     Contract: <a

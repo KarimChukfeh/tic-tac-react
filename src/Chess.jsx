@@ -4860,7 +4860,7 @@ export default function Chess() {
                   </span>
                   <div className={`w-full h-[1px] ${isEnrolledInElite ? 'bg-[#d4a012]/30' : 'bg-green-400/30'}`}></div>
                   <span className={`text-base ${isEnrolledInElite ? 'text-[#f5e6c8]' : 'text-green-200'}`}>
-                    Balance: <strong>{balance ? `${parseFloat(balance).toFixed(4)} ETH` : 'N/A'}</strong>
+                    Balance: <strong>{balance ? `${parseFloat(balance).toFixed(6)} ETH` : 'N/A'}</strong>
                   </span>
                   <span className={`text-base ${isEnrolledInElite ? 'text-[#f5e6c8]' : 'text-green-200'}`}>
                     Contract: <a
