@@ -1,4 +1,4 @@
-import { Shield, Wallet } from 'lucide-react';
+import { Wallet } from 'lucide-react';
 
 /**
  * Wallet Browser Prompt Modal
@@ -11,26 +11,29 @@ export default function WalletBrowserPrompt({ onWalletChoice, onContinueChoice }
     {
       id: 'metamask',
       name: 'MetaMask',
-      icon: '🦊',
-      description: 'Open in MetaMask browser',
-      gradient: 'from-orange-500 to-orange-600',
-      shadowColor: 'rgba(251, 146, 60, 0.4)'
+      logo: '/mm-logo.png',
+      bgColor: 'bg-orange-500/10',
+      hoverBg: 'hover:bg-orange-500/20',
+      borderColor: 'border-orange-500/30',
+      hoverBorder: 'hover:border-orange-500/50'
     },
     {
       id: 'brave',
-      name: 'Brave Wallet',
-      icon: '🦁',
-      description: 'Open in Brave browser',
-      gradient: 'from-orange-400 to-red-500',
-      shadowColor: 'rgba(251, 113, 133, 0.4)'
+      name: 'Brave',
+      logo: '/brave-logo.png',
+      bgColor: 'bg-red-500/10',
+      hoverBg: 'hover:bg-red-500/20',
+      borderColor: 'border-red-500/30',
+      hoverBorder: 'hover:border-red-500/50'
     },
     {
       id: 'trust',
-      name: 'Trust Wallet',
-      icon: '🛡️',
-      description: 'Open in Trust browser',
-      gradient: 'from-blue-500 to-blue-600',
-      shadowColor: 'rgba(59, 130, 246, 0.4)'
+      name: 'Trust',
+      logo: '/trust-logo.png',
+      bgColor: 'bg-blue-500/10',
+      hoverBg: 'hover:bg-blue-500/20',
+      borderColor: 'border-blue-500/30',
+      hoverBorder: 'hover:border-blue-500/50'
     }
   ];
 
@@ -43,63 +46,66 @@ export default function WalletBrowserPrompt({ onWalletChoice, onContinueChoice }
       />
 
       {/* Modal */}
-      <div className="relative bg-slate-900 border-2 border-cyan-500/30 rounded-2xl p-6 max-w-md w-full shadow-2xl">
+      <div className="relative bg-slate-900 border-2 border-cyan-500/30 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
         {/* Icon */}
         <div className="flex justify-center mb-4">
-          <div className="w-16 h-16 rounded-full bg-cyan-500/10 border-2 border-cyan-500/30 flex items-center justify-center">
-            <Wallet className="text-cyan-400" size={32} />
+          <div className="w-14 h-14 rounded-full bg-cyan-500/10 border-2 border-cyan-500/30 flex items-center justify-center">
+            <Wallet className="text-cyan-400" size={28} />
           </div>
         </div>
 
         {/* Title */}
-        <h2 className="text-2xl font-bold text-white text-center mb-3">
-          Choose Your Wallet Browser
+        <h2 className="text-xl font-bold text-white text-center mb-6">
+          Choose Wallet Browser
         </h2>
 
-        {/* Description */}
-        <p className="text-slate-400 text-center mb-6 leading-relaxed text-sm">
-          For the best experience with wallet connections, we recommend using a wallet's built-in browser.
+        {/* Open With Label */}
+        <p className="text-slate-300 text-center mb-3 text-sm font-medium">
+          Open With
         </p>
 
-        {/* Wallet Options */}
-        <div className="space-y-2 mb-3">
+        {/* Wallet Options - Horizontal Layout */}
+        <div className="flex justify-center gap-3 mb-6">
           {wallets.map((wallet) => (
             <button
               key={wallet.id}
               onClick={() => onWalletChoice(wallet.id)}
-              className="w-full py-3 px-4 rounded-xl font-semibold text-white text-base transition-all duration-300 hover:scale-[1.02] flex items-center justify-center gap-3"
-              style={{
-                background: `linear-gradient(135deg, ${wallet.gradient.replace('from-', '').replace('to-', '').split(' ').map(c => {
-                  const colorMap = {
-                    'orange-500': '#f97316',
-                    'orange-600': '#ea580c',
-                    'orange-400': '#fb923c',
-                    'red-500': '#ef4444',
-                    'blue-500': '#3b82f6',
-                    'blue-600': '#2563eb'
-                  };
-                  return colorMap[c] || c;
-                }).join(', ')})`,
-                boxShadow: `0 4px 20px ${wallet.shadowColor}`
-              }}
+              className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all duration-200 hover:scale-105 ${wallet.bgColor} ${wallet.hoverBg} ${wallet.borderColor} ${wallet.hoverBorder}`}
+              aria-label={`Open with ${wallet.name}`}
             >
-              <span className="text-xl">{wallet.icon}</span>
-              <span>{wallet.description}</span>
+              <img
+                src={wallet.logo}
+                alt={wallet.name}
+                className="w-12 h-12 object-contain mb-2"
+              />
+              <span className="text-xs text-slate-300 font-medium">
+                {wallet.name}
+              </span>
             </button>
           ))}
+        </div>
+
+        {/* Divider */}
+        <div className="relative mb-4">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-slate-700"></div>
+          </div>
+          <div className="relative flex justify-center text-xs">
+            <span className="px-2 bg-slate-900 text-slate-500">OR</span>
+          </div>
         </div>
 
         {/* Continue Button */}
         <button
           onClick={onContinueChoice}
-          className="w-full py-3 rounded-xl font-semibold text-slate-300 bg-slate-800 border border-slate-700 transition-all duration-300 hover:bg-slate-700 hover:border-slate-600"
+          className="w-full py-3 rounded-xl font-semibold text-slate-300 bg-slate-800 border border-slate-700 transition-all duration-200 hover:bg-slate-700 hover:border-slate-600 text-sm"
         >
-          Continue in Current Browser
+          Continue in Browser
         </button>
 
         {/* Info note */}
-        <p className="text-slate-500 text-xs text-center mt-4">
-          Your choice will be remembered for this session
+        <p className="text-slate-500 text-xs text-center mt-3">
+          For best experience, use a wallet browser
         </p>
       </div>
     </div>
