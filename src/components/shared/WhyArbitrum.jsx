@@ -38,10 +38,20 @@ export default function WhyArbitrum({ variant = 'blue', isExpanded = true, onTog
       <div className={`${theme.bg} border ${theme.border} rounded-lg overflow-hidden transition-all duration-300`}>
         <button
           onClick={onToggle}
-          className="w-full p-3 md:p-4 flex items-center justify-center relative hover:opacity-80 transition-opacity no-underline focus:outline-none focus:ring-0 focus-visible:outline-none outline-none [&:focus]:outline-none [&:focus-visible]:outline-none [&:active]:outline-none"
-          style={{ outline: 'none !important', boxShadow: 'none !important', border: 'none' }}
+          className="w-full p-3 md:p-4 flex items-center justify-center relative hover:opacity-80 transition-opacity"
+          style={{
+            WebkitAppearance: 'none',
+            MozAppearance: 'none',
+            appearance: 'none',
+            outline: 'none',
+            border: 'none',
+            boxShadow: 'none',
+            textDecoration: 'none',
+            borderBottom: 'none',
+            background: 'transparent'
+          }}
         >
-          <p className={`${theme.text} font-medium no-underline`}>Why Arbitrum?</p>
+          <p className={`${theme.text} font-medium no-underline`} style={{ textDecoration: 'none !important' }}>Why Arbitrum?</p>
           <svg
             className={`w-5 h-5 ${theme.icon} transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''} absolute right-3 md:right-4`}
             fill="none"
