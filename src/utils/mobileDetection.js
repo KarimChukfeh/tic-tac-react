@@ -63,24 +63,106 @@ export function isMetaMaskBrowser() {
 }
 
 /**
- * Constructs MetaMask deep link URL from current URL
+ * Detects if currently running in Brave wallet mobile browser
  *
- * Converts a regular URL to a MetaMask app link that:
- * - Opens in MetaMask browser if app is installed
- * - Opens in default browser if MetaMask is not installed
+ * @returns {boolean} True if in Brave wallet mobile browser
+ */
+export function isBraveBrowser() {
+  const userAgent = navigator.userAgent || '';
+
+  // Check for Brave-specific indicators
+  if (userAgent.includes('Brave')) {
+    return true;
+  }
+
+  // Check for Brave wallet properties
+  if (
+    typeof window.ethereum !== 'undefined' &&
+    window.ethereum.isBraveWallet
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Detects if currently running in Trust Wallet mobile browser
  *
+ * @returns {boolean} True if in Trust Wallet mobile browser
+ */
+export function isTrustBrowser() {
+  const userAgent = navigator.userAgent || '';
+
+  // Check for Trust Wallet user agent
+  if (userAgent.includes('Trust')) {
+    return true;
+  }
+
+  // Check for Trust wallet properties
+  if (
+    typeof window.ethereum !== 'undefined' &&
+    window.ethereum.isTrust
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Detects if currently running in any supported wallet browser
+ *
+ * @returns {boolean} True if in any wallet browser
+ */
+export function isWalletBrowser() {
+  return isMetaMaskBrowser() || isBraveBrowser() || isTrustBrowser();
+}
+
+/**
+ * Constructs wallet deep link URL from current URL
+ *
+ * Converts a regular URL to a wallet app link that:
+ * - Opens in the wallet's browser if app is installed
+ * - Opens in default browser if wallet is not installed
+ *
+ * @param {string} walletId - The wallet identifier ('metamask', 'brave', or 'trust')
  * @param {string} currentUrl - The full current URL (e.g., window.location.href)
- * @returns {string} MetaMask deep link URL
+ * @returns {string|null} Wallet deep link URL or null if wallet not supported
  *
  * @example
- * buildMetaMaskDeepLink('https://example.com/tictactoe?tier=1')
+ * buildWalletDeepLink('metamask', 'https://example.com/tictactoe?tier=1')
  * // Returns: 'https://metamask.app.link/dapp/example.com/tictactoe?tier=1'
  */
-export function buildMetaMaskDeepLink(currentUrl) {
+export function buildWalletDeepLink(walletId, currentUrl) {
   // Remove protocol from current URL
   // Example: "https://example.com/tictactoe" -> "example.com/tictactoe"
   const urlWithoutProtocol = currentUrl.replace(/^https?:\/\//, '');
 
-  // Construct MetaMask deep link
-  return `https://metamask.app.link/dapp/${urlWithoutProtocol}`;
+  switch (walletId) {
+    case 'metamask':
+      // MetaMask deep link format
+      return `https://metamask.app.link/dapp/${urlWithoutProtocol}`;
+
+    case 'brave':
+      // Brave wallet deep link format
+      // Brave uses a different format - opens the URL directly
+      return `brave://open-url?url=${encodeURIComponent(currentUrl)}`;
+
+    case 'trust':
+      // Trust Wallet deep link format
+      return `https://link.trustwallet.com/open_url?url=${encodeURIComponent(currentUrl)}`;
+
+    default:
+      console.warn(`Unsupported wallet: ${walletId}`);
+      return null;
+  }
+}
+
+/**
+ * Legacy function for backward compatibility
+ * @deprecated Use buildWalletDeepLink('metamask', url) instead
+ */
+export function buildMetaMaskDeepLink(currentUrl) {
+  return buildWalletDeepLink('metamask', currentUrl);
 }
