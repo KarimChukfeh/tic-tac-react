@@ -84,12 +84,12 @@ export default function TotalEarningsCard() {
 
   return (
     <div className="inline-block mt-4 px-4 py-2 rounded-lg bg-slate-800/40 border border-slate-700/50">
-      <p className="text-slate-400 text-sm">
-        In the last 24 hours{' '}
+      <p className="text-slate-400 text-base">
+        Winners have earned{' '}
         <span className="text-cyan-400 font-semibold">
-          {totalEarnings.toFixed(4)} ETH
+          ~{totalEarnings.toFixed(4)} ETH
         </span>
-        {' '} have been sent to winners
+        {' '}in the last 24 hours across all 3 games
       </p>
     </div>
   );

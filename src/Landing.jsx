@@ -469,6 +469,7 @@ export default function Landing() {
             <p className="text-slate-400 text-lg mb-3">
               Three games. Multiple stake levels. One rule: <span className="text-cyan-400">winner takes all.</span>
             </p>
+            <TotalEarningsCard />
           </div>
           
           {/* Games Grid */}
@@ -521,10 +522,7 @@ export default function Landing() {
 
           </div>
 
-          {/* Total Earnings Card */}
-          <div className="text-center mt-12">
-            <TotalEarningsCard />
-          </div>
+
         </section>
 
         {/* ============ HOW IT WORKS ============ */}
