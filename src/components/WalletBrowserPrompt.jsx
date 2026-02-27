@@ -60,9 +60,10 @@ export default function WalletBrowserPrompt({ onWalletChoice, onContinueChoice }
         </h2>
 
         {/* Explanation Text */}
-        <p className="text-slate-400 text-center mb-5 text-xs leading-relaxed">
-          Chrome and Safari block wallet connections. Pick a Web3 browser to connect and play.
-        </p>
+        <div className="text-slate-400 text-center mb-5 text-xs leading-relaxed">
+          <p>Chrome and Safari block wallet connections.</p>
+          <p>Pick a Web3 browser to connect and play.</p>
+        </div>
 
         {/* Open With Label */}
         <p className="text-slate-300 text-center mb-3 text-sm font-medium">
