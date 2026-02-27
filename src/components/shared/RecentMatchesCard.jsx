@@ -30,6 +30,7 @@ const RecentMatchesCard = ({
   onNavigateToTournament, // Callback to navigate to tournament bracket view
   leaderboard = [], // Leaderboard data to find player earnings
   onMatchesLoad, // Callback(matches) fired after matches are fetched
+  onScrollToMatch, // Callback(fn) receives the scrollToMatch function for external callers
 }) => {
   const [internalIsExpanded, setInternalIsExpanded] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
@@ -491,6 +492,13 @@ const RecentMatchesCard = ({
       }
     }
   };
+
+  // Expose scrollToMatch to parent via callback ref
+  useEffect(() => {
+    if (onScrollToMatch) {
+      onScrollToMatch(scrollToMatch);
+    }
+  }, [recentMatches, currentPage]);
 
   // Get match resolution label (Victory, Defeat, Draw)
   const getMatchResolution = (matchId, timestamp) => {

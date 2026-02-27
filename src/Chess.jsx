@@ -863,6 +863,9 @@ export default function Chess() {
   // Player Activity Collapse Function Ref
   const collapseActivityPanelRef = useRef(null);
 
+  // Recent Matches scroll-to function ref (populated by RecentMatchesCard)
+  const recentMatchesScrollRef = useRef(null);
+
   // Mobile Panel Expansion Coordination (only one panel expanded at a time on mobile)
   const [expandedPanel, setExpandedPanel] = useState(null); // 'games' | 'playerActivity' | 'recentMatches' | 'communityRaffle' | 'eliteMatches' | null
 
@@ -4658,6 +4661,7 @@ export default function Chess() {
             onNavigateToTournament={handleEnterTournament}
             leaderboard={leaderboard}
             onMatchesLoad={setRecentMatchesData}
+            onScrollToMatch={(fn) => { recentMatchesScrollRef.current = fn; }}
           />
 
           {/* Community Raffle Card */}
@@ -4754,6 +4758,7 @@ export default function Chess() {
             onNavigateToTournament={handleEnterTournament}
             leaderboard={leaderboard}
             onMatchesLoad={setRecentMatchesData}
+            onScrollToMatch={(fn) => { recentMatchesScrollRef.current = fn; }}
           />
 
           <CommunityRaffleCard
@@ -4963,6 +4968,21 @@ export default function Chess() {
                 const wins = recentMatchesData.filter(m => m.winner?.toLowerCase() === account?.toLowerCase());
                 if (!wins.length) return null;
                 return wins.reduce((a, b) => (b.timestamp > a.timestamp ? b : a)).timestamp;
+              })()}
+              onLastWinClick={(() => {
+                const wins = recentMatchesData.filter(m => m.winner?.toLowerCase() === account?.toLowerCase());
+                if (!wins.length) return null;
+                const lastWinMatch = wins.reduce((a, b) => (b.timestamp > a.timestamp ? b : a));
+                return () => {
+                  if (expandedPanel !== 'recentMatches') {
+                    setExpandedPanel('recentMatches');
+                  }
+                  setTimeout(() => {
+                    if (recentMatchesScrollRef.current) {
+                      recentMatchesScrollRef.current(lastWinMatch.matchId, lastWinMatch.timestamp);
+                    }
+                  }, 150);
+                };
               })()}
             />
           )}

@@ -23,6 +23,7 @@ export default function ConnectedWalletCard({
   shortenAddress,
   payout = null,
   lastWin = null,
+  onLastWinClick = null,
   isEnrolledInElite = false,
   currentTheme = {},
 }) {
@@ -66,7 +67,21 @@ export default function ConnectedWalletCard({
             Your current balance is <strong>{balance ? `${parseFloat(balance).toFixed(6)} ETH` : 'N/A'}</strong>
           </span>
           <span className={`text-base ${metaTextCls}`}>
-            Your last victory was <strong>{lastWin != null ? timeAgo(lastWin) : 'N/A'}</strong>
+            Your last victory was{' '}
+            {lastWin != null ? (
+              onLastWinClick ? (
+                <button
+                  onClick={onLastWinClick}
+                  className="font-bold underline decoration-dotted underline-offset-2 hover:opacity-80 transition-opacity cursor-pointer bg-transparent border-none p-0"
+                >
+                  {timeAgo(lastWin)}
+                </button>
+              ) : (
+                <strong>{timeAgo(lastWin)}</strong>
+              )
+            ) : (
+              <strong>N/A</strong>
+            )}
           </span>
         </div>
       </div>
