@@ -56,12 +56,12 @@ export default function WalletBrowserPrompt({ onWalletChoice, onContinueChoice }
 
         {/* Title */}
         <h2 className="text-xl font-bold text-white text-center mb-3">
-          Choose Wallet Browser
+          Choose a Web3 Browser
         </h2>
 
         {/* Explanation Text */}
         <div className="text-slate-400 text-center mb-5 text-xs leading-relaxed">
-          <p>Chrome and Safari block wallet connections.</p>
+          <p>Web2 browsers like Chrome block wallet connections.</p>
           <p>Pick a Web3 browser to connect and play.</p>
         </div>
 
@@ -108,11 +108,6 @@ export default function WalletBrowserPrompt({ onWalletChoice, onContinueChoice }
         >
           Continue in Browser
         </button>
-
-        {/* Info note */}
-        <p className="text-slate-500 text-xs text-center mt-3">
-          For best experience, use a wallet browser
-        </p>
       </div>
     </div>
   );
