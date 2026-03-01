@@ -207,44 +207,60 @@ const GameMatchLayout = ({
   // Mobile sticky player cards: use IntersectionObserver to toggle fixed positioning
   const mobileHeaderSentinelRef = useRef(null);
   const mobileHeaderRef = useRef(null);
+  const mobileBoardStartRef = useRef(null);
   const mobileBoardEndRef = useRef(null);
   const [isMobileHeaderFixed, setIsMobileHeaderFixed] = useState(false);
-  const [isBelowBoard, setIsBelowBoard] = useState(false);
+  const [isBoardAbove, setIsBoardAbove] = useState(false); // entire board scrolled above viewport
+  const [isBoardBelow, setIsBoardBelow] = useState(false); // entire board below viewport (not reached yet)
 
   useEffect(() => {
     if (matchStatus !== 1) {
       setIsMobileHeaderFixed(false);
-      setIsBelowBoard(false);
+      setIsBoardAbove(false);
+      setIsBoardBelow(false);
       return;
     }
     const sentinel = mobileHeaderSentinelRef.current;
+    const boardStart = mobileBoardStartRef.current;
     const boardEnd = mobileBoardEndRef.current;
     if (!sentinel) return;
 
     const headerObserver = new IntersectionObserver(
       ([entry]) => {
-        // When sentinel scrolls out of view (above viewport), fix the header
         setIsMobileHeaderFixed(!entry.isIntersecting);
       },
       { threshold: 0, rootMargin: '0px' }
     );
     headerObserver.observe(sentinel);
 
-    let boardObserver;
+    // Board end above viewport → entire board has scrolled out above
+    let boardEndObserver;
     if (boardEnd) {
-      boardObserver = new IntersectionObserver(
+      boardEndObserver = new IntersectionObserver(
         ([entry]) => {
-          // When board end sentinel is above viewport, user is below the board
-          setIsBelowBoard(!entry.isIntersecting && entry.boundingClientRect.top < 0);
+          setIsBoardAbove(!entry.isIntersecting && entry.boundingClientRect.top < 0);
         },
         { threshold: 0, rootMargin: '0px' }
       );
-      boardObserver.observe(boardEnd);
+      boardEndObserver.observe(boardEnd);
+    }
+
+    // Board start below viewport → board hasn't entered view yet
+    let boardStartObserver;
+    if (boardStart) {
+      boardStartObserver = new IntersectionObserver(
+        ([entry]) => {
+          setIsBoardBelow(!entry.isIntersecting && entry.boundingClientRect.top > 0);
+        },
+        { threshold: 0, rootMargin: '0px' }
+      );
+      boardStartObserver.observe(boardStart);
     }
 
     return () => {
       headerObserver.disconnect();
-      boardObserver?.disconnect();
+      boardEndObserver?.disconnect();
+      boardStartObserver?.disconnect();
     };
   }, [matchStatus]);
 
@@ -399,13 +415,13 @@ const GameMatchLayout = ({
           {renderPlayerCard(1)}
           {renderPlayerCard(2)}
         </div>
-        {/* Scroll-to-board button when fixed */}
-        {isMobileHeaderFixed && (
+        {/* Scroll-to-board button — only when the board is fully out of view */}
+        {isMobileHeaderFixed && (isBoardAbove || isBoardBelow) && (
           <button
             onClick={() => mobileHeaderSentinelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
             className="w-full mt-2 py-2 rounded-lg bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 active:from-orange-600 active:to-amber-600 text-white text-lg font-bold transition-colors shadow-[0_0_18px_rgba(251,146,60,0.6),0_0_40px_rgba(251,146,60,0.3)] hover:shadow-[0_0_25px_rgba(251,146,60,0.8),0_0_50px_rgba(251,146,60,0.4)]"
           >
-            MATCH BOARD {isBelowBoard ? '↑' : '↓'}
+            Game Board {isBoardAbove ? '↑' : '↓'}
           </button>
         )}
       </div>
@@ -1196,10 +1212,13 @@ const GameMatchLayout = ({
       {/* Mobile: Sticky player cards (direct child of root for full-page sticky range) */}
       {renderMobileConsolidatedHeader()}
 
+      {/* Sentinel: top of board — detects when board is below viewport */}
+      <div ref={mobileBoardStartRef} className="lg:hidden" />
+
       {/* Main Layout */}
       {renderLayout()}
 
-      {/* Sentinel to detect when user has scrolled past the board */}
+      {/* Sentinel: bottom of board — detects when entire board has scrolled above viewport */}
       <div ref={mobileBoardEndRef} className="lg:hidden" />
 
       {/* Move History (optional) - Only show if NOT using players-board-history layout */}
