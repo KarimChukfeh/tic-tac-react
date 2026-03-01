@@ -207,25 +207,45 @@ const GameMatchLayout = ({
   // Mobile sticky player cards: use IntersectionObserver to toggle fixed positioning
   const mobileHeaderSentinelRef = useRef(null);
   const mobileHeaderRef = useRef(null);
+  const mobileBoardEndRef = useRef(null);
   const [isMobileHeaderFixed, setIsMobileHeaderFixed] = useState(false);
+  const [isBelowBoard, setIsBelowBoard] = useState(false);
 
   useEffect(() => {
     if (matchStatus !== 1) {
       setIsMobileHeaderFixed(false);
+      setIsBelowBoard(false);
       return;
     }
     const sentinel = mobileHeaderSentinelRef.current;
+    const boardEnd = mobileBoardEndRef.current;
     if (!sentinel) return;
 
-    const observer = new IntersectionObserver(
+    const headerObserver = new IntersectionObserver(
       ([entry]) => {
         // When sentinel scrolls out of view (above viewport), fix the header
         setIsMobileHeaderFixed(!entry.isIntersecting);
       },
       { threshold: 0, rootMargin: '0px' }
     );
-    observer.observe(sentinel);
-    return () => observer.disconnect();
+    headerObserver.observe(sentinel);
+
+    let boardObserver;
+    if (boardEnd) {
+      boardObserver = new IntersectionObserver(
+        ([entry]) => {
+          // When board end sentinel is above viewport, user is below the board
+          setIsBelowBoard(!entry.isIntersecting && entry.boundingClientRect.top < 0);
+        },
+        { threshold: 0, rootMargin: '0px' }
+      );
+      boardObserver.observe(boardEnd);
+    }
+
+    return () => {
+      headerObserver.disconnect();
+      boardObserver?.disconnect();
+    };
   }, [matchStatus]);
 
   // Render mobile consolidated header (used across all layouts)
@@ -374,7 +394,7 @@ const GameMatchLayout = ({
     const headerContent = (
       <div
         ref={mobileHeaderRef}
-        className={`lg:hidden ${isMobileHeaderFixed ? 'fixed top-0 left-0 right-0 z-[9999] pt-3 pb-3 px-4' : 'mb-6'}`}
+        className={`lg:hidden ${isMobileHeaderFixed ? 'fixed top-0 left-0 right-0 z-[9999] pt-3 pb-3 px-4 bg-black/95 backdrop-blur-sm' : 'mb-6'}`}
       >
         {/* Single row: Combined player cards with timers */}
         <div className="grid grid-cols-2 gap-3">
@@ -385,9 +405,9 @@ const GameMatchLayout = ({
         {isMobileHeaderFixed && (
           <button
             onClick={() => mobileHeaderSentinelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-            className="w-full mt-2 py-2 rounded-lg bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 active:from-orange-600 active:to-amber-600 text-white text-sm font-bold transition-colors shadow-[0_0_18px_rgba(251,146,60,0.6),0_0_40px_rgba(251,146,60,0.3)] hover:shadow-[0_0_25px_rgba(251,146,60,0.8),0_0_50px_rgba(251,146,60,0.4)]"
+            className="w-full mt-2 py-2 rounded-lg bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 active:from-orange-600 active:to-amber-600 text-white text-lg font-bold transition-colors shadow-[0_0_18px_rgba(251,146,60,0.6),0_0_40px_rgba(251,146,60,0.3)] hover:shadow-[0_0_25px_rgba(251,146,60,0.8),0_0_50px_rgba(251,146,60,0.4)]"
           >
-            View Board
+            MATCH BOARD {isBelowBoard ? '↑' : '↓'}
           </button>
         )}
       </div>
@@ -1184,6 +1204,9 @@ const GameMatchLayout = ({
 
       {/* Main Layout */}
       {renderLayout()}
+
+      {/* Sentinel to detect when user has scrolled past the board */}
+      <div ref={mobileBoardEndRef} className="lg:hidden" />
 
       {/* Move History (optional) - Only show if NOT using players-board-history layout */}
       {renderMoveHistory && layout !== 'players-board-history' && (
