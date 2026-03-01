@@ -3999,7 +3999,7 @@ export default function TicTacChain() {
       background: currentTheme.gradient,
       color: '#fff',
       position: 'relative',
-      overflow: 'hidden',
+      overflow: 'clip',
       transition: 'background 0.8s ease-in-out'
     }}>
       {/* Particle Background */}

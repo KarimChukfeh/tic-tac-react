@@ -4081,7 +4081,7 @@ export default function ConnectFour() {
       background: currentTheme.gradient,
       color: '#fff',
       position: 'relative',
-      overflow: 'hidden',
+      overflow: 'clip',
       transition: 'background 0.8s ease-in-out'
     }}>
       {/* Particle Background */}

@@ -18,6 +18,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { isDraw } from '../../utils/completionReasons';
 import MatchHeader from './MatchHeader';
 import PlayerPanel from './PlayerPanel';
@@ -203,6 +204,30 @@ const GameMatchLayout = ({
     return () => clearInterval(interval);
   }, [match.matchStatus, isPlayer1Turn, isPlayer2Turn]);
 
+  // Mobile sticky player cards: use IntersectionObserver to toggle fixed positioning
+  const mobileHeaderSentinelRef = useRef(null);
+  const mobileHeaderRef = useRef(null);
+  const [isMobileHeaderFixed, setIsMobileHeaderFixed] = useState(false);
+
+  useEffect(() => {
+    if (matchStatus !== 1) {
+      setIsMobileHeaderFixed(false);
+      return;
+    }
+    const sentinel = mobileHeaderSentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        // When sentinel scrolls out of view (above viewport), fix the header
+        setIsMobileHeaderFixed(!entry.isIntersecting);
+      },
+      { threshold: 0, rootMargin: '0px' }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [matchStatus]);
+
   // Render mobile consolidated header (used across all layouts)
   const renderMobileConsolidatedHeader = () => {
     // Timer values come from state (client-side ticking)
@@ -259,20 +284,21 @@ const GameMatchLayout = ({
 
       // Get color config for player
       const COLOR_CONFIGS = {
-        blue: { border: 'border-blue-400/30', bg: 'bg-gradient-to-br from-blue-600/20 to-cyan-600/20', iconBg: 'bg-blue-500', text: 'text-blue-300' },
-        pink: { border: 'border-pink-400/30', bg: 'bg-gradient-to-br from-pink-600/20 to-purple-600/20', iconBg: 'bg-pink-500', text: 'text-pink-300' },
-        white: { border: 'border-blue-500/30', bg: 'bg-slate-900/50', iconBg: 'bg-white text-black', text: 'text-blue-300' },
-        black: { border: 'border-pink-500/30', bg: 'bg-slate-900/50', iconBg: 'bg-gray-900 text-white', text: 'text-pink-300' },
-        neonred: { border: 'border-red-400/30', bg: 'bg-gradient-to-br from-red-600/20 to-rose-600/20', iconBg: 'bg-red-500', text: 'text-red-300' },
-        neonblue: { border: 'border-blue-400/30', bg: 'bg-gradient-to-br from-blue-600/20 to-indigo-600/20', iconBg: 'bg-blue-500', text: 'text-blue-300' }
+        blue: { border: 'border-blue-400/30', bg: 'bg-gradient-to-br from-blue-600/20 to-cyan-600/20', bgFixed: 'bg-gradient-to-br from-blue-900 to-cyan-900', iconBg: 'bg-blue-500', text: 'text-blue-300' },
+        pink: { border: 'border-pink-400/30', bg: 'bg-gradient-to-br from-pink-600/20 to-purple-600/20', bgFixed: 'bg-gradient-to-br from-pink-900 to-purple-900', iconBg: 'bg-pink-500', text: 'text-pink-300' },
+        white: { border: 'border-blue-500/30', bg: 'bg-slate-900/50', bgFixed: 'bg-slate-900', iconBg: 'bg-white text-black', text: 'text-blue-300' },
+        black: { border: 'border-pink-500/30', bg: 'bg-slate-900/50', bgFixed: 'bg-slate-900', iconBg: 'bg-gray-900 text-white', text: 'text-pink-300' },
+        neonred: { border: 'border-red-400/30', bg: 'bg-gradient-to-br from-red-600/20 to-rose-600/20', bgFixed: 'bg-gradient-to-br from-red-900 to-rose-900', iconBg: 'bg-red-500', text: 'text-red-300' },
+        neonblue: { border: 'border-blue-400/30', bg: 'bg-gradient-to-br from-blue-600/20 to-indigo-600/20', bgFixed: 'bg-gradient-to-br from-blue-900 to-indigo-900', iconBg: 'bg-blue-500', text: 'text-blue-300' }
       };
       const cardColors = COLOR_CONFIGS[colorScheme] || COLOR_CONFIGS.blue;
+      const cardBg = isMobileHeaderFixed ? cardColors.bgFixed : cardColors.bg;
 
       return (
         <div className={`relative rounded-lg border-2 ${
           isTurn && isYou && !isGameOver
-            ? 'border-green-400 bg-green-500/10 ring-2 ring-green-400/30'
-            : `${cardColors.border} ${cardColors.bg}`
+            ? `border-green-400 ${isMobileHeaderFixed ? 'bg-green-900' : 'bg-green-500/10'} ring-2 ring-green-400/30`
+            : `${cardColors.border} ${cardBg}`
         } p-3 space-y-2`}>
           {/* Turn Indicator Badge */}
           {isTurn && !isGameOver && (
@@ -308,7 +334,7 @@ const GameMatchLayout = ({
                 {label}
                 {isYou && <span className="text-yellow-300 text-[11px] font-bold ml-1">YOU</span>}
               </div>
-              <div className="font-mono text-xs truncate">{playerAddress ? `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : ''}</div>
+              <div className="font-mono text-xs truncate text-white">{playerAddress ? `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : ''}</div>
             </div>
           </div>
 
@@ -345,14 +371,37 @@ const GameMatchLayout = ({
       );
     };
 
-    return (
-      <div className="lg:hidden mb-6">
+    const headerContent = (
+      <div
+        ref={mobileHeaderRef}
+        className={`lg:hidden ${isMobileHeaderFixed ? 'fixed top-0 left-0 right-0 z-[9999] pt-3 pb-3 px-4' : 'mb-6'}`}
+      >
         {/* Single row: Combined player cards with timers */}
         <div className="grid grid-cols-2 gap-3">
           {renderPlayerCard(1)}
           {renderPlayerCard(2)}
         </div>
+        {/* Scroll-to-board button when fixed */}
+        {isMobileHeaderFixed && (
+          <button
+            onClick={() => mobileHeaderSentinelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            className="w-full mt-2 py-2 rounded-lg bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 active:from-orange-600 active:to-amber-600 text-white text-sm font-bold transition-colors shadow-[0_0_18px_rgba(251,146,60,0.6),0_0_40px_rgba(251,146,60,0.3)] hover:shadow-[0_0_25px_rgba(251,146,60,0.8),0_0_50px_rgba(251,146,60,0.4)]"
+          >
+            View Board
+          </button>
+        )}
       </div>
+    );
+
+    return (
+      <>
+        {/* Sentinel: marks the natural position of the header */}
+        <div ref={mobileHeaderSentinelRef} className="lg:hidden" />
+        {/* Spacer when header is fixed, so content doesn't jump */}
+        {isMobileHeaderFixed && <div className="lg:hidden mb-6" ref={el => { if (el && mobileHeaderRef.current) el.style.height = mobileHeaderRef.current.offsetHeight + 'px'; }} />}
+        {/* Portal to body when fixed, so it escapes all stacking contexts */}
+        {isMobileHeaderFixed ? createPortal(headerContent, document.body) : headerContent}
+      </>
     );
   };
 
@@ -486,9 +535,6 @@ const GameMatchLayout = ({
 
     return (
       <div>
-        {/* Mobile: Consolidated header with player cards, timers, and turn indicator */}
-        {renderMobileConsolidatedHeader()}
-
         {/* Desktop: Three column layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Panel - Player 1 (hidden on mobile) */}
@@ -670,9 +716,6 @@ const GameMatchLayout = ({
 
     return (
       <div>
-        {/* Mobile: Consolidated header */}
-        {renderMobileConsolidatedHeader()}
-
         <div className="flex flex-col xl:flex-row gap-6">
           {/* Player 1 - Left side (hidden on mobile) */}
           <div className="hidden xl:block flex-none xl:w-56">
@@ -830,9 +873,6 @@ const GameMatchLayout = ({
 
     return (
       <div className="flex flex-col items-center">
-        {/* Mobile: Consolidated header */}
-        {renderMobileConsolidatedHeader()}
-
         {/* Desktop: Player Info with Timers - Horizontal (hidden on mobile) */}
         <div className="hidden lg:flex justify-between items-start gap-7 mb-6 max-w-2xl mx-auto w-full">
           {renderCenteredPlayerCard(1)}
@@ -994,9 +1034,6 @@ const GameMatchLayout = ({
       <>
         {/* Mobile Layout (< lg breakpoint) */}
         <div className={`lg:hidden ${gameType === 'connectfour' ? 'space-y-0' : 'space-y-3'}`}>
-          {/* Mobile: Consolidated header */}
-          {renderMobileConsolidatedHeader()}
-
           {/* Board */}
           <div className={`flex justify-center ${gameType === 'connectfour' ? 'mt-0' : ''}`}>
             {children}
@@ -1141,6 +1178,9 @@ const GameMatchLayout = ({
         }}
         theme={theme}
       />
+
+      {/* Mobile: Sticky player cards (direct child of root for full-page sticky range) */}
+      {renderMobileConsolidatedHeader()}
 
       {/* Main Layout */}
       {renderLayout()}
