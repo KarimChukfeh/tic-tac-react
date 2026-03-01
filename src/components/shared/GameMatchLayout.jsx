@@ -350,39 +350,37 @@ const GameMatchLayout = ({
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <div className="text-xs text-gray-400">
-                {label}
-                {isYou && <span className="text-yellow-300 text-[11px] font-bold ml-1">YOU</span>}
+              <div className="flex items-center gap-1">
+                <div className="font-mono text-[11px] truncate text-white">{playerAddress ? `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : ''}</div>
+                {isYou && <span className="text-yellow-300 text-[10px] font-bold flex-shrink-0">YOU</span>}
               </div>
-              <div className="font-mono text-xs truncate text-white">{playerAddress ? `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : ''}</div>
+              {showTurnTimer && (
+                <div className={`border rounded p-1 mt-0.5 mr-1 ${
+                  isTurn ? `${colors.border} ${colors.bg}` : 'border-gray-600/30 opacity-60'
+                }`}>
+                  <div className="flex items-center justify-between mb-0.5">
+                    <span className="text-[10px] font-bold text-gray-300">Time Left</span>
+                    <span className={`font-mono text-xs font-bold ${colors.text}`}>
+                      {timeLeft > 0 ? formatTime(timeLeft) : 'OUT'}
+                    </span>
+                  </div>
+                  <div className="h-1 bg-gray-700 rounded-full overflow-hidden">
+                    <div className={`h-full ${colors.bar}`} style={{ width: `${Math.min(progress, 100)}%` }} />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Timer Section or ML1 CTA */}
-          {showTurnTimer && (
-            showCTA ? (
-              <button
-                onClick={onClaimTimeoutWin}
-                disabled={loading}
-                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-2 px-3 rounded-lg transition-all disabled:opacity-50 text-xs"
-              >
-                Claim Timeout Victory
-              </button>
-            ) : (
-              <div className={`border rounded-lg p-2 ${
-                isTurn ? `${colors.border} ${colors.bg}` : 'border-gray-600/30 opacity-60'
-              }`}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-bold text-gray-300">Time Remaining</span>
-                  <span className={`font-mono text-sm font-bold ${colors.text}`}>
-                    {timeLeft > 0 ? formatTime(timeLeft) : 'OUT'}
-                  </span>
-                </div>
-                <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
-                  <div className={`h-full ${colors.bar}`} style={{ width: `${Math.min(progress, 100)}%` }} />
-                </div>
-              </div>
-            )
+          {/* ML1 CTA (replaces timer when timeout claimable) */}
+          {showTurnTimer && showCTA && (
+            <button
+              onClick={onClaimTimeoutWin}
+              disabled={loading}
+              className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-2 px-3 rounded-lg transition-all disabled:opacity-50 text-xs"
+            >
+              Claim Timeout Victory
+            </button>
           )}
 
           {/* Extra Content (Lost Pieces) - Below Timer */}
@@ -491,7 +489,7 @@ const GameMatchLayout = ({
           )}
 
           {/* Player Info */}
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex items-center gap-3 mb-2">
             {(icon === '♚' || icon === '♔') ? (
               <img
                 src={icon === '♚' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
@@ -504,21 +502,13 @@ const GameMatchLayout = ({
                 {icon}
               </div>
             )}
-            <div>
-              <h3 className="text-xl font-bold text-white">{label}</h3>
-              <p className={`${cardColors.text} font-mono text-sm`}>
+            <div className="flex flex-col">
+              {isYou && <span className="text-yellow-400 text-sm font-bold leading-tight">YOU</span>}
+              <p className={`${cardColors.text} font-mono text-xs`}>
                 {playerAddress ? `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : ''}
               </p>
-              {isYou && <span className="text-yellow-400 text-sm font-bold">YOU</span>}
             </div>
           </div>
-
-          {/* Stats */}
-          {renderStats && (
-            <div className="space-y-2 mb-4">
-              {renderStats()}
-            </div>
-          )}
 
           {/* Timer Section or ML1 CTA */}
           {showTurnTimer && (
@@ -531,12 +521,12 @@ const GameMatchLayout = ({
                 Claim Timeout Victory
               </button>
             ) : (
-              <div className={`border-2 rounded-lg p-3 ${
+              <div className={`border-2 rounded-lg p-2 mb-2 ${
                 isTurn ? `${colors.border} ${colors.bg}` : 'border-gray-600/30 bg-gray-800/20 opacity-60'
               }`}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-bold text-gray-300">Time Remaining</span>
-                  <span className={`font-mono text-xl font-bold ${colors.text}`}>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs font-bold text-gray-300">Time Left</span>
+                  <span className={`font-mono text-lg font-bold ${colors.text}`}>
                     {timeLeft > 0 ? formatTime(timeLeft) : 'OUT'}
                   </span>
                 </div>
@@ -545,6 +535,13 @@ const GameMatchLayout = ({
                 </div>
               </div>
             )
+          )}
+
+          {/* Stats */}
+          {renderStats && (
+            <div className="space-y-2 mb-4">
+              {renderStats()}
+            </div>
           )}
 
           {/* Extra Content (Lost Pieces) - Below Timer */}
@@ -679,7 +676,7 @@ const GameMatchLayout = ({
           )}
 
           {/* Player Info */}
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex items-center gap-3 mb-2">
             {(icon === '♚' || icon === '♔') ? (
               <img
                 src={icon === '♚' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
@@ -692,12 +689,11 @@ const GameMatchLayout = ({
                 {icon}
               </div>
             )}
-            <div>
-              <h3 className="text-xl font-bold text-white">{label}</h3>
-              <p className={`${cardColors.text} font-mono text-sm`}>
+            <div className="flex flex-col">
+              {isYou && <span className="text-yellow-400 text-sm font-bold leading-tight">YOU</span>}
+              <p className={`${cardColors.text} font-mono text-xs`}>
                 {playerAddress ? `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : ''}
               </p>
-              {isYou && <span className="text-yellow-400 text-sm font-bold">YOU</span>}
             </div>
           </div>
 
@@ -707,17 +703,17 @@ const GameMatchLayout = ({
               <button
                 onClick={onClaimTimeoutWin}
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-2 px-3 rounded-lg transition-all disabled:opacity-50 shadow-lg text-sm"
+                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-2 px-3 rounded-lg transition-all disabled:opacity-50 shadow-lg text-sm mb-2"
               >
                 Claim Timeout Victory
               </button>
             ) : (
-              <div className={`border-2 rounded-lg p-3 ${
+              <div className={`border-2 rounded-lg p-2 mb-2 ${
                 isTurn ? `${colors.border} ${colors.bg}` : 'border-gray-600/30 bg-gray-800/20 opacity-60'
               }`}>
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-xs font-bold text-gray-300">Time Remaining</span>
-                  <span className={`font-mono text-lg font-bold ${colors.text}`}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-bold text-gray-300">Time Left</span>
+                  <span className={`font-mono text-base font-bold ${colors.text}`}>
                     {timeLeft > 0 ? formatTime(timeLeft) : 'OUT'}
                   </span>
                 </div>
@@ -855,38 +851,37 @@ const GameMatchLayout = ({
               <span className="text-2xl">{icon}</span>
             )}
             <div className="flex-1">
-              <div className="text-xs text-gray-400">{label}</div>
-              <div className="font-mono text-xs">{playerAddress ? `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : ''}</div>
-              {isYou && <span className="text-yellow-400 text-sm font-bold">YOU</span>}
+              <div className="flex items-center gap-1">
+                <div className="font-mono text-[11px] text-white">{playerAddress ? `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : ''}</div>
+                {isYou && <span className="text-yellow-400 text-[10px] font-bold">YOU</span>}
+              </div>
+              {showTurnTimer && (
+                showML1CTA ? (
+                  <button
+                    onClick={onClaimTimeoutWin}
+                    disabled={loading}
+                    className="mt-1 w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-1.5 px-2 rounded-lg transition-all disabled:opacity-50 shadow-lg text-xs"
+                  >
+                    Claim Timeout Victory
+                  </button>
+                ) : (
+                  <div className={`mt-0.5 border-2 rounded-lg p-1.5 ${
+                    isTurn ? `${colors.border} ${colors.bg}` : 'border-gray-600/30 bg-gray-800/20 opacity-60'
+                  }`}>
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="text-[10px] font-bold text-gray-300">Time Left</span>
+                      <span className={`font-mono text-xs font-bold ${colors.text}`}>
+                        {timeLeft > 0 ? formatTime(timeLeft) : 'OUT'}
+                      </span>
+                    </div>
+                    <div className="h-1 bg-gray-700 rounded-full overflow-hidden">
+                      <div className={`h-full ${colors.bar} transition-all duration-500`} style={{ width: `${Math.min(progress, 100)}%` }} />
+                    </div>
+                  </div>
+                )
+              )}
             </div>
           </div>
-
-          {/* Timer Section or ML1 CTA */}
-          {showTurnTimer && (
-            showML1CTA ? (
-              <button
-                onClick={onClaimTimeoutWin}
-                disabled={loading}
-                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-1.5 px-2 rounded-lg transition-all disabled:opacity-50 shadow-lg text-xs"
-              >
-                Claim Timeout Victory
-              </button>
-            ) : (
-              <div className={`border-2 rounded-lg p-2 ${
-                isTurn ? `${colors.border} ${colors.bg}` : 'border-gray-600/30 bg-gray-800/20 opacity-60'
-              }`}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-bold text-gray-300">Time</span>
-                  <span className={`font-mono text-sm font-bold ${colors.text}`}>
-                    {timeLeft > 0 ? formatTime(timeLeft) : 'OUT'}
-                  </span>
-                </div>
-                <div className="h-1 bg-gray-700 rounded-full overflow-hidden">
-                  <div className={`h-full ${colors.bar} transition-all duration-500`} style={{ width: `${Math.min(progress, 100)}%` }} />
-                </div>
-              </div>
-            )
-          )}
         </div>
       );
     };
@@ -995,7 +990,7 @@ const GameMatchLayout = ({
           )}
 
           {/* Player Info */}
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex items-center gap-3 mb-2">
             {(icon === '♚' || icon === '♔') ? (
               <img
                 src={icon === '♚' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
@@ -1008,12 +1003,11 @@ const GameMatchLayout = ({
                 {icon}
               </div>
             )}
-            <div>
-              <h3 className="text-xl font-bold text-white">{label}</h3>
-              <p className={`${cardColors.text} font-mono text-sm`}>
+            <div className="flex flex-col">
+              {isYou && <span className="text-yellow-400 text-sm font-bold leading-tight">YOU</span>}
+              <p className={`${cardColors.text} font-mono text-xs`}>
                 {playerAddress ? `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : ''}
               </p>
-              {isYou && <span className="text-yellow-400 text-sm font-bold">YOU</span>}
             </div>
           </div>
 
@@ -1023,17 +1017,17 @@ const GameMatchLayout = ({
               <button
                 onClick={onClaimTimeoutWin}
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-2 px-3 rounded-lg transition-all disabled:opacity-50 shadow-lg text-sm"
+                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-2 px-3 rounded-lg transition-all disabled:opacity-50 shadow-lg text-sm mb-2"
               >
                 Claim Timeout Victory
               </button>
             ) : (
-              <div className={`border-2 rounded-lg p-2.5 ${
+              <div className={`border-2 rounded-lg p-2 mb-2 ${
                 isTurn ? `${colors.border} ${colors.bg}` : 'border-gray-600/30 bg-gray-800/20 opacity-60'
               }`}>
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-xs font-bold text-gray-300">Time Remaining</span>
-                  <span className={`font-mono text-base font-bold ${colors.text}`}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-bold text-gray-300">Time Left</span>
+                  <span className={`font-mono text-sm font-bold ${colors.text}`}>
                     {timeLeft > 0 ? formatTime(timeLeft) : 'OUT'}
                   </span>
                 </div>
