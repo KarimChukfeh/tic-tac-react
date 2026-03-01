@@ -19,7 +19,7 @@ import { Link, useSearchParams, useLocation, useNavigate } from 'react-router-do
 import {
   Wallet, Grid, Clock, Shield, Lock, Eye, Code, ExternalLink,
   Trophy, Zap, Coins, History,
-  CheckCircle, AlertCircle, ChevronDown, ChevronUp, ArrowLeft, HelpCircle, Calendar
+  CheckCircle, AlertCircle, ChevronDown, ChevronUp, ArrowLeft, HelpCircle, Calendar, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import ChessABIData from './ChessOnChain-ABI-modular.json';
@@ -848,6 +848,7 @@ export default function Chess() {
   const [eliteMatchesSyncing, setEliteMatchesSyncing] = useState(false);
   const [viewingArchivedMatch, setViewingArchivedMatch] = useState(null);
   const [moveHistoryLoading, setMoveHistoryLoading] = useState(false);
+  const [archivedMoveIndex, setArchivedMoveIndex] = useState(-2); // -2 = unset (show final), -1 = start, 0+ = move index
 
   // Player Activity Hook
   const playerActivity = usePlayerActivity(contract, account, 'chess', TIER_CONFIG);
@@ -1532,21 +1533,27 @@ export default function Chess() {
       setEliteMatchesSyncing(true);
       const readOnlyContract = getReadOnlyContract();
 
-      // OPTIMIZATION: Use getPlayerMatches() to fetch all matches in a single RPC call
-      // This replaces the previous sequential loop that made up to 50 individual calls
-      const allMatches = await readOnlyContract.getPlayerMatches();
+      // Iterate eliteMatches(index) until out-of-bounds revert
+      const allMatches = [];
+      let index = 0;
+      while (true) {
+        try {
+          const match = await readOnlyContract.eliteMatches(index);
+          allMatches.push(match);
+          index++;
+        } catch {
+          break;
+        }
+      }
 
-      console.log('[EliteMatches] Fetched all player matches:', allMatches.length);
+      console.log('[EliteMatches] Fetched all elite matches:', allMatches.length);
 
       // Filter for completed matches only (status === 2) and map to expected format
       const matches = allMatches
         .filter(match => Number(match.status) === 2) // Only completed matches
-        .map(match => ({
-          // Match metadata (used for viewing archived match)
-          tierId: Number(match.tierId),
-          instanceId: Number(match.instanceId),
-          roundNumber: Number(match.roundNumber),
-          matchNumber: Number(match.matchNumber),
+        .map((match, i) => ({
+          // Index in eliteMatches array (used for viewing archived match)
+          matchIndex: i,
           // Player info
           player1: match.player1,
           player2: match.player2,
@@ -1554,17 +1561,16 @@ export default function Chess() {
           firstPlayer: match.firstPlayer,
           // Match state
           status: Number(match.status),
+          isDraw: match.isDraw,
           // Timestamps
           startTime: match.startTime,
-          endTime: match.endTime,
-          lastMoveTime: match.endTime, // For compatibility with EliteMatchesCard
+          lastMoveTime: match.lastMoveTime,
+          endTime: match.lastMoveTime, // For compatibility with EliteMatchesCard
           // Board state (packed)
           packedBoard: match.packedBoard,
           packedState: match.packedState,
           // Move history
           moves: match.moves || '',
-          // Completion info
-          completionReason: Number(match.completionReason)
         }))
         .reverse(); // Newest first
 
@@ -1640,6 +1646,7 @@ export default function Chess() {
       // Format: abi.encodePacked(m.moves, from, to) for each move
       setMoveHistoryLoading(true);
       setMoveHistory([]); // Clear previous history
+      setArchivedMoveIndex(-2); // Reset to final position
       try {
         const movesString = matchData.moves || '';
         console.log('Parsing moves string:', movesString);
@@ -1686,7 +1693,9 @@ export default function Chess() {
 
             return {
               player: isWhiteMove ? '♚' : '♔', // ♚ for white, ♔ for black
-              move: `${fromFile}${fromRank} → ${toFile}${toRank}`
+              move: `${fromFile}${fromRank} → ${toFile}${toRank}`,
+              from: move.from,
+              to: move.to
             };
           });
 
@@ -1713,6 +1722,7 @@ export default function Chess() {
     setViewingArchivedMatch(null);
     setMoveHistory([]);
     setMoveHistoryLoading(false);
+    setArchivedMoveIndex(-2);
   }, []);
 
   // EAGER LOADING: Fetch tier metadata and all tier instances on page load
@@ -1890,10 +1900,8 @@ export default function Chess() {
         const currentOrder = existingInstances.map(inst => inst.instanceId);
         const newOrder = [...existingInstances]
           .sort((a, b) => {
-            const aIdx = existingInstances.indexOf(a);
-            const bIdx = existingInstances.indexOf(b);
-            return getSortPriority(a, enrollmentStatuses[aIdx]) -
-                   getSortPriority(b, enrollmentStatuses[bIdx]);
+            return getSortPriority(a, enrollmentMap.get(a.instanceId)) -
+                   getSortPriority(b, enrollmentMap.get(b.instanceId));
           })
           .map(inst => inst.instanceId);
 
@@ -5006,84 +5014,208 @@ export default function Chess() {
               Back to Matches
             </button>
 
-            <div className="bg-amber-500/10 border border-amber-400/30 rounded-xl p-4 mb-6 text-center">
-              <h2 className="text-2xl font-bold text-amber-300 mb-2">
+            <div className="bg-amber-500/10 border border-amber-400/30 rounded-xl p-4 mb-6">
+              <h2 className="text-2xl font-bold text-amber-300 mb-3 text-center">
                 Viewing Archived Elite Match
               </h2>
-              <p className="text-amber-200 text-sm">
-                This match has been completed and archived. Complete move history is stored on-chain.
-              </p>
+              {(() => {
+                const completionLabels = {
+                  0: 'Checkmate',
+                  1: 'Timeout',
+                  2: 'Force Eliminated (ML2)',
+                  3: 'Outside Replacement (ML3)',
+                };
+                const reason = completionLabels[viewingArchivedMatch.completionReason] ?? `Reason ${viewingArchivedMatch.completionReason}`;
+                const startDate = viewingArchivedMatch.startTime
+                  ? new Date(Number(viewingArchivedMatch.startTime) * 1000).toLocaleString()
+                  : '—';
+                const endDate = viewingArchivedMatch.lastMoveTime
+                  ? new Date(Number(viewingArchivedMatch.lastMoveTime) * 1000).toLocaleString()
+                  : '—';
+                return (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                    <div className="bg-amber-500/10 rounded-lg p-3">
+                      <p className="text-amber-400/70 text-xs uppercase font-semibold mb-1">Started</p>
+                      <p className="text-amber-200 font-mono text-xs">{startDate}</p>
+                    </div>
+                    <div className="bg-amber-500/10 rounded-lg p-3">
+                      <p className="text-amber-400/70 text-xs uppercase font-semibold mb-1">Ended</p>
+                      <p className="text-amber-200 font-mono text-xs">{endDate}</p>
+                    </div>
+                    <div className="bg-amber-500/10 rounded-lg p-3">
+                      <p className="text-amber-400/70 text-xs uppercase font-semibold mb-1">Result</p>
+                      <p className="text-amber-200 font-semibold">{reason}</p>
+                    </div>
+                    <div className="bg-amber-500/10 rounded-lg p-3">
+                      <p className="text-amber-400/70 text-xs uppercase font-semibold mb-1">Winner</p>
+                      {viewingArchivedMatch.winner ? (() => {
+                        const isWinnerWhite = viewingArchivedMatch.winner.toLowerCase() === viewingArchivedMatch.firstPlayer?.toLowerCase();
+                        return (
+                          <div className="flex items-center gap-1.5">
+                            <img
+                              src={isWinnerWhite ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
+                              alt={isWinnerWhite ? 'White' : 'Black'}
+                              className="w-5 h-5"
+                              draggable="false"
+                            />
+                            <p className="text-amber-200 font-mono text-xs">{shortenAddress(viewingArchivedMatch.winner)}</p>
+                          </div>
+                        );
+                      })() : <p className="text-amber-200 font-semibold">Draw</p>}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Custom 3-column layout for archived matches: Players | Board | History */}
             <div className="grid grid-cols-1 xl:grid-cols-[20%_60%_20%] gap-4 items-start">
               {/* Left Column - Both Player Panels */}
-              <div className="space-y-4">
-                <PlayerPanel
-                  playerAddress={viewingArchivedMatch.player1}
-                  currentAccount={null}
-                  isCurrentTurn={false}
-                  isGameOver={true}
-                  icon="♚"
-                  label="White"
-                  colorScheme="white"
-                  variant="full"
-                  extraContent={
-                    <CapturedPieces
-                      capturedPieces={calculateCapturedPieces(viewingArchivedMatch.board).white}
-                      color="white"
+              {(() => {
+                const effectiveIdx = archivedMoveIndex === -2 ? moveHistory.length - 1 : archivedMoveIndex;
+                const captured = calculateCapturedPieces(
+                  (effectiveIdx < moveHistory.length - 1 || effectiveIdx === -1)
+                    ? (() => {
+                        const board = Array.from({ length: 64 }, () => ({ pieceType: 0, color: 0 }));
+                        for (let i = 8; i < 16; i++) board[i] = { pieceType: 1, color: 1 };
+                        board[0] = { pieceType: 4, color: 1 }; board[7] = { pieceType: 4, color: 1 };
+                        board[1] = { pieceType: 2, color: 1 }; board[6] = { pieceType: 2, color: 1 };
+                        board[2] = { pieceType: 3, color: 1 }; board[5] = { pieceType: 3, color: 1 };
+                        board[3] = { pieceType: 5, color: 1 }; board[4] = { pieceType: 6, color: 1 };
+                        for (let i = 48; i < 56; i++) board[i] = { pieceType: 1, color: 2 };
+                        board[56] = { pieceType: 4, color: 2 }; board[63] = { pieceType: 4, color: 2 };
+                        board[57] = { pieceType: 2, color: 2 }; board[62] = { pieceType: 2, color: 2 };
+                        board[58] = { pieceType: 3, color: 2 }; board[61] = { pieceType: 3, color: 2 };
+                        board[59] = { pieceType: 5, color: 2 }; board[60] = { pieceType: 6, color: 2 };
+                        for (let i = 0; i <= effectiveIdx && i < moveHistory.length; i++) {
+                          const m = moveHistory[i];
+                          if (m.from >= 0 && m.from < 64 && m.to >= 0 && m.to < 64) {
+                            board[m.to] = board[m.from];
+                            board[m.from] = { pieceType: 0, color: 0 };
+                          }
+                        }
+                        return board;
+                      })()
+                    : viewingArchivedMatch.board
+                );
+                return (
+                  <div className="space-y-4">
+                    <PlayerPanel
+                      playerAddress={viewingArchivedMatch.player1}
+                      currentAccount={null}
+                      isCurrentTurn={false}
+                      isGameOver={true}
+                      icon="♚"
+                      label="White"
+                      colorScheme="white"
+                      variant="full"
+                      extraContent={
+                        <CapturedPieces capturedPieces={captured.white} color="white" />
+                      }
                     />
-                  }
-                />
-                <PlayerPanel
-                  playerAddress={viewingArchivedMatch.player2}
-                  currentAccount={null}
-                  isCurrentTurn={false}
-                  isGameOver={true}
-                  icon="♔"
-                  label="Black"
-                  colorScheme="black"
-                  variant="full"
-                  extraContent={
-                    <CapturedPieces
-                      capturedPieces={calculateCapturedPieces(viewingArchivedMatch.board).black}
-                      color="black"
+                    <PlayerPanel
+                      playerAddress={viewingArchivedMatch.player2}
+                      currentAccount={null}
+                      isCurrentTurn={false}
+                      isGameOver={true}
+                      icon="♔"
+                      label="Black"
+                      colorScheme="black"
+                      variant="full"
+                      extraContent={
+                        <CapturedPieces capturedPieces={captured.black} color="black" />
+                      }
                     />
-                  }
-                />
-              </div>
+                  </div>
+                );
+              })()}
 
               {/* Center Column - Larger Chess Board */}
-              <div className="flex flex-col items-center w-full">
-                <ChessBoard
-                  board={viewingArchivedMatch.board}
-                  onMove={null}
-                  currentTurn={viewingArchivedMatch.currentTurn}
-                  account={null}
-                  player1={viewingArchivedMatch.player1}
-                  player2={viewingArchivedMatch.player2}
-                  firstPlayer={viewingArchivedMatch.firstPlayer}
-                  matchStatus={viewingArchivedMatch.matchStatus}
-                  loading={false}
-                  whiteInCheck={false}
-                  blackInCheck={false}
-                  lastMoveTime={viewingArchivedMatch.lastMoveTime}
-                  startTime={viewingArchivedMatch.startTime}
-                  lastMove={null}
-                  player1TimeRemaining={viewingArchivedMatch.player1TimeRemaining}
-                  player2TimeRemaining={viewingArchivedMatch.player2TimeRemaining}
-                  lastMoveTimestamp={viewingArchivedMatch.lastMoveTime}
-                  matchTimePerPlayer={matchTimePerPlayer}
-                  maxSize={900}
-                />
-              </div>
+              {(() => {
+                const effectiveMoveIndex = archivedMoveIndex === -2 ? moveHistory.length - 1 : archivedMoveIndex;
+                const boardToShow = (effectiveMoveIndex < moveHistory.length - 1 || effectiveMoveIndex === -1)
+                  ? (() => {
+                      // Reconstruct board at effectiveMoveIndex
+                      const board = Array.from({ length: 64 }, () => ({ pieceType: 0, color: 0 }));
+                      for (let i = 8; i < 16; i++) board[i] = { pieceType: 1, color: 1 };
+                      board[0] = { pieceType: 4, color: 1 }; board[7] = { pieceType: 4, color: 1 };
+                      board[1] = { pieceType: 2, color: 1 }; board[6] = { pieceType: 2, color: 1 };
+                      board[2] = { pieceType: 3, color: 1 }; board[5] = { pieceType: 3, color: 1 };
+                      board[3] = { pieceType: 5, color: 1 }; board[4] = { pieceType: 6, color: 1 };
+                      for (let i = 48; i < 56; i++) board[i] = { pieceType: 1, color: 2 };
+                      board[56] = { pieceType: 4, color: 2 }; board[63] = { pieceType: 4, color: 2 };
+                      board[57] = { pieceType: 2, color: 2 }; board[62] = { pieceType: 2, color: 2 };
+                      board[58] = { pieceType: 3, color: 2 }; board[61] = { pieceType: 3, color: 2 };
+                      board[59] = { pieceType: 5, color: 2 }; board[60] = { pieceType: 6, color: 2 };
+                      for (let i = 0; i <= effectiveMoveIndex && i < moveHistory.length; i++) {
+                        const m = moveHistory[i];
+                        if (m.from >= 0 && m.from < 64 && m.to >= 0 && m.to < 64) {
+                          board[m.to] = board[m.from];
+                          board[m.from] = { pieceType: 0, color: 0 };
+                        }
+                      }
+                      return board;
+                    })()
+                  : viewingArchivedMatch.board;
+                const lastMoveHighlight = effectiveMoveIndex >= 0 && moveHistory[effectiveMoveIndex]
+                  ? { from: moveHistory[effectiveMoveIndex].from, to: moveHistory[effectiveMoveIndex].to }
+                  : null;
+                return (
+                  <div className="flex flex-col items-center w-full">
+                    <ChessBoard
+                      board={boardToShow}
+                      onMove={null}
+                      currentTurn={viewingArchivedMatch.currentTurn}
+                      account={viewingArchivedMatch.firstPlayer}
+                      player1={viewingArchivedMatch.player1}
+                      player2={viewingArchivedMatch.player2}
+                      firstPlayer={viewingArchivedMatch.firstPlayer}
+                      matchStatus={viewingArchivedMatch.matchStatus}
+                      loading={false}
+                      whiteInCheck={false}
+                      blackInCheck={false}
+                      lastMoveTime={viewingArchivedMatch.lastMoveTime}
+                      startTime={viewingArchivedMatch.startTime}
+                      lastMove={lastMoveHighlight}
+                      player1TimeRemaining={viewingArchivedMatch.player1TimeRemaining}
+                      player2TimeRemaining={viewingArchivedMatch.player2TimeRemaining}
+                      lastMoveTimestamp={viewingArchivedMatch.lastMoveTime}
+                      matchTimePerPlayer={matchTimePerPlayer}
+                      maxSize={900}
+                    />
+                  </div>
+                );
+              })()}
 
               {/* Right Column - Move History */}
               <div className="bg-slate-900/50 rounded-xl p-6 border border-purple-500/30 h-full">
-                <h3 className="text-xl font-bold text-purple-300 mb-4 flex items-center gap-2">
-                  <History size={20} />
-                  Move History
-                </h3>
+                <div className="flex items-center gap-2 mb-4">
+                  <History size={20} className="text-purple-300" />
+                  <h3 className="text-xl font-bold text-purple-300">Move History</h3>
+                  {moveHistory.length > 0 && (
+                    <div className="flex items-center gap-1 ml-auto">
+                      <button
+                        onClick={() => setArchivedMoveIndex(prev => Math.max(-1, (prev === -2 ? moveHistory.length - 1 : prev) - 1))}
+                        disabled={(archivedMoveIndex === -2 ? moveHistory.length - 1 : archivedMoveIndex) <= -1}
+                        className="p-1.5 rounded bg-slate-700/50 hover:bg-slate-600/50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        title="Previous move"
+                      >
+                        <ChevronLeft size={18} className="text-purple-300" />
+                      </button>
+                      <span className="text-xs text-slate-400 min-w-[3.5rem] text-center">
+                        {archivedMoveIndex === -1 ? 'Start' : archivedMoveIndex === -2 ? 'Final' : `Move ${archivedMoveIndex + 1}`}
+                      </span>
+                      <button
+                        onClick={() => setArchivedMoveIndex(prev => Math.min(moveHistory.length - 1, (prev === -2 ? moveHistory.length - 1 : prev) + 1))}
+                        disabled={(archivedMoveIndex === -2 ? moveHistory.length - 1 : archivedMoveIndex) >= moveHistory.length - 1}
+                        className="p-1.5 rounded bg-slate-700/50 hover:bg-slate-600/50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        title="Next move"
+                      >
+                        <ChevronRight size={18} className="text-purple-300" />
+                      </button>
+                    </div>
+                  )}
+                </div>
                 {moveHistoryLoading ? (
                   <div className="text-center py-8 text-purple-300/60">
                     <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-purple-400 mb-2"></div>
@@ -5094,20 +5226,33 @@ export default function Chess() {
                   </div>
                 ) : moveHistory.length > 0 ? (
                   <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-purple-950/40 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-purple-500/70 [&::-webkit-scrollbar-thumb]:to-pink-500/70 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border [&::-webkit-scrollbar-thumb]:border-purple-400/30 hover:[&::-webkit-scrollbar-thumb]:from-purple-400 hover:[&::-webkit-scrollbar-thumb]:to-pink-400 [scrollbar-width:thin] [scrollbar-color:rgb(168_85_247_/_0.7)_rgb(24_24_27_/_0.4)]">
-                    {moveHistory.map((move, idx) => (
-                      <div key={idx} className="flex items-center gap-3 text-sm bg-purple-500/10 p-3 rounded-lg hover:bg-purple-500/20 transition-colors">
-                        <span className="text-purple-300 font-semibold min-w-[2rem]">#{idx + 1}</span>
-                        <div className="w-8 h-8 flex items-center justify-center">
-                          <img
-                            src={move.player === '♚' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
-                            alt={move.player === '♚' ? 'White' : 'Black'}
-                            className="w-7 h-7"
-                            draggable="false"
-                          />
+                    {[...moveHistory].reverse().map((move, reverseIdx) => {
+                      const idx = moveHistory.length - 1 - reverseIdx;
+                      const effectiveMoveIndex = archivedMoveIndex === -2 ? moveHistory.length - 1 : archivedMoveIndex;
+                      const isCurrentMove = idx === effectiveMoveIndex;
+                      return (
+                        <div
+                          key={idx}
+                          onClick={() => setArchivedMoveIndex(idx)}
+                          className={`flex items-center gap-3 text-sm p-3 rounded-lg cursor-pointer transition-colors ${
+                            isCurrentMove
+                              ? 'bg-purple-500/30 border border-purple-400/50'
+                              : 'bg-purple-500/10 hover:bg-purple-500/20'
+                          }`}
+                        >
+                          <span className={`font-semibold min-w-[2rem] ${isCurrentMove ? 'text-purple-200 font-bold' : 'text-purple-400'}`}>#{idx + 1}</span>
+                          <div className="w-8 h-8 flex items-center justify-center">
+                            <img
+                              src={move.player === '♚' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
+                              alt={move.player === '♚' ? 'White' : 'Black'}
+                              className="w-7 h-7"
+                              draggable="false"
+                            />
+                          </div>
+                          <span className={`font-mono ${isCurrentMove ? 'text-purple-100' : 'text-purple-200'}`}>{move.move}</span>
                         </div>
-                        <span className="text-purple-200 font-mono">{move.move}</span>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="text-center py-8 text-purple-300/60">
