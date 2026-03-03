@@ -29,8 +29,8 @@ const ActiveMatchAlertModal = ({ match, onClose, onEnterMatch }) => {
   const tournamentType = playerCount === 2 ? 'Duel' : 'Tournament';
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-[70] p-4">
-      <div className="max-w-3xl mx-auto bg-gradient-to-r from-amber-700 via-amber-800 to-amber-900 rounded-xl shadow-2xl border-2 border-amber-600/50">
+    <div className="fixed bottom-20 left-0 right-0 z-[70] p-4">
+      <div className="max-w-3xl mx-auto bg-gradient-to-r from-amber-700 via-amber-800 to-amber-900 rounded-xl shadow-2xl border-2 border-amber-600/50 [animation:glow-pulse-amber_2s_ease-in-out_infinite]">
         <div className="flex flex-col gap-4 p-4 md:p-6">
           {/* Text */}
           <div className="text-white">

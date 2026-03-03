@@ -325,14 +325,14 @@ const GameMatchLayout = ({
             : `${cardColors.border} ${cardBg}`
         } pt-4 px-3 pb-3 space-y-2`}>
           {/* Turn Indicator Badge — always reserves space so both cards stay aligned */}
-          <div className="absolute -top-3 left-0 right-0 flex justify-center h-3">
+          <div className="absolute -top-4 left-0 right-0 flex justify-center h-4">
             {isTurn && !isGameOver && (
               isYou ? (
-                <div className="bg-gradient-to-r from-green-500 to-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap shadow-lg animate-bounce z-10 leading-none">
+                <div className="bg-gradient-to-r from-green-500 to-emerald-500 text-white text-sm font-bold px-3 py-1 rounded-full whitespace-nowrap shadow-lg animate-bounce z-10 leading-none">
                   YOUR TURN!
                 </div>
               ) : (
-                <div className="bg-gradient-to-r from-red-500 to-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap shadow-lg animate-bounce z-10 leading-none">
+                <div className="bg-gradient-to-r from-red-500 to-rose-500 text-white text-sm font-bold px-3 py-1 rounded-full whitespace-nowrap shadow-lg animate-bounce z-10 leading-none">
                   THEIR TURN
                 </div>
               )
@@ -398,7 +398,7 @@ const GameMatchLayout = ({
     const headerContent = (
       <div
         ref={mobileHeaderRef}
-        className={`lg:hidden ${isMobileHeaderFixed ? 'fixed top-0 left-0 right-0 z-[9999] pt-3 pb-3 px-4 bg-black/95 backdrop-blur-sm' : 'mb-6'}`}
+        className={`lg:hidden ${isMobileHeaderFixed ? `fixed left-0 right-0 z-[9999] px-4 bg-black/95 backdrop-blur-sm border border-purple-500 [box-shadow:0_0_8px_rgba(168,85,247,0.7),0_0_20px_rgba(168,85,247,0.4)] [animation:glow-pulse_2s_ease-in-out_infinite] ${isBoardBelow ? 'bottom-20 pt-2 pb-2' : 'top-0 pt-3 pb-3'}` : 'mb-6'}`}
       >
         {/* Single row: Combined player cards with timers */}
         <div className="grid grid-cols-2 gap-3">

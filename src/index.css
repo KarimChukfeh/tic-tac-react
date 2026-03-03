@@ -86,3 +86,13 @@ h3.highlight-target {
 ::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(to bottom, rgba(100, 116, 139, 0.8), rgba(71, 85, 105, 0.8));
 }
+
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(168,85,247,0.7), 0 0 20px rgba(168,85,247,0.4); }
+  50% { box-shadow: 0 0 16px rgba(168,85,247,1), 0 0 40px rgba(168,85,247,0.7); }
+}
+
+@keyframes glow-pulse-amber {
+  0%, 100% { box-shadow: 0 0 8px rgba(245,158,11,0.7), 0 0 20px rgba(245,158,11,0.4); }
+  50% { box-shadow: 0 0 16px rgba(245,158,11,1), 0 0 40px rgba(245,158,11,0.7); }
+}
