@@ -29,52 +29,42 @@ const ActiveMatchAlertModal = ({ match, onClose, onEnterMatch }) => {
   const tournamentType = playerCount === 2 ? 'Duel' : 'Tournament';
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      {/* Modal */}
-      <div className="relative bg-gradient-to-br from-amber-700 to-amber-900 rounded-xl shadow-2xl max-w-md w-full mx-4 p-6 border-2 border-amber-600/50">
-        {/* Title */}
-        <h2 className="text-2xl font-bold text-white text-center mb-4">
-          Time to Play!
-        </h2>
-
-        {/* Message */}
-        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-5 mb-5">
-          <p className="text-lg text-white text-center mb-4">
-            You're in an active match vs{' '}
-            <span className="font-mono font-semibold text-amber-200">
-              {match.opponent?.slice(0, 6)}...{match.opponent?.slice(-4)}
-            </span>
-          </p>
-
-          {match.isMyTurn && (
-            <div className="pt-2">
-              <p className="text-center text-amber-100 font-semibold">
-                It's your turn
+    <div className="fixed top-0 left-0 right-0 z-[70] p-4">
+      <div className="max-w-3xl mx-auto bg-gradient-to-r from-amber-700 via-amber-800 to-amber-900 rounded-xl shadow-2xl border-2 border-amber-600/50">
+        <div className="flex flex-col gap-4 p-4 md:p-6">
+          {/* Top Section - Info */}
+          <div className="flex items-center gap-4">
+            <div className="flex-1 text-white">
+              <h3 className="font-bold text-lg md:text-xl">
+                Time to Play!
+              </h3>
+              <p className="text-sm md:text-base text-amber-100">
+                Active match vs{' '}
+                <span className="font-mono font-semibold text-amber-200">
+                  {match.opponent?.slice(0, 6)}...{match.opponent?.slice(-4)}
+                </span>
+                {match.isMyTurn && (
+                  <span className="ml-2 font-semibold text-yellow-300">— It's your turn!</span>
+                )}
               </p>
             </div>
-          )}
-        </div>
 
-        {/* Buttons */}
-        <div className="flex gap-3">
-          <button
-            onClick={handleGoToMatch}
-            className="flex-1 bg-white hover:bg-yellow-50 text-amber-900 font-semibold py-3 px-4 rounded-lg shadow-lg transform hover:scale-105 transition-all duration-200"
-          >
-            Go to Match
-          </button>
-          <button
-            onClick={onClose}
-            className="bg-white/10 hover:bg-white/20 text-white font-medium py-3 px-4 rounded-lg backdrop-blur-sm transition-all duration-200"
-          >
-            Later
-          </button>
+            {/* Buttons */}
+            <div className="flex gap-2 flex-shrink-0">
+              <button
+                onClick={handleGoToMatch}
+                className="bg-white hover:bg-yellow-50 text-amber-900 font-semibold py-2 px-4 rounded-lg shadow-lg hover:scale-105 transition-all duration-200"
+              >
+                Go to Match
+              </button>
+              <button
+                onClick={onClose}
+                className="bg-white/10 hover:bg-white/20 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200"
+              >
+                Later
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
