@@ -32,38 +32,36 @@ const ActiveMatchAlertModal = ({ match, onClose, onEnterMatch }) => {
     <div className="fixed top-0 left-0 right-0 z-[70] p-4">
       <div className="max-w-3xl mx-auto bg-gradient-to-r from-amber-700 via-amber-800 to-amber-900 rounded-xl shadow-2xl border-2 border-amber-600/50">
         <div className="flex flex-col gap-4 p-4 md:p-6">
-          {/* Top Section - Info */}
-          <div className="flex items-center gap-4">
-            <div className="flex-1 text-white">
-              <h3 className="font-bold text-lg md:text-xl">
-                Time to Play!
-              </h3>
-              <p className="text-sm md:text-base text-amber-100">
-                Active match vs{' '}
-                <span className="font-mono font-semibold text-amber-200">
-                  {match.opponent?.slice(0, 6)}...{match.opponent?.slice(-4)}
-                </span>
-                {match.isMyTurn && (
-                  <span className="ml-2 font-semibold text-yellow-300">— It's your turn!</span>
-                )}
-              </p>
-            </div>
+          {/* Text */}
+          <div className="text-white">
+            <h3 className="font-bold text-2xl md:text-3xl">
+              Time to Play!
+            </h3>
+            <p className="text-base md:text-lg text-amber-100 mt-1">
+              You're in an active match vs{' '}
+              <span className="font-mono font-semibold text-amber-200">
+                {match.opponent?.slice(0, 6)}...{match.opponent?.slice(-4)}
+              </span>
+              {match.isMyTurn && (
+                <span className="ml-2 font-semibold text-yellow-300">— It's your turn!</span>
+              )}
+            </p>
+          </div>
 
-            {/* Buttons */}
-            <div className="flex gap-2 flex-shrink-0">
-              <button
-                onClick={handleGoToMatch}
-                className="bg-white hover:bg-yellow-50 text-amber-900 font-semibold py-2 px-4 rounded-lg shadow-lg hover:scale-105 transition-all duration-200"
-              >
-                Go to Match
-              </button>
-              <button
-                onClick={onClose}
-                className="bg-white/10 hover:bg-white/20 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200"
-              >
-                Later
-              </button>
-            </div>
+          {/* Buttons */}
+          <div className="flex gap-2">
+            <button
+              onClick={handleGoToMatch}
+              className="w-3/4 bg-white hover:bg-yellow-50 text-amber-900 font-semibold text-lg md:text-xl py-2.5 px-4 rounded-lg shadow-lg hover:scale-105 transition-all duration-200"
+            >
+              Go to Match
+            </button>
+            <button
+              onClick={onClose}
+              className="w-1/4 text-white/80 hover:text-white font-medium py-1.5 px-4 transition-all duration-200"
+            >
+              Later
+            </button>
           </div>
         </div>
       </div>
