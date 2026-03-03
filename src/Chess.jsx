@@ -5133,7 +5133,7 @@ export default function Chess() {
                       colorScheme="white"
                       variant="full"
                       extraContent={
-                        <CapturedPieces capturedPieces={captured.white} color="white" />
+                        <CapturedPieces capturedPieces={captured.black} color="black" />
                       }
                     />
                     <PlayerPanel
@@ -5146,7 +5146,7 @@ export default function Chess() {
                       colorScheme="black"
                       variant="full"
                       extraContent={
-                        <CapturedPieces capturedPieces={captured.black} color="black" />
+                        <CapturedPieces capturedPieces={captured.white} color="white" />
                       }
                     />
                   </div>
@@ -5315,11 +5315,11 @@ export default function Chess() {
             }}
             layout="players-board-history"
             isSpectator={isSpectator}
-            renderPlayer1Extra={() => {
+            renderPlayer1Extra={(isMobile) => {
               const capturedPieces = calculateCapturedPieces(currentMatch.board);
               return (
                 <>
-                  <CapturedPieces capturedPieces={capturedPieces.white} color="white" />
+                  <CapturedPieces capturedPieces={capturedPieces.black} color="black" collapsible={!!isMobile} />
                   {currentMatch.whiteInCheck && (
                     <div className="bg-red-500/20 border border-red-400 rounded-lg p-2 text-center mt-2">
                       <span className="text-red-300 text-xs font-bold">⚠️ CHECK</span>
@@ -5328,11 +5328,11 @@ export default function Chess() {
                 </>
               );
             }}
-            renderPlayer2Extra={() => {
+            renderPlayer2Extra={(isMobile) => {
               const capturedPieces = calculateCapturedPieces(currentMatch.board);
               return (
                 <>
-                  <CapturedPieces capturedPieces={capturedPieces.black} color="black" />
+                  <CapturedPieces capturedPieces={capturedPieces.white} color="white" collapsible={!!isMobile} />
                   {currentMatch.blackInCheck && (
                     <div className="bg-red-500/20 border border-red-400 rounded-lg p-2 text-center mt-2">
                       <span className="text-red-300 text-xs font-bold">⚠️ CHECK</span>

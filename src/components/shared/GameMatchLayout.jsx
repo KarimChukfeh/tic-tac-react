@@ -303,7 +303,7 @@ const GameMatchLayout = ({
       const icon = isPlayer1 ? playerConfig?.player1?.icon : playerConfig?.player2?.icon;
       const label = isPlayer1 ? (playerConfig?.player1?.label || 'Player 1') : (playerConfig?.player2?.label || 'Player 2');
       const colorScheme = isPlayer1 ? theme.player1Color : theme.player2Color;
-      const extraContent = isPlayer1 ? renderPlayer1Extra?.() : renderPlayer2Extra?.();
+      const extraContent = isPlayer1 ? renderPlayer1Extra?.(true) : renderPlayer2Extra?.(true);
       const showCTA = showML1CTA && isTurn;
 
       // Get color config for player
