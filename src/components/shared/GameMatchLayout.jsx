@@ -319,23 +319,25 @@ const GameMatchLayout = ({
       const cardBg = isMobileHeaderFixed ? cardColors.bgFixed : cardColors.bg;
 
       return (
-        <div className={`relative rounded-lg border-2 ${
+        <div className={`relative rounded-lg border-2 mt-3 ${
           isTurn && isYou && !isGameOver
             ? `border-green-400 ${isMobileHeaderFixed ? 'bg-green-900' : 'bg-green-500/10'} ring-2 ring-green-400/30`
             : `${cardColors.border} ${cardBg}`
-        } p-3 space-y-2`}>
-          {/* Turn Indicator Badge */}
-          {isTurn && !isGameOver && (
-            isYou ? (
-              <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap shadow-lg animate-bounce z-10">
-                YOUR TURN!
-              </div>
-            ) : (
-              <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-red-500 to-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap shadow-lg animate-bounce z-10">
-                THEIR TURN
-              </div>
-            )
-          )}
+        } pt-4 px-3 pb-3 space-y-2`}>
+          {/* Turn Indicator Badge — always reserves space so both cards stay aligned */}
+          <div className="absolute -top-3 left-0 right-0 flex justify-center h-3">
+            {isTurn && !isGameOver && (
+              isYou ? (
+                <div className="bg-gradient-to-r from-green-500 to-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap shadow-lg animate-bounce z-10 leading-none">
+                  YOUR TURN!
+                </div>
+              ) : (
+                <div className="bg-gradient-to-r from-red-500 to-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap shadow-lg animate-bounce z-10 leading-none">
+                  THEIR TURN
+                </div>
+              )
+            )}
+          </div>
 
           {/* Player Info Section */}
           <div className="flex items-center gap-2">
