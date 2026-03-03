@@ -779,6 +779,7 @@ export default function ConnectFour() {
   const [nextActiveMatch, setNextActiveMatch] = useState(null); // Next active match info after winning
   const previousBoardRef = useRef(null); // Track previous board state for move history sync
   const moveTxInProgressRef = useRef(false); // Prevent polling from overwriting state during move tx
+  const [moveTxTimeout, setMoveTxTimeout] = useState(null); // null = idle; { type, pendingColumnIndex } = awaiting retry
   const matchEndModalShownRef = useRef(false); // Prevent duplicate modal triggers from polling
   const tournamentBracketRef = useRef(null); // Ref for auto-scrolling to tournament after URL navigation
   const matchViewRef = useRef(null); // Ref for auto-scrolling to match view
@@ -3005,6 +3006,18 @@ export default function ConnectFour() {
     }
   }, [escalationInterval]);
 
+  // Races tx.wait() against a wall-clock timeout.
+  // Rejects with Error('TX_TIMEOUT') if timeoutMs elapses first.
+  // The underlying tx.wait() continues in the background — if it eventually confirms,
+  // the 2-second polling loop will detect the board change via refreshMatchData.
+  const waitWithTimeout = (tx, timeoutMs) =>
+    Promise.race([
+      tx.wait(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('TX_TIMEOUT')), timeoutMs)
+      ),
+    ]);
+
   // Handle column click for making moves (Connect Four)
   const handleColumnClick = async (columnIndex) => {
     if (!currentMatch || !contract || !account) return;
@@ -3026,13 +3039,15 @@ export default function ConnectFour() {
       return;
     }
 
+    setMoveTxTimeout(null); // Clear any stale retry overlay before fresh attempt
+
     try {
       setMatchLoading(true);
       moveTxInProgressRef.current = true; // Lock to prevent polling interference
       const { tierId, instanceId, roundNumber, matchNumber } = currentMatch;
 
       const tx = await contract.makeMove(tierId, instanceId, roundNumber, matchNumber, columnIndex);
-      await tx.wait();
+      await waitWithTimeout(tx, 90_000); // 90 s — Arbitrum is sub-second normally; stuck = network issue
 
       const updated = await refreshMatchData(contract, account, currentMatch, matchTimePerPlayer);
       if (updated) {
@@ -3047,14 +3062,22 @@ export default function ConnectFour() {
       setMatchLoading(false);
     } catch (error) {
       console.error('Error making move:', error);
-      moveTxInProgressRef.current = false; // Release lock on error
+      // Always unlock first so board re-enables and polling resumes before React processes anything else
+      moveTxInProgressRef.current = false;
+      setMatchLoading(false);
+
+      const errorString = error.message || error.toString();
+
+      // Timeout branch — show inline retry overlay instead of alert
+      if (errorString.includes('TX_TIMEOUT')) {
+        setMoveTxTimeout({ type: 'congestion', pendingColumnIndex: columnIndex });
+        return;
+      }
 
       // Parse error message for user-friendly display
       let errorMsg = 'Invalid Move';
 
       // Check for common contract revert patterns
-      const errorString = error.message || error.toString();
-
       if (errorString.includes('user rejected') || errorString.includes('User denied')) {
         errorMsg = 'Transaction cancelled';
       } else if (errorString.includes('insufficient funds')) {
@@ -3073,7 +3096,6 @@ export default function ConnectFour() {
       }
 
       alert(errorMsg);
-      setMatchLoading(false);
     }
   };
 
@@ -3376,6 +3398,7 @@ export default function ConnectFour() {
     setCurrentMatch(null);
     setMoveHistory([]);
     setIsSpectator(false); // Reset spectator mode
+    setMoveTxTimeout(null); // Clear any pending timeout overlay
     previousBoardRef.current = null;
 
     // Use browser back navigation
@@ -4539,6 +4562,49 @@ export default function ConnectFour() {
               />
             </div>
           </GameMatchLayout>
+
+          {/* Move Transaction Timeout — Retry Prompt */}
+          {moveTxTimeout && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+              <div className="relative bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl shadow-2xl max-w-md w-full mx-4 p-6 border-2 border-amber-500/50">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 rounded-full bg-amber-500/20">
+                    <AlertCircle size={28} className="text-amber-400" />
+                  </div>
+                  <h2 className="text-xl font-bold text-amber-300">Transaction Taking Too Long</h2>
+                </div>
+                <div className="bg-white/5 rounded-lg p-4 mb-4 border border-white/10">
+                  <p className="text-white/90 text-sm leading-relaxed">
+                    {moveTxTimeout.type === 'gas'
+                      ? 'Your transaction may need a higher gas fee to be processed. Please retry — a new transaction will be submitted.'
+                      : 'Your transaction is taking longer than expected, likely due to network congestion. You can retry to submit a fresh transaction, or dismiss and wait for the original to confirm.'}
+                  </p>
+                </div>
+                <p className="text-white/40 text-xs mb-5 text-center italic">
+                  The original transaction may still confirm. If your move appears on the board, dismiss this prompt.
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      const colToRetry = moveTxTimeout.pendingColumnIndex;
+                      setMoveTxTimeout(null);
+                      handleColumnClick(colToRetry);
+                    }}
+                    className="flex-1 py-3 px-4 rounded-lg font-semibold text-sm bg-cyan-500 hover:bg-cyan-400 text-slate-900 transition-all duration-200 transform hover:scale-105 shadow-lg shadow-cyan-500/30"
+                  >
+                    Retry Move
+                  </button>
+                  <button
+                    onClick={() => setMoveTxTimeout(null)}
+                    className="flex-1 py-3 px-4 rounded-lg font-semibold text-sm bg-white/10 hover:bg-white/20 text-white/80 border border-white/20 transition-all duration-200"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           </div>
         )}
 
