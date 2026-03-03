@@ -233,34 +233,22 @@ const GameMatchLayout = ({
     );
     headerObserver.observe(sentinel);
 
-    // Board end above viewport → entire board has scrolled out above
-    let boardEndObserver;
-    if (boardEnd) {
-      boardEndObserver = new IntersectionObserver(
-        ([entry]) => {
-          setIsBoardAbove(!entry.isIntersecting && entry.boundingClientRect.top < 0);
-        },
-        { threshold: 0, rootMargin: '0px' }
-      );
-      boardEndObserver.observe(boardEnd);
-    }
+    // Use a scroll listener for board visibility — avoids IntersectionObserver
+    // glitching in the narrow window between board-end leaving and leaderboard appearing.
+    const updateBoardVisibility = () => {
+      if (!boardStart || !boardEnd) return;
+      const boardEndTop = boardEnd.getBoundingClientRect().top;
+      const boardStartTop = boardStart.getBoundingClientRect().top;
+      setIsBoardAbove(boardEndTop < 0);
+      setIsBoardBelow(boardStartTop > window.innerHeight);
+    };
 
-    // Board start below viewport → board hasn't entered view yet
-    let boardStartObserver;
-    if (boardStart) {
-      boardStartObserver = new IntersectionObserver(
-        ([entry]) => {
-          setIsBoardBelow(!entry.isIntersecting && entry.boundingClientRect.top > 0);
-        },
-        { threshold: 0, rootMargin: '0px' }
-      );
-      boardStartObserver.observe(boardStart);
-    }
+    updateBoardVisibility();
+    window.addEventListener('scroll', updateBoardVisibility, { passive: true });
 
     return () => {
       headerObserver.disconnect();
-      boardEndObserver?.disconnect();
-      boardStartObserver?.disconnect();
+      window.removeEventListener('scroll', updateBoardVisibility);
     };
   }, [matchStatus]);
 
