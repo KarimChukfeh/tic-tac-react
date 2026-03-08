@@ -967,7 +967,7 @@ const RecentMatchesCard = ({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <History size={24} className="text-teal-400" />
-                <h3 className="text-white font-bold text-lg">Your History</h3>
+                <h3 className="text-white font-bold text-lg">History</h3>
               </div>
               <div className="flex items-center gap-1">
                 {/* Scroll to Top Button - only show when scrolled */}

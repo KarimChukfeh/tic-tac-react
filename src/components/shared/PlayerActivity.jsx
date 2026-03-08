@@ -413,7 +413,7 @@ const PlayerActivity = ({
                     <span className="text-2xl">♔</span>
                   )}
                 </div>
-                <h3 className="text-white font-bold text-lg">Your Activity</h3>
+                <h3 className="text-white font-bold text-lg">Activity</h3>
               </div>
               <div className="flex items-center gap-1">
                 {/* Refresh Button */}
