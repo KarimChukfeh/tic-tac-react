@@ -64,7 +64,9 @@ function FloatingParticles() {
                 top: `${p.baseY}%`,
                 color: p.color,
                 pointerEvents: 'none',
-                textShadow: `0 0 8px ${p.color}`,
+                textShadow: isActive
+                  ? `0 0 10px ${p.color}, 0 0 20px ${p.color}`
+                  : `0 0 8px ${p.color}`,
                 animation: isPopping
                   ? 'particle-pop 0.4s ease-out forwards'
                   : isActive
@@ -893,13 +895,13 @@ export default function Landing() {
         @keyframes particle-glow-pulse {
           0%, 100% {
             transform: scale(1.1);
-            opacity: 0.75;
-            filter: brightness(1.1) drop-shadow(0 0 3px currentColor) drop-shadow(0 0 5px currentColor);
+            opacity: 0.8;
+            filter: brightness(1.2) drop-shadow(0 0 4px currentColor) drop-shadow(0 0 10px currentColor);
           }
           50% {
             transform: scale(1.25);
-            opacity: 0.9;
-            filter: brightness(1.3) drop-shadow(0 0 5px currentColor) drop-shadow(0 0 10px currentColor);
+            opacity: 0.95;
+            filter: brightness(1.4) drop-shadow(0 0 8px currentColor) drop-shadow(0 0 18px currentColor);
           }
         }
         @keyframes particle-pop {
