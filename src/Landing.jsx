@@ -280,8 +280,8 @@ function useHeroTyping() {
   // phases: each is { text, line (1|2), done }
   // We animate on a single "cursor string" then split at LINE1 boundary
   const STEPS = [
-    { target: "Are you..",           backspace: true  },
-    { target: "Prove yo..",      backspace: true  },
+    { target: "Think yo..",           backspace: true  },
+    { target: "Prov..",      backspace: true  },
     { target: LINE1,                   backspace: false },
     { target: LINE1 + "\n" + LINE2,    backspace: false },
   ];
