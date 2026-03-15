@@ -48,35 +48,57 @@ function FloatingParticles() {
   };
 
   return (
-    <div className="fixed inset-0 overflow-hidden" style={{ pointerEvents: 'none', zIndex: 50 }}>
-      {PARTICLES.map((p, i) => {
-        if (popped.has(i)) return null;
-        const isActive = i === active;
-        const isPopping = i === popping;
-        return (
+    <>
+      {/* Visual layer — behind page UI */}
+      <div className="fixed inset-0 overflow-hidden" style={{ pointerEvents: 'none', zIndex: 1 }}>
+        {PARTICLES.map((p, i) => {
+          if (popped.has(i)) return null;
+          const isActive = i === active;
+          const isPopping = i === popping;
+          return (
+            <div
+              key={i}
+              className={`absolute ${p.size}`}
+              style={{
+                left: `${p.baseX}%`,
+                top: `${p.baseY}%`,
+                color: p.color,
+                pointerEvents: 'none',
+                textShadow: `0 0 8px ${p.color}`,
+                animation: isPopping
+                  ? 'particle-pop 0.4s ease-out forwards'
+                  : isActive
+                    ? 'particle-glow-pulse 1.4s ease-in-out infinite'
+                    : `particle-hover 14s ${i * -2.5}s infinite ease-in-out`,
+              }}
+            >
+              {p.symbol}
+            </div>
+          );
+        })}
+      </div>
+      {/* Hit area layer — on top for click detection only */}
+      <div className="fixed inset-0 overflow-hidden" style={{ pointerEvents: 'none', zIndex: 9999 }}>
+        {active !== null && !popped.has(active) && (
           <div
-            key={i}
-            onClick={() => handleClick(i)}
-            className={`absolute ${p.size}`}
+            onClick={() => handleClick(active)}
+            className={`absolute ${PARTICLES[active].size}`}
             style={{
-              left: `${p.baseX}%`,
-              top: `${p.baseY}%`,
-              color: p.color,
-              pointerEvents: isActive ? 'auto' : 'none',
-              cursor: isActive ? 'pointer' : 'default',
-              textShadow: `0 0 8px ${p.color}`,
-              animation: isPopping
+              left: `${PARTICLES[active].baseX}%`,
+              top: `${PARTICLES[active].baseY}%`,
+              color: 'transparent',
+              pointerEvents: popping !== null ? 'none' : 'auto',
+              cursor: 'pointer',
+              animation: popping !== null
                 ? 'particle-pop 0.4s ease-out forwards'
-                : isActive
-                  ? 'particle-glow-pulse 1.4s ease-in-out infinite'
-                  : `particle-hover 14s ${i * -2.5}s infinite ease-in-out`,
+                : 'particle-glow-pulse 1.4s ease-in-out infinite',
             }}
           >
-            {p.symbol}
+            {PARTICLES[active].symbol}
           </div>
-        );
-      })}
-    </div>
+        )}
+      </div>
+    </>
   );
 }
 
