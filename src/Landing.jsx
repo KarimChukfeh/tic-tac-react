@@ -271,10 +271,77 @@ function WhitepaperSection() {
 }
 
 // Main Landing Component
+// Typing animation sequence for hero headline
+// Sequence: type "You're Good?" → backspace → type "Prov" → backspace → type full headline
+function useHeroTyping() {
+  const LINE1 = "Think You're Good?";
+  const LINE2 = "Prove It.";
+
+  // phases: each is { text, line (1|2), done }
+  // We animate on a single "cursor string" then split at LINE1 boundary
+  const STEPS = [
+    { target: "Are you goo",           backspace: true  },
+    { target: "Prove you're goo",      backspace: true  },
+    { target: LINE1,                   backspace: false },
+    { target: LINE1 + "\n" + LINE2,    backspace: false },
+  ];
+
+  const [display, setDisplay] = useState("");
+  const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    let current = "";
+
+    const TYPE_SPEED = 65;
+    const DELETE_SPEED = 35;
+    const PAUSE_AFTER_TYPE = 600;
+    const PAUSE_AFTER_DELETE = 300;
+
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+    async function run() {
+      for (let s = 0; s < STEPS.length; s++) {
+        const step = STEPS[s];
+
+        // Type forward to target
+        while (current.length < step.target.length) {
+          if (cancelled) return;
+          current = step.target.slice(0, current.length + 1);
+          setDisplay(current);
+          await sleep(TYPE_SPEED);
+        }
+
+        if (step.backspace) {
+          await sleep(PAUSE_AFTER_TYPE);
+          while (current.length > 0) {
+            if (cancelled) return;
+            current = current.slice(0, -1);
+            setDisplay(current);
+            await sleep(DELETE_SPEED);
+          }
+          await sleep(PAUSE_AFTER_DELETE);
+        }
+      }
+      if (!cancelled) setDone(true);
+    }
+
+    run();
+    return () => { cancelled = true; };
+  }, []);
+
+  const newline = display.indexOf("\n");
+  if (newline === -1) {
+    return { line1: display, line2: "", done };
+  }
+  return { line1: display.slice(0, newline), line2: display.slice(newline + 1), done };
+}
+
 export default function Landing() {
   const [whitepaperExpanded, setWhitepaperExpanded] = useState(false);
   const [expandedFaq, setExpandedFaq] = useState(null);
   const [contractsExpanded, setContractsExpanded] = useState(false);
+  const { line1, line2, done: typingDone } = useHeroTyping();
 
   // Set page title
   useEffect(() => {
@@ -359,12 +426,16 @@ export default function Landing() {
           
           {/* Main Headline */}
           <h1 className="text-5xl md:text-7xl lg:text-8xl font-black text-center leading-[1.1] mb-8 py-2">
-            <span className="block text-white pb-1">Think You're Good?</span>
+            <span className="block text-white pb-1">
+              {line1}
+              {!line2 && <span className="animate-pulse">|</span>}
+            </span>
             <span
               className="block bg-clip-text text-transparent py-1"
               style={{ background: 'linear-gradient(135deg, #06b6d4, #3b82f6, #a855f7)', WebkitBackgroundClip: 'text' }}
             >
-              Prove It.
+              {line2}
+              {line2 && !typingDone && <span className="animate-pulse text-white">|</span>}
             </span>
           </h1>
           
