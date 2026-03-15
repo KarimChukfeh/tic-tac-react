@@ -280,8 +280,8 @@ function useHeroTyping() {
   // phases: each is { text, line (1|2), done }
   // We animate on a single "cursor string" then split at LINE1 boundary
   const STEPS = [
-    { target: "Are you goo",           backspace: true  },
-    { target: "Prove you're goo",      backspace: true  },
+    { target: "Are you..",           backspace: true  },
+    { target: "Prove yo..",      backspace: true  },
     { target: LINE1,                   backspace: false },
     { target: LINE1 + "\n" + LINE2,    backspace: false },
   ];
@@ -870,14 +870,14 @@ export default function Landing() {
         }
         @keyframes particle-glow-pulse {
           0%, 100% {
-            transform: scale(1.2);
-            opacity: 0.85;
-            filter: brightness(1.2) drop-shadow(0 0 4px currentColor) drop-shadow(0 0 8px currentColor);
+            transform: scale(1.1);
+            opacity: 0.75;
+            filter: brightness(1.1) drop-shadow(0 0 3px currentColor) drop-shadow(0 0 5px currentColor);
           }
           50% {
-            transform: scale(1.4);
-            opacity: 1;
-            filter: brightness(1.6) drop-shadow(0 0 8px currentColor) drop-shadow(0 0 18px currentColor);
+            transform: scale(1.25);
+            opacity: 0.9;
+            filter: brightness(1.3) drop-shadow(0 0 5px currentColor) drop-shadow(0 0 10px currentColor);
           }
         }
         @keyframes particle-pop {
