@@ -468,7 +468,7 @@ export default function Landing() {
               minHeight: '1.25rem',
             }}
           >
-            Run Tournemants · Settle Scores
+            Run Tournaments · Settle Scores
           </div>
 
           {/* Main Headline */}
