@@ -302,9 +302,7 @@ function useHeroTyping() {
   const LINE2 = "Prove It.";
 
   const STEPS = [
-    { target: "Run Tournaments",                                  backspace: false, pauseAfter: 500 },
-    { target: "Run Tournaments" + "\n" + "Settle Scores",         backspace: true,  pauseAfter: 300 },
-    { target: LINE1,                                              backspace: false, pauseAfter: 500 },
+    { target: LINE1,                                              backspace: false, pauseAfter: 300 },
     { target: LINE1 + "\n" + LINE2,                               backspace: false },
   ];
 
@@ -469,16 +467,15 @@ export default function Landing() {
 
           {/* Shrunk subtitle — fades in after backspacing, sits above the headline */}
           <div
-            className="text-center font-bold tracking-wide overflow-hidden"
+            className="text-center font-bold tracking-wide"
             style={{
-              opacity: shrunk ? 0.55 : 0,
+              opacity: typingDone ? 0.55 : 0,
               fontSize: '0.85rem',
               letterSpacing: '0.08em',
               color: '#94a3b8',
-              transition: 'opacity 0.5s ease, max-height 0.4s ease, margin 0.4s ease',
-              marginTop: shrunk ? '0.75rem' : 0,
-              marginBottom: shrunk ? '0.75rem' : '1.5rem',
-              maxHeight: shrunk ? '2rem' : 0,
+              transition: 'opacity 0.6s ease',
+              marginTop: '0.75rem',
+              marginBottom: '0.75rem',
             }}
           >
             Run Tournaments · Settle Scores
@@ -949,11 +946,6 @@ export default function Landing() {
           40%  { transform: scale(2.2); opacity: 0.8;  filter: blur(0px); }
           70%  { transform: scale(2.8); opacity: 0.4;  filter: blur(2px); }
           100% { transform: scale(3.5); opacity: 0;    filter: blur(6px); }
-        }
-        @keyframes whitepaperPulse {
-          0%   { text-shadow: 0 0 8px #22d3ee, 0 0 20px #22d3ee, 0 0 40px #06b6d4; }
-          40%  { text-shadow: 0 0 12px #22d3ee, 0 0 30px #22d3ee, 0 0 60px #06b6d4, 0 0 80px #0891b2; }
-          100% { text-shadow: none; }
         }
       `}</style>
     </div>
