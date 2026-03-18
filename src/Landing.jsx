@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Shield, Lock, Eye, CheckCircle, ChevronDown, ChevronUp, HelpCircle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -372,6 +372,8 @@ export default function Landing() {
   const [whitepaperExpanded, setWhitepaperExpanded] = useState(false);
   const [expandedFaq, setExpandedFaq] = useState(null);
   const [contractsExpanded, setContractsExpanded] = useState(false);
+  const [whitepaperGlow, setWhitepaperGlow] = useState(false);
+  const whitepaperGlowTimer = useRef(null);
   const { line1, line2, shrunk, done: typingDone } = useHeroTyping();
 
   // Set page title
@@ -447,11 +449,21 @@ export default function Landing() {
 	          {/* Eyebrow */}
 	          <div className="flex items-center gap-4 mb-0">
 	            <div className="h-px w-16 bg-gradient-to-r from-transparent to-cyan-500/50" />
-            <p
-              className="text-cyan-400 text-base md:text-xl font-semibold tracking-widest uppercase hover:text-cyan-300 transition-colors"
+            <a
+              href="#read-the-whitepaper"
+              onClick={(e) => {
+                e.preventDefault();
+                document.getElementById('read-the-whitepaper')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                clearTimeout(whitepaperGlowTimer.current);
+                setTimeout(() => {
+                  setWhitepaperGlow(true);
+                  whitepaperGlowTimer.current = setTimeout(() => setWhitepaperGlow(false), 2000);
+                }, 600);
+              }}
+              className="text-cyan-400 text-base md:text-xl font-semibold tracking-widest uppercase hover:text-cyan-300 transition-colors cursor-pointer"
             >
               ETour Games
-            </p>
+            </a>
             <div className="h-px w-16 bg-gradient-to-l from-transparent to-cyan-500/50" />
           </div>
 
@@ -739,8 +751,13 @@ export default function Landing() {
             </button>
             <span className="text-slate-500 text-lg font-medium">or</span>
             <Link
+              id="read-the-whitepaper"
               to="/whitepaper"
               className="font-bold text-xl text-cyan-400 transition-all duration-300 hover:text-cyan-300"
+              style={whitepaperGlow ? {
+                textShadow: '0 0 8px #22d3ee, 0 0 20px #22d3ee, 0 0 40px #06b6d4',
+                animation: 'whitepaperPulse 2s ease-out forwards',
+              } : {}}
             >
               Read The Whitepaper
             </Link>
@@ -932,6 +949,11 @@ export default function Landing() {
           40%  { transform: scale(2.2); opacity: 0.8;  filter: blur(0px); }
           70%  { transform: scale(2.8); opacity: 0.4;  filter: blur(2px); }
           100% { transform: scale(3.5); opacity: 0;    filter: blur(6px); }
+        }
+        @keyframes whitepaperPulse {
+          0%   { text-shadow: 0 0 8px #22d3ee, 0 0 20px #22d3ee, 0 0 40px #06b6d4; }
+          40%  { text-shadow: 0 0 12px #22d3ee, 0 0 30px #22d3ee, 0 0 60px #06b6d4, 0 0 80px #0891b2; }
+          100% { text-shadow: none; }
         }
       `}</style>
     </div>
