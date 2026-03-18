@@ -34,7 +34,7 @@ This whitepaper explains how ETour makes trustless competition possible.
   • [The Griefing Problem](#the-griefing-problem)
   • [The Bot Problem](#the-bot-problem)
   • [The Cost Problem](#the-cost-problem)
-  • [Where ETour Shines Today](#where-etour-shines-today)
+  • [Where ETour Shines](#where-etour-shines)
   • [Where ETour Falls Short (For Now)](#where-etour-falls-short-for-now)
 
 
@@ -219,7 +219,7 @@ This isn't a gas problem. It's a design problem.
 
 ---
 
-#### Where ETour Shines Today
+#### Where ETour Shines
 ETour is at its best when players already know each other.
 
 Settling a score with a friend. Running a weekly tournament within a community. 
@@ -230,7 +230,7 @@ In these contexts, ETour delivers exactly what's missing from every other option
 
 > Trustless stakes with guaranteed resolution. No one holds your money. No one can rig the bracket. No one can walk away without consequence.
 
----- 
+--- 
 
 #### Where ETour Falls Short (For Now)
 Open matchmaking against strangers is a different story.
