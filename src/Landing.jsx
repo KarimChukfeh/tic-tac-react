@@ -445,7 +445,7 @@ export default function Landing() {
 		        <section className="min-h-[70vh] flex flex-col justify-center items-center px-6 py-16">
 	          
 	          {/* Eyebrow */}
-	          <div className="flex items-center gap-4 mb-8">
+	          <div className="flex items-center gap-4 mb-0">
 	            <div className="h-px w-16 bg-gradient-to-r from-transparent to-cyan-500/50" />
             <p
               className="text-cyan-400 text-base md:text-xl font-semibold tracking-widest uppercase hover:text-cyan-300 transition-colors"
@@ -454,18 +454,19 @@ export default function Landing() {
             </p>
             <div className="h-px w-16 bg-gradient-to-l from-transparent to-cyan-500/50" />
           </div>
-          
+
           {/* Shrunk subtitle — fades in after backspacing, sits above the headline */}
           <div
-            className="text-center font-bold tracking-wide"
+            className="text-center font-bold tracking-wide overflow-hidden"
             style={{
               opacity: shrunk ? 0.55 : 0,
               fontSize: '0.85rem',
               letterSpacing: '0.08em',
               color: '#94a3b8',
-              transition: 'opacity 0.5s ease',
-              marginBottom: '0.5rem',
-              minHeight: '1.25rem',
+              transition: 'opacity 0.5s ease, max-height 0.4s ease, margin 0.4s ease',
+              marginTop: shrunk ? '0.75rem' : 0,
+              marginBottom: shrunk ? '0.75rem' : '1.5rem',
+              maxHeight: shrunk ? '2rem' : 0,
             }}
           >
             Run Tournaments · Settle Scores
