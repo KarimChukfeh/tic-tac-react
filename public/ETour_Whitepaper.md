@@ -232,6 +232,7 @@ In these contexts, ETour delivers exactly what's missing from every other option
 
 --- 
 
+
 #### Where ETour Falls Short (For Now)
 Open matchmaking against strangers is a different story.
 
@@ -241,6 +242,7 @@ Without skill-based pairing, a first-time player might face a veteran. Without s
 
 
 ---
+
 
 ## 3. How ETour Works
 
