@@ -296,21 +296,20 @@ function WhitepaperSection() {
 
 // Main Landing Component
 // Typing animation sequence for hero headline
-// Sequence: type "You're Good?" → backspace → type "Prov" → backspace → type full headline
+// Sequence: type "Run Tournemants\nSettle Scores" → backspace → fade-in shrunk subtitle → type "Think You're Good?\nProve It."
 function useHeroTyping() {
   const LINE1 = "Think You're Good?";
   const LINE2 = "Prove It.";
 
-  // phases: each is { text, line (1|2), done }
-  // We animate on a single "cursor string" then split at LINE1 boundary
   const STEPS = [
-    { target: "Run Tournemants",                                     backspace: false, pauseAfter: 500 },
-    { target: "Run Tournemants" + "\n" + "Settle Scores",           backspace: true  },
-    { target: LINE1,                    backspace: false, pauseAfter: 500 },
-    { target: LINE1 + "\n" + LINE2,    backspace: false },
+    { target: "Run Tournaments",                                  backspace: false, pauseAfter: 500 },
+    { target: "Run Tournaments" + "\n" + "Settle Scores",         backspace: true,  pauseAfter: 300 },
+    { target: LINE1,                                              backspace: false, pauseAfter: 500 },
+    { target: LINE1 + "\n" + LINE2,                               backspace: false },
   ];
 
   const [display, setDisplay] = useState("");
+  const [shrunk, setShrunk] = useState(false);
   const [done, setDone] = useState(false);
 
   useEffect(() => {
@@ -321,6 +320,7 @@ function useHeroTyping() {
     const DELETE_SPEED = 35;
     const PAUSE_AFTER_TYPE = 600;
     const PAUSE_AFTER_DELETE = 300;
+    const FADE_IN_DURATION = 500; // matches CSS transition
 
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -349,6 +349,9 @@ function useHeroTyping() {
             await sleep(DELETE_SPEED);
           }
           await sleep(PAUSE_AFTER_DELETE);
+          // Backspacing done — fade in the shrunk subtitle
+          setShrunk(true);
+          await sleep(FADE_IN_DURATION);
         }
       }
       if (!cancelled) setDone(true);
@@ -360,16 +363,16 @@ function useHeroTyping() {
 
   const newline = display.indexOf("\n");
   if (newline === -1) {
-    return { line1: display, line2: "", done };
+    return { line1: display, line2: "", shrunk, done };
   }
-  return { line1: display.slice(0, newline), line2: display.slice(newline + 1), done };
+  return { line1: display.slice(0, newline), line2: display.slice(newline + 1), shrunk, done };
 }
 
 export default function Landing() {
   const [whitepaperExpanded, setWhitepaperExpanded] = useState(false);
   const [expandedFaq, setExpandedFaq] = useState(null);
   const [contractsExpanded, setContractsExpanded] = useState(false);
-  const { line1, line2, done: typingDone } = useHeroTyping();
+  const { line1, line2, shrunk, done: typingDone } = useHeroTyping();
 
   // Set page title
   useEffect(() => {
@@ -452,6 +455,22 @@ export default function Landing() {
             <div className="h-px w-16 bg-gradient-to-l from-transparent to-cyan-500/50" />
           </div>
           
+          {/* Shrunk subtitle — fades in after backspacing, sits above the headline */}
+          <div
+            className="text-center font-bold tracking-wide"
+            style={{
+              opacity: shrunk ? 0.55 : 0,
+              fontSize: '0.85rem',
+              letterSpacing: '0.08em',
+              color: '#94a3b8',
+              transition: 'opacity 0.5s ease',
+              marginBottom: '0.5rem',
+              minHeight: '1.25rem',
+            }}
+          >
+            Run Tournemants · Settle Scores
+          </div>
+
           {/* Main Headline */}
           <h1 className="text-5xl md:text-7xl lg:text-8xl font-black text-center leading-[1.1] mb-8 py-2">
             <span className="block text-white pb-1">
