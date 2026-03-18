@@ -304,9 +304,9 @@ function useHeroTyping() {
   // phases: each is { text, line (1|2), done }
   // We animate on a single "cursor string" then split at LINE1 boundary
   const STEPS = [
-    { target: "Think yo..",           backspace: true  },
-    { target: "Prov..",      backspace: true  },
-    { target: LINE1,                   backspace: false },
+    { target: "Run Tournemants",                                     backspace: false, pauseAfter: 500 },
+    { target: "Run Tournemants" + "\n" + "Settle Scores",           backspace: true  },
+    { target: LINE1,                    backspace: false, pauseAfter: 500 },
     { target: LINE1 + "\n" + LINE2,    backspace: false },
   ];
 
@@ -334,6 +334,10 @@ function useHeroTyping() {
           current = step.target.slice(0, current.length + 1);
           setDisplay(current);
           await sleep(TYPE_SPEED);
+        }
+
+        if (step.pauseAfter) {
+          await sleep(step.pauseAfter);
         }
 
         if (step.backspace) {
@@ -700,10 +704,9 @@ export default function Landing() {
             Ready to Prove Yourself?
           </h2>
           <p className="text-xl text-slate-400 mb-12 max-w-xl mx-auto">
-            No more playing for points. No more fake rankings.
             Put real ETH on the line and see where you stand.
           </p>
-          <div className="flex items-center justify-center gap-4">
+          <div className="flex flex-col items-center gap-4">
             <button
               onClick={() => document.getElementById('games')?.scrollIntoView({ behavior: 'smooth' })}
               className="px-16 py-6 rounded-2xl font-bold text-xl text-white transition-all duration-300 hover:-translate-y-1 cursor-pointer"
