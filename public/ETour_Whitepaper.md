@@ -403,8 +403,6 @@ It's training wheels for trustless competition.
 
 But more importantly, TicTacToe proves a point: **even the simplest game becomes interesting with real stakes.** 
 
-That moment when you realize your opponent might not play perfectly. That they might crack under pressure. **That's when tic-tac-toe transforms from child's game to psychological battle.**
-
 --- 
 
 #### B) Chess — The Flagship
