@@ -4526,7 +4526,7 @@ export default function TicTacChain() {
                   loading={tournamentsLoading}
                   syncDots={bracketSyncDots}
                   isEnrolled={viewingTournament?.enrolledPlayers?.some(addr => addr.toLowerCase() === account?.toLowerCase())}
-                  entryFee={viewingTournament?.entryFee ? ethers.formatEther(viewingTournament.entryFee) : '0'}
+                  entryFee={viewingTournament?.entryFee ?? '0'}
                   isFull={viewingTournament?.enrolledCount >= viewingTournament?.playerCount}
                   contract={contract}
                 />
