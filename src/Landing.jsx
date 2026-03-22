@@ -294,76 +294,25 @@ function WhitepaperSection() {
   );
 }
 
-// Main Landing Component
-// Typing animation sequence for hero headline
-// Sequence: type "Run Tournemants\nSettle Scores" → backspace → fade-in shrunk subtitle → type "Think You're Good?\nProve It."
-function useHeroTyping() {
-  const LINE1 = "Think You're Good?";
-  const LINE2 = "Prove It.";
 
-  const STEPS = [
-    { target: LINE1,                                              backspace: false, pauseAfter: 300 },
-    { target: LINE1 + "\n" + LINE2,                               backspace: false },
-  ];
+const HERO_PHRASES = ["Challenge Your Crew", "Pick Your Stakes", "Settle The Score"];
 
-  const [display, setDisplay] = useState("");
-  const [shrunk, setShrunk] = useState(false);
-  const [done, setDone] = useState(false);
+function useHeroCycle() {
+  const [index, setIndex] = useState(0);
+  const [visible, setVisible] = useState(true);
 
   useEffect(() => {
-    let cancelled = false;
-    let current = "";
-
-    const TYPE_SPEED = 65;
-    const DELETE_SPEED = 35;
-    const PAUSE_AFTER_TYPE = 600;
-    const PAUSE_AFTER_DELETE = 300;
-    const FADE_IN_DURATION = 500; // matches CSS transition
-
-    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-    async function run() {
-      for (let s = 0; s < STEPS.length; s++) {
-        const step = STEPS[s];
-
-        // Type forward to target
-        while (current.length < step.target.length) {
-          if (cancelled) return;
-          current = step.target.slice(0, current.length + 1);
-          setDisplay(current);
-          await sleep(TYPE_SPEED);
-        }
-
-        if (step.pauseAfter) {
-          await sleep(step.pauseAfter);
-        }
-
-        if (step.backspace) {
-          await sleep(PAUSE_AFTER_TYPE);
-          while (current.length > 0) {
-            if (cancelled) return;
-            current = current.slice(0, -1);
-            setDisplay(current);
-            await sleep(DELETE_SPEED);
-          }
-          await sleep(PAUSE_AFTER_DELETE);
-          // Backspacing done — fade in the shrunk subtitle
-          setShrunk(true);
-          await sleep(FADE_IN_DURATION);
-        }
-      }
-      if (!cancelled) setDone(true);
-    }
-
-    run();
-    return () => { cancelled = true; };
+    const interval = setInterval(() => {
+      setVisible(false);
+      setTimeout(() => {
+        setIndex((i) => (i + 1) % HERO_PHRASES.length);
+        setVisible(true);
+      }, 600);
+    }, 2800);
+    return () => clearInterval(interval);
   }, []);
 
-  const newline = display.indexOf("\n");
-  if (newline === -1) {
-    return { line1: display, line2: "", shrunk, done };
-  }
-  return { line1: display.slice(0, newline), line2: display.slice(newline + 1), shrunk, done };
+  return { phrase: HERO_PHRASES[index], visible };
 }
 
 export default function Landing() {
@@ -372,8 +321,7 @@ export default function Landing() {
   const [contractsExpanded, setContractsExpanded] = useState(false);
   const [whitepaperGlow, setWhitepaperGlow] = useState(false);
   const whitepaperGlowTimer = useRef(null);
-  const { line1, line2, shrunk, done: typingDone } = useHeroTyping();
-
+  const { phrase, visible } = useHeroCycle();
   // Set page title
   useEffect(() => {
     document.title = 'ETour - Pure Competition. No Nonsense.';
@@ -465,37 +413,22 @@ export default function Landing() {
             <div className="h-px w-16 bg-gradient-to-l from-transparent to-cyan-500/50" />
           </div>
 
-          {/* Shrunk subtitle — fades in after backspacing, sits above the headline */}
-          <div
-            className="text-center font-bold tracking-wide"
-            style={{
-              opacity: typingDone ? 0.55 : 0,
-              fontSize: '0.85rem',
-              letterSpacing: '0.08em',
-              color: '#94a3b8',
-              transition: 'opacity 0.6s ease',
-              marginTop: '0.75rem',
-              marginBottom: '0.75rem',
-            }}
-          >
-            Run Tournaments · Settle Scores
-          </div>
-
           {/* Main Headline */}
-          <h1 className="text-5xl md:text-7xl lg:text-8xl font-black text-center leading-[1.1] mb-8 py-2">
-            <span className="block text-white pb-1">
-              {line1}
-              {!line2 && <span className="animate-pulse">|</span>}
+          <h1 className="text-5xl md:text-7xl lg:text-8xl font-black text-center leading-[1.1] mb-8 py-2 mt-4">
+            <span
+              className="block text-white pb-1"
+              style={{ transition: 'opacity 0.6s ease', opacity: visible ? 1 : 0 }}
+            >
+              {phrase}
             </span>
             <span
-              className="block bg-clip-text text-transparent py-1"
+              className="block bg-clip-text text-transparent py-1 text-3xl md:text-5xl lg:text-6xl"
               style={{ background: 'linear-gradient(135deg, #06b6d4, #3b82f6, #a855f7)', WebkitBackgroundClip: 'text' }}
             >
-              {line2}
-              {line2 && !typingDone && <span className="animate-pulse text-white">|</span>}
+              Fully On-Chain.
             </span>
           </h1>
-          
+
           {/* Subheadline */}
           <p className="text-xl md:text-2xl text-slate-400 text-center max-w-2xl mb-12 leading-relaxed">
             <a
