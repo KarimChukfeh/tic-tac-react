@@ -37,6 +37,7 @@ import { determineMatchResult } from './utils/matchCompletionHandler';
 import { fetchTierTimeoutConfig } from './utils/timeCalculations';
 import { getCompletionReasonText, getCompletionReasonDescription, isDraw } from './utils/completionReasons';
 import { batchFetchTournaments, batchFetchIsEnrolled } from './utils/multicall';
+import { validateMoveWithReason } from './utils/chessValidator';
 import ParticleBackground from './components/shared/ParticleBackground';
 import MatchCard from './components/shared/MatchCard';
 import TournamentCard from './components/shared/TournamentCard';
@@ -3450,7 +3451,9 @@ export default function Chess() {
         lastMoveTimestamp: lastMoveTime, // Use lastMoveTime as timestamp
         matchTimePerPlayer: tierMatchTime, // Pass through per-tier value for UI components
         timeoutConfig, // Pass timeout config to UI components
-        lastMove // Last move for highlighting (from events)
+        lastMove, // Last move for highlighting (from events)
+        packedBoard: matchData.packedBoard,
+        packedState: matchData.packedState
       };
     } catch (error) {
       console.error('Error refreshing match:', error);
@@ -3475,6 +3478,23 @@ export default function Chess() {
     if (!currentMatch || !contract || !account) return;
 
     setMoveTxTimeout(null); // Clear any stale retry overlay before fresh attempt
+
+    // Client-side pre-validation: give a specific error without spending gas
+    if (currentMatch.packedBoard != null && currentMatch.packedState != null) {
+      const isWhite = currentMatch.firstPlayer?.toLowerCase() === account.toLowerCase();
+      const reason = validateMoveWithReason(
+        currentMatch.packedBoard,
+        currentMatch.packedState,
+        fromSquare,
+        toSquare,
+        isWhite,
+        promotion
+      );
+      if (reason) {
+        alert(`Invalid Move: ${reason}`);
+        return;
+      }
+    }
 
     // Attempt to make the move
     try {
@@ -3543,8 +3563,7 @@ export default function Chess() {
       } else if (errorString.includes('Match not active') || errorString.includes('match not active')) {
         errorMsg = 'Match is not active';
       } else if (errorString.includes('execution reverted')) {
-        // Generic contract revert - likely an invalid move
-        errorMsg = 'Invalid Move - This move is not allowed by chess rules';
+        errorMsg = 'Invalid Move';
       }
 
       alert(errorMsg);
