@@ -1,5 +1,23 @@
-// Transaction overrides for contract calls.
-// Kept as an empty object so callers can spread it in without changes.
-// Gas/fee estimation is left to the wallet (MetaMask) to avoid
-// EIP-1559 violations when the network base fee is below any hardcoded tip.
-export const HIGH_PRIORITY_TX = {};
+import { ethers } from 'ethers';
+
+const PRIORITY_TIP = ethers.parseUnits('0.1', 'gwei');
+
+// Returns EIP-1559 tx overrides that give slightly above-average priority
+// without violating the maxFeePerGas >= maxPriorityFeePerGas invariant.
+// Pass the ethers contract instance — its signer's provider is used to fetch
+// the current base fee so maxFeePerGas is always set correctly.
+// Falls back to an empty object if fee data is unavailable.
+export async function getHighPriorityTx(contract) {
+  try {
+    const provider = contract?.runner?.provider;
+    if (!provider) return {};
+    const feeData = await provider.getFeeData();
+    const baseFee = feeData.lastBaseFeePerGas ?? feeData.gasPrice ?? 0n;
+    return {
+      maxPriorityFeePerGas: PRIORITY_TIP,
+      maxFeePerGas: baseFee * 2n + PRIORITY_TIP,
+    };
+  } catch {
+    return {};
+  }
+}
