@@ -4042,8 +4042,8 @@ export default function ConnectFour() {
       setSyncDots(1);
     };
 
-    // Poll every 1.5 seconds for turn/timer updates
-    const matchPollInterval = setInterval(doMatchSync, 1500);
+    // Poll every 1 second for turn/timer updates
+    const matchPollInterval = setInterval(doMatchSync, 1000);
 
     return () => clearInterval(matchPollInterval);
   }, [currentMatch?.tierId, currentMatch?.instanceId, currentMatch?.roundNumber, currentMatch?.matchNumber, account, refreshMatchData, fetchMoveHistory, matchTimePerPlayer]);
