@@ -1,8 +1,8 @@
 import { ethers } from 'ethers';
 
 // Default high-priority transaction overrides.
-// Sets a 2 gwei priority fee tip to encourage faster block inclusion.
+// Sets a 0.3 gwei priority fee tip to encourage faster block inclusion.
 // Users can still override this in their wallet before confirming.
 export const HIGH_PRIORITY_TX = {
-  maxPriorityFeePerGas: ethers.parseUnits('2', 'gwei'),
+  maxPriorityFeePerGas: ethers.parseUnits('0.3', 'gwei'),
 };
