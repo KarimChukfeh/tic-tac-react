@@ -1,8 +1,5 @@
-import { ethers } from 'ethers';
-
-// Default high-priority transaction overrides.
-// Sets a 0.3 gwei priority fee tip to encourage faster block inclusion.
-// Users can still override this in their wallet before confirming.
-export const HIGH_PRIORITY_TX = {
-  maxPriorityFeePerGas: ethers.parseUnits('0.2', 'gwei'),
-};
+// Transaction overrides for contract calls.
+// Kept as an empty object so callers can spread it in without changes.
+// Gas/fee estimation is left to the wallet (MetaMask) to avoid
+// EIP-1559 violations when the network base fee is below any hardcoded tip.
+export const HIGH_PRIORITY_TX = {};
