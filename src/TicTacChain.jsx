@@ -36,6 +36,7 @@ import { parseTournamentParams } from './utils/urlHelpers';
 import { parseTicTacToeMatch } from './utils/matchDataParser';
 import { determineMatchResult } from './utils/matchCompletionHandler';
 import { fetchTierTimeoutConfig } from './utils/timeCalculations';
+// import { getHighPriorityTx } from './utils/txOptions';
 import { getCompletionReasonText, getCompletionReasonDescription, isDraw } from './utils/completionReasons';
 import { batchFetchTournaments, batchFetchIsEnrolled, checkInstanceEscalations } from './utils/multicall';
 import ParticleBackground from './components/shared/ParticleBackground';
@@ -429,6 +430,7 @@ export default function TicTacChain() {
   const matchEndModalShownRef = useRef(false); // Prevent duplicate modal triggers from polling
   const tournamentBracketRef = useRef(null); // Ref for auto-scrolling to tournament after URL navigation
   const matchViewRef = useRef(null); // Ref for auto-scrolling to match view
+  const [ghostMove, setGhostMove] = useState(null); // { cellIndex } — optimistic ghost from MoveMade event
 
   // Leaderboard State
   const [leaderboard, setLeaderboard] = useState([]);
@@ -2104,7 +2106,7 @@ export default function TicTacChain() {
       const feeInWei = ethers.parseEther(entryFee);
 
       // Call enrollInTournament function with entry fee as value
-      const tx = await contract.enrollInTournament(tierId, instanceId, { value: feeInWei });
+      const tx = await contract.enrollInTournament(tierId, instanceId, { value: feeInWei,  });
       await tx.wait();
 
       // Refresh player activity panel immediately after enrollment
@@ -3723,10 +3725,12 @@ export default function TicTacChain() {
     return () => clearInterval(pollInterval);
   }, [viewingTournament?.tierId, viewingTournament?.instanceId, refreshTournamentBracket]);
 
-  // Poll current match every 2 seconds for live timer updates (using refs for seamless syncing)
+  // Poll current match every 3 seconds for live timer updates (using refs for seamless syncing)
   const currentMatchRef = useRef(currentMatch);
   const contractRefForMatch = useRef(contract);
   const accountRefForMatch = useRef(account);
+  const skipNextPollRef = useRef(false);
+  const doMatchSyncRef = useRef(null);
 
   // Keep refs updated
   useEffect(() => {
@@ -3745,6 +3749,12 @@ export default function TicTacChain() {
       const userAccount = accountRefForMatch.current;
 
       if (!match || !contractInstance || !userAccount) return;
+
+      // Skip this poll cycle if the MoveMade event already triggered an immediate sync
+      if (skipNextPollRef.current) {
+        skipNextPollRef.current = false;
+        return;
+      }
 
       // Skip polling if match is completed AND modal has been shown
       // IMPORTANT: Keep polling if modal hasn't been shown yet to ensure it triggers
@@ -3959,11 +3969,45 @@ export default function TicTacChain() {
       setSyncDots(1);
     };
 
-    // Poll every 2 seconds for turn/timer updates
-    const matchPollInterval = setInterval(doMatchSync, 2000);
+    doMatchSyncRef.current = doMatchSync;
+
+    // Poll every 3 seconds as fallback — MoveMade event listener handles fast path
+    const matchPollInterval = setInterval(doMatchSync, 1500);
 
     return () => clearInterval(matchPollInterval);
   }, [currentMatch?.tierId, currentMatch?.instanceId, currentMatch?.roundNumber, currentMatch?.matchNumber, account, refreshMatchData, fetchMoveHistory, matchTimePerPlayer]);
+
+  // MoveMade event listener — triggers immediate sync when opponent moves in this exact match
+  useEffect(() => {
+    if (!currentMatch || !contract || !account) return;
+
+    const match = currentMatchRef.current;
+    if (!match?.player1 || !match?.player2) return;
+
+    const matchId = ethers.solidityPackedKeccak256(
+      ['uint8', 'uint8', 'uint8', 'uint8'],
+      [match.tierId, match.instanceId, match.roundNumber, match.matchNumber]
+    );
+    const opponentAddress = match.player1.toLowerCase() === account.toLowerCase()
+      ? match.player2
+      : match.player1;
+
+    console.log('[MoveMade] Setting up event listener for opponent:', opponentAddress);
+
+    const handleOpponentMove = (_matchId, _player, cellIndex) => {
+      console.log('[MoveMade] Opponent move detected via event! cellIndex:', Number(cellIndex), '— syncing immediately');
+      setGhostMove({ cellIndex: Number(cellIndex) });
+      skipNextPollRef.current = true;
+      doMatchSyncRef.current?.().then(() => setGhostMove(null)).catch(() => setGhostMove(null));
+    };
+
+    const filter = contract.filters.MoveMade(matchId, opponentAddress);
+    contract.on(filter, handleOpponentMove);
+
+    return () => {
+      contract.off(filter, handleOpponentMove);
+    };
+  }, [currentMatch?.tierId, currentMatch?.instanceId, currentMatch?.roundNumber, currentMatch?.matchNumber, contract, account]);
 
   // Increment match sync dots every second (1 -> 2 -> 3, resets on sync)
   useEffect(() => {
@@ -4379,6 +4423,7 @@ export default function TicTacChain() {
             account={account}
             loading={matchLoading}
             syncDots={syncDots}
+            pendingOpponentMove={!!ghostMove}
             onClose={closeMatch}
             onClaimTimeoutWin={isSpectator ? null : handleClaimTimeoutWin}
             onForceEliminate={isSpectator ? null : handleForceEliminateStalledMatch}
@@ -4435,10 +4480,16 @@ export default function TicTacChain() {
                   const firstPlayerCellValue = isPlayer1First ? 1 : 2;
 
                   return currentMatch.board.map((cell, idx) => {
+                    const isGhost = cell === 0 && ghostMove?.cellIndex === idx;
                     // Determine what to display and color based on firstPlayer
                     const isFirstPlayerCell = cell === firstPlayerCellValue;
-                    const cellSymbol = cell === 0 ? '' : (isFirstPlayerCell ? 'X' : 'O');
-                    const cellColorClass = cell === 0
+                    // Ghost symbol is always the opponent's symbol
+                    const isOpponentFirst = currentMatch.firstPlayer?.toLowerCase() !== account?.toLowerCase();
+                    const ghostSymbol = isOpponentFirst ? 'X' : 'O';
+                    const cellSymbol = cell === 0 ? (isGhost ? ghostSymbol : '') : (isFirstPlayerCell ? 'X' : 'O');
+                    const cellColorClass = isGhost
+                      ? 'bg-purple-500/20 text-white/30 animate-pulse cursor-not-allowed'
+                      : cell === 0
                       ? 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-200'
                       : isFirstPlayerCell
                       ? 'bg-blue-500/40 text-blue-200'
@@ -4448,7 +4499,7 @@ export default function TicTacChain() {
                       <button
                         key={idx}
                         onClick={isSpectator ? null : () => handleCellClick(idx)}
-                        disabled={isSpectator || matchLoading || currentMatch.matchStatus === 2 || !currentMatch.isYourTurn}
+                        disabled={isSpectator || matchLoading || currentMatch.matchStatus === 2 || !currentMatch.isYourTurn || isGhost}
                         className={`aspect-square rounded-xl flex items-center justify-center text-4xl font-bold transition-all transform hover:scale-105 disabled:cursor-not-allowed ${cellColorClass}`}
                       >
                         {cellSymbol}
@@ -4525,7 +4576,7 @@ export default function TicTacChain() {
                   loading={tournamentsLoading}
                   syncDots={bracketSyncDots}
                   isEnrolled={viewingTournament?.enrolledPlayers?.some(addr => addr.toLowerCase() === account?.toLowerCase())}
-                  entryFee={viewingTournament?.entryFee ? ethers.formatEther(viewingTournament.entryFee) : '0'}
+                  entryFee={viewingTournament?.entryFee ?? '0'}
                   isFull={viewingTournament?.enrolledCount >= viewingTournament?.playerCount}
                   contract={contract}
                 />

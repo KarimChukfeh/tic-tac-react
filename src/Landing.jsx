@@ -9,9 +9,9 @@ import chessABI from './ChessOnChain-ABI-modular.json';
 import connectFourABI from './ConnectFourABI-modular.json';
 import TotalEarningsCard from './components/shared/TotalEarningsCard';
 
-// Floating Game Particles with cursor attraction
+// Floating Game Particles - each hovers around its initial position
 function FloatingParticles() {
-  const particles = [
+  const PARTICLES = [
     { symbol: '✕', color: '#06b6d4', baseX: 5, baseY: 8, size: 'text-3xl' },
     { symbol: '○', color: '#a855f7', baseX: 92, baseY: 12, size: 'text-3xl' },
     { symbol: '♔', color: '#fbbf24', baseX: 12, baseY: 25, size: 'text-4xl' },
@@ -24,104 +24,83 @@ function FloatingParticles() {
     { symbol: '🔴', color: '#ef4444', baseX: 25, baseY: 92, size: 'text-2xl' },
   ];
 
-  const mousePos = useRef({ x: null, y: null });
-  const particleOffsets = useRef(particles.map(() => ({ x: 0, y: 0 })));
-  const particleRefs = useRef([]);
-  const animationRef = useRef(null);
+  const pickRandom = (excluded, poppedSet) => {
+    const available = PARTICLES.map((_, i) => i).filter(i => !poppedSet.has(i) && i !== excluded);
+    if (available.length === 0) return null;
+    return available[Math.floor(Math.random() * available.length)];
+  };
 
-  useEffect(() => {
-    const handleMouseMove = (e) => {
-      mousePos.current = {
-        x: (e.clientX / window.innerWidth) * 100,
-        y: (e.clientY / window.innerHeight) * 100
-      };
-    };
+  const [popped, setPopped] = useState(new Set());
+  const [popping, setPopping] = useState(null);
+  const [active, setActive] = useState(() => Math.floor(Math.random() * PARTICLES.length));
 
-    const handleMouseLeave = () => {
-      mousePos.current = { x: null, y: null };
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseleave', handleMouseLeave);
-
-    // Animation loop for smooth attraction
-    const animate = () => {
-      const mouse = mousePos.current;
-
-      particles.forEach((p, i) => {
-        const offset = particleOffsets.current[i];
-        const el = particleRefs.current[i];
-        if (!el) return;
-
-        if (mouse.x !== null && mouse.y !== null) {
-          // Calculate direction to cursor (in percentage units)
-          const targetX = mouse.x - p.baseX;
-          const targetY = mouse.y - p.baseY;
-
-          // Convert 50px radius to viewport units (approximate)
-          const forceFieldRadius = 50 / window.innerWidth * 100; // ~50px in vw
-
-          // Calculate current distance from particle to cursor target
-          const currentDistX = targetX - offset.x;
-          const currentDistY = targetY - offset.y;
-          const distance = Math.sqrt(currentDistX * currentDistX + currentDistY * currentDistY);
-
-          // Only attract if outside the force field radius
-          if (distance > forceFieldRadius) {
-            // Attract toward the edge of the force field, not the cursor itself
-            const scale = (distance - forceFieldRadius) / distance;
-            const edgeTargetX = offset.x + currentDistX * scale;
-            const edgeTargetY = offset.y + currentDistY * scale;
-
-            // Extremely slow attraction - barely perceptible drift
-            offset.x += (edgeTargetX - offset.x) * 0.0006;
-            offset.y += (edgeTargetY - offset.y) * 0.0006;
-          }
-        } else {
-          // Very slowly return to base position when cursor leaves
-          offset.x *= 0.999;
-          offset.y *= 0.999;
-        }
-
-        // Apply the attraction offset as a CSS variable
-        el.style.setProperty('--attract-x', `${offset.x}vw`);
-        el.style.setProperty('--attract-y', `${offset.y}vh`);
+  const handleClick = (i) => {
+    if (i !== active || popping !== null) return;
+    setPopping(i);
+    setTimeout(() => {
+      setPopped(prev => {
+        const next = new Set(prev).add(i);
+        setPopping(null);
+        setActive(pickRandom(i, next));
+        return next;
       });
-
-      animationRef.current = requestAnimationFrame(animate);
-    };
-
-    animationRef.current = requestAnimationFrame(animate);
-
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseleave', handleMouseLeave);
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-    };
-  }, []);
+    }, 400);
+  };
 
   return (
-    <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-      {particles.map((p, i) => (
-        <div
-          key={i}
-          ref={el => particleRefs.current[i] = el}
-          className={`absolute ${p.size} opacity-20 animate-float-attract`}
-          style={{
-            left: `${p.baseX}%`,
-            top: `${p.baseY}%`,
-            color: p.color,
-            animationDelay: `${i * -2.5}s`,
-            '--attract-x': '0vw',
-            '--attract-y': '0vh',
-          }}
-        >
-          {p.symbol}
-        </div>
-      ))}
-    </div>
+    <>
+      {/* Visual layer — behind page UI */}
+      <div className="fixed inset-0 overflow-hidden" style={{ pointerEvents: 'none', zIndex: 1 }}>
+        {PARTICLES.map((p, i) => {
+          if (popped.has(i)) return null;
+          const isActive = i === active;
+          const isPopping = i === popping;
+          return (
+            <div
+              key={i}
+              className={`absolute ${p.size}`}
+              style={{
+                left: `${p.baseX}%`,
+                top: `${p.baseY}%`,
+                color: p.color,
+                pointerEvents: 'none',
+                textShadow: isActive
+                  ? `0 0 10px ${p.color}, 0 0 20px ${p.color}`
+                  : `0 0 8px ${p.color}`,
+                animation: isPopping
+                  ? 'particle-pop 0.4s ease-out forwards'
+                  : isActive
+                    ? 'particle-glow-pulse 1.4s ease-in-out infinite'
+                    : `particle-hover 14s ${i * -2.5}s infinite ease-in-out`,
+              }}
+            >
+              {p.symbol}
+            </div>
+          );
+        })}
+      </div>
+      {/* Hit area layer — on top for click detection only */}
+      <div className="fixed inset-0 overflow-hidden" style={{ pointerEvents: 'none', zIndex: 9999 }}>
+        {active !== null && !popped.has(active) && (
+          <div
+            onClick={() => handleClick(active)}
+            className={`absolute ${PARTICLES[active].size}`}
+            style={{
+              left: `${PARTICLES[active].baseX}%`,
+              top: `${PARTICLES[active].baseY}%`,
+              color: 'transparent',
+              pointerEvents: popping !== null ? 'none' : 'auto',
+              cursor: 'pointer',
+              animation: popping !== null
+                ? 'particle-pop 0.4s ease-out forwards'
+                : 'particle-glow-pulse 1.4s ease-in-out infinite',
+            }}
+          >
+            {PARTICLES[active].symbol}
+          </div>
+        )}
+      </div>
+    </>
   );
 }
 
@@ -315,12 +294,34 @@ function WhitepaperSection() {
   );
 }
 
-// Main Landing Component
+
+const HERO_PHRASES = ["Challenge Your Crew", "Pick Your Stakes", "Settle The Score"];
+
+function useHeroCycle() {
+  const [index, setIndex] = useState(0);
+  const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setVisible(false);
+      setTimeout(() => {
+        setIndex((i) => (i + 1) % HERO_PHRASES.length);
+        setVisible(true);
+      }, 600);
+    }, 2800);
+    return () => clearInterval(interval);
+  }, []);
+
+  return { phrase: HERO_PHRASES[index], visible };
+}
+
 export default function Landing() {
   const [whitepaperExpanded, setWhitepaperExpanded] = useState(false);
   const [expandedFaq, setExpandedFaq] = useState(null);
   const [contractsExpanded, setContractsExpanded] = useState(false);
-
+  const [whitepaperGlow, setWhitepaperGlow] = useState(false);
+  const whitepaperGlowTimer = useRef(null);
+  const { phrase, visible } = useHeroCycle();
   // Set page title
   useEffect(() => {
     document.title = 'ETour - Pure Competition. No Nonsense.';
@@ -392,27 +393,42 @@ export default function Landing() {
 		        <section className="min-h-[70vh] flex flex-col justify-center items-center px-6 py-16">
 	          
 	          {/* Eyebrow */}
-	          <div className="flex items-center gap-4 mb-8">
+	          <div className="flex items-center gap-4 mb-0">
 	            <div className="h-px w-16 bg-gradient-to-r from-transparent to-cyan-500/50" />
-            <p
-              className="text-cyan-400 text-base md:text-xl font-semibold tracking-widest uppercase hover:text-cyan-300 transition-colors"
+            <a
+              href="#read-the-whitepaper"
+              onClick={(e) => {
+                e.preventDefault();
+                document.getElementById('read-the-whitepaper')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                clearTimeout(whitepaperGlowTimer.current);
+                setTimeout(() => {
+                  setWhitepaperGlow(true);
+                  whitepaperGlowTimer.current = setTimeout(() => setWhitepaperGlow(false), 2000);
+                }, 600);
+              }}
+              className="text-cyan-400 text-base md:text-xl font-semibold tracking-widest uppercase hover:text-cyan-300 transition-colors cursor-pointer"
             >
               ETour Games
-            </p>
+            </a>
             <div className="h-px w-16 bg-gradient-to-l from-transparent to-cyan-500/50" />
           </div>
-          
+
           {/* Main Headline */}
-          <h1 className="text-5xl md:text-7xl lg:text-8xl font-black text-center leading-[1.1] mb-8 py-2">
-            <span className="block text-white pb-1">Think You're Good?</span>
+          <h1 className="text-5xl md:text-7xl lg:text-8xl font-black text-center leading-[1.1] mb-8 py-2 mt-4">
             <span
-              className="block bg-clip-text text-transparent py-1"
+              className="block text-white pb-1"
+              style={{ transition: 'opacity 0.6s ease', opacity: visible ? 1 : 0 }}
+            >
+              {phrase}
+            </span>
+            <span
+              className="block bg-clip-text text-transparent py-1 text-3xl md:text-5xl lg:text-6xl"
               style={{ background: 'linear-gradient(135deg, #06b6d4, #3b82f6, #a855f7)', WebkitBackgroundClip: 'text' }}
             >
-              Prove It.
+              Fully On-Chain.
             </span>
           </h1>
-          
+
           {/* Subheadline */}
           <p className="text-xl md:text-2xl text-slate-400 text-center max-w-2xl mb-12 leading-relaxed">
             <a
@@ -650,10 +666,9 @@ export default function Landing() {
             Ready to Prove Yourself?
           </h2>
           <p className="text-xl text-slate-400 mb-12 max-w-xl mx-auto">
-            No more playing for points. No more fake rankings.
             Put real ETH on the line and see where you stand.
           </p>
-          <div className="flex items-center justify-center gap-4">
+          <div className="flex flex-col items-center gap-4">
             <button
               onClick={() => document.getElementById('games')?.scrollIntoView({ behavior: 'smooth' })}
               className="px-16 py-6 rounded-2xl font-bold text-xl text-white transition-all duration-300 hover:-translate-y-1 cursor-pointer"
@@ -666,8 +681,13 @@ export default function Landing() {
             </button>
             <span className="text-slate-500 text-lg font-medium">or</span>
             <Link
+              id="read-the-whitepaper"
               to="/whitepaper"
               className="font-bold text-xl text-cyan-400 transition-all duration-300 hover:text-cyan-300"
+              style={whitepaperGlow ? {
+                textShadow: '0 0 8px #22d3ee, 0 0 20px #22d3ee, 0 0 40px #06b6d4',
+                animation: 'whitepaperPulse 2s ease-out forwards',
+              } : {}}
             >
               Read The Whitepaper
             </Link>
@@ -834,14 +854,31 @@ export default function Landing() {
       
       {/* Keyframe Animations */}
       <style>{`
-        @keyframes float-attract {
-          0%, 100% { transform: translate(calc(var(--attract-x, 0vw)), calc(var(--attract-y, 0vh))) rotate(0deg); opacity: 0.25; }
-          25% { transform: translate(calc(45px + var(--attract-x, 0vw)), calc(-55px + var(--attract-y, 0vh))) rotate(90deg); opacity: 0.18; }
-          50% { transform: translate(calc(-30px + var(--attract-x, 0vw)), calc(-110px + var(--attract-y, 0vh))) rotate(180deg); opacity: 0.32; }
-          75% { transform: translate(calc(-70px + var(--attract-x, 0vw)), calc(-55px + var(--attract-y, 0vh))) rotate(270deg); opacity: 0.18; }
+        @keyframes particle-hover {
+          0%   { transform: translate(0px, 0px) rotate(0deg); opacity: 0.25; }
+          20%  { transform: translate(12px, -15px) rotate(36deg); opacity: 0.18; }
+          40%  { transform: translate(-10px, -18px) rotate(72deg); opacity: 0.30; }
+          60%  { transform: translate(-16px, 8px) rotate(108deg); opacity: 0.20; }
+          80%  { transform: translate(14px, 14px) rotate(144deg); opacity: 0.28; }
+          100% { transform: translate(0px, 0px) rotate(180deg); opacity: 0.25; }
         }
-        .animate-float-attract {
-          animation: float-attract 18s infinite ease-in-out;
+        @keyframes particle-glow-pulse {
+          0%, 100% {
+            transform: scale(1.1);
+            opacity: 0.8;
+            filter: brightness(1.2) drop-shadow(0 0 4px currentColor) drop-shadow(0 0 10px currentColor);
+          }
+          50% {
+            transform: scale(1.25);
+            opacity: 0.95;
+            filter: brightness(1.4) drop-shadow(0 0 8px currentColor) drop-shadow(0 0 18px currentColor);
+          }
+        }
+        @keyframes particle-pop {
+          0%   { transform: scale(1);   opacity: 0.25; filter: blur(0px); }
+          40%  { transform: scale(2.2); opacity: 0.8;  filter: blur(0px); }
+          70%  { transform: scale(2.8); opacity: 0.4;  filter: blur(2px); }
+          100% { transform: scale(3.5); opacity: 0;    filter: blur(6px); }
         }
       `}</style>
     </div>

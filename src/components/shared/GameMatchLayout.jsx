@@ -103,6 +103,9 @@ const GameMatchLayout = ({
   renderPlayer1Extra, // Extra content like check indicator
   renderPlayer2Extra, // Extra content like check indicator
 
+  // Ghost move indicator — shown when MoveMade event detected before polling confirms
+  pendingOpponentMove = false,
+
   // Children = the game board component
   children
 }) => {
@@ -1055,7 +1058,13 @@ const GameMatchLayout = ({
         {/* Mobile Layout (< lg breakpoint) */}
         <div className={`lg:hidden ${gameType === 'connectfour' ? 'space-y-0' : 'space-y-3'}`}>
           {/* Board */}
-          <div className={`flex justify-center ${gameType === 'connectfour' ? 'mt-0' : ''}`}>
+          <div className={`flex justify-center relative ${gameType === 'connectfour' ? 'mt-0' : ''}`}>
+            {pendingOpponentMove && (
+              <div className="absolute top-2 right-2 z-10 flex items-center gap-1.5 bg-orange-500/90 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-lg">
+                <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                THEIR MOVE
+              </div>
+            )}
             {children}
           </div>
 
@@ -1108,7 +1117,13 @@ const GameMatchLayout = ({
           </div>
 
           {/* Center Column - Board */}
-          <div className="flex flex-col items-center w-full">
+          <div className="flex flex-col items-center w-full relative">
+            {pendingOpponentMove && (
+              <div className="absolute top-2 right-2 z-10 flex items-center gap-1.5 bg-orange-500/90 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-lg">
+                <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                THEIR MOVE
+              </div>
+            )}
             {children}
 
             {timeoutState && (

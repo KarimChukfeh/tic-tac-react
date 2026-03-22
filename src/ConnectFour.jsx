@@ -34,6 +34,7 @@ import { parseTournamentParams } from './utils/urlHelpers';
 import { parseConnectFourMatch } from './utils/matchDataParser';
 import { determineMatchResult } from './utils/matchCompletionHandler';
 import { fetchTierTimeoutConfig } from './utils/timeCalculations';
+// import { getHighPriorityTx } from './utils/txOptions';
 import { getCompletionReasonText, getCompletionReasonDescription, isDraw } from './utils/completionReasons';
 import { batchFetchTournaments, batchFetchIsEnrolled } from './utils/multicall';
 import ParticleBackground from './components/shared/ParticleBackground';
@@ -237,7 +238,8 @@ const ConnectFourBoard = ({
   matchStatus,
   loading,
   winner,
-  lastColumn
+  lastColumn,
+  ghostMove
 }) => {
   const [hoveredColumn, setHoveredColumn] = useState(-1);
   const [boardSize, setBoardSize] = useState(null);
@@ -263,6 +265,7 @@ const ConnectFourBoard = ({
   // Color based on who goes first: firstPlayer = 1 (RED), second player = 2 (BLUE)
   const isFirstPlayer = account && firstPlayer?.toLowerCase() === account.toLowerCase();
   const myColor = isFirstPlayer ? 1 : (isPlayer1 || isPlayer2) ? 2 : 0;
+  const opponentColor = myColor === 1 ? 2 : 1;
 
   const grid = boardToGrid(board);
 
@@ -350,6 +353,7 @@ const ConnectFourBoard = ({
                 const topDiscRow = getTopDiscRow(colIdx);
                 const isLastMove = lastColumn === colIdx && topDiscRow === rowIdx;
                 const isPreview = rowIdx === previewRow && colIdx === hoveredColumn && isMyTurn && matchStatus === 1;
+                const isGhost = cell === 0 && ghostMove?.column === colIdx && ghostMove?.row === rowIdx;
 
                 // Debug logging for last move
                 if (isLastMove) {
@@ -399,6 +403,18 @@ const ConnectFourBoard = ({
                               ? '0 0 20px 4px rgba(255, 0, 68, 0.8), 0 0 40px 8px rgba(255, 0, 68, 0.4), inset 0 -4px 8px rgba(0,0,0,0.3)'
                               : '0 0 20px 4px rgba(0, 119, 255, 0.8), 0 0 40px 8px rgba(0, 119, 255, 0.4), inset 0 -4px 8px rgba(0,0,0,0.3)'
                             : 'inset 0 -4px 8px rgba(0,0,0,0.3)'
+                        }}
+                      />
+                    ) : isGhost ? (
+                      <div
+                        className="rounded-full animate-pulse"
+                        style={{
+                          width: cellSize - 8,
+                          height: cellSize - 8,
+                          opacity: 0.35,
+                          background: opponentColor === 1
+                            ? 'radial-gradient(circle at 30% 30%, #ff0044, #bb0033)'
+                            : 'radial-gradient(circle at 30% 30%, #0077ff, #0055aa)'
                         }}
                       />
                     ) : isPreview ? (
@@ -783,6 +799,7 @@ export default function ConnectFour() {
   const matchEndModalShownRef = useRef(false); // Prevent duplicate modal triggers from polling
   const tournamentBracketRef = useRef(null); // Ref for auto-scrolling to tournament after URL navigation
   const matchViewRef = useRef(null); // Ref for auto-scrolling to match view
+  const [ghostMove, setGhostMove] = useState(null); // { column, row } — optimistic ghost from MoveMade event
 
   // Leaderboard State
   const [leaderboard, setLeaderboard] = useState([]);
@@ -1991,7 +2008,7 @@ export default function ConnectFour() {
       console.log('[handleEnroll] Enrolling in tier', tierId, 'instance', instanceId, 'with fee:', tierConfig.entryFee, 'ETH');
 
       // Call enrollInTournament function with entry fee as value
-      const tx = await contract.enrollInTournament(tierId, instanceId, { value: feeInWei });
+      const tx = await contract.enrollInTournament(tierId, instanceId, { value: feeInWei,  });
       await tx.wait();
 
       // Refresh player activity panel immediately after enrollment
@@ -3811,10 +3828,12 @@ export default function ConnectFour() {
     return () => clearInterval(pollInterval);
   }, [viewingTournament?.tierId, viewingTournament?.instanceId, refreshTournamentBracket]);
 
-  // Poll current match every 2 seconds for live timer updates (using refs for seamless syncing)
+  // Poll current match every 3 seconds for live timer updates (using refs for seamless syncing)
   const currentMatchRef = useRef(currentMatch);
   const contractRefForMatch = useRef(contract);
   const accountRefForMatch = useRef(account);
+  const skipNextPollRef = useRef(false);
+  const doMatchSyncRef = useRef(null);
 
   // Keep refs updated
   useEffect(() => {
@@ -3833,6 +3852,12 @@ export default function ConnectFour() {
       const userAccount = accountRefForMatch.current;
 
       if (!match || !contractInstance || !userAccount) return;
+
+      // Skip this poll cycle if the MoveMade event already triggered an immediate sync
+      if (skipNextPollRef.current) {
+        skipNextPollRef.current = false;
+        return;
+      }
 
       // Skip polling if match is completed AND modal has been shown
       // IMPORTANT: Keep polling if modal hasn't been shown yet to ensure it triggers
@@ -4041,11 +4066,45 @@ export default function ConnectFour() {
       setSyncDots(1);
     };
 
-    // Poll every 2 seconds for turn/timer updates
-    const matchPollInterval = setInterval(doMatchSync, 2000);
+    doMatchSyncRef.current = doMatchSync;
+
+    // Poll every 3 seconds as fallback — MoveMade event listener handles fast path
+    const matchPollInterval = setInterval(doMatchSync, 1500);
 
     return () => clearInterval(matchPollInterval);
   }, [currentMatch?.tierId, currentMatch?.instanceId, currentMatch?.roundNumber, currentMatch?.matchNumber, account, refreshMatchData, fetchMoveHistory, matchTimePerPlayer]);
+
+  // MoveMade event listener — triggers immediate sync when opponent moves in this exact match
+  useEffect(() => {
+    if (!currentMatch || !contract || !account) return;
+
+    const match = currentMatchRef.current;
+    if (!match?.player1 || !match?.player2) return;
+
+    const matchId = ethers.solidityPackedKeccak256(
+      ['uint8', 'uint8', 'uint8', 'uint8'],
+      [match.tierId, match.instanceId, match.roundNumber, match.matchNumber]
+    );
+    const opponentAddress = match.player1.toLowerCase() === account.toLowerCase()
+      ? match.player2
+      : match.player1;
+
+    console.log('[Connect4 MoveMade] Setting up event listener for opponent:', opponentAddress);
+
+    const handleOpponentMove = (_matchId, _player, column, row) => {
+      console.log('[Connect4 MoveMade] Opponent move detected via event! column:', Number(column), 'row:', Number(row), '— syncing immediately');
+      setGhostMove({ column: Number(column), row: Number(row) });
+      skipNextPollRef.current = true;
+      doMatchSyncRef.current?.().then(() => setGhostMove(null)).catch(() => setGhostMove(null));
+    };
+
+    const filter = contract.filters.MoveMade(matchId, opponentAddress);
+    contract.on(filter, handleOpponentMove);
+
+    return () => {
+      contract.off(filter, handleOpponentMove);
+    };
+  }, [currentMatch?.tierId, currentMatch?.instanceId, currentMatch?.roundNumber, currentMatch?.matchNumber, contract, account]);
 
   // Increment match sync dots every second (1 -> 2 -> 3, resets on sync)
   useEffect(() => {
@@ -4461,6 +4520,7 @@ export default function ConnectFour() {
           <div ref={matchViewRef}>
             <GameMatchLayout
             gameType="connectfour"
+            pendingOpponentMove={!!ghostMove}
             match={currentMatch}
             account={account}
             loading={matchLoading}
@@ -4559,6 +4619,7 @@ export default function ConnectFour() {
                 loading={matchLoading}
                 winner={currentMatch.winner}
                 lastColumn={currentMatch.lastColumn}
+                ghostMove={ghostMove}
               />
             </div>
           </GameMatchLayout>

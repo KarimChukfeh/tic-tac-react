@@ -35,8 +35,10 @@ import { shortenAddress, formatTime as formatTimeHMS, getTierName, getTournament
 import { parseTournamentParams } from './utils/urlHelpers';
 import { determineMatchResult } from './utils/matchCompletionHandler';
 import { fetchTierTimeoutConfig } from './utils/timeCalculations';
+// import { getHighPriorityTx } from './utils/txOptions';
 import { getCompletionReasonText, getCompletionReasonDescription, isDraw } from './utils/completionReasons';
 import { batchFetchTournaments, batchFetchIsEnrolled } from './utils/multicall';
+import { validateMoveWithReason } from './utils/chessValidator';
 import ParticleBackground from './components/shared/ParticleBackground';
 import MatchCard from './components/shared/MatchCard';
 import TournamentCard from './components/shared/TournamentCard';
@@ -473,7 +475,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, /* onSpectate
 };
 
 // Chess Board Component - copied from Chess.jsx
-const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, firstPlayer, matchStatus, loading, whiteInCheck, blackInCheck, lastMoveTime, startTime, lastMove, maxSize = 520 }) => {
+const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, firstPlayer, matchStatus, loading, whiteInCheck, blackInCheck, lastMoveTime, startTime, lastMove, maxSize = 520, ghostMove }) => {
   // Debug: Log lastMove prop with details
   useEffect(() => {
     console.log('[ChessBoard] lastMove updated:', lastMove);
@@ -647,6 +649,10 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
       const pieceType = piece ? Number(piece.pieceType) : 0;
       const pieceColor = piece ? Number(piece.color) : 0;
       const isKingInCheck = pieceType === 6 && ((pieceColor === 1 && whiteInCheck) || (pieceColor === 2 && blackInCheck));
+      const isGhostFrom = ghostMove && ghostMove.from === actualIdx;
+      const isGhostTo = ghostMove && ghostMove.to === actualIdx;
+      // The piece that will appear at the ghost-to square is the piece currently at ghost-from
+      const ghostPiece = ghostMove && board[ghostMove.from] ? board[ghostMove.from] : null;
       const displayRow = Math.floor(displayIdx / 8);
       const displayCol = displayIdx % 8;
       const showRankLabel = displayCol === 0;
@@ -707,8 +713,11 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
         return undefined; // Use default bg from class
       };
 
-      squares.push(<div key={displayIdx} onClick={() => handleSquareClick(displayIdx)} className={'relative flex items-center justify-center cursor-pointer transition-all duration-200 ' + (isLight ? 'bg-stone-300' : 'bg-stone-700') + (isSelected ? ' ring-2 ring-emerald-400 ring-inset bg-emerald-500/50' : '') + (isKingInCheck ? ' bg-red-500/50 ring-2 ring-red-400 ring-inset' : '') + ' ' + getLastMoveFromClass() + ' ' + getLastMoveToClass() + (isMyTurn && isMyPiece(piece) && !isSelected ? ' hover:bg-emerald-500/30' : '') + (isMyTurn && isPotentialTarget ? ' hover:bg-yellow-400/40' : '')} style={{ boxShadow: isSelected ? 'inset 0 0 20px rgba(16, 185, 129, 0.5)' : getLastMoveShadow(), background: getSquareBg() }}>
-        {getPieceSvg(piece) && <img src={getPieceSvg(piece)} alt="" className={'w-3/4 h-3/4 select-none transition-all duration-300 ' + (isSelected ? 'scale-110' : '')} style={{ opacity: hideForAnimation ? 0 : 1, filter: getPieceGlow() }} draggable="false" />}
+      const ghostFromClass = isGhostFrom ? ' ring-2 ring-orange-400/60 ring-inset' : '';
+      const ghostToClass = isGhostTo ? ' ring-2 ring-orange-400 ring-inset' : '';
+      squares.push(<div key={displayIdx} onClick={() => handleSquareClick(displayIdx)} className={'relative flex items-center justify-center cursor-pointer transition-all duration-200 ' + (isLight ? 'bg-stone-300' : 'bg-stone-700') + (isSelected ? ' ring-2 ring-emerald-400 ring-inset bg-emerald-500/50' : '') + (isKingInCheck ? ' bg-red-500/50 ring-2 ring-red-400 ring-inset' : '') + ' ' + getLastMoveFromClass() + ' ' + getLastMoveToClass() + ghostFromClass + ghostToClass + (isMyTurn && isMyPiece(piece) && !isSelected ? ' hover:bg-emerald-500/30' : '') + (isMyTurn && isPotentialTarget ? ' hover:bg-yellow-400/40' : '')} style={{ boxShadow: isSelected ? 'inset 0 0 20px rgba(16, 185, 129, 0.5)' : getLastMoveShadow(), background: isGhostTo ? 'rgba(251, 146, 60, 0.25)' : getSquareBg() }}>
+        {getPieceSvg(piece) && <img src={getPieceSvg(piece)} alt="" className={'w-3/4 h-3/4 select-none transition-all duration-300 ' + (isSelected ? 'scale-110' : '') + (isGhostFrom ? ' opacity-30' : '')} style={{ opacity: hideForAnimation ? 0 : 1, filter: getPieceGlow() }} draggable="false" />}
+        {isGhostTo && ghostPiece && getPieceSvg(ghostPiece) && <img src={getPieceSvg(ghostPiece)} alt="" className="w-3/4 h-3/4 select-none absolute animate-pulse" style={{ opacity: 0.4 }} draggable="false" />}
         {showRankLabel && <span className={'absolute left-1 top-0.5 text-[10px] font-medium ' + (isLight ? 'text-slate-500' : 'text-slate-600')}>{rankLabel}</span>}
         {showFileLabel && <span className={'absolute right-1 bottom-0.5 text-[10px] font-medium ' + (isLight ? 'text-slate-500' : 'text-slate-600')}>{fileLabel}</span>}
       </div>);
@@ -814,6 +823,7 @@ export default function Chess() {
   const matchEndModalShownRef = useRef(false); // Prevent duplicate modal triggers from polling
   const tournamentBracketRef = useRef(null); // Ref for auto-scrolling to tournament after URL navigation
   const matchViewRef = useRef(null); // Ref for auto-scrolling to match view
+  const [ghostMove, setGhostMove] = useState(null); // { from, to } — optimistic ghost from MoveMade event
 
   // Leaderboard State
   const [leaderboard, setLeaderboard] = useState([]);
@@ -2289,7 +2299,7 @@ export default function Chess() {
       const chessContract = new ethers.Contract(CONTRACT_ADDRESS, CHESS_ABI, signer);
 
       // Call enrollInTournament function with entry fee as value
-      const tx = await chessContract.enrollInTournament(tierId, instanceId, { value: feeInWei });
+      const tx = await chessContract.enrollInTournament(tierId, instanceId, { value: feeInWei,  });
       await tx.wait();
 
       // Refresh player activity panel immediately after enrollment
@@ -3450,7 +3460,9 @@ export default function Chess() {
         lastMoveTimestamp: lastMoveTime, // Use lastMoveTime as timestamp
         matchTimePerPlayer: tierMatchTime, // Pass through per-tier value for UI components
         timeoutConfig, // Pass timeout config to UI components
-        lastMove // Last move for highlighting (from events)
+        lastMove, // Last move for highlighting (from events)
+        packedBoard: matchData.packedBoard,
+        packedState: matchData.packedState
       };
     } catch (error) {
       console.error('Error refreshing match:', error);
@@ -3461,7 +3473,7 @@ export default function Chess() {
   // Races tx.wait() against a wall-clock timeout.
   // Rejects with Error('TX_TIMEOUT') if timeoutMs elapses first.
   // The underlying tx.wait() continues in the background — if it eventually confirms,
-  // the 2-second polling loop will detect the board change via refreshMatchData.
+  // the 1.5-second polling loop will detect the board change via refreshMatchData.
   const waitWithTimeout = (tx, timeoutMs) =>
     Promise.race([
       tx.wait(),
@@ -3475,6 +3487,23 @@ export default function Chess() {
     if (!currentMatch || !contract || !account) return;
 
     setMoveTxTimeout(null); // Clear any stale retry overlay before fresh attempt
+
+    // Client-side pre-validation: give a specific error without spending gas
+    if (currentMatch.packedBoard != null && currentMatch.packedState != null) {
+      const isWhite = currentMatch.firstPlayer?.toLowerCase() === account.toLowerCase();
+      const reason = validateMoveWithReason(
+        currentMatch.packedBoard,
+        currentMatch.packedState,
+        fromSquare,
+        toSquare,
+        isWhite,
+        promotion
+      );
+      if (reason) {
+        alert(`Invalid Move: ${reason}`);
+        return;
+      }
+    }
 
     // Attempt to make the move
     try {
@@ -3543,8 +3572,7 @@ export default function Chess() {
       } else if (errorString.includes('Match not active') || errorString.includes('match not active')) {
         errorMsg = 'Match is not active';
       } else if (errorString.includes('execution reverted')) {
-        // Generic contract revert - likely an invalid move
-        errorMsg = 'Invalid Move - This move is not allowed by chess rules';
+        errorMsg = 'Invalid Move';
       }
 
       alert(errorMsg);
@@ -4267,10 +4295,12 @@ export default function Chess() {
     return () => clearInterval(pollInterval);
   }, [viewingTournament?.tierId, viewingTournament?.instanceId, refreshTournamentBracket]);
 
-  // Poll current match every 2 seconds for live timer updates (using refs for seamless syncing)
+  // Poll current match every 3 seconds for live timer updates (using refs for seamless syncing)
   const currentMatchRef = useRef(currentMatch);
   const contractRefForMatch = useRef(contract);
   const accountRefForMatch = useRef(account);
+  const skipNextPollRef = useRef(false);
+  const doMatchSyncRef = useRef(null);
 
   // Keep refs updated
   useEffect(() => {
@@ -4289,6 +4319,12 @@ export default function Chess() {
       const userAccount = accountRefForMatch.current;
 
       if (!match || !contractInstance || !userAccount) return;
+
+      // Skip this poll cycle if the MoveMade event already triggered an immediate sync
+      if (skipNextPollRef.current) {
+        skipNextPollRef.current = false;
+        return;
+      }
 
       // Skip polling if match is completed AND modal has been shown
       // IMPORTANT: Keep polling if modal hasn't been shown yet to ensure it triggers
@@ -4499,6 +4535,8 @@ export default function Chess() {
               lastMoveTime: updatedMatch.lastMoveTime,
               lastMoveTimestamp: updatedMatch.lastMoveTimestamp,
               lastMove: updatedMatch.lastMove, // Update last move for highlighting
+              whiteInCheck: updatedMatch.whiteInCheck,
+              blackInCheck: updatedMatch.blackInCheck,
               // matchStatus, winner, loser, completionReason are preserved from prev (event-driven)
             };
           });
@@ -4526,11 +4564,45 @@ export default function Chess() {
       setSyncDots(1);
     };
 
-    // Poll every 2 seconds for turn/timer updates
-    const matchPollInterval = setInterval(doMatchSync, 2000);
+    doMatchSyncRef.current = doMatchSync;
+
+    // Poll every 3 seconds as fallback — MoveMade event listener handles fast path
+    const matchPollInterval = setInterval(doMatchSync, 1500);
 
     return () => clearInterval(matchPollInterval);
   }, [currentMatch?.tierId, currentMatch?.instanceId, currentMatch?.roundNumber, currentMatch?.matchNumber, account, refreshMatchData, fetchMoveHistory, matchTimePerPlayer]);
+
+  // MoveMade event listener — triggers immediate sync when opponent moves in this exact match
+  useEffect(() => {
+    if (!currentMatch || !contract || !account) return;
+
+    const match = currentMatchRef.current;
+    if (!match?.player1 || !match?.player2) return;
+
+    const matchId = ethers.solidityPackedKeccak256(
+      ['uint8', 'uint8', 'uint8', 'uint8'],
+      [match.tierId, match.instanceId, match.roundNumber, match.matchNumber]
+    );
+    const opponentAddress = match.player1.toLowerCase() === account.toLowerCase()
+      ? match.player2
+      : match.player1;
+
+    console.log('[Chess MoveMade] Setting up event listener for opponent:', opponentAddress);
+
+    const handleOpponentMove = (_matchId, _player, from, to) => {
+      console.log('[Chess MoveMade] Opponent move detected via event! from:', Number(from), 'to:', Number(to), '— syncing immediately');
+      setGhostMove({ from: Number(from), to: Number(to) });
+      skipNextPollRef.current = true;
+      doMatchSyncRef.current?.().then(() => setGhostMove(null)).catch(() => setGhostMove(null));
+    };
+
+    const filter = contract.filters.MoveMade(matchId, opponentAddress);
+    contract.on(filter, handleOpponentMove);
+
+    return () => {
+      contract.off(filter, handleOpponentMove);
+    };
+  }, [currentMatch?.tierId, currentMatch?.instanceId, currentMatch?.roundNumber, currentMatch?.matchNumber, contract, account]);
 
   // Increment match sync dots every second (1 -> 2 -> 3, resets on sync)
   useEffect(() => {
@@ -5299,6 +5371,7 @@ export default function Chess() {
             account={account}
             loading={matchLoading}
             syncDots={syncDots}
+            pendingOpponentMove={!!ghostMove}
             onClose={closeMatch}
             onClaimTimeoutWin={isSpectator ? null : handleClaimTimeoutWin}
             onForceEliminate={isSpectator ? null : handleForceEliminateStalledMatch}
@@ -5387,6 +5460,7 @@ export default function Chess() {
               lastMoveTimestamp={currentMatch.lastMoveTimestamp}
               matchTimePerPlayer={matchTimePerPlayer}
               maxSize={900}
+              ghostMove={ghostMove}
             />
           </GameMatchLayout>
 

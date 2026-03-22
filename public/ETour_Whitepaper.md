@@ -34,6 +34,9 @@ This whitepaper explains how ETour makes trustless competition possible.
   • [The Griefing Problem](#the-griefing-problem)
   • [The Bot Problem](#the-bot-problem)
   • [The Cost Problem](#the-cost-problem)
+  • [Where ETour Shines](#where-etour-shines)
+  • [Where ETour Falls Short (For Now)](#where-etour-falls-short-for-now)
+
 
 [3. How ETour Works](#3-how-etour-works)
   • [The Lifecycle of Tournaments](#the-lifecycle-of-tournaments)
@@ -85,12 +88,11 @@ Adding a Web3 layer to games is counterproductive unless it delivers on those co
 ETour inverts the typical Web3 gaming approach:
 
 ##### Traditional Web3 Gaming
-> Here's our token/coin/scheme. You must learn about its tokenomics, governance, and yield farming. 
-Oh, you there's also a game in there somewhere.
+> Here's our token/coin/scheme. You must learn about its tokenomics, governance, and yield farming. There's also a game somewhere.
 
 ##### ETour
-> Play games you already know over ETH stakes. 
-The winner takes the pot.
+> Play games you already know over ETH stakes. The winner takes the pot.
+
 
 ---
 
@@ -217,6 +219,31 @@ This isn't a gas problem. It's a design problem.
 
 ---
 
+#### Where ETour Shines
+ETour is at its best when players already know each other.
+
+Settling a score with a friend. Running a weekly tournament within a community. 
+
+Competing in a group where everyone can vouch that there's a real human on the other side.
+
+In these contexts, ETour delivers exactly what's missing from every other option 
+
+> Trustless stakes with guaranteed resolution. No one holds your money. No one can rig the bracket. No one can walk away without consequence.
+
+--- 
+
+
+#### Where ETour Falls Short (For Now)
+Open matchmaking against strangers is a different story.
+
+Without skill-based pairing, a first-time player might face a veteran. Without solved anti-bot measures, there's no guarantee your anonymous opponent isn't an engine. These are real limitations, not future roadmap items disguised as features.
+
+> We'd rather be honest about scope than pretend ETour is something it isn't.
+
+
+---
+
+
 ## 3. How ETour Works
 
 ### The Lifecycle of Tournaments
@@ -341,12 +368,6 @@ This is part of ETour's commitment to **sustainable & fair** distribution of fun
 
 ---
 
-### Solving Stalls Without Admins
-
-This section details ETour's approach to handling player griefing and stalling through escalating economic incentives. Rather than relying on admins, the protocol uses game theory to ensure tournaments always resolve. See Section 2 for the full explanation of the griefing problem and how ETour's escalation system works.
-
----
-
 ## 4. The Three-Game Demo
 
 Not every game belongs on ETour. At least no yet.
@@ -381,8 +402,6 @@ The high draw rate demonstrates our refund system: when both players draw, they 
 It's training wheels for trustless competition.
 
 But more importantly, TicTacToe proves a point: **even the simplest game becomes interesting with real stakes.** 
-
-That moment when you realize your opponent might not play perfectly. That they might crack under pressure. **That's when tic-tac-toe transforms from child's game to psychological battle.**
 
 --- 
 
