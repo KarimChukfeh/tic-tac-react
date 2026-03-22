@@ -35,7 +35,7 @@ import { shortenAddress, formatTime as formatTimeHMS, getTierName, getTournament
 import { parseTournamentParams } from './utils/urlHelpers';
 import { determineMatchResult } from './utils/matchCompletionHandler';
 import { fetchTierTimeoutConfig } from './utils/timeCalculations';
-import { HIGH_PRIORITY_TX } from './utils/txOptions';
+import { getHighPriorityTx } from './utils/txOptions';
 import { getCompletionReasonText, getCompletionReasonDescription, isDraw } from './utils/completionReasons';
 import { batchFetchTournaments, batchFetchIsEnrolled } from './utils/multicall';
 import { validateMoveWithReason } from './utils/chessValidator';
@@ -2105,7 +2105,7 @@ export default function Chess() {
       const signer = await provider.getSigner();
       const chessContract = new ethers.Contract(CONTRACT_ADDRESS, CHESS_ABI, signer);
 
-      const tx = await chessContract.executeProtocolRaffle(HIGH_PRIORITY_TX);
+      const tx = await chessContract.executeProtocolRaffle(await getHighPriorityTx(chessContract));
       console.log('Raffle transaction submitted:', tx.hash);
       alert('Raffle transaction submitted! Waiting for confirmation...');
 
@@ -2291,7 +2291,7 @@ export default function Chess() {
       const chessContract = new ethers.Contract(CONTRACT_ADDRESS, CHESS_ABI, signer);
 
       // Call enrollInTournament function with entry fee as value
-      const tx = await chessContract.enrollInTournament(tierId, instanceId, { value: feeInWei, ...HIGH_PRIORITY_TX });
+      const tx = await chessContract.enrollInTournament(tierId, instanceId, { value: feeInWei, ...(await getHighPriorityTx(chessContract)) });
       await tx.wait();
 
       // Refresh player activity panel immediately after enrollment
@@ -2446,7 +2446,7 @@ export default function Chess() {
         return;
       }
 
-      const tx = await chessContract.forceStartTournament(tierId, instanceId, HIGH_PRIORITY_TX);
+      const tx = await chessContract.forceStartTournament(tierId, instanceId, await getHighPriorityTx(chessContract));
       await tx.wait();
 
       alert('Tournament force-started successfully!');
@@ -2516,7 +2516,7 @@ export default function Chess() {
       const chessContract = new ethers.Contract(CONTRACT_ADDRESS, CHESS_ABI, signer);
 
       // Call contract function
-      const tx = await chessContract.resetEnrollmentWindow(tierId, instanceId, HIGH_PRIORITY_TX);
+      const tx = await chessContract.resetEnrollmentWindow(tierId, instanceId, await getHighPriorityTx(chessContract));
       console.log('Reset enrollment window transaction submitted:', tx.hash);
       alert('Transaction submitted! Waiting for confirmation...');
 
@@ -2614,7 +2614,7 @@ export default function Chess() {
         }
       }
 
-      const tx = await chessContract.claimAbandonedEnrollmentPool(tierId, instanceId, HIGH_PRIORITY_TX);
+      const tx = await chessContract.claimAbandonedEnrollmentPool(tierId, instanceId, await getHighPriorityTx(chessContract));
       await tx.wait();
 
       alert('Abandoned enrollment pool claimed successfully!');
@@ -3514,7 +3514,7 @@ export default function Chess() {
         fromSquare,
         toSquare,
         promotion,
-        HIGH_PRIORITY_TX
+        await getHighPriorityTx(contract)
       );
 
       await waitWithTimeout(tx, 90_000); // 90 s — Arbitrum is sub-second normally; stuck = network issue
@@ -3580,7 +3580,7 @@ export default function Chess() {
       setMatchLoading(true);
       const { tierId, instanceId, roundNumber, matchNumber } = currentMatch;
 
-      const tx = await contract.claimTimeoutWin(tierId, instanceId, roundNumber, matchNumber, HIGH_PRIORITY_TX);
+      const tx = await contract.claimTimeoutWin(tierId, instanceId, roundNumber, matchNumber, await getHighPriorityTx(contract));
       await tx.wait();
 
       // Refresh match data to get updated winner/loser
@@ -3617,7 +3617,7 @@ export default function Chess() {
       const signer = await provider.getSigner();
       const chessContract = new ethers.Contract(CONTRACT_ADDRESS, CHESS_ABI, signer);
 
-      const tx = await chessContract.forceEliminateStalledMatch(tierId, instanceId, roundNumber, matchNumber, HIGH_PRIORITY_TX);
+      const tx = await chessContract.forceEliminateStalledMatch(tierId, instanceId, roundNumber, matchNumber, await getHighPriorityTx(chessContract));
       await tx.wait();
 
       alert('Stalled match eliminated! Tournament can now continue.');
@@ -3661,7 +3661,7 @@ export default function Chess() {
       const signer = await provider.getSigner();
       const chessContract = new ethers.Contract(CONTRACT_ADDRESS, CHESS_ABI, signer);
 
-      const tx = await chessContract.claimMatchSlotByReplacement(tierId, instanceId, roundNumber, matchNumber, HIGH_PRIORITY_TX);
+      const tx = await chessContract.claimMatchSlotByReplacement(tierId, instanceId, roundNumber, matchNumber, await getHighPriorityTx(chessContract));
       await tx.wait();
 
       alert('Match slot claimed! You have replaced both players and advanced.');
