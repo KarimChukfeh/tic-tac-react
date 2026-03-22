@@ -36,7 +36,7 @@ import { parseTournamentParams } from './utils/urlHelpers';
 import { parseTicTacToeMatch } from './utils/matchDataParser';
 import { determineMatchResult } from './utils/matchCompletionHandler';
 import { fetchTierTimeoutConfig } from './utils/timeCalculations';
-import { getHighPriorityTx } from './utils/txOptions';
+// import { getHighPriorityTx } from './utils/txOptions';
 import { getCompletionReasonText, getCompletionReasonDescription, isDraw } from './utils/completionReasons';
 import { batchFetchTournaments, batchFetchIsEnrolled, checkInstanceEscalations } from './utils/multicall';
 import ParticleBackground from './components/shared/ParticleBackground';
@@ -1687,7 +1687,7 @@ export default function TicTacChain() {
     try {
       setRaffleSyncing(true);
 
-      const tx = await contract.executeProtocolRaffle(await getHighPriorityTx(contract));
+      const tx = await contract.executeProtocolRaffle();
       console.log('Raffle transaction submitted:', tx.hash);
       alert('Raffle transaction submitted! Waiting for confirmation...');
 
@@ -2106,7 +2106,7 @@ export default function TicTacChain() {
       const feeInWei = ethers.parseEther(entryFee);
 
       // Call enrollInTournament function with entry fee as value
-      const tx = await contract.enrollInTournament(tierId, instanceId, { value: feeInWei, ...(await getHighPriorityTx(contract)) });
+      const tx = await contract.enrollInTournament(tierId, instanceId, { value: feeInWei,  });
       await tx.wait();
 
       // Refresh player activity panel immediately after enrollment
@@ -2244,7 +2244,7 @@ export default function TicTacChain() {
         return;
       }
 
-      const tx = await contract.forceStartTournament(tierId, instanceId, await getHighPriorityTx(contract));
+      const tx = await contract.forceStartTournament(tierId, instanceId);
       await tx.wait();
 
       alert('Tournament force-started successfully!');
@@ -2309,7 +2309,7 @@ export default function TicTacChain() {
       }
 
       // Call contract function
-      const tx = await contract.resetEnrollmentWindow(tierId, instanceId, await getHighPriorityTx(contract));
+      const tx = await contract.resetEnrollmentWindow(tierId, instanceId);
       console.log('Reset enrollment window transaction submitted:', tx.hash);
       alert('Transaction submitted! Waiting for confirmation...');
 
@@ -2402,7 +2402,7 @@ export default function TicTacChain() {
         }
       }
 
-      const tx = await contract.claimAbandonedEnrollmentPool(tierId, instanceId, await getHighPriorityTx(contract));
+      const tx = await contract.claimAbandonedEnrollmentPool(tierId, instanceId);
       await tx.wait();
 
       alert('Abandoned enrollment pool claimed successfully!');
@@ -2952,7 +2952,7 @@ export default function TicTacChain() {
       moveTxInProgressRef.current = true; // Lock to prevent polling interference
       const { tierId, instanceId, roundNumber, matchNumber } = currentMatch;
 
-      const tx = await contract.makeMove(tierId, instanceId, roundNumber, matchNumber, cellIndex, await getHighPriorityTx(contract));
+      const tx = await contract.makeMove(tierId, instanceId, roundNumber, matchNumber, cellIndex);
       await waitWithTimeout(tx, 90_000); // 90 s — Arbitrum is sub-second normally; stuck = network issue
 
       const updated = await refreshMatchData(contract, account, currentMatch, matchTimePerPlayer);
@@ -3011,7 +3011,7 @@ export default function TicTacChain() {
       setMatchLoading(true);
       const { tierId, instanceId, roundNumber, matchNumber } = currentMatch;
 
-      const tx = await contract.claimTimeoutWin(tierId, instanceId, roundNumber, matchNumber, await getHighPriorityTx(contract));
+      const tx = await contract.claimTimeoutWin(tierId, instanceId, roundNumber, matchNumber);
       await tx.wait();
 
       // Refresh match data to get updated winner/loser
@@ -3043,7 +3043,7 @@ export default function TicTacChain() {
       setMatchLoading(true);
       const { tierId, instanceId, roundNumber, matchNumber } = match;
 
-      const tx = await contract.forceEliminateStalledMatch(tierId, instanceId, roundNumber, matchNumber, await getHighPriorityTx(contract));
+      const tx = await contract.forceEliminateStalledMatch(tierId, instanceId, roundNumber, matchNumber);
       await tx.wait();
 
       alert('Stalled match eliminated! Tournament can now continue.');
@@ -3082,7 +3082,7 @@ export default function TicTacChain() {
       setMatchLoading(true);
       const { tierId, instanceId, roundNumber, matchNumber } = match;
 
-      const tx = await contract.claimMatchSlotByReplacement(tierId, instanceId, roundNumber, matchNumber, await getHighPriorityTx(contract));
+      const tx = await contract.claimMatchSlotByReplacement(tierId, instanceId, roundNumber, matchNumber);
       await tx.wait();
 
       alert('Match slot claimed! You have replaced both players and advanced.');
@@ -3972,7 +3972,7 @@ export default function TicTacChain() {
     doMatchSyncRef.current = doMatchSync;
 
     // Poll every 3 seconds as fallback — MoveMade event listener handles fast path
-    const matchPollInterval = setInterval(doMatchSync, 3000);
+    const matchPollInterval = setInterval(doMatchSync, 1500);
 
     return () => clearInterval(matchPollInterval);
   }, [currentMatch?.tierId, currentMatch?.instanceId, currentMatch?.roundNumber, currentMatch?.matchNumber, account, refreshMatchData, fetchMoveHistory, matchTimePerPlayer]);
