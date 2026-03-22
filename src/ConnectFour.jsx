@@ -3812,10 +3812,12 @@ export default function ConnectFour() {
     return () => clearInterval(pollInterval);
   }, [viewingTournament?.tierId, viewingTournament?.instanceId, refreshTournamentBracket]);
 
-  // Poll current match every 2 seconds for live timer updates (using refs for seamless syncing)
+  // Poll current match every 3 seconds for live timer updates (using refs for seamless syncing)
   const currentMatchRef = useRef(currentMatch);
   const contractRefForMatch = useRef(contract);
   const accountRefForMatch = useRef(account);
+  const skipNextPollRef = useRef(false);
+  const doMatchSyncRef = useRef(null);
 
   // Keep refs updated
   useEffect(() => {
@@ -3834,6 +3836,12 @@ export default function ConnectFour() {
       const userAccount = accountRefForMatch.current;
 
       if (!match || !contractInstance || !userAccount) return;
+
+      // Skip this poll cycle if the MoveMade event already triggered an immediate sync
+      if (skipNextPollRef.current) {
+        skipNextPollRef.current = false;
+        return;
+      }
 
       // Skip polling if match is completed AND modal has been shown
       // IMPORTANT: Keep polling if modal hasn't been shown yet to ensure it triggers
@@ -4042,11 +4050,42 @@ export default function ConnectFour() {
       setSyncDots(1);
     };
 
-    // Poll every 1 second for turn/timer updates
-    const matchPollInterval = setInterval(doMatchSync, 1000);
+    doMatchSyncRef.current = doMatchSync;
+
+    // Poll every 3 seconds as fallback — MoveMade event listener handles fast path
+    const matchPollInterval = setInterval(doMatchSync, 3000);
 
     return () => clearInterval(matchPollInterval);
   }, [currentMatch?.tierId, currentMatch?.instanceId, currentMatch?.roundNumber, currentMatch?.matchNumber, account, refreshMatchData, fetchMoveHistory, matchTimePerPlayer]);
+
+  // MoveMade event listener — triggers immediate sync when opponent moves in this exact match
+  useEffect(() => {
+    if (!currentMatch || !contract || !account) return;
+
+    const match = currentMatchRef.current;
+    if (!match?.player1 || !match?.player2) return;
+
+    const matchId = ethers.solidityPackedKeccak256(
+      ['uint8', 'uint8', 'uint8', 'uint8'],
+      [match.tierId, match.instanceId, match.roundNumber, match.matchNumber]
+    );
+    const opponentAddress = match.player1.toLowerCase() === account.toLowerCase()
+      ? match.player2
+      : match.player1;
+
+    const handleOpponentMove = () => {
+      console.log('[Connect4 MoveMade] Opponent move detected via event, syncing immediately');
+      skipNextPollRef.current = true;
+      doMatchSyncRef.current?.();
+    };
+
+    const filter = contract.filters.MoveMade(matchId, opponentAddress);
+    contract.on(filter, handleOpponentMove);
+
+    return () => {
+      contract.off(filter, handleOpponentMove);
+    };
+  }, [currentMatch?.tierId, currentMatch?.instanceId, currentMatch?.roundNumber, currentMatch?.matchNumber, contract, account]);
 
   // Increment match sync dots every second (1 -> 2 -> 3, resets on sync)
   useEffect(() => {
