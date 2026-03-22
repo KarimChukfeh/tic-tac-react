@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
 
-const PRIORITY_TIP = ethers.parseUnits('0.1', 'gwei');
+const PRIORITY_TIP = ethers.parseUnits('0.03', 'gwei');
 
 // Returns EIP-1559 tx overrides that give slightly above-average priority
 // without violating the maxFeePerGas >= maxPriorityFeePerGas invariant.
