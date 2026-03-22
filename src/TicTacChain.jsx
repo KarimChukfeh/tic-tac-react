@@ -430,6 +430,7 @@ export default function TicTacChain() {
   const matchEndModalShownRef = useRef(false); // Prevent duplicate modal triggers from polling
   const tournamentBracketRef = useRef(null); // Ref for auto-scrolling to tournament after URL navigation
   const matchViewRef = useRef(null); // Ref for auto-scrolling to match view
+  const [ghostMove, setGhostMove] = useState(null); // { cellIndex } — optimistic ghost from MoveMade event
 
   // Leaderboard State
   const [leaderboard, setLeaderboard] = useState([]);
@@ -3991,10 +3992,13 @@ export default function TicTacChain() {
       ? match.player2
       : match.player1;
 
-    const handleOpponentMove = () => {
-      console.log('[MoveMade] Opponent move detected via event, syncing immediately');
+    console.log('[MoveMade] Setting up event listener for opponent:', opponentAddress);
+
+    const handleOpponentMove = (_matchId, _player, cellIndex) => {
+      console.log('[MoveMade] Opponent move detected via event! cellIndex:', Number(cellIndex), '— syncing immediately');
+      setGhostMove({ cellIndex: Number(cellIndex) });
       skipNextPollRef.current = true;
-      doMatchSyncRef.current?.();
+      doMatchSyncRef.current?.().then(() => setGhostMove(null)).catch(() => setGhostMove(null));
     };
 
     const filter = contract.filters.MoveMade(matchId, opponentAddress);
@@ -4419,6 +4423,7 @@ export default function TicTacChain() {
             account={account}
             loading={matchLoading}
             syncDots={syncDots}
+            pendingOpponentMove={!!ghostMove}
             onClose={closeMatch}
             onClaimTimeoutWin={isSpectator ? null : handleClaimTimeoutWin}
             onForceEliminate={isSpectator ? null : handleForceEliminateStalledMatch}
@@ -4475,10 +4480,16 @@ export default function TicTacChain() {
                   const firstPlayerCellValue = isPlayer1First ? 1 : 2;
 
                   return currentMatch.board.map((cell, idx) => {
+                    const isGhost = cell === 0 && ghostMove?.cellIndex === idx;
                     // Determine what to display and color based on firstPlayer
                     const isFirstPlayerCell = cell === firstPlayerCellValue;
-                    const cellSymbol = cell === 0 ? '' : (isFirstPlayerCell ? 'X' : 'O');
-                    const cellColorClass = cell === 0
+                    // Ghost symbol is always the opponent's symbol
+                    const isOpponentFirst = currentMatch.firstPlayer?.toLowerCase() !== account?.toLowerCase();
+                    const ghostSymbol = isOpponentFirst ? 'X' : 'O';
+                    const cellSymbol = cell === 0 ? (isGhost ? ghostSymbol : '') : (isFirstPlayerCell ? 'X' : 'O');
+                    const cellColorClass = isGhost
+                      ? 'bg-purple-500/20 text-white/30 animate-pulse cursor-not-allowed'
+                      : cell === 0
                       ? 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-200'
                       : isFirstPlayerCell
                       ? 'bg-blue-500/40 text-blue-200'
@@ -4488,7 +4499,7 @@ export default function TicTacChain() {
                       <button
                         key={idx}
                         onClick={isSpectator ? null : () => handleCellClick(idx)}
-                        disabled={isSpectator || matchLoading || currentMatch.matchStatus === 2 || !currentMatch.isYourTurn}
+                        disabled={isSpectator || matchLoading || currentMatch.matchStatus === 2 || !currentMatch.isYourTurn || isGhost}
                         className={`aspect-square rounded-xl flex items-center justify-center text-4xl font-bold transition-all transform hover:scale-105 disabled:cursor-not-allowed ${cellColorClass}`}
                       >
                         {cellSymbol}

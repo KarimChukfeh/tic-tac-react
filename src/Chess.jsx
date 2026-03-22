@@ -475,7 +475,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, /* onSpectate
 };
 
 // Chess Board Component - copied from Chess.jsx
-const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, firstPlayer, matchStatus, loading, whiteInCheck, blackInCheck, lastMoveTime, startTime, lastMove, maxSize = 520 }) => {
+const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, firstPlayer, matchStatus, loading, whiteInCheck, blackInCheck, lastMoveTime, startTime, lastMove, maxSize = 520, ghostMove }) => {
   // Debug: Log lastMove prop with details
   useEffect(() => {
     console.log('[ChessBoard] lastMove updated:', lastMove);
@@ -649,6 +649,10 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
       const pieceType = piece ? Number(piece.pieceType) : 0;
       const pieceColor = piece ? Number(piece.color) : 0;
       const isKingInCheck = pieceType === 6 && ((pieceColor === 1 && whiteInCheck) || (pieceColor === 2 && blackInCheck));
+      const isGhostFrom = ghostMove && ghostMove.from === actualIdx;
+      const isGhostTo = ghostMove && ghostMove.to === actualIdx;
+      // The piece that will appear at the ghost-to square is the piece currently at ghost-from
+      const ghostPiece = ghostMove && board[ghostMove.from] ? board[ghostMove.from] : null;
       const displayRow = Math.floor(displayIdx / 8);
       const displayCol = displayIdx % 8;
       const showRankLabel = displayCol === 0;
@@ -709,8 +713,11 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
         return undefined; // Use default bg from class
       };
 
-      squares.push(<div key={displayIdx} onClick={() => handleSquareClick(displayIdx)} className={'relative flex items-center justify-center cursor-pointer transition-all duration-200 ' + (isLight ? 'bg-stone-300' : 'bg-stone-700') + (isSelected ? ' ring-2 ring-emerald-400 ring-inset bg-emerald-500/50' : '') + (isKingInCheck ? ' bg-red-500/50 ring-2 ring-red-400 ring-inset' : '') + ' ' + getLastMoveFromClass() + ' ' + getLastMoveToClass() + (isMyTurn && isMyPiece(piece) && !isSelected ? ' hover:bg-emerald-500/30' : '') + (isMyTurn && isPotentialTarget ? ' hover:bg-yellow-400/40' : '')} style={{ boxShadow: isSelected ? 'inset 0 0 20px rgba(16, 185, 129, 0.5)' : getLastMoveShadow(), background: getSquareBg() }}>
-        {getPieceSvg(piece) && <img src={getPieceSvg(piece)} alt="" className={'w-3/4 h-3/4 select-none transition-all duration-300 ' + (isSelected ? 'scale-110' : '')} style={{ opacity: hideForAnimation ? 0 : 1, filter: getPieceGlow() }} draggable="false" />}
+      const ghostFromClass = isGhostFrom ? ' ring-2 ring-orange-400/60 ring-inset' : '';
+      const ghostToClass = isGhostTo ? ' ring-2 ring-orange-400 ring-inset' : '';
+      squares.push(<div key={displayIdx} onClick={() => handleSquareClick(displayIdx)} className={'relative flex items-center justify-center cursor-pointer transition-all duration-200 ' + (isLight ? 'bg-stone-300' : 'bg-stone-700') + (isSelected ? ' ring-2 ring-emerald-400 ring-inset bg-emerald-500/50' : '') + (isKingInCheck ? ' bg-red-500/50 ring-2 ring-red-400 ring-inset' : '') + ' ' + getLastMoveFromClass() + ' ' + getLastMoveToClass() + ghostFromClass + ghostToClass + (isMyTurn && isMyPiece(piece) && !isSelected ? ' hover:bg-emerald-500/30' : '') + (isMyTurn && isPotentialTarget ? ' hover:bg-yellow-400/40' : '')} style={{ boxShadow: isSelected ? 'inset 0 0 20px rgba(16, 185, 129, 0.5)' : getLastMoveShadow(), background: isGhostTo ? 'rgba(251, 146, 60, 0.25)' : getSquareBg() }}>
+        {getPieceSvg(piece) && <img src={getPieceSvg(piece)} alt="" className={'w-3/4 h-3/4 select-none transition-all duration-300 ' + (isSelected ? 'scale-110' : '') + (isGhostFrom ? ' opacity-30' : '')} style={{ opacity: hideForAnimation ? 0 : 1, filter: getPieceGlow() }} draggable="false" />}
+        {isGhostTo && ghostPiece && getPieceSvg(ghostPiece) && <img src={getPieceSvg(ghostPiece)} alt="" className="w-3/4 h-3/4 select-none absolute animate-pulse" style={{ opacity: 0.4 }} draggable="false" />}
         {showRankLabel && <span className={'absolute left-1 top-0.5 text-[10px] font-medium ' + (isLight ? 'text-slate-500' : 'text-slate-600')}>{rankLabel}</span>}
         {showFileLabel && <span className={'absolute right-1 bottom-0.5 text-[10px] font-medium ' + (isLight ? 'text-slate-500' : 'text-slate-600')}>{fileLabel}</span>}
       </div>);
@@ -816,6 +823,7 @@ export default function Chess() {
   const matchEndModalShownRef = useRef(false); // Prevent duplicate modal triggers from polling
   const tournamentBracketRef = useRef(null); // Ref for auto-scrolling to tournament after URL navigation
   const matchViewRef = useRef(null); // Ref for auto-scrolling to match view
+  const [ghostMove, setGhostMove] = useState(null); // { from, to } — optimistic ghost from MoveMade event
 
   // Leaderboard State
   const [leaderboard, setLeaderboard] = useState([]);
@@ -4580,10 +4588,13 @@ export default function Chess() {
       ? match.player2
       : match.player1;
 
-    const handleOpponentMove = () => {
-      console.log('[Chess MoveMade] Opponent move detected via event, syncing immediately');
+    console.log('[Chess MoveMade] Setting up event listener for opponent:', opponentAddress);
+
+    const handleOpponentMove = (_matchId, _player, from, to) => {
+      console.log('[Chess MoveMade] Opponent move detected via event! from:', Number(from), 'to:', Number(to), '— syncing immediately');
+      setGhostMove({ from: Number(from), to: Number(to) });
       skipNextPollRef.current = true;
-      doMatchSyncRef.current?.();
+      doMatchSyncRef.current?.().then(() => setGhostMove(null)).catch(() => setGhostMove(null));
     };
 
     const filter = contract.filters.MoveMade(matchId, opponentAddress);
@@ -5361,6 +5372,7 @@ export default function Chess() {
             account={account}
             loading={matchLoading}
             syncDots={syncDots}
+            pendingOpponentMove={!!ghostMove}
             onClose={closeMatch}
             onClaimTimeoutWin={isSpectator ? null : handleClaimTimeoutWin}
             onForceEliminate={isSpectator ? null : handleForceEliminateStalledMatch}
@@ -5449,6 +5461,7 @@ export default function Chess() {
               lastMoveTimestamp={currentMatch.lastMoveTimestamp}
               matchTimePerPlayer={matchTimePerPlayer}
               maxSize={900}
+              ghostMove={ghostMove}
             />
           </GameMatchLayout>
 

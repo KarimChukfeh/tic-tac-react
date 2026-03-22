@@ -238,7 +238,8 @@ const ConnectFourBoard = ({
   matchStatus,
   loading,
   winner,
-  lastColumn
+  lastColumn,
+  ghostMove
 }) => {
   const [hoveredColumn, setHoveredColumn] = useState(-1);
   const [boardSize, setBoardSize] = useState(null);
@@ -264,6 +265,7 @@ const ConnectFourBoard = ({
   // Color based on who goes first: firstPlayer = 1 (RED), second player = 2 (BLUE)
   const isFirstPlayer = account && firstPlayer?.toLowerCase() === account.toLowerCase();
   const myColor = isFirstPlayer ? 1 : (isPlayer1 || isPlayer2) ? 2 : 0;
+  const opponentColor = myColor === 1 ? 2 : 1;
 
   const grid = boardToGrid(board);
 
@@ -351,6 +353,7 @@ const ConnectFourBoard = ({
                 const topDiscRow = getTopDiscRow(colIdx);
                 const isLastMove = lastColumn === colIdx && topDiscRow === rowIdx;
                 const isPreview = rowIdx === previewRow && colIdx === hoveredColumn && isMyTurn && matchStatus === 1;
+                const isGhost = cell === 0 && ghostMove?.column === colIdx && ghostMove?.row === rowIdx;
 
                 // Debug logging for last move
                 if (isLastMove) {
@@ -400,6 +403,18 @@ const ConnectFourBoard = ({
                               ? '0 0 20px 4px rgba(255, 0, 68, 0.8), 0 0 40px 8px rgba(255, 0, 68, 0.4), inset 0 -4px 8px rgba(0,0,0,0.3)'
                               : '0 0 20px 4px rgba(0, 119, 255, 0.8), 0 0 40px 8px rgba(0, 119, 255, 0.4), inset 0 -4px 8px rgba(0,0,0,0.3)'
                             : 'inset 0 -4px 8px rgba(0,0,0,0.3)'
+                        }}
+                      />
+                    ) : isGhost ? (
+                      <div
+                        className="rounded-full animate-pulse"
+                        style={{
+                          width: cellSize - 8,
+                          height: cellSize - 8,
+                          opacity: 0.35,
+                          background: opponentColor === 1
+                            ? 'radial-gradient(circle at 30% 30%, #ff0044, #bb0033)'
+                            : 'radial-gradient(circle at 30% 30%, #0077ff, #0055aa)'
                         }}
                       />
                     ) : isPreview ? (
@@ -784,6 +799,7 @@ export default function ConnectFour() {
   const matchEndModalShownRef = useRef(false); // Prevent duplicate modal triggers from polling
   const tournamentBracketRef = useRef(null); // Ref for auto-scrolling to tournament after URL navigation
   const matchViewRef = useRef(null); // Ref for auto-scrolling to match view
+  const [ghostMove, setGhostMove] = useState(null); // { column, row } — optimistic ghost from MoveMade event
 
   // Leaderboard State
   const [leaderboard, setLeaderboard] = useState([]);
@@ -4073,10 +4089,13 @@ export default function ConnectFour() {
       ? match.player2
       : match.player1;
 
-    const handleOpponentMove = () => {
-      console.log('[Connect4 MoveMade] Opponent move detected via event, syncing immediately');
+    console.log('[Connect4 MoveMade] Setting up event listener for opponent:', opponentAddress);
+
+    const handleOpponentMove = (_matchId, _player, column, row) => {
+      console.log('[Connect4 MoveMade] Opponent move detected via event! column:', Number(column), 'row:', Number(row), '— syncing immediately');
+      setGhostMove({ column: Number(column), row: Number(row) });
       skipNextPollRef.current = true;
-      doMatchSyncRef.current?.();
+      doMatchSyncRef.current?.().then(() => setGhostMove(null)).catch(() => setGhostMove(null));
     };
 
     const filter = contract.filters.MoveMade(matchId, opponentAddress);
@@ -4501,6 +4520,7 @@ export default function ConnectFour() {
           <div ref={matchViewRef}>
             <GameMatchLayout
             gameType="connectfour"
+            pendingOpponentMove={!!ghostMove}
             match={currentMatch}
             account={account}
             loading={matchLoading}
@@ -4599,6 +4619,7 @@ export default function ConnectFour() {
                 loading={matchLoading}
                 winner={currentMatch.winner}
                 lastColumn={currentMatch.lastColumn}
+                ghostMove={ghostMove}
               />
             </div>
           </GameMatchLayout>
