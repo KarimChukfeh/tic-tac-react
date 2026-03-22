@@ -15,7 +15,7 @@ export async function getHighPriorityTx(contract) {
     const baseFee = feeData.lastBaseFeePerGas ?? feeData.gasPrice ?? 0n;
     return {
       maxPriorityFeePerGas: PRIORITY_TIP,
-      maxFeePerGas: baseFee * 2n + PRIORITY_TIP,
+      maxFeePerGas: baseFee + PRIORITY_TIP,
     };
   } catch {
     return {};
