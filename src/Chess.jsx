@@ -4499,6 +4499,8 @@ export default function Chess() {
               lastMoveTime: updatedMatch.lastMoveTime,
               lastMoveTimestamp: updatedMatch.lastMoveTimestamp,
               lastMove: updatedMatch.lastMove, // Update last move for highlighting
+              whiteInCheck: updatedMatch.whiteInCheck,
+              blackInCheck: updatedMatch.blackInCheck,
               // matchStatus, winner, loser, completionReason are preserved from prev (event-driven)
             };
           });
