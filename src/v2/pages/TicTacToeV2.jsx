@@ -135,6 +135,7 @@ export default function TicTacToeV2() {
   const [factory, setFactory] = useState(null);
   const [browserProvider, setBrowserProvider] = useState(null);
   const [account, setAccount] = useState('');
+  const [walletBootDone, setWalletBootDone] = useState(!isWalletAvailable());
   const [balance, setBalance] = useState(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [isWhyArbitrumExpanded, setIsWhyArbitrumExpanded] = useState(true);
@@ -196,9 +197,10 @@ export default function TicTacToeV2() {
       const accounts = await provider.send('eth_accounts', []);
       setBrowserProvider(provider);
       setAccount(accounts[0] || '');
+      setWalletBootDone(true);
     };
 
-    bootWallet().catch(() => {});
+    bootWallet().catch(() => { setWalletBootDone(true); });
   }, []);
 
   useEffect(() => {
@@ -263,6 +265,10 @@ export default function TicTacToeV2() {
           minEntryFee,
           feeIncrement,
         });
+        setCreateForm(prev => ({
+          ...prev,
+          entryFee: ethers.formatEther(minEntryFee),
+        }));
         setTiers(normalizedTiers);
         setInstances(snapshots);
         setLastUpdated(Date.now());
@@ -306,7 +312,7 @@ export default function TicTacToeV2() {
           instance.getPrizeDistribution(),
           instance.getBracket(),
           account ? instance.isEnrolled(account) : Promise.resolve(false),
-          account ? instance.getPlayerResult(account) : Promise.resolve(null),
+          account ? instance.getPlayerResult(account).catch(() => null) : Promise.resolve(null),
         ]);
 
         const totalRounds = Number(bracket.totalRounds);
@@ -482,13 +488,35 @@ export default function TicTacToeV2() {
       const signer = await browserProvider.getSigner();
       const creator = await signer.getAddress();
       const writableFactory = getFactoryContract(signer);
-      const countBefore = Number(await writableFactory.getInstanceCount());
+      const readFactory = getFactoryContract(rpcProviderRef.current);
+
+      setActionState({ type: 'info', message: 'Reading contract constraints...' });
+      const [countBeforeRaw, minFeeRaw, feeIncrementRaw, maxFeeRaw] = await Promise.all([
+        readFactory.getInstanceCount(),
+        readFactory.MIN_ENTRY_FEE(),
+        readFactory.FEE_INCREMENT(),
+        readFactory.maxEntryFee(),
+      ]);
+      const countBefore = Number(countBeforeRaw);
       const entryFeeWei = ethers.parseEther(createForm.entryFee);
+
+      if (entryFeeWei < minFeeRaw) {
+        throw new Error(`Entry fee too low. Minimum is ${ethers.formatEther(minFeeRaw)} ETH.`);
+      }
+      if (maxFeeRaw > 0n && entryFeeWei > maxFeeRaw) {
+        throw new Error(`Entry fee too high. Maximum is ${ethers.formatEther(maxFeeRaw)} ETH.`);
+      }
+      if (feeIncrementRaw > 0n && entryFeeWei % feeIncrementRaw !== 0n) {
+        throw new Error(`Entry fee must be a multiple of ${ethers.formatEther(feeIncrementRaw)} ETH (increment).`);
+      }
+
+      setActionState({ type: 'info', message: 'Sending createInstance transaction...' });
       const tx = await writableFactory.createInstance(
         Number(createForm.playerCount),
         entryFeeWei,
         buildTimeoutConfig(createForm)
       );
+      setActionState({ type: 'info', message: 'Waiting for confirmation...' });
       const receipt = await tx.wait();
       const address = await resolveCreatedInstanceAddress({
         factory: getFactoryContract(rpcProviderRef.current),
@@ -504,10 +532,7 @@ export default function TicTacToeV2() {
       }
 
       const readInstance = getInstanceContract(address, rpcProviderRef.current);
-      const [info, tournament] = await Promise.all([
-        readInstance.getInstanceInfo(),
-        readInstance.tournament(),
-      ]);
+      const info = await readInstance.getInstanceInfo();
 
       const createdAt = Number(info.createdAt || 0);
       const instanceCreator = info.instanceCreator;
@@ -628,27 +653,6 @@ export default function TicTacToeV2() {
 
   const currentInstances = instances.filter(instance => instance.status === 0 || instance.status === 1);
 
-  if (dashboardLoading && !lastUpdated) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 text-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="relative mb-8">
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-32 h-32 border-4 border-blue-500/30 rounded-full"></div>
-            </div>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-32 h-32 border-4 border-transparent border-t-blue-500 rounded-full animate-spin"></div>
-            </div>
-            <div className="relative flex items-center justify-center w-32 h-32 mx-auto">
-              <Grid className="text-blue-400 animate-pulse" size={48} />
-            </div>
-          </div>
-          <h2 className="text-2xl font-bold text-blue-300 mb-2">Loading Game Data</h2>
-          <p className="text-blue-400/70">Connecting to TicTacToe v2 on-chain state...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div
@@ -764,7 +768,7 @@ export default function TicTacToeV2() {
             </div>
           </div>
 
-          {!account ? (
+          {walletBootDone && !account ? (
             <div className="w-full max-w-lg mx-auto">
               <button
                 onClick={connectWallet}
@@ -859,14 +863,26 @@ export default function TicTacToeV2() {
                 <div className="text-sm text-slate-400">
                   {getTournamentTypeLabel(createForm.playerCount)} format. Timeouts and escalation values use the built-in defaults for this player count.
                 </div>
-                <button
-                  type="submit"
-                  disabled={createLoading}
-                  className={`w-full md:w-auto flex items-center justify-center gap-3 bg-gradient-to-r ${currentTheme.buttonGradient} ${currentTheme.buttonHover} px-8 py-4 rounded-2xl font-bold text-xl shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
-                >
-                  {createLoading ? <Loader size={22} className="animate-spin" /> : <Plus size={22} />}
-                  {createLoading ? 'Creating Instance...' : 'Create V2 Instance'}
-                </button>
+                {walletBootDone && !account ? (
+                  <button
+                    type="button"
+                    onClick={connectWallet}
+                    disabled={isConnecting}
+                    className={`w-full md:w-auto flex items-center justify-center gap-3 bg-gradient-to-r ${currentTheme.buttonGradient} ${currentTheme.buttonHover} px-8 py-4 rounded-2xl font-bold text-xl shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
+                  >
+                    {isConnecting ? <Loader size={22} className="animate-spin" /> : <Wallet size={22} />}
+                    {isConnecting ? 'Connecting...' : 'Connect to Create'}
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    disabled={createLoading}
+                    className={`w-full md:w-auto flex items-center justify-center gap-3 bg-gradient-to-r ${currentTheme.buttonGradient} ${currentTheme.buttonHover} px-8 py-4 rounded-2xl font-bold text-xl shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
+                  >
+                    {createLoading ? <Loader size={22} className="animate-spin" /> : <Plus size={22} />}
+                    {createLoading ? 'Creating Instance...' : 'Create V2 Instance'}
+                  </button>
+                )}
               </div>
             </div>
           </form>
@@ -917,30 +933,42 @@ export default function TicTacToeV2() {
                 </div>
 
                 <div className="flex flex-wrap gap-3">
-                  <button
-                    type="button"
-                    onClick={enrollInSelected}
-                    disabled={!account || selectedInstance.isEnrolled}
-                    className={`bg-gradient-to-r ${currentTheme.buttonGradient} ${currentTheme.buttonHover} px-6 py-3 rounded-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
-                  >
-                    {selectedInstance.isEnrolled ? 'Already Enrolled' : `Enroll for ${selectedInstance.entryFeeEth} ETH`}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={forceStartSelected}
-                    disabled={!account}
-                    className="bg-purple-500/20 hover:bg-purple-500/30 border border-purple-400/30 text-purple-200 px-6 py-3 rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Force Start
-                  </button>
-                  <button
-                    type="button"
-                    onClick={claimAbandonedPool}
-                    disabled={!account}
-                    className="bg-red-500/20 hover:bg-red-500/30 border border-red-400/30 text-red-200 px-6 py-3 rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Claim Abandoned Pool
-                  </button>
+                  {walletBootDone && !account ? (
+                    <button
+                      type="button"
+                      onClick={connectWallet}
+                      disabled={isConnecting}
+                      className={`flex items-center gap-2 bg-gradient-to-r ${currentTheme.buttonGradient} ${currentTheme.buttonHover} px-6 py-3 rounded-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
+                    >
+                      {isConnecting ? <Loader size={18} className="animate-spin" /> : <Wallet size={18} />}
+                      {isConnecting ? 'Connecting...' : 'Connect Wallet'}
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={enrollInSelected}
+                        disabled={selectedInstance.isEnrolled}
+                        className={`bg-gradient-to-r ${currentTheme.buttonGradient} ${currentTheme.buttonHover} px-6 py-3 rounded-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
+                      >
+                        {selectedInstance.isEnrolled ? 'Already Enrolled' : `Enroll for ${selectedInstance.entryFeeEth} ETH`}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={forceStartSelected}
+                        className="bg-purple-500/20 hover:bg-purple-500/30 border border-purple-400/30 text-purple-200 px-6 py-3 rounded-xl font-semibold transition-all"
+                      >
+                        Force Start
+                      </button>
+                      <button
+                        type="button"
+                        onClick={claimAbandonedPool}
+                        className="bg-red-500/20 hover:bg-red-500/30 border border-red-400/30 text-red-200 px-6 py-3 rounded-xl font-semibold transition-all"
+                      >
+                        Claim Abandoned Pool
+                      </button>
+                    </>
+                  )}
                 </div>
 
                 <div className="grid xl:grid-cols-[0.72fr_1.28fr] gap-6">
@@ -1085,7 +1113,12 @@ export default function TicTacToeV2() {
         )}
 
         <SectionShell title="Current Instances">
-          {currentInstances.length === 0 ? (
+          {dashboardLoading && !lastUpdated ? (
+            <div className="bg-slate-900/50 border border-purple-400/20 rounded-2xl p-6 flex items-center gap-3 text-purple-200/80">
+              <Loader size={18} className="animate-spin shrink-0" />
+              Loading on-chain state...
+            </div>
+          ) : currentInstances.length === 0 ? (
             <div className="bg-slate-900/50 border border-purple-400/20 rounded-2xl p-6 text-purple-200/80">
               No uncompleted instances right now. Create a new one to open the queue.
             </div>

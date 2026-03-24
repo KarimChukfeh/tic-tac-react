@@ -1,12 +1,12 @@
 import { ethers } from 'ethers';
-import TicTacToeV2Bundle from '../../TicTacChainFactory-ABI.json';
+import ETourABIs from '../ABIs/ETour-Factory-ABIs.json';
 
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
-export const TICTACTOE_V2_FACTORY_ADDRESS = TicTacToeV2Bundle.factory.address;
-export const TICTACTOE_V2_FACTORY_ABI = TicTacToeV2Bundle.factory.abi;
-export const TICTACTOE_V2_INSTANCE_ABI = TicTacToeV2Bundle.instance.abi;
-export const TICTACTOE_V2_IMPLEMENTATION_ADDRESS = TicTacToeV2Bundle.instance.address;
+export const TICTACTOE_V2_FACTORY_ADDRESS = ETourABIs.factories.TicTacChainFactory.address;
+export const TICTACTOE_V2_FACTORY_ABI = ETourABIs.factories.TicTacChainFactory.abi;
+export const TICTACTOE_V2_INSTANCE_ABI = ETourABIs.instances.TicTacInstance.abi;
+export const TICTACTOE_V2_IMPLEMENTATION_ADDRESS = ETourABIs.instances.TicTacInstance.address;
 
 export const PLAYER_COUNT_OPTIONS = [2, 4, 8, 16, 32, 64];
 
