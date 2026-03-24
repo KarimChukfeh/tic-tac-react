@@ -1,7 +1,7 @@
 {
   "network": "localhost",
   "chainId": "412346",
-  "deployedAt": "2026-03-24T07:58:06.044Z",
+  "deployedAt": "2026-03-24T08:13:59.061Z",
   "modules": {
     "ETourInstance_Core": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
     "ETourInstance_Matches": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
@@ -9,7 +9,7 @@
     "ETourInstance_Escalation": "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9"
   },
   "factory": {
-    "address": "0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6",
+    "address": "0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0",
     "abi": [
       {
         "inputs": [
@@ -1033,7 +1033,7 @@
     ]
   },
   "instance": {
-    "address": "0x94099942864EA81cCF197E9D71ac53310b1468D8",
+    "address": "0x1F708C24a0D3A740cD47cC0444E9480899f3dA7D",
     "abi": [
       {
         "inputs": [],

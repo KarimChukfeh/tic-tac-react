@@ -1,12 +1,12 @@
 import { ethers } from 'ethers';
-import ETourABIs from '../ABIs/ETour-Factory-ABIs.json';
+import TicTacChainFactoryABIData from '../ABIs/TicTacChainFactory-ABI.json';
 
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
-export const TICTACTOE_V2_FACTORY_ADDRESS = ETourABIs.factories.TicTacChainFactory.address;
-export const TICTACTOE_V2_FACTORY_ABI = ETourABIs.factories.TicTacChainFactory.abi;
-export const TICTACTOE_V2_INSTANCE_ABI = ETourABIs.instances.TicTacInstance.abi;
-export const TICTACTOE_V2_IMPLEMENTATION_ADDRESS = ETourABIs.instances.TicTacInstance.address;
+export const TICTACTOE_V2_FACTORY_ADDRESS = TicTacChainFactoryABIData.factory.address;
+export const TICTACTOE_V2_FACTORY_ABI = TicTacChainFactoryABIData.factory.abi;
+export const TICTACTOE_V2_INSTANCE_ABI = TicTacChainFactoryABIData.instance.abi;
+export const TICTACTOE_V2_IMPLEMENTATION_ADDRESS = TicTacChainFactoryABIData.instance.address;
 
 export const PLAYER_COUNT_OPTIONS = [2, 4, 8, 16, 32, 64];
 
@@ -310,4 +310,40 @@ export async function resolveCreatedInstanceAddress({
   }
 
   return null;
+}
+
+function decodeRevertData(data) {
+  if (typeof data !== 'string' || !data.startsWith('0x08c379a0')) {
+    return null;
+  }
+
+  try {
+    const [reason] = ethers.AbiCoder.defaultAbiCoder().decode(['string'], `0x${data.slice(10)}`);
+    return reason;
+  } catch {
+    return null;
+  }
+}
+
+export function getReadableError(error, fallback = 'Transaction failed.') {
+  const revertData = error?.data?.data
+    || error?.info?.error?.data
+    || error?.error?.data?.data
+    || error?.error?.data;
+
+  const decodedReason = decodeRevertData(revertData);
+  if (decodedReason) {
+    return decodedReason;
+  }
+
+  const nestedMessage = error?.data?.message
+    || error?.info?.error?.message
+    || error?.error?.data?.message
+    || error?.error?.message;
+
+  if (nestedMessage) {
+    return nestedMessage;
+  }
+
+  return error?.shortMessage || error?.message || fallback;
 }

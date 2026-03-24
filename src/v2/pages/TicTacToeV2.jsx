@@ -26,7 +26,7 @@ import { getCompletionReasonText } from '../../utils/completionReasons';
 import ParticleBackground from '../../components/shared/ParticleBackground';
 import WhyArbitrum from '../../components/shared/WhyArbitrum';
 import ConnectedWalletCard from '../../components/shared/ConnectedWalletCard';
-import TicTacToeBoard from '../components/TicTacToeBoard';
+import TicTacToeBoard from '../components/TicTacToeBoard.jsx';
 import {
   PLAYER_COUNT_OPTIONS,
   TICTACTOE_V2_FACTORY_ADDRESS,
@@ -37,13 +37,13 @@ import {
   formatTimestamp,
   getDefaultTimeouts,
   getFactoryContract,
+  getReadableError,
   getInstanceContract,
   getRoundLabel,
   getTournamentTypeLabel,
   isZeroAddress,
   normalizeInstanceSnapshot,
   normalizeMatch,
-  normalizeTierConfig,
   resolveCreatedInstanceAddress,
 } from '../lib/tictactoe';
 
@@ -105,10 +105,6 @@ function MetricBox({ label, value, subtext, tone = 'blue' }) {
   );
 }
 
-function timeoutFieldId(key) {
-  return `timeout-${key}`;
-}
-
 function SectionShell({ title, children, right = null, id = null }) {
   return (
     <div id={id} className="mb-10">
@@ -143,9 +139,8 @@ export default function TicTacToeV2() {
 
   const [dashboardLoading, setDashboardLoading] = useState(true);
   const [dashboardError, setDashboardError] = useState('');
-  const [tiers, setTiers] = useState([]);
-  const [instances, setInstances] = useState([]);
   const [factoryRules, setFactoryRules] = useState(null);
+  const [implementationAddress, setImplementationAddress] = useState(TICTACTOE_V2_IMPLEMENTATION_ADDRESS);
   const [lastUpdated, setLastUpdated] = useState(null);
 
   const [selectedInstance, setSelectedInstance] = useState(null);
@@ -159,11 +154,48 @@ export default function TicTacToeV2() {
   const selectedAddress = searchParams.get('instance');
   const explorerUrl = getAddressUrl(TICTACTOE_V2_FACTORY_ADDRESS);
 
+  const getReadRunner = () => browserProvider || rpcProviderRef.current;
+
+  const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+  const loadInstanceWithRetry = async (address, attempts = 5) => {
+    let lastError = null;
+
+    for (let attempt = 0; attempt < attempts; attempt++) {
+      try {
+        const instance = getInstanceContract(address, getReadRunner());
+        const result = await Promise.all([
+          instance.getInstanceInfo(),
+          instance.tournament(),
+          instance.getPlayers(),
+          instance.getPrizeDistribution(),
+          instance.getBracket(),
+          account ? instance.isEnrolled(account) : Promise.resolve(false),
+          account ? instance.getPlayerResult(account).catch(() => null) : Promise.resolve(null),
+        ]);
+        return { instance, result };
+      } catch (error) {
+        lastError = error;
+        if (attempt < attempts - 1) {
+          await delay(300);
+        }
+      }
+    }
+
+    throw lastError;
+  };
+
   useEffect(() => {
     const provider = new ethers.JsonRpcProvider(CURRENT_NETWORK.rpcUrl);
     rpcProviderRef.current = provider;
     setFactory(getFactoryContract(provider));
   }, []);
+
+  useEffect(() => {
+    const runner = browserProvider || rpcProviderRef.current;
+    if (!runner) return;
+    setFactory(getFactoryContract(runner));
+  }, [browserProvider]);
 
   useEffect(() => {
     if (!isWalletAvailable()) return undefined;
@@ -176,8 +208,6 @@ export default function TicTacToeV2() {
       if (!window.ethereum) return;
       const provider = new ethers.BrowserProvider(window.ethereum);
       setBrowserProvider(provider);
-      const signer = await provider.getSigner().catch(() => null);
-      setAccount(signer ? await signer.getAddress() : '');
     };
 
     window.ethereum.on('accountsChanged', handleAccountsChanged);
@@ -194,24 +224,25 @@ export default function TicTacToeV2() {
 
     const bootWallet = async () => {
       const provider = new ethers.BrowserProvider(window.ethereum);
-      const accounts = await provider.send('eth_accounts', []);
       setBrowserProvider(provider);
-      setAccount(accounts[0] || '');
       setWalletBootDone(true);
     };
 
-    bootWallet().catch(() => { setWalletBootDone(true); });
+    bootWallet().catch(() => {
+      setWalletBootDone(true);
+    });
   }, []);
 
   useEffect(() => {
     const loadBalance = async () => {
-      if (!account || !rpcProviderRef.current) {
+      const runner = browserProvider || rpcProviderRef.current;
+      if (!account || !runner) {
         setBalance(null);
         return;
       }
 
       try {
-        const wei = await rpcProviderRef.current.getBalance(account);
+        const wei = await runner.getBalance(account);
         setBalance(ethers.formatEther(wei));
       } catch {
         setBalance(null);
@@ -219,7 +250,7 @@ export default function TicTacToeV2() {
     };
 
     loadBalance();
-  }, [account, lastUpdated]);
+  }, [account, browserProvider, lastUpdated]);
 
   useEffect(() => {
     if (!factory) return;
@@ -231,50 +262,38 @@ export default function TicTacToeV2() {
       setDashboardError('');
 
       try {
-        const [minEntryFee, feeIncrement, activeTierData, rawCount] = await Promise.all([
-          factory.MIN_ENTRY_FEE(),
-          factory.FEE_INCREMENT(),
-          factory.getActiveTierConfigs(),
-          factory.getInstanceCount(),
+        const runner = getReadRunner();
+        if (!runner) {
+          throw new Error('No provider available for TicTacToe V2.');
+        }
+
+        const code = await runner.getCode(TICTACTOE_V2_FACTORY_ADDRESS);
+        if (!code || code === '0x') {
+          throw new Error(`No TicTacToe V2 factory found at ${TICTACTOE_V2_FACTORY_ADDRESS} on ${CURRENT_NETWORK.name}.`);
+        }
+
+        const liveFactory = getFactoryContract(runner);
+        const [minEntryFee, feeIncrement, implementation] = await Promise.all([
+          liveFactory.MIN_ENTRY_FEE(),
+          liveFactory.FEE_INCREMENT(),
+          liveFactory.implementation(),
         ]);
 
-        const count = Number(rawCount);
-        const addresses = count > 0 ? await factory.getInstances(0, count) : [];
-
-        const snapshots = await Promise.all(
-          [...addresses].reverse().map(async (address) => {
-            const instance = getInstanceContract(address, rpcProviderRef.current);
-            const [info, tournament, players, enrolled] = await Promise.all([
-              instance.getInstanceInfo(),
-              instance.tournament(),
-              instance.getPlayers(),
-              account ? instance.isEnrolled(account) : Promise.resolve(false),
-            ]);
-
-            return normalizeInstanceSnapshot(address, info, tournament, players, enrolled);
-          })
-        );
-
         if (cancelled) return;
-
-        const normalizedTiers = activeTierData.configs
-          .map(config => normalizeTierConfig(config))
-          .sort((a, b) => a.playerCount - b.playerCount || Number(a.entryFeeWei - b.entryFeeWei));
 
         setFactoryRules({
           minEntryFee,
           feeIncrement,
         });
+        setImplementationAddress(implementation);
         setCreateForm(prev => ({
           ...prev,
-          entryFee: ethers.formatEther(minEntryFee),
+          entryFee: prev.entryFee || ethers.formatEther(minEntryFee),
         }));
-        setTiers(normalizedTiers);
-        setInstances(snapshots);
         setLastUpdated(Date.now());
       } catch (error) {
         if (cancelled) return;
-        setDashboardError(error.shortMessage || error.message || 'Failed to load TicTacToe v2.');
+        setDashboardError(getReadableError(error, 'Failed to load TicTacToe v2.'));
       } finally {
         if (!cancelled) {
           setDashboardLoading(false);
@@ -287,7 +306,7 @@ export default function TicTacToeV2() {
     return () => {
       cancelled = true;
     };
-  }, [factory, account]);
+  }, [factory, browserProvider]);
 
   useEffect(() => {
     if (!selectedAddress) {
@@ -303,17 +322,8 @@ export default function TicTacToeV2() {
       setSelectedError('');
 
       try {
-        const instance = getInstanceContract(selectedAddress, rpcProviderRef.current);
-        const [info, tournament, tierConfig, players, prizeDistribution, bracket, enrolled, playerResult] = await Promise.all([
-          instance.getInstanceInfo(),
-          instance.tournament(),
-          instance.tierConfig(),
-          instance.getPlayers(),
-          instance.getPrizeDistribution(),
-          instance.getBracket(),
-          account ? instance.isEnrolled(account) : Promise.resolve(false),
-          account ? instance.getPlayerResult(account).catch(() => null) : Promise.resolve(null),
-        ]);
+        const { instance, result } = await loadInstanceWithRetry(selectedAddress);
+        const [info, tournament, players, prizeDistribution, bracket, enrolled, playerResult] = result;
 
         const totalRounds = Number(bracket.totalRounds);
         const rounds = await Promise.all(
@@ -343,7 +353,6 @@ export default function TicTacToeV2() {
 
         setSelectedInstance({
           ...normalizeInstanceSnapshot(selectedAddress, info, tournament, players, enrolled),
-          tierConfig: normalizeTierConfig(tierConfig),
           rounds,
           playerResult: playerResult
             ? {
@@ -363,7 +372,7 @@ export default function TicTacToeV2() {
         });
       } catch (error) {
         if (cancelled) return;
-        setSelectedError(error.shortMessage || error.message || 'Failed to load instance.');
+        setSelectedError(getReadableError(error, 'Failed to load instance.'));
       } finally {
         if (!cancelled) {
           setSelectedLoading(false);
@@ -376,7 +385,7 @@ export default function TicTacToeV2() {
     return () => {
       cancelled = true;
     };
-  }, [selectedAddress, account]);
+  }, [selectedAddress, account, lastUpdated]);
 
   useEffect(() => {
     if (!selectedInstance) return;
@@ -409,7 +418,7 @@ export default function TicTacToeV2() {
     } catch (error) {
       setActionState({
         type: 'error',
-        message: error.shortMessage || error.message || 'Wallet connection failed.',
+        message: getReadableError(error, 'Wallet connection failed.'),
       });
     } finally {
       setIsConnecting(false);
@@ -418,32 +427,25 @@ export default function TicTacToeV2() {
 
   const refreshDashboard = async () => {
     if (!factory) return;
-    setDashboardLoading(true);
-    try {
-      const [activeTierData, rawCount] = await Promise.all([
-        factory.getActiveTierConfigs(),
-        factory.getInstanceCount(),
-      ]);
-      const count = Number(rawCount);
-      const addresses = count > 0 ? await factory.getInstances(0, count) : [];
-      const snapshots = await Promise.all(
-        [...addresses].reverse().map(async (address) => {
-          const instance = getInstanceContract(address, rpcProviderRef.current);
-          const [info, tournament, players, enrolled] = await Promise.all([
-            instance.getInstanceInfo(),
-            instance.tournament(),
-            instance.getPlayers(),
-            account ? instance.isEnrolled(account) : Promise.resolve(false),
-          ]);
 
-          return normalizeInstanceSnapshot(address, info, tournament, players, enrolled);
-        })
-      );
-      setTiers(activeTierData.configs.map(config => normalizeTierConfig(config)));
-      setInstances(snapshots);
+    setDashboardLoading(true);
+    setDashboardError('');
+
+    try {
+      const [minEntryFee, feeIncrement, implementation] = await Promise.all([
+        factory.MIN_ENTRY_FEE(),
+        factory.FEE_INCREMENT(),
+        factory.implementation(),
+      ]);
+
+      setFactoryRules({
+        minEntryFee,
+        feeIncrement,
+      });
+      setImplementationAddress(implementation);
       setLastUpdated(Date.now());
     } catch (error) {
-      setDashboardError(error.shortMessage || error.message || 'Refresh failed.');
+      setDashboardError(getReadableError(error, 'Refresh failed.'));
     } finally {
       setDashboardLoading(false);
     }
@@ -514,7 +516,8 @@ export default function TicTacToeV2() {
       const tx = await writableFactory.createInstance(
         Number(createForm.playerCount),
         entryFeeWei,
-        buildTimeoutConfig(createForm)
+        buildTimeoutConfig(createForm),
+        { value: entryFeeWei }
       );
       setActionState({ type: 'info', message: 'Waiting for confirmation...' });
       const receipt = await tx.wait();
@@ -527,23 +530,29 @@ export default function TicTacToeV2() {
         countBefore,
         receipt,
       });
+
       if (!address) {
         throw new Error('Transaction mined, but the frontend could not locate the created instance from on-chain state.');
       }
 
-      const readInstance = getInstanceContract(address, rpcProviderRef.current);
-      const info = await readInstance.getInstanceInfo();
+      // Fresh clones can occasionally race the immediate follow-up read on local dev chains.
+      // Treat the factory event as source of truth and only use this read as a best-effort check.
+      try {
+        const readInstance = getInstanceContract(address, getReadRunner());
+        const info = await readInstance.getInstanceInfo();
+        const createdAt = Number(info.createdAt || 0);
+        const instanceCreator = info.instanceCreator;
 
-      const createdAt = Number(info.createdAt || 0);
-      const instanceCreator = info.instanceCreator;
-
-      if (!createdAt || isZeroAddress(instanceCreator)) {
-        throw new Error('On-chain verification failed for the new instance.');
+        if (!createdAt || isZeroAddress(instanceCreator)) {
+          throw new Error('On-chain verification failed for the new instance.');
+        }
+      } catch (verificationError) {
+        console.warn('Instance created but immediate verification read failed:', verificationError);
       }
 
       setActionState({
         type: 'success',
-        message: `Instance created on-chain at ${address} and opened below.`,
+        message: `Instance created and auto-enrolled on-chain at ${address}.`,
       });
 
       await refreshDashboard();
@@ -552,7 +561,7 @@ export default function TicTacToeV2() {
     } catch (error) {
       setActionState({
         type: 'error',
-        message: error.shortMessage || error.message || 'Could not create instance.',
+        message: getReadableError(error, 'Could not create instance.'),
       });
     } finally {
       setCreateLoading(false);
@@ -582,7 +591,7 @@ export default function TicTacToeV2() {
     } catch (error) {
       setActionState({
         type: 'error',
-        message: error.shortMessage || error.message || 'Enrollment failed.',
+        message: getReadableError(error, 'Enrollment failed.'),
       });
     }
   };
@@ -600,7 +609,7 @@ export default function TicTacToeV2() {
     } catch (error) {
       setActionState({
         type: 'error',
-        message: error.shortMessage || error.message || 'Could not force start the tournament.',
+        message: getReadableError(error, 'Could not force start the tournament.'),
       });
     }
   };
@@ -618,7 +627,7 @@ export default function TicTacToeV2() {
     } catch (error) {
       setActionState({
         type: 'error',
-        message: error.shortMessage || error.message || 'Could not claim abandoned pool.',
+        message: getReadableError(error, 'Could not claim abandoned pool.'),
       });
     }
   };
@@ -636,7 +645,7 @@ export default function TicTacToeV2() {
     } catch (error) {
       setActionState({
         type: 'error',
-        message: error.shortMessage || error.message || 'Move failed.',
+        message: getReadableError(error, 'Move failed.'),
       });
     }
   };
@@ -650,9 +659,6 @@ export default function TicTacToeV2() {
         )
       )
     : [];
-
-  const currentInstances = instances.filter(instance => instance.status === 0 || instance.status === 1);
-
 
   return (
     <div
@@ -806,7 +812,7 @@ export default function TicTacToeV2() {
 
         <SectionShell
           id="live-instances"
-          title="Create New Instance"
+          title="Start Tournament"
           right={
             <button
               type="button"
@@ -859,9 +865,36 @@ export default function TicTacToeV2() {
                 </div>
               </div>
 
+              <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <MetricBox
+                  label="Tournament Type"
+                  value={getTournamentTypeLabel(createForm.playerCount)}
+                  subtext={`${createForm.playerCount} total players`}
+                  tone="purple"
+                />
+                <MetricBox
+                  label="Per-Player Clock"
+                  value={`${createForm.matchTimePerPlayer}s`}
+                  subtext={`+${createForm.timeIncrementPerMove}s increment`}
+                  tone="blue"
+                />
+                <MetricBox
+                  label="Enrollment Window"
+                  value={`${createForm.enrollmentWindow}s`}
+                  subtext={`EL2 after ${createForm.enrollmentLevel2Delay}s`}
+                  tone="green"
+                />
+                <MetricBox
+                  label="Escalation Delays"
+                  value={`${createForm.matchLevel2Delay}s / ${createForm.matchLevel3Delay}s`}
+                  subtext="ML2 / ML3 thresholds"
+                  tone="blue"
+                />
+              </div>
+
               <div className="mt-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div className="text-sm text-slate-400">
-                  {getTournamentTypeLabel(createForm.playerCount)} format. Timeouts and escalation values use the built-in defaults for this player count.
+                  Invite-based flow only. Creating an instance submits the exact entry fee and auto-enrolls the creator.
                 </div>
                 {walletBootDone && !account ? (
                   <button
@@ -890,18 +923,17 @@ export default function TicTacToeV2() {
 
         {(selectedLoading || selectedInstance) && (
           <div ref={instanceSectionRef}>
-          <SectionShell
-            title={selectedInstance ? 'Current Instance' : 'Loading Instance'}
-            right={selectedAddress ? (
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={clearSelectedInstance}
-                  className="text-sm bg-slate-800/80 hover:bg-slate-700 border border-slate-600 text-slate-200 px-4 py-2 rounded-xl transition-colors"
-                >
-                  Clear
-                </button>
-                {selectedAddress ? (
+            <SectionShell
+              title={selectedInstance ? 'Current Instance' : 'Loading Instance'}
+              right={selectedAddress ? (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={clearSelectedInstance}
+                    className="text-sm bg-slate-800/80 hover:bg-slate-700 border border-slate-600 text-slate-200 px-4 py-2 rounded-xl transition-colors"
+                  >
+                    Clear
+                  </button>
                   <a
                     href={getAddressUrl(selectedAddress) || '#'}
                     target="_blank"
@@ -910,266 +942,206 @@ export default function TicTacToeV2() {
                   >
                     Explorer
                   </a>
-                ) : null}
-              </div>
-            ) : null}
-          >
-            {selectedLoading ? (
-              <div className="text-center py-12">
-                <div className="inline-block">
-                  <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
-                  <p className="text-purple-300">Loading instance...</p>
                 </div>
-              </div>
-            ) : null}
-
-            {selectedInstance ? (
-              <div className="space-y-6">
-                <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-4">
-                  <MetricBox label="Status" value={selectedInstance.statusLabel} subtext={`Created ${formatRelativeTime(selectedInstance.createdAt)}`} tone="purple" />
-                  <MetricBox label="Entry Fee" value={`${selectedInstance.entryFeeEth} ETH`} subtext={`${selectedInstance.playerCount} players`} tone="blue" />
-                  <MetricBox label="Prize Pool" value={`${selectedInstance.prizePoolEth} ETH`} subtext={`${selectedInstance.enrolledCount} enrolled`} tone="green" />
-                  <MetricBox label="Instance" value={shortenAddress(selectedInstance.address)} subtext={CURRENT_NETWORK.name} tone="blue" />
+              ) : null}
+            >
+              {selectedLoading ? (
+                <div className="text-center py-12">
+                  <div className="inline-block">
+                    <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
+                    <p className="text-purple-300">Loading instance...</p>
+                  </div>
                 </div>
+              ) : null}
 
-                <div className="flex flex-wrap gap-3">
-                  {walletBootDone && !account ? (
-                    <button
-                      type="button"
-                      onClick={connectWallet}
-                      disabled={isConnecting}
-                      className={`flex items-center gap-2 bg-gradient-to-r ${currentTheme.buttonGradient} ${currentTheme.buttonHover} px-6 py-3 rounded-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
-                    >
-                      {isConnecting ? <Loader size={18} className="animate-spin" /> : <Wallet size={18} />}
-                      {isConnecting ? 'Connecting...' : 'Connect Wallet'}
-                    </button>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        onClick={enrollInSelected}
-                        disabled={selectedInstance.isEnrolled}
-                        className={`bg-gradient-to-r ${currentTheme.buttonGradient} ${currentTheme.buttonHover} px-6 py-3 rounded-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
-                      >
-                        {selectedInstance.isEnrolled ? 'Already Enrolled' : `Enroll for ${selectedInstance.entryFeeEth} ETH`}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={forceStartSelected}
-                        className="bg-purple-500/20 hover:bg-purple-500/30 border border-purple-400/30 text-purple-200 px-6 py-3 rounded-xl font-semibold transition-all"
-                      >
-                        Force Start
-                      </button>
-                      <button
-                        type="button"
-                        onClick={claimAbandonedPool}
-                        className="bg-red-500/20 hover:bg-red-500/30 border border-red-400/30 text-red-200 px-6 py-3 rounded-xl font-semibold transition-all"
-                      >
-                        Claim Abandoned Pool
-                      </button>
-                    </>
-                  )}
-                </div>
-
-                <div className="grid xl:grid-cols-[0.72fr_1.28fr] gap-6">
-                  <div className="space-y-4">
-                    <div className="bg-slate-900/50 border border-purple-400/20 rounded-2xl p-5">
-                      <h3 className="text-2xl font-bold text-purple-300 mb-4 flex items-center gap-2">
-                        <Users size={22} />
-                        Enrolled Players
-                      </h3>
-                      <div className="space-y-2">
-                        {selectedInstance.players.length === 0 ? (
-                          <div className="text-purple-200/70">Nobody enrolled yet.</div>
-                        ) : (
-                          selectedInstance.players.map((player, index) => (
-                            <div key={`${player}-${index}`} className="bg-purple-500/10 rounded-xl p-3 flex items-center justify-between">
-                              <span className="text-purple-300">Seat {index + 1}</span>
-                              <span className="font-mono text-white">{shortenAddress(player)}</span>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="bg-slate-900/50 border border-purple-400/20 rounded-2xl p-5">
-                      <h3 className="text-2xl font-bold text-purple-300 mb-4">Your Position</h3>
-                      <div className="space-y-2 text-sm text-purple-100">
-                        <div>Enrolled: <strong>{selectedInstance.isEnrolled ? 'Yes' : 'No'}</strong></div>
-                        {selectedInstance.playerResult ? (
-                          <>
-                            <div>Participated: <strong>{selectedInstance.playerResult.participated ? 'Yes' : 'No'}</strong></div>
-                            <div>Prize won: <strong>{selectedInstance.playerResult.prizeWonEth} ETH</strong></div>
-                            <div>Winner: <strong>{selectedInstance.playerResult.isWinner ? 'Yes' : 'No'}</strong></div>
-                          </>
-                        ) : (
-                          <div>Connect a wallet to view player-specific results.</div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="bg-slate-900/50 border border-purple-400/20 rounded-2xl p-5">
-                      <h3 className="text-2xl font-bold text-purple-300 mb-4">Prize Distribution</h3>
-                      <div className="space-y-2">
-                        {selectedInstance.prizeDistribution.players.length === 0 ? (
-                          <div className="text-purple-200/70">No payouts recorded yet.</div>
-                        ) : (
-                          selectedInstance.prizeDistribution.players.map((player, index) => (
-                            <div key={`${player}-payout-${index}`} className="bg-purple-500/10 rounded-xl p-3 flex items-center justify-between">
-                              <span className="font-mono text-white">{shortenAddress(player)}</span>
-                              <span className="text-green-300">{selectedInstance.prizeDistribution.amounts[index]?.eth} ETH</span>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </div>
+              {selectedInstance ? (
+                <div className="space-y-6">
+                  <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-4">
+                    <MetricBox label="Status" value={selectedInstance.statusLabel} subtext={`Created ${formatRelativeTime(selectedInstance.createdAt)}`} tone="purple" />
+                    <MetricBox label="Entry Fee" value={`${selectedInstance.entryFeeEth} ETH`} subtext={`${selectedInstance.playerCount} players`} tone="blue" />
+                    <MetricBox label="Prize Pool" value={`${selectedInstance.prizePoolEth} ETH`} subtext={`${selectedInstance.enrolledCount} enrolled`} tone="green" />
+                    <MetricBox label="Instance" value={shortenAddress(selectedInstance.address)} subtext={CURRENT_NETWORK.name} tone="blue" />
                   </div>
 
-                  <div className="space-y-6">
-                    {activeMatchesForUser.length > 0 ? (
-                      activeMatchesForUser.map(match => (
-                        <div key={`active-${match.roundNumber}-${match.matchNumber}`} className="bg-gradient-to-br from-slate-900/60 to-purple-900/30 backdrop-blur-lg rounded-2xl p-6 border border-purple-400/30">
-                          <h3 className="text-2xl font-bold text-purple-300 mb-3 flex items-center gap-2">
-                            <Grid size={24} />
-                            Active Match
-                          </h3>
-                          <p className="text-purple-200 mb-4">
-                            Round {match.roundNumber + 1} • Match {match.matchNumber + 1}
-                          </p>
-                          <div className="grid lg:grid-cols-[0.9fr_1.1fr] gap-4 items-start">
-                            <TicTacToeBoard
-                              board={match.board}
-                              disabled={match.status !== 1}
-                              onSelectCell={cellIndex => makeMove(match.roundNumber, match.matchNumber, cellIndex)}
-                            />
-                            <div className="space-y-2 text-sm text-purple-100">
-                              <div>Player 1: {shortenAddress(match.player1)}</div>
-                              <div>Player 2: {shortenAddress(match.player2)}</div>
-                              <div>Status: {match.statusLabel}</div>
-                              <div>Started: {formatTimestamp(match.startTime)}</div>
-                              <div>Last move: {formatTimestamp(match.lastMoveTime)}</div>
-                              <div>Moves logged: {match.moveCount}</div>
+                  <div className="flex flex-wrap gap-3">
+                    {walletBootDone && !account ? (
+                      <button
+                        type="button"
+                        onClick={connectWallet}
+                        disabled={isConnecting}
+                        className={`flex items-center gap-2 bg-gradient-to-r ${currentTheme.buttonGradient} ${currentTheme.buttonHover} px-6 py-3 rounded-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
+                      >
+                        {isConnecting ? <Loader size={18} className="animate-spin" /> : <Wallet size={18} />}
+                        {isConnecting ? 'Connecting...' : 'Connect Wallet'}
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={enrollInSelected}
+                          disabled={selectedInstance.isEnrolled}
+                          className={`bg-gradient-to-r ${currentTheme.buttonGradient} ${currentTheme.buttonHover} px-6 py-3 rounded-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
+                        >
+                          {selectedInstance.isEnrolled ? 'Already Enrolled' : `Enroll for ${selectedInstance.entryFeeEth} ETH`}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={forceStartSelected}
+                          className="bg-purple-500/20 hover:bg-purple-500/30 border border-purple-400/30 text-purple-200 px-6 py-3 rounded-xl font-semibold transition-all"
+                        >
+                          Force Start
+                        </button>
+                        <button
+                          type="button"
+                          onClick={claimAbandonedPool}
+                          className="bg-red-500/20 hover:bg-red-500/30 border border-red-400/30 text-red-200 px-6 py-3 rounded-xl font-semibold transition-all"
+                        >
+                          Claim Abandoned Pool
+                        </button>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="grid xl:grid-cols-[0.72fr_1.28fr] gap-6">
+                    <div className="space-y-4">
+                      <div className="bg-slate-900/50 border border-purple-400/20 rounded-2xl p-5">
+                        <h3 className="text-2xl font-bold text-purple-300 mb-4 flex items-center gap-2">
+                          <Users size={22} />
+                          Enrolled Players
+                        </h3>
+                        <div className="space-y-2">
+                          {selectedInstance.players.length === 0 ? (
+                            <div className="text-purple-200/70">Nobody enrolled yet.</div>
+                          ) : (
+                            selectedInstance.players.map((player, index) => (
+                              <div key={`${player}-${index}`} className="bg-purple-500/10 rounded-xl p-3 flex items-center justify-between">
+                                <span className="text-purple-300">Seat {index + 1}</span>
+                                <span className="font-mono text-white">{shortenAddress(player)}</span>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="bg-slate-900/50 border border-purple-400/20 rounded-2xl p-5">
+                        <h3 className="text-2xl font-bold text-purple-300 mb-4">Your Position</h3>
+                        <div className="space-y-2 text-sm text-purple-100">
+                          <div>Enrolled: <strong>{selectedInstance.isEnrolled ? 'Yes' : 'No'}</strong></div>
+                          {selectedInstance.playerResult ? (
+                            <>
+                              <div>Participated: <strong>{selectedInstance.playerResult.participated ? 'Yes' : 'No'}</strong></div>
+                              <div>Prize won: <strong>{selectedInstance.playerResult.prizeWonEth} ETH</strong></div>
+                              <div>Winner: <strong>{selectedInstance.playerResult.isWinner ? 'Yes' : 'No'}</strong></div>
+                            </>
+                          ) : (
+                            <div>Connect a wallet to view player-specific results.</div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="bg-slate-900/50 border border-purple-400/20 rounded-2xl p-5">
+                        <h3 className="text-2xl font-bold text-purple-300 mb-4">Prize Distribution</h3>
+                        <div className="space-y-2">
+                          {selectedInstance.prizeDistribution.players.length === 0 ? (
+                            <div className="text-purple-200/70">No payouts recorded yet.</div>
+                          ) : (
+                            selectedInstance.prizeDistribution.players.map((player, index) => (
+                              <div key={`${player}-payout-${index}`} className="bg-purple-500/10 rounded-xl p-3 flex items-center justify-between">
+                                <span className="font-mono text-white">{shortenAddress(player)}</span>
+                                <span className="text-green-300">{selectedInstance.prizeDistribution.amounts[index]?.eth} ETH</span>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-6">
+                      {activeMatchesForUser.length > 0 ? (
+                        activeMatchesForUser.map(match => (
+                          <div key={`active-${match.roundNumber}-${match.matchNumber}`} className="bg-gradient-to-br from-slate-900/60 to-purple-900/30 backdrop-blur-lg rounded-2xl p-6 border border-purple-400/30">
+                            <h3 className="text-2xl font-bold text-purple-300 mb-3 flex items-center gap-2">
+                              <Grid size={24} />
+                              Active Match
+                            </h3>
+                            <p className="text-purple-200 mb-4">
+                              Round {match.roundNumber + 1} • Match {match.matchNumber + 1}
+                            </p>
+                            <div className="grid lg:grid-cols-[0.9fr_1.1fr] gap-4 items-start">
+                              <TicTacToeBoard
+                                board={match.board}
+                                disabled={match.status !== 1}
+                                onSelectCell={cellIndex => makeMove(match.roundNumber, match.matchNumber, cellIndex)}
+                              />
+                              <div className="space-y-2 text-sm text-purple-100">
+                                <div>Player 1: {shortenAddress(match.player1)}</div>
+                                <div>Player 2: {shortenAddress(match.player2)}</div>
+                                <div>Status: {match.statusLabel}</div>
+                                <div>Started: {formatTimestamp(match.startTime)}</div>
+                                <div>Last move: {formatTimestamp(match.lastMoveTime)}</div>
+                                <div>Moves logged: {match.moveCount}</div>
+                              </div>
                             </div>
                           </div>
+                        ))
+                      ) : (
+                        <div className="bg-slate-900/50 border border-purple-400/20 rounded-2xl p-6 text-purple-200/80">
+                          No active match for the connected wallet in this instance right now.
                         </div>
-                      ))
-                    ) : (
-                      <div className="bg-slate-900/50 border border-purple-400/20 rounded-2xl p-6 text-purple-200/80">
-                        No active match for the connected wallet in this instance right now.
-                      </div>
-                    )}
+                      )}
 
-                    <div className="space-y-4">
-                      {selectedInstance.rounds.map(round => (
-                        <div key={`round-${round.roundIndex}`} className="bg-gradient-to-br from-slate-900/60 to-purple-900/30 backdrop-blur-lg rounded-2xl p-6 border border-purple-400/30">
-                          <h4 className="text-xl font-bold text-purple-400 mb-2">{round.label}</h4>
-                          <p className="text-sm text-purple-200/80 mb-4">
-                            {round.completedCount}/{round.matchCount} matches complete
-                          </p>
-                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                            {round.matches.map(match => {
-                              const completionText = isZeroAddress(match.winner)
-                                ? null
-                                : getCompletionReasonText(
-                                    selectedInstance.completionReason,
-                                    account && match.winner.toLowerCase() === account.toLowerCase(),
-                                    'tictactoe'
-                                  );
+                      <div className="space-y-4">
+                        {selectedInstance.rounds.map(round => (
+                          <div key={`round-${round.roundIndex}`} className="bg-gradient-to-br from-slate-900/60 to-purple-900/30 backdrop-blur-lg rounded-2xl p-6 border border-purple-400/30">
+                            <h4 className="text-xl font-bold text-purple-400 mb-2">{round.label}</h4>
+                            <p className="text-sm text-purple-200/80 mb-4">
+                              {round.completedCount}/{round.matchCount} matches complete
+                            </p>
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                              {round.matches.map(match => {
+                                const completionText = isZeroAddress(match.winner)
+                                  ? null
+                                  : getCompletionReasonText(
+                                      selectedInstance.completionReason,
+                                      account && match.winner.toLowerCase() === account.toLowerCase(),
+                                      'tictactoe'
+                                    );
 
-                              return (
-                                <div key={`match-${match.roundNumber}-${match.matchNumber}`} className="bg-purple-500/10 rounded-xl p-4 border border-purple-400/10">
-                                  <div className="flex items-start justify-between gap-3 mb-4">
-                                    <div>
-                                      <div className="font-bold text-white">Match {match.matchNumber + 1}</div>
-                                      <div className="text-sm text-purple-200/80">
-                                        {shortenAddress(match.player1)} vs {shortenAddress(match.player2)}
+                                return (
+                                  <div key={`match-${match.roundNumber}-${match.matchNumber}`} className="bg-purple-500/10 rounded-xl p-4 border border-purple-400/10">
+                                    <div className="flex items-start justify-between gap-3 mb-4">
+                                      <div>
+                                        <div className="font-bold text-white">Match {match.matchNumber + 1}</div>
+                                        <div className="text-sm text-purple-200/80">
+                                          {shortenAddress(match.player1)} vs {shortenAddress(match.player2)}
+                                        </div>
+                                      </div>
+                                      <div className="text-xs uppercase tracking-[0.18em] text-purple-300">{match.statusLabel}</div>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-[0.85fr_1.15fr] gap-4 items-start">
+                                      <TicTacToeBoard board={match.board} disabled onSelectCell={() => {}} />
+                                      <div className="space-y-2 text-sm text-purple-100">
+                                        <div>Winner: {isZeroAddress(match.winner) ? 'TBD' : shortenAddress(match.winner)}</div>
+                                        <div>Moves logged: {match.moveCount}</div>
+                                        <div>Started: {formatTimestamp(match.startTime)}</div>
+                                        <div>Last move: {formatTimestamp(match.lastMoveTime)}</div>
+                                        {completionText ? <div className="text-cyan-200">{completionText}</div> : null}
                                       </div>
                                     </div>
-                                    <div className="text-xs uppercase tracking-[0.18em] text-purple-300">{match.statusLabel}</div>
                                   </div>
-                                  <div className="grid grid-cols-1 md:grid-cols-[0.85fr_1.15fr] gap-4 items-start">
-                                    <TicTacToeBoard board={match.board} disabled onSelectCell={() => {}} />
-                                    <div className="space-y-2 text-sm text-purple-100">
-                                      <div>Winner: {isZeroAddress(match.winner) ? 'TBD' : shortenAddress(match.winner)}</div>
-                                      <div>Moves logged: {match.moveCount}</div>
-                                      <div>Started: {formatTimestamp(match.startTime)}</div>
-                                      <div>Last move: {formatTimestamp(match.lastMoveTime)}</div>
-                                      {completionText ? <div className="text-cyan-200">{completionText}</div> : null}
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            })}
+                                );
+                              })}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ) : null}
-          </SectionShell>
+              ) : null}
+            </SectionShell>
           </div>
         )}
-
-        <SectionShell title="Current Instances">
-          {dashboardLoading && !lastUpdated ? (
-            <div className="bg-slate-900/50 border border-purple-400/20 rounded-2xl p-6 flex items-center gap-3 text-purple-200/80">
-              <Loader size={18} className="animate-spin shrink-0" />
-              Loading on-chain state...
-            </div>
-          ) : currentInstances.length === 0 ? (
-            <div className="bg-slate-900/50 border border-purple-400/20 rounded-2xl p-6 text-purple-200/80">
-              No uncompleted instances right now. Create a new one to open the queue.
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {currentInstances.map(instance => {
-                const isSelected = selectedAddress === instance.address;
-                return (
-                  <button
-                    key={instance.address}
-                    type="button"
-                    onClick={() => selectInstance(instance.address)}
-                    className={`w-full text-left rounded-2xl border p-5 transition-all ${
-                      isSelected
-                        ? 'border-cyan-400 bg-cyan-500/10'
-                        : 'border-purple-400/20 bg-slate-900/50 hover:border-cyan-400/40 hover:bg-slate-900/70'
-                    }`}
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-4">
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <div className="text-xl font-bold text-white">
-                            {instance.playerCount}-player {getTournamentTypeLabel(instance.playerCount).toLowerCase()}
-                          </div>
-                          <div className="text-xs uppercase tracking-[0.18em] text-purple-300">
-                            {instance.statusLabel}
-                          </div>
-                          {instance.isEnrolled ? (
-                            <div className="text-xs uppercase tracking-[0.18em] text-green-300">
-                              You&apos;re in
-                            </div>
-                          ) : null}
-                        </div>
-                        <div className="mt-2 text-sm text-slate-300">
-                          {instance.entryFeeEth} ETH • {instance.enrolledCount}/{instance.playerCount} players • created {formatRelativeTime(instance.createdAt)}
-                        </div>
-                      </div>
-                      <div className="text-right text-sm">
-                        <div className="text-purple-200">Prize Pool</div>
-                        <div className="text-white font-bold">{instance.prizePoolEth} ETH</div>
-                      </div>
-                    </div>
-                    <div className="mt-3 font-mono text-sm text-slate-400">
-                      {instance.address}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </SectionShell>
       </div>
 
       <footer className="border-t border-slate-800/50 px-6 py-12" style={{ position: 'relative', zIndex: 10 }}>
@@ -1222,7 +1194,7 @@ export default function TicTacToeV2() {
                   </tr>
                   <tr>
                     <td className="p-4 text-slate-300">TicTacToe v2 Instance Implementation</td>
-                    <td className="p-4 font-mono text-slate-400 break-all">{TICTACTOE_V2_IMPLEMENTATION_ADDRESS}</td>
+                    <td className="p-4 font-mono text-slate-400 break-all">{implementationAddress}</td>
                   </tr>
                 </tbody>
               </table>
