@@ -82,7 +82,7 @@ const TournamentCard = ({
       hasEscalations,
       escL3Count,
       firstML3Match,
-      hasOnEnterML3: !!onEnterML3
+      hasOnEnter: !!onEnter
     });
   }
 
