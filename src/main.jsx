@@ -5,6 +5,7 @@ import Landing from './Landing.jsx'
 import TicTacChain from './TicTacChain.jsx'
 import Chess from './Chess.jsx'
 import ConnectFour from './ConnectFour.jsx'
+import TicTacToeV2 from './v2/pages/TicTacToeV2.jsx'
 import Whitepaper from './Whitepaper.jsx'
 import NotFound from './NotFound.jsx'
 import WalletBrowserPrompt from './components/WalletBrowserPrompt.jsx'
@@ -21,6 +22,7 @@ function AppRoutes() {
       <Route path="/tictactoe" element={<TicTacChain />} />
       <Route path="/chess" element={<Chess />} />
       <Route path="/connect4" element={<ConnectFour />} />
+      <Route path="/v2/tictactoe" element={<TicTacToeV2 />} />
       <Route path="/whitepaper" element={<Whitepaper />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
