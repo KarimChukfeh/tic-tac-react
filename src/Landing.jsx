@@ -127,17 +127,11 @@ function GameCard({ icon, title, stakes, tagline, features, href, accentColor })
         {icon}
       </div>
       
-      {/* Title & Stakes */}
-      <h3 className="text-2xl font-bold text-white mb-2">{title}</h3>
-      <div 
-        className="text-sm font-semibold mb-4 tracking-wide"
-        style={{ color: accentColor }}
-      >
-        {stakes}
-      </div>
-      
+      {/* Title */}
+      <h3 className="text-2xl font-bold text-white mb-4">{title}</h3>
+
       {/* Tagline */}
-      <p className="text-slate-400 text-lg mb-6 leading-relaxed">{tagline}</p>
+      <p className="text-slate-400 text-lg mb-3 leading-relaxed">{tagline}</p>
       
       {/* Features */}
       <ul className="space-y-2 mb-8">
@@ -494,13 +488,11 @@ export default function Landing() {
             <GameCard
               icon="✖️"
               title="Tic-Tac-Toe"
-              stakes="0.0003 - 0.0013 ETH (~$1 - $4)"
-              tagline="The game everyone knows. Now with real stakes and zero mercy."
+              tagline="The game everyone knows."
               features={[
                 "Each player gets 2 minutes",
                 "Perfect for your first match",
                 "Quick games, instant results",
-                "Classic rules, pure strategy"
               ]}
               href="/tictactoe"
               accentColor="#06b6d4"
@@ -509,12 +501,10 @@ export default function Landing() {
             <GameCard
               icon="🔴"
               title="Connect Four"
-              stakes="0.001 – 0.004 ETH"
-              tagline="Drop. Connect. Collect. The vertical battle for supremacy."
+              tagline="Drop. Connect. Collect."
               features={[
                 "Each player gets 5 minutes",
                 "Deceptively deep strategy",
-                "Fast-paced tactical play",
                 "First to four wins it all"
               ]}
               href="/connect4"
@@ -524,13 +514,11 @@ export default function Landing() {
             <GameCard
               icon="♔"
               title="Chess"
-              stakes="0.003 – 0.15 ETH"
-              tagline="Full chess. Every rule. ETH and glory on the line."
+              tagline="Full chess. Every rule."
               features={[
                 "Each player gets 10 minutes",
-                "Castling, en passant, promotion",
+                "Castling/En-Passant/Promotions, etc..",
                 "Higher stakes for elite players",
-                "Prove your rating means something"
               ]}
               href="/chess"
               accentColor="#fbbf24"
