@@ -30,6 +30,7 @@ import TicTacToeBoard from '../components/TicTacToeBoard.jsx';
 import {
   PLAYER_COUNT_OPTIONS,
   TICTACTOE_V2_FACTORY_ADDRESS,
+  TICTACTOE_V2_FACTORY_ADDRESS_CANDIDATES,
   TICTACTOE_V2_IMPLEMENTATION_ADDRESS,
   buildTimeoutConfig,
   formatEth,
@@ -122,6 +123,8 @@ function SectionShell({ title, children, right = null, id = null }) {
   );
 }
 
+const LOCAL_CHAIN_ID_HEX = `0x${CURRENT_NETWORK.chainId.toString(16)}`;
+
 export default function TicTacToeV2() {
   const [searchParams, setSearchParams] = useSearchParams();
   const rpcProviderRef = useRef(null);
@@ -129,8 +132,10 @@ export default function TicTacToeV2() {
   const pendingScrollAddressRef = useRef(null);
 
   const [factory, setFactory] = useState(null);
+  const [factoryAddress, setFactoryAddress] = useState(TICTACTOE_V2_FACTORY_ADDRESS);
   const [browserProvider, setBrowserProvider] = useState(null);
   const [account, setAccount] = useState('');
+  const [rpcReady, setRpcReady] = useState(false);
   const [walletBootDone, setWalletBootDone] = useState(!isWalletAvailable());
   const [balance, setBalance] = useState(null);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -152,9 +157,9 @@ export default function TicTacToeV2() {
   const [actionState, setActionState] = useState({ type: 'info', message: '' });
 
   const selectedAddress = searchParams.get('instance');
-  const explorerUrl = getAddressUrl(TICTACTOE_V2_FACTORY_ADDRESS);
+  const explorerUrl = getAddressUrl(factoryAddress);
 
-  const getReadRunner = () => browserProvider || rpcProviderRef.current;
+  const getReadRunner = () => rpcProviderRef.current;
 
   const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -185,17 +190,33 @@ export default function TicTacToeV2() {
     throw lastError;
   };
 
+  const resolveFactoryContract = async () => {
+    const runner = rpcProviderRef.current;
+    if (!runner) {
+      throw new Error('Local RPC provider is not ready.');
+    }
+
+    for (const candidateAddress of TICTACTOE_V2_FACTORY_ADDRESS_CANDIDATES) {
+      const code = await runner.getCode(candidateAddress);
+      if (!code || code === '0x') {
+        continue;
+      }
+
+      const contract = getFactoryContract(runner, candidateAddress);
+      setFactoryAddress(candidateAddress);
+      setFactory(contract);
+      return contract;
+    }
+
+    throw new Error(`No TicTacToe V2 factory found at ${TICTACTOE_V2_FACTORY_ADDRESS_CANDIDATES.join(' or ')} on ${CURRENT_NETWORK.name}.`);
+  };
+
   useEffect(() => {
     const provider = new ethers.JsonRpcProvider(CURRENT_NETWORK.rpcUrl);
     rpcProviderRef.current = provider;
-    setFactory(getFactoryContract(provider));
-  }, []);
-
-  useEffect(() => {
-    const runner = browserProvider || rpcProviderRef.current;
-    if (!runner) return;
-    setFactory(getFactoryContract(runner));
-  }, [browserProvider]);
+    setFactory(getFactoryContract(provider, factoryAddress));
+    setRpcReady(true);
+  }, [factoryAddress]);
 
   useEffect(() => {
     if (!isWalletAvailable()) return undefined;
@@ -233,12 +254,46 @@ export default function TicTacToeV2() {
     });
   }, []);
 
+  const ensureWalletOnLocalRpc = async (provider) => {
+    const network = await provider.getNetwork();
+    const currentChainId = `0x${BigInt(network.chainId).toString(16)}`;
+
+    if (currentChainId === LOCAL_CHAIN_ID_HEX) {
+      return;
+    }
+
+    try {
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: LOCAL_CHAIN_ID_HEX }],
+      });
+    } catch (switchError) {
+      if (switchError?.code !== 4902) {
+        throw switchError;
+      }
+
+      await window.ethereum.request({
+        method: 'wallet_addEthereumChain',
+        params: [{
+          chainId: LOCAL_CHAIN_ID_HEX,
+          chainName: CURRENT_NETWORK.name,
+          nativeCurrency: {
+            name: 'Ether',
+            symbol: 'ETH',
+            decimals: 18,
+          },
+          rpcUrls: [CURRENT_NETWORK.rpcUrl],
+        }],
+      });
+    }
+  };
+
   useEffect(() => {
     const loadBalance = async () => {
-      const runner = browserProvider || rpcProviderRef.current;
-      if (!account || !runner) {
-        setBalance(null);
-        return;
+    const runner = rpcProviderRef.current;
+    if (!account || !runner) {
+      setBalance(null);
+      return;
       }
 
       try {
@@ -250,10 +305,10 @@ export default function TicTacToeV2() {
     };
 
     loadBalance();
-  }, [account, browserProvider, lastUpdated]);
+  }, [account, lastUpdated]);
 
   useEffect(() => {
-    if (!factory) return;
+    if (!rpcReady && !browserProvider) return;
 
     let cancelled = false;
 
@@ -262,17 +317,7 @@ export default function TicTacToeV2() {
       setDashboardError('');
 
       try {
-        const runner = getReadRunner();
-        if (!runner) {
-          throw new Error('No provider available for TicTacToe V2.');
-        }
-
-        const code = await runner.getCode(TICTACTOE_V2_FACTORY_ADDRESS);
-        if (!code || code === '0x') {
-          throw new Error(`No TicTacToe V2 factory found at ${TICTACTOE_V2_FACTORY_ADDRESS} on ${CURRENT_NETWORK.name}.`);
-        }
-
-        const liveFactory = getFactoryContract(runner);
+        const liveFactory = await resolveFactoryContract();
         const [minEntryFee, feeIncrement, implementation] = await Promise.all([
           liveFactory.MIN_ENTRY_FEE(),
           liveFactory.FEE_INCREMENT(),
@@ -306,7 +351,7 @@ export default function TicTacToeV2() {
     return () => {
       cancelled = true;
     };
-  }, [factory, browserProvider]);
+  }, [rpcReady]);
 
   useEffect(() => {
     if (!selectedAddress) {
@@ -411,6 +456,7 @@ export default function TicTacToeV2() {
     setIsConnecting(true);
     try {
       const provider = new ethers.BrowserProvider(window.ethereum);
+      await ensureWalletOnLocalRpc(provider);
       await provider.send('eth_requestAccounts', []);
       const signer = await provider.getSigner();
       setBrowserProvider(provider);
@@ -426,16 +472,15 @@ export default function TicTacToeV2() {
   };
 
   const refreshDashboard = async () => {
-    if (!factory) return;
-
     setDashboardLoading(true);
     setDashboardError('');
 
     try {
+      const liveFactory = await resolveFactoryContract();
       const [minEntryFee, feeIncrement, implementation] = await Promise.all([
-        factory.MIN_ENTRY_FEE(),
-        factory.FEE_INCREMENT(),
-        factory.implementation(),
+        liveFactory.MIN_ENTRY_FEE(),
+        liveFactory.FEE_INCREMENT(),
+        liveFactory.implementation(),
       ]);
 
       setFactoryRules({
@@ -489,8 +534,8 @@ export default function TicTacToeV2() {
     try {
       const signer = await browserProvider.getSigner();
       const creator = await signer.getAddress();
-      const writableFactory = getFactoryContract(signer);
-      const readFactory = getFactoryContract(rpcProviderRef.current);
+      const readFactory = await resolveFactoryContract();
+      const writableFactory = getFactoryContract(signer, factoryAddress);
 
       setActionState({ type: 'info', message: 'Reading contract constraints...' });
       const [countBeforeRaw, minFeeRaw, feeIncrementRaw, maxFeeRaw] = await Promise.all([
@@ -522,8 +567,8 @@ export default function TicTacToeV2() {
       setActionState({ type: 'info', message: 'Waiting for confirmation...' });
       const receipt = await tx.wait();
       const address = await resolveCreatedInstanceAddress({
-        factory: getFactoryContract(rpcProviderRef.current),
-        provider: rpcProviderRef.current,
+        factory: await resolveFactoryContract(),
+        provider: getReadRunner(),
         creator,
         playerCount: Number(createForm.playerCount),
         entryFeeWei,
@@ -710,7 +755,7 @@ export default function TicTacToeV2() {
                 className="flex items-center gap-2 text-blue-300 hover:text-blue-200 transition-colors justify-center md:justify-end"
               >
                 <Code size={16} />
-                <span className="font-mono text-xs">{shortenAddress(TICTACTOE_V2_FACTORY_ADDRESS)}</span>
+                <span className="font-mono text-xs">{shortenAddress(factoryAddress)}</span>
                 <ExternalLink size={14} />
               </a>
             ) : null}
@@ -789,7 +834,7 @@ export default function TicTacToeV2() {
             <ConnectedWalletCard
               account={account}
               balance={balance}
-              contractAddress={TICTACTOE_V2_FACTORY_ADDRESS}
+              contractAddress={factoryAddress}
               contractName="TicTacToe v2 Factory"
               shortenAddress={shortenAddress}
               payout={null}
@@ -1190,7 +1235,7 @@ export default function TicTacToeV2() {
                 <tbody>
                   <tr className="border-b border-slate-800/30">
                     <td className="p-4 text-slate-300">TicTacToe v2 Factory</td>
-                    <td className="p-4 font-mono text-slate-400 break-all">{TICTACTOE_V2_FACTORY_ADDRESS}</td>
+                    <td className="p-4 font-mono text-slate-400 break-all">{factoryAddress}</td>
                   </tr>
                   <tr>
                     <td className="p-4 text-slate-300">TicTacToe v2 Instance Implementation</td>
