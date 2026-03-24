@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import TicTacToeV2Bundle from '../../TicTacToe-v2-ABI.json';
+import TicTacToeV2Bundle from '../../TicTacChainFactory-ABI.json';
 
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
