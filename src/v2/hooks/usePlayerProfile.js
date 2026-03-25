@@ -14,7 +14,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { ZERO_ADDRESS, getPlayerProfileContract } from '../lib/tictactoe';
+import { ZERO_ADDRESS, getPlayerProfileContract, getInstanceContract } from '../lib/tictactoe';
 
 const HISTORY_LIMIT = 20;
 
@@ -83,16 +83,26 @@ export function usePlayerProfile(factoryContract, runner, account) {
         const offset = Math.max(0, total - HISTORY_LIMIT);
         const limit = Math.min(total, HISTORY_LIMIT);
         const recs = await profile.getEnrollments(offset, limit).catch(() => []);
-        // Reverse so newest is first
-        setEnrollments([...recs].reverse().map(r => ({
-          instance: r.instance,
-          gameType: Number(r.gameType),
-          enrolledAt: Number(r.enrolledAt),
-          entryFee: r.entryFee,
-          concluded: r.concluded,
-          won: r.won,
-          prize: r.prize,
-        })));
+        // Enrich with enrolledCount from each instance, then sort newest first
+        const enriched = await Promise.all([...recs].map(async r => {
+          let playerCount = null;
+          try {
+            const inst = getInstanceContract(r.instance, runner);
+            const info = await inst.getInstanceInfo();
+            playerCount = Number(info.enrolledCount);
+          } catch { /* ignore */ }
+          return {
+            instance: r.instance,
+            gameType: Number(r.gameType),
+            enrolledAt: Number(r.enrolledAt),
+            entryFee: r.entryFee,
+            concluded: r.concluded,
+            won: r.won,
+            prize: r.prize,
+            playerCount,
+          };
+        }));
+        setEnrollments(enriched.sort((a, b) => b.enrolledAt - a.enrolledAt));
       } else {
         setEnrollments([]);
       }

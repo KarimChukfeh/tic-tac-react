@@ -694,6 +694,23 @@ const RecentMatchesCard = ({
     }
   };
 
+  const formatTimeAgo = (timestamp) => {
+    if (!timestamp) return '';
+    const seconds = Math.floor(Date.now() / 1000) - timestamp;
+    if (seconds < 60) return `${seconds}s ago`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days}d ago`;
+    const weeks = Math.floor(days / 7);
+    if (weeks < 5) return `${weeks}w ago`;
+    const months = Math.floor(days / 30);
+    if (months < 12) return `${months}mo ago`;
+    return `${Math.floor(months / 12)}y ago`;
+  };
+
   const formatTimestamp = (timestamp, label = 'Started') => {
     const date = new Date(timestamp * 1000);
     const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase().replace(' ', '');
@@ -1077,10 +1094,10 @@ const RecentMatchesCard = ({
                       <div className="text-xs font-semibold text-green-300 mb-1">Wins</div>
                       <div className="text-xl font-bold text-white">{playerProfile.stats.totalWins}</div>
                     </div>
-                    <div className={`${playerProfile.stats.totalNetEarnings >= 0n ? 'bg-green-500/15 border-green-400/30' : 'bg-purple-500/15 border-purple-400/30'} border rounded-xl p-3 text-center`}>
-                      <div className={`text-xs font-semibold mb-1 ${playerProfile.stats.totalNetEarnings >= 0n ? 'text-green-300' : 'text-purple-300'}`}>Net ETH</div>
+                    <div className="bg-green-500/15 border border-green-400/30 rounded-xl p-3 text-center">
+                      <div className="text-xs font-semibold mb-1 text-green-300">Prizes (ETH)</div>
                       <div className="text-sm font-bold text-white leading-tight">
-                        {playerProfile.stats.totalNetEarnings >= 0n ? '+' : ''}{Number(ethers.formatEther(playerProfile.stats.totalNetEarnings)).toFixed(4)}
+                        {Number(ethers.formatEther(playerProfile.enrollments.reduce((sum, r) => sum + (r.prize ?? 0n), 0n))).toFixed(4)}
                       </div>
                     </div>
                   </div>
@@ -1091,7 +1108,7 @@ const RecentMatchesCard = ({
                       {playerProfile.enrollments.map((rec, idx) => (
                         <div key={idx} ref={(el) => { if (el && rec.instance) tournamentItemRefs.current[rec.instance.toLowerCase()] = el; }} className="bg-slate-900/60 border border-purple-400/15 rounded-xl px-3 py-2.5">
                           <div className="flex items-center justify-between gap-2">
-                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 min-w-0">
                               {rec.concluded ? (
                                 rec.won
                                   ? <span className="text-green-300 font-semibold text-xs">Won</span>
@@ -1099,20 +1116,30 @@ const RecentMatchesCard = ({
                               ) : (
                                 <span className="text-yellow-300 font-semibold text-xs">Active</span>
                               )}
-                              <span className="text-slate-400 text-[10px] font-mono">{rec.instance.slice(0, 8)}…</span>
+                              {rec.enrolledAt > 0 && (
+                                <span className="text-slate-400 text-[10px]">{formatTimeAgo(rec.enrolledAt)}</span>
+                              )}
                             </div>
                             <button
                               type="button"
                               onClick={() => onViewTournament && onViewTournament(rec.instance)}
-                              className="text-xs text-purple-300 hover:text-purple-200 underline shrink-0"
+                              className="text-purple-300 hover:text-purple-200 transition-colors shrink-0"
+                              title="View tournament"
                             >
-                              View
+                              <ExternalLink size={16} />
                             </button>
                           </div>
-                          <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
+                          <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-1">
+                            {rec.playerCount != null && (
+                              <span className="text-slate-400 text-[10px]">({rec.playerCount} Players)</span>
+                            )}
                             <span className="text-slate-400 text-[10px]">{ethers.formatEther(rec.entryFee)} ETH entry</span>
-                            {rec.concluded && rec.prize > 0n && (
-                              <span className="text-cyan-300 text-[10px]">+{ethers.formatEther(rec.prize)} ETH prize</span>
+                            {rec.concluded && (
+                              rec.won && rec.prize > 0n
+                                ? <span className="text-green-400 text-[10px]">+{ethers.formatEther(rec.prize)} ETH prize</span>
+                                : !rec.won && rec.playerCount != null && rec.entryFee > 0n
+                                  ? <span className="text-slate-500 text-[10px]">{ethers.formatEther(rec.entryFee * BigInt(rec.playerCount) * 9n / 10n)} ETH prize</span>
+                                  : null
                             )}
                           </div>
                         </div>
