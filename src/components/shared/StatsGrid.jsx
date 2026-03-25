@@ -31,10 +31,10 @@ const getStatusDisplay = (status) => {
     case 2:
       return {
         text: 'Completed',
-        color: 'text-gray-300',
-        bgColor: 'bg-gray-500/20',
-        borderColor: 'border-gray-400',
-        dotColor: 'bg-gray-400'
+        color: 'text-green-300',
+        bgColor: 'bg-green-500/20',
+        borderColor: 'border-green-400',
+        dotColor: 'bg-green-400'
       };
     default:
       return {

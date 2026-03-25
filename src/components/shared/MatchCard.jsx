@@ -87,6 +87,7 @@ const MatchCard = ({
   showThisIsYou = false,
   colors = {},
   gameName,
+  isTournamentCompleted = false,
 }) => {
   const isUserMatch =
     match.player1?.toLowerCase() === account?.toLowerCase() ||
@@ -226,8 +227,10 @@ const MatchCard = ({
     });
   }
 
-  // Get border class
-  const borderClass = showEscalation
+  // Get border class — when tournament is completed, all user matches show purple (not green)
+  const borderClass = isTournamentCompleted
+    ? (isUserMatch ? 'border-purple-400/70 bg-purple-900/20' : colors.defaultBorder || 'border-purple-400/30 hover:border-purple-400/50')
+    : showEscalation
     ? getBorderClass(isUserMatch, isStalled, escL2Available, escL3Available, isUserAdvanced, colors.defaultBorder)
     : isUserMatch
     ? 'border-green-400/70 bg-green-900/20'
@@ -438,15 +441,24 @@ const MatchCard = ({
           </div>
         </div>
 
-        {/* Enter Match Button for user's matches */}
-        {isUserMatch && match.matchStatus !== 2 && (
+        {/* Match CTA for user's matches */}
+        {isUserMatch && (isTournamentCompleted || match.matchStatus !== 2) && (
           <button
             onClick={() => onEnterMatch(tierId, instanceId, roundIdx, matchIdx)}
-            disabled={loading || match.matchStatus === 0}
-            className="w-full mt-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 disabled:from-gray-500 disabled:to-gray-600 text-white font-bold py-2 px-4 rounded-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
+            disabled={loading || (!isTournamentCompleted && match.matchStatus === 0)}
+            className={`w-full mt-2 bg-gradient-to-r ${isTournamentCompleted ? 'from-purple-500 to-violet-500 hover:from-purple-600 hover:to-violet-600' : 'from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600'} disabled:from-gray-500 disabled:to-gray-600 text-white font-bold py-2 px-4 rounded-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2`}
           >
-            <Play size={16} />
-            {match.matchStatus === 0 ? 'Waiting to Start' : 'Enter Match'}
+            {isTournamentCompleted ? (
+              <>
+                <Eye size={16} />
+                View Match
+              </>
+            ) : (
+              <>
+                <Play size={16} />
+                {match.matchStatus === 0 ? 'Waiting to Start' : 'Enter Match'}
+              </>
+            )}
           </button>
         )}
 

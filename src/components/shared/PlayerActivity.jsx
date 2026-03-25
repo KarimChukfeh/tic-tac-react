@@ -8,7 +8,7 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { Users, X, Zap, Trophy, Clock, Play, Eye, RefreshCw, ChevronDown, ChevronUp, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Users, X, Zap, Trophy, Clock, Play, Eye, RefreshCw, ChevronDown, ChevronUp, AlertCircle, CheckCircle2, CheckCircle } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
 import { formatTimeRemaining } from '../../utils/activityHelpers';
 
@@ -36,6 +36,8 @@ const PlayerActivity = ({
   showTooltip = false, // External control for tooltip visibility
   onShowTooltip, // Callback to show this component's tooltip
   onHideTooltip, // Callback to hide this component's tooltip
+  completedTournaments = [], // Array of concluded enrollment records { instance, won, entryFee, prize }
+  onViewCompletedTournament = null, // Callback(instanceAddress) to view a completed tournament
 }) => {
   const [internalIsExpanded, setInternalIsExpanded] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
@@ -282,12 +284,12 @@ const PlayerActivity = ({
   const activeMatchCount = displayMatches.length;
   // Count all enrolled tournaments (in progress + waiting for players)
   const enrolledTournamentCount = (activity?.inProgressTournaments?.length || 0) + (activity?.unfilledTournaments?.length || 0);
-  const hasActivity = activity && (
+  const hasActivity = (activity && (
     displayMatches.length > 0 ||
     (activity.terminatedMatches && activity.terminatedMatches.length > 0) ||
     (activity.inProgressTournaments?.length > 0) ||
     (activity.unfilledTournaments?.length > 0)
-  );
+  )) || completedTournaments.length > 0;
 
   // Desktop positioning (vertical stack below GamesCard)
   const BASE_TOP_DESKTOP = 80; // md:top-20 in pixels
@@ -730,6 +732,46 @@ const PlayerActivity = ({
                           <Eye size={16} />
                           View Bracket
                         </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Completed Tournaments */}
+              {completedTournaments.length > 0 && (
+                <div className="mb-6">
+                  <h4 className={`font-semibold text-sm mb-3 flex items-center gap-2 uppercase ${isElite ? 'text-[#fff8e7]' : 'text-purple-300'}`}>
+                    <CheckCircle size={16} className="text-green-400" />
+                    Completed Tournaments ({completedTournaments.length})
+                  </h4>
+                  <div className="space-y-2">
+                    {completedTournaments.slice(0, 5).map((rec, idx) => (
+                      <div
+                        key={idx}
+                        className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-400/30 rounded-lg p-3"
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-2">
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded ${rec.won ? 'bg-green-500/40 text-green-200' : 'bg-slate-600/60 text-slate-300'}`}>
+                              {rec.won ? '🏆 Won' : 'Lost'}
+                            </span>
+                            <span className="text-slate-400 text-[10px] font-mono">{rec.instance.slice(0, 8)}…</span>
+                          </div>
+                          {rec.prize > 0n && (
+                            <span className="text-cyan-300 text-[10px] font-semibold">+{(Number(rec.prize) / 1e18).toFixed(4)} ETH</span>
+                          )}
+                        </div>
+                        <div className="text-slate-500 text-[10px] mb-2">{(Number(rec.entryFee) / 1e18).toFixed(4)} ETH entry</div>
+                        {onViewCompletedTournament && (
+                          <button
+                            onClick={() => onViewCompletedTournament(rec.instance)}
+                            className="w-full bg-purple-600/20 hover:bg-purple-600/40 text-purple-300 rounded-lg transition-all flex items-center justify-center gap-2 py-1.5 px-3 font-semibold text-xs border border-purple-400/20"
+                          >
+                            <Eye size={14} />
+                            View Bracket
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>

@@ -334,6 +334,7 @@ const TournamentBracket = ({
                         showEscalation={true}
                         showThisIsYou={true}
                         gameName="tictactoe"
+                        isTournamentCompleted={status === 2}
                       />
                     </div>
                   ))}
@@ -1676,6 +1677,8 @@ export default function TicTacToeV2() {
             showTooltip={activeTooltip === 'playerActivity'}
             onShowTooltip={() => setActiveTooltip('playerActivity')}
             onHideTooltip={() => setActiveTooltip(null)}
+            completedTournaments={playerProfile.enrollments.filter(r => r.concluded)}
+            onViewCompletedTournament={enterInstanceBracket}
           />
           <RecentMatchesCard
             contract={null}
@@ -1753,6 +1756,8 @@ export default function TicTacToeV2() {
             showTooltip={activeTooltip === 'playerActivity'}
             onShowTooltip={() => setActiveTooltip('playerActivity')}
             onHideTooltip={() => setActiveTooltip(null)}
+            completedTournaments={playerProfile.enrollments.filter(r => r.concluded)}
+            onViewCompletedTournament={enterInstanceBracket}
           />
           <RecentMatchesCard
             contract={null}
