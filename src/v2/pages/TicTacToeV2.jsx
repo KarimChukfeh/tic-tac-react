@@ -1028,7 +1028,12 @@ export default function TicTacToeV2() {
       const lastMoveTime = Number(matchData.lastMoveTime);
       const startTime = Number(matchData.startTime);
       const winner = matchData.matchWinner || matchData.winner;
-      const loser = '0x0000000000000000000000000000000000000000';
+      const zeroAddress = '0x0000000000000000000000000000000000000000';
+      // Calculate loser: if there's a winner and match is complete, loser is the other player
+      let loser = zeroAddress;
+      if (matchStatus === 2 && winner && winner.toLowerCase() !== zeroAddress.toLowerCase()) {
+        loser = winner.toLowerCase() === player1.toLowerCase() ? player2 : player1;
+      }
       const completionReason = 0;
       const currentTurn = fullMatch.currentTurn;
       const firstPlayer = fullMatch.firstPlayer;

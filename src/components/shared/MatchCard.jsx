@@ -89,6 +89,9 @@ const MatchCard = ({
   gameName,
   isTournamentCompleted = false,
 }) => {
+  // Handle both matchStatus and status field names (V1 vs V2)
+  const matchStatus = match.matchStatus ?? match.status;
+
   const isUserMatch =
     match.player1?.toLowerCase() === account?.toLowerCase() ||
     match.player2?.toLowerCase() === account?.toLowerCase();
@@ -129,8 +132,8 @@ const MatchCard = ({
   // Player time display
   const times = calculatePlayerTimes(match, account, match.matchTimePerPlayer);
   const isPlayer1Turn = match.currentTurn?.toLowerCase() === match.player1?.toLowerCase();
-  const player1TimeRemaining = match.matchStatus === 1 ? times.player1.remaining : null;
-  const player2TimeRemaining = match.matchStatus === 1 ? times.player2.remaining : null;
+  const player1TimeRemaining = matchStatus === 1 ? times.player1.remaining : null;
+  const player2TimeRemaining = matchStatus === 1 ? times.player2.remaining : null;
 
   // Client-side countdown ticking for smoother UI - separate for each player
   const [tickingPlayer1Time, setTickingPlayer1Time] = useState(player1TimeRemaining);
@@ -158,7 +161,7 @@ const MatchCard = ({
 
   // Tick down the countdown every second for the active player
   useEffect(() => {
-    if (match.matchStatus !== 1 || !showEscalation) {
+    if (matchStatus !== 1 || !showEscalation) {
       return;
     }
 
@@ -176,7 +179,7 @@ const MatchCard = ({
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [match.matchStatus, showEscalation, isPlayer1Turn]);
+  }, [matchStatus, showEscalation, isPlayer1Turn]);
 
   const displayPlayer1Time = tickingPlayer1Time !== null ? tickingPlayer1Time : player1TimeRemaining;
   const displayPlayer2Time = tickingPlayer2Time !== null ? tickingPlayer2Time : player2TimeRemaining;
@@ -201,7 +204,7 @@ const MatchCard = ({
   }
 
   // Debug logging for escalation issues - always log for active matches we're not in
-  if (showEscalation && match.matchStatus === 1 && !isUserMatch) {
+  if (showEscalation && matchStatus === 1 && !isUserMatch) {
     console.log(`[MatchCard R${roundIdx}M${matchIdx}] Escalation Debug:`, {
       // Raw contract data
       'match.timeoutState': match.timeoutState,
@@ -269,13 +272,31 @@ const MatchCard = ({
           Match {matchIdx + 1}
         </span>
         {/* Status */}
-        <span className={`text-xs font-bold ${getMatchStatusColor(match.matchStatus, match.winner, match.completionReason, matchStatusOptions)}`}>
-          {getMatchStatusText(match.matchStatus, match.winner, match.completionReason, matchStatusOptions)}
-        </span>
+        {(() => {
+          // For completed matches, show Victory/Defeat for user matches, nothing for others
+          if (matchStatus === 2) {
+            if (isUserMatch) {
+              const userWon = match.winner?.toLowerCase() === account?.toLowerCase();
+              if (userWon) {
+                return <span className="text-xs font-bold text-green-400">Victory</span>;
+              } else {
+                return <span className="text-xs font-bold text-red-400">Defeat</span>;
+              }
+            }
+            // For non-user matches, show nothing
+            return null;
+          }
+          // For non-completed matches, show standard status
+          return (
+            <span className={`text-xs font-bold ${getMatchStatusColor(matchStatus, match.winner, match.completionReason, matchStatusOptions)}`}>
+              {getMatchStatusText(matchStatus, match.winner, match.completionReason, matchStatusOptions)}
+            </span>
+          );
+        })()}
       </div>
 
       {/* Escalation countdown timers - show only the next pending timer */}
-      {showEscalation && match.matchStatus === 1 && isStalled && !isUserMatch && (
+      {showEscalation && matchStatus === 1 && isStalled && !isUserMatch && (
         <div className="mb-3">
           {/* ML2 Timer: Stalled but ML2 not yet available - Advanced Players Only */}
           {showML2Timer && (
@@ -362,7 +383,7 @@ const MatchCard = ({
           </div>
           <div className="flex items-center gap-2">
             {/* Player 1 timer - always visible when match is active */}
-            {showEscalation && displayPlayer1Time !== null && match.matchStatus === 1 && (
+            {showEscalation && displayPlayer1Time !== null && matchStatus === 1 && (
               <span className={`text-xs font-bold px-2 py-0.5 rounded font-mono ${
                 isPlayer1Turn ? (
                   displayPlayer1Time === 0 ? 'bg-red-500/30 text-red-300 animate-pulse' :
@@ -423,7 +444,7 @@ const MatchCard = ({
           </div>
           <div className="flex items-center gap-2">
             {/* Player 2 timer - always visible when match is active */}
-            {showEscalation && displayPlayer2Time !== null && match.matchStatus === 1 && (
+            {showEscalation && displayPlayer2Time !== null && matchStatus === 1 && (
               <span className={`text-xs font-bold px-2 py-0.5 rounded font-mono ${
                 !isPlayer1Turn ? (
                   displayPlayer2Time === 0 ? 'bg-red-500/30 text-red-300 animate-pulse' :
@@ -442,10 +463,10 @@ const MatchCard = ({
         </div>
 
         {/* Match CTA for user's matches */}
-        {isUserMatch && (isTournamentCompleted || match.matchStatus !== 2) && (
+        {isUserMatch && (isTournamentCompleted || matchStatus !== 2) && (
           <button
             onClick={() => onEnterMatch(tierId, instanceId, roundIdx, matchIdx)}
-            disabled={loading || (!isTournamentCompleted && match.matchStatus === 0)}
+            disabled={loading || (!isTournamentCompleted && matchStatus === 0)}
             className={`w-full mt-2 bg-gradient-to-r ${isTournamentCompleted ? 'from-purple-500 to-violet-500 hover:from-purple-600 hover:to-violet-600' : 'from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600'} disabled:from-gray-500 disabled:to-gray-600 text-white font-bold py-2 px-4 rounded-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2`}
           >
             {isTournamentCompleted ? (
@@ -456,7 +477,7 @@ const MatchCard = ({
             ) : (
               <>
                 <Play size={16} />
-                {match.matchStatus === 0 ? 'Waiting to Start' : 'Enter Match'}
+                {matchStatus === 0 ? 'Waiting to Start' : 'Enter Match'}
               </>
             )}
           </button>
@@ -475,7 +496,7 @@ const MatchCard = ({
         )} */}
 
         {/* Escalation CTAs for outsiders */}
-        {showEscalation && !isUserMatch && match.matchStatus === 1 && (
+        {showEscalation && !isUserMatch && matchStatus === 1 && (
           <>
             {/* ML2: Force Eliminate (Advanced Players Only) */}
             {showML2CTA && onForceEliminate && (

@@ -27,7 +27,7 @@ export const getMatchStatusText = (matchStatus, winner, completionReason, option
     }
     return 'Completed';
   }
-  return 'Unknown';
+  return '';
 };
 
 /**
