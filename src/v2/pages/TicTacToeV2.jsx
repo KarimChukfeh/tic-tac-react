@@ -61,6 +61,9 @@ import { useWalletBrowserPrompt } from '../../hooks/useWalletBrowserPrompt';
 import { isMobileDevice, isWalletBrowser } from '../../utils/mobileDetection';
 import {
   PLAYER_COUNT_OPTIONS,
+  TIME_PER_PLAYER_OPTIONS,
+  TIME_INCREMENT_OPTIONS,
+  ENROLLMENT_WINDOW_OPTIONS,
   TICTACTOE_V2_FACTORY_ADDRESS,
   TICTACTOE_V2_FACTORY_ADDRESS_CANDIDATES,
   TICTACTOE_V2_IMPLEMENTATION_ADDRESS,
@@ -413,6 +416,7 @@ export default function TicTacToeV2() {
   const [createForm, setCreateForm] = useState(DEFAULT_CREATE_FORM);
   const [createLoading, setCreateLoading] = useState(false);
   const [actionState, setActionState] = useState({ type: 'info', message: '' });
+  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
 
   // --- Instance selection (URL param ?instance=0x...) ---
   const selectedAddress = searchParams.get('instance');
@@ -2041,6 +2045,176 @@ export default function TicTacToeV2() {
             ) : (
               // Landing — lobby + create form
               <>
+              {/* Create Tournament section */}
+              <SectionShell
+                id="live-instances"
+                title="Start Tournament"
+                right={
+                  <button
+                    type="button"
+                    onClick={refreshDashboard}
+                    className="flex items-center gap-2 text-sm bg-blue-500/20 hover:bg-blue-500/30 border border-blue-400/30 text-blue-200 px-4 py-2 rounded-xl transition-colors"
+                  >
+                    <RefreshCw size={16} className={dashboardLoading ? 'animate-spin' : ''} />
+                    Refresh
+                  </button>
+                }
+              >
+                <form onSubmit={createInstance}>
+                  <div className="bg-slate-900/50 border border-purple-400/20 rounded-2xl p-5">
+                    {/* Player Count */}
+                    <div className="mb-6">
+                      <div className="text-sm text-purple-200 mb-3">Player Count (up to 32)</div>
+                      <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
+                        {PLAYER_COUNT_OPTIONS.map(option => {
+                          const active = Number(createForm.playerCount) === option;
+                          return (
+                            <button
+                              key={option}
+                              type="button"
+                              onClick={() => setPlayerCount(option)}
+                              className={`px-4 py-3 rounded-xl font-semibold transition-all ${active
+                                ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg'
+                                : 'bg-slate-800/80 border border-slate-700 text-slate-300 hover:border-cyan-400/40'}`}
+                            >
+                              {option}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Entry Fee */}
+                    <div className="mb-6">
+                      <label className="block">
+                        <div className="text-sm text-purple-200 mb-3">Entry Fee (0.001 - 1 ETH)</div>
+                        <input
+                          type="number"
+                          min="0.001"
+                          max="1"
+                          step="0.001"
+                          value={createForm.entryFee}
+                          onChange={event => updateCreateForm('entryFee', event.target.value)}
+                          className="w-full bg-slate-950/80 border border-purple-400/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-400"
+                        />
+                      </label>
+                    </div>
+
+                    {/* More Settings (Collapsible) */}
+                    <div className="mb-6">
+                      <button
+                        type="button"
+                        onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
+                        className="flex items-center gap-2 text-purple-300 hover:text-purple-200 transition-colors mb-3"
+                      >
+                        {showAdvancedSettings ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                        <span className="text-sm font-semibold">More Settings</span>
+                      </button>
+
+                      {showAdvancedSettings && (
+                        <div className="space-y-4 bg-slate-950/50 border border-purple-400/10 rounded-xl p-4">
+                          {/* Enrollment Window */}
+                          <div>
+                            <div className="text-sm text-purple-200 mb-3">Enrollment Window</div>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                              {ENROLLMENT_WINDOW_OPTIONS.map(seconds => {
+                                const active = Number(createForm.enrollmentWindow) === seconds;
+                                const label = seconds < 60 ? `${seconds}s` : `${seconds / 60}min`;
+                                return (
+                                  <button
+                                    key={seconds}
+                                    type="button"
+                                    onClick={() => updateCreateForm('enrollmentWindow', seconds)}
+                                    className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all ${active
+                                      ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-md'
+                                      : 'bg-slate-800/80 border border-slate-700 text-slate-300 hover:border-emerald-400/40'}`}
+                                  >
+                                    {label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Time Per Player */}
+                          <div>
+                            <div className="text-sm text-purple-200 mb-3">Time Per Player</div>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                              {TIME_PER_PLAYER_OPTIONS.map(seconds => {
+                                const active = Number(createForm.matchTimePerPlayer) === seconds;
+                                const label = `${seconds / 60}min`;
+                                return (
+                                  <button
+                                    key={seconds}
+                                    type="button"
+                                    onClick={() => updateCreateForm('matchTimePerPlayer', seconds)}
+                                    className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all ${active
+                                      ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md'
+                                      : 'bg-slate-800/80 border border-slate-700 text-slate-300 hover:border-cyan-400/40'}`}
+                                  >
+                                    {label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Increment Time */}
+                          <div>
+                            <div className="text-sm text-purple-200 mb-3">Increment Time</div>
+                            <div className="grid grid-cols-2 gap-3">
+                              {TIME_INCREMENT_OPTIONS.map(seconds => {
+                                const active = Number(createForm.timeIncrementPerMove) === seconds;
+                                const label = `${seconds}s`;
+                                return (
+                                  <button
+                                    key={seconds}
+                                    type="button"
+                                    onClick={() => updateCreateForm('timeIncrementPerMove', seconds)}
+                                    className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all ${active
+                                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md'
+                                      : 'bg-slate-800/80 border border-slate-700 text-slate-300 hover:border-pink-400/40'}`}
+                                  >
+                                    {label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Action Button */}
+                    <div className="flex flex-col gap-3">
+                      <div className="text-sm text-slate-400 text-center">
+                        Creating a tournament submits the entry fee and auto-enrolls you as the first player.
+                      </div>
+                      {walletBootDone && !account ? (
+                        <button
+                          type="button"
+                          onClick={connectWallet}
+                          disabled={isConnecting}
+                          className={`w-full flex items-center justify-center gap-3 bg-gradient-to-r ${currentTheme.buttonGradient} ${currentTheme.buttonHover} px-8 py-4 rounded-2xl font-bold text-xl shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
+                        >
+                          {isConnecting ? <Loader size={22} className="animate-spin" /> : <Wallet size={22} />}
+                          {isConnecting ? 'Connecting...' : 'Connect to Create'}
+                        </button>
+                      ) : (
+                        <button
+                          type="submit"
+                          disabled={createLoading}
+                          className={`w-full flex items-center justify-center gap-3 bg-gradient-to-r ${currentTheme.buttonGradient} ${currentTheme.buttonHover} px-8 py-4 rounded-2xl font-bold text-xl shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
+                        >
+                          {createLoading ? <Loader size={22} className="animate-spin" /> : <Plus size={22} />}
+                          {createLoading ? 'Creating Tournament...' : 'Create Tournament'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </form>
+              </SectionShell>
+
               {/* Open Tournaments Lobby */}
               <SectionShell
                 id="open-tournaments"
@@ -2064,7 +2238,7 @@ export default function TicTacToeV2() {
                     <span>Loading tournaments...</span>
                   </div>
                 ) : lobby.active.length === 0 ? (
-                  <p className="text-slate-400 text-sm py-4">No open tournaments right now. Create one below to get started.</p>
+                  <p className="text-slate-400 text-sm py-4">No open tournaments right now. Create one above to get started.</p>
                 ) : (
                   <div className="space-y-3">
                     {lobby.active.map(t => {
@@ -2095,95 +2269,6 @@ export default function TicTacToeV2() {
                     })}
                   </div>
                 )}
-              </SectionShell>
-
-              {/* Create Instance section */}
-              <SectionShell
-                id="live-instances"
-                title="Start Tournament"
-                right={
-                  <button
-                    type="button"
-                    onClick={refreshDashboard}
-                    className="flex items-center gap-2 text-sm bg-blue-500/20 hover:bg-blue-500/30 border border-blue-400/30 text-blue-200 px-4 py-2 rounded-xl transition-colors"
-                  >
-                    <RefreshCw size={16} className={dashboardLoading ? 'animate-spin' : ''} />
-                    Refresh
-                  </button>
-                }
-              >
-                <form onSubmit={createInstance}>
-                  <div className="bg-slate-900/50 border border-purple-400/20 rounded-2xl p-5">
-                    <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
-                      <div>
-                        <div className="text-sm text-purple-200 mb-3">Player Count</div>
-                        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
-                          {PLAYER_COUNT_OPTIONS.map(option => {
-                            const active = Number(createForm.playerCount) === option;
-                            return (
-                              <button
-                                key={option}
-                                type="button"
-                                onClick={() => setPlayerCount(option)}
-                                className={`px-4 py-3 rounded-xl font-semibold transition-all ${active
-                                  ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg'
-                                  : 'bg-slate-800/80 border border-slate-700 text-slate-300 hover:border-cyan-400/40'}`}
-                              >
-                                {option}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block">
-                          <div className="text-sm text-purple-200 mb-3">Entry Fee (ETH)</div>
-                          <input
-                            type="number"
-                            min={factoryRules ? formatEth(factoryRules.minEntryFee, 3) : '0.001'}
-                            step={factoryRules ? formatEth(factoryRules.feeIncrement, 3) : '0.001'}
-                            value={createForm.entryFee}
-                            onChange={event => updateCreateForm('entryFee', event.target.value)}
-                            className="w-full bg-slate-950/80 border border-purple-400/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-400"
-                          />
-                        </label>
-                      </div>
-                    </div>
-
-                    <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                      <MetricBox label="Tournament Type" value={getTournamentTypeLabel(createForm.playerCount)} subtext={`${createForm.playerCount} total players`} tone="purple" />
-                      <MetricBox label="Per-Player Clock" value={`${createForm.matchTimePerPlayer}s`} subtext={`+${createForm.timeIncrementPerMove}s increment`} tone="blue" />
-                      <MetricBox label="Enrollment Window" value={`${createForm.enrollmentWindow}s`} subtext={`EL2 after ${createForm.enrollmentLevel2Delay}s`} tone="green" />
-                      <MetricBox label="Escalation Delays" value={`${createForm.matchLevel2Delay}s / ${createForm.matchLevel3Delay}s`} subtext="ML2 / ML3 thresholds" tone="blue" />
-                    </div>
-
-                    <div className="mt-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                      <div className="text-sm text-slate-400">
-                        Invite-based flow only. Creating an instance submits the exact entry fee and auto-enrolls the creator.
-                      </div>
-                      {walletBootDone && !account ? (
-                        <button
-                          type="button"
-                          onClick={connectWallet}
-                          disabled={isConnecting}
-                          className={`w-full md:w-auto flex items-center justify-center gap-3 bg-gradient-to-r ${currentTheme.buttonGradient} ${currentTheme.buttonHover} px-8 py-4 rounded-2xl font-bold text-xl shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
-                        >
-                          {isConnecting ? <Loader size={22} className="animate-spin" /> : <Wallet size={22} />}
-                          {isConnecting ? 'Connecting...' : 'Connect to Create'}
-                        </button>
-                      ) : (
-                        <button
-                          type="submit"
-                          disabled={createLoading}
-                          className={`w-full md:w-auto flex items-center justify-center gap-3 bg-gradient-to-r ${currentTheme.buttonGradient} ${currentTheme.buttonHover} px-8 py-4 rounded-2xl font-bold text-xl shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
-                        >
-                          {createLoading ? <Loader size={22} className="animate-spin" /> : <Plus size={22} />}
-                          {createLoading ? 'Creating Instance...' : 'Create V2 Instance'}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </form>
               </SectionShell>
               </>
             )}

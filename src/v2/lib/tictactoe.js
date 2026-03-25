@@ -96,55 +96,52 @@ export const TICTACTOE_V2_FACTORY_ADDRESS_CANDIDATES = [
   ETourFactoryABIs.factories?.TicTacChainFactory?.address,
 ].filter((value, index, array) => value && array.indexOf(value) === index);
 
-export const PLAYER_COUNT_OPTIONS = [2, 4, 8, 16, 32, 64];
+export const PLAYER_COUNT_OPTIONS = [2, 4, 8, 16, 32];
+
+// Time options in seconds for the UI
+export const TIME_PER_PLAYER_OPTIONS = [120, 300, 600, 900]; // 2min, 5min, 10min, 15min
+export const TIME_INCREMENT_OPTIONS = [15, 30]; // 15s, 30s
+export const ENROLLMENT_WINDOW_OPTIONS = [120, 300, 600, 1800]; // 2min, 5min, 10min, 30min
 
 export const DEFAULT_TIMEOUTS_BY_PLAYER_COUNT = {
   2: {
-    matchTimePerPlayer: 120,
-    timeIncrementPerMove: 15,
+    matchTimePerPlayer: 120,      // 2 minutes
+    timeIncrementPerMove: 15,      // 15 seconds
     matchLevel2Delay: 120,
     matchLevel3Delay: 240,
-    enrollmentWindow: 300,
-    enrollmentLevel2Delay: 300,
+    enrollmentWindow: 120,         // 2 minutes
+    enrollmentLevel2Delay: 120,
   },
   4: {
-    matchTimePerPlayer: 90,
-    timeIncrementPerMove: 15,
+    matchTimePerPlayer: 300,       // 5 minutes
+    timeIncrementPerMove: 15,      // 15 seconds
     matchLevel2Delay: 120,
     matchLevel3Delay: 240,
-    enrollmentWindow: 600,
+    enrollmentWindow: 300,         // 5 minutes
     enrollmentLevel2Delay: 300,
   },
   8: {
-    matchTimePerPlayer: 90,
-    timeIncrementPerMove: 15,
+    matchTimePerPlayer: 300,       // 5 minutes
+    timeIncrementPerMove: 15,      // 15 seconds
     matchLevel2Delay: 120,
     matchLevel3Delay: 240,
-    enrollmentWindow: 900,
+    enrollmentWindow: 600,         // 10 minutes
     enrollmentLevel2Delay: 300,
   },
   16: {
-    matchTimePerPlayer: 90,
-    timeIncrementPerMove: 15,
+    matchTimePerPlayer: 600,       // 10 minutes
+    timeIncrementPerMove: 30,      // 30 seconds
     matchLevel2Delay: 120,
     matchLevel3Delay: 240,
-    enrollmentWindow: 1200,
+    enrollmentWindow: 600,         // 10 minutes
     enrollmentLevel2Delay: 300,
   },
   32: {
-    matchTimePerPlayer: 90,
-    timeIncrementPerMove: 15,
+    matchTimePerPlayer: 600,       // 10 minutes
+    timeIncrementPerMove: 30,      // 30 seconds
     matchLevel2Delay: 120,
     matchLevel3Delay: 240,
-    enrollmentWindow: 1800,
-    enrollmentLevel2Delay: 300,
-  },
-  64: {
-    matchTimePerPlayer: 90,
-    timeIncrementPerMove: 15,
-    matchLevel2Delay: 120,
-    matchLevel3Delay: 240,
-    enrollmentWindow: 2400,
+    enrollmentWindow: 1800,        // 30 minutes
     enrollmentLevel2Delay: 300,
   },
 };
