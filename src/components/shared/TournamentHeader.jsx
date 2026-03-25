@@ -93,6 +93,9 @@ const TournamentHeader = ({
   onResetEnrollmentWindow,
   contract,
 
+  // Optional: override the share URL (e.g. for V2 contract-address-based URLs)
+  shareUrlOverride,
+
   // Optional: Custom colors override
   colors: customColors
 }) => {
@@ -218,7 +221,7 @@ const TournamentHeader = ({
   }, [enrollmentTimeout, isEnrolled, contract, tierId, instanceId, isVisible, isTabActive]);
 
   // Generate shareable URL
-  const shareUrl = generateTournamentUrl(gameType, tierId, instanceId);
+  const shareUrl = shareUrlOverride || generateTournamentUrl(gameType, tierId, instanceId);
 
   // Copy handler
   const handleCopyUrl = async () => {

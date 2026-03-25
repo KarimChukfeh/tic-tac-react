@@ -48,6 +48,26 @@ export const parseTournamentParams = (searchParams) => {
 };
 
 /**
+ * Generate shareable V2 instance URL (uses contract address)
+ * @param {string} contractAddress - Instance contract address
+ * @returns {string} - Full shareable URL with ?c=0x...
+ */
+export const generateV2TournamentUrl = (contractAddress) => {
+  return `${window.location.origin}/v2/tictactoe?c=${contractAddress}`;
+};
+
+/**
+ * Parse V2 contract address from URL search params
+ * @param {URLSearchParams} searchParams
+ * @returns {string|null} - contract address or null
+ */
+export const parseV2ContractParam = (searchParams) => {
+  const c = searchParams.get('c');
+  if (!c || !/^0x[0-9a-fA-F]{40}$/.test(c)) return null;
+  return c;
+};
+
+/**
  * Copy text to clipboard with error handling
  * @param {string} text - Text to copy
  * @returns {Promise<boolean>} - Success status

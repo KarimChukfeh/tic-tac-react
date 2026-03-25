@@ -285,8 +285,8 @@ const PlayerActivity = ({
   const hasActivity = activity && (
     displayMatches.length > 0 ||
     (activity.terminatedMatches && activity.terminatedMatches.length > 0) ||
-    activity.inProgressTournaments.length > 0 ||
-    activity.unfilledTournaments.length > 0
+    (activity.inProgressTournaments?.length > 0) ||
+    (activity.unfilledTournaments?.length > 0)
   );
 
   // Desktop positioning (vertical stack below GamesCard)
