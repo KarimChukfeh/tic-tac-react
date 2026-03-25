@@ -1008,10 +1008,17 @@ export default function TicTacToeV2() {
 
       console.log('[V2] fetchMoveHistory - firstPlayer:', firstPlayer, 'player1:', player1, 'player2:', player2);
 
-      const moves = [];
-      for (let i = 0; i < movesString.length; i++) {
-        const cellIndex = movesString.charCodeAt(i);
-        if (cellIndex >= 0 && cellIndex <= 8) moves.push(cellIndex);
+      // Parse moves: could be comma-separated string like "7,3,4,6,1" or raw bytes
+      let moves = [];
+      if (movesString.includes(',')) {
+        // Comma-separated format
+        moves = movesString.split(',').map(s => parseInt(s.trim(), 10)).filter(n => n >= 0 && n <= 8);
+      } else {
+        // Raw bytes format
+        for (let i = 0; i < movesString.length; i++) {
+          const cellIndex = movesString.charCodeAt(i);
+          if (cellIndex >= 0 && cellIndex <= 8) moves.push(cellIndex);
+        }
       }
 
       console.log('[V2] fetchMoveHistory - parsed moves:', moves);
