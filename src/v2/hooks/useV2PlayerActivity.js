@@ -41,6 +41,9 @@ async function scanInstance(instanceContract, account, dismissedMatches, instanc
   if (!isEnrolled) return null;
 
   const status = Number(tournament.status);
+
+  // Don't show anything in the activity panel for completed tournaments
+  if (status === 2) return null;
   const currentRound = Number(tournament.currentRound || 0);
   const enrolledCount = Number(tournament.enrolledCount || 0);
   const playerCount = Number(tc?.playerCount || 2);
@@ -131,6 +134,9 @@ async function scanInstance(instanceContract, account, dismissedMatches, instanc
         timeRemaining,
         isMyTurn,
         matchStatus,
+        // Include outcome fields for completed matches
+        winner: matchStatus === 2 ? (m.matchWinner || null) : null,
+        isDraw: matchStatus === 2 ? Boolean(m.isDraw) : false,
       });
     }
   }

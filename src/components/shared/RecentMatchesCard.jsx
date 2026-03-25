@@ -58,9 +58,24 @@ const RecentMatchesCard = ({
   const expandedPanelRef = useRef(null);
   const prevExpandedRef = useRef(false);
   const matchCardRefs = useRef({});
+  const tournamentItemRefs = useRef({});
 
   // Use external state if provided, otherwise use internal state
   const isExpanded = externalIsExpanded !== undefined ? externalIsExpanded : internalIsExpanded;
+
+  // Switch to Tournaments tab and scroll to a specific instance
+  const goToTournamentInstance = (instanceAddress) => {
+    setHistoryTab('tournaments');
+    setTimeout(() => {
+      const el = tournamentItemRefs.current[instanceAddress?.toLowerCase()];
+      if (el && expandedPanelRef.current) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.style.transition = 'box-shadow 0.3s';
+        el.style.boxShadow = '0 0 16px rgba(168,85,247,0.6)';
+        setTimeout(() => { el.style.boxShadow = ''; }, 1500);
+      }
+    }, 50);
+  };
 
   // Helper to handle expansion changes
   const handleSetExpanded = (value) => {
@@ -1074,7 +1089,7 @@ const RecentMatchesCard = ({
                   {playerProfile.enrollments.length > 0 ? (
                     <div className="space-y-2">
                       {playerProfile.enrollments.map((rec, idx) => (
-                        <div key={idx} className="bg-slate-900/60 border border-purple-400/15 rounded-xl px-3 py-2.5">
+                        <div key={idx} ref={(el) => { if (el && rec.instance) tournamentItemRefs.current[rec.instance.toLowerCase()] = el; }} className="bg-slate-900/60 border border-purple-400/15 rounded-xl px-3 py-2.5">
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
                               {rec.concluded ? (
@@ -1202,9 +1217,17 @@ const RecentMatchesCard = ({
                     {/* Match Number and Details */}
                     <div className="mb-2.5">
                       <div className="flex items-center gap-2 flex-wrap relative">
-                        <span className="text-slate-400 text-[10px] font-semibold">
-                          Match #{recentMatches.length - index}
-                        </span>
+                        {match.instanceAddress ? (
+                          <button
+                            onClick={() => goToTournamentInstance(match.instanceAddress)}
+                            className="bg-purple-500/20 text-purple-300 text-[10px] font-semibold px-2 py-0.5 rounded border border-purple-400/30 hover:bg-purple-500/30 transition-colors cursor-pointer underline decoration-dotted"
+                            title="View tournament"
+                          >
+                            {getTournamentTypeLabel ? getTournamentTypeLabel(match.playerCount) : (match.playerCount === 2 ? 'Duel' : `${match.playerCount} Players`)}
+                          </button>
+                        ) : (
+                          <span className="text-slate-400 text-[10px] font-semibold">Match #{recentMatches.length - index}</span>
+                        )}
                         {/* Expand to Modal Button - Chess only, Desktop only */}
                         {gameName === 'chess' && isDesktop && (
                           <button
@@ -1274,6 +1297,11 @@ const RecentMatchesCard = ({
                               : 'bg-red-500/60 text-white'
                           }`}>
                             {getOutcomeLabel(isWinner, match.reason)}
+                          </span>
+                        )}
+                        {match.instanceAddress && match.totalRounds > 0 && (
+                          <span className="bg-slate-600/50 text-slate-200 text-[10px] font-bold px-2 py-0.5 rounded border border-slate-400/40">
+                            Round {(match.roundNumber ?? 0) + 1}/{match.totalRounds}
                           </span>
                         )}
                       </div>
@@ -1893,7 +1921,12 @@ const RecentMatchesCard = ({
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-white flex items-center gap-3">
                   <History size={28} className="text-teal-400" />
-                  Match #{recentMatches.length - index}
+                  {match.instanceAddress
+                    ? (getTournamentTypeLabel ? getTournamentTypeLabel(match.playerCount) : (match.playerCount === 2 ? 'Duel' : `${match.playerCount} Players`))
+                    : `Match #${recentMatches.length - index}`}
+                  {match.instanceAddress && match.totalRounds > 0 && (
+                    <span className="text-slate-400 text-lg font-normal">· Round {(match.roundNumber ?? 0) + 1}/{match.totalRounds}</span>
+                  )}
                 </h2>
                 <button
                   onClick={() => setExpandedModalMatch(null)}

@@ -53,7 +53,6 @@ import { useActiveTournaments } from '../hooks/useActiveTournaments';
 import { usePlayerProfile } from '../hooks/usePlayerProfile';
 import { useV2MatchHistory } from '../hooks/useV2MatchHistory';
 import RecentMatchesCard from '../../components/shared/RecentMatchesCard';
-import CommunityRaffleCard from '../../components/shared/CommunityRaffleCard';
 import GamesCard from '../../components/shared/GamesCard';
 import BracketScrollHint from '../../components/shared/BracketScrollHint';
 import RecentInstanceCard from '../../components/shared/RecentInstanceCard';
@@ -451,12 +450,6 @@ export default function TicTacToeV2() {
   const [leaderboard] = useState([]);
   const [leaderboardLoading] = useState(false);
   const [leaderboardError] = useState(false);
-  const [raffleInfo] = useState({
-    raffleIndex: 0n, isReady: false, currentAccumulated: 0n,
-    threshold: 0n, reserve: 0n, ownerShare: 0n, raffleAmount: 0n, eligiblePlayerCount: 0n,
-  });
-  const [raffleHistory] = useState([]);
-  const [raffleSyncing] = useState(false);
 
   // --- Mobile panel coordination ---
   const [expandedPanel, setExpandedPanel] = useState(null);
@@ -480,7 +473,6 @@ export default function TicTacToeV2() {
   // Card heights for stacking
   const [gamesCardHeight, setGamesCardHeight] = useState(0);
   const [playerActivityHeight, setPlayerActivityHeight] = useState(0);
-  const [recentMatchesCardHeight, setRecentMatchesCardHeight] = useState(0);
 
   // Polling refs
   const currentMatchRef = useRef(currentMatch);
@@ -1677,8 +1669,7 @@ export default function TicTacToeV2() {
             showTooltip={activeTooltip === 'playerActivity'}
             onShowTooltip={() => setActiveTooltip('playerActivity')}
             onHideTooltip={() => setActiveTooltip(null)}
-            completedTournaments={playerProfile.enrollments.filter(r => r.concluded)}
-            onViewCompletedTournament={enterInstanceBracket}
+
           />
           <RecentMatchesCard
             contract={null}
@@ -1687,7 +1678,7 @@ export default function TicTacToeV2() {
             gameEmoji="✖️"
             gamesCardHeight={gamesCardHeight}
             playerActivityHeight={playerActivityHeight}
-            onHeightChange={setRecentMatchesCardHeight}
+            onHeightChange={() => {}}
             isExpanded={expandedPanel === 'recentMatches'}
             onToggleExpand={() => setExpandedPanel(expandedPanel === 'recentMatches' ? null : 'recentMatches')}
             tierConfig={{}}
@@ -1704,24 +1695,6 @@ export default function TicTacToeV2() {
             getTournamentTypeLabel={getTournamentTypeLabel}
             v2Matches={v2MatchHistory.matches}
             v2MatchesLoading={v2MatchHistory.loading}
-          />
-          <CommunityRaffleCard
-            raffleInfo={raffleInfo}
-            raffleHistory={raffleHistory}
-            account={account}
-            gamesCardHeight={gamesCardHeight}
-            playerActivityHeight={playerActivityHeight}
-            recentMatchesCardHeight={recentMatchesCardHeight}
-            onRefresh={() => {}}
-            onFetchHistory={() => {}}
-            onTriggerRaffle={() => {}}
-            syncing={raffleSyncing}
-            isExpanded={expandedPanel === 'communityRaffle'}
-            onToggleExpand={() => setExpandedPanel(expandedPanel === 'communityRaffle' ? null : 'communityRaffle')}
-            disabled={!account}
-            showTooltip={activeTooltip === 'communityRaffle'}
-            onShowTooltip={() => setActiveTooltip('communityRaffle')}
-            onHideTooltip={() => setActiveTooltip(null)}
           />
         </div>
         {/* Desktop */}
@@ -1756,8 +1729,7 @@ export default function TicTacToeV2() {
             showTooltip={activeTooltip === 'playerActivity'}
             onShowTooltip={() => setActiveTooltip('playerActivity')}
             onHideTooltip={() => setActiveTooltip(null)}
-            completedTournaments={playerProfile.enrollments.filter(r => r.concluded)}
-            onViewCompletedTournament={enterInstanceBracket}
+
           />
           <RecentMatchesCard
             contract={null}
@@ -1766,7 +1738,7 @@ export default function TicTacToeV2() {
             gameEmoji="✖️"
             gamesCardHeight={gamesCardHeight}
             playerActivityHeight={playerActivityHeight}
-            onHeightChange={setRecentMatchesCardHeight}
+            onHeightChange={() => {}}
             isExpanded={expandedPanel === 'recentMatches'}
             onToggleExpand={() => setExpandedPanel(expandedPanel === 'recentMatches' ? null : 'recentMatches')}
             tierConfig={{}}
@@ -1781,24 +1753,6 @@ export default function TicTacToeV2() {
             getTournamentTypeLabel={getTournamentTypeLabel}
             v2Matches={v2MatchHistory.matches}
             v2MatchesLoading={v2MatchHistory.loading}
-          />
-          <CommunityRaffleCard
-            raffleInfo={raffleInfo}
-            raffleHistory={raffleHistory}
-            account={account}
-            gamesCardHeight={gamesCardHeight}
-            playerActivityHeight={playerActivityHeight}
-            recentMatchesCardHeight={recentMatchesCardHeight}
-            onRefresh={() => {}}
-            onFetchHistory={() => {}}
-            onTriggerRaffle={() => {}}
-            syncing={raffleSyncing}
-            isExpanded={expandedPanel === 'communityRaffle'}
-            onToggleExpand={() => setExpandedPanel(expandedPanel === 'communityRaffle' ? null : 'communityRaffle')}
-            disabled={!account}
-            showTooltip={activeTooltip === 'communityRaffle'}
-            onShowTooltip={() => setActiveTooltip('communityRaffle')}
-            onHideTooltip={() => setActiveTooltip(null)}
           />
         </div>
       </div>

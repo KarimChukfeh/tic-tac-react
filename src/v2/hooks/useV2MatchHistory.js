@@ -58,14 +58,15 @@ export function useV2MatchHistory(factoryContract, runner, account) {
       await Promise.all(instanceAddresses.map(async (instanceAddress) => {
         try {
           const instance = getInstanceContract(instanceAddress, runner);
-          const [bracket, tournament] = await Promise.all([
+          const [bracket, tc] = await Promise.all([
             instance.getBracket().catch(() => null),
-            instance.tournament().catch(() => null),
+            instance.tierConfig().catch(() => null),
           ]);
 
           if (!bracket) return;
 
           const totalRounds = Number(bracket.totalRounds || 0);
+          const playerCount = Number(tc?.playerCount || 2);
 
           for (let roundIdx = 0; roundIdx < totalRounds; roundIdx++) {
             const matchCount = Number(bracket.matchCounts?.[roundIdx] || 0);
@@ -115,6 +116,8 @@ export function useV2MatchHistory(factoryContract, runner, account) {
                     instanceAddress,
                     roundNumber: roundIdx,
                     matchNumber: matchIdx,
+                    playerCount,
+                    totalRounds,
                     player1: m.player1,
                     player2: m.player2,
                     firstPlayer: m.player1, // V2 doesn't expose firstPlayer in getMatch
