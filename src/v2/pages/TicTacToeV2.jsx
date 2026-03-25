@@ -51,6 +51,7 @@ import PlayerActivity from '../../components/shared/PlayerActivity';
 import { useV2PlayerActivity } from '../hooks/useV2PlayerActivity';
 import { useActiveTournaments } from '../hooks/useActiveTournaments';
 import { usePlayerProfile } from '../hooks/usePlayerProfile';
+import { useV2MatchHistory } from '../hooks/useV2MatchHistory';
 import RecentMatchesCard from '../../components/shared/RecentMatchesCard';
 import CommunityRaffleCard from '../../components/shared/CommunityRaffleCard';
 import GamesCard from '../../components/shared/GamesCard';
@@ -466,6 +467,7 @@ export default function TicTacToeV2() {
   // --- Factory-level lobby & player profile ---
   const lobby = useActiveTournaments(resolvedFactoryContract, rpcProvider, account);
   const playerProfile = usePlayerProfile(resolvedFactoryContract, rpcProvider, account);
+  const v2MatchHistory = useV2MatchHistory(resolvedFactoryContract, rpcProvider, account);
 
   // --- Active match alert ---
   const [showMatchAlert, setShowMatchAlert] = useState(false);
@@ -1697,6 +1699,8 @@ export default function TicTacToeV2() {
             playerProfile={playerProfile}
             onViewTournament={enterInstanceBracket}
             getTournamentTypeLabel={getTournamentTypeLabel}
+            v2Matches={v2MatchHistory.matches}
+            v2MatchesLoading={v2MatchHistory.loading}
           />
           <CommunityRaffleCard
             raffleInfo={raffleInfo}
@@ -1770,6 +1774,8 @@ export default function TicTacToeV2() {
             playerProfile={playerProfile}
             onViewTournament={enterInstanceBracket}
             getTournamentTypeLabel={getTournamentTypeLabel}
+            v2Matches={v2MatchHistory.matches}
+            v2MatchesLoading={v2MatchHistory.loading}
           />
           <CommunityRaffleCard
             raffleInfo={raffleInfo}

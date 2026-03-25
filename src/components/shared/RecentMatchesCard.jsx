@@ -34,6 +34,8 @@ const RecentMatchesCard = ({
   playerProfile = null, // { stats, enrollments } from usePlayerProfile
   onViewTournament = null, // Callback(instanceAddress) to navigate to a tournament bracket
   getTournamentTypeLabel = null, // Function(playerCount) => string
+  v2Matches = null, // Pre-fetched matches array (bypasses internal contract fetch)
+  v2MatchesLoading = false, // Loading state for v2Matches
 }) => {
   const [internalIsExpanded, setInternalIsExpanded] = useState(false);
   const [historyTab, setHistoryTab] = useState('matches'); // 'matches' | 'tournaments'
@@ -97,8 +99,17 @@ const RecentMatchesCard = ({
     }
   }, [account, leaderboard]);
 
+  // When v2Matches is provided externally, sync it into recentMatches state
+  useEffect(() => {
+    if (v2Matches !== null) {
+      setRecentMatches(v2Matches);
+      if (onMatchesLoad) onMatchesLoad(v2Matches);
+    }
+  }, [v2Matches]);
+
   // Pre-fetch matches silently when wallet connects so ConnectedWalletCard stats are ready
   useEffect(() => {
+    if (v2Matches !== null) return; // skip internal fetch when externally supplied
     if (account && contract) {
       fetchRecentMatches();
     }
@@ -109,8 +120,10 @@ const RecentMatchesCard = ({
     if (isExpanded && !prevExpandedRef.current) {
       setCurrentPage(1); // Reset to first page when opening
       setIsScrolled(false); // Reset scroll state when opening
-      fetchRecentMatches();
-      fetchTransactionHistory();
+      if (v2Matches === null) {
+        fetchRecentMatches();
+        fetchTransactionHistory();
+      }
     }
     prevExpandedRef.current = isExpanded;
   }, [isExpanded]);
@@ -1112,7 +1125,7 @@ const RecentMatchesCard = ({
 
           {/* Content */}
           <h3 className="text-white font-semibold text-lg md:text-md mb-3">Match History</h3>
-          {loadingRecentMatches ? (
+          {(loadingRecentMatches || v2MatchesLoading) ? (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-teal-400 mx-auto"></div>
               <p className="text-slate-400 mt-2 text-xs">Loading recent matches...</p>
