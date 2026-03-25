@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { X, RefreshCw, History, ChevronDown, ChevronUp, Eye, ChevronLeft, ChevronRight, ArrowUpRight, TrendingUp, ExternalLink, ArrowUp } from 'lucide-react';
+import { X, RefreshCw, History, ChevronDown, ChevronUp, Eye, ChevronLeft, ChevronRight, ArrowUpRight, TrendingUp, ExternalLink, ArrowUp, Trophy } from 'lucide-react';
 import { shortenAddress, getCellPositionName } from '../../utils/formatters';
 import { isDraw } from '../../utils/completionReasons';
 import CapturedPieces from './CapturedPieces';
@@ -31,8 +31,12 @@ const RecentMatchesCard = ({
   leaderboard = [], // Leaderboard data to find player earnings
   onMatchesLoad, // Callback(matches) fired after matches are fetched
   onScrollToMatch, // Callback(fn) receives the scrollToMatch function for external callers
+  playerProfile = null, // { stats, enrollments } from usePlayerProfile
+  onViewTournament = null, // Callback(instanceAddress) to navigate to a tournament bracket
+  getTournamentTypeLabel = null, // Function(playerCount) => string
 }) => {
   const [internalIsExpanded, setInternalIsExpanded] = useState(false);
+  const [historyTab, setHistoryTab] = useState('matches'); // 'matches' | 'tournaments'
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
   const [recentMatches, setRecentMatches] = useState([]);
   const [loadingRecentMatches, setLoadingRecentMatches] = useState(false);
@@ -1008,98 +1012,103 @@ const RecentMatchesCard = ({
           </div>
           <hr className="border-purple-100/10" />
 
+          {/* Tab Bar */}
+          <div className="flex border-b border-teal-400/20 px-4 md:px-6">
+            <button
+              onClick={() => setHistoryTab('tournaments')}
+              className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors ${historyTab === 'tournaments' ? 'border-teal-400 text-teal-300' : 'border-transparent text-slate-400 hover:text-slate-200'}`}
+            >
+              Tournaments
+            </button>
+            <button
+              onClick={() => setHistoryTab('matches')}
+              className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors ${historyTab === 'matches' ? 'border-teal-400 text-teal-300' : 'border-transparent text-slate-400 hover:text-slate-200'}`}
+            >
+              Matches
+            </button>
+          </div>
+
           {/* Scrollable Content */}
           <div
             ref={expandedPanelRef}
             className="p-4 md:p-6 pb-8 overflow-y-auto overflow-x-hidden flex-1 min-h-0 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-teal-950/40 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-teal-500/70 [&::-webkit-scrollbar-thumb]:to-cyan-500/70 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border [&::-webkit-scrollbar-thumb]:border-teal-400/30 hover:[&::-webkit-scrollbar-thumb]:from-teal-400 hover:[&::-webkit-scrollbar-thumb]:to-cyan-400 [scrollbar-width:thin] [scrollbar-color:rgb(20_184_166_/_0.7)_rgb(4_47_46_/_0.4)]"
           >
 
-          {/* You earned section */}
-          <div className="mb-4 space-y-2">
-            <h3 className="text-white font-semibold text-lg md:text-md">Payout History</h3>
-            <div className="flex items-center gap-1.5 text-sm md:text-xs">
-              <span className="text-green-400">You earned:</span>
-              <TrendingUp className={`${totalEarnings >= 0n ? 'text-green-400' : 'text-red-400'}`} size={16} />
-              <span className={`font-semibold font-mono ${totalEarnings >= 0n ? 'text-green-400' : 'text-red-400'}`}>
-                {totalEarnings >= 0n ? '+' : ''}{ethers.formatEther(totalEarnings)} ETH
-              </span>
-              <button
-                onClick={toggleTransactionHistory}
-                className="ml-1 text-slate-400 hover:text-white transition-colors p-0.5"
-                title={showTransactionHistory ? "Hide transaction history" : "Show transaction history"}
-              >
-                {showTransactionHistory ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-              </button>
-            </div>
-
-            {/* Transaction History */}
-            {showTransactionHistory && (
-              <div className="bg-black/30 border border-green-400/20 rounded-lg p-3 mt-2">
-                <div className="flex items-start gap-2 mb-2">
-                  <p className="text-yellow-300/80 text-[10px]">
-                    Your recent ETH payouts
-                  </p>
-                </div>
-
-                {loadingHistory ? (
-                  <div className="text-center py-4">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-400 mx-auto"></div>
-                    <p className="text-slate-400 mt-1 text-[10px]">Loading history...</p>
-                  </div>
-                ) : transactionHistory.length === 0 ? (
-                  <p className="text-slate-400 text-[10px] text-center py-2">No prize awards found</p>
-                ) : (
-                  <div className="space-y-1.5 max-h-48 overflow-y-auto [&::-webkit-scrollbar]:w-0.5 [&::-webkit-scrollbar-track]:bg-green-950/40 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-green-500/70 [&::-webkit-scrollbar-thumb]:to-emerald-500/70 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:from-green-400 hover:[&::-webkit-scrollbar-thumb]:to-emerald-400 [scrollbar-width:thin] [scrollbar-color:rgb(34_197_94_/_0.7)_rgb(5_46_22_/_0.4)]">
-                    {transactionHistory.map((tx, index) => (
-                      <div
-                        key={`${tx.txHash}-${index}`}
-                        className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-400/20 rounded p-2 hover:border-green-400/40 transition-all"
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5 mb-0.5">
-                              <TrendingUp className="text-green-400 flex-shrink-0" size={12} />
-                              <span className="text-green-400 font-mono font-semibold text-xs">
-                                +{ethers.formatEther(tx.value)} ETH
-                              </span>
-                            </div>
-                            <p className="text-slate-300 text-[10px] flex items-center gap-1">
-                              <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${
-                                getMatchResolution(tx.matchId, tx.timestamp).includes('Victory')
-                                  ? 'bg-green-500/20 text-green-400'
-                                  : getMatchResolution(tx.matchId, tx.timestamp).includes('Draw')
-                                  ? 'bg-yellow-500/20 text-yellow-400'
-                                  : 'bg-red-500/20 text-red-400'
-                              }`}>
-                                {getMatchResolution(tx.matchId, tx.timestamp)}
-                              </span>
-                              <span>•</span>
-                              <button
-                                onClick={() => scrollToMatch(tx.matchId, tx.timestamp)}
-                                className="text-blue-400 hover:text-blue-300 underline"
-                              >
-                                Match #{getMatchNumber(tx.matchId, tx.timestamp)}
-                              </button>
-                              <span>• {getTimeAgo(tx.timestamp)}</span>
-                            </p>
-                          </div>
-                          <a
-                            href={`https://arbiscan.io/tx/${tx.txHash}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-400 hover:text-blue-300 transition-colors flex-shrink-0"
-                            title="View on Arbiscan"
-                          >
-                            <ExternalLink size={12} />
-                          </a>
-                        </div>
+          {/* Tournaments Tab */}
+          {historyTab === 'tournaments' && (
+            <>
+              {playerProfile?.stats ? (
+                <>
+                  {/* Summary metrics */}
+                  <div className="grid grid-cols-3 gap-3 mb-5">
+                    <div className="bg-blue-500/15 border border-blue-400/30 rounded-xl p-3 text-center">
+                      <div className="text-xs font-semibold text-blue-300 mb-1">Played</div>
+                      <div className="text-xl font-bold text-white">{playerProfile.stats.totalPlayed}</div>
+                    </div>
+                    <div className="bg-green-500/15 border border-green-400/30 rounded-xl p-3 text-center">
+                      <div className="text-xs font-semibold text-green-300 mb-1">Wins</div>
+                      <div className="text-xl font-bold text-white">{playerProfile.stats.totalWins}</div>
+                    </div>
+                    <div className={`${playerProfile.stats.totalNetEarnings >= 0n ? 'bg-green-500/15 border-green-400/30' : 'bg-purple-500/15 border-purple-400/30'} border rounded-xl p-3 text-center`}>
+                      <div className={`text-xs font-semibold mb-1 ${playerProfile.stats.totalNetEarnings >= 0n ? 'text-green-300' : 'text-purple-300'}`}>Net ETH</div>
+                      <div className="text-sm font-bold text-white leading-tight">
+                        {playerProfile.stats.totalNetEarnings >= 0n ? '+' : ''}{Number(ethers.formatEther(playerProfile.stats.totalNetEarnings)).toFixed(4)}
                       </div>
-                    ))}
+                    </div>
                   </div>
-                )}
-              </div>
-            )}
-          </div>
+
+                  {/* Tournament list */}
+                  {playerProfile.enrollments.length > 0 ? (
+                    <div className="space-y-2">
+                      {playerProfile.enrollments.map((rec, idx) => (
+                        <div key={idx} className="bg-slate-900/60 border border-purple-400/15 rounded-xl px-3 py-2.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
+                              {rec.concluded ? (
+                                rec.won
+                                  ? <span className="text-green-300 font-semibold text-xs">Won</span>
+                                  : <span className="text-red-300 font-semibold text-xs">Lost</span>
+                              ) : (
+                                <span className="text-yellow-300 font-semibold text-xs">Active</span>
+                              )}
+                              <span className="text-slate-400 text-[10px] font-mono">{rec.instance.slice(0, 8)}…</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => onViewTournament && onViewTournament(rec.instance)}
+                              className="text-xs text-purple-300 hover:text-purple-200 underline shrink-0"
+                            >
+                              View
+                            </button>
+                          </div>
+                          <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
+                            <span className="text-slate-400 text-[10px]">{ethers.formatEther(rec.entryFee)} ETH entry</span>
+                            {rec.concluded && rec.prize > 0n && (
+                              <span className="text-cyan-300 text-[10px]">+{ethers.formatEther(rec.prize)} ETH prize</span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6">
+                      <Trophy className="text-slate-500 mx-auto mb-2" size={28} />
+                      <p className="text-slate-400 text-xs">No tournament history yet</p>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-center py-6">
+                  <Trophy className="text-slate-500 mx-auto mb-2" size={28} />
+                  <p className="text-slate-400 text-xs">No tournament data available</p>
+                  <p className="text-slate-500 text-xs mt-1">Connect your wallet and join a tournament!</p>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Matches Tab */}
+          {historyTab === 'matches' && <>
 
           {/* Content */}
           <h3 className="text-white font-semibold text-lg md:text-md mb-3">Match History</h3>
@@ -1819,6 +1828,7 @@ const RecentMatchesCard = ({
               })()}
             </div>
           )}
+          </>}
           </div>
         </div>
       )}

@@ -6,6 +6,85 @@ import ETourFactoryABIs from '../ABIs/ETour-Factory-ABIs.json';
 
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
+// Minimal ABI for the PlayerProfile clone contract
+export const PLAYER_PROFILE_ABI = [
+  {
+    "inputs": [],
+    "name": "getEnrollmentCount",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "offset", "type": "uint256" },
+      { "internalType": "uint256", "name": "limit", "type": "uint256" }
+    ],
+    "name": "getEnrollments",
+    "outputs": [
+      {
+        "components": [
+          { "internalType": "address", "name": "instance", "type": "address" },
+          { "internalType": "uint8", "name": "gameType", "type": "uint8" },
+          { "internalType": "uint256", "name": "enrolledAt", "type": "uint256" },
+          { "internalType": "uint256", "name": "entryFee", "type": "uint256" },
+          { "internalType": "bool", "name": "concluded", "type": "bool" },
+          { "internalType": "bool", "name": "won", "type": "bool" },
+          { "internalType": "uint256", "name": "prize", "type": "uint256" }
+        ],
+        "internalType": "struct PlayerProfile.EnrollmentRecord[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "instanceAddress", "type": "address" }
+    ],
+    "name": "getEnrollmentByInstance",
+    "outputs": [
+      {
+        "components": [
+          { "internalType": "address", "name": "instance", "type": "address" },
+          { "internalType": "uint8", "name": "gameType", "type": "uint8" },
+          { "internalType": "uint256", "name": "enrolledAt", "type": "uint256" },
+          { "internalType": "uint256", "name": "entryFee", "type": "uint256" },
+          { "internalType": "bool", "name": "concluded", "type": "bool" },
+          { "internalType": "bool", "name": "won", "type": "bool" },
+          { "internalType": "uint256", "name": "prize", "type": "uint256" }
+        ],
+        "internalType": "struct PlayerProfile.EnrollmentRecord",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getStats",
+    "outputs": [
+      {
+        "components": [
+          { "internalType": "uint256", "name": "totalPlayed", "type": "uint256" },
+          { "internalType": "uint256", "name": "totalWins", "type": "uint256" },
+          { "internalType": "uint256", "name": "totalLosses", "type": "uint256" },
+          { "internalType": "int256", "name": "totalNetEarnings", "type": "int256" }
+        ],
+        "internalType": "struct PlayerProfile.Stats",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+];
+
 export const TICTACTOE_V2_FACTORY_ADDRESS = TicTacChainFactoryABIData.factory.address;
 export const TICTACTOE_V2_FACTORY_ABI = TicTacChainFactoryABIData.factory.abi;
 export const TICTACTOE_V2_INSTANCE_ABI = TicTacChainFactoryABIData.instance.abi;
@@ -96,6 +175,10 @@ export function getFactoryContract(runner, address = TICTACTOE_V2_FACTORY_ADDRES
 
 export function getInstanceContract(address, runner) {
   return new ethers.Contract(address, TICTACTOE_V2_INSTANCE_ABI, runner);
+}
+
+export function getPlayerProfileContract(address, runner) {
+  return new ethers.Contract(address, PLAYER_PROFILE_ABI, runner);
 }
 
 export function getDefaultTimeouts(playerCount) {
@@ -321,28 +404,58 @@ export async function resolveCreatedInstanceAddress({
   return null;
 }
 
+// Selectors for factory + instance custom errors (keccak256 of "ErrorName()")
+const CUSTOM_ERROR_SELECTORS = {
+  // Factory errors
+  '0x6fe6a4c9': 'InvalidEntryFee',
+  '0x3282799a': 'InvalidPlayerCount',
+  '0x53771434': 'InvalidTimeoutConfig',
+  '0x82b42900': 'Unauthorized',
+  '0x90b8ec18': 'TransferFailed',
+  '0x3ee5aeb5': 'ReentrancyGuardReentrantCall',
+};
+
 function decodeRevertData(data) {
-  if (typeof data !== 'string' || !data.startsWith('0x08c379a0')) {
-    return null;
+  if (typeof data !== 'string' || data.length < 10) return null;
+
+  // Standard Error(string) — 0x08c379a0
+  if (data.startsWith('0x08c379a0')) {
+    try {
+      const [reason] = ethers.AbiCoder.defaultAbiCoder().decode(['string'], `0x${data.slice(10)}`);
+      return reason;
+    } catch { /* fall through */ }
   }
 
-  try {
-    const [reason] = ethers.AbiCoder.defaultAbiCoder().decode(['string'], `0x${data.slice(10)}`);
-    return reason;
-  } catch {
-    return null;
+  // Panic(uint256) — 0x4e487b71
+  if (data.startsWith('0x4e487b71')) {
+    try {
+      const [code] = ethers.AbiCoder.defaultAbiCoder().decode(['uint256'], `0x${data.slice(10)}`);
+      return `Panic: ${code}`;
+    } catch { /* fall through */ }
   }
+
+  // Custom errors — match by 4-byte selector
+  const selector = data.slice(0, 10).toLowerCase();
+  if (CUSTOM_ERROR_SELECTORS[selector]) {
+    return CUSTOM_ERROR_SELECTORS[selector];
+  }
+
+  return null;
 }
 
 export function getReadableError(error, fallback = 'Transaction failed.') {
-  const revertData = error?.data?.data
-    || error?.info?.error?.data
-    || error?.error?.data?.data
-    || error?.error?.data;
+  // Walk all known paths where revert data can live
+  const candidates = [
+    error?.data?.data,
+    error?.info?.error?.data,
+    error?.error?.data?.data,
+    error?.error?.data,
+    error?.data,
+  ];
 
-  const decodedReason = decodeRevertData(revertData);
-  if (decodedReason) {
-    return decodedReason;
+  for (const candidate of candidates) {
+    const decoded = decodeRevertData(candidate);
+    if (decoded) return decoded;
   }
 
   const nestedMessage = error?.data?.message
