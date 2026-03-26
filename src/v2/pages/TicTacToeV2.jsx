@@ -67,7 +67,6 @@ import {
   TICTACTOE_V2_FACTORY_ADDRESS,
   TICTACTOE_V2_FACTORY_ADDRESS_CANDIDATES,
   TICTACTOE_V2_IMPLEMENTATION_ADDRESS,
-  buildTimeoutConfig,
   formatEth,
   getDefaultTimeouts,
   getFactoryContract,
@@ -778,7 +777,14 @@ export default function TicTacToeV2() {
       if (maxFeeRaw > 0n && entryFeeWei > maxFeeRaw) throw new Error(`Entry fee too high. Maximum is ${ethers.formatEther(maxFeeRaw)} ETH.`);
       if (feeIncrementRaw > 0n && entryFeeWei % feeIncrementRaw !== 0n) throw new Error(`Entry fee must be a multiple of ${ethers.formatEther(feeIncrementRaw)} ETH.`);
       setActionState({ type: 'info', message: 'Sending createInstance transaction...' });
-      const tx = await writableFactory.createInstance(Number(createForm.playerCount), entryFeeWei, buildTimeoutConfig(createForm), { value: entryFeeWei });
+      const tx = await writableFactory.createInstance(
+        Number(createForm.playerCount),
+        entryFeeWei,
+        BigInt(createForm.enrollmentWindow),
+        BigInt(createForm.matchTimePerPlayer),
+        BigInt(createForm.timeIncrementPerMove),
+        { value: entryFeeWei }
+      );
       setActionState({ type: 'info', message: 'Waiting for confirmation...' });
       const receipt = await tx.wait();
       const address = await resolveCreatedInstanceAddress({
@@ -791,7 +797,6 @@ export default function TicTacToeV2() {
         receipt,
       });
       if (!address) throw new Error('Transaction mined, but the frontend could not locate the created instance.');
-      const instance = getInstanceContract(address, getReadRunner());
       setActionState({ type: 'success', message: `Instance created and auto-enrolled on-chain at ${address}.` });
       await refreshDashboard();
       // Navigate directly to bracket view after creation

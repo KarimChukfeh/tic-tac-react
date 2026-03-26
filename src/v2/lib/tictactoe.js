@@ -103,46 +103,35 @@ export const TIME_PER_PLAYER_OPTIONS = [120, 300, 600, 900]; // 2min, 5min, 10mi
 export const TIME_INCREMENT_OPTIONS = [15, 30]; // 15s, 30s
 export const ENROLLMENT_WINDOW_OPTIONS = [120, 300, 600, 1800]; // 2min, 5min, 10min, 30min
 
+// Escalation delays are now hardcoded in the contract:
+// MATCH_LEVEL_2_DELAY = 2 minutes
+// MATCH_LEVEL_3_DELAY = 3 minutes
+// ENROLLMENT_LEVEL_2_DELAY = 2 minutes
 export const DEFAULT_TIMEOUTS_BY_PLAYER_COUNT = {
   2: {
     matchTimePerPlayer: 120,      // 2 minutes
-    timeIncrementPerMove: 15,      // 15 seconds
-    matchLevel2Delay: 120,
-    matchLevel3Delay: 240,
-    enrollmentWindow: 120,         // 2 minutes
-    enrollmentLevel2Delay: 120,
+    timeIncrementPerMove: 15,     // 15 seconds
+    enrollmentWindow: 120,        // 2 minutes
   },
   4: {
-    matchTimePerPlayer: 300,       // 5 minutes
-    timeIncrementPerMove: 15,      // 15 seconds
-    matchLevel2Delay: 120,
-    matchLevel3Delay: 240,
-    enrollmentWindow: 300,         // 5 minutes
-    enrollmentLevel2Delay: 300,
+    matchTimePerPlayer: 300,      // 5 minutes
+    timeIncrementPerMove: 15,     // 15 seconds
+    enrollmentWindow: 300,        // 5 minutes
   },
   8: {
-    matchTimePerPlayer: 300,       // 5 minutes
-    timeIncrementPerMove: 15,      // 15 seconds
-    matchLevel2Delay: 120,
-    matchLevel3Delay: 240,
-    enrollmentWindow: 600,         // 10 minutes
-    enrollmentLevel2Delay: 300,
+    matchTimePerPlayer: 300,      // 5 minutes
+    timeIncrementPerMove: 15,     // 15 seconds
+    enrollmentWindow: 600,        // 10 minutes
   },
   16: {
-    matchTimePerPlayer: 600,       // 10 minutes
-    timeIncrementPerMove: 30,      // 30 seconds
-    matchLevel2Delay: 120,
-    matchLevel3Delay: 240,
-    enrollmentWindow: 600,         // 10 minutes
-    enrollmentLevel2Delay: 300,
+    matchTimePerPlayer: 600,      // 10 minutes
+    timeIncrementPerMove: 30,     // 30 seconds
+    enrollmentWindow: 600,        // 10 minutes
   },
   32: {
-    matchTimePerPlayer: 600,       // 10 minutes
-    timeIncrementPerMove: 30,      // 30 seconds
-    matchLevel2Delay: 120,
-    matchLevel3Delay: 240,
-    enrollmentWindow: 1800,        // 30 minutes
-    enrollmentLevel2Delay: 300,
+    matchTimePerPlayer: 600,      // 10 minutes
+    timeIncrementPerMove: 30,     // 30 seconds
+    enrollmentWindow: 1800,       // 30 minutes
   },
 };
 
@@ -181,17 +170,6 @@ export function getPlayerProfileContract(address, runner) {
 export function getDefaultTimeouts(playerCount) {
   return {
     ...(DEFAULT_TIMEOUTS_BY_PLAYER_COUNT[playerCount] || DEFAULT_TIMEOUTS_BY_PLAYER_COUNT[8]),
-  };
-}
-
-export function buildTimeoutConfig(values) {
-  return {
-    matchTimePerPlayer: BigInt(values.matchTimePerPlayer),
-    timeIncrementPerMove: BigInt(values.timeIncrementPerMove),
-    matchLevel2Delay: BigInt(values.matchLevel2Delay),
-    matchLevel3Delay: BigInt(values.matchLevel3Delay),
-    enrollmentWindow: BigInt(values.enrollmentWindow),
-    enrollmentLevel2Delay: BigInt(values.enrollmentLevel2Delay),
   };
 }
 
