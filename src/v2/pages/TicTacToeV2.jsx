@@ -2190,9 +2190,6 @@ export default function TicTacToeV2() {
 
                     {/* Action Button */}
                     <div className="flex flex-col gap-3">
-                      <div className="text-sm text-slate-400 text-center">
-                        Creating a tournament submits the entry fee and auto-enrolls you as the first player.
-                      </div>
                       {walletBootDone && !account ? (
                         <button
                           type="button"
@@ -2210,7 +2207,7 @@ export default function TicTacToeV2() {
                           className={`w-full flex items-center justify-center gap-3 bg-gradient-to-r ${currentTheme.buttonGradient} ${currentTheme.buttonHover} px-8 py-4 rounded-2xl font-bold text-xl shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
                         >
                           {createLoading ? <Loader size={22} className="animate-spin" /> : <Plus size={22} />}
-                          {createLoading ? 'Creating Tournament...' : 'Create Tournament'}
+                          {createLoading ? 'Creating Tournament...' : 'Create and Enrol'}
                         </button>
                       )}
                     </div>
