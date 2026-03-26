@@ -2064,62 +2064,64 @@ export default function TicTacToeV2() {
                 }
               >
                 <form onSubmit={createInstance}>
-                  <div className="bg-slate-900/50 border border-purple-400/20 rounded-2xl p-5">
-                    {/* Player Count */}
-                    <div className="mb-6">
-                      <div className="text-sm text-purple-200 mb-3">Player Count (up to 32)</div>
-                      <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
-                        {PLAYER_COUNT_OPTIONS.map(option => {
-                          const active = Number(createForm.playerCount) === option;
-                          return (
-                            <button
-                              key={option}
-                              type="button"
-                              onClick={() => setPlayerCount(option)}
-                              className={`px-4 py-3 rounded-xl font-semibold transition-all ${active
-                                ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg'
-                                : 'bg-slate-800/80 border border-slate-700 text-slate-300 hover:border-cyan-400/40'}`}
-                            >
-                              {option}
-                            </button>
-                          );
-                        })}
+                  <div className="bg-slate-900/50 border border-purple-400/20 rounded-2xl p-4 md:p-5">
+                    <div className="grid gap-4 md:grid-cols-[minmax(0,1.4fr)_minmax(240px,0.8fr)]">
+                      {/* Player Count */}
+                      <div>
+                        <div className="text-sm text-purple-200 mb-2">Player Count (up to 32)</div>
+                        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                          {PLAYER_COUNT_OPTIONS.map(option => {
+                            const active = Number(createForm.playerCount) === option;
+                            return (
+                              <button
+                                key={option}
+                                type="button"
+                                onClick={() => setPlayerCount(option)}
+                                className={`px-3 py-2.5 rounded-xl font-semibold transition-all ${active
+                                  ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg'
+                                  : 'bg-slate-800/80 border border-slate-700 text-slate-300 hover:border-cyan-400/40'}`}
+                              >
+                                {option}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Entry Fee */}
+                      <div>
+                        <label className="block">
+                          <div className="text-sm text-purple-200 mb-2">Entry Fee (0.001 - 1 ETH)</div>
+                          <input
+                            type="number"
+                            min="0.001"
+                            max="1"
+                            step="0.001"
+                            value={createForm.entryFee}
+                            onChange={event => updateCreateForm('entryFee', event.target.value)}
+                            className="w-full bg-slate-950/80 border border-purple-400/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-400"
+                          />
+                        </label>
                       </div>
                     </div>
 
-                    {/* Entry Fee */}
-                    <div className="mb-6">
-                      <label className="block">
-                        <div className="text-sm text-purple-200 mb-3">Entry Fee (0.001 - 1 ETH)</div>
-                        <input
-                          type="number"
-                          min="0.001"
-                          max="1"
-                          step="0.001"
-                          value={createForm.entryFee}
-                          onChange={event => updateCreateForm('entryFee', event.target.value)}
-                          className="w-full bg-slate-950/80 border border-purple-400/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-400"
-                        />
-                      </label>
-                    </div>
-
                     {/* More Settings (Collapsible) */}
-                    <div className="mb-6">
+                    <div className="mt-4 mb-4">
                       <button
                         type="button"
                         onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
-                        className="flex items-center gap-2 text-purple-300 hover:text-purple-200 transition-colors mb-3"
+                        className="flex items-center gap-2 text-purple-300 hover:text-purple-200 transition-colors mb-2"
                       >
                         {showAdvancedSettings ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                         <span className="text-sm font-semibold">More Settings</span>
                       </button>
 
                       {showAdvancedSettings && (
-                        <div className="space-y-4 bg-slate-950/50 border border-purple-400/10 rounded-xl p-4">
+                        <div className="grid gap-4 lg:grid-cols-3 bg-slate-950/50 border border-purple-400/10 rounded-xl p-4">
                           {/* Enrollment Window */}
-                          <div>
-                            <div className="text-sm text-purple-200 mb-3">Enrollment Window</div>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                          <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-3">
+                            <div className="text-sm text-purple-200 mb-2">Enrollment Window</div>
+                            <div className="grid grid-cols-2 gap-2">
                               {ENROLLMENT_WINDOW_OPTIONS.map(seconds => {
                                 const active = Number(createForm.enrollmentWindow) === seconds;
                                 const label = seconds < 60 ? `${seconds}s` : `${seconds / 60}min`;
@@ -2129,8 +2131,8 @@ export default function TicTacToeV2() {
                                     type="button"
                                     onClick={() => updateCreateForm('enrollmentWindow', seconds)}
                                     className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all ${active
-                                      ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-md'
-                                      : 'bg-slate-800/80 border border-slate-700 text-slate-300 hover:border-emerald-400/40'}`}
+                                      ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md'
+                                      : 'bg-slate-800/80 border border-slate-700 text-slate-300 hover:border-blue-400/40'}`}
                                   >
                                     {label}
                                   </button>
@@ -2140,9 +2142,9 @@ export default function TicTacToeV2() {
                           </div>
 
                           {/* Time Per Player */}
-                          <div>
-                            <div className="text-sm text-purple-200 mb-3">Time Per Player</div>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                          <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-3">
+                            <div className="text-sm text-purple-200 mb-2">Time Per Player</div>
+                            <div className="grid grid-cols-2 gap-2">
                               {TIME_PER_PLAYER_OPTIONS.map(seconds => {
                                 const active = Number(createForm.matchTimePerPlayer) === seconds;
                                 const label = `${seconds / 60}min`;
@@ -2153,7 +2155,7 @@ export default function TicTacToeV2() {
                                     onClick={() => updateCreateForm('matchTimePerPlayer', seconds)}
                                     className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all ${active
                                       ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md'
-                                      : 'bg-slate-800/80 border border-slate-700 text-slate-300 hover:border-cyan-400/40'}`}
+                                      : 'bg-slate-800/80 border border-slate-700 text-slate-300 hover:border-blue-400/40'}`}
                                   >
                                     {label}
                                   </button>
@@ -2163,9 +2165,9 @@ export default function TicTacToeV2() {
                           </div>
 
                           {/* Increment Time */}
-                          <div>
-                            <div className="text-sm text-purple-200 mb-3">Increment Time</div>
-                            <div className="grid grid-cols-2 gap-3">
+                          <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-3">
+                            <div className="text-sm text-purple-200 mb-2">Increment Time</div>
+                            <div className="grid grid-cols-2 gap-2">
                               {TIME_INCREMENT_OPTIONS.map(seconds => {
                                 const active = Number(createForm.timeIncrementPerMove) === seconds;
                                 const label = `${seconds}s`;
@@ -2175,8 +2177,8 @@ export default function TicTacToeV2() {
                                     type="button"
                                     onClick={() => updateCreateForm('timeIncrementPerMove', seconds)}
                                     className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all ${active
-                                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md'
-                                      : 'bg-slate-800/80 border border-slate-700 text-slate-300 hover:border-pink-400/40'}`}
+                                      ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md'
+                                      : 'bg-slate-800/80 border border-slate-700 text-slate-300 hover:border-blue-400/40'}`}
                                   >
                                     {label}
                                   </button>
