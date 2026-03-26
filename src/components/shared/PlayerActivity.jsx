@@ -11,6 +11,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Users, X, Zap, Trophy, Clock, Play, Eye, RefreshCw, ChevronDown, ChevronUp, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
 import { formatTimeRemaining } from '../../utils/activityHelpers';
+import { getCompletionReasonText, isDraw as isDrawReason } from '../../utils/completionReasons';
 
 const PlayerActivity = ({
   activity,
@@ -68,29 +69,16 @@ const PlayerActivity = ({
     return `Round ${roundNumber + 1}`;
   };
 
-  const getOutcomeLabel = (isDraw, isWinner, reason) => {
-    const reasons = {
-      1: 'Timeout (ML1)',
-      3: 'Force Elimination (ML2)',
-      4: 'Abandoned Match (ML3)',
-      5: 'All Draw',
-    };
-
-    if (isDraw) return 'Draw';
-
-    const reasonText = reasons[reason];
-    if (isWinner) {
-      return reasonText ? `Victory by ${reasonText}` : 'Victory';
-    } else {
-      return reasonText ? `Defeat by ${reasonText}` : 'Defeat';
-    }
-  };
-
   const getCompletedMatchOutcome = (match, account) => {
-    if (match.isDraw) return { label: 'Draw', color: 'text-yellow-300 bg-yellow-900/30' };
+    const reason = match.completionReason ?? 0;
+    const matchIsDraw = match.isDraw || isDrawReason(reason);
+
+    if (matchIsDraw) return { label: 'Draw', color: 'text-yellow-300 bg-yellow-900/30' };
     if (!match.winner) return null;
+
     const isWinner = match.winner.toLowerCase() === account?.toLowerCase();
-    const label = getOutcomeLabel(false, isWinner, 0);
+    const label = getCompletionReasonText(reason, isWinner, gameName);
+
     return isWinner
       ? { label, color: 'text-green-300 bg-green-900/30' }
       : { label, color: 'text-red-300 bg-red-900/30' };

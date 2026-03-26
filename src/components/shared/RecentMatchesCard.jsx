@@ -7,7 +7,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { X, RefreshCw, History, ChevronDown, ChevronUp, Eye, ChevronLeft, ChevronRight, ArrowUpRight, TrendingUp, ExternalLink, ArrowUp, Trophy } from 'lucide-react';
 import { shortenAddress, getCellPositionName } from '../../utils/formatters';
-import { isDraw } from '../../utils/completionReasons';
+import { isDraw, getCompletionReasonText } from '../../utils/completionReasons';
 import CapturedPieces from './CapturedPieces';
 import { ethers } from 'ethers';
 
@@ -564,16 +564,17 @@ const RecentMatchesCard = ({
     const match = recentMatches[matchIndex];
     const accountLower = account?.toLowerCase() || '';
     const winnerLower = match.winner?.toLowerCase() || '';
-    const isDraw = winnerLower === ethers.ZeroAddress.toLowerCase();
+    const matchIsDraw = isDraw(match.reason);
 
     // Get tier type prefix
     const tierLabel = getTierLabel(match.tierId);
     const tierPrefix = tierLabel === 'Duel' ? 'Duel' : 'Tournament';
 
-    if (isDraw) return `${tierPrefix} Draw`;
+    if (matchIsDraw) return `${tierPrefix} Draw`;
 
     const isWinner = winnerLower === accountLower;
-    return isWinner ? `${tierPrefix} Victory` : `${tierPrefix} Defeat`;
+    const outcome = getCompletionReasonText(match.reason, isWinner, gameName);
+    return `${tierPrefix} ${outcome}`;
   };
 
   // Find match number by matchId and timestamp
@@ -674,24 +675,8 @@ const RecentMatchesCard = ({
   };
 
   const getOutcomeLabel = (isWinner, reason) => {
-    const reasons = {
-      0: 'Normal',
-      1: 'Timeout (ML1)',
-      2: 'Draw',
-      3: 'Force Elimination (ML2)',
-      4: 'Abandoned Match (ML3)',
-      5: 'All Draw'
-    };
-
-    if (isDraw(reason)) return 'Draw';
-
-    const reasonText = reasons[reason] || `Unknown (${reason})`;
-
-    if (isWinner) {
-      return reason === 0 ? 'Victory' : `Victory by ${reasonText}`;
-    } else {
-      return reason === 0 ? 'Defeat' : `Defeat by ${reasonText}`;
-    }
+    // Use the centralized completion reason utility
+    return getCompletionReasonText(reason, isWinner, gameName);
   };
 
   const formatTimeAgo = (timestamp) => {

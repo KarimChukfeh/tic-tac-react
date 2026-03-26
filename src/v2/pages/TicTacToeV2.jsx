@@ -36,7 +36,7 @@ import { ethers } from 'ethers';
 import { CURRENT_NETWORK, getAddressUrl } from '../../config/networks';
 import { shortenAddress, getCellPositionName } from '../../utils/formatters';
 import { generateV2TournamentUrl, parseV2ContractParam } from '../../utils/urlHelpers';
-import { isDraw } from '../../utils/completionReasons';
+import { isDraw, getCompletionReasonText, getCompletionReasonDescription } from '../../utils/completionReasons';
 import ParticleBackground from '../../components/shared/ParticleBackground';
 import WhyArbitrum from '../../components/shared/WhyArbitrum';
 import ConnectedWalletCard from '../../components/shared/ConnectedWalletCard';
@@ -1072,7 +1072,7 @@ export default function TicTacToeV2() {
       if (matchStatus === 2 && winner && winner.toLowerCase() !== zeroAddress.toLowerCase()) {
         loser = winner.toLowerCase() === player1.toLowerCase() ? player2 : player1;
       }
-      const completionReason = 0;
+      const completionReason = Number(matchData.completionReason ?? 0);
       const currentTurn = fullMatch.currentTurn;
       const firstPlayer = fullMatch.firstPlayer;
       const p1TimeRaw = fullMatch.player1TimeRemaining !== undefined ? Number(fullMatch.player1TimeRemaining) : tierMatchTime;
@@ -1658,14 +1658,17 @@ export default function TicTacToeV2() {
           result={matchEndResult.result}
           completionReason={matchEndResult.completionReason}
           winnerLabel={matchEndWinnerLabel}
-          winner={matchEndWinner}
-          loser={matchEndLoser}
-          account={account}
+          winnerAddress={matchEndWinner}
+          loserAddress={matchEndLoser}
+          currentAccount={account}
           hasNextMatch={!!nextActiveMatch}
           onClose={handleMatchEndModalClose}
           onEnterNextMatch={handleEnterNextMatch}
           onReturnToBracket={handleReturnToBracket}
-          gameName="tictactoe"
+          gameType="tictactoe"
+          roundNumber={currentMatch?.roundNumber}
+          totalRounds={viewingTournament?.totalRounds}
+          prizePool={viewingTournament?.prizePoolWei}
         />
       )}
 
