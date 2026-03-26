@@ -797,7 +797,15 @@ export default function TicTacToeV2() {
         receipt,
       });
       if (!address) throw new Error('Transaction mined, but the frontend could not locate the created instance.');
-      setActionState({ type: 'success', message: `Instance created and auto-enrolled on-chain at ${address}.` });
+      const createdInstance = getInstanceContract(address, getReadRunner());
+      const creatorEnrolled = await createdInstance.isEnrolled(creator).catch(() => false);
+      if (!creatorEnrolled) {
+        throw new Error(
+          `Instance created at ${address}, but creator enrollment was not confirmed. ` +
+          'Your local v2 deployment is likely stale or mismatched; redeploy the v2 modules and factory together.'
+        );
+      }
+      setActionState({ type: 'success', message: `Instance created and enrollment verified on-chain at ${address}.` });
       await refreshDashboard();
       // Navigate directly to bracket view after creation
       pendingScrollAddressRef.current = address;
