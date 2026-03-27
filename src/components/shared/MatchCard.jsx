@@ -14,7 +14,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Play, Award, Clock, HelpCircle, Zap, Users, Eye } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
-import { CompletionReason, getMatchCompletionReasonValue } from '../../utils/completionReasons';
+import { getMatchCompletionReasonValue } from '../../utils/completionReasons';
 import CompletedMatchOutcomeBadge from './CompletedMatchOutcomeBadge';
 import { getMatchStatusText, getMatchStatusColor } from '../../utils/matchStatus';
 import { calculatePlayerTimes } from '../../utils/timeCalculations';
@@ -320,29 +320,33 @@ const MatchCard = ({
         </span>
         {/* Status */}
         {(() => {
-          // For completed matches, show the same outcome pill as recent match history for user matches only.
+          // For completed matches, show a viewer-relative outcome pill.
           if (matchStatus === 2) {
+            const userWon = match.winner?.toLowerCase() === account?.toLowerCase();
+            const viewerRelation = isUserMatch
+              ? (userWon ? 'winner' : 'loser')
+              : 'observer';
             if (isUserMatch) {
-              const userWon = match.winner?.toLowerCase() === account?.toLowerCase();
               return (
                 <CompletedMatchOutcomeBadge
                   reason={completionReason}
                   isWinner={userWon}
                   gameName={gameName}
+                  variant="bracket"
+                  viewerRelation={viewerRelation}
                 />
               );
             }
-            if (completionReason !== CompletionReason.NORMAL_WIN) {
-              return (
-                <CompletedMatchOutcomeBadge
-                  reason={completionReason}
-                  isWinner={false}
-                  gameName={gameName}
-                  variant="neutral"
-                />
-              );
-            }
-            return null;
+            return (
+              <CompletedMatchOutcomeBadge
+                reason={completionReason}
+                isWinner={false}
+                gameName={gameName}
+                variant="bracket"
+                viewerRelation={viewerRelation}
+                winnerAddress={match.winner}
+              />
+            );
           }
           // For non-completed matches, show standard status
           return (

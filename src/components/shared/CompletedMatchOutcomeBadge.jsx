@@ -5,11 +5,35 @@ import {
   getCompletionReasonManualLabel,
 } from '../../utils/completionReasons';
 
+const getReasonSuffix = (completionReason) => {
+  switch (completionReason) {
+    case CompletionReason.TIMEOUT:
+      return 'Timeout (ML1)';
+    case CompletionReason.FORCE_ELIMINATION:
+      return 'ML2';
+    case CompletionReason.REPLACEMENT:
+      return 'ML3';
+    case CompletionReason.ALL_DRAW_SCENARIO:
+      return 'All-Draw Resolution';
+    default:
+      return '';
+  }
+};
+
+const formatWinnerToken = (winnerAddress) => {
+  if (!winnerAddress || winnerAddress === '0x0000000000000000000000000000000000000000') {
+    return 'Winner';
+  }
+  return winnerAddress.slice(0, 4);
+};
+
 const CompletedMatchOutcomeBadge = ({
   reason,
   isWinner,
   gameName,
   variant = 'participant',
+  viewerRelation = null,
+  winnerAddress = null,
   className = '',
   onClick,
 }) => {
@@ -20,7 +44,21 @@ const CompletedMatchOutcomeBadge = ({
   const href = getCompletionReasonHref(completionReason);
   const manualLabel = getCompletionReasonManualLabel(completionReason);
   const isNeutral = variant === 'neutral';
-  const label = isNeutral
+  const isBracketView = variant === 'bracket';
+  const reasonSuffix = getReasonSuffix(completionReason);
+  const label = isBracketView
+    ? (() => {
+        if (isDrawOutcome) return 'Draw';
+        if (viewerRelation === 'winner') {
+          return reasonSuffix ? `Victory by ${reasonSuffix}` : 'Victory';
+        }
+        if (viewerRelation === 'loser') {
+          return reasonSuffix ? `Defeated by ${reasonSuffix}` : 'Defeated';
+        }
+        const winnerToken = formatWinnerToken(winnerAddress);
+        return reasonSuffix ? `${winnerToken} wins via ${reasonSuffix}` : `${winnerToken} wins`;
+      })()
+    : isNeutral
     ? (() => {
         if (isDrawOutcome) return 'Draw';
         if (completionReason === CompletionReason.TIMEOUT) return 'Timeout (ML1)';
@@ -29,7 +67,15 @@ const CompletedMatchOutcomeBadge = ({
         return 'Completed';
       })()
     : getCompletedMatchOutcomeLabel(completionReason, isWinner, gameName);
-  const badgeClass = isNeutral
+  const badgeClass = isBracketView
+    ? isDrawOutcome
+      ? 'bg-yellow-500/60 text-white'
+      : viewerRelation === 'winner'
+      ? 'bg-green-500/60 text-white'
+      : viewerRelation === 'loser'
+      ? 'bg-red-500/60 text-white'
+      : 'bg-slate-500/60 text-white'
+    : isNeutral
     ? isDrawOutcome
       ? 'bg-yellow-500/60 text-white'
       : completionReason === CompletionReason.TIMEOUT
