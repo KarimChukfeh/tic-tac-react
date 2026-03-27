@@ -101,7 +101,7 @@ const TournamentHeader = ({
   winner,
   completionReason,
   resolutionReason,
-  fullPrizePool,
+  totalEntryFeesAccrued,
   prizeAwarded,
   prizeRecipient,
   raffleAwarded,
@@ -120,17 +120,16 @@ const TournamentHeader = ({
   const winnerLabel = winner && winner !== ethers.ZeroAddress ? shortenAddress(winner) : '0x000';
   const resolutionSummary = tournamentResolutionReason === 0 ? '' : ` by ${resolutionText.summary}`;
   const detailedResolutionAvailable = [
-    fullPrizePool,
     prizeAwarded,
     prizeRecipient,
     raffleAwarded,
     raffleRecipient,
   ].some((value) => value !== undefined && value !== null);
-  const resolvedFullPrizePool = fullPrizePool ?? prizePool ?? 0n;
   const resolvedPrizeAwarded = prizeAwarded ?? prizePool ?? 0n;
   const resolvedPrizeRecipient = prizeRecipient ?? winner ?? ethers.ZeroAddress;
   const resolvedRaffleAwarded = raffleAwarded ?? 0n;
   const resolvedRaffleRecipient = raffleRecipient ?? ethers.ZeroAddress;
+  const formatResolutionEth = (value) => Number.parseFloat(ethers.formatEther(value ?? 0n)).toFixed(5);
   const formatRecipient = (address) => (
     address && address !== ethers.ZeroAddress ? shortenAddress(address) : 'None'
   );
@@ -481,38 +480,27 @@ const TournamentHeader = ({
 
       {isCompleted && (
         <div className="mt-4 bg-black/20 rounded-lg p-4 border border-purple-400/30">
-          <div className="text-purple-300 text-sm mb-1">Resolution</div>
-          <div className="text-white text-sm md:text-base">
-            <span className="font-mono">{winnerLabel}</span>
-            <span> wins{resolutionSummary}</span>
-            {!detailedResolutionAvailable && (
-              <>
-                <span className="text-purple-300"> • </span>
-                <span>Winner awarded <span className="font-semibold text-yellow-400">{ethers.formatEther(prizePool)} ETH</span></span>
-              </>
-            )}
-          </div>
-          {detailedResolutionAvailable && (
-            <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-              <div className="bg-black/20 rounded-lg px-3 py-2">
-                <div className="text-purple-300 text-xs uppercase tracking-wide">Full Prize Pool</div>
-                <div className="text-yellow-400 font-semibold">{ethers.formatEther(resolvedFullPrizePool)} ETH</div>
+          <div className="text-purple-300 text-sm mb-1">{detailedResolutionAvailable ? 'Payouts' : 'Resolution'}</div>
+          {!detailedResolutionAvailable ? (
+            <div className="text-white text-sm md:text-base">
+              <span className="font-mono">{winnerLabel}</span>
+              <span> wins{resolutionSummary}</span>
+              <span className="text-purple-300"> • </span>
+              <span>Winner awarded <span className="font-semibold text-yellow-400">{formatResolutionEth(prizePool)} ETH</span></span>
+            </div>
+          ) : (
+            <div className="text-white text-sm md:text-base flex flex-col md:flex-row md:flex-wrap md:items-center gap-2 md:gap-6">
+              <div>
+                <span className="text-purple-300">Prize </span>
+                <span className="font-semibold text-yellow-400">{formatResolutionEth(resolvedPrizeAwarded)} ETH</span>
+                <span className="text-purple-300"> to </span>
+                <span className="font-mono">{formatRecipient(resolvedPrizeRecipient)}</span>
               </div>
-              <div className="bg-black/20 rounded-lg px-3 py-2">
-                <div className="text-purple-300 text-xs uppercase tracking-wide">Prize Awarded</div>
-                <div className="text-white">
-                  <span className="font-semibold text-yellow-400">{ethers.formatEther(resolvedPrizeAwarded)} ETH</span>
-                  <span className="text-purple-300"> to </span>
-                  <span className="font-mono">{formatRecipient(resolvedPrizeRecipient)}</span>
-                </div>
-              </div>
-              <div className="bg-black/20 rounded-lg px-3 py-2 md:col-span-2">
-                <div className="text-purple-300 text-xs uppercase tracking-wide">Raffle Awarded</div>
-                <div className="text-white">
-                  <span className="font-semibold text-yellow-400">{ethers.formatEther(resolvedRaffleAwarded)} ETH</span>
-                  <span className="text-purple-300"> to </span>
-                  <span className="font-mono">{formatRecipient(resolvedRaffleRecipient)}</span>
-                </div>
+              <div>
+                <span className="text-purple-300">Raffle </span>
+                <span className="font-semibold text-yellow-400">{formatResolutionEth(resolvedRaffleAwarded)} ETH</span>
+                <span className="text-purple-300"> to </span>
+                <span className="font-mono">{formatRecipient(resolvedRaffleRecipient)}</span>
               </div>
             </div>
           )}

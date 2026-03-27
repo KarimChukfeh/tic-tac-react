@@ -214,6 +214,7 @@ export function normalizeInstanceSnapshot(address, info, tournament, players, is
   const tournamentResolutionReason = Number(info.completionReason ?? tournament.completionReason ?? 0);
   const tournamentResolutionCategory = Number(info.completionCategory ?? tournament.completionCategory ?? 0);
   const fullPrizePool = tournament.prizePool ?? info.prizePool ?? 0n;
+  const totalEntryFeesAccrued = tournament.totalEntryFeesAccrued ?? info.totalEntryFeesAccrued ?? 0n;
   return {
     address,
     tierKey: info.tierKey,
@@ -230,6 +231,8 @@ export function normalizeInstanceSnapshot(address, info, tournament, players, is
     prizePoolEth: formatEth(fullPrizePool),
     fullPrizePool,
     fullPrizePoolEth: formatEth(fullPrizePool),
+    totalEntryFeesAccrued,
+    totalEntryFeesAccruedEth: formatEth(totalEntryFeesAccrued),
     winner: info.winner,
     completionReason: tournamentResolutionReason,
     completionCategory: tournamentResolutionCategory,
