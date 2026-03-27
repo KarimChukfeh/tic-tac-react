@@ -24,6 +24,7 @@ import { ethers } from 'ethers';
 import { CURRENT_NETWORK, getAddressUrl } from '../../config/networks';
 import { shortenAddress } from '../../utils/formatters';
 import { generateV2TournamentUrl, parseV2ContractParam } from '../../utils/urlHelpers';
+import { wasPageReloaded } from '../../utils/navigation';
 import { isDraw } from '../../utils/completionReasons';
 import ParticleBackground from '../../components/shared/ParticleBackground';
 import WhyArbitrum from '../../components/shared/WhyArbitrum';
@@ -515,6 +516,7 @@ const TournamentBracket = ({
         gameType="connectfour"
         tierId={VIRTUAL_TIER_ID}
         instanceId={VIRTUAL_INSTANCE_ID}
+        instanceAddress={tournamentData.address}
         shareUrlOverride={tournamentData.address ? generateV2TournamentUrl('connectfour', tournamentData.address) : undefined}
         status={status}
         currentRound={currentRound}
@@ -669,6 +671,7 @@ export default function ConnectFourV2() {
   const explorerUrl = getAddressUrl(factoryAddress);
 
   const [hasProcessedInviteParam, setHasProcessedInviteParam] = useState(false);
+  const [allowInitialUrlHydration, setAllowInitialUrlHydration] = useState(() => !wasPageReloaded());
   const [viewingTournament, setViewingTournament] = useState(null);
   const [bracketSyncDots, setBracketSyncDots] = useState(1);
   const [tournamentsLoading, setTournamentsLoading] = useState(false);
@@ -1100,11 +1103,13 @@ export default function ConnectFourV2() {
   }, [refreshTournamentBracket, navigate, location.state?.view]);
 
   useEffect(() => {
+    if (!allowInitialUrlHydration) return;
     if (!selectedAddress) return;
     enterInstanceBracket(selectedAddress);
-  }, [selectedAddress, enterInstanceBracket]);
+  }, [allowInitialUrlHydration, selectedAddress, enterInstanceBracket]);
 
   useEffect(() => {
+    if (!allowInitialUrlHydration) return;
     if (hasProcessedInviteParam || !rpcReady) return;
     const contractAddress = parseV2ContractParam(searchParams);
     if (!contractAddress) {
@@ -1116,7 +1121,25 @@ export default function ConnectFourV2() {
     next.delete('c');
     setSearchParams(next, { replace: true });
     enterInstanceBracket(contractAddress);
-  }, [rpcReady, hasProcessedInviteParam, searchParams, setSearchParams, enterInstanceBracket]);
+  }, [allowInitialUrlHydration, rpcReady, hasProcessedInviteParam, searchParams, setSearchParams, enterInstanceBracket]);
+
+  useEffect(() => {
+    if (allowInitialUrlHydration) return;
+
+    isInitialNavRef.current = false;
+    activeInstanceContractRef.current = null;
+    setActiveInstanceContract(null);
+    setViewingTournament(null);
+    setCurrentMatch(null);
+    setHasProcessedInviteParam(true);
+    navigate('/v2/connect4', { replace: true, state: null });
+  }, [allowInitialUrlHydration, navigate]);
+
+  useEffect(() => {
+    if (allowInitialUrlHydration) return;
+    if (location.pathname !== '/v2/connect4' || location.search || location.state) return;
+    setAllowInitialUrlHydration(true);
+  }, [allowInitialUrlHydration, location.pathname, location.search, location.state]);
 
   const createInstance = async (event) => {
     event.preventDefault();

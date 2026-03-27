@@ -8,6 +8,7 @@
 import { Trophy, ChevronDown, Copy, Check, Clock, HelpCircle, Zap, Coins, RefreshCw } from 'lucide-react';
 import { ethers } from 'ethers';
 import { useState, useEffect, useRef } from 'react';
+import { getAddressUrl } from '../../config/networks';
 import { generateTournamentUrl, copyToClipboard } from '../../utils/urlHelpers';
 import StatsGrid from './StatsGrid';
 import EnrolledPlayersList from './EnrolledPlayersList';
@@ -96,6 +97,7 @@ const TournamentHeader = ({
 
   // Optional: override the share URL (e.g. for V2 contract-address-based URLs)
   shareUrlOverride,
+  instanceAddress,
 
   // Optional: completed tournament summary
   winner,
@@ -136,6 +138,9 @@ const TournamentHeader = ({
 
   // Determine tournament type label (Duel vs Tournament)
   const tournamentTypeLabel = getTournamentTypeLabel(playerCount);
+  const instanceExplorerUrl = instanceAddress
+    ? (getAddressUrl(instanceAddress) || `https://arbiscan.io/address/${instanceAddress}`)
+    : null;
 
   // State for copy feedback
   const [copiedUrl, setCopiedUrl] = useState(false);
@@ -285,11 +290,23 @@ const TournamentHeader = ({
 
           <div className="min-w-0">
             <h2 className="text-2xl md:text-4xl font-bold text-white truncate">
-              {config.gameName} {tournamentTypeLabel} T{tierId + 1}-I{instanceId + 1}
+              {config.gameName} {tournamentTypeLabel}{instanceAddress ? '' : ` T${tierId + 1}-I${instanceId + 1}`}
             </h2>
-            <p className={colors.text}>
-              Round {currentRound + 1}/{totalRounds}
-            </p>
+            {instanceAddress && instanceExplorerUrl && (
+              <a
+                href={instanceExplorerUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`${colors.text} ${colors.textHover} transition-colors text-xs md:text-sm break-all`}
+              >
+                {instanceAddress}
+              </a>
+            )}
+            {!instanceAddress && (
+              <p className={colors.text}>
+                Round {currentRound + 1}/{totalRounds}
+              </p>
+            )}
           </div>
         </div>
 

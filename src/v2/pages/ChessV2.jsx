@@ -24,6 +24,7 @@ import { ethers } from 'ethers';
 import { CURRENT_NETWORK, getAddressUrl } from '../../config/networks';
 import { shortenAddress } from '../../utils/formatters';
 import { generateV2TournamentUrl, parseV2ContractParam } from '../../utils/urlHelpers';
+import { wasPageReloaded } from '../../utils/navigation';
 import { isDraw } from '../../utils/completionReasons';
 import { validateMoveWithReason } from '../../utils/chessValidator';
 import { didMatchStateAdvance, waitForTxOrStateSync } from '../../utils/txSync';
@@ -381,6 +382,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
         gameType="chess"
         tierId={VIRTUAL_TIER_ID}
         instanceId={VIRTUAL_INSTANCE_ID}
+        instanceAddress={tournamentData.address}
         shareUrlOverride={tournamentData.address ? generateV2TournamentUrl('chess', tournamentData.address) : undefined}
         status={status}
         currentRound={currentRound}
@@ -523,6 +525,7 @@ export default function ChessV2() {
   const selectedAddress = searchParams.get('instance');
   const explorerUrl = getAddressUrl(factoryAddress);
   const [hasProcessedInviteParam, setHasProcessedInviteParam] = useState(false);
+  const [allowInitialUrlHydration, setAllowInitialUrlHydration] = useState(() => !wasPageReloaded());
   const [viewingTournament, setViewingTournament] = useState(null);
   const [bracketSyncDots, setBracketSyncDots] = useState(1);
   const [tournamentsLoading, setTournamentsLoading] = useState(false);
@@ -912,9 +915,13 @@ export default function ChessV2() {
     }
   }, [refreshTournamentBracket, navigate, location.state?.view]);
 
-  useEffect(() => { if (selectedAddress) enterInstanceBracket(selectedAddress); }, [selectedAddress, enterInstanceBracket]);
+  useEffect(() => {
+    if (!allowInitialUrlHydration || !selectedAddress) return;
+    enterInstanceBracket(selectedAddress);
+  }, [allowInitialUrlHydration, selectedAddress, enterInstanceBracket]);
 
   useEffect(() => {
+    if (!allowInitialUrlHydration) return;
     if (hasProcessedInviteParam || !rpcReady) return;
     const contractAddress = parseV2ContractParam(searchParams);
     if (!contractAddress) { setHasProcessedInviteParam(true); return; }
@@ -923,7 +930,25 @@ export default function ChessV2() {
     next.delete('c');
     setSearchParams(next, { replace: true });
     enterInstanceBracket(contractAddress);
-  }, [rpcReady, hasProcessedInviteParam, searchParams, setSearchParams, enterInstanceBracket]);
+  }, [allowInitialUrlHydration, rpcReady, hasProcessedInviteParam, searchParams, setSearchParams, enterInstanceBracket]);
+
+  useEffect(() => {
+    if (allowInitialUrlHydration) return;
+
+    isInitialNavRef.current = false;
+    activeInstanceContractRef.current = null;
+    setActiveInstanceContract(null);
+    setViewingTournament(null);
+    setCurrentMatch(null);
+    setHasProcessedInviteParam(true);
+    navigate('/v2/chess', { replace: true, state: null });
+  }, [allowInitialUrlHydration, navigate]);
+
+  useEffect(() => {
+    if (allowInitialUrlHydration) return;
+    if (location.pathname !== '/v2/chess' || location.search || location.state) return;
+    setAllowInitialUrlHydration(true);
+  }, [allowInitialUrlHydration, location.pathname, location.search, location.state]);
 
   const createInstance = async (event) => {
     event.preventDefault();

@@ -52,6 +52,22 @@ describe('TournamentHeader', () => {
     expect(screen.getByText('Invite a Friend')).toBeInTheDocument();
   });
 
+  it('shows the instance address as an arbiscan link when provided', () => {
+    const instanceAddress = '0x8478136de0123aedccbbd8a8c0af0d8cecd92740';
+
+    render(
+      <TournamentHeader
+        {...baseProps}
+        instanceAddress={instanceAddress}
+      />
+    );
+
+    expect(screen.getByRole('heading', { name: 'TicTacToe Tournament' })).toBeInTheDocument();
+    expect(screen.queryByText('TicTacToe Tournament T1-I1')).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: instanceAddress })).toHaveAttribute('href', `https://arbiscan.io/address/${instanceAddress}`);
+    expect(screen.queryByText('Round 1/2')).not.toBeInTheDocument();
+  });
+
   it('shows completed resolution text and relabels sharing for finished tournaments', () => {
     render(
       <TournamentHeader

@@ -36,6 +36,7 @@ import { ethers } from 'ethers';
 import { CURRENT_NETWORK, getAddressUrl } from '../../config/networks';
 import { shortenAddress, getCellPositionName } from '../../utils/formatters';
 import { generateV2TournamentUrl, parseV2ContractParam } from '../../utils/urlHelpers';
+import { wasPageReloaded } from '../../utils/navigation';
 import { isDraw, getCompletionReasonText, getCompletionReasonDescription } from '../../utils/completionReasons';
 import ParticleBackground from '../../components/shared/ParticleBackground';
 import WhyArbitrum from '../../components/shared/WhyArbitrum';
@@ -266,6 +267,7 @@ const TournamentBracket = ({
         gameType="tictactoe"
         tierId={tierId}
         instanceId={instanceId}
+        instanceAddress={tournamentData.address}
         shareUrlOverride={tournamentData.address ? generateV2TournamentUrl('tictactoe', tournamentData.address) : undefined}
         status={status}
         currentRound={currentRound}
@@ -431,6 +433,7 @@ export default function TicTacToeV2() {
 
   // --- Invite link: ?c=0x... (V2 contract address) ---
   const [hasProcessedInviteParam, setHasProcessedInviteParam] = useState(false);
+  const [allowInitialUrlHydration, setAllowInitialUrlHydration] = useState(() => !wasPageReloaded());
 
   // --- Viewing tournament bracket (V1-style) ---
   const [viewingTournament, setViewingTournament] = useState(null); // normalizedInstanceSnapshot + rounds
@@ -610,23 +613,6 @@ export default function TicTacToeV2() {
     loadDashboard();
     return () => { cancelled = true; };
   }, [rpcReady]);
-
-  // ─── Handle ?c= invite link ──────────────────────────────────────────────────
-
-  useEffect(() => {
-    if (hasProcessedInviteParam || !rpcReady) return;
-    const contractAddress = parseV2ContractParam(searchParams);
-    if (!contractAddress) { setHasProcessedInviteParam(true); return; }
-
-    setHasProcessedInviteParam(true);
-    // Clear the param from the URL immediately
-    const next = new URLSearchParams(searchParams);
-    next.delete('c');
-    setSearchParams(next, { replace: true });
-
-    // Auto-navigate to the instance bracket
-    enterInstanceBracket(contractAddress);
-  }, [rpcReady, hasProcessedInviteParam]);
 
   // ─── Build tournament bracket data from a V2 instance ───────────────────────
 
@@ -973,9 +959,46 @@ export default function TicTacToeV2() {
 
   // When ?instance= param changes, load that instance
   useEffect(() => {
+    if (!allowInitialUrlHydration) return;
     if (!selectedAddress) return;
     enterInstanceBracket(selectedAddress);
-  }, [selectedAddress]);
+  }, [allowInitialUrlHydration, selectedAddress, enterInstanceBracket]);
+
+  // ─── Handle ?c= invite link ──────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!allowInitialUrlHydration) return;
+    if (hasProcessedInviteParam || !rpcReady) return;
+    const contractAddress = parseV2ContractParam(searchParams);
+    if (!contractAddress) { setHasProcessedInviteParam(true); return; }
+
+    setHasProcessedInviteParam(true);
+    // Clear the param from the URL immediately
+    const next = new URLSearchParams(searchParams);
+    next.delete('c');
+    setSearchParams(next, { replace: true });
+
+    // Auto-navigate to the instance bracket
+    enterInstanceBracket(contractAddress);
+  }, [allowInitialUrlHydration, rpcReady, hasProcessedInviteParam, searchParams, setSearchParams, enterInstanceBracket]);
+
+  useEffect(() => {
+    if (allowInitialUrlHydration) return;
+
+    isInitialNavRef.current = false;
+    activeInstanceContractRef.current = null;
+    setActiveInstanceContract(null);
+    setViewingTournament(null);
+    setCurrentMatch(null);
+    setHasProcessedInviteParam(true);
+    navigate('/v2/tictactoe', { replace: true, state: null });
+  }, [allowInitialUrlHydration, navigate]);
+
+  useEffect(() => {
+    if (allowInitialUrlHydration) return;
+    if (location.pathname !== '/v2/tictactoe' || location.search || location.state) return;
+    setAllowInitialUrlHydration(true);
+  }, [allowInitialUrlHydration, location.pathname, location.search, location.state]);
 
   // ─── Enrollment actions ──────────────────────────────────────────────────────
 
