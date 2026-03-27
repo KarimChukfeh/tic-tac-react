@@ -1311,11 +1311,6 @@ const RecentMatchesCard = ({
                           gameName={gameName}
                           onClick={() => handleSetExpanded(false)}
                         />
-                        {match.instanceAddress && getRoundLabel(match.tierId, match.roundNumber, match.totalRounds) && (
-                          <span className="bg-slate-600/50 text-slate-200 text-[10px] font-bold px-2 py-0.5 rounded border border-slate-400/40">
-                            {getRoundLabel(match.tierId, match.roundNumber, match.totalRounds)}
-                          </span>
-                        )}
                       </div>
                     </div>
 
