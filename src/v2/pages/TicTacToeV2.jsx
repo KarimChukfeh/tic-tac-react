@@ -659,8 +659,8 @@ export default function TicTacToeV2() {
     const elapsed = lastMoveTime > 0 ? now - lastMoveTime : 0;
     let player1TimeRemaining = p1TimeRaw;
     let player2TimeRemaining = p2TimeRaw;
+    const isP1Turn = currentTurn?.toLowerCase() === player1?.toLowerCase();
     if (matchStatus === 1 && currentTurn && elapsed > 0) {
-      const isP1Turn = currentTurn.toLowerCase() === player1.toLowerCase();
       if (isP1Turn) player1TimeRemaining = Math.max(0, player1TimeRemaining - elapsed);
       else player2TimeRemaining = Math.max(0, player2TimeRemaining - elapsed);
     }
@@ -680,6 +680,23 @@ export default function TicTacToeV2() {
         };
       }
     } catch {}
+
+    if (matchStatus === 1 && currentTurn && lastMoveTime > 0) {
+      const activePlayerTimeAtLastMove = isP1Turn ? p1TimeRaw : p2TimeRaw;
+      const timeoutOccurredAt = lastMoveTime + activePlayerTimeAtLastMove;
+      const hasClientDetectedTimeout = elapsed >= activePlayerTimeAtLastMove;
+      if (hasClientDetectedTimeout && (!timeoutState || (timeoutState.timeoutActive && timeoutState.escalation1Start === 0 && timeoutState.escalation2Start === 0))) {
+        const matchLevel2Delay = Number(tierConfig.timeouts?.matchLevel2Delay ?? tierConfig.matchLevel2Delay ?? 120);
+        const matchLevel3Delay = Number(tierConfig.timeouts?.matchLevel3Delay ?? tierConfig.matchLevel3Delay ?? 240);
+        timeoutState = {
+          escalation1Start: timeoutOccurredAt + matchLevel2Delay,
+          escalation2Start: timeoutOccurredAt + matchLevel3Delay,
+          activeEscalation: timeoutState?.activeEscalation ?? 0,
+          timeoutActive: true,
+          forfeitAmount: timeoutState?.forfeitAmount ?? 0,
+        };
+      }
+    }
 
     let escL2Available = false;
     let escL3Available = false;
@@ -1195,8 +1212,8 @@ export default function TicTacToeV2() {
       const elapsed = lastMoveTime > 0 ? now - lastMoveTime : 0;
       let p1Time = p1TimeRaw;
       let p2Time = p2TimeRaw;
+      const isP1Turn = currentTurn?.toLowerCase() === player1?.toLowerCase();
       if (matchStatus === 1 && currentTurn && elapsed > 0) {
-        const isP1Turn = currentTurn.toLowerCase() === player1.toLowerCase();
         if (isP1Turn) p1Time = Math.max(0, p1Time - elapsed);
         else p2Time = Math.max(0, p2Time - elapsed);
       }
@@ -1222,6 +1239,23 @@ export default function TicTacToeV2() {
           };
         }
       } catch { /* normal for active matches */ }
+
+      if (matchStatus === 1 && currentTurn && lastMoveTime > 0) {
+        const activePlayerTimeAtLastMove = isP1Turn ? p1TimeRaw : p2TimeRaw;
+        const timeoutOccurredAt = lastMoveTime + activePlayerTimeAtLastMove;
+        const hasClientDetectedTimeout = elapsed >= activePlayerTimeAtLastMove;
+        if (hasClientDetectedTimeout && (!timeoutState || (timeoutState.timeoutActive && timeoutState.escalation1Start === 0 && timeoutState.escalation2Start === 0))) {
+          const matchLevel2Delay = Number(tierConfig.timeouts?.matchLevel2Delay ?? tierConfig.matchLevel2Delay ?? 120);
+          const matchLevel3Delay = Number(tierConfig.timeouts?.matchLevel3Delay ?? tierConfig.matchLevel3Delay ?? 240);
+          timeoutState = {
+            escalation1Start: timeoutOccurredAt + matchLevel2Delay,
+            escalation2Start: timeoutOccurredAt + matchLevel3Delay,
+            activeEscalation: timeoutState?.activeEscalation ?? 0,
+            timeoutActive: true,
+            forfeitAmount: timeoutState?.forfeitAmount ?? 0,
+          };
+        }
+      }
 
       let escL2Available = false;
       let escL3Available = false;

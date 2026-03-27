@@ -160,6 +160,9 @@ const MatchCard = ({
   const timeToML2 = (isStalled && esc1Start > 0 && now < esc1Start) ? esc1Start - now : null;
   // ML3 countdown (time until escL3 becomes available)
   const timeToML3 = (isStalled && esc2Start > 0 && now < esc2Start) ? esc2Start - now : null;
+  // Dev-only display: once a timeout has occurred, ML1 is immediately available
+  const timeToML1 = isStalled ? 0 : null;
+  const hasDevEscalationTiming = isStalled && (esc1Start > 0 || esc2Start > 0 || escL2Available || escL3Available);
 
   // Derived display conditions
   // ML2 Timer: Stalled, ML2 not yet available, user is advanced
@@ -349,6 +352,17 @@ const MatchCard = ({
           );
         })()}
       </div>
+
+      {/* Dev-only escalation timers for bracket cards - only after ML1 is active */}
+      {showEscalation && matchStatus === 1 && hasDevEscalationTiming && (
+        <div className="mb-3 rounded-lg border border-cyan-400/30 bg-cyan-500/10 p-3">
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-mono text-cyan-200">
+            <span>ML1 in {formatEscalationTime(timeToML1)}</span>
+            <span>ML2 in {formatEscalationTime(Math.max(0, timeToML2 ?? 0))}</span>
+            <span>ML3 in {formatEscalationTime(Math.max(0, timeToML3 ?? 0))}</span>
+          </div>
+        </div>
+      )}
 
       {/* Escalation countdown timers - show only the next pending timer */}
       {showEscalation && matchStatus === 1 && isStalled && !isUserMatch && (
