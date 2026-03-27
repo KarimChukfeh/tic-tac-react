@@ -38,7 +38,9 @@ import GamesCard from '../../components/shared/GamesCard';
 import BracketScrollHint from '../../components/shared/BracketScrollHint';
 import RecentInstanceCard from '../../components/shared/RecentInstanceCard';
 import CapturedPieces from '../../components/shared/CapturedPieces';
+import V2GameLobbyIntro from '../../components/shared/V2GameLobbyIntro';
 import WalletBrowserPrompt from '../../components/WalletBrowserPrompt';
+import { useInitialDocumentScrollTop } from '../../hooks/useInitialDocumentScrollTop';
 import { useWalletBrowserPrompt } from '../../hooks/useWalletBrowserPrompt';
 import { isMobileDevice, isWalletBrowser } from '../../utils/mobileDetection';
 import { useChessV2PlayerActivity } from '../hooks/useChessV2PlayerActivity';
@@ -494,6 +496,8 @@ function indexToChessNotation(index) {
 }
 
 export default function ChessV2() {
+  useInitialDocumentScrollTop('/v2/chess');
+
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -1638,12 +1642,21 @@ export default function ChessV2() {
 
   useEffect(() => { document.title = 'ETour - Chess V2'; }, []);
 
+  const isAlertMatchAlreadyOpen = Boolean(
+    currentMatch &&
+    alertMatch &&
+    typeof alertMatch.instanceId === 'string' &&
+    currentMatch.instanceAddress?.toLowerCase() === alertMatch.instanceId.toLowerCase() &&
+    currentMatch.roundNumber === alertMatch.roundIdx &&
+    currentMatch.matchNumber === alertMatch.matchIdx
+  );
+
   return (
     <div style={{ minHeight: '100vh', background: currentTheme.gradient, color: '#fff', position: 'relative', overflow: 'clip', transition: 'background 0.8s ease-in-out' }}>
       <ParticleBackground colors={currentTheme.particleColors} symbols={CHESS_PIECES} fontSize="40px" />
       {showPrompt && <WalletBrowserPrompt onWalletChoice={handleWalletChoice} onContinueChoice={handleContinueChoice} />}
       {matchEndResult && <MatchEndModal result={matchEndResult.result} completionReason={matchEndResult.completionReason} winnerLabel={matchEndWinnerLabel} winnerAddress={matchEndWinner} loserAddress={matchEndLoser} currentAccount={account} hasNextMatch={!!nextActiveMatch} onClose={handleMatchEndModalClose} onEnterNextMatch={handleEnterNextMatch} onReturnToBracket={handleReturnToBracket} gameType="chess" roundNumber={currentMatch?.roundNumber} totalRounds={viewingTournament?.totalRounds} prizePool={viewingTournament?.prizePoolWei} />}
-      {showMatchAlert && alertMatch && <ActiveMatchAlertModal match={alertMatch} onEnterMatch={() => { handleMatchAlertClose(); handlePlayMatch(alertMatch.tierId, alertMatch.instanceId, alertMatch.roundIdx, alertMatch.matchIdx); }} onDismiss={handleMatchAlertClose} />}
+      {showMatchAlert && alertMatch && <ActiveMatchAlertModal match={alertMatch} autoDismiss={isAlertMatchAlreadyOpen} onEnterMatch={() => { handleMatchAlertClose(); handlePlayMatch(alertMatch.tierId, alertMatch.instanceId, alertMatch.roundIdx, alertMatch.matchIdx); }} onDismiss={handleMatchAlertClose} />}
 
       <div className="fixed bottom-0 left-0 right-0 z-50 md:static md:z-auto">
         <div className="md:hidden bg-gradient-to-b from-slate-800 to-slate-900 border-t border-purple-400/30 px-4 py-2.5 flex items-center justify-between">
@@ -1682,6 +1695,9 @@ export default function ChessV2() {
           </div>
           <h1 className={`text-6xl md:text-7xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r ${currentTheme.heroTitle}`}>ETour Chess</h1>
           <p className={`text-2xl ${currentTheme.heroText} mb-6`}>Provably Fair • Zero Trust • 100% On-Chain</p>
+          <p className={`text-lg ${currentTheme.heroSubtext} max-w-3xl mx-auto`}>
+            Every move is a transaction. Every outcome is permanently on-chain.
+          </p>
         </div>
 
         <div className="mb-8 space-y-4">
@@ -1843,6 +1859,14 @@ export default function ChessV2() {
                     </div>
                   </form>
                 </SectionShell>
+                <V2GameLobbyIntro
+                  descriptionLines={[
+                    'Play Chess on the blockchain. Real opponents. Real ETH on the line.',
+                    'No servers required. No trust needed.',
+                  ]}
+                  matchTimeLabel="Set the price"
+                  matchTimeDescription="Compete for pennies or go all in. The choice is yours."
+                />
 
               </>
             )}

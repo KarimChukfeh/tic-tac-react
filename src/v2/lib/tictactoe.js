@@ -151,6 +151,8 @@ const MATCH_STATUS_LABELS = {
   3: 'Escalated',
 };
 
+const TICTACTOE_ASCII_MOVES_PATTERN = /^\s*[0-8](?:\s*,\s*[0-8])*\s*$/;
+
 export function getFactoryContract(runner, address = TICTACTOE_V2_FACTORY_ADDRESS) {
   return new ethers.Contract(
     address,
@@ -216,6 +218,24 @@ export function getRoundLabel(roundIndex, totalRounds) {
   if (roundIndex === totalRounds - 1) return 'Final';
   if (roundIndex === totalRounds - 2) return 'Semi Final';
   return `Round ${roundIndex + 1}`;
+}
+
+export function decodeTicTacToeMoves(movesString) {
+  if (!movesString) return [];
+
+  if (TICTACTOE_ASCII_MOVES_PATTERN.test(movesString)) {
+    return movesString
+      .split(',')
+      .map(value => Number.parseInt(value.trim(), 10))
+      .filter(value => Number.isInteger(value) && value >= 0 && value <= 8);
+  }
+
+  const moves = [];
+  for (let i = 0; i < movesString.length; i++) {
+    const cellIndex = movesString.charCodeAt(i);
+    if (cellIndex >= 0 && cellIndex <= 8) moves.push(cellIndex);
+  }
+  return moves;
 }
 
 export function unpackBoard(board) {
@@ -291,6 +311,7 @@ export function normalizeInstanceSnapshot(address, info, tournament, players, is
 export function normalizeMatch(roundNumber, matchNumber, matchData, board) {
   const matchCompletionReason = Number(matchData.completionReason ?? 0);
   const matchCompletionCategory = Number(matchData.completionCategory ?? 0);
+  const decodedMoves = decodeTicTacToeMoves(matchData.moves || '');
   return {
     roundNumber,
     matchNumber,
@@ -307,7 +328,7 @@ export function normalizeMatch(roundNumber, matchNumber, matchData, board) {
     startTime: Number(matchData.startTime),
     lastMoveTime: Number(matchData.lastMoveTime),
     moves: matchData.moves || '',
-    moveCount: matchData.moves ? matchData.moves.split(',').filter(Boolean).length : 0,
+    moveCount: decodedMoves.length,
     board: unpackBoard(board),
   };
 }

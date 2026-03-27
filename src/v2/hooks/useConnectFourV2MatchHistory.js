@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ethers } from 'ethers';
-import { getInstanceContract, getPlayerProfileContract, ZERO_ADDRESS } from '../lib/connectfour';
+import { decodeConnectFourMoves, getInstanceContract, getPlayerProfileContract, ZERO_ADDRESS } from '../lib/connectfour';
 
 const HISTORY_LIMIT = 30;
 
@@ -81,18 +81,15 @@ export function useConnectFourV2MatchHistory(factoryContract, runner, account) {
                   const matchStatus = Number(m.status);
                   if (matchStatus !== 2) return;
 
-                  const moves = m.moves || '';
+                  const moves = decodeConnectFourMoves(m.moves || '');
                   const moveHistory = [];
-                  for (let i = 0; i < moves.length; i++) {
-                    const columnIndex = moves.charCodeAt(i);
-                    if (columnIndex >= 0 && columnIndex <= 6) {
-                      const isPlayer1Move = moveHistory.length % 2 === 0;
-                      moveHistory.push({
-                        player: isPlayer1Move ? 'Red' : 'Blue',
-                        column: columnIndex + 1,
-                        cellIndex: columnIndex,
-                      });
-                    }
+                  for (const columnIndex of moves) {
+                    const isPlayer1Move = moveHistory.length % 2 === 0;
+                    moveHistory.push({
+                      player: isPlayer1Move ? 'Red' : 'Blue',
+                      column: columnIndex + 1,
+                      cellIndex: columnIndex,
+                    });
                   }
 
                   let packedBoard = 0n;

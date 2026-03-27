@@ -15,7 +15,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { getInstanceContract, getPlayerProfileContract, ZERO_ADDRESS } from '../lib/tictactoe';
+import { decodeTicTacToeMoves, getInstanceContract, getPlayerProfileContract, ZERO_ADDRESS } from '../lib/tictactoe';
 
 const VIRTUAL_TIER_ID = 0;
 
@@ -120,7 +120,7 @@ async function scanInstance(instanceContract, account, dismissedMatches, instanc
 
       let isMyTurn = false;
       if (matchStatus === 1) {
-        const moveCount = m.moves ? m.moves.split(',').filter(Boolean).length : 0;
+        const moveCount = decodeTicTacToeMoves(m.moves || '').length;
         const isPlayer1Turn = moveCount % 2 === 0;
         isMyTurn = isPlayer1Turn ? isPlayer1 : isPlayer2;
       }

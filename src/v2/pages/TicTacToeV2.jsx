@@ -51,7 +51,9 @@ import RecentMatchesCard from '../../components/shared/RecentMatchesCard';
 import GamesCard from '../../components/shared/GamesCard';
 import BracketScrollHint from '../../components/shared/BracketScrollHint';
 import RecentInstanceCard from '../../components/shared/RecentInstanceCard';
+import V2GameLobbyIntro from '../../components/shared/V2GameLobbyIntro';
 import WalletBrowserPrompt from '../../components/WalletBrowserPrompt';
+import { useInitialDocumentScrollTop } from '../../hooks/useInitialDocumentScrollTop';
 import { useWalletBrowserPrompt } from '../../hooks/useWalletBrowserPrompt';
 import { isMobileDevice, isWalletBrowser } from '../../utils/mobileDetection';
 import { didMatchStateAdvance, waitForTxOrStateSync } from '../../utils/txSync';
@@ -70,6 +72,7 @@ import {
   getInstanceContract,
   getRoundLabel,
   getTournamentTypeLabel,
+  decodeTicTacToeMoves,
   normalizeInstanceSnapshot,
   normalizeMatch,
   resolveCreatedInstanceAddress,
@@ -397,6 +400,8 @@ const TournamentBracket = ({
 const LOCAL_CHAIN_ID_HEX = `0x${CURRENT_NETWORK.chainId.toString(16)}`;
 
 export default function TicTacToeV2() {
+  useInitialDocumentScrollTop('/v2/tictactoe');
+
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -1166,19 +1171,7 @@ export default function TicTacToeV2() {
 
       console.log('[V2] fetchMoveHistory - firstPlayer:', firstPlayer, 'player1:', player1, 'player2:', player2);
 
-      // Parse moves: could be comma-separated string like "7,3,4,6,1" or raw bytes
-      let moves = [];
-      if (movesString.includes(',')) {
-        // Comma-separated format
-        moves = movesString.split(',').map(s => parseInt(s.trim(), 10)).filter(n => n >= 0 && n <= 8);
-      } else {
-        // Raw bytes format
-        for (let i = 0; i < movesString.length; i++) {
-          const cellIndex = movesString.charCodeAt(i);
-          if (cellIndex >= 0 && cellIndex <= 8) moves.push(cellIndex);
-        }
-      }
-
+      const moves = decodeTicTacToeMoves(movesString);
       console.log('[V2] fetchMoveHistory - parsed moves:', moves);
 
       const history = moves.map((cellIndex, idx) => {
@@ -1829,6 +1822,15 @@ export default function TicTacToeV2() {
 
   // ─── Render ──────────────────────────────────────────────────────────────────
 
+  const isAlertMatchAlreadyOpen = Boolean(
+    currentMatch &&
+    alertMatch &&
+    typeof alertMatch.instanceId === 'string' &&
+    currentMatch.instanceAddress?.toLowerCase() === alertMatch.instanceId.toLowerCase() &&
+    currentMatch.roundNumber === alertMatch.roundIdx &&
+    currentMatch.matchNumber === alertMatch.matchIdx
+  );
+
   return (
     <div
       style={{
@@ -1871,6 +1873,7 @@ export default function TicTacToeV2() {
       {showMatchAlert && alertMatch && (
         <ActiveMatchAlertModal
           match={alertMatch}
+          autoDismiss={isAlertMatchAlreadyOpen}
           onEnterMatch={() => {
             handleMatchAlertClose();
             handlePlayMatch(alertMatch.tierId, alertMatch.instanceId, alertMatch.roundIdx, alertMatch.matchIdx);
@@ -2022,7 +2025,7 @@ export default function TicTacToeV2() {
 
       <div className="max-w-7xl mx-auto px-6 py-12" style={{ position: 'relative', zIndex: 10 }}>
         {/* Hero Section */}
-        <div className="text-center mb-16">
+        <div className="text-center mb-8">
           <div className="inline-block mb-6">
             <div className="relative">
               <div className={`absolute -inset-4 bg-gradient-to-r ${currentTheme.heroGlow} rounded-full blur-xl opacity-50 animate-pulse`}></div>
@@ -2033,13 +2036,18 @@ export default function TicTacToeV2() {
             ETour TicTacToe
           </h1>
           <p className="text-2xl text-blue-200 mb-6">Provably Fair • Zero Trust • 100% On-Chain</p>
+          <p className={`text-lg ${currentTheme.heroSubtext} max-w-3xl mx-auto`}>
+            Every move is a transaction. Every outcome is permanently on-chain.
+          </p>
         </div>
 
         {/* Action messages */}
-        <div className="mb-8 space-y-4">
-          <ActionMessage type={actionState.type} message={actionState.message} />
-          <ActionMessage type="error" message={dashboardError} />
-        </div>
+        {(actionState.message || dashboardError) ? (
+          <div className="mb-8 space-y-4">
+            <ActionMessage type={actionState.type} message={actionState.message} />
+            <ActionMessage type="error" message={dashboardError} />
+          </div>
+        ) : null}
 
         {/* Match View */}
         {currentMatch && (
@@ -2370,6 +2378,10 @@ export default function TicTacToeV2() {
                   </div>
                 </form>
               </SectionShell>
+              <V2GameLobbyIntro
+                matchTimeLabel="Set the price"
+                matchTimeDescription="Compete for pennies or go all in. The choice is yours."
+              />
 
               </>
             )}

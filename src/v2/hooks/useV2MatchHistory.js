@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { getInstanceContract, getPlayerProfileContract, ZERO_ADDRESS } from '../lib/tictactoe';
+import { decodeTicTacToeMoves, getInstanceContract, getPlayerProfileContract, ZERO_ADDRESS } from '../lib/tictactoe';
 
 const HISTORY_LIMIT = 30;
 
@@ -88,14 +88,11 @@ export function useV2MatchHistory(factoryContract, runner, account) {
                   const matchStatus = Number(m.status);
                   if (matchStatus !== 2) return;
 
-                  const moves = m.moves || '';
+                  const moves = decodeTicTacToeMoves(m.moves || '');
                   const moveHistory = [];
-                  for (let i = 0; i < moves.length; i++) {
-                    const cellIndex = moves.charCodeAt(i);
-                    if (cellIndex >= 0 && cellIndex <= 8) {
-                      const isPlayer1Move = moveHistory.length % 2 === 0;
-                      moveHistory.push({ player: isPlayer1Move ? 'X' : 'O', cell: cellIndex });
-                    }
+                  for (const cellIndex of moves) {
+                    const isPlayer1Move = moveHistory.length % 2 === 0;
+                    moveHistory.push({ player: isPlayer1Move ? 'X' : 'O', cell: cellIndex });
                   }
 
                   // Fetch board and pack uint8[9] → BigInt for RecentMatchesCard compatibility

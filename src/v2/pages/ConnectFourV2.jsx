@@ -35,7 +35,9 @@ import RecentMatchesCard from '../../components/shared/RecentMatchesCard';
 import GamesCard from '../../components/shared/GamesCard';
 import BracketScrollHint from '../../components/shared/BracketScrollHint';
 import RecentInstanceCard from '../../components/shared/RecentInstanceCard';
+import V2GameLobbyIntro from '../../components/shared/V2GameLobbyIntro';
 import WalletBrowserPrompt from '../../components/WalletBrowserPrompt';
+import { useInitialDocumentScrollTop } from '../../hooks/useInitialDocumentScrollTop';
 import { useWalletBrowserPrompt } from '../../hooks/useWalletBrowserPrompt';
 import { isMobileDevice, isWalletBrowser } from '../../utils/mobileDetection';
 import { didMatchStateAdvance, waitForTxOrStateSync } from '../../utils/txSync';
@@ -57,6 +59,7 @@ import {
   getInstanceContract,
   getRoundLabel,
   getTournamentTypeLabel,
+  decodeConnectFourMoves,
   normalizeInstanceSnapshot,
   normalizeMatch,
   resolveCreatedInstanceAddress,
@@ -139,22 +142,6 @@ function findWinningCells(grid, winner) {
     }
   }
   return [];
-}
-
-function decodeConnectFourMoves(movesString) {
-  if (!movesString) return [];
-  if (movesString.includes(',')) {
-    return movesString
-      .split(',')
-      .map(value => Number.parseInt(value.trim(), 10))
-      .filter(value => Number.isInteger(value) && value >= 0 && value <= 6);
-  }
-  const columns = [];
-  for (let i = 0; i < movesString.length; i++) {
-    const value = movesString.charCodeAt(i);
-    if (value >= 0 && value <= 6) columns.push(value);
-  }
-  return columns;
 }
 
 const AnimatedDisc = ({ delay = 0, size = 'large' }) => {
@@ -641,6 +628,8 @@ const TournamentBracket = ({
 };
 
 export default function ConnectFourV2() {
+  useInitialDocumentScrollTop('/v2/connect4');
+
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -2049,6 +2038,15 @@ export default function ConnectFourV2() {
     document.title = 'ETour - Connect Four V2';
   }, []);
 
+  const isAlertMatchAlreadyOpen = Boolean(
+    currentMatch &&
+    alertMatch &&
+    typeof alertMatch.instanceId === 'string' &&
+    currentMatch.instanceAddress?.toLowerCase() === alertMatch.instanceId.toLowerCase() &&
+    currentMatch.roundNumber === alertMatch.roundIdx &&
+    currentMatch.matchNumber === alertMatch.matchIdx
+  );
+
   return (
     <div
       style={{
@@ -2088,6 +2086,7 @@ export default function ConnectFourV2() {
       {showMatchAlert && alertMatch && (
         <ActiveMatchAlertModal
           match={alertMatch}
+          autoDismiss={isAlertMatchAlreadyOpen}
           onEnterMatch={() => {
             handleMatchAlertClose();
             handlePlayMatch(alertMatch.tierId, alertMatch.instanceId, alertMatch.roundIdx, alertMatch.matchIdx);
@@ -2246,6 +2245,9 @@ export default function ConnectFourV2() {
             ETour Connect Four
           </h1>
           <p className={`text-2xl ${currentTheme.heroText} mb-6`}>Provably Fair • Zero Trust • 100% On-Chain</p>
+          <p className={`text-lg ${currentTheme.heroSubtext} max-w-3xl mx-auto`}>
+            Every move is a transaction. Every outcome is permanently on-chain.
+          </p>
         </div>
 
         <div className="mb-8 space-y-4">
@@ -2546,6 +2548,14 @@ export default function ConnectFourV2() {
                     </div>
                   </form>
                 </SectionShell>
+                <V2GameLobbyIntro
+                  descriptionLines={[
+                    'Play Connect Four on the blockchain. Real opponents. Real ETH on the line.',
+                    'No servers required. No trust needed.',
+                  ]}
+                  matchTimeLabel="Set the price"
+                  matchTimeDescription="Compete for pennies or go all in. The choice is yours."
+                />
 
               </>
             )}

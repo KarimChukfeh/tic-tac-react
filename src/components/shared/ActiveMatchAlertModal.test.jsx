@@ -1,3 +1,4 @@
+import { act } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import ActiveMatchAlertModal from './ActiveMatchAlertModal';
@@ -14,6 +15,7 @@ const match = {
 describe('ActiveMatchAlertModal', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useRealTimers();
   });
 
   it('dismisses via onDismiss when Later is clicked', () => {
@@ -46,6 +48,36 @@ describe('ActiveMatchAlertModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Go to Match' }));
 
     expect(onEnterMatch).toHaveBeenCalledWith(match.tierId, match.instanceId, match.roundIdx, match.matchIdx);
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+  });
+
+  it('polls every second and auto-dismisses with a fade once the board is already open', () => {
+    vi.useFakeTimers();
+
+    const onDismiss = vi.fn();
+
+    render(
+      <ActiveMatchAlertModal
+        match={match}
+        onDismiss={onDismiss}
+        autoDismiss
+        fadeDurationMs={300}
+      />
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(999);
+    });
+    expect(onDismiss).not.toHaveBeenCalled();
+
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(onDismiss).not.toHaveBeenCalled();
+
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
     expect(onDismiss).toHaveBeenCalledTimes(1);
   });
 });

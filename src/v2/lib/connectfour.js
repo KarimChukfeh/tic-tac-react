@@ -144,6 +144,8 @@ const MATCH_STATUS_LABELS = {
   3: 'Escalated',
 };
 
+const CONNECTFOUR_ASCII_MOVES_PATTERN = /^\s*[0-6](?:\s*,\s*[0-6])*\s*$/;
+
 export function getFactoryContract(runner, address = CONNECTFOUR_V2_FACTORY_ADDRESS) {
   return new ethers.Contract(address, CONNECTFOUR_V2_FACTORY_ABI, runner);
 }
@@ -188,6 +190,24 @@ export function getRoundLabel(roundIndex, totalRounds) {
   if (roundIndex === totalRounds - 1) return 'Final';
   if (roundIndex === totalRounds - 2) return 'Semi Final';
   return `Round ${roundIndex + 1}`;
+}
+
+export function decodeConnectFourMoves(movesString) {
+  if (!movesString) return [];
+
+  if (CONNECTFOUR_ASCII_MOVES_PATTERN.test(movesString)) {
+    return movesString
+      .split(',')
+      .map(value => Number.parseInt(value.trim(), 10))
+      .filter(value => Number.isInteger(value) && value >= 0 && value <= 6);
+  }
+
+  const columns = [];
+  for (let i = 0; i < movesString.length; i++) {
+    const value = movesString.charCodeAt(i);
+    if (value >= 0 && value <= 6) columns.push(value);
+  }
+  return columns;
 }
 
 export function unpackBoard(board) {
@@ -245,6 +265,7 @@ export function normalizeInstanceSnapshot(address, info, tournament, players, is
 export function normalizeMatch(roundNumber, matchNumber, matchData, board) {
   const matchCompletionReason = Number(matchData.completionReason ?? 0);
   const matchCompletionCategory = Number(matchData.completionCategory ?? 0);
+  const decodedMoves = decodeConnectFourMoves(matchData.moves || '');
   return {
     roundNumber,
     matchNumber,
@@ -261,7 +282,7 @@ export function normalizeMatch(roundNumber, matchNumber, matchData, board) {
     startTime: Number(matchData.startTime),
     lastMoveTime: Number(matchData.lastMoveTime),
     moves: matchData.moves || '',
-    moveCount: matchData.moves ? matchData.moves.length : 0,
+    moveCount: decodedMoves.length,
     board: unpackBoard(board),
   };
 }
