@@ -200,6 +200,7 @@ export function unpackBoard(board) {
 export function normalizeInstanceSnapshot(address, info, tournament, players, isEnrolled = false) {
   const tournamentResolutionReason = Number(info.completionReason ?? tournament.completionReason ?? 0);
   const tournamentResolutionCategory = Number(info.completionCategory ?? tournament.completionCategory ?? 0);
+  const fullPrizePool = tournament.prizePool ?? info.prizePool ?? 0n;
   return {
     address,
     tierKey: info.tierKey,
@@ -212,13 +213,19 @@ export function normalizeInstanceSnapshot(address, info, tournament, players, is
     status: Number(info.status),
     statusLabel: tournamentStatusLabel(info.status),
     enrolledCount: Number(info.enrolledCount),
-    prizePoolWei: tournament.prizePool,
-    prizePoolEth: formatEth(tournament.prizePool),
+    prizePoolWei: fullPrizePool,
+    prizePoolEth: formatEth(fullPrizePool),
+    fullPrizePool,
+    fullPrizePoolEth: formatEth(fullPrizePool),
     winner: info.winner,
     completionReason: tournamentResolutionReason,
     completionCategory: tournamentResolutionCategory,
     tournamentResolutionReason,
     tournamentResolutionCategory,
+    prizeAwarded: info.prizeAwarded ?? tournament.prizeAwarded ?? 0n,
+    prizeRecipient: info.prizeRecipient ?? tournament.prizeRecipient ?? ZERO_ADDRESS,
+    raffleAwarded: info.raffleAwarded ?? tournament.raffleAwarded ?? 0n,
+    raffleRecipient: info.raffleRecipient ?? tournament.raffleRecipient ?? ZERO_ADDRESS,
     players,
     isEnrolled,
     currentRound: Number(tournament.currentRound),
