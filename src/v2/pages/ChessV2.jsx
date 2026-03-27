@@ -13,7 +13,6 @@ import {
   AlertCircle,
   Loader,
   Plus,
-  RefreshCw,
   ChevronDown,
   ChevronUp,
   History,
@@ -128,10 +127,14 @@ function SectionShell({ title, children, right = null, id = null }) {
   return (
     <div id={id} className="mb-10">
       <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-6 border border-purple-400/30">
-        <div className="flex items-center justify-between gap-4 mb-6">
-          <h2 className="text-3xl font-bold text-purple-300 flex items-center gap-3"><Grid size={28} />{title}</h2>
-          {right}
-        </div>
+        {(title || right) ? (
+          <div className="flex items-center justify-between gap-4 mb-6">
+            {title ? (
+              <h2 className="text-3xl font-bold text-purple-300 flex items-center gap-3"><Grid size={28} />{title}</h2>
+            ) : <div />}
+            {right}
+          </div>
+        ) : null}
         {children}
       </div>
     </div>
@@ -1767,10 +1770,10 @@ export default function ChessV2() {
               </div>
             ) : (
               <>
-                <SectionShell id="live-instances" title="Start Tournament" right={<button type="button" onClick={refreshDashboard} className="flex items-center gap-2 text-sm bg-blue-500/20 hover:bg-blue-500/30 border border-blue-400/30 text-blue-200 px-4 py-2 rounded-xl transition-colors"><RefreshCw size={16} className={dashboardLoading ? 'animate-spin' : ''} />Refresh</button>}>
+                <SectionShell id="live-instances">
                   <form onSubmit={createInstance}>
                     <div className="bg-slate-900/50 border border-purple-400/20 rounded-2xl p-4 md:p-5">
-                      <div className="grid gap-4 md:grid-cols-[minmax(0,1.4fr)_minmax(240px,0.8fr)]">
+                      <div className="grid gap-4 md:grid-cols-[minmax(0,1.3fr)_minmax(220px,0.7fr)_minmax(240px,0.8fr)] md:items-end">
                         <div>
                           <div className="text-sm text-purple-200 mb-2">Player Count</div>
                           <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
@@ -1785,6 +1788,14 @@ export default function ChessV2() {
                             <div className="text-sm text-purple-200 mb-2">Entry Fee ({factoryRules ? `${formatEth(factoryRules.minEntryFee)}+ ETH` : '0.001 - 1 ETH'})</div>
                             <input type="number" min="0.001" max="1" step="0.001" value={createForm.entryFee} onChange={event => updateCreateForm('entryFee', event.target.value)} className="w-full bg-slate-950/80 border border-purple-400/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-400" />
                           </label>
+                        </div>
+                        <div className="hidden md:block">
+                          <div className="text-sm text-transparent mb-2 select-none" aria-hidden="true">Create</div>
+                          {walletBootDone && !account ? (
+                            <button type="button" onClick={connectWallet} disabled={isConnecting} className={`w-full flex items-center justify-center gap-3 bg-gradient-to-r ${currentTheme.connectButtonGradient} ${currentTheme.connectButtonHover} px-6 py-3 rounded-2xl font-bold text-base shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed`}>{isConnecting ? <Loader size={20} className="animate-spin" /> : <Wallet size={20} />}{isConnecting ? 'Connecting...' : 'Connect to Create'}</button>
+                          ) : (
+                            <button type="submit" disabled={createLoading} className={`w-full flex items-center justify-center gap-3 bg-gradient-to-r ${currentTheme.buttonGradient} ${currentTheme.buttonHover} px-6 py-3 rounded-2xl font-bold text-base shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed`}>{createLoading ? <Loader size={20} className="animate-spin" /> : <Plus size={20} />}{createLoading ? 'Creating Tournament...' : 'Create and Enrol'}</button>
+                          )}
                         </div>
                       </div>
                       <div className="mt-4 mb-4">
@@ -1822,7 +1833,7 @@ export default function ChessV2() {
                           </div>
                         )}
                       </div>
-                      <div className="flex flex-col gap-3">
+                      <div className="flex flex-col gap-3 md:hidden">
                         {walletBootDone && !account ? (
                           <button type="button" onClick={connectWallet} disabled={isConnecting} className={`w-full flex items-center justify-center gap-3 bg-gradient-to-r ${currentTheme.connectButtonGradient} ${currentTheme.connectButtonHover} px-8 py-4 rounded-2xl font-bold text-xl shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed`}>{isConnecting ? <Loader size={22} className="animate-spin" /> : <Wallet size={22} />}{isConnecting ? 'Connecting...' : 'Connect to Create'}</button>
                         ) : (
