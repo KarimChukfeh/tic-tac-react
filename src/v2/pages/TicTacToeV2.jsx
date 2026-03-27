@@ -623,6 +623,101 @@ export default function TicTacToeV2() {
 
   // ─── Build tournament bracket data from a V2 instance ───────────────────────
 
+  async function hydrateBracketMatch(instanceCont, userAccount, matchInfo) {
+    const { roundNumber, matchNumber } = matchInfo;
+    const matchKey = ethers.keccak256(ethers.solidityPacked(['uint8', 'uint8'], [roundNumber, matchNumber]));
+
+    const [matchData, fullMatch, boardRaw, tierConfig] = await Promise.all([
+      instanceCont.getMatch(roundNumber, matchNumber),
+      instanceCont.matches(matchKey),
+      instanceCont.getBoard(roundNumber, matchNumber).catch(() => null),
+      instanceCont.tierConfig(),
+    ]);
+
+    const tierMatchTime = Number(tierConfig.timeouts?.matchTimePerPlayer ?? tierConfig.matchTimePerPlayer ?? 120);
+    const player1 = matchData.player1 || matchInfo.player1;
+    const player2 = matchData.player2 || matchInfo.player2;
+    const matchStatus = Number(matchData.status);
+    const lastMoveTime = Number(matchData.lastMoveTime);
+    const startTime = Number(matchData.startTime);
+    const winner = matchData.matchWinner || matchData.winner;
+    const zeroAddress = ethers.ZeroAddress;
+
+    let loser = zeroAddress;
+    if (matchStatus === 2 && winner && winner.toLowerCase() !== zeroAddress.toLowerCase()) {
+      loser = winner.toLowerCase() === player1.toLowerCase() ? player2 : player1;
+    }
+
+    const completionReason = Number(matchData.completionReason ?? 0);
+    const currentTurn = fullMatch.currentTurn;
+    const firstPlayer = fullMatch.firstPlayer;
+    const p1TimeRaw = fullMatch.player1TimeRemaining !== undefined ? Number(fullMatch.player1TimeRemaining) : tierMatchTime;
+    const p2TimeRaw = fullMatch.player2TimeRemaining !== undefined ? Number(fullMatch.player2TimeRemaining) : tierMatchTime;
+    const board = boardRaw ? Array.from({ length: 9 }, (_, i) => Number(boardRaw[i] ?? 0)) : Array(9).fill(0);
+
+    const now = Math.floor(Date.now() / 1000);
+    const elapsed = lastMoveTime > 0 ? now - lastMoveTime : 0;
+    let player1TimeRemaining = p1TimeRaw;
+    let player2TimeRemaining = p2TimeRaw;
+    if (matchStatus === 1 && currentTurn && elapsed > 0) {
+      const isP1Turn = currentTurn.toLowerCase() === player1.toLowerCase();
+      if (isP1Turn) player1TimeRemaining = Math.max(0, player1TimeRemaining - elapsed);
+      else player2TimeRemaining = Math.max(0, player2TimeRemaining - elapsed);
+    }
+
+    let timeoutState = null;
+    try {
+      const timeoutData = await instanceCont.matchTimeouts(matchKey);
+      const esc1Start = Number(timeoutData.escalation1Start);
+      const esc2Start = Number(timeoutData.escalation2Start);
+      if (esc1Start > 0 || esc2Start > 0 || timeoutData.isStalled) {
+        timeoutState = {
+          escalation1Start: esc1Start,
+          escalation2Start: esc2Start,
+          activeEscalation: Number(timeoutData.activeEscalation),
+          timeoutActive: timeoutData.isStalled,
+          forfeitAmount: 0,
+        };
+      }
+    } catch {}
+
+    let escL2Available = false;
+    let escL3Available = false;
+    let isUserAdvancedForRound = false;
+    try {
+      escL2Available = await instanceCont.isMatchEscL2Available(roundNumber, matchNumber);
+      escL3Available = await instanceCont.isMatchEscL3Available(roundNumber, matchNumber);
+    } catch {}
+    if (userAccount) {
+      try {
+        isUserAdvancedForRound = await instanceCont.isPlayerInAdvancedRound(roundNumber, userAccount);
+      } catch {}
+    }
+
+    return {
+      ...matchInfo,
+      player1,
+      player2,
+      firstPlayer,
+      currentTurn,
+      winner,
+      loser,
+      board,
+      matchStatus,
+      status: matchStatus,
+      completionReason,
+      startTime,
+      lastMoveTime,
+      player1TimeRemaining,
+      player2TimeRemaining,
+      matchTimePerPlayer: tierMatchTime,
+      timeoutState,
+      escL2Available,
+      escL3Available,
+      isUserAdvancedForRound,
+    };
+  }
+
   const buildBracketData = async (address, instanceCont = null) => {
     const runner = getReadRunner();
     const instance = instanceCont || getInstanceContract(address, runner);
@@ -647,8 +742,9 @@ export default function TicTacToeV2() {
               instance.getBoard(roundIndex, matchIndex),
             ]);
             const nm = normalizeMatch(roundIndex, matchIndex, matchData, board);
+            const hydrated = await hydrateBracketMatch(instance, account, nm);
             // Inject virtual tierId/instanceId so V1 components route correctly
-            return { ...nm, tierId: VIRTUAL_TIER_ID, instanceId: VIRTUAL_INSTANCE_ID };
+            return { ...hydrated, tierId: VIRTUAL_TIER_ID, instanceId: VIRTUAL_INSTANCE_ID };
           })
         );
         return {

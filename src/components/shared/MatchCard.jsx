@@ -14,6 +14,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Play, Award, Clock, HelpCircle, Zap, Users, Eye } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
+import { CompletionReason } from '../../utils/completionReasons';
 import CompletedMatchOutcomeBadge from './CompletedMatchOutcomeBadge';
 import { getMatchStatusText, getMatchStatusColor } from '../../utils/matchStatus';
 import { calculatePlayerTimes } from '../../utils/timeCalculations';
@@ -101,8 +102,47 @@ const MatchCard = ({
   const isPlayer2 = match.player2?.toLowerCase() === account?.toLowerCase();
   const completionReason = Number(match.completionReason ?? match.reason ?? 0);
 
+  useEffect(() => {
+    if (matchStatus !== 2) return;
+
+    console.debug('[MatchCard] Completed bracket match', {
+      roundIdx,
+      matchIdx,
+      matchStatus,
+      account,
+      player1: match.player1,
+      player2: match.player2,
+      winner: match.winner,
+      reason: match.reason ?? null,
+      completionReason: match.completionReason ?? null,
+      resolvedCompletionReason: completionReason,
+      isUserMatch,
+      isPlayer1,
+      isPlayer2,
+    });
+  }, [
+    account,
+    completionReason,
+    isPlayer1,
+    isPlayer2,
+    isUserMatch,
+    match.completionReason,
+    match.player1,
+    match.player2,
+    match.reason,
+    match.winner,
+    matchIdx,
+    matchStatus,
+    roundIdx,
+  ]);
+
   // ===== ESCALATION DATA =====
-  const isStalled = match.timeoutState?.timeoutActive || false;
+  const player1Clock = Number(match.player1TimeRemaining ?? Number.POSITIVE_INFINITY);
+  const player2Clock = Number(match.player2TimeRemaining ?? Number.POSITIVE_INFINITY);
+  const contractEscL2Available = Boolean(match.escL2Available);
+  const contractEscL3Available = Boolean(match.escL3Available);
+  const hasClientDetectedTimeout = matchStatus === 1 && (player1Clock <= 0 || player2Clock <= 0);
+  const isStalled = match.timeoutState?.timeoutActive || contractEscL2Available || contractEscL3Available || hasClientDetectedTimeout;
   const isUserAdvanced = match.isUserAdvancedForRound || false;
 
   // Calculate time-based escalation availability
@@ -112,9 +152,9 @@ const MatchCard = ({
 
   // Time-based availability (contract functions may not work until explicitly triggered)
   // ML2 available when: stalled AND now >= esc1Start
-  const escL2Available = isStalled && esc1Start > 0 && now >= esc1Start;
+  const escL2Available = contractEscL2Available || (isStalled && esc1Start > 0 && now >= esc1Start);
   // ML3 available when: stalled AND now >= esc2Start
-  const escL3Available = isStalled && esc2Start > 0 && now >= esc2Start;
+  const escL3Available = contractEscL3Available || (isStalled && esc2Start > 0 && now >= esc2Start);
 
   // ML2 countdown (time until escL2 becomes available)
   const timeToML2 = (isStalled && esc1Start > 0 && now < esc1Start) ? esc1Start - now : null;
@@ -213,6 +253,8 @@ const MatchCard = ({
       'match.escL2Available': match.escL2Available,
       'match.escL3Available': match.escL3Available,
       'match.isUserAdvancedForRound': match.isUserAdvancedForRound,
+      player1Clock,
+      player2Clock,
       // Derived state
       isStalled,
       escL2Available,
@@ -284,6 +326,16 @@ const MatchCard = ({
                   reason={completionReason}
                   isWinner={userWon}
                   gameName={gameName}
+                />
+              );
+            }
+            if (completionReason !== CompletionReason.NORMAL_WIN) {
+              return (
+                <CompletedMatchOutcomeBadge
+                  reason={completionReason}
+                  isWinner={false}
+                  gameName={gameName}
+                  variant="neutral"
                 />
               );
             }

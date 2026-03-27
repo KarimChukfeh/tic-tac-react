@@ -664,6 +664,117 @@ export default function ChessV2() {
     return () => { cancelled = true; };
   }, [rpcReady]);
 
+  async function hydrateBracketMatch(instanceCont, userAccount, matchInfo) {
+    const { roundNumber, matchNumber } = matchInfo;
+    const matchKey = ethers.solidityPackedKeccak256(['uint8', 'uint8'], [roundNumber, matchNumber]);
+
+    const [matchData, fullMatch, boardResult, tierConfig] = await Promise.all([
+      instanceCont.getMatch(roundNumber, matchNumber),
+      instanceCont.matches(matchKey),
+      instanceCont.getBoard(roundNumber, matchNumber).catch(() => [0n, 0n]),
+      instanceCont.tierConfig(),
+    ]);
+
+    const packedBoard = Array.isArray(boardResult) ? boardResult[0] : boardResult.board;
+    const packedState = Array.isArray(boardResult) ? boardResult[1] : boardResult.state;
+    const board = unpackBoard(packedBoard);
+    const tierMatchTime = Number(tierConfig.timeouts?.matchTimePerPlayer ?? tierConfig.matchTimePerPlayer ?? 600);
+    const player1 = matchData.player1 || matchInfo.player1;
+    const player2 = matchData.player2 || matchInfo.player2;
+    const matchStatus = Number(matchData.status);
+    const lastMoveTime = Number(matchData.lastMoveTime);
+    const startTime = Number(matchData.startTime);
+    const winner = matchData.matchWinner || matchData.winner;
+    const completionReason = Number(matchData.completionReason ?? 0);
+    const currentTurn = fullMatch.currentTurn;
+    const firstPlayer = fullMatch.firstPlayer;
+    const p1TimeRaw = Number(fullMatch.player1TimeRemaining ?? tierMatchTime);
+    const p2TimeRaw = Number(fullMatch.player2TimeRemaining ?? tierMatchTime);
+    const zeroAddress = ethers.ZeroAddress;
+
+    let loser = zeroAddress;
+    if (matchStatus === 2 && winner && winner.toLowerCase() !== zeroAddress.toLowerCase()) {
+      loser = winner.toLowerCase() === player1.toLowerCase() ? player2 : player1;
+    }
+
+    const now = Math.floor(Date.now() / 1000);
+    const elapsed = lastMoveTime > 0 ? now - lastMoveTime : 0;
+    let player1TimeRemaining = p1TimeRaw;
+    let player2TimeRemaining = p2TimeRaw;
+    if (matchStatus === 1 && currentTurn && elapsed > 0) {
+      const isP1Turn = currentTurn.toLowerCase() === player1.toLowerCase();
+      if (isP1Turn) player1TimeRemaining = Math.max(0, player1TimeRemaining - elapsed);
+      else player2TimeRemaining = Math.max(0, player2TimeRemaining - elapsed);
+    }
+
+    let timeoutState = null;
+    try {
+      const timeoutData = await instanceCont.matchTimeouts(matchKey);
+      const esc1Start = Number(timeoutData.escalation1Start);
+      const esc2Start = Number(timeoutData.escalation2Start);
+      if (esc1Start > 0 || esc2Start > 0 || timeoutData.isStalled) {
+        timeoutState = {
+          escalation1Start: esc1Start,
+          escalation2Start: esc2Start,
+          activeEscalation: Number(timeoutData.activeEscalation),
+          timeoutActive: timeoutData.isStalled,
+          forfeitAmount: 0,
+        };
+      }
+    } catch {}
+
+    let escL2Available = false;
+    let escL3Available = false;
+    let isUserAdvancedForRound = false;
+    try {
+      escL2Available = await instanceCont.isMatchEscL2Available(roundNumber, matchNumber);
+      escL3Available = await instanceCont.isMatchEscL3Available(roundNumber, matchNumber);
+    } catch {}
+    if (userAccount) {
+      try {
+        isUserAdvancedForRound = await instanceCont.isPlayerInAdvancedRound(roundNumber, userAccount);
+      } catch {}
+    }
+
+    const packedStateBig = BigInt(packedState || 0);
+    const whiteInCheck = ((packedStateBig >> 12n) & 1n) === 1n;
+    const blackInCheck = ((packedStateBig >> 13n) & 1n) === 1n;
+    const moves = movesToPairs(matchData.moves || fullMatch.moves || '');
+    let lastMove = null;
+    if (moves.length > 0) {
+      const move = moves[moves.length - 1];
+      lastMove = { from: move.from, to: move.to };
+    }
+
+    return {
+      ...matchInfo,
+      player1,
+      player2,
+      firstPlayer,
+      currentTurn,
+      winner,
+      loser,
+      board,
+      packedBoard: BigInt(packedBoard || 0),
+      packedState: BigInt(packedState || 0),
+      matchStatus,
+      status: matchStatus,
+      completionReason,
+      startTime,
+      lastMoveTime,
+      player1TimeRemaining,
+      player2TimeRemaining,
+      matchTimePerPlayer: tierMatchTime,
+      timeoutState,
+      escL2Available,
+      escL3Available,
+      isUserAdvancedForRound,
+      whiteInCheck,
+      blackInCheck,
+      lastMove,
+    };
+  }
+
   const buildBracketData = async (address, instanceCont = null) => {
     const runner = getReadRunner();
     const instance = instanceCont || getInstanceContract(address, runner);
@@ -685,7 +796,9 @@ export default function ChessV2() {
         ]);
         const packedBoard = Array.isArray(boardResult) ? boardResult[0] : boardResult.board;
         const packedState = Array.isArray(boardResult) ? boardResult[1] : boardResult.state;
-        return { ...normalizeMatch(roundIndex, matchIndex, matchData, packedBoard, packedState), tierId: VIRTUAL_TIER_ID, instanceId: VIRTUAL_INSTANCE_ID };
+        const normalized = normalizeMatch(roundIndex, matchIndex, matchData, packedBoard, packedState);
+        const hydrated = await hydrateBracketMatch(instance, account, normalized);
+        return { ...hydrated, tierId: VIRTUAL_TIER_ID, instanceId: VIRTUAL_INSTANCE_ID };
       }));
       return { roundIndex, matchCount, completedCount: Number(bracket.completedCounts[roundIndex] || 0), label: getRoundLabel(roundIndex, totalRounds), matches };
     }));
