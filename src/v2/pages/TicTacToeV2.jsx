@@ -2037,6 +2037,10 @@ export default function TicTacToeV2() {
           </h1>
           <p className="text-2xl text-blue-200 mb-6">Provably Fair • Zero Trust • 100% On-Chain</p>
           <p className={`text-lg ${currentTheme.heroSubtext} max-w-3xl mx-auto`}>
+            Play Tic-Tac-Toe on the blockchain. Real opponents. Real ETH on the line.
+            <br />
+            No servers required. No trust needed.
+            <br />
             Every move is a transaction. Every outcome is permanently on-chain.
           </p>
         </div>
@@ -2199,6 +2203,7 @@ export default function TicTacToeV2() {
             ) : (
               // Landing — lobby + create form
               <>
+              <V2GameLobbyIntro />
               {/* Create Tournament section */}
               <SectionShell id="live-instances">
                 <form onSubmit={createInstance}>
@@ -2378,10 +2383,6 @@ export default function TicTacToeV2() {
                   </div>
                 </form>
               </SectionShell>
-              <V2GameLobbyIntro
-                matchTimeLabel="Set the price"
-                matchTimeDescription="Compete for pennies or go all in. The choice is yours."
-              />
 
               </>
             )}

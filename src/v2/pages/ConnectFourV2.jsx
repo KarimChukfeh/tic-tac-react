@@ -2232,7 +2232,7 @@ export default function ConnectFourV2() {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-12" style={{ position: 'relative', zIndex: 10 }}>
-        <div className="text-center mb-16">
+        <div className="text-center mb-8">
           <div className="inline-block mb-6">
             <div className="relative">
               <div className={`absolute -inset-4 bg-gradient-to-r ${currentTheme.heroGlow} rounded-full blur-xl opacity-50 animate-pulse`} />
@@ -2246,14 +2246,20 @@ export default function ConnectFourV2() {
           </h1>
           <p className={`text-2xl ${currentTheme.heroText} mb-6`}>Provably Fair • Zero Trust • 100% On-Chain</p>
           <p className={`text-lg ${currentTheme.heroSubtext} max-w-3xl mx-auto`}>
+            Play Connect Four on the blockchain. Real opponents. Real ETH on the line.
+            <br />
+            No servers required. No trust needed.
+            <br />
             Every move is a transaction. Every outcome is permanently on-chain.
           </p>
         </div>
 
-        <div className="mb-8 space-y-4">
-          <ActionMessage type={actionState.type} message={actionState.message} />
-          <ActionMessage type="error" message={dashboardError} />
-        </div>
+        {(actionState.message || dashboardError) ? (
+          <div className="mb-8 space-y-4">
+            <ActionMessage type={actionState.type} message={actionState.message} />
+            <ActionMessage type="error" message={dashboardError} />
+          </div>
+        ) : null}
 
         {currentMatch && (
           <div ref={matchViewRef}>
@@ -2386,6 +2392,7 @@ export default function ConnectFourV2() {
               </div>
             ) : (
               <>
+                <V2GameLobbyIntro />
                 <SectionShell id="live-instances">
                   <form onSubmit={createInstance}>
                     <div className="bg-slate-900/50 border border-purple-400/20 rounded-2xl p-4 md:p-5">
@@ -2548,14 +2555,6 @@ export default function ConnectFourV2() {
                     </div>
                   </form>
                 </SectionShell>
-                <V2GameLobbyIntro
-                  descriptionLines={[
-                    'Play Connect Four on the blockchain. Real opponents. Real ETH on the line.',
-                    'No servers required. No trust needed.',
-                  ]}
-                  matchTimeLabel="Set the price"
-                  matchTimeDescription="Compete for pennies or go all in. The choice is yours."
-                />
 
               </>
             )}
