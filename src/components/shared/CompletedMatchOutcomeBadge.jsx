@@ -53,7 +53,7 @@ const CompletedMatchOutcomeBadge = ({
           return reasonSuffix ? `Victory by ${reasonSuffix}` : 'Victory';
         }
         if (viewerRelation === 'loser') {
-          return reasonSuffix ? `Defeated by ${reasonSuffix}` : 'Defeated';
+          return reasonSuffix ? `Defeated by ${reasonSuffix}` : 'Defeat';
         }
         const winnerToken = formatWinnerToken(winnerAddress);
         return reasonSuffix ? `${winnerToken} wins via ${reasonSuffix}` : `${winnerToken} wins`;

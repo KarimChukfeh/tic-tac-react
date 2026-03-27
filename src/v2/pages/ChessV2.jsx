@@ -24,7 +24,7 @@ import { ethers } from 'ethers';
 import { CURRENT_NETWORK, getAddressUrl } from '../../config/networks';
 import { shortenAddress } from '../../utils/formatters';
 import { generateV2TournamentUrl, parseV2ContractParam } from '../../utils/urlHelpers';
-import { wasPageReloaded } from '../../utils/navigation';
+import { shouldResetOnInitialDocumentLoad } from '../../utils/navigation';
 import { isDraw } from '../../utils/completionReasons';
 import { validateMoveWithReason } from '../../utils/chessValidator';
 import { didMatchStateAdvance, waitForTxOrStateSync } from '../../utils/txSync';
@@ -525,7 +525,7 @@ export default function ChessV2() {
   const selectedAddress = searchParams.get('instance');
   const explorerUrl = getAddressUrl(factoryAddress);
   const [hasProcessedInviteParam, setHasProcessedInviteParam] = useState(false);
-  const [allowInitialUrlHydration, setAllowInitialUrlHydration] = useState(() => !wasPageReloaded());
+  const [allowInitialUrlHydration, setAllowInitialUrlHydration] = useState(() => !shouldResetOnInitialDocumentLoad('/v2/chess'));
   const [viewingTournament, setViewingTournament] = useState(null);
   const [bracketSyncDots, setBracketSyncDots] = useState(1);
   const [tournamentsLoading, setTournamentsLoading] = useState(false);

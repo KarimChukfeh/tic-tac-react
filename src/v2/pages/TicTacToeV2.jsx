@@ -36,7 +36,7 @@ import { ethers } from 'ethers';
 import { CURRENT_NETWORK, getAddressUrl } from '../../config/networks';
 import { shortenAddress, getCellPositionName } from '../../utils/formatters';
 import { generateV2TournamentUrl, parseV2ContractParam } from '../../utils/urlHelpers';
-import { wasPageReloaded } from '../../utils/navigation';
+import { shouldResetOnInitialDocumentLoad } from '../../utils/navigation';
 import { isDraw, getCompletionReasonText, getCompletionReasonDescription } from '../../utils/completionReasons';
 import ParticleBackground from '../../components/shared/ParticleBackground';
 import WhyArbitrum from '../../components/shared/WhyArbitrum';
@@ -433,7 +433,7 @@ export default function TicTacToeV2() {
 
   // --- Invite link: ?c=0x... (V2 contract address) ---
   const [hasProcessedInviteParam, setHasProcessedInviteParam] = useState(false);
-  const [allowInitialUrlHydration, setAllowInitialUrlHydration] = useState(() => !wasPageReloaded());
+  const [allowInitialUrlHydration, setAllowInitialUrlHydration] = useState(() => !shouldResetOnInitialDocumentLoad('/v2/tictactoe'));
 
   // --- Viewing tournament bracket (V1-style) ---
   const [viewingTournament, setViewingTournament] = useState(null); // normalizedInstanceSnapshot + rounds
