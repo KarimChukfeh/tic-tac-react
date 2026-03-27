@@ -9,12 +9,11 @@ import { X, RefreshCw, History, ChevronDown, ChevronUp, Eye, ChevronLeft, Chevro
 import { shortenAddress, getCellPositionName } from '../../utils/formatters';
 import {
   CompletionReason,
-  isDraw,
   getCompletedMatchOutcomeLabel,
-  getCompletionReasonHref,
-  getCompletionReasonManualLabel,
+  isDraw,
 } from '../../utils/completionReasons';
 import CapturedPieces from './CapturedPieces';
+import CompletedMatchOutcomeBadge from './CompletedMatchOutcomeBadge';
 import { ethers } from 'ethers';
 
 const RecentMatchesCard = ({
@@ -606,7 +605,7 @@ const RecentMatchesCard = ({
     if (matchIsDraw) return `${tierPrefix} Draw`;
 
     const isWinner = winnerLower === accountLower;
-    const outcome = getOutcomeLabel(isWinner, reason);
+    const outcome = getCompletedMatchOutcomeLabel(reason, isWinner, gameName);
     return `${tierPrefix} ${outcome}`;
   };
 
@@ -710,18 +709,6 @@ const RecentMatchesCard = ({
   };
 
   const getMatchReason = (match) => Number(match?.reason ?? match?.completionReason ?? 0);
-
-  const getOutcomeLabel = (isWinner, reason) => {
-    return getCompletedMatchOutcomeLabel(reason, isWinner, gameName);
-  };
-
-  const getOutcomeHref = (reason) => {
-    return getCompletionReasonHref(reason);
-  };
-
-  const getOutcomeManualLabel = (reason) => {
-    return getCompletionReasonManualLabel(reason);
-  };
 
   const formatTimeAgo = (timestamp) => {
     if (!timestamp) return '';
@@ -1318,32 +1305,12 @@ const RecentMatchesCard = ({
                             {getRoundLabel(match.tierId, match.roundNumber, match.totalRounds)}
                           </span>
                         )}
-                        {getOutcomeHref(reason) ? (
-                          <a
-                            href={getOutcomeHref(reason)}
-                            onClick={() => handleSetExpanded(false)}
-                            className={`text-[10px] px-2 py-0.5 rounded font-bold ${
-                              matchIsDraw
-                                ? 'bg-yellow-500/60 text-white'
-                                : isWinner
-                                ? 'bg-green-500/60 text-white'
-                                : 'bg-red-500/60 text-white'
-                            } hover:opacity-80 transition-colors underline decoration-dotted cursor-pointer`}
-                            title={`Learn more about ${getOutcomeManualLabel(reason)} in the User Manual`}
-                          >
-                            {getOutcomeLabel(isWinner, reason)}
-                          </a>
-                        ) : (
-                          <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${
-                            matchIsDraw
-                              ? 'bg-yellow-500/60 text-white'
-                              : isWinner
-                              ? 'bg-green-500/60 text-white'
-                              : 'bg-red-500/60 text-white'
-                          }`}>
-                            {getOutcomeLabel(isWinner, reason)}
-                          </span>
-                        )}
+                        <CompletedMatchOutcomeBadge
+                          reason={reason}
+                          isWinner={isWinner}
+                          gameName={gameName}
+                          onClick={() => handleSetExpanded(false)}
+                        />
                         {match.instanceAddress && getRoundLabel(match.tierId, match.roundNumber, match.totalRounds) && (
                           <span className="bg-slate-600/50 text-slate-200 text-[10px] font-bold px-2 py-0.5 rounded border border-slate-400/40">
                             {getRoundLabel(match.tierId, match.roundNumber, match.totalRounds)}
@@ -2008,15 +1975,12 @@ const RecentMatchesCard = ({
 
                     {/* Outcome */}
                     <div className="mb-3">
-                      <span className={`text-xs px-2 py-1 rounded font-bold block text-center ${
-                        matchIsDraw
-                          ? 'bg-yellow-500/60 text-white'
-                          : isWinner
-                          ? 'bg-green-500/60 text-white'
-                          : 'bg-red-500/60 text-white'
-                      }`}>
-                        {getOutcomeLabel(isWinner, reason)}
-                      </span>
+                      <CompletedMatchOutcomeBadge
+                        reason={reason}
+                        isWinner={isWinner}
+                        gameName={gameName}
+                        className="text-xs px-2 py-1 block text-center"
+                      />
                     </div>
 
                     {/* Started */}

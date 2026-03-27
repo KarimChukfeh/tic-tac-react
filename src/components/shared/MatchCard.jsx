@@ -14,12 +14,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Play, Award, Clock, HelpCircle, Zap, Users, Eye } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
-import {
-  CompletionReason,
-  getCompletedMatchOutcomeLabel,
-  getCompletionReasonHref,
-  getCompletionReasonManualLabel,
-} from '../../utils/completionReasons';
+import CompletedMatchOutcomeBadge from './CompletedMatchOutcomeBadge';
 import { getMatchStatusText, getMatchStatusColor } from '../../utils/matchStatus';
 import { calculatePlayerTimes } from '../../utils/timeCalculations';
 
@@ -31,15 +26,6 @@ const formatEscalationTime = (seconds) => {
   const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
   return `${mins}:${secs.toString().padStart(2, '0')}`;
-};
-
-const getCompletedOutcomeHref = (completionReason) => {
-  return getCompletionReasonHref(completionReason);
-};
-
-const getCompletedOutcomeTitle = (completionReason) => {
-  const manualLabel = getCompletionReasonManualLabel(completionReason);
-  return manualLabel ? `Learn more about ${manualLabel} in the User Manual` : '';
 };
 
 /**
@@ -289,36 +275,18 @@ const MatchCard = ({
         </span>
         {/* Status */}
         {(() => {
-          // For completed matches, show Victory/Defeat for user matches, nothing for others
+          // For completed matches, show the same outcome pill as recent match history for user matches only.
           if (matchStatus === 2) {
             if (isUserMatch) {
               const userWon = match.winner?.toLowerCase() === account?.toLowerCase();
-              const isDrawOutcome =
-                completionReason === CompletionReason.DRAW ||
-                completionReason === CompletionReason.ALL_DRAW_SCENARIO;
-              const label = getCompletedMatchOutcomeLabel(completionReason, userWon, gameName);
-              const href = getCompletedOutcomeHref(completionReason);
-              const colorClass = isDrawOutcome
-                ? 'text-yellow-300'
-                : userWon
-                ? 'text-green-400'
-                : 'text-red-400';
-
-              if (href) {
-                return (
-                  <a
-                    href={href}
-                    className={`text-xs font-bold underline decoration-dotted hover:opacity-80 ${colorClass}`}
-                    title={getCompletedOutcomeTitle(completionReason)}
-                  >
-                    {label}
-                  </a>
-                );
-              }
-
-              return <span className={`text-xs font-bold ${colorClass}`}>{label}</span>;
+              return (
+                <CompletedMatchOutcomeBadge
+                  reason={completionReason}
+                  isWinner={userWon}
+                  gameName={gameName}
+                />
+              );
             }
-            // For non-user matches, show nothing
             return null;
           }
           // For non-completed matches, show standard status

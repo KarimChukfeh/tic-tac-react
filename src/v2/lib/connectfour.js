@@ -234,6 +234,7 @@ export function normalizeMatch(roundNumber, matchNumber, matchData, board) {
     player1: matchData.player1,
     player2: matchData.player2,
     winner: matchData.matchWinner,
+    completionReason: Number(matchData.completionReason ?? 0),
     isDraw: Boolean(matchData.isDraw),
     status: Number(matchData.status),
     statusLabel: matchStatusLabel(matchData.status),

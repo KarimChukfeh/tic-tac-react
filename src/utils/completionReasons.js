@@ -88,7 +88,10 @@ export const getCompletedMatchOutcomeLabel = (reason, userWon, gameType = 'ticta
     return 'Victory';
   }
 
-  return getCompletionReasonText(reason, false, gameType);
+  if (reason === CompletionReason.TIMEOUT) return 'Defeat by Timeout (ML1)';
+  if (reason === CompletionReason.FORCE_ELIMINATION) return 'Defeat via ML2';
+  if (reason === CompletionReason.REPLACEMENT) return 'Defeat via ML3';
+  return 'Defeat';
 };
 
 /**
