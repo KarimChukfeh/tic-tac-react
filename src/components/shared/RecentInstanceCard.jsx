@@ -8,7 +8,7 @@ import { useEffect, useState, useRef } from 'react';
 import { ethers } from 'ethers';
 import { Clock, Trophy, Award, Users } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
-import { CompletionReason, getTournamentResolutionReasonValue } from '../../utils/completionReasons';
+import { getTournamentCompletionText, getTournamentResolutionReasonValue } from '../../utils/completionReasons';
 
 const RecentInstanceCard = ({ tierId, instanceId, contract, tierName = 'Tournament', walletAddress }) => {
   const [recentData, setRecentData] = useState(null);
@@ -107,30 +107,6 @@ const RecentInstanceCard = ({ tierId, instanceId, contract, tierName = 'Tourname
       </div>
     );
   }
-
-  // Get tournament-specific completion reason text
-  const getTournamentCompletionText = (reason) => {
-    switch (reason) {
-      case CompletionReason.NORMAL_WIN:
-        return { text: 'Normal Victory', link: null };
-      case CompletionReason.TIMEOUT:
-        return { text: 'ML1 Timeout Elimination', link: '#ml1' };
-      case CompletionReason.DRAW:
-        return { text: 'Draw Resolution', link: '#draws' };
-      case CompletionReason.FORCE_ELIMINATION:
-        return { text: 'ML2 Advanced Player Elimination', link: '#ml2' };
-      case CompletionReason.REPLACEMENT:
-        return { text: 'ML3 External Player Replacement', link: '#ml3' };
-      case CompletionReason.ALL_DRAW_SCENARIO:
-        return { text: 'All-Draw Scenario Resolution', link: '#draws' };
-      case CompletionReason.SOLO_ENROLL_FORCE_START:
-        return { text: 'EL1 Solo Force Start', link: '#el1' };
-      case CompletionReason.ABANDONED_TOURNAMENT_CLAIMED:
-        return { text: 'EL2 Abandoned Pool Claim', link: '#el2' };
-      default:
-        return { text: 'Tournament Completion', link: null };
-    }
-  };
 
   const resolutionReason = getTournamentResolutionReasonValue(recentData);
   const reasonData = getTournamentCompletionText(resolutionReason);

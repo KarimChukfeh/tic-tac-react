@@ -52,6 +52,29 @@ export const getTournamentResolutionCategoryValue = (record) => toReasonNumber(
   ?? 0
 );
 
+export const getTournamentCompletionText = (reason) => {
+  switch (reason) {
+    case CompletionReason.NORMAL_WIN:
+      return { text: 'Normal Victory', link: null, summary: 'normal victory' };
+    case CompletionReason.TIMEOUT:
+      return { text: 'ML1 Timeout Elimination', link: '#ml1', summary: 'timeout (ML1)' };
+    case CompletionReason.DRAW:
+      return { text: 'Draw Resolution', link: '#draws', summary: 'draw resolution' };
+    case CompletionReason.FORCE_ELIMINATION:
+      return { text: 'ML2 Advanced Player Elimination', link: '#ml2', summary: 'ML2 elimination' };
+    case CompletionReason.REPLACEMENT:
+      return { text: 'ML3 External Player Replacement', link: '#ml3', summary: 'ML3 replacement' };
+    case CompletionReason.ALL_DRAW_SCENARIO:
+      return { text: 'All-Draw Scenario Resolution', link: '#draws', summary: 'all-draw resolution' };
+    case CompletionReason.SOLO_ENROLL_FORCE_START:
+      return { text: 'EL1 Solo Force Start', link: '#el1', summary: 'solo force start (EL1)' };
+    case CompletionReason.ABANDONED_TOURNAMENT_CLAIMED:
+      return { text: 'EL2 Abandoned Pool Claim', link: '#el2', summary: 'abandoned pool claim (EL2)' };
+    default:
+      return { text: 'Tournament Completion', link: null, summary: 'tournament completion' };
+  }
+};
+
 export const getPlayerMatchOutcomeReasonValue = (record) => toReasonNumber(
   record?.playerOutcomeReason
   ?? record?.outcomeReason

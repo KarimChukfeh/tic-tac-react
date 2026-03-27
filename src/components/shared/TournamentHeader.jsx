@@ -11,7 +11,8 @@ import { useState, useEffect, useRef } from 'react';
 import { generateTournamentUrl, copyToClipboard } from '../../utils/urlHelpers';
 import StatsGrid from './StatsGrid';
 import EnrolledPlayersList from './EnrolledPlayersList';
-import { formatTime, getTournamentTypeLabel } from '../../utils/formatters';
+import { formatTime, getTournamentTypeLabel, shortenAddress } from '../../utils/formatters';
+import { getTournamentCompletionText, getTournamentResolutionReasonValue } from '../../utils/completionReasons';
 
 // Game-specific configurations
 const GAME_CONFIGS = {
@@ -96,12 +97,23 @@ const TournamentHeader = ({
   // Optional: override the share URL (e.g. for V2 contract-address-based URLs)
   shareUrlOverride,
 
+  // Optional: completed tournament summary
+  winner,
+  completionReason,
+  resolutionReason,
+
   // Optional: Custom colors override
   colors: customColors
 }) => {
   const config = GAME_CONFIGS[gameType] || GAME_CONFIGS.tictactoe;
   const colors = customColors || config.colors;
   const totalRounds = Math.ceil(Math.log2(playerCount));
+  const isInProgress = status === 1;
+  const isCompleted = status >= 2;
+  const tournamentResolutionReason = getTournamentResolutionReasonValue({ resolutionReason, completionReason });
+  const resolutionText = getTournamentCompletionText(tournamentResolutionReason);
+  const winnerLabel = winner && winner !== ethers.ZeroAddress ? shortenAddress(winner) : '0x000';
+  const resolutionSummary = tournamentResolutionReason === 0 ? '' : ` by ${resolutionText.summary}`;
 
   // Determine tournament type label (Duel vs Tournament)
   const tournamentTypeLabel = getTournamentTypeLabel(playerCount);
@@ -447,6 +459,18 @@ const TournamentHeader = ({
         </>
       )}
 
+      {isCompleted && (
+        <div className="mt-4 bg-black/20 rounded-lg p-4 border border-purple-400/30">
+          <div className="text-purple-300 text-sm mb-1">Resolution</div>
+          <div className="text-white text-sm md:text-base">
+            <span className="font-mono">{winnerLabel}</span>
+            <span> wins{resolutionSummary}</span>
+            <span className="text-purple-300"> • </span>
+            <span>Winner awarded <span className="font-semibold text-yellow-400">{ethers.formatEther(prizePool)} ETH</span></span>
+          </div>
+        </div>
+      )}
+
       {/* Enrolled Players */}
       <EnrolledPlayersList
         enrolledPlayers={enrolledPlayers}
@@ -455,27 +479,29 @@ const TournamentHeader = ({
       />
 
       {/* Shareable URL Section */}
-      <div className="mt-4 bg-purple-500/10 border border-purple-400/30 rounded-lg p-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <div className="text-purple-300 text-sm mb-1">Invite a Friend</div>
-            <div className="font-mono text-xs md:text-sm text-white bg-black/20 rounded px-3 py-2 overflow-x-auto">
-              {shareUrl}
+      {!isInProgress && (
+        <div className="mt-4 bg-purple-500/10 border border-purple-400/30 rounded-lg p-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="text-purple-300 text-sm mb-1">{isCompleted ? 'Share results' : 'Invite a Friend'}</div>
+              <div className="font-mono text-xs md:text-sm text-white bg-black/20 rounded px-3 py-2 overflow-x-auto">
+                {shareUrl}
+              </div>
             </div>
+            <button
+              onClick={handleCopyUrl}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap ${
+                copiedUrl
+                  ? 'bg-green-500/20 text-green-400 border border-green-400/30'
+                  : 'bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white'
+              }`}
+            >
+              {copiedUrl ? <Check size={18} /> : <Copy size={18} />}
+              {copiedUrl ? 'Copied!' : 'Copy Link'}
+            </button>
           </div>
-          <button
-            onClick={handleCopyUrl}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap ${
-              copiedUrl
-                ? 'bg-green-500/20 text-green-400 border border-green-400/30'
-                : 'bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white'
-            }`}
-          >
-            {copiedUrl ? <Check size={18} /> : <Copy size={18} />}
-            {copiedUrl ? 'Copied!' : 'Copy Link'}
-          </button>
         </div>
-      </div>
+      )}
     </div>
   );
 };

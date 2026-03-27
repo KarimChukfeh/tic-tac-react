@@ -199,7 +199,7 @@ const getPieceSvg = (piece) => {
 
 // Tournament Bracket Component
 const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, /* onSpectateMatch, */ onForceEliminate, onClaimReplacement, onManualStart, onClaimAbandonedPool, onResetEnrollmentWindow, onEnroll, account, loading, syncDots, isEnrolled, entryFee, isFull, contract, isEnrolledInElite }) => {
-  const { tierId, instanceId, status, currentRound, enrolledCount, prizePool, rounds, playerCount, enrolledPlayers, firstEnrollmentTime, countdownActive, enrollmentTimeout } = tournamentData;
+  const { tierId, instanceId, status, currentRound, enrolledCount, prizePool, rounds, playerCount, enrolledPlayers, firstEnrollmentTime, countdownActive, enrollmentTimeout, winner, completionReason } = tournamentData;
 
   // Calculate total rounds based on player count
   const totalRounds = Math.ceil(Math.log2(playerCount));
@@ -331,6 +331,8 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, /* onSpectate
         enrolledCount={enrolledCount}
         prizePool={prizePool}
         enrolledPlayers={enrolledPlayers}
+        winner={winner}
+        completionReason={completionReason}
         syncDots={syncDots}
         account={account}
         onBack={onBack}
@@ -2689,11 +2691,15 @@ export default function Chess() {
       let firstEnrollmentTime = 0;
       let countdownActive = false;
       let enrollmentTimeout = null;
+      let winner = ethers.ZeroAddress;
+      let completionReason = 0;
       try {
         const tournamentData = await contractInstance.tournaments(tierId, instanceId);
         firstEnrollmentTime = Number(tournamentData.firstEnrollmentTime);
         countdownActive = tournamentData.countdownActive;
         enrollmentTimeout = tournamentData.enrollmentTimeout;
+        winner = tournamentData.winner ?? ethers.ZeroAddress;
+        completionReason = Number(tournamentData.completionReason ?? 0);
       } catch (err) {
         console.log('Could not fetch countdown data:', err);
       }
@@ -2916,6 +2922,8 @@ export default function Chess() {
         firstEnrollmentTime,
         countdownActive,
         enrollmentTimeout,
+        winner,
+        completionReason,
         timeoutConfig // Add tier timeout configuration
       };
     } catch (error) {

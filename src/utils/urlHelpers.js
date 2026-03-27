@@ -49,11 +49,19 @@ export const parseTournamentParams = (searchParams) => {
 
 /**
  * Generate shareable V2 instance URL (uses contract address)
+ * @param {string} gameType - 'tictactoe', 'chess', or 'connectfour'
  * @param {string} contractAddress - Instance contract address
  * @returns {string} - Full shareable URL with ?c=0x...
  */
-export const generateV2TournamentUrl = (contractAddress) => {
-  return `${window.location.origin}/v2/tictactoe?c=${contractAddress}`;
+export const generateV2TournamentUrl = (gameType, contractAddress) => {
+  const gamePathMap = {
+    tictactoe: 'tictactoe',
+    chess: 'chess',
+    connectfour: 'connect4'
+  };
+
+  const gamePath = gamePathMap[gameType] || 'tictactoe';
+  return `${window.location.origin}/v2/${gamePath}?c=${contractAddress}`;
 };
 
 /**
