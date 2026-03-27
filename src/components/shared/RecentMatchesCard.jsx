@@ -573,7 +573,7 @@ const RecentMatchesCard = ({
     if (matchIsDraw) return `${tierPrefix} Draw`;
 
     const isWinner = winnerLower === accountLower;
-    const outcome = getCompletionReasonText(match.reason, isWinner, gameName);
+    const outcome = isWinner ? 'Victory' : getCompletionReasonText(match.reason, false, gameName);
     return `${tierPrefix} ${outcome}`;
   };
 
@@ -675,8 +675,8 @@ const RecentMatchesCard = ({
   };
 
   const getOutcomeLabel = (isWinner, reason) => {
-    // Use the centralized completion reason utility
-    return getCompletionReasonText(reason, isWinner, gameName);
+    if (isWinner) return 'Victory';
+    return getCompletionReasonText(reason, false, gameName);
   };
 
   const formatTimeAgo = (timestamp) => {
