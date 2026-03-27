@@ -7,15 +7,17 @@ const TIER_CONFIG = {
   2: { playerCount: 8 }
 };
 
-const ActiveMatchAlertModal = ({ match, onClose, onEnterMatch }) => {
+const ActiveMatchAlertModal = ({ match, onClose, onDismiss, onEnterMatch }) => {
   if (!match) return null;
+
+  const handleDismiss = onClose || onDismiss;
 
   const handleGoToMatch = () => {
     // Call the parent's onEnterMatch handler (handlePlayMatch from the game component)
     if (onEnterMatch) {
       onEnterMatch(match.tierId, match.instanceId, match.roundIdx, match.matchIdx);
     }
-    onClose();
+    handleDismiss?.();
   };
 
   const tierNames = {
@@ -57,7 +59,7 @@ const ActiveMatchAlertModal = ({ match, onClose, onEnterMatch }) => {
               Go to Match
             </button>
             <button
-              onClick={onClose}
+              onClick={handleDismiss}
               className="w-1/4 text-white/80 hover:text-white font-medium py-1.5 px-4 transition-all duration-200"
             >
               Later

@@ -37,6 +37,7 @@ const PlayerActivity = ({
   showTooltip = false, // External control for tooltip visibility
   onShowTooltip, // Callback to show this component's tooltip
   onHideTooltip, // Callback to hide this component's tooltip
+  connectCtaClassName = 'bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl shadow-2xl border-2 border-purple-400/60 hover:scale-105',
 }) => {
   const [internalIsExpanded, setInternalIsExpanded] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
@@ -55,6 +56,17 @@ const PlayerActivity = ({
 
   const getInstanceLabel = (instanceId) => {
     return `Instance ${instanceId + 1}`;
+  };
+
+  const isAddressBackedInstance = (instanceId) => (
+    typeof instanceId === 'string' && instanceId.startsWith('0x')
+  );
+
+  const getTournamentLabel = (tierId, instanceId) => {
+    if (isAddressBackedInstance(instanceId)) {
+      return `Tournament ${shortenAddress(instanceId)}`;
+    }
+    return `Tier ${tierId + 1} Instance ${Number(instanceId) + 1}`;
   };
 
   const getRoundLabel = (tierId, roundNumber) => {
@@ -349,13 +361,13 @@ const PlayerActivity = ({
           )}
 
         {/* Tooltip - Desktop only */}
-        {disabled ? (
-          <a
-            href="#connect-wallet-cta"
-            className="max-md:hidden absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all shadow-2xl border-2 border-purple-400/60 hover:scale-105"
-          >
-            Connect Wallet to View Your Activity
-          </a>
+          {disabled ? (
+            <a
+              href="#connect-wallet-cta"
+              className={`max-md:hidden absolute left-full ml-3 top-1/2 -translate-y-1/2 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all ${connectCtaClassName}`}
+            >
+              Connect Wallet to View Your Activity
+            </a>
         ) : (
           <div className="max-md:hidden absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
             Your Activity
@@ -375,7 +387,7 @@ const PlayerActivity = ({
             e.stopPropagation(); // Allow navigation but prevent document click
             if (onHideTooltip) onHideTooltip();
           }}
-          className="md:hidden fixed bottom-20 left-4 right-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-6 py-3 rounded-xl z-[100] animate-fade-in shadow-2xl border-2 border-purple-400/60 hover:scale-105 transition-transform text-center"
+          className={`md:hidden fixed bottom-20 left-4 right-4 px-6 py-3 z-[100] animate-fade-in transition-transform text-center ${connectCtaClassName}`}
         >
           Connect Wallet to View Your Activity
         </a>
@@ -479,7 +491,7 @@ const PlayerActivity = ({
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-2">
                               <span className="text-white font-semibold text-sm">
-                                Tier {match.tierId + 1} Instance {match.instanceId + 1}
+                                {getTournamentLabel(match.tierId, match.instanceId)}
                               </span>
                               {isCompleted ? (
                                 <span className="bg-slate-500 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase flex items-center gap-1">
@@ -671,7 +683,7 @@ const PlayerActivity = ({
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-2">
                               <span className="text-white font-semibold text-sm">
-                                Tier {match.tierId + 1} Instance {match.instanceId + 1}
+                                {getTournamentLabel(match.tierId, match.instanceId)}
                               </span>
                               <span className="bg-orange-500/60 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase">
                                 Terminated
@@ -712,7 +724,7 @@ const PlayerActivity = ({
                       >
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-white font-semibold text-sm">
-                            Tier {tournament.tierId + 1} Instance {tournament.instanceId + 1}
+                            {getTournamentLabel(tournament.tierId, tournament.instanceId)}
                           </span>
                         </div>
                         <div className={`text-slate-400 text-xs ${tournament.playerRound !== null ? 'mb-1' : 'mb-3'}`}>
@@ -755,7 +767,7 @@ const PlayerActivity = ({
                       >
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-white font-semibold text-sm">
-                            Tier {tournament.tierId + 1} Instance {tournament.instanceId + 1}
+                            {getTournamentLabel(tournament.tierId, tournament.instanceId)}
                           </span>
                         </div>
                         <div className="text-slate-400 text-xs mb-3">

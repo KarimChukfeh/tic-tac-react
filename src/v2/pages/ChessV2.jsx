@@ -89,6 +89,9 @@ const currentTheme = {
   heroSubtext: 'text-blue-300',
   buttonGradient: 'from-blue-500 to-cyan-500',
   buttonHover: 'hover:from-blue-600 hover:to-cyan-600',
+  connectButtonGradient: 'from-purple-600 to-fuchsia-600',
+  connectButtonHover: 'hover:from-purple-700 hover:to-fuchsia-700',
+  connectCtaClassName: 'bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white rounded-xl shadow-2xl border-2 border-purple-400/60 hover:scale-105 hover:from-purple-700 hover:to-fuchsia-700',
 };
 
 const PIECE_SVGS = {
@@ -324,7 +327,7 @@ function calculateCapturedPieces(board) {
   return { white: whiteCaptured, black: blackCaptured };
 }
 
-const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceEliminate, onClaimReplacement, onManualStart, onClaimAbandonedPool, onResetEnrollmentWindow, onEnroll, account, loading, syncDots, isEnrolled, entryFee, isFull, instanceContract }) => {
+const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceEliminate, onClaimReplacement, onManualStart, onClaimAbandonedPool, onResetEnrollmentWindow, onEnroll, onConnectWallet, account, loading, connectLoading, syncDots, isEnrolled, entryFee, isFull, instanceContract }) => {
   const { status, currentRound, enrolledCount, rounds, playerCount, players, enrollmentTimeout } = tournamentData;
   const bracketViewRef = useRef(null);
   const prevStatusRef = useRef(status);
@@ -398,7 +401,11 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
         isFull={isFull}
         entryFee={entryFee}
         onEnroll={onEnroll}
+        onConnectWallet={onConnectWallet}
         loading={loading}
+        connectLoading={connectLoading}
+        connectButtonGradient={currentTheme.connectButtonGradient}
+        connectButtonHover={currentTheme.connectButtonHover}
         renderCountdown={countdownActive && status === 0 ? () => (
           <div className="mt-4 bg-orange-500/20 border border-orange-400/50 rounded-lg p-4">
             <div className="flex items-center justify-between">
@@ -517,7 +524,7 @@ export default function ChessV2() {
   const selectedAddress = searchParams.get('instance');
   const explorerUrl = getAddressUrl(factoryAddress);
   const [hasProcessedInviteParam, setHasProcessedInviteParam] = useState(false);
-  const [allowInitialUrlHydration, setAllowInitialUrlHydration] = useState(() => !shouldResetOnInitialDocumentLoad('/v2/chess'));
+  const [allowInitialUrlHydration, setAllowInitialUrlHydration] = useState(() => !shouldResetOnInitialDocumentLoad('/v2/chess', { allowInviteParam: true }));
   const [viewingTournament, setViewingTournament] = useState(null);
   const [bracketSyncDots, setBracketSyncDots] = useState(1);
   const [tournamentsLoading, setTournamentsLoading] = useState(false);
@@ -991,6 +998,15 @@ export default function ChessV2() {
       setTournamentsLoading(false);
     }
   }, [viewingTournament, activeInstanceContract, account, refreshTournamentBracket]);
+
+  const handleEnterTournamentFromActivity = useCallback((_tierId, instanceRef) => {
+    const instanceAddress = (typeof instanceRef === 'string' && instanceRef.startsWith('0x'))
+      ? instanceRef
+      : viewingTournament?.address;
+    if (instanceAddress) {
+      enterInstanceBracket(instanceAddress);
+    }
+  }, [enterInstanceBracket, viewingTournament?.address]);
 
   const handleManualStart = useCallback(async () => {
     if (!viewingTournament || !activeInstanceContract || !account) { alert('Please connect your wallet first.'); return; }
@@ -1629,13 +1645,13 @@ export default function ChessV2() {
       <div className="fixed bottom-0 left-0 right-0 z-50 md:static md:z-auto">
         <div className="md:hidden bg-gradient-to-b from-slate-800 to-slate-900 border-t border-purple-400/30 px-4 py-2.5 flex items-center justify-between">
           <GamesCard currentGame="chess" onHeightChange={setGamesCardHeight} isExpanded={expandedPanel === 'games'} onToggleExpand={() => setExpandedPanel(expandedPanel === 'games' ? null : 'games')} />
-          <PlayerActivity activity={playerActivity.data} loading={playerActivity.loading} syncing={playerActivity.syncing} contract={activeInstanceContract} account={account} onEnterMatch={handlePlayMatch} onEnterTournament={() => { if (viewingTournament) enterInstanceBracket(viewingTournament.address); }} onRefresh={playerActivity.refetch} onDismissMatch={playerActivity.dismissMatch} gameName="chess" gameEmoji="♟️" gamesCardHeight={gamesCardHeight} onHeightChange={setPlayerActivityHeight} onCollapse={(fn) => { collapseActivityPanelRef.current = fn; }} isExpanded={expandedPanel === 'playerActivity'} onToggleExpand={() => setExpandedPanel(expandedPanel === 'playerActivity' ? null : 'playerActivity')} tierConfig={{}} disabled={!account} showTooltip={activeTooltip === 'playerActivity'} onShowTooltip={() => setActiveTooltip('playerActivity')} onHideTooltip={() => setActiveTooltip(null)} />
-          <RecentMatchesCard contract={null} account={account} gameName="chess" gameEmoji="♟️" gamesCardHeight={gamesCardHeight} playerActivityHeight={playerActivityHeight} onHeightChange={() => {}} isExpanded={expandedPanel === 'recentMatches'} onToggleExpand={() => setExpandedPanel(expandedPanel === 'recentMatches' ? null : 'recentMatches')} tierConfig={{}} disabled={!account} showTooltip={activeTooltip === 'recentMatches'} onShowTooltip={() => setActiveTooltip('recentMatches')} onHideTooltip={() => setActiveTooltip(null)} onNavigateToTournament={() => {}} leaderboard={leaderboard} playerProfile={playerProfile} onViewTournament={enterInstanceBracket} getTournamentTypeLabel={getTournamentTypeLabel} v2Matches={v2MatchHistory.matches} v2MatchesLoading={v2MatchHistory.loading} />
+          <PlayerActivity activity={playerActivity.data} loading={playerActivity.loading} syncing={playerActivity.syncing} contract={activeInstanceContract} account={account} onEnterMatch={handlePlayMatch} onEnterTournament={handleEnterTournamentFromActivity} onRefresh={playerActivity.refetch} onDismissMatch={playerActivity.dismissMatch} gameName="chess" gameEmoji="♟️" connectCtaClassName={currentTheme.connectCtaClassName} gamesCardHeight={gamesCardHeight} onHeightChange={setPlayerActivityHeight} onCollapse={(fn) => { collapseActivityPanelRef.current = fn; }} isExpanded={expandedPanel === 'playerActivity'} onToggleExpand={() => setExpandedPanel(expandedPanel === 'playerActivity' ? null : 'playerActivity')} tierConfig={{}} disabled={!account} showTooltip={activeTooltip === 'playerActivity'} onShowTooltip={() => setActiveTooltip('playerActivity')} onHideTooltip={() => setActiveTooltip(null)} />
+          <RecentMatchesCard contract={null} account={account} gameName="chess" gameEmoji="♟️" gamesCardHeight={gamesCardHeight} playerActivityHeight={playerActivityHeight} onHeightChange={() => {}} isExpanded={expandedPanel === 'recentMatches'} onToggleExpand={() => setExpandedPanel(expandedPanel === 'recentMatches' ? null : 'recentMatches')} tierConfig={{}} disabled={!account} showTooltip={activeTooltip === 'recentMatches'} onShowTooltip={() => setActiveTooltip('recentMatches')} onHideTooltip={() => setActiveTooltip(null)} connectCtaClassName={currentTheme.connectCtaClassName} onNavigateToTournament={() => {}} leaderboard={leaderboard} playerProfile={playerProfile} onViewTournament={enterInstanceBracket} getTournamentTypeLabel={getTournamentTypeLabel} v2Matches={v2MatchHistory.matches} v2MatchesLoading={v2MatchHistory.loading} />
         </div>
         <div className="hidden md:block">
           <GamesCard currentGame="chess" onHeightChange={setGamesCardHeight} isExpanded={expandedPanel === 'games'} onToggleExpand={() => setExpandedPanel(expandedPanel === 'games' ? null : 'games')} />
-          <PlayerActivity activity={playerActivity.data} loading={playerActivity.loading} syncing={playerActivity.syncing} contract={activeInstanceContract} account={account} onEnterMatch={handlePlayMatch} onEnterTournament={() => { if (viewingTournament) enterInstanceBracket(viewingTournament.address); }} onRefresh={playerActivity.refetch} onDismissMatch={playerActivity.dismissMatch} gameName="chess" gameEmoji="♟️" gamesCardHeight={gamesCardHeight} onHeightChange={setPlayerActivityHeight} onCollapse={(fn) => { collapseActivityPanelRef.current = fn; }} isExpanded={expandedPanel === 'playerActivity'} onToggleExpand={() => setExpandedPanel(expandedPanel === 'playerActivity' ? null : 'playerActivity')} tierConfig={{}} disabled={!account} showTooltip={activeTooltip === 'playerActivity'} onShowTooltip={() => setActiveTooltip('playerActivity')} onHideTooltip={() => setActiveTooltip(null)} />
-          <RecentMatchesCard contract={null} account={account} gameName="chess" gameEmoji="♟️" gamesCardHeight={gamesCardHeight} playerActivityHeight={playerActivityHeight} onHeightChange={() => {}} isExpanded={expandedPanel === 'recentMatches'} onToggleExpand={() => setExpandedPanel(expandedPanel === 'recentMatches' ? null : 'recentMatches')} tierConfig={{}} disabled={!account} showTooltip={activeTooltip === 'recentMatches'} onShowTooltip={() => setActiveTooltip('recentMatches')} onHideTooltip={() => setActiveTooltip(null)} onNavigateToTournament={() => {}} leaderboard={leaderboard} playerProfile={playerProfile} onViewTournament={enterInstanceBracket} getTournamentTypeLabel={getTournamentTypeLabel} v2Matches={v2MatchHistory.matches} v2MatchesLoading={v2MatchHistory.loading} />
+          <PlayerActivity activity={playerActivity.data} loading={playerActivity.loading} syncing={playerActivity.syncing} contract={activeInstanceContract} account={account} onEnterMatch={handlePlayMatch} onEnterTournament={handleEnterTournamentFromActivity} onRefresh={playerActivity.refetch} onDismissMatch={playerActivity.dismissMatch} gameName="chess" gameEmoji="♟️" connectCtaClassName={currentTheme.connectCtaClassName} gamesCardHeight={gamesCardHeight} onHeightChange={setPlayerActivityHeight} onCollapse={(fn) => { collapseActivityPanelRef.current = fn; }} isExpanded={expandedPanel === 'playerActivity'} onToggleExpand={() => setExpandedPanel(expandedPanel === 'playerActivity' ? null : 'playerActivity')} tierConfig={{}} disabled={!account} showTooltip={activeTooltip === 'playerActivity'} onShowTooltip={() => setActiveTooltip('playerActivity')} onHideTooltip={() => setActiveTooltip(null)} />
+          <RecentMatchesCard contract={null} account={account} gameName="chess" gameEmoji="♟️" gamesCardHeight={gamesCardHeight} playerActivityHeight={playerActivityHeight} onHeightChange={() => {}} isExpanded={expandedPanel === 'recentMatches'} onToggleExpand={() => setExpandedPanel(expandedPanel === 'recentMatches' ? null : 'recentMatches')} tierConfig={{}} disabled={!account} showTooltip={activeTooltip === 'recentMatches'} onShowTooltip={() => setActiveTooltip('recentMatches')} onHideTooltip={() => setActiveTooltip(null)} connectCtaClassName={currentTheme.connectCtaClassName} onNavigateToTournament={() => {}} leaderboard={leaderboard} playerProfile={playerProfile} onViewTournament={enterInstanceBracket} getTournamentTypeLabel={getTournamentTypeLabel} v2Matches={v2MatchHistory.matches} v2MatchesLoading={v2MatchHistory.loading} />
         </div>
       </div>
 
@@ -1747,7 +1763,7 @@ export default function ChessV2() {
           <>
             {viewingTournament ? (
               <div ref={tournamentBracketRef}>
-                <TournamentBracket tournamentData={viewingTournament} onBack={handleBackToTournaments} onEnterMatch={handlePlayMatch} onForceEliminate={handleForceEliminateStalledMatch} onClaimReplacement={handleClaimMatchSlotByReplacement} onManualStart={handleManualStart} onClaimAbandonedPool={handleClaimAbandonedPool} onResetEnrollmentWindow={handleResetEnrollmentWindow} onEnroll={handleEnroll} account={account} loading={tournamentsLoading} syncDots={bracketSyncDots} isEnrolled={viewingTournament?.players?.some(addr => addr.toLowerCase() === account?.toLowerCase())} entryFee={viewingTournament?.entryFeeWei ?? '0'} isFull={viewingTournament?.enrolledCount >= viewingTournament?.playerCount} instanceContract={activeInstanceContract} />
+                <TournamentBracket tournamentData={viewingTournament} onBack={handleBackToTournaments} onEnterMatch={handlePlayMatch} onForceEliminate={handleForceEliminateStalledMatch} onClaimReplacement={handleClaimMatchSlotByReplacement} onManualStart={handleManualStart} onClaimAbandonedPool={handleClaimAbandonedPool} onResetEnrollmentWindow={handleResetEnrollmentWindow} onEnroll={handleEnroll} onConnectWallet={connectWallet} account={account} loading={tournamentsLoading} connectLoading={isConnecting} syncDots={bracketSyncDots} isEnrolled={viewingTournament?.players?.some(addr => addr.toLowerCase() === account?.toLowerCase())} entryFee={viewingTournament?.entryFeeWei ?? '0'} isFull={viewingTournament?.enrolledCount >= viewingTournament?.playerCount} instanceContract={activeInstanceContract} />
               </div>
             ) : (
               <>
@@ -1756,7 +1772,7 @@ export default function ChessV2() {
                     <div className="bg-slate-900/50 border border-purple-400/20 rounded-2xl p-4 md:p-5">
                       <div className="grid gap-4 md:grid-cols-[minmax(0,1.4fr)_minmax(240px,0.8fr)]">
                         <div>
-                          <div className="text-sm text-purple-200 mb-2">Player Count (up to 32)</div>
+                          <div className="text-sm text-purple-200 mb-2">Player Count</div>
                           <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                             {PLAYER_COUNT_OPTIONS.map(option => {
                               const active = Number(createForm.playerCount) === option;
@@ -1808,7 +1824,7 @@ export default function ChessV2() {
                       </div>
                       <div className="flex flex-col gap-3">
                         {walletBootDone && !account ? (
-                          <button type="button" onClick={connectWallet} disabled={isConnecting} className={`w-full flex items-center justify-center gap-3 bg-gradient-to-r ${currentTheme.buttonGradient} ${currentTheme.buttonHover} px-8 py-4 rounded-2xl font-bold text-xl shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed`}>{isConnecting ? <Loader size={22} className="animate-spin" /> : <Wallet size={22} />}{isConnecting ? 'Connecting...' : 'Connect to Create'}</button>
+                          <button type="button" onClick={connectWallet} disabled={isConnecting} className={`w-full flex items-center justify-center gap-3 bg-gradient-to-r ${currentTheme.connectButtonGradient} ${currentTheme.connectButtonHover} px-8 py-4 rounded-2xl font-bold text-xl shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed`}>{isConnecting ? <Loader size={22} className="animate-spin" /> : <Wallet size={22} />}{isConnecting ? 'Connecting...' : 'Connect to Create'}</button>
                         ) : (
                           <button type="submit" disabled={createLoading} className={`w-full flex items-center justify-center gap-3 bg-gradient-to-r ${currentTheme.buttonGradient} ${currentTheme.buttonHover} px-8 py-4 rounded-2xl font-bold text-xl shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed`}>{createLoading ? <Loader size={22} className="animate-spin" /> : <Plus size={22} />}{createLoading ? 'Creating Tournament...' : 'Create and Enrol'}</button>
                         )}

@@ -83,7 +83,11 @@ const TournamentHeader = ({
   isFull,
   entryFee,
   onEnroll,
+  onConnectWallet,
   loading,
+  connectLoading,
+  connectButtonGradient,
+  connectButtonHover,
 
   // Optional: Countdown timer content (render prop)
   renderCountdown,
@@ -117,6 +121,14 @@ const TournamentHeader = ({
   const totalRounds = Math.ceil(Math.log2(playerCount));
   const isInProgress = status === 1;
   const isCompleted = status >= 2;
+  const tournamentTypeLabel = getTournamentTypeLabel(playerCount);
+  const showEnrollmentCta = status === 0 && !isEnrolled && !isFull && (account ? !!onEnroll : !!onConnectWallet);
+  const enrollmentCtaLoading = account ? loading : connectLoading;
+  const connectCtaGradient = connectButtonGradient || colors.buttonGradient;
+  const connectCtaHover = connectButtonHover || colors.buttonHover;
+  const enrollmentCtaLabel = account
+    ? (loading ? 'Enrolling...' : `Enroll in ${tournamentTypeLabel} (${entryFee} ETH)`)
+    : (connectLoading ? 'Connecting...' : 'Connect to Enrol');
   const tournamentResolutionReason = getTournamentResolutionReasonValue({ resolutionReason, completionReason });
   const resolutionText = getTournamentCompletionText(tournamentResolutionReason);
   const winnerLabel = winner && winner !== ethers.ZeroAddress ? shortenAddress(winner) : '0x000';
@@ -136,8 +148,6 @@ const TournamentHeader = ({
     address && address !== ethers.ZeroAddress ? shortenAddress(address) : 'None'
   );
 
-  // Determine tournament type label (Duel vs Tournament)
-  const tournamentTypeLabel = getTournamentTypeLabel(playerCount);
   const instanceExplorerUrl = instanceAddress
     ? (getAddressUrl(instanceAddress) || `https://arbiscan.io/address/${instanceAddress}`)
     : null;
@@ -330,18 +340,26 @@ const TournamentHeader = ({
       />
 
       {/* Enroll Button */}
-      {status === 0 && account && !isEnrolled && !isFull && onEnroll && (
+      {showEnrollmentCta && (
         <div className="mt-4">
           <button
-            onClick={() => onEnroll(tierId, instanceId, entryFee)}
-            disabled={loading}
-            className={`w-full bg-gradient-to-r ${colors.buttonGradient} ${colors.buttonHover} text-white font-bold py-4 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2`}
+            onClick={() => {
+              if (account) {
+                onEnroll?.(tierId, instanceId, entryFee);
+                return;
+              }
+              onConnectWallet?.();
+            }}
+            disabled={enrollmentCtaLoading}
+            className={`w-full bg-gradient-to-r ${account ? colors.buttonGradient : connectCtaGradient} ${account ? colors.buttonHover : connectCtaHover} text-white font-bold py-4 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2`}
           >
             <Trophy size={20} />
-            {loading ? 'Enrolling...' : `Enroll in ${tournamentTypeLabel} (${entryFee} ETH)`}
+            {enrollmentCtaLabel}
           </button>
           <p className={`${colors.textMuted} text-xs text-center mt-2`}>
-            Join this {tournamentTypeLabel.toLowerCase()} and compete for the prize pool
+            {account
+              ? `Join this ${tournamentTypeLabel.toLowerCase()} and compete for the prize pool`
+              : `Connect your wallet to join this ${tournamentTypeLabel.toLowerCase()}`}
           </p>
         </div>
       )}
@@ -445,7 +463,7 @@ const TournamentHeader = ({
               <button
                 onClick={() => onResetEnrollmentWindow(tierId, instanceId)}
                 disabled={loading || !account}
-                className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-xs"
+                className={`w-full bg-gradient-to-r ${account ? 'from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700' : `${connectCtaGradient} ${connectCtaHover}`} text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-xs`}
               >
                 <RefreshCw size={14} />
                 {loading ? 'Resetting...' : !account ? 'Connect Wallet' : 'EL1*: Reset Enrollment Window'}
@@ -459,7 +477,7 @@ const TournamentHeader = ({
               <button
                 onClick={() => onManualStart(tierId, instanceId)}
                 disabled={loading || !account}
-                className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-xs"
+                className={`w-full bg-gradient-to-r ${account ? 'from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600' : `${connectCtaGradient} ${connectCtaHover}`} text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-xs`}
               >
                 <Zap size={14} />
                 {loading ? 'Starting...' : !account ? 'Connect Wallet' : `EL1: Force Start with ${enrolledCount} Players`}
@@ -479,7 +497,7 @@ const TournamentHeader = ({
               <button
                 onClick={() => onClaimAbandonedPool(tierId, instanceId)}
                 disabled={loading || !account}
-                className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-xs"
+                className={`w-full bg-gradient-to-r ${account ? 'from-red-600 to-red-700 hover:from-red-700 hover:to-red-800' : `${connectCtaGradient} ${connectCtaHover}`} text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-xs`}
               >
                 <Coins size={14} />
                 {loading ? 'Claiming...' : !account ? 'Connect Wallet' : 'EL2: Claim Abandoned Pool'}

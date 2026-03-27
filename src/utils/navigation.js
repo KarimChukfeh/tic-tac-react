@@ -1,4 +1,15 @@
 const initialBrowserPath = typeof window === 'undefined' ? '' : window.location.pathname;
+const initialBrowserSearch = typeof window === 'undefined' ? '' : window.location.search;
+
+function hasValidInitialInviteParam() {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  const searchParams = new URLSearchParams(initialBrowserSearch);
+  const contractAddress = searchParams.get('c');
+  return /^0x[0-9a-fA-F]{40}$/.test(contractAddress || '');
+}
 
 function getNavigationType() {
   if (typeof window === 'undefined' || !window.performance) {
@@ -21,7 +32,7 @@ function getNavigationType() {
   return '';
 }
 
-export function shouldResetOnInitialDocumentLoad(routePath) {
+export function shouldResetOnInitialDocumentLoad(routePath, options = {}) {
   if (typeof window === 'undefined') {
     return false;
   }
@@ -31,5 +42,13 @@ export function shouldResetOnInitialDocumentLoad(routePath) {
     return false;
   }
 
-  return initialBrowserPath === routePath;
+  if (initialBrowserPath !== routePath) {
+    return false;
+  }
+
+  if (options.allowInviteParam && hasValidInitialInviteParam()) {
+    return false;
+  }
+
+  return true;
 }

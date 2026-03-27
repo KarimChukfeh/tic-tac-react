@@ -43,6 +43,7 @@ const RecentMatchesCard = ({
   getTournamentTypeLabel = null, // Function(playerCount) => string
   v2Matches = null, // Pre-fetched matches array (bypasses internal contract fetch)
   v2MatchesLoading = false, // Loading state for v2Matches
+  connectCtaClassName = 'bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl shadow-2xl border-2 border-purple-400/60 hover:scale-105',
 }) => {
   const [internalIsExpanded, setInternalIsExpanded] = useState(false);
   const [historyTab, setHistoryTab] = useState('matches'); // 'matches' | 'tournaments'
@@ -1013,7 +1014,7 @@ const RecentMatchesCard = ({
           {disabled ? (
             <a
               href="#connect-wallet-cta"
-              className="max-md:hidden absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all shadow-2xl border-2 border-purple-400/60 hover:scale-105"
+              className={`max-md:hidden absolute left-full ml-3 top-1/2 -translate-y-1/2 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all ${connectCtaClassName}`}
             >
               Connect Wallet to View Your Match History
             </a>
@@ -1036,7 +1037,7 @@ const RecentMatchesCard = ({
               e.stopPropagation(); // Allow navigation but prevent document click
               if (onHideTooltip) onHideTooltip();
             }}
-            className="md:hidden fixed bottom-20 left-4 right-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-6 py-3 rounded-xl z-[100] animate-fade-in shadow-2xl border-2 border-purple-400/60 hover:scale-105 transition-transform text-center"
+            className={`md:hidden fixed bottom-20 left-4 right-4 px-6 py-3 z-[100] animate-fade-in transition-transform text-center ${connectCtaClassName}`}
           >
             Connect Wallet to View Your Match History
           </a>

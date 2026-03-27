@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import TournamentHeader from './TournamentHeader';
 
 const baseProps = {
@@ -109,5 +109,27 @@ describe('TournamentHeader', () => {
     expect(screen.queryByText('Resolution')).not.toBeInTheDocument();
     expect(screen.queryByText(/wins by timeout \(ML1\)/i)).not.toBeInTheDocument();
     expect(screen.queryByText((_, element) => element?.textContent === 'Winner awarded 1.00000 ETH')).not.toBeInTheDocument();
+  });
+
+  it('shows a connect-to-enrol CTA when the wallet is not connected', () => {
+    const onConnectWallet = vi.fn();
+
+    render(
+      <TournamentHeader
+        {...baseProps}
+        account={null}
+        enrolledCount={1}
+        isEnrolled={false}
+        isFull={false}
+        entryFee="0.001"
+        onConnectWallet={onConnectWallet}
+      />
+    );
+
+    const cta = screen.getByRole('button', { name: 'Connect to Enrol' });
+    expect(cta).toBeInTheDocument();
+    fireEvent.click(cta);
+    expect(onConnectWallet).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Connect your wallet to join this tournament')).toBeInTheDocument();
   });
 });

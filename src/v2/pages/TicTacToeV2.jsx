@@ -99,6 +99,9 @@ const currentTheme = {
   heroSubtext: 'text-blue-300',
   buttonGradient: 'from-blue-500 to-cyan-500',
   buttonHover: 'hover:from-blue-600 hover:to-cyan-600',
+  connectButtonGradient: 'from-purple-600 to-fuchsia-600',
+  connectButtonHover: 'hover:from-purple-700 hover:to-fuchsia-700',
+  connectCtaClassName: 'bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white rounded-xl shadow-2xl border-2 border-purple-400/60 hover:scale-105 hover:from-purple-700 hover:to-fuchsia-700',
   primary: 'rgba(0, 255, 255, 0.5)',
   secondary: 'rgba(255, 0, 255, 0.5)',
 };
@@ -167,8 +170,10 @@ const TournamentBracket = ({
   onClaimAbandonedPool,
   onResetEnrollmentWindow,
   onEnroll,
+  onConnectWallet,
   account,
   loading,
+  connectLoading,
   syncDots,
   isEnrolled,
   entryFee,
@@ -284,7 +289,11 @@ const TournamentBracket = ({
         isFull={isFull}
         entryFee={entryFee}
         onEnroll={onEnroll}
+        onConnectWallet={onConnectWallet}
         loading={loading}
+        connectLoading={connectLoading}
+        connectButtonGradient={currentTheme.connectButtonGradient}
+        connectButtonHover={currentTheme.connectButtonHover}
         renderCountdown={countdownActive && status === 0 ? () => (
           <div className="mt-4 bg-orange-500/20 border border-orange-400/50 rounded-lg p-4">
             <div className="flex items-center justify-between">
@@ -426,7 +435,7 @@ export default function TicTacToeV2() {
 
   // --- Invite link: ?c=0x... (V2 contract address) ---
   const [hasProcessedInviteParam, setHasProcessedInviteParam] = useState(false);
-  const [allowInitialUrlHydration, setAllowInitialUrlHydration] = useState(() => !shouldResetOnInitialDocumentLoad('/v2/tictactoe'));
+  const [allowInitialUrlHydration, setAllowInitialUrlHydration] = useState(() => !shouldResetOnInitialDocumentLoad('/v2/tictactoe', { allowInviteParam: true }));
 
   // --- Viewing tournament bracket (V1-style) ---
   const [viewingTournament, setViewingTournament] = useState(null); // normalizedInstanceSnapshot + rounds
@@ -1001,6 +1010,15 @@ export default function TicTacToeV2() {
       setTournamentsLoading(false);
     }
   }, [viewingTournament, activeInstanceContract, account, refreshTournamentBracket]);
+
+  const handleEnterTournamentFromActivity = useCallback((_tierId, instanceRef) => {
+    const instanceAddress = (typeof instanceRef === 'string' && instanceRef.startsWith('0x'))
+      ? instanceRef
+      : viewingTournament?.address;
+    if (instanceAddress) {
+      enterInstanceBracket(instanceAddress);
+    }
+  }, [enterInstanceBracket, viewingTournament?.address]);
 
   const handleManualStart = useCallback(async () => {
     if (!viewingTournament || !activeInstanceContract || !account) {
@@ -1875,9 +1893,7 @@ export default function TicTacToeV2() {
             contract={activeInstanceContract}
             account={account}
             onEnterMatch={handlePlayMatch}
-            onEnterTournament={() => {
-              if (viewingTournament) enterInstanceBracket(viewingTournament.address);
-            }}
+            onEnterTournament={handleEnterTournamentFromActivity}
             onRefresh={v2PlayerActivity.refetch}
             onDismissMatch={v2PlayerActivity.dismissMatch}
             gameName="tictactoe"
@@ -1892,7 +1908,7 @@ export default function TicTacToeV2() {
             showTooltip={activeTooltip === 'playerActivity'}
             onShowTooltip={() => setActiveTooltip('playerActivity')}
             onHideTooltip={() => setActiveTooltip(null)}
-
+            connectCtaClassName={currentTheme.connectCtaClassName}
           />
           <RecentMatchesCard
             contract={null}
@@ -1909,6 +1925,7 @@ export default function TicTacToeV2() {
             showTooltip={activeTooltip === 'recentMatches'}
             onShowTooltip={() => setActiveTooltip('recentMatches')}
             onHideTooltip={() => setActiveTooltip(null)}
+            connectCtaClassName={currentTheme.connectCtaClassName}
             onNavigateToTournament={() => {}}
             leaderboard={leaderboard}
             onMatchesLoad={() => {}}
@@ -1935,9 +1952,7 @@ export default function TicTacToeV2() {
             contract={activeInstanceContract}
             account={account}
             onEnterMatch={handlePlayMatch}
-            onEnterTournament={() => {
-              if (viewingTournament) enterInstanceBracket(viewingTournament.address);
-            }}
+            onEnterTournament={handleEnterTournamentFromActivity}
             onRefresh={v2PlayerActivity.refetch}
             onDismissMatch={v2PlayerActivity.dismissMatch}
             gameName="tictactoe"
@@ -1952,7 +1967,7 @@ export default function TicTacToeV2() {
             showTooltip={activeTooltip === 'playerActivity'}
             onShowTooltip={() => setActiveTooltip('playerActivity')}
             onHideTooltip={() => setActiveTooltip(null)}
-
+            connectCtaClassName={currentTheme.connectCtaClassName}
           />
           <RecentMatchesCard
             contract={null}
@@ -1969,6 +1984,7 @@ export default function TicTacToeV2() {
             showTooltip={activeTooltip === 'recentMatches'}
             onShowTooltip={() => setActiveTooltip('recentMatches')}
             onHideTooltip={() => setActiveTooltip(null)}
+            connectCtaClassName={currentTheme.connectCtaClassName}
             onNavigateToTournament={() => {}}
             leaderboard={leaderboard}
             playerProfile={playerProfile}
@@ -2158,8 +2174,10 @@ export default function TicTacToeV2() {
                   onClaimAbandonedPool={handleClaimAbandonedPool}
                   onResetEnrollmentWindow={handleResetEnrollmentWindow}
                   onEnroll={handleEnroll}
+                  onConnectWallet={connectWallet}
                   account={account}
                   loading={tournamentsLoading}
+                  connectLoading={isConnecting}
                   syncDots={bracketSyncDots}
                   isEnrolled={viewingTournament?.players?.some(addr => addr.toLowerCase() === account?.toLowerCase())}
                   entryFee={viewingTournament?.entryFeeWei ?? '0'}
@@ -2190,7 +2208,7 @@ export default function TicTacToeV2() {
                     <div className="grid gap-4 md:grid-cols-[minmax(0,1.4fr)_minmax(240px,0.8fr)]">
                       {/* Player Count */}
                       <div>
-                        <div className="text-sm text-purple-200 mb-2">Player Count (up to 32)</div>
+                        <div className="text-sm text-purple-200 mb-2">Player Count</div>
                         <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                           {PLAYER_COUNT_OPTIONS.map(option => {
                             const active = Number(createForm.playerCount) === option;
@@ -2319,7 +2337,7 @@ export default function TicTacToeV2() {
                           type="button"
                           onClick={connectWallet}
                           disabled={isConnecting}
-                          className={`w-full flex items-center justify-center gap-3 bg-gradient-to-r ${currentTheme.buttonGradient} ${currentTheme.buttonHover} px-8 py-4 rounded-2xl font-bold text-xl shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
+                          className={`w-full flex items-center justify-center gap-3 bg-gradient-to-r ${currentTheme.connectButtonGradient} ${currentTheme.connectButtonHover} px-8 py-4 rounded-2xl font-bold text-xl shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
                         >
                           {isConnecting ? <Loader size={22} className="animate-spin" /> : <Wallet size={22} />}
                           {isConnecting ? 'Connecting...' : 'Connect to Create'}
