@@ -695,16 +695,18 @@ const RecentMatchesCard = ({
     return `${Math.floor(diff / 2592000)}mo ago`;
   };
 
-  const getRoundLabel = (tierId, roundNumber) => {
-    if (!tierConfig || !tierConfig[tierId]) return `Round ${roundNumber + 1}`;
-    const playerCount = tierConfig[tierId].playerCount;
-    const totalRounds = Math.ceil(Math.log2(playerCount));
+  const getRoundLabel = (tierId, roundNumber, explicitTotalRounds) => {
+    const playerCount = tierConfig?.[tierId]?.playerCount;
+    const totalRounds = explicitTotalRounds ?? (
+      playerCount ? Math.ceil(Math.log2(playerCount)) : null
+    );
 
-    if (playerCount === 2) return 'Finals';
+    if (!Number.isFinite(totalRounds) || totalRounds <= 1) return null;
+    if (playerCount === 2) return null;
     if (roundNumber === totalRounds - 1) return 'Finals';
-    if (roundNumber === totalRounds - 2) return 'Semi-Finals';
-    if (roundNumber === totalRounds - 3) return 'Quarter-Finals';
-    return `Round ${roundNumber + 1}`;
+    if (roundNumber === totalRounds - 2) return 'Semifinals';
+    if (roundNumber === totalRounds - 3) return 'Quarterfinals';
+    return `Round ${roundNumber + 1}/${totalRounds}`;
   };
 
   const getMatchReason = (match) => Number(match?.reason ?? match?.completionReason ?? 0);
@@ -1311,9 +1313,9 @@ const RecentMatchesCard = ({
                             {getTierLabel(match.tierId)}
                           </button>
                         )}
-                        {tierConfig && tierConfig[match.tierId] && tierConfig[match.tierId].playerCount > 2 && (
+                        {getRoundLabel(match.tierId, match.roundNumber, match.totalRounds) && (
                           <span className="bg-blue-500/20 text-blue-300 text-[10px] font-semibold px-2 py-0.5 rounded border border-blue-400/30">
-                            {getRoundLabel(match.tierId, match.roundNumber)}
+                            {getRoundLabel(match.tierId, match.roundNumber, match.totalRounds)}
                           </span>
                         )}
                         {getOutcomeHref(reason) ? (
@@ -1342,9 +1344,9 @@ const RecentMatchesCard = ({
                             {getOutcomeLabel(isWinner, reason)}
                           </span>
                         )}
-                        {match.instanceAddress && match.totalRounds > 0 && (
+                        {match.instanceAddress && getRoundLabel(match.tierId, match.roundNumber, match.totalRounds) && (
                           <span className="bg-slate-600/50 text-slate-200 text-[10px] font-bold px-2 py-0.5 rounded border border-slate-400/40">
-                            Round {(match.roundNumber ?? 0) + 1}/{match.totalRounds}
+                            {getRoundLabel(match.tierId, match.roundNumber, match.totalRounds)}
                           </span>
                         )}
                       </div>
@@ -1968,8 +1970,8 @@ const RecentMatchesCard = ({
                   {match.instanceAddress
                     ? (getTournamentTypeLabel ? getTournamentTypeLabel(match.playerCount) : (match.playerCount === 2 ? 'Duel' : `${match.playerCount} Players`))
                     : `Match #${recentMatches.length - index}`}
-                  {match.instanceAddress && match.totalRounds > 0 && (
-                    <span className="text-slate-400 text-lg font-normal">· Round {(match.roundNumber ?? 0) + 1}/{match.totalRounds}</span>
+                  {match.instanceAddress && getRoundLabel(match.tierId, match.roundNumber, match.totalRounds) && (
+                    <span className="text-slate-400 text-lg font-normal">· {getRoundLabel(match.tierId, match.roundNumber, match.totalRounds)}</span>
                   )}
                 </h2>
                 <button
