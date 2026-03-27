@@ -43,6 +43,7 @@ import RecentInstanceCard from '../../components/shared/RecentInstanceCard';
 import WalletBrowserPrompt from '../../components/WalletBrowserPrompt';
 import { useWalletBrowserPrompt } from '../../hooks/useWalletBrowserPrompt';
 import { isMobileDevice, isWalletBrowser } from '../../utils/mobileDetection';
+import { didMatchStateAdvance, waitForTxOrStateSync } from '../../utils/txSync';
 import { useConnectFourV2PlayerActivity } from '../hooks/useConnectFourV2PlayerActivity';
 import { useConnectFourActiveTournaments } from '../hooks/useConnectFourActiveTournaments';
 import { useConnectFourPlayerProfile } from '../hooks/useConnectFourPlayerProfile';
@@ -1384,11 +1385,6 @@ export default function ConnectFourV2() {
     }
   }, [viewingTournament?.address]);
 
-  const waitWithTimeout = (tx, timeoutMs) => Promise.race([
-    tx.wait(),
-    new Promise((_, reject) => setTimeout(() => reject(new Error('TX_TIMEOUT')), timeoutMs)),
-  ]);
-
   const handlePlayMatch = useCallback(async (_tierId, _instanceId, roundNumber, matchNumber) => {
     if (!account) {
       alert('Please connect your wallet first.');
@@ -1467,13 +1463,36 @@ export default function ConnectFourV2() {
       const signer = await browserProvider.getSigner();
       const writableInstance = getInstanceContract(activeInstanceContractRef.current.target || activeInstanceContractRef.current.address, signer);
       const tx = await writableInstance.makeMove(roundNumber, matchNumber, columnIndex);
-      await waitWithTimeout(tx, 90_000);
-      const updated = await refreshMatchData(activeInstanceContractRef.current, account, currentMatch);
+      const syncResult = await waitForTxOrStateSync({
+        tx,
+        timeoutMs: 90_000,
+        sync: async () => {
+          const latestMatch = currentMatchRef.current || currentMatch;
+          if (!latestMatch || !activeInstanceContractRef.current) return null;
+          return refreshMatchData(activeInstanceContractRef.current, account, latestMatch);
+        },
+        isSynced: (updatedMatch) => didMatchStateAdvance(currentMatchRef.current || currentMatch, updatedMatch),
+      });
+
+      const latestMatch = currentMatchRef.current || currentMatch;
+      const updated = syncResult.updated || ((latestMatch && activeInstanceContractRef.current)
+        ? await refreshMatchData(activeInstanceContractRef.current, account, latestMatch)
+        : null);
       if (updated) {
         setCurrentMatch(updated);
         previousBoardRef.current = [...updated.board];
-        const history = await fetchMoveHistory(activeInstanceContractRef.current, roundNumber, matchNumber);
-        setMoveHistory(history);
+      }
+
+      moveTxInProgressRef.current = false;
+      setMatchLoading(false);
+
+      if (updated) {
+        try {
+          const history = await fetchMoveHistory(activeInstanceContractRef.current, roundNumber, matchNumber);
+          setMoveHistory(history);
+        } catch (historyError) {
+          console.error('[ConnectFourV2] Error refreshing move history after move:', historyError);
+        }
       }
     } catch (error) {
       const errorString = error.message || error.toString();

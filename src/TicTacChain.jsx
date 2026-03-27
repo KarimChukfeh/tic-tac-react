@@ -39,6 +39,7 @@ import { fetchTierTimeoutConfig } from './utils/timeCalculations';
 // import { getHighPriorityTx } from './utils/txOptions';
 import { getCompletionReasonText, getCompletionReasonDescription, isDraw } from './utils/completionReasons';
 import { batchFetchTournaments, batchFetchIsEnrolled, checkInstanceEscalations } from './utils/multicall';
+import { didMatchStateAdvance, waitForTxOrStateSync } from './utils/txSync';
 import ParticleBackground from './components/shared/ParticleBackground';
 import MatchCard from './components/shared/MatchCard';
 import TournamentCard from './components/shared/TournamentCard';
@@ -2916,18 +2917,6 @@ export default function TicTacChain() {
     }
   }, [escalationInterval]);
 
-  // Races tx.wait() against a wall-clock timeout.
-  // Rejects with Error('TX_TIMEOUT') if timeoutMs elapses first.
-  // The underlying tx.wait() continues in the background — if it eventually confirms,
-  // the 2-second polling loop will detect the board change via refreshMatchData.
-  const waitWithTimeout = (tx, timeoutMs) =>
-    Promise.race([
-      tx.wait(),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('TX_TIMEOUT')), timeoutMs)
-      ),
-    ]);
-
   // Handle cell click for making moves
   const handleCellClick = async (cellIndex) => {
     if (!currentMatch || !contract || !account) return;
@@ -2953,19 +2942,39 @@ export default function TicTacChain() {
       const { tierId, instanceId, roundNumber, matchNumber } = currentMatch;
 
       const tx = await contract.makeMove(tierId, instanceId, roundNumber, matchNumber, cellIndex);
-      await waitWithTimeout(tx, 90_000); // 90 s — Arbitrum is sub-second normally; stuck = network issue
+      const syncResult = await waitForTxOrStateSync({
+        tx,
+        timeoutMs: 90_000,
+        sync: async () => {
+          const latestMatch = currentMatchRef.current || currentMatch;
+          if (!latestMatch) return null;
+          return refreshMatchData(contract, account, latestMatch, matchTimePerPlayer);
+        },
+        isSynced: (updatedMatch) => didMatchStateAdvance(currentMatchRef.current || currentMatch, updatedMatch),
+      });
 
-      const updated = await refreshMatchData(contract, account, currentMatch, matchTimePerPlayer);
+      const latestMatch = currentMatchRef.current || currentMatch;
+      const updated = syncResult.updated || (latestMatch
+        ? await refreshMatchData(contract, account, latestMatch, matchTimePerPlayer)
+        : null);
       if (updated) {
         setCurrentMatch(updated);
         // Update board ref to prevent sync from detecting this move again
         previousBoardRef.current = [...updated.board];
-        // Refresh move history from blockchain
-        const history = await fetchMoveHistory(contract, currentMatch.tierId, currentMatch.instanceId, currentMatch.roundNumber, currentMatch.matchNumber);
-        setMoveHistory(history);
       }
-      moveTxInProgressRef.current = false; // Release lock
+
+      moveTxInProgressRef.current = false; // Release lock as soon as the board is in sync
       setMatchLoading(false);
+
+      if (updated) {
+        // Refresh move history after the board is already interactive again
+        try {
+          const history = await fetchMoveHistory(contract, currentMatch.tierId, currentMatch.instanceId, currentMatch.roundNumber, currentMatch.matchNumber);
+          setMoveHistory(history);
+        } catch (historyError) {
+          console.error('Error refreshing move history after move:', historyError);
+        }
+      }
     } catch (error) {
       console.error('Error making move:', error);
       // Always unlock first so board re-enables and polling resumes before React processes anything else

@@ -26,6 +26,7 @@ import { shortenAddress } from '../../utils/formatters';
 import { generateV2TournamentUrl, parseV2ContractParam } from '../../utils/urlHelpers';
 import { isDraw } from '../../utils/completionReasons';
 import { validateMoveWithReason } from '../../utils/chessValidator';
+import { didMatchStateAdvance, waitForTxOrStateSync } from '../../utils/txSync';
 import ParticleBackground from '../../components/shared/ParticleBackground';
 import WhyArbitrum from '../../components/shared/WhyArbitrum';
 import ConnectedWalletCard from '../../components/shared/ConnectedWalletCard';
@@ -1087,8 +1088,6 @@ export default function ChessV2() {
     }
   }, [viewingTournament?.address]);
 
-  const waitWithTimeout = (tx, timeoutMs) => Promise.race([tx.wait(), new Promise((_, reject) => setTimeout(() => reject(new Error('TX_TIMEOUT')), timeoutMs))]);
-
   const handlePlayMatch = useCallback(async (_tierId, _instanceId, roundNumber, matchNumber) => {
     if (!account) { alert('Please connect your wallet first.'); return; }
     const instanceAddress = (typeof _instanceId === 'string' && _instanceId.startsWith('0x')) ? _instanceId : (viewingTournament?.address || '');
@@ -1137,12 +1136,35 @@ export default function ChessV2() {
       const signer = await browserProvider.getSigner();
       const writableInstance = getInstanceContract(activeInstanceContractRef.current.target || activeInstanceContractRef.current.address, signer);
       const tx = await writableInstance.makeMove(currentMatch.roundNumber, currentMatch.matchNumber, fromSquare, toSquare, promotion);
-      await waitWithTimeout(tx, 90_000);
-      const updated = await refreshMatchData(activeInstanceContractRef.current, account, currentMatch);
+      const syncResult = await waitForTxOrStateSync({
+        tx,
+        timeoutMs: 90_000,
+        sync: async () => {
+          const latestMatch = currentMatchRef.current || currentMatch;
+          if (!latestMatch || !activeInstanceContractRef.current) return null;
+          return refreshMatchData(activeInstanceContractRef.current, account, latestMatch);
+        },
+        isSynced: (updatedMatch) => didMatchStateAdvance(currentMatchRef.current || currentMatch, updatedMatch),
+      });
+
+      const latestMatch = currentMatchRef.current || currentMatch;
+      const updated = syncResult.updated || ((latestMatch && activeInstanceContractRef.current)
+        ? await refreshMatchData(activeInstanceContractRef.current, account, latestMatch)
+        : null);
       if (updated) {
         setCurrentMatch(updated);
         previousBoardRef.current = JSON.stringify(updated.board);
-        setMoveHistory(await fetchMoveHistory(activeInstanceContractRef.current, currentMatch.roundNumber, currentMatch.matchNumber));
+      }
+
+      moveTxInProgressRef.current = false;
+      setMatchLoading(false);
+
+      if (updated) {
+        try {
+          setMoveHistory(await fetchMoveHistory(activeInstanceContractRef.current, currentMatch.roundNumber, currentMatch.matchNumber));
+        } catch (historyError) {
+          console.error('[ChessV2] Error refreshing move history after move:', historyError);
+        }
       }
     } catch (error) {
       const errorString = error.message || error.toString();
