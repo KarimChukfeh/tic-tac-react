@@ -17,6 +17,63 @@ export const CompletionReason = {
   ABANDONED_TOURNAMENT_CLAIMED: 7   // Abandoned tournament claimed by external player (EL2)
 };
 
+const toReasonNumber = (value, fallback = 0) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+export const getMatchCompletionReasonValue = (record) => toReasonNumber(
+  record?.matchCompletionReason
+  ?? record?.reason
+  ?? record?.completionReason
+  ?? record?.matchReason
+  ?? 0
+);
+
+export const getMatchCompletionCategoryValue = (record) => toReasonNumber(
+  record?.matchCompletionCategory
+  ?? record?.completionCategory
+  ?? record?.matchCategory
+  ?? record?.category
+  ?? 0
+);
+
+export const getTournamentResolutionReasonValue = (record) => toReasonNumber(
+  record?.tournamentResolutionReason
+  ?? record?.resolutionReason
+  ?? record?.completionReason
+  ?? 0
+);
+
+export const getTournamentResolutionCategoryValue = (record) => toReasonNumber(
+  record?.tournamentResolutionCategory
+  ?? record?.resolutionCategory
+  ?? record?.completionCategory
+  ?? 0
+);
+
+export const getPlayerMatchOutcomeReasonValue = (record) => toReasonNumber(
+  record?.playerOutcomeReason
+  ?? record?.outcomeReason
+  ?? record?.reason
+  ?? record?.playerMatchOutcomeReason
+  ?? record?.matchOutcomeReason
+  ?? record?.matchCompletionReason
+  ?? record?.completionReason
+  ?? 0
+);
+
+export const getPlayerMatchOutcomeCategoryValue = (record) => toReasonNumber(
+  record?.playerOutcomeCategory
+  ?? record?.outcomeCategory
+  ?? record?.playerMatchOutcomeCategory
+  ?? record?.matchOutcomeCategory
+  ?? record?.matchCompletionCategory
+  ?? record?.completionCategory
+  ?? record?.category
+  ?? 0
+);
+
 /**
  * Get completion reason text for display
  * @param {number} reason - CompletionReason enum value

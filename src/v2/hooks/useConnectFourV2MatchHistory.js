@@ -74,7 +74,9 @@ export function useConnectFourV2MatchHistory(factoryContract, runner, account) {
                   const p1 = m.player1?.toLowerCase();
                   const p2 = m.player2?.toLowerCase();
                   const acc = account.toLowerCase();
-                  if (p1 !== acc && p2 !== acc) return;
+                  const winner = m.matchWinner;
+                  const winnerLower = winner?.toLowerCase();
+                  if (p1 !== acc && p2 !== acc && winnerLower !== acc) return;
 
                   const matchStatus = Number(m.status);
                   if (matchStatus !== 2) return;
@@ -100,7 +102,14 @@ export function useConnectFourV2MatchHistory(factoryContract, runner, account) {
 
                   const endTime = Number(m.lastMoveTime || m.startTime || 0);
 
-                  const completionReason = Number(m.completionReason || (m.isDraw ? 2 : 0));
+                  const matchCompletionReason = Number(m.completionReason || (m.isDraw ? 2 : 0));
+                  const matchCompletionCategory = Number(m.completionCategory ?? 0);
+                  const userIsWinner = Boolean(winnerLower && winnerLower === acc && winnerLower !== ZERO_ADDRESS.toLowerCase());
+                  const playerPerspective = Boolean(m.isDraw)
+                    ? 'draw'
+                    : userIsWinner
+                    ? 'winner'
+                    : 'loser';
 
                   allMatches.push({
                     matchId: `0-${instanceAddress}-${roundIdx}-${matchIdx}`,
@@ -114,9 +123,16 @@ export function useConnectFourV2MatchHistory(factoryContract, runner, account) {
                     player1: m.player1,
                     player2: m.player2,
                     firstPlayer: fullMatch.firstPlayer,
-                    winner: m.matchWinner,
-                    reason: completionReason,
-                    completionReason,
+                    winner,
+                    reason: matchCompletionReason,
+                    completionReason: matchCompletionReason,
+                    completionCategory: matchCompletionCategory,
+                    matchCompletionReason,
+                    matchCompletionCategory,
+                    playerOutcomeReason: matchCompletionReason,
+                    playerOutcomeCategory: matchCompletionCategory,
+                    playerPerspective,
+                    isScheduledPlayer: p1 === acc || p2 === acc,
                     isDraw: Boolean(m.isDraw),
                     board: packedBoard,
                     startTime: Number(m.startTime || 0),
@@ -141,6 +157,9 @@ export function useConnectFourV2MatchHistory(factoryContract, runner, account) {
         winner: match.winner,
         reason: match.reason,
         completionReason: match.completionReason,
+        matchCompletionReason: match.matchCompletionReason,
+        playerOutcomeReason: match.playerOutcomeReason,
+        playerPerspective: match.playerPerspective,
         isDraw: match.isDraw,
         startTime: match.startTime,
         endTime: match.endTime,

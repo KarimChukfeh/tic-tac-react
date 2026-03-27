@@ -78,9 +78,11 @@ export function useV2MatchHistory(factoryContract, runner, account) {
                   const p1 = m.player1?.toLowerCase();
                   const p2 = m.player2?.toLowerCase();
                   const acc = account.toLowerCase();
+                  const winner = m.matchWinner;
+                  const winnerLower = winner?.toLowerCase();
 
-                  // Only include matches the player participated in
-                  if (p1 !== acc && p2 !== acc) return;
+                  // Include completed matches the user played in, plus external ML2/ML3 wins.
+                  if (p1 !== acc && p2 !== acc && winnerLower !== acc) return;
 
                   // Only completed matches (status === 2 = Complete)
                   const matchStatus = Number(m.status);
@@ -109,7 +111,14 @@ export function useV2MatchHistory(factoryContract, runner, account) {
                   // Use lastMoveTime as endTime since getMatch doesn't expose endTime
                   const endTime = Number(m.lastMoveTime || m.startTime || 0);
 
-                  const completionReason = Number(m.completionReason || (m.isDraw ? 2 : 0));
+                  const matchCompletionReason = Number(m.completionReason || (m.isDraw ? 2 : 0));
+                  const matchCompletionCategory = Number(m.completionCategory ?? 0);
+                  const userIsWinner = Boolean(winnerLower && winnerLower === acc && winnerLower !== ZERO_ADDRESS.toLowerCase());
+                  const playerPerspective = Boolean(m.isDraw)
+                    ? 'draw'
+                    : userIsWinner
+                    ? 'winner'
+                    : 'loser';
 
                   allMatches.push({
                     matchId: `0-${instanceAddress}-${roundIdx}-${matchIdx}`,
@@ -123,9 +132,16 @@ export function useV2MatchHistory(factoryContract, runner, account) {
                     player1: m.player1,
                     player2: m.player2,
                     firstPlayer: m.player1, // V2 doesn't expose firstPlayer in getMatch
-                    winner: m.matchWinner,
-                    reason: completionReason,
-                    completionReason,
+                    winner,
+                    reason: matchCompletionReason,
+                    completionReason: matchCompletionReason,
+                    completionCategory: matchCompletionCategory,
+                    matchCompletionReason,
+                    matchCompletionCategory,
+                    playerOutcomeReason: matchCompletionReason,
+                    playerOutcomeCategory: matchCompletionCategory,
+                    playerPerspective,
+                    isScheduledPlayer: p1 === acc || p2 === acc,
                     isDraw: Boolean(m.isDraw),
                     board: packedBoard,
                     startTime: Number(m.startTime || 0),
@@ -151,6 +167,9 @@ export function useV2MatchHistory(factoryContract, runner, account) {
         winner: match.winner,
         reason: match.reason,
         completionReason: match.completionReason,
+        matchCompletionReason: match.matchCompletionReason,
+        playerOutcomeReason: match.playerOutcomeReason,
+        playerPerspective: match.playerPerspective,
         isDraw: match.isDraw,
         startTime: match.startTime,
         endTime: match.endTime,

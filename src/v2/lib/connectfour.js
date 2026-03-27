@@ -198,6 +198,8 @@ export function unpackBoard(board) {
 }
 
 export function normalizeInstanceSnapshot(address, info, tournament, players, isEnrolled = false) {
+  const tournamentResolutionReason = Number(info.completionReason ?? tournament.completionReason ?? 0);
+  const tournamentResolutionCategory = Number(info.completionCategory ?? tournament.completionCategory ?? 0);
   return {
     address,
     tierKey: info.tierKey,
@@ -213,7 +215,10 @@ export function normalizeInstanceSnapshot(address, info, tournament, players, is
     prizePoolWei: tournament.prizePool,
     prizePoolEth: formatEth(tournament.prizePool),
     winner: info.winner,
-    completionReason: Number(info.completionReason),
+    completionReason: tournamentResolutionReason,
+    completionCategory: tournamentResolutionCategory,
+    tournamentResolutionReason,
+    tournamentResolutionCategory,
     players,
     isEnrolled,
     currentRound: Number(tournament.currentRound),
@@ -228,13 +233,18 @@ export function normalizeInstanceSnapshot(address, info, tournament, players, is
 }
 
 export function normalizeMatch(roundNumber, matchNumber, matchData, board) {
+  const matchCompletionReason = Number(matchData.completionReason ?? 0);
+  const matchCompletionCategory = Number(matchData.completionCategory ?? 0);
   return {
     roundNumber,
     matchNumber,
     player1: matchData.player1,
     player2: matchData.player2,
     winner: matchData.matchWinner,
-    completionReason: Number(matchData.completionReason ?? 0),
+    completionReason: matchCompletionReason,
+    completionCategory: matchCompletionCategory,
+    matchCompletionReason,
+    matchCompletionCategory,
     isDraw: Boolean(matchData.isDraw),
     status: Number(matchData.status),
     statusLabel: matchStatusLabel(matchData.status),

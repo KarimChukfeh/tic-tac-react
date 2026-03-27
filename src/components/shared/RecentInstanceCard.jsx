@@ -8,7 +8,7 @@ import { useEffect, useState, useRef } from 'react';
 import { ethers } from 'ethers';
 import { Clock, Trophy, Award, Users } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
-import { CompletionReason } from '../../utils/completionReasons';
+import { CompletionReason, getTournamentResolutionReasonValue } from '../../utils/completionReasons';
 
 const RecentInstanceCard = ({ tierId, instanceId, contract, tierName = 'Tournament', walletAddress }) => {
   const [recentData, setRecentData] = useState(null);
@@ -37,6 +37,9 @@ const RecentInstanceCard = ({ tierId, instanceId, contract, tierName = 'Tourname
             prizePool: data.prizePool,
             winner: data.winner,
             completionReason: Number(data.completionReason),
+            completionCategory: Number(data.completionCategory ?? 0),
+            resolutionReason: Number(data.resolutionReason ?? data.completionReason ?? 0),
+            resolutionCategory: Number(data.resolutionCategory ?? data.completionCategory ?? 0),
             players: data.players || []
           });
         }
@@ -129,7 +132,8 @@ const RecentInstanceCard = ({ tierId, instanceId, contract, tierName = 'Tourname
     }
   };
 
-  const reasonData = getTournamentCompletionText(recentData.completionReason);
+  const resolutionReason = getTournamentResolutionReasonValue(recentData);
+  const reasonData = getTournamentCompletionText(resolutionReason);
 
   return (
     <div className="py-4">

@@ -14,7 +14,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Play, Award, Clock, HelpCircle, Zap, Users, Eye } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
-import { CompletionReason } from '../../utils/completionReasons';
+import { CompletionReason, getMatchCompletionReasonValue } from '../../utils/completionReasons';
 import CompletedMatchOutcomeBadge from './CompletedMatchOutcomeBadge';
 import { getMatchStatusText, getMatchStatusColor } from '../../utils/matchStatus';
 import { calculatePlayerTimes } from '../../utils/timeCalculations';
@@ -100,7 +100,7 @@ const MatchCard = ({
 
   const isPlayer1 = match.player1?.toLowerCase() === account?.toLowerCase();
   const isPlayer2 = match.player2?.toLowerCase() === account?.toLowerCase();
-  const completionReason = Number(match.completionReason ?? match.reason ?? 0);
+  const completionReason = getMatchCompletionReasonValue(match);
 
   useEffect(() => {
     if (matchStatus !== 2) return;
@@ -346,8 +346,8 @@ const MatchCard = ({
           }
           // For non-completed matches, show standard status
           return (
-            <span className={`text-xs font-bold ${getMatchStatusColor(matchStatus, match.winner, match.completionReason, matchStatusOptions)}`}>
-              {getMatchStatusText(matchStatus, match.winner, match.completionReason, matchStatusOptions)}
+            <span className={`text-xs font-bold ${getMatchStatusColor(matchStatus, match.winner, completionReason, matchStatusOptions)}`}>
+              {getMatchStatusText(matchStatus, match.winner, completionReason, matchStatusOptions)}
             </span>
           );
         })()}

@@ -10,6 +10,8 @@ import { shortenAddress, getCellPositionName } from '../../utils/formatters';
 import {
   CompletionReason,
   getCompletedMatchOutcomeLabel,
+  getPlayerMatchOutcomeReasonValue,
+  getTournamentResolutionReasonValue,
   isDraw,
 } from '../../utils/completionReasons';
 import CapturedPieces from './CapturedPieces';
@@ -144,7 +146,9 @@ const RecentMatchesCard = ({
       winner: match.winner,
       reason: match.reason ?? null,
       completionReason: match.completionReason ?? null,
-      resolvedReason: Number(match?.reason ?? match?.completionReason ?? 0),
+      matchCompletionReason: match.matchCompletionReason ?? null,
+      playerOutcomeReason: match.playerOutcomeReason ?? null,
+      resolvedReason: getPlayerMatchOutcomeReasonValue(match),
       startTime: match.startTime,
       endTime: match.endTime,
     })));
@@ -708,7 +712,31 @@ const RecentMatchesCard = ({
     return `Round ${roundNumber + 1}/${totalRounds}`;
   };
 
-  const getMatchReason = (match) => Number(match?.reason ?? match?.completionReason ?? 0);
+  const getMatchReason = (match) => getPlayerMatchOutcomeReasonValue(match);
+
+  const getTournamentResolutionText = (record) => {
+    const reason = getTournamentResolutionReasonValue(record);
+    switch (reason) {
+      case CompletionReason.NORMAL_WIN:
+        return 'Normal victory';
+      case CompletionReason.TIMEOUT:
+        return 'ML1 timeout';
+      case CompletionReason.DRAW:
+        return 'Draw resolution';
+      case CompletionReason.FORCE_ELIMINATION:
+        return 'ML2 force elimination';
+      case CompletionReason.REPLACEMENT:
+        return 'ML3 replacement';
+      case CompletionReason.ALL_DRAW_SCENARIO:
+        return 'All-draw resolution';
+      case CompletionReason.SOLO_ENROLL_FORCE_START:
+        return 'EL1 solo force start';
+      case CompletionReason.ABANDONED_TOURNAMENT_CLAIMED:
+        return 'EL2 abandoned pool claim';
+      default:
+        return 'Tournament completed';
+    }
+  };
 
   const formatTimeAgo = (timestamp) => {
     if (!timestamp) return '';
@@ -1158,6 +1186,11 @@ const RecentMatchesCard = ({
                                   : null
                             )}
                           </div>
+                          {rec.concluded && (
+                            <div className="mt-1 text-[10px] text-slate-400">
+                              Resolved via <span className="text-slate-200">{getTournamentResolutionText(rec)}</span>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>

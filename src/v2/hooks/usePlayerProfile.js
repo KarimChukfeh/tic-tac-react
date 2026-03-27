@@ -86,10 +86,21 @@ export function usePlayerProfile(factoryContract, runner, account) {
         // Enrich with enrolledCount from each instance, then sort newest first
         const enriched = await Promise.all([...recs].map(async r => {
           let playerCount = null;
+          let tournamentStatus = null;
+          let tournamentWinner = ZERO_ADDRESS;
+          let resolutionReason = 0;
+          let resolutionCategory = 0;
           try {
             const inst = getInstanceContract(r.instance, runner);
-            const info = await inst.getInstanceInfo();
-            playerCount = Number(info.enrolledCount);
+            const [info, tournament] = await Promise.all([
+              inst.getInstanceInfo(),
+              inst.tournament().catch(() => null),
+            ]);
+            playerCount = Number(info.playerCount ?? info.enrolledCount ?? 0) || null;
+            tournamentStatus = Number(info.status ?? tournament?.status ?? 0);
+            tournamentWinner = info.winner ?? tournament?.winner ?? ZERO_ADDRESS;
+            resolutionReason = Number(info.completionReason ?? tournament?.completionReason ?? 0);
+            resolutionCategory = Number(info.completionCategory ?? tournament?.completionCategory ?? 0);
           } catch { /* ignore */ }
           return {
             instance: r.instance,
@@ -100,6 +111,10 @@ export function usePlayerProfile(factoryContract, runner, account) {
             won: r.won,
             prize: r.prize,
             playerCount,
+            tournamentStatus,
+            tournamentWinner,
+            resolutionReason,
+            resolutionCategory,
           };
         }));
         setEnrollments(enriched.sort((a, b) => b.enrolledAt - a.enrolledAt));
