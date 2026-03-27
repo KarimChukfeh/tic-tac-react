@@ -86,6 +86,8 @@ export function useChessV2MatchHistory(factoryContract, runner, account) {
 
                 const [packedBoard] = boardResult;
                 const endTime = Number(m.lastMoveTime || m.startTime || 0);
+                const completionReason = Number(m.completionReason || (m.isDraw ? 2 : 0));
+
                 allMatches.push({
                   matchId: `0-${instanceAddress}-${roundIdx}-${matchIdx}`,
                   tierId: 0,
@@ -99,7 +101,9 @@ export function useChessV2MatchHistory(factoryContract, runner, account) {
                   player2: m.player2,
                   firstPlayer: full.firstPlayer,
                   winner: m.matchWinner,
-                  reason: Number(m.completionReason || (m.isDraw ? 2 : 0)),
+                  reason: completionReason,
+                  completionReason,
+                  isDraw: Boolean(m.isDraw),
                   board: BigInt(packedBoard || 0),
                   startTime: Number(m.startTime || 0),
                   endTime,
@@ -113,6 +117,20 @@ export function useChessV2MatchHistory(factoryContract, runner, account) {
       }));
 
       allMatches.sort((a, b) => b.endTime - a.endTime);
+      console.groupCollapsed(`[useChessV2MatchHistory] Loaded ${allMatches.length} completed matches for ${account}`);
+      console.table(allMatches.map(match => ({
+        matchId: match.matchId,
+        instanceAddress: match.instanceAddress,
+        roundNumber: match.roundNumber,
+        matchNumber: match.matchNumber,
+        winner: match.winner,
+        reason: match.reason,
+        completionReason: match.completionReason,
+        isDraw: match.isDraw,
+        startTime: match.startTime,
+        endTime: match.endTime,
+      })));
+      console.groupEnd();
       setMatches(allMatches);
     } catch (err) {
       console.error('[useChessV2MatchHistory] Error:', err);

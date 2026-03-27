@@ -1419,7 +1419,11 @@ export default function ConnectFourV2() {
         setIsSpectator(!(updated.player1?.toLowerCase() === account.toLowerCase() || updated.player2?.toLowerCase() === account.toLowerCase()));
         setCurrentMatch(updated);
         previousBoardRef.current = [...updated.board];
-        matchEndModalShownRef.current = false;
+        setMatchEndResult(null);
+        setMatchEndWinner(null);
+        setMatchEndLoser(null);
+        setMatchEndWinnerLabel('');
+        matchEndModalShownRef.current = updated.matchStatus === 2;
         const history = await fetchMoveHistory(instanceCont, roundNumber, matchNumber);
         setMoveHistory(history);
         skipNavEffectRef.current = true;
@@ -1854,6 +1858,11 @@ export default function ConnectFourV2() {
               setCurrentMatch(updated);
               setIsSpectator(!(updated.player1?.toLowerCase() === account.toLowerCase() || updated.player2?.toLowerCase() === account.toLowerCase()));
               previousBoardRef.current = [...updated.board];
+              setMatchEndResult(null);
+              setMatchEndWinner(null);
+              setMatchEndLoser(null);
+              setMatchEndWinnerLabel('');
+              matchEndModalShownRef.current = updated.matchStatus === 2;
               const history = await fetchMoveHistory(instanceCont, state.roundNumber, state.matchNumber);
               setMoveHistory(history);
             }

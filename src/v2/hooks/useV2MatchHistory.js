@@ -109,6 +109,8 @@ export function useV2MatchHistory(factoryContract, runner, account) {
                   // Use lastMoveTime as endTime since getMatch doesn't expose endTime
                   const endTime = Number(m.lastMoveTime || m.startTime || 0);
 
+                  const completionReason = Number(m.completionReason || (m.isDraw ? 2 : 0));
+
                   allMatches.push({
                     matchId: `0-${instanceAddress}-${roundIdx}-${matchIdx}`,
                     tierId: 0,
@@ -122,7 +124,9 @@ export function useV2MatchHistory(factoryContract, runner, account) {
                     player2: m.player2,
                     firstPlayer: m.player1, // V2 doesn't expose firstPlayer in getMatch
                     winner: m.matchWinner,
-                    reason: m.isDraw ? 2 : 0,
+                    reason: completionReason,
+                    completionReason,
+                    isDraw: Boolean(m.isDraw),
                     board: packedBoard,
                     startTime: Number(m.startTime || 0),
                     endTime,
@@ -138,6 +142,20 @@ export function useV2MatchHistory(factoryContract, runner, account) {
 
       // Sort newest first
       allMatches.sort((a, b) => b.endTime - a.endTime);
+      console.groupCollapsed(`[useV2MatchHistory] Loaded ${allMatches.length} completed matches for ${account}`);
+      console.table(allMatches.map(match => ({
+        matchId: match.matchId,
+        instanceAddress: match.instanceAddress,
+        roundNumber: match.roundNumber,
+        matchNumber: match.matchNumber,
+        winner: match.winner,
+        reason: match.reason,
+        completionReason: match.completionReason,
+        isDraw: match.isDraw,
+        startTime: match.startTime,
+        endTime: match.endTime,
+      })));
+      console.groupEnd();
       setMatches(allMatches);
     } catch (err) {
       console.error('[useV2MatchHistory] Error:', err);

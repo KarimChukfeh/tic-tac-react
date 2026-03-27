@@ -14,6 +14,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { Play, Award, Clock, HelpCircle, Zap, Users, Eye } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
+import {
+  CompletionReason,
+  getCompletedMatchOutcomeLabel,
+  getCompletionReasonHref,
+  getCompletionReasonManualLabel,
+} from '../../utils/completionReasons';
 import { getMatchStatusText, getMatchStatusColor } from '../../utils/matchStatus';
 import { calculatePlayerTimes } from '../../utils/timeCalculations';
 
@@ -25,6 +31,15 @@ const formatEscalationTime = (seconds) => {
   const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
   return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
+const getCompletedOutcomeHref = (completionReason) => {
+  return getCompletionReasonHref(completionReason);
+};
+
+const getCompletedOutcomeTitle = (completionReason) => {
+  const manualLabel = getCompletionReasonManualLabel(completionReason);
+  return manualLabel ? `Learn more about ${manualLabel} in the User Manual` : '';
 };
 
 /**
@@ -98,6 +113,7 @@ const MatchCard = ({
 
   const isPlayer1 = match.player1?.toLowerCase() === account?.toLowerCase();
   const isPlayer2 = match.player2?.toLowerCase() === account?.toLowerCase();
+  const completionReason = Number(match.completionReason ?? match.reason ?? 0);
 
   // ===== ESCALATION DATA =====
   const isStalled = match.timeoutState?.timeoutActive || false;
@@ -277,11 +293,30 @@ const MatchCard = ({
           if (matchStatus === 2) {
             if (isUserMatch) {
               const userWon = match.winner?.toLowerCase() === account?.toLowerCase();
-              if (userWon) {
-                return <span className="text-xs font-bold text-green-400">Victory</span>;
-              } else {
-                return <span className="text-xs font-bold text-red-400">Defeat</span>;
+              const isDrawOutcome =
+                completionReason === CompletionReason.DRAW ||
+                completionReason === CompletionReason.ALL_DRAW_SCENARIO;
+              const label = getCompletedMatchOutcomeLabel(completionReason, userWon, gameName);
+              const href = getCompletedOutcomeHref(completionReason);
+              const colorClass = isDrawOutcome
+                ? 'text-yellow-300'
+                : userWon
+                ? 'text-green-400'
+                : 'text-red-400';
+
+              if (href) {
+                return (
+                  <a
+                    href={href}
+                    className={`text-xs font-bold underline decoration-dotted hover:opacity-80 ${colorClass}`}
+                    title={getCompletedOutcomeTitle(completionReason)}
+                  >
+                    {label}
+                  </a>
+                );
               }
+
+              return <span className={`text-xs font-bold ${colorClass}`}>{label}</span>;
             }
             // For non-user matches, show nothing
             return null;

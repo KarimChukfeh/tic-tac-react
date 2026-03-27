@@ -3171,8 +3171,12 @@ export default function TicTacChain() {
         setCurrentMatch(updated);
         // Initialize board ref for move detection
         previousBoardRef.current = [...updated.board];
-        // Reset modal shown ref for new match
-        matchEndModalShownRef.current = false;
+        setMatchEndResult(null);
+        setMatchEndWinner(null);
+        setMatchEndLoser(null);
+        setMatchEndWinnerLabel('');
+        // Completed matches opened in replay mode should not retrigger end-of-match UX
+        matchEndModalShownRef.current = updated.matchStatus === 2;
         // Fetch move history from blockchain events
         const history = await fetchMoveHistory(contract, tierId, instanceId, roundNumber, matchNumber);
         setMoveHistory(history);
@@ -3546,6 +3550,11 @@ export default function TicTacChain() {
             if (updated) {
               setCurrentMatch(updated);
               previousBoardRef.current = [...updated.board];
+              setMatchEndResult(null);
+              setMatchEndWinner(null);
+              setMatchEndLoser(null);
+              setMatchEndWinnerLabel('');
+              matchEndModalShownRef.current = updated.matchStatus === 2;
               const history = await fetchMoveHistory(contract, state.tierId, state.instanceId, state.roundNumber, state.matchNumber);
               setMoveHistory(history);
             }

@@ -7,7 +7,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { X, RefreshCw, History, ChevronDown, ChevronUp, Eye, ChevronLeft, ChevronRight, ArrowUpRight, TrendingUp, ExternalLink, ArrowUp, Trophy } from 'lucide-react';
 import { shortenAddress, getCellPositionName } from '../../utils/formatters';
-import { isDraw, getCompletionReasonText } from '../../utils/completionReasons';
+import {
+  CompletionReason,
+  isDraw,
+  getCompletedMatchOutcomeLabel,
+  getCompletionReasonHref,
+  getCompletionReasonManualLabel,
+} from '../../utils/completionReasons';
 import CapturedPieces from './CapturedPieces';
 import { ethers } from 'ethers';
 
@@ -121,6 +127,30 @@ const RecentMatchesCard = ({
       if (onMatchesLoad) onMatchesLoad(v2Matches);
     }
   }, [v2Matches]);
+
+  useEffect(() => {
+    if (historyTab !== 'matches') return;
+
+    console.groupCollapsed(`[RecentMatchesCard] Matches tab history (${recentMatches.length})`);
+    console.table(recentMatches.map((match, index) => ({
+      index,
+      matchId: match.matchId,
+      tierId: match.tierId,
+      instanceId: match.instanceId,
+      instanceAddress: match.instanceAddress ?? null,
+      roundNumber: match.roundNumber,
+      matchNumber: match.matchNumber,
+      player1: match.player1,
+      player2: match.player2,
+      winner: match.winner,
+      reason: match.reason ?? null,
+      completionReason: match.completionReason ?? null,
+      resolvedReason: Number(match?.reason ?? match?.completionReason ?? 0),
+      startTime: match.startTime,
+      endTime: match.endTime,
+    })));
+    console.groupEnd();
+  }, [historyTab, recentMatches]);
 
   // Pre-fetch matches silently when wallet connects so ConnectedWalletCard stats are ready
   useEffect(() => {
@@ -318,6 +348,8 @@ const RecentMatchesCard = ({
           firstPlayer: match.firstPlayer,
           winner: match.winner,
           reason: Number(match.completionReason),
+          completionReason: Number(match.completionReason),
+          isDraw: Boolean(match.isDraw),
           board: match.packedBoard,
           startTime: Number(match.startTime),
           endTime: Number(match.endTime),
@@ -562,9 +594,10 @@ const RecentMatchesCard = ({
     if (matchIndex === -1) return 'Unknown';
 
     const match = recentMatches[matchIndex];
+    const reason = getMatchReason(match);
     const accountLower = account?.toLowerCase() || '';
     const winnerLower = match.winner?.toLowerCase() || '';
-    const matchIsDraw = isDraw(match.reason);
+    const matchIsDraw = isDraw(reason);
 
     // Get tier type prefix
     const tierLabel = getTierLabel(match.tierId);
@@ -573,7 +606,7 @@ const RecentMatchesCard = ({
     if (matchIsDraw) return `${tierPrefix} Draw`;
 
     const isWinner = winnerLower === accountLower;
-    const outcome = isWinner ? 'Victory' : getCompletionReasonText(match.reason, false, gameName);
+    const outcome = getOutcomeLabel(isWinner, reason);
     return `${tierPrefix} ${outcome}`;
   };
 
@@ -674,9 +707,18 @@ const RecentMatchesCard = ({
     return `Round ${roundNumber + 1}`;
   };
 
+  const getMatchReason = (match) => Number(match?.reason ?? match?.completionReason ?? 0);
+
   const getOutcomeLabel = (isWinner, reason) => {
-    if (isWinner) return 'Victory';
-    return getCompletionReasonText(reason, false, gameName);
+    return getCompletedMatchOutcomeLabel(reason, isWinner, gameName);
+  };
+
+  const getOutcomeHref = (reason) => {
+    return getCompletionReasonHref(reason);
+  };
+
+  const getOutcomeManualLabel = (reason) => {
+    return getCompletionReasonManualLabel(reason);
   };
 
   const formatTimeAgo = (timestamp) => {
@@ -1179,7 +1221,8 @@ const RecentMatchesCard = ({
                 const player1Lower = match.player1?.toLowerCase() || '';
                 const player2Lower = match.player2?.toLowerCase() || '';
 
-                const matchIsDraw = isDraw(match.reason);
+                const reason = getMatchReason(match);
+                const matchIsDraw = isDraw(reason);
                 const isWinner = !matchIsDraw && winnerLower === accountLower && winnerLower !== '0x0000000000000000000000000000000000000000';
 
                 // Check if account is actually one of the players
@@ -1273,15 +1316,9 @@ const RecentMatchesCard = ({
                             {getRoundLabel(match.tierId, match.roundNumber)}
                           </span>
                         )}
-                        {(match.reason === 1 || match.reason === 2 || match.reason === 3 || match.reason === 4 || match.reason === 5) ? (
+                        {getOutcomeHref(reason) ? (
                           <a
-                            href={
-                              match.reason === 1 ? '#ml1' :
-                              match.reason === 2 ? '#draws' :
-                              match.reason === 3 ? '#ml2' :
-                              match.reason === 4 ? '#ml3' :
-                              '#draws'
-                            }
+                            href={getOutcomeHref(reason)}
                             onClick={() => handleSetExpanded(false)}
                             className={`text-[10px] px-2 py-0.5 rounded font-bold ${
                               matchIsDraw
@@ -1290,15 +1327,9 @@ const RecentMatchesCard = ({
                                 ? 'bg-green-500/60 text-white'
                                 : 'bg-red-500/60 text-white'
                             } hover:opacity-80 transition-colors underline decoration-dotted cursor-pointer`}
-                            title={`Learn more about ${
-                              match.reason === 1 ? 'ML1' :
-                              match.reason === 2 ? 'Draws' :
-                              match.reason === 3 ? 'ML2' :
-                              match.reason === 4 ? 'ML3' :
-                              match.reason === 5 ? 'All-Draw Resolution' : ''
-                            } in the User Manual`}
+                            title={`Learn more about ${getOutcomeManualLabel(reason)} in the User Manual`}
                           >
-                            {getOutcomeLabel(isWinner, match.reason)}
+                            {getOutcomeLabel(isWinner, reason)}
                           </a>
                         ) : (
                           <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${
@@ -1308,7 +1339,7 @@ const RecentMatchesCard = ({
                               ? 'bg-green-500/60 text-white'
                               : 'bg-red-500/60 text-white'
                           }`}>
-                            {getOutcomeLabel(isWinner, match.reason)}
+                            {getOutcomeLabel(isWinner, reason)}
                           </span>
                         )}
                         {match.instanceAddress && match.totalRounds > 0 && (
@@ -1492,8 +1523,8 @@ const RecentMatchesCard = ({
 
                     {/* Winner Info - Only show for ML3 wins or no winner cases */}
                     {(() => {
-                      const noWinner = matchIsDraw || match.reason === 3;
-                      const isML3Win = match.reason === 4;
+                      const noWinner = matchIsDraw || reason === CompletionReason.FORCE_ELIMINATION;
+                      const isML3Win = reason === CompletionReason.REPLACEMENT;
                       const hasNoWinnerAddress = !match.winner || match.winner === '0x0000000000000000000000000000000000000000';
 
                       // Only show this section if: no winner, ML3 win, or no winner address
@@ -1894,7 +1925,8 @@ const RecentMatchesCard = ({
         const player1Lower = match.player1?.toLowerCase() || '';
         const player2Lower = match.player2?.toLowerCase() || '';
 
-        const matchIsDraw = isDraw(match.reason);
+        const reason = getMatchReason(match);
+        const matchIsDraw = isDraw(reason);
         const isWinner = !matchIsDraw && winnerLower === accountLower && winnerLower !== '0x0000000000000000000000000000000000000000';
 
         const isAccountPlayer1 = player1Lower === accountLower;
@@ -1981,7 +2013,7 @@ const RecentMatchesCard = ({
                           ? 'bg-green-500/60 text-white'
                           : 'bg-red-500/60 text-white'
                       }`}>
-                        {getOutcomeLabel(isWinner, match.reason)}
+                        {getOutcomeLabel(isWinner, reason)}
                       </span>
                     </div>
 

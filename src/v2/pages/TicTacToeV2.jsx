@@ -1206,7 +1206,11 @@ export default function TicTacToeV2() {
       if (updated) {
         setCurrentMatch(updated);
         previousBoardRef.current = [...updated.board];
-        matchEndModalShownRef.current = false;
+        setMatchEndResult(null);
+        setMatchEndWinner(null);
+        setMatchEndLoser(null);
+        setMatchEndWinnerLabel('');
+        matchEndModalShownRef.current = updated.matchStatus === 2;
         const history = await fetchMoveHistory(instanceCont, roundNumber, matchNumber);
         console.log('[V2] handleLoadMatch - Setting moveHistory:', history);
         setMoveHistory(history);
@@ -1634,6 +1638,11 @@ export default function TicTacToeV2() {
             if (updated) {
               setCurrentMatch(updated);
               previousBoardRef.current = [...updated.board];
+              setMatchEndResult(null);
+              setMatchEndWinner(null);
+              setMatchEndLoser(null);
+              setMatchEndWinnerLabel('');
+              matchEndModalShownRef.current = updated.matchStatus === 2;
               const history = await fetchMoveHistory(instanceCont, state.roundNumber, state.matchNumber);
               setMoveHistory(history);
             }

@@ -1105,7 +1105,11 @@ export default function ChessV2() {
         setIsSpectator(!(updated.player1?.toLowerCase() === account.toLowerCase() || updated.player2?.toLowerCase() === account.toLowerCase()));
         setCurrentMatch(updated);
         previousBoardRef.current = JSON.stringify(updated.board);
-        matchEndModalShownRef.current = false;
+        setMatchEndResult(null);
+        setMatchEndWinner(null);
+        setMatchEndLoser(null);
+        setMatchEndWinnerLabel('');
+        matchEndModalShownRef.current = updated.matchStatus === 2;
         setMoveHistory(await fetchMoveHistory(instanceCont, roundNumber, matchNumber));
         skipNavEffectRef.current = true;
         navigate('/v2/chess', { replace: false, state: { view: 'match', instanceAddress, roundNumber, matchNumber, from: location.state?.view || 'bracket' } });
@@ -1428,6 +1432,11 @@ export default function ChessV2() {
               setCurrentMatch(updated);
               setIsSpectator(!(updated.player1?.toLowerCase() === account.toLowerCase() || updated.player2?.toLowerCase() === account.toLowerCase()));
               previousBoardRef.current = JSON.stringify(updated.board);
+              setMatchEndResult(null);
+              setMatchEndWinner(null);
+              setMatchEndLoser(null);
+              setMatchEndWinnerLabel('');
+              matchEndModalShownRef.current = updated.matchStatus === 2;
               setMoveHistory(await fetchMoveHistory(instanceCont, state.roundNumber, state.matchNumber));
             }
           } catch (error) {

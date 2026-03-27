@@ -38,7 +38,7 @@ export const getCompletionReasonText = (reason, userWon, gameType = 'tictactoe')
         if (gameType === 'connect4') return 'Connect Four!';
         return 'You Won!';
       } else {
-        return 'Defeated';
+        return 'Defeat';
       }
 
     case CompletionReason.TIMEOUT:
@@ -64,7 +64,73 @@ export const getCompletionReasonText = (reason, userWon, gameType = 'tictactoe')
       return 'Abandoned Pool Claimed';
 
     default:
-      return userWon ? 'Victory!' : 'Defeated';
+      return userWon ? 'Victory!' : 'Defeat';
+  }
+};
+
+/**
+ * Get the user-facing outcome label for history/bracket completed matches.
+ * This intentionally uses unified labels instead of game-specific win text.
+ * @param {number} reason - CompletionReason enum value
+ * @param {boolean} userWon - Whether the current user won
+ * @param {string} gameType - 'tictactoe', 'chess', or 'connect4'
+ * @returns {string} Unified outcome label
+ */
+export const getCompletedMatchOutcomeLabel = (reason, userWon, gameType = 'tictactoe') => {
+  if (reason === CompletionReason.DRAW || reason === CompletionReason.ALL_DRAW_SCENARIO) {
+    return 'Draw';
+  }
+
+  if (userWon) {
+    if (reason === CompletionReason.TIMEOUT) return 'Victory by Timeout (ML1)';
+    if (reason === CompletionReason.FORCE_ELIMINATION) return 'Victory via ML2';
+    if (reason === CompletionReason.REPLACEMENT) return 'Victory via ML3';
+    return 'Victory';
+  }
+
+  return getCompletionReasonText(reason, false, gameType);
+};
+
+/**
+ * Get the user manual anchor href for a completion reason, if applicable.
+ * @param {number} reason - CompletionReason enum value
+ * @returns {string|null} Anchor href
+ */
+export const getCompletionReasonHref = (reason) => {
+  switch (reason) {
+    case CompletionReason.TIMEOUT:
+      return '#ml1';
+    case CompletionReason.DRAW:
+    case CompletionReason.ALL_DRAW_SCENARIO:
+      return '#draws';
+    case CompletionReason.FORCE_ELIMINATION:
+      return '#ml2';
+    case CompletionReason.REPLACEMENT:
+      return '#ml3';
+    default:
+      return null;
+  }
+};
+
+/**
+ * Get the user manual section label for a completion reason.
+ * @param {number} reason - CompletionReason enum value
+ * @returns {string} Manual section label
+ */
+export const getCompletionReasonManualLabel = (reason) => {
+  switch (reason) {
+    case CompletionReason.TIMEOUT:
+      return 'ML1';
+    case CompletionReason.DRAW:
+      return 'Draws';
+    case CompletionReason.FORCE_ELIMINATION:
+      return 'ML2';
+    case CompletionReason.REPLACEMENT:
+      return 'ML3';
+    case CompletionReason.ALL_DRAW_SCENARIO:
+      return 'All-Draw Resolution';
+    default:
+      return '';
   }
 };
 
