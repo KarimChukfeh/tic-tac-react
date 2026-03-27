@@ -41,7 +41,6 @@ import { didMatchStateAdvance, waitForTxOrStateSync } from './utils/txSync';
 import ParticleBackground from './components/shared/ParticleBackground';
 import MatchCard from './components/shared/MatchCard';
 import TournamentCard from './components/shared/TournamentCard';
-import WinnersLeaderboard from './components/shared/WinnersLeaderboard';
 import UserManual from './components/shared/UserManual';
 import MatchEndModal from './components/shared/MatchEndModal';
 import ActiveMatchAlertModal from './components/shared/ActiveMatchAlertModal';
@@ -4922,18 +4921,6 @@ export default function ConnectFour() {
             )}
           </>
         )}
-      </div>
-
-      {/* Winners Leaderboard Section */}
-      <div className="max-w-7xl mx-auto px-6 pb-12" style={{ position: 'relative', zIndex: 10 }}>
-        <WinnersLeaderboard
-          leaderboard={leaderboard}
-          loading={leaderboardLoading}
-          error={leaderboardError}
-          currentAccount={account}
-          onRetry={() => fetchLeaderboard()}
-          onRefresh={() => fetchLeaderboard()}
-        />
       </div>
 
       {/* User Manual Section */}

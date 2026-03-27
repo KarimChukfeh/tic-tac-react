@@ -27,7 +27,6 @@ import {
   Loader,
   Plus,
   RefreshCw,
-  Trophy,
   ChevronDown,
   ChevronUp,
   History,
@@ -39,10 +38,7 @@ import { generateV2TournamentUrl, parseV2ContractParam } from '../../utils/urlHe
 import { shouldResetOnInitialDocumentLoad } from '../../utils/navigation';
 import { isDraw, getCompletionReasonText, getCompletionReasonDescription } from '../../utils/completionReasons';
 import ParticleBackground from '../../components/shared/ParticleBackground';
-import WhyArbitrum from '../../components/shared/WhyArbitrum';
-import ConnectedWalletCard from '../../components/shared/ConnectedWalletCard';
 import MatchCard from '../../components/shared/MatchCard';
-import WinnersLeaderboard from '../../components/shared/WinnersLeaderboard';
 import UserManual from '../../components/shared/UserManual';
 import MatchEndModal from '../../components/shared/MatchEndModal';
 import ActiveMatchAlertModal from '../../components/shared/ActiveMatchAlertModal';
@@ -50,7 +46,6 @@ import GameMatchLayout from '../../components/shared/GameMatchLayout';
 import TournamentHeader from '../../components/shared/TournamentHeader';
 import PlayerActivity from '../../components/shared/PlayerActivity';
 import { useV2PlayerActivity } from '../hooks/useV2PlayerActivity';
-import { useActiveTournaments } from '../hooks/useActiveTournaments';
 import { usePlayerProfile } from '../hooks/usePlayerProfile';
 import { useV2MatchHistory } from '../hooks/useV2MatchHistory';
 import RecentMatchesCard from '../../components/shared/RecentMatchesCard';
@@ -408,9 +403,7 @@ export default function TicTacToeV2() {
   const [rpcReady, setRpcReady] = useState(false);
   const [rpcProvider, setRpcProvider] = useState(null);
   const [walletBootDone, setWalletBootDone] = useState(!isWalletAvailable());
-  const [balance, setBalance] = useState(null);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [isWhyArbitrumExpanded, setIsWhyArbitrumExpanded] = useState(true);
   const [contractsExpanded, setContractsExpanded] = useState(false);
 
   // --- Dashboard / factory ---
@@ -467,8 +460,6 @@ export default function TicTacToeV2() {
 
   // --- Leaderboard / raffle ---
   const [leaderboard] = useState([]);
-  const [leaderboardLoading] = useState(false);
-  const [leaderboardError] = useState(false);
 
   // --- Mobile panel coordination ---
   const [expandedPanel, setExpandedPanel] = useState(null);
@@ -477,8 +468,6 @@ export default function TicTacToeV2() {
   // --- Player activity (profile-sourced + instance-scoped) ---
   const v2PlayerActivity = useV2PlayerActivity(activeInstanceContract, account, resolvedFactoryContract, rpcProvider);
 
-  // --- Factory-level lobby & player profile ---
-  const lobby = useActiveTournaments(resolvedFactoryContract, rpcProvider, account);
   const playerProfile = usePlayerProfile(resolvedFactoryContract, rpcProvider, account);
   const v2MatchHistory = useV2MatchHistory(resolvedFactoryContract, rpcProvider, account);
 
@@ -571,18 +560,6 @@ export default function TicTacToeV2() {
       });
     }
   };
-
-  useEffect(() => {
-    const loadBalance = async () => {
-      const runner = rpcProviderRef.current;
-      if (!account || !runner) { setBalance(null); return; }
-      try {
-        const wei = await runner.getBalance(account);
-        setBalance(ethers.formatEther(wei));
-      } catch { setBalance(null); }
-    };
-    loadBalance();
-  }, [account, lastUpdated]);
 
   useEffect(() => {
     if (!rpcReady && !browserProvider) return;
@@ -818,7 +795,6 @@ export default function TicTacToeV2() {
       const signer = await provider.getSigner();
       setBrowserProvider(provider);
       setAccount(await signer.getAddress());
-      setIsWhyArbitrumExpanded(false);
     } catch (error) {
       setActionState({ type: 'error', message: getReadableError(error, 'Wallet connection failed.') });
     } finally {
@@ -2038,58 +2014,6 @@ export default function TicTacToeV2() {
             ETour TicTacToe
           </h1>
           <p className="text-2xl text-blue-200 mb-6">Provably Fair • Zero Trust • 100% On-Chain</p>
-          <p className={`text-lg ${currentTheme.heroSubtext} max-w-3xl mx-auto mb-2`}>
-            Play Tic-Tac-Toe on the blockchain. Real opponents. Real ETH on the line.
-            <br />No servers required. No trust needed.
-            <br />Every move is a transaction. Every outcome is permanently on-chain.
-          </p>
-          <p className="text-base text-cyan-300 max-w-3xl mx-auto mb-8">
-            V2 replaces fixed tiers and preallocated slots with on-demand tournament instance creation.
-          </p>
-
-          <div className="grid md:grid-cols-3 gap-4 max-w-4xl mx-auto mb-8">
-            <div className="bg-gradient-to-br from-yellow-500/20 to-amber-500/20 border border-yellow-400/30 rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-2"><Clock className="text-yellow-400" size={20} /><span className="font-bold text-yellow-300">Custom match timing</span></div>
-              <p className="text-sm text-yellow-200">Choose player count, entry fee, and timeout profile when you create an instance.</p>
-            </div>
-            <div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-2"><Trophy className="text-green-400" size={20} /><span className="font-bold text-green-300">Permanent on-chain records</span></div>
-              <p className="text-sm text-green-200">Every instance is its own immutable tournament record with roster, bracket, and result history.</p>
-            </div>
-            <div className="relative bg-gradient-to-br from-purple-500/20 to-violet-500/20 border border-purple-400/30 rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-2"><Shield className="text-purple-400" size={20} /><span className="font-bold text-purple-300">Factory-driven instances</span></div>
-              <p className="text-sm text-purple-200">No browsing fixed tiers. Create the exact duel or bracket you want and share the resulting instance.</p>
-            </div>
-          </div>
-
-          {walletBootDone && !account ? (
-            <div className="w-full max-w-lg mx-auto">
-              <button
-                onClick={connectWallet}
-                disabled={isConnecting}
-                className={`w-full flex items-center justify-center gap-3 bg-gradient-to-r ${currentTheme.buttonGradient} ${currentTheme.buttonHover} px-10 py-5 rounded-2xl font-bold text-2xl shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
-              >
-                {isConnecting ? <Loader size={28} className="animate-spin" /> : <Wallet size={28} />}
-                {isConnecting ? 'Connecting...' : 'Connect Wallet to Enter'}
-              </button>
-            </div>
-          ) : (
-            <ConnectedWalletCard
-              account={account}
-              balance={balance}
-              contractAddress={factoryAddress}
-              contractName="TicTacToe v2 Factory"
-              shortenAddress={shortenAddress}
-              payout={null}
-              lastWin={null}
-            />
-          )}
-
-          <WhyArbitrum
-            variant="blue"
-            isExpanded={isWhyArbitrumExpanded}
-            onToggle={() => setIsWhyArbitrumExpanded(!isWhyArbitrumExpanded)}
-          />
         </div>
 
         {/* Action messages */}
@@ -2415,77 +2339,10 @@ export default function TicTacToeV2() {
                 </form>
               </SectionShell>
 
-              {/* Open Tournaments Lobby */}
-              <SectionShell
-                id="open-tournaments"
-                title="Open Tournaments"
-                right={
-                  <button
-                    type="button"
-                    onClick={() => { lobby.refetch(); playerProfile.refetch(); }}
-                    className="flex items-center gap-2 text-sm bg-blue-500/20 hover:bg-blue-500/30 border border-blue-400/30 text-blue-200 px-4 py-2 rounded-xl transition-colors"
-                  >
-                    <RefreshCw size={16} className={lobby.loading ? 'animate-spin' : ''} />
-                    Refresh
-                  </button>
-                }
-              >
-                {lobby.error ? (
-                  <p className="text-red-300 text-sm">{lobby.error}</p>
-                ) : lobby.loading ? (
-                  <div className="flex items-center gap-3 text-purple-300 py-4">
-                    <Loader size={20} className="animate-spin" />
-                    <span>Loading tournaments...</span>
-                  </div>
-                ) : lobby.active.length === 0 ? (
-                  <p className="text-slate-400 text-sm py-4">No open tournaments right now. Create one above to get started.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {lobby.active.map(t => {
-                      const spotsLeft = t.playerCount - t.enrolledCount;
-                      const statusLabel = t.status === 0 ? 'Enrolling' : 'In Progress';
-                      const statusColor = t.status === 0 ? 'text-green-300' : 'text-yellow-300';
-                      return (
-                        <div
-                          key={t.address}
-                          className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-900/50 border border-purple-400/20 rounded-xl px-4 py-3 hover:border-purple-400/50 transition-colors"
-                        >
-                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-                            <span className={`font-semibold ${statusColor}`}>{statusLabel}</span>
-                            <span className="text-white font-mono">{getTournamentTypeLabel(t.playerCount)} · {t.playerCount}p</span>
-                            <span className="text-slate-300">{t.entryFeeEth} ETH entry</span>
-                            <span className="text-slate-400">{t.enrolledCount}/{t.playerCount} enrolled{spotsLeft > 0 ? ` · ${spotsLeft} spot${spotsLeft !== 1 ? 's' : ''} left` : ''}</span>
-                            {t.isEnrolled && <span className="text-cyan-300 font-semibold">✓ Enrolled</span>}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => enterInstanceBracket(t.address)}
-                            className="shrink-0 text-sm bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-semibold px-4 py-2 rounded-xl transition-all"
-                          >
-                            {t.isEnrolled ? 'View Bracket' : t.status === 0 ? 'Join' : 'Spectate'}
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </SectionShell>
               </>
             )}
           </>
         )}
-      </div>
-
-      {/* Winners Leaderboard */}
-      <div className="max-w-7xl mx-auto px-6 pb-12" style={{ position: 'relative', zIndex: 10 }}>
-        <WinnersLeaderboard
-          leaderboard={leaderboard}
-          loading={leaderboardLoading}
-          error={leaderboardError}
-          currentAccount={account}
-          onRetry={() => {}}
-          onRefresh={() => {}}
-        />
       </div>
 
       {/* User Manual */}

@@ -14,11 +14,9 @@ import {
   Loader,
   Plus,
   RefreshCw,
-  Trophy,
   ChevronDown,
   ChevronUp,
   History,
-  HelpCircle,
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import { CURRENT_NETWORK, getAddressUrl } from '../../config/networks';
@@ -29,10 +27,7 @@ import { isDraw } from '../../utils/completionReasons';
 import { validateMoveWithReason } from '../../utils/chessValidator';
 import { didMatchStateAdvance, waitForTxOrStateSync } from '../../utils/txSync';
 import ParticleBackground from '../../components/shared/ParticleBackground';
-import WhyArbitrum from '../../components/shared/WhyArbitrum';
-import ConnectedWalletCard from '../../components/shared/ConnectedWalletCard';
 import MatchCard from '../../components/shared/MatchCard';
-import WinnersLeaderboard from '../../components/shared/WinnersLeaderboard';
 import UserManual from '../../components/shared/UserManual';
 import MatchEndModal from '../../components/shared/MatchEndModal';
 import ActiveMatchAlertModal from '../../components/shared/ActiveMatchAlertModal';
@@ -48,7 +43,6 @@ import WalletBrowserPrompt from '../../components/WalletBrowserPrompt';
 import { useWalletBrowserPrompt } from '../../hooks/useWalletBrowserPrompt';
 import { isMobileDevice, isWalletBrowser } from '../../utils/mobileDetection';
 import { useChessV2PlayerActivity } from '../hooks/useChessV2PlayerActivity';
-import { useChessActiveTournaments } from '../hooks/useChessActiveTournaments';
 import { useChessPlayerProfile } from '../hooks/useChessPlayerProfile';
 import { useChessV2MatchHistory } from '../hooks/useChessV2MatchHistory';
 import {
@@ -505,9 +499,7 @@ export default function ChessV2() {
   const [rpcReady, setRpcReady] = useState(false);
   const [rpcProvider, setRpcProvider] = useState(null);
   const [walletBootDone, setWalletBootDone] = useState(!isWalletAvailable());
-  const [balance, setBalance] = useState(null);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [isWhyArbitrumExpanded, setIsWhyArbitrumExpanded] = useState(true);
   const [contractsExpanded, setContractsExpanded] = useState(false);
 
   const [dashboardLoading, setDashboardLoading] = useState(true);
@@ -545,8 +537,6 @@ export default function ChessV2() {
   const [ghostMove, setGhostMove] = useState(null);
 
   const [leaderboard] = useState([]);
-  const [leaderboardLoading] = useState(false);
-  const [leaderboardError] = useState(false);
   const [expandedPanel, setExpandedPanel] = useState(null);
   const [activeTooltip, setActiveTooltip] = useState(null);
   const [showMatchAlert, setShowMatchAlert] = useState(false);
@@ -557,7 +547,6 @@ export default function ChessV2() {
   const { showPrompt, handleWalletChoice, handleContinueChoice, triggerWalletPrompt } = useWalletBrowserPrompt();
 
   const playerActivity = useChessV2PlayerActivity(activeInstanceContract, account, resolvedFactoryContract, rpcProvider);
-  const lobby = useChessActiveTournaments(resolvedFactoryContract, rpcProvider, account);
   const playerProfile = useChessPlayerProfile(resolvedFactoryContract, rpcProvider, account);
   const v2MatchHistory = useChessV2MatchHistory(resolvedFactoryContract, rpcProvider, account);
 
@@ -634,15 +623,6 @@ export default function ChessV2() {
       });
     }
   };
-
-  useEffect(() => {
-    const loadBalance = async () => {
-      const runner = rpcProviderRef.current;
-      if (!account || !runner) { setBalance(null); return; }
-      try { setBalance(ethers.formatEther(await runner.getBalance(account))); } catch { setBalance(null); }
-    };
-    loadBalance();
-  }, [account, lastUpdated]);
 
   useEffect(() => {
     if (!rpcReady && !browserProvider) return;
@@ -858,7 +838,6 @@ export default function ChessV2() {
       const signer = await provider.getSigner();
       setBrowserProvider(provider);
       setAccount(await signer.getAddress());
-      setIsWhyArbitrumExpanded(false);
     } catch (error) {
       setActionState({ type: 'error', message: getReadableError(error, 'Wallet connection failed.') });
     } finally {
@@ -1684,50 +1663,6 @@ export default function ChessV2() {
           </div>
           <h1 className={`text-6xl md:text-7xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r ${currentTheme.heroTitle}`}>ETour Chess</h1>
           <p className={`text-2xl ${currentTheme.heroText} mb-6`}>Provably Fair • Zero Trust • 100% On-Chain</p>
-          <p className={`text-lg ${currentTheme.heroSubtext} max-w-3xl mx-auto mb-8`}>
-            Play Chess on the blockchain. Real opponents. Real ETH on the line.
-            <br />No servers required. No trust needed.
-            <br />Every move is a transaction. Every outcome is permanently on-chain.
-          </p>
-
-          <div className="grid md:grid-cols-3 gap-4 max-w-4xl mx-auto mb-8">
-            <div className="bg-gradient-to-br from-yellow-500/20 to-amber-500/20 border border-yellow-400/30 rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-2"><Clock className="text-yellow-400" size={20} /><span className="font-bold text-yellow-300">10 minutes per match</span></div>
-              <p className="text-sm text-yellow-200">Each player gets 10 minutes total for all their moves in the match.</p>
-            </div>
-            <div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <svg width="20" height="20" viewBox="0 0 256 417" xmlns="http://www.w3.org/2000/svg" className="text-green-400" fill="currentColor">
-                  <path d="M127.961 0l-2.795 9.5v275.668l2.795 2.79 127.962-75.638z" fillOpacity="0.6"/>
-                  <path d="M127.962 0L0 212.32l127.962 75.639V154.158z"/>
-                  <path d="M127.961 312.187l-1.575 1.92v98.199l1.575 4.6L256 236.587z" fillOpacity="0.6"/>
-                  <path d="M127.962 416.905v-104.72L0 236.585z"/>
-                  <path d="M127.961 287.958l127.96-75.637-127.96-58.162z" fillOpacity="0.2"/>
-                  <path d="M0 212.32l127.96 75.638v-133.8z" fillOpacity="0.6"/>
-                </svg>
-                <span className="font-bold text-green-300">Instant ETH Payouts</span>
-              </div>
-              <p className="text-sm text-green-200">Winners paid automatically on-chain. No delays, no middlemen.</p>
-            </div>
-            <div className="relative bg-gradient-to-br from-purple-500/20 to-violet-500/20 border border-purple-400/30 rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-2"><Shield className="text-purple-400" size={20} /><span className="font-bold text-purple-300">Impossible to grief</span></div>
-              <a href="#user-manual" className="absolute top-3 right-3 text-purple-400 hover:text-purple-300 transition-colors" title="Learn more about anti-griefing"><HelpCircle size={16} /></a>
-              <p className="text-sm text-purple-200">Anti-stalling mechanisms ensure every match completes. No admin required.</p>
-            </div>
-          </div>
-
-          {walletBootDone && !account ? (
-            <div className="w-full max-w-lg mx-auto">
-              <button onClick={connectWallet} disabled={isConnecting} className={`w-full flex items-center justify-center gap-3 bg-gradient-to-r ${currentTheme.buttonGradient} ${currentTheme.buttonHover} px-10 py-5 rounded-2xl font-bold text-2xl shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed scroll-mt-6`}>
-                {isConnecting ? <Loader size={28} className="animate-spin" /> : <Wallet size={28} />}
-                {isConnecting ? 'Connecting...' : 'Connect Wallet to Enter'}
-              </button>
-            </div>
-          ) : (
-            <ConnectedWalletCard account={account} balance={balance} contractAddress={factoryAddress} contractName="Chess v2 Factory" shortenAddress={shortenAddress} currentTheme={currentTheme} />
-          )}
-
-          <WhyArbitrum variant="blue" isExpanded={isWhyArbitrumExpanded} onToggle={() => setIsWhyArbitrumExpanded(!isWhyArbitrumExpanded)} />
         </div>
 
         <div className="mb-8 space-y-4">
@@ -1882,41 +1817,10 @@ export default function ChessV2() {
                   </form>
                 </SectionShell>
 
-                <SectionShell id="open-tournaments" title="Open Tournaments" right={<button type="button" onClick={() => { lobby.refetch(); playerProfile.refetch(); }} className="flex items-center gap-2 text-sm bg-blue-500/20 hover:bg-blue-500/30 border border-blue-400/30 text-blue-200 px-4 py-2 rounded-xl transition-colors"><RefreshCw size={16} className={lobby.loading ? 'animate-spin' : ''} />Refresh</button>}>
-                  {lobby.error ? <p className="text-red-300 text-sm">{lobby.error}</p> : lobby.loading ? (
-                    <div className="flex items-center gap-3 text-purple-300 py-4"><Loader size={20} className="animate-spin" /><span>Loading tournaments...</span></div>
-                  ) : lobby.active.length === 0 ? (
-                    <p className="text-slate-400 text-sm py-4">No open tournaments right now. Create one above to get started.</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {lobby.active.map(t => {
-                        const spotsLeft = t.playerCount - t.enrolledCount;
-                        const statusLabel = t.status === 0 ? 'Enrolling' : 'In Progress';
-                        const statusColor = t.status === 0 ? 'text-green-300' : 'text-yellow-300';
-                        return (
-                          <div key={t.address} className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-900/50 border border-purple-400/20 rounded-xl px-4 py-3 hover:border-purple-400/50 transition-colors">
-                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-                              <span className={`font-semibold ${statusColor}`}>{statusLabel}</span>
-                              <span className="text-white font-mono">{getTournamentTypeLabel(t.playerCount)} · {t.playerCount}p</span>
-                              <span className="text-slate-300">{t.entryFeeEth} ETH entry</span>
-                              <span className="text-slate-400">{t.enrolledCount}/{t.playerCount} enrolled{spotsLeft > 0 ? ` · ${spotsLeft} spot${spotsLeft !== 1 ? 's' : ''} left` : ''}</span>
-                              {t.isEnrolled && <span className="text-cyan-300 font-semibold">✓ Enrolled</span>}
-                            </div>
-                            <button type="button" onClick={() => enterInstanceBracket(t.address)} className="shrink-0 text-sm bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-semibold px-4 py-2 rounded-xl transition-all">{t.isEnrolled ? 'View Bracket' : t.status === 0 ? 'Join' : 'Spectate'}</button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </SectionShell>
               </>
             )}
           </>
         )}
-      </div>
-
-      <div className="max-w-7xl mx-auto px-6 pb-12" style={{ position: 'relative', zIndex: 10 }}>
-        <WinnersLeaderboard leaderboard={leaderboard} loading={leaderboardLoading} error={leaderboardError} currentAccount={account} onRetry={() => {}} onRefresh={() => {}} />
       </div>
       <div id="user-manual" className="max-w-7xl mx-auto px-6 pb-12" style={{ position: 'relative', zIndex: 10 }}>
         <UserManual contractInstance={null} tierConfigurations={[]} raffleThresholds={['0.001', '0.005', '0.02', '0.05', '0.25', '0.5', '0.75', '1']} />
