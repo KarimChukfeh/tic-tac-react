@@ -18,6 +18,7 @@ import {
   ChevronDown,
   ChevronUp,
   History,
+  HelpCircle,
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import { CURRENT_NETWORK, getAddressUrl } from '../../config/networks';
@@ -78,17 +79,18 @@ const DEFAULT_CREATE_FORM = {
 };
 
 const currentTheme = {
-  border: 'rgba(239, 68, 68, 0.28)',
-  particleColors: ['#ef4444', '#3b82f6'],
-  gradient: 'linear-gradient(140deg, #140816 0%, #1f1637 42%, #0d1f3d 100%)',
-  heroGlow: 'from-red-500 via-yellow-500 to-blue-500',
-  heroIcon: 'text-yellow-300',
-  heroTitle: 'from-red-400 via-yellow-300 to-blue-400',
-  heroSubtext: 'text-red-100/90',
-  buttonGradient: 'from-red-500 via-orange-500 to-blue-500',
-  buttonHover: 'hover:from-red-600 hover:via-orange-600 hover:to-blue-600',
-  primary: 'rgba(239, 68, 68, 0.5)',
-  secondary: 'rgba(59, 130, 246, 0.5)',
+  border: 'rgba(0, 255, 255, 0.3)',
+  particleColors: ['#0066ff', '#ff0044'],
+  gradient: 'linear-gradient(135deg, #0a0015 0%, #1a0030 50%, #0f001a 100%)',
+  heroGlow: 'from-blue-500 via-cyan-500 to-blue-500',
+  heroIcon: 'text-blue-400',
+  heroTitle: 'from-blue-400 via-cyan-400 to-blue-400',
+  heroText: 'text-blue-200',
+  heroSubtext: 'text-blue-300',
+  buttonGradient: 'from-blue-500 to-cyan-500',
+  buttonHover: 'hover:from-blue-600 hover:to-cyan-600',
+  primary: 'rgba(0, 255, 255, 0.5)',
+  secondary: 'rgba(255, 0, 255, 0.5)',
 };
 
 function isWalletAvailable() {
@@ -157,6 +159,63 @@ function decodeConnectFourMoves(movesString) {
   return columns;
 }
 
+const AnimatedDisc = ({ delay = 0, size = 'large' }) => {
+  const [showRed, setShowRed] = useState(true);
+  const [started, setStarted] = useState(delay === 0);
+
+  useEffect(() => {
+    if (delay > 0) {
+      const timeout = setTimeout(() => setStarted(true), delay);
+      return () => clearTimeout(timeout);
+    }
+  }, [delay]);
+
+  useEffect(() => {
+    if (!started) return;
+    const interval = setInterval(() => {
+      setShowRed(prev => !prev);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [started]);
+
+  const svgSize = size === 'large' ? 128 : 32;
+
+  return (
+    <span className="relative inline-block">
+      <svg width={svgSize} height={svgSize} viewBox="0 0 128 128" style={{ position: 'absolute' }}>
+        <circle
+          cx="64"
+          cy="64"
+          r="58"
+          fill="url(#redAnimGradientV2)"
+          style={{ opacity: showRed ? 1 : 0, transition: 'opacity 1s ease-in-out' }}
+        />
+        <defs>
+          <radialGradient id="redAnimGradientV2" cx="30%" cy="30%">
+            <stop offset="0%" stopColor="#ff0044" />
+            <stop offset="100%" stopColor="#bb0033" />
+          </radialGradient>
+        </defs>
+      </svg>
+      <svg width={svgSize} height={svgSize} viewBox="0 0 128 128">
+        <circle
+          cx="64"
+          cy="64"
+          r="58"
+          fill="url(#blueAnimGradientV2)"
+          style={{ opacity: showRed ? 0 : 1, transition: 'opacity 1s ease-in-out' }}
+        />
+        <defs>
+          <radialGradient id="blueAnimGradientV2" cx="30%" cy="30%">
+            <stop offset="0%" stopColor="#0077ff" />
+            <stop offset="100%" stopColor="#0055aa" />
+          </radialGradient>
+        </defs>
+      </svg>
+    </span>
+  );
+};
+
 function ActionMessage({ type = 'info', message }) {
   if (!message) return null;
   const styles = {
@@ -174,9 +233,9 @@ function ActionMessage({ type = 'info', message }) {
 function SectionShell({ title, children, right = null, id = null }) {
   return (
     <div id={id} className="mb-10">
-      <div className="bg-gradient-to-r from-red-600/15 via-orange-500/15 to-blue-600/15 backdrop-blur-lg rounded-2xl p-6 border border-red-400/20">
+      <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-6 border border-purple-400/30">
         <div className="flex items-center justify-between gap-4 mb-6">
-          <h2 className="text-3xl font-bold text-orange-200 flex items-center gap-3">
+          <h2 className="text-3xl font-bold text-purple-300 flex items-center gap-3">
             <Grid size={28} />
             {title}
           </h2>
@@ -492,8 +551,8 @@ const TournamentBracket = ({
         contract={instanceContract}
       />
 
-      <div ref={bracketViewRef} className="bg-gradient-to-br from-slate-900/50 to-blue-950/30 backdrop-blur-lg rounded-2xl p-8 border border-red-400/20">
-        <h3 className="text-2xl font-bold text-orange-200 mb-3 flex items-center gap-2">
+      <div ref={bracketViewRef} className="bg-gradient-to-br from-slate-900/50 to-purple-900/30 backdrop-blur-lg rounded-2xl p-8 border border-purple-400/30">
+        <h3 className="text-2xl font-bold text-purple-300 mb-3 flex items-center gap-2">
           <Grid size={24} />
           {tournamentTypeLabel} Bracket
         </h3>
@@ -502,7 +561,7 @@ const TournamentBracket = ({
           <div className="space-y-8">
             {rounds.map((round, roundIdx) => (
               <div key={roundIdx}>
-                <h4 className="text-xl font-bold text-orange-300 mb-4">
+                <h4 className="text-xl font-bold text-purple-400 mb-4">
                   Round {roundIdx + 1}
                   {roundIdx === totalRounds - 1 && ' - Finals'}
                   {roundIdx === totalRounds - 2 && rounds.length > 1 && ' - Semi-Finals'}
@@ -536,11 +595,11 @@ const TournamentBracket = ({
         ) : (
           <div className="space-y-6">
             <div className="text-left py-4">
-              <div className="text-orange-100 text-lg">
+              <div className="text-purple-300 text-lg">
                 {status === 0 ? 'Brackets will be generated once the instance starts.' : 'No bracket data available.'}
               </div>
             </div>
-            {enrolledCount === 0 && <hr className="border-orange-500/20" />}
+            {enrolledCount === 0 && <hr className="border-purple-500/20" />}
             {enrolledCount === 0 && (
               <div id="last-instance">
                 <RecentInstanceCard
@@ -1857,7 +1916,7 @@ export default function ConnectFourV2() {
       )}
 
       <div className="fixed bottom-0 left-0 right-0 z-50 md:static md:z-auto">
-        <div className="md:hidden bg-gradient-to-b from-slate-800 to-slate-900 border-t border-red-400/30 px-4 py-2.5 flex items-center justify-between">
+      <div className="md:hidden bg-gradient-to-b from-slate-800 to-slate-900 border-t border-purple-400/30 px-4 py-2.5 flex items-center justify-between">
           <GamesCard
             currentGame="connect4"
             onHeightChange={setGamesCardHeight}
@@ -1968,17 +2027,17 @@ export default function ConnectFourV2() {
         </div>
       </div>
 
-      <div style={{ background: 'rgba(120, 40, 40, 0.22)', borderBottom: `1px solid ${currentTheme.border}`, backdropFilter: 'blur(10px)', position: 'relative', zIndex: 10 }}>
+      <div style={{ background: 'rgba(0, 100, 200, 0.2)', borderBottom: `1px solid ${currentTheme.border}`, backdropFilter: 'blur(10px)', position: 'relative', zIndex: 10 }}>
         <div className="max-w-7xl mx-auto px-6 py-3">
           <div className={`flex flex-col md:flex-row md:items-center ${explorerUrl ? 'md:justify-between' : 'md:justify-center'} gap-3 md:gap-4 text-xs md:text-sm`}>
             <div className={`flex flex-wrap items-center gap-x-4 gap-y-2 md:gap-6 justify-center ${explorerUrl ? 'md:justify-start' : ''}`}>
-              <div className="flex items-center gap-2"><Shield className="text-red-300" size={16} /><span className="text-orange-100 font-medium">100% On-Chain</span></div>
-              <div className="flex items-center gap-2"><Lock className="text-red-300" size={16} /><span className="text-orange-100 font-medium">Immutable Rules</span></div>
-              <div className="flex items-center gap-2"><Eye className="text-red-300" size={16} /><span className="text-orange-100 font-medium">Every Move Verifiable</span></div>
-              <div className="flex items-center gap-2"><CheckCircle className="text-red-300" size={16} /><span className="text-orange-100 font-medium">Zero Trackers</span></div>
+              <div className="flex items-center gap-2"><Shield className="text-blue-400" size={16} /><span className="text-blue-100 font-medium">100% On-Chain</span></div>
+              <div className="flex items-center gap-2"><Lock className="text-blue-400" size={16} /><span className="text-blue-100 font-medium">Immutable Rules</span></div>
+              <div className="flex items-center gap-2"><Eye className="text-blue-400" size={16} /><span className="text-blue-100 font-medium">Every Move Verifiable</span></div>
+              <div className="flex items-center gap-2"><CheckCircle className="text-blue-400" size={16} /><span className="text-blue-100 font-medium">Zero Trackers</span></div>
             </div>
             {explorerUrl ? (
-              <a href={explorerUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-orange-200 hover:text-orange-100 transition-colors justify-center md:justify-end">
+              <a href={explorerUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-blue-300 hover:text-blue-200 transition-colors justify-center md:justify-end">
                 <Code size={16} />
                 <span className="font-mono text-xs">{shortenAddress(factoryAddress)}</span>
                 <ExternalLink size={14} />
@@ -1993,34 +2052,49 @@ export default function ConnectFourV2() {
           <div className="inline-block mb-6">
             <div className="relative">
               <div className={`absolute -inset-4 bg-gradient-to-r ${currentTheme.heroGlow} rounded-full blur-xl opacity-50 animate-pulse`} />
-              <Grid className={`relative ${currentTheme.heroIcon} animate-float`} size={80} />
+              <div className="relative">
+                <AnimatedDisc />
+              </div>
             </div>
           </div>
           <h1 className={`text-6xl md:text-7xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r ${currentTheme.heroTitle}`}>
             ETour Connect Four
           </h1>
-          <p className="text-2xl text-orange-100 mb-6">Provably Fair • Zero Trust • 100% On-Chain</p>
-          <p className={`text-lg ${currentTheme.heroSubtext} max-w-3xl mx-auto mb-2`}>
-            Drop every disc on-chain. Real opponents. Real ETH on the line.
+          <p className={`text-2xl ${currentTheme.heroText} mb-6`}>Provably Fair • Zero Trust • 100% On-Chain</p>
+          <p className={`text-lg ${currentTheme.heroSubtext} max-w-3xl mx-auto mb-8`}>
+            Play Connect Four on the blockchain. Real opponents. Real ETH on the line.
             <br />No servers required. No trust needed.
-            <br />Every move is a transaction. Every bracket is permanently verifiable.
+            <br />Every move is a transaction. Every outcome is permanently on-chain.
           </p>
-          <p className="text-base text-yellow-200 max-w-3xl mx-auto mb-8">
-            V2 replaces fixed tiers with on-demand tournament instances you can create, join, and share directly.
+          <p className="text-base text-cyan-300 max-w-3xl mx-auto mb-8">
+            V2 keeps the same Connect Four look and feel while replacing fixed tiers with on-demand tournament instances.
           </p>
 
           <div className="grid md:grid-cols-3 gap-4 max-w-4xl mx-auto mb-8">
-            <div className="bg-gradient-to-br from-red-500/20 to-orange-500/20 border border-red-400/30 rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-2"><Clock className="text-red-300" size={20} /><span className="font-bold text-red-200">Custom match timing</span></div>
-              <p className="text-sm text-red-100">Choose player count, entry fee, and time controls when you create an instance.</p>
-            </div>
             <div className="bg-gradient-to-br from-yellow-500/20 to-amber-500/20 border border-yellow-400/30 rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-2"><Trophy className="text-yellow-300" size={20} /><span className="font-bold text-yellow-200">Permanent match records</span></div>
-              <p className="text-sm text-yellow-100">Every bracket, every move, and every payout remain visible on-chain.</p>
+              <div className="flex items-center gap-2 mb-2"><Clock className="text-yellow-400" size={20} /><span className="font-bold text-yellow-300">5 minutes per match</span></div>
+              <p className="text-sm text-yellow-200">Each player gets 5 minutes total for all their moves in the match.</p>
             </div>
-            <div className="bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-blue-400/30 rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-2"><Shield className="text-blue-300" size={20} /><span className="font-bold text-blue-200">Factory-driven instances</span></div>
-              <p className="text-sm text-blue-100">Create the exact duel or tournament you want instead of waiting for a fixed slot.</p>
+            <div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <svg width="20" height="20" viewBox="0 0 256 417" xmlns="http://www.w3.org/2000/svg" className="text-green-400" fill="currentColor">
+                  <path d="M127.961 0l-2.795 9.5v275.668l2.795 2.79 127.962-75.638z" fillOpacity="0.6"/>
+                  <path d="M127.962 0L0 212.32l127.962 75.639V154.158z"/>
+                  <path d="M127.961 312.187l-1.575 1.92v98.199l1.575 4.6L256 236.587z" fillOpacity="0.6"/>
+                  <path d="M127.962 416.905v-104.72L0 236.585z"/>
+                  <path d="M127.961 287.958l127.96-75.637-127.96-58.162z" fillOpacity="0.2"/>
+                  <path d="M0 212.32l127.96 75.638v-133.8z" fillOpacity="0.6"/>
+                </svg>
+                <span className="font-bold text-green-300">Instant ETH Payouts</span>
+              </div>
+              <p className="text-sm text-green-200">Winners paid automatically on-chain. No delays, no middlemen.</p>
+            </div>
+            <div className="relative bg-gradient-to-br from-purple-500/20 to-violet-500/20 border border-purple-400/30 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-2"><Shield className="text-purple-400" size={20} /><span className="font-bold text-purple-300">Impossible to grief</span></div>
+              <a href="#user-manual" className="absolute top-3 right-3 text-purple-400 hover:text-purple-300 transition-colors" title="Learn more about anti-griefing">
+                <HelpCircle size={16} />
+              </a>
+              <p className="text-sm text-purple-200">Anti-stalling mechanisms ensure every match completes. No admin required.</p>
             </div>
           </div>
 
@@ -2195,7 +2269,7 @@ export default function ConnectFourV2() {
                     <button
                       type="button"
                       onClick={refreshDashboard}
-                      className="flex items-center gap-2 text-sm bg-red-500/20 hover:bg-red-500/30 border border-red-400/30 text-red-100 px-4 py-2 rounded-xl transition-colors"
+                      className="flex items-center gap-2 text-sm bg-blue-500/20 hover:bg-blue-500/30 border border-blue-400/30 text-blue-200 px-4 py-2 rounded-xl transition-colors"
                     >
                       <RefreshCw size={16} className={dashboardLoading ? 'animate-spin' : ''} />
                       Refresh
@@ -2203,10 +2277,10 @@ export default function ConnectFourV2() {
                   )}
                 >
                   <form onSubmit={createInstance}>
-                    <div className="bg-slate-900/50 border border-red-400/20 rounded-2xl p-4 md:p-5">
+                    <div className="bg-slate-900/50 border border-purple-400/20 rounded-2xl p-4 md:p-5">
                       <div className="grid gap-4 md:grid-cols-[minmax(0,1.4fr)_minmax(240px,0.8fr)]">
                         <div>
-                          <div className="text-sm text-orange-100 mb-2">Player Count (up to 32)</div>
+                          <div className="text-sm text-purple-200 mb-2">Player Count (up to 32)</div>
                           <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                             {PLAYER_COUNT_OPTIONS.map(option => {
                               const active = Number(createForm.playerCount) === option;
@@ -2215,7 +2289,7 @@ export default function ConnectFourV2() {
                                   key={option}
                                   type="button"
                                   onClick={() => setPlayerCount(option)}
-                                  className={`px-3 py-2.5 rounded-xl font-semibold transition-all ${active ? 'bg-gradient-to-r from-red-500 to-blue-500 text-white shadow-lg' : 'bg-slate-800/80 border border-slate-700 text-slate-300 hover:border-orange-400/40'}`}
+                                  className={`px-3 py-2.5 rounded-xl font-semibold transition-all ${active ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg' : 'bg-slate-800/80 border border-slate-700 text-slate-300 hover:border-cyan-400/40'}`}
                                 >
                                   {option}
                                 </button>
@@ -2226,7 +2300,7 @@ export default function ConnectFourV2() {
 
                         <div>
                           <label className="block">
-                            <div className="text-sm text-orange-100 mb-2">Entry Fee ({factoryRules ? `${formatEth(factoryRules.minEntryFee)}+ ETH` : '0.001 - 1 ETH'})</div>
+                            <div className="text-sm text-purple-200 mb-2">Entry Fee ({factoryRules ? `${formatEth(factoryRules.minEntryFee)}+ ETH` : '0.001 - 1 ETH'})</div>
                             <input
                               type="number"
                               min="0.001"
@@ -2234,7 +2308,7 @@ export default function ConnectFourV2() {
                               step="0.001"
                               value={createForm.entryFee}
                               onChange={event => updateCreateForm('entryFee', event.target.value)}
-                              className="w-full bg-slate-950/80 border border-red-400/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-red-400"
+                              className="w-full bg-slate-950/80 border border-purple-400/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-400"
                             />
                           </label>
                         </div>
@@ -2244,16 +2318,16 @@ export default function ConnectFourV2() {
                         <button
                           type="button"
                           onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
-                          className="flex items-center gap-2 text-orange-200 hover:text-orange-100 transition-colors mb-2"
+                          className="flex items-center gap-2 text-purple-300 hover:text-purple-200 transition-colors mb-2"
                         >
                           {showAdvancedSettings ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                           <span className="text-sm font-semibold">More Settings</span>
                         </button>
 
                         {showAdvancedSettings && (
-                          <div className="grid gap-4 lg:grid-cols-3 bg-slate-950/50 border border-red-400/10 rounded-xl p-4">
+                          <div className="grid gap-4 lg:grid-cols-3 bg-slate-950/50 border border-purple-400/10 rounded-xl p-4">
                             <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-3">
-                              <div className="text-sm text-orange-100 mb-2">Enrollment Window</div>
+                              <div className="text-sm text-purple-200 mb-2">Enrollment Window</div>
                               <div className="grid grid-cols-2 gap-2">
                                 {ENROLLMENT_WINDOW_OPTIONS.map(seconds => {
                                   const active = Number(createForm.enrollmentWindow) === seconds;
@@ -2263,7 +2337,7 @@ export default function ConnectFourV2() {
                                       key={seconds}
                                       type="button"
                                       onClick={() => updateCreateForm('enrollmentWindow', seconds)}
-                                      className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all ${active ? 'bg-gradient-to-r from-red-500 to-blue-500 text-white shadow-md' : 'bg-slate-800/80 border border-slate-700 text-slate-300 hover:border-red-400/40'}`}
+                                      className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all ${active ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md' : 'bg-slate-800/80 border border-slate-700 text-slate-300 hover:border-blue-400/40'}`}
                                     >
                                       {label}
                                     </button>
@@ -2273,7 +2347,7 @@ export default function ConnectFourV2() {
                             </div>
 
                             <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-3">
-                              <div className="text-sm text-orange-100 mb-2">Time Per Player</div>
+                              <div className="text-sm text-purple-200 mb-2">Time Per Player</div>
                               <div className="grid grid-cols-2 gap-2">
                                 {TIME_PER_PLAYER_OPTIONS.map(seconds => {
                                   const active = Number(createForm.matchTimePerPlayer) === seconds;
@@ -2283,7 +2357,7 @@ export default function ConnectFourV2() {
                                       key={seconds}
                                       type="button"
                                       onClick={() => updateCreateForm('matchTimePerPlayer', seconds)}
-                                      className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all ${active ? 'bg-gradient-to-r from-red-500 to-blue-500 text-white shadow-md' : 'bg-slate-800/80 border border-slate-700 text-slate-300 hover:border-red-400/40'}`}
+                                      className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all ${active ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md' : 'bg-slate-800/80 border border-slate-700 text-slate-300 hover:border-blue-400/40'}`}
                                     >
                                       {label}
                                     </button>
@@ -2293,7 +2367,7 @@ export default function ConnectFourV2() {
                             </div>
 
                             <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-3">
-                              <div className="text-sm text-orange-100 mb-2">Increment Time</div>
+                              <div className="text-sm text-purple-200 mb-2">Increment Time</div>
                               <div className="grid grid-cols-2 gap-2">
                                 {TIME_INCREMENT_OPTIONS.map(seconds => {
                                   const active = Number(createForm.timeIncrementPerMove) === seconds;
@@ -2302,7 +2376,7 @@ export default function ConnectFourV2() {
                                       key={seconds}
                                       type="button"
                                       onClick={() => updateCreateForm('timeIncrementPerMove', seconds)}
-                                      className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all ${active ? 'bg-gradient-to-r from-red-500 to-blue-500 text-white shadow-md' : 'bg-slate-800/80 border border-slate-700 text-slate-300 hover:border-red-400/40'}`}
+                                      className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all ${active ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md' : 'bg-slate-800/80 border border-slate-700 text-slate-300 hover:border-blue-400/40'}`}
                                     >
                                       {seconds}s
                                     </button>
@@ -2355,13 +2429,13 @@ export default function ConnectFourV2() {
                   )}
                 >
                   {lobby.error ? (
-                    <p className="text-red-300 text-sm">{lobby.error}</p>
-                  ) : lobby.loading ? (
-                    <div className="flex items-center gap-3 text-orange-100 py-4">
-                      <Loader size={20} className="animate-spin" />
-                      <span>Loading tournaments...</span>
-                    </div>
-                  ) : lobby.active.length === 0 ? (
+                  <p className="text-red-300 text-sm">{lobby.error}</p>
+                ) : lobby.loading ? (
+                  <div className="flex items-center gap-3 text-purple-300 py-4">
+                    <Loader size={20} className="animate-spin" />
+                    <span>Loading tournaments...</span>
+                  </div>
+                ) : lobby.active.length === 0 ? (
                     <p className="text-slate-400 text-sm py-4">No open tournaments right now. Create one above to get started.</p>
                   ) : (
                     <div className="space-y-3">
@@ -2370,7 +2444,7 @@ export default function ConnectFourV2() {
                         const statusLabel = t.status === 0 ? 'Enrolling' : 'In Progress';
                         const statusColor = t.status === 0 ? 'text-green-300' : 'text-yellow-300';
                         return (
-                          <div key={t.address} className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-900/50 border border-red-400/20 rounded-xl px-4 py-3 hover:border-red-400/50 transition-colors">
+                          <div key={t.address} className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-900/50 border border-purple-400/20 rounded-xl px-4 py-3 hover:border-purple-400/50 transition-colors">
                             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
                               <span className={`font-semibold ${statusColor}`}>{statusLabel}</span>
                               <span className="text-white font-mono">{getTournamentTypeLabel(t.playerCount)} · {t.playerCount}p</span>
@@ -2381,7 +2455,7 @@ export default function ConnectFourV2() {
                             <button
                               type="button"
                               onClick={() => enterInstanceBracket(t.address)}
-                              className="shrink-0 text-sm bg-gradient-to-r from-red-500 to-blue-500 hover:from-red-600 hover:to-blue-600 text-white font-semibold px-4 py-2 rounded-xl transition-all"
+                              className="shrink-0 text-sm bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-semibold px-4 py-2 rounded-xl transition-all"
                             >
                               {t.isEnrolled ? 'View Bracket' : t.status === 0 ? 'Join' : 'Spectate'}
                             </button>
@@ -2421,7 +2495,7 @@ export default function ConnectFourV2() {
           <div className="flex flex-col md:flex-row justify-between items-center gap-8 mb-8">
             <div className="text-center md:text-left">
               <p className="text-slate-500 text-sm mb-2">
-                Powered by <span className="font-semibold bg-clip-text text-transparent" style={{ background: 'linear-gradient(135deg, #f97316, #3b82f6)', WebkitBackgroundClip: 'text' }}>ETour Protocol</span>
+                Powered by <span className="font-semibold bg-clip-text text-transparent" style={{ background: 'linear-gradient(135deg, #06b6d4, #3b82f6)', WebkitBackgroundClip: 'text' }}>ETour Protocol</span>
               </p>
               <p className="text-slate-600 text-xs">Open-source perpetual tournament infrastructure on Arbitrum</p>
             </div>
@@ -2469,6 +2543,45 @@ export default function ConnectFourV2() {
         html { scroll-behavior: smooth; }
         @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-20px); } }
         .animate-float { animation: float 3s ease-in-out infinite; }
+        @media (max-width: 768px) {
+          .particle {
+            font-size: 12px;
+          }
+        }
+        @keyframes particle-float {
+          0% {
+            transform: translateY(100vh) translateX(0);
+            opacity: 0.3;
+          }
+          10% {
+            opacity: 0.5;
+          }
+          90% {
+            opacity: 1;
+          }
+          100% {
+            transform: translateY(calc(-100vh - 100px)) translateX(100px);
+            opacity: 0;
+          }
+        }
+        @media (max-width: 768px) {
+          @keyframes particle-float {
+            0% {
+              transform: translateY(100vh) translateX(0);
+              opacity: 0.2;
+            }
+            10% {
+              opacity: 0.3;
+            }
+            90% {
+              opacity: 0.7;
+            }
+            100% {
+              transform: translateY(calc(-100vh - 100px)) translateX(100px);
+              opacity: 0;
+            }
+          }
+        }
       `}</style>
     </div>
   );
