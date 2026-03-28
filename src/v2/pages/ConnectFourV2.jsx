@@ -68,7 +68,7 @@ import {
 const CONNECTFOUR_SYMBOLS = ['🔴', '🔵'];
 const VIRTUAL_TIER_ID = 0;
 const VIRTUAL_INSTANCE_ID = 0;
-const LOCAL_CHAIN_ID_HEX = `0x${CURRENT_NETWORK.chainId.toString(16)}`;
+const TARGET_CHAIN_ID_HEX = `0x${CURRENT_NETWORK.chainId.toString(16)}`;
 
 const DEFAULT_CREATE_FORM = {
   playerCount: 2,
@@ -714,7 +714,7 @@ export default function ConnectFourV2() {
 
   const resolveFactoryContract = async () => {
     const runner = rpcProviderRef.current;
-    if (!runner) throw new Error('Local RPC provider is not ready.');
+    if (!runner) throw new Error('RPC provider is not ready.');
     for (const candidateAddress of CONNECTFOUR_V2_FACTORY_ADDRESS_CANDIDATES) {
       const code = await runner.getCode(candidateAddress);
       if (!code || code === '0x') continue;
@@ -759,18 +759,18 @@ export default function ConnectFourV2() {
     bootWallet().catch(() => setWalletBootDone(true));
   }, []);
 
-  const ensureWalletOnLocalRpc = async (provider) => {
+  const ensureWalletOnCurrentNetwork = async (provider) => {
     const network = await provider.getNetwork();
     const currentChainId = `0x${BigInt(network.chainId).toString(16)}`;
-    if (currentChainId === LOCAL_CHAIN_ID_HEX) return;
+    if (currentChainId === TARGET_CHAIN_ID_HEX) return;
     try {
-      await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: LOCAL_CHAIN_ID_HEX }] });
+      await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: TARGET_CHAIN_ID_HEX }] });
     } catch (switchError) {
       if (switchError?.code !== 4902) throw switchError;
       await window.ethereum.request({
         method: 'wallet_addEthereumChain',
         params: [{
-          chainId: LOCAL_CHAIN_ID_HEX,
+          chainId: TARGET_CHAIN_ID_HEX,
           chainName: CURRENT_NETWORK.name,
           nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
           rpcUrls: [CURRENT_NETWORK.rpcUrl],
@@ -1005,7 +1005,7 @@ export default function ConnectFourV2() {
     setIsConnecting(true);
     try {
       const provider = new ethers.BrowserProvider(window.ethereum);
-      await ensureWalletOnLocalRpc(provider);
+      await ensureWalletOnCurrentNetwork(provider);
       await provider.send('eth_requestAccounts', []);
       const signer = await provider.getSigner();
       setBrowserProvider(provider);

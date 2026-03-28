@@ -1,3 +1,5 @@
+import TicTacToeV2FactoryData from '../v2/ABIs/TicTacChainFactory-ABI.json';
+
 // Network configuration for ETour gaming platform
 // Switch networks via VITE_NETWORK environment variable
 
@@ -23,9 +25,31 @@ export const NETWORKS = {
   },
 };
 
-// Get current network from environment, default to localhost
-const networkKey = import.meta.env.VITE_NETWORK || 'localhost';
-export const CURRENT_NETWORK = NETWORKS[networkKey] || NETWORKS.localhost;
+const ABI_NETWORK_KEY_MAP = {
+  arbitrum: 'arbitrumOne',
+  arbitrumOne: 'arbitrumOne',
+  localhost: 'localhost',
+  hardhat: 'localhost',
+};
+
+function resolveDefaultNetworkKey() {
+  const manifestNetwork = ABI_NETWORK_KEY_MAP[TicTacToeV2FactoryData.network];
+  if (manifestNetwork && NETWORKS[manifestNetwork]) {
+    return manifestNetwork;
+  }
+
+  const manifestChainId = Number(TicTacToeV2FactoryData.chainId);
+  const matchedNetwork = Object.entries(NETWORKS).find(([, network]) => network.chainId === manifestChainId);
+  return matchedNetwork?.[0] || 'localhost';
+}
+
+const networkKey = import.meta.env.VITE_NETWORK || resolveDefaultNetworkKey();
+const selectedNetwork = NETWORKS[networkKey] || NETWORKS.localhost;
+
+export const CURRENT_NETWORK = {
+  ...selectedNetwork,
+  rpcUrl: import.meta.env.VITE_RPC_URL || selectedNetwork.rpcUrl,
+};
 
 // Contract addresses - can be overridden via environment variables
 export const CONTRACT_ADDRESSES = {
