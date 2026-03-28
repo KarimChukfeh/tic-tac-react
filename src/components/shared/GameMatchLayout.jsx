@@ -71,6 +71,7 @@ const GameMatchLayout = ({
   match,
   account,
   loading,
+  loadingMessage,
   syncDots,
 
   // Handlers
@@ -1241,7 +1242,7 @@ const GameMatchLayout = ({
       )}
 
       {/* Loading Overlay */}
-      {loading && <LoadingOverlay />}
+      {loading && <LoadingOverlay message={loadingMessage} />}
     </div>
   );
 };

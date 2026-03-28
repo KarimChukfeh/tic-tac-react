@@ -119,9 +119,17 @@ function ActionMessage({ type = 'info', message }) {
     error: 'bg-red-500/15 border-red-400/30 text-red-200',
     success: 'bg-green-500/15 border-green-400/30 text-green-200',
   };
+  const icon = type === 'success'
+    ? <CheckCircle size={16} className="mt-0.5 shrink-0" />
+    : type === 'error'
+      ? <AlertCircle size={16} className="mt-0.5 shrink-0" />
+      : <Loader size={16} className="mt-0.5 shrink-0 animate-spin" />;
   return (
     <div className={`rounded-xl border px-4 py-3 text-sm ${styles[type] || styles.info}`}>
-      {message}
+      <div className="flex items-start gap-3">
+        {icon}
+        <span>{message}</span>
+      </div>
     </div>
   );
 }
@@ -398,6 +406,7 @@ const TournamentBracket = ({
 };
 
 const TARGET_CHAIN_ID_HEX = `0x${CURRENT_NETWORK.chainId.toString(16)}`;
+const DEFAULT_MATCH_LOADING_MESSAGE = 'Loading match...';
 
 export default function TicTacToeV2() {
   useInitialDocumentScrollTop('/v2/tictactoe');
@@ -456,6 +465,7 @@ export default function TicTacToeV2() {
   // --- Match state (mirrors V1) ---
   const [currentMatch, setCurrentMatch] = useState(null);
   const [matchLoading, setMatchLoading] = useState(false);
+  const [matchLoadingMessage, setMatchLoadingMessage] = useState(DEFAULT_MATCH_LOADING_MESSAGE);
   const [moveHistory, setMoveHistory] = useState([]);
 
   // Debug logging for moveHistory changes
@@ -885,8 +895,9 @@ export default function TicTacToeV2() {
         BigInt(createForm.timeIncrementPerMove),
         { value: entryFeeWei }
       );
-      setActionState({ type: 'info', message: 'Waiting for confirmation...' });
+      setActionState({ type: 'info', message: 'Transaction submitted. Waiting for block confirmation...' });
       const receipt = await tx.wait();
+      setActionState({ type: 'info', message: 'Transaction confirmed. Locating the new instance and syncing tournament data...' });
       const address = await resolveCreatedInstanceAddress({
         factory: await resolveFactoryContract(),
         provider: getReadRunner(),
@@ -1007,14 +1018,38 @@ export default function TicTacToeV2() {
     try {
       setTournamentsLoading(true);
       const writableInstance = await withInstanceSigner(activeInstanceContract);
+      const previousTournament = viewingTournament;
+      setActionState({ type: 'info', message: 'Confirm your enrollment in MetaMask...' });
       const tx = await writableInstance.enrollInTournament({ value: viewingTournament.entryFeeWei });
-      await tx.wait();
-      const updated = await refreshTournamentBracket(viewingTournament.address);
+      setActionState({ type: 'info', message: 'Enrollment submitted. Waiting for block confirmation...' });
+      const syncResult = await waitForTxOrStateSync({
+        tx,
+        timeoutMs: 45_000,
+        postReceiptSyncMs: 12_000,
+        sync: async () => refreshTournamentBracket(previousTournament.address),
+        isSynced: (updatedTournament) => {
+          if (!updatedTournament) return false;
+          const userEnrolled = updatedTournament.players?.some(
+            (playerAddress) => playerAddress?.toLowerCase() === account.toLowerCase()
+          );
+          return userEnrolled || Number(updatedTournament.enrolledCount ?? 0) > Number(previousTournament.enrolledCount ?? 0);
+        },
+        onReceipt: () => {
+          setActionState({ type: 'info', message: 'Enrollment confirmed. Syncing tournament lobby...' });
+        },
+      });
+      const updated = syncResult.updated || await refreshTournamentBracket(previousTournament.address);
       if (updated) setViewingTournament(updated);
-      setTournamentsLoading(false);
+      setActionState({
+        type: syncResult.synced ? 'success' : 'info',
+        message: syncResult.synced
+          ? 'Enrollment confirmed and reflected in the tournament lobby.'
+          : 'Enrollment confirmed on-chain. The tournament lobby is still syncing and should update shortly.',
+      });
     } catch (error) {
       console.error('[V2] Enroll error:', error);
       setActionState({ type: 'error', message: getReadableError(error, 'Enrollment failed.') });
+    } finally {
       setTournamentsLoading(false);
     }
   }, [viewingTournament, activeInstanceContract, account, refreshTournamentBracket]);
@@ -1062,13 +1097,17 @@ export default function TicTacToeV2() {
         ? `You are the only enrolled player. Force-starting will declare you the winner.${forfeitPool > 0n ? ` Plus ${ethers.formatEther(forfeitPool)} ETH forfeited fees.` : ''} Continue?`
         : `Force-starting with ${enrolledCount} players.${forfeitPool > 0n ? ` Forfeit pool of ${ethers.formatEther(forfeitPool)} ETH will be distributed.` : ''} Continue?`;
       if (!window.confirm(msg)) { setTournamentsLoading(false); return; }
+      setActionState({ type: 'info', message: 'Confirm the force-start transaction in MetaMask...' });
       const tx = await writableInstance.forceStartTournament();
+      setActionState({ type: 'info', message: 'Force-start submitted. Waiting for block confirmation...' });
       await tx.wait();
+      setActionState({ type: 'info', message: 'Force-start confirmed. Refreshing tournament state...' });
       alert('Tournament force-started successfully!');
       if (enrolledCount === 1) { setViewingTournament(null); setCurrentMatch(null); } else {
         const updated = await refreshTournamentBracket(viewingTournament.address);
         if (updated) setViewingTournament(updated);
       }
+      setActionState({ type: 'success', message: 'Tournament state refreshed after the force-start transaction.' });
       setTournamentsLoading(false);
     } catch (error) {
       console.error('[V2] Force start error:', error);
@@ -1083,11 +1122,15 @@ export default function TicTacToeV2() {
     try {
       setTournamentsLoading(true);
       const writableInstance = await withInstanceSigner(activeInstanceContract);
+      setActionState({ type: 'info', message: 'Confirm the enrollment reset in MetaMask...' });
       const tx = await writableInstance.resetEnrollmentWindow();
+      setActionState({ type: 'info', message: 'Reset submitted. Waiting for block confirmation...' });
       await tx.wait();
+      setActionState({ type: 'info', message: 'Reset confirmed. Refreshing tournament state...' });
       alert('Enrollment window reset successfully!');
       const updated = await refreshTournamentBracket(viewingTournament.address);
       if (updated) setViewingTournament(updated);
+      setActionState({ type: 'success', message: 'Enrollment window reset and tournament state refreshed.' });
       setTournamentsLoading(false);
     } catch (error) {
       console.error('[V2] Reset enrollment window error:', error);
@@ -1116,11 +1159,15 @@ export default function TicTacToeV2() {
         if (!window.confirm(`Claim ${ethers.formatEther(forfeitPool)} ETH from abandoned pool?`)) { setTournamentsLoading(false); return; }
       }
       const writableInstance = await withInstanceSigner(activeInstanceContract);
+      setActionState({ type: 'info', message: 'Confirm the abandoned-pool claim in MetaMask...' });
       const tx = await writableInstance.claimAbandonedPool();
+      setActionState({ type: 'info', message: 'Claim submitted. Waiting for block confirmation...' });
       await tx.wait();
+      setActionState({ type: 'info', message: 'Claim confirmed. Refreshing tournament state...' });
       alert('Abandoned pool claimed successfully!');
       setViewingTournament(null);
       setCurrentMatch(null);
+      setActionState({ type: 'success', message: 'Abandoned pool claim confirmed on-chain.' });
       setTournamentsLoading(false);
     } catch (error) {
       console.error('[V2] Claim abandoned pool error:', error);
@@ -1343,6 +1390,7 @@ export default function TicTacToeV2() {
       activeInstanceContractRef.current = instanceCont;
     }
     try {
+      setMatchLoadingMessage(DEFAULT_MATCH_LOADING_MESSAGE);
       setMatchLoading(true);
 
       const updated = await refreshMatchData(instanceCont, account, {
@@ -1389,6 +1437,8 @@ export default function TicTacToeV2() {
     if (currentMatch.matchStatus === 2) { alert('Match is already complete!'); return; }
     setMoveTxTimeout(null);
     try {
+      setActionState({ type: 'info', message: 'Confirm your move in MetaMask...' });
+      setMatchLoadingMessage('Confirm your move in MetaMask...');
       setMatchLoading(true);
       moveTxInProgressRef.current = true;
       const { roundNumber, matchNumber } = currentMatch;
@@ -1398,15 +1448,22 @@ export default function TicTacToeV2() {
         signer
       );
       const tx = await writableInstance.makeMove(roundNumber, matchNumber, cellIndex);
+      setActionState({ type: 'info', message: 'Move submitted. Waiting for block confirmation...' });
+      setMatchLoadingMessage('Move submitted. Waiting for block confirmation...');
       const syncResult = await waitForTxOrStateSync({
         tx,
         timeoutMs: 90_000,
+        postReceiptSyncMs: 12_000,
         sync: async () => {
           const latestMatch = currentMatchRef.current || currentMatch;
           if (!latestMatch || !activeInstanceContractRef.current) return null;
           return refreshMatchData(activeInstanceContractRef.current, account, latestMatch);
         },
         isSynced: (updatedMatch) => didMatchStateAdvance(currentMatchRef.current || currentMatch, updatedMatch),
+        onReceipt: () => {
+          setActionState({ type: 'info', message: 'Move confirmed on-chain. Syncing the board and match state...' });
+          setMatchLoadingMessage('Move confirmed on-chain. Syncing the board...');
+        },
       });
 
       const latestMatch = currentMatchRef.current || currentMatch;
@@ -1417,9 +1474,12 @@ export default function TicTacToeV2() {
         setCurrentMatch(updated);
         previousBoardRef.current = [...updated.board];
       }
-
-      moveTxInProgressRef.current = false;
-      setMatchLoading(false);
+      setActionState({
+        type: syncResult.synced ? 'success' : 'info',
+        message: syncResult.synced
+          ? 'Move confirmed and reflected in the match state.'
+          : 'Move confirmed on-chain. The match UI is still syncing and should update shortly.',
+      });
 
       if (updated) {
         try {
@@ -1431,10 +1491,12 @@ export default function TicTacToeV2() {
         }
       }
     } catch (error) {
-      moveTxInProgressRef.current = false;
-      setMatchLoading(false);
       const errorString = error.message || error.toString();
-      if (errorString.includes('TX_TIMEOUT')) { setMoveTxTimeout({ type: 'congestion', pendingCellIndex: cellIndex }); return; }
+      if (errorString.includes('TX_TIMEOUT')) {
+        setActionState({ type: 'error', message: 'Move confirmation is taking longer than expected. If it confirms, the board will update automatically.' });
+        setMoveTxTimeout({ type: 'congestion', pendingCellIndex: cellIndex });
+        return;
+      }
       let msg = 'Invalid Move';
       if (errorString.includes('user rejected') || errorString.includes('User denied')) msg = 'Transaction cancelled';
       else if (errorString.includes('insufficient funds')) msg = 'Insufficient funds for gas';
@@ -1442,13 +1504,20 @@ export default function TicTacToeV2() {
       else if (errorString.includes('Match not active')) msg = 'Match is not active';
       else if (errorString.includes('Cell already taken')) msg = 'Invalid Move - Cell already taken';
       else if (errorString.includes('execution reverted')) msg = 'Invalid Move - This move is not allowed';
+      setActionState({ type: 'error', message: msg });
       alert(msg);
+    } finally {
+      moveTxInProgressRef.current = false;
+      setMatchLoading(false);
+      setMatchLoadingMessage(DEFAULT_MATCH_LOADING_MESSAGE);
     }
   };
 
   const handleClaimTimeoutWin = async () => {
     if (!currentMatch || !activeInstanceContractRef.current) return;
     try {
+      setActionState({ type: 'info', message: 'Confirm the timeout claim in MetaMask...' });
+      setMatchLoadingMessage('Confirm the timeout claim in MetaMask...');
       setMatchLoading(true);
       const { roundNumber, matchNumber } = currentMatch;
       const signer = await browserProvider.getSigner();
@@ -1456,8 +1525,20 @@ export default function TicTacToeV2() {
         activeInstanceContractRef.current.target || activeInstanceContractRef.current.address, signer
       );
       const tx = await writableInstance.claimTimeoutWin(roundNumber, matchNumber);
-      await tx.wait();
-      const updatedMatch = await refreshMatchData(activeInstanceContractRef.current, account, currentMatch);
+      setActionState({ type: 'info', message: 'Timeout claim submitted. Waiting for block confirmation...' });
+      setMatchLoadingMessage('Timeout claim submitted. Waiting for block confirmation...');
+      const syncResult = await waitForTxOrStateSync({
+        tx,
+        timeoutMs: 60_000,
+        postReceiptSyncMs: 12_000,
+        sync: async () => refreshMatchData(activeInstanceContractRef.current, account, currentMatchRef.current || currentMatch),
+        isSynced: (updatedMatch) => Boolean(updatedMatch && Number(updatedMatch.matchStatus) === 2),
+        onReceipt: () => {
+          setActionState({ type: 'info', message: 'Timeout claim confirmed. Syncing match resolution...' });
+          setMatchLoadingMessage('Timeout claim confirmed. Syncing match resolution...');
+        },
+      });
+      const updatedMatch = syncResult.updated || await refreshMatchData(activeInstanceContractRef.current, account, currentMatch);
       if (updatedMatch) {
         setCurrentMatch(updatedMatch);
         setMatchEndResult({ result: 'forfeit_win', completionReason: 1 });
@@ -1465,11 +1546,19 @@ export default function TicTacToeV2() {
         setMatchEndWinner(updatedMatch.winner);
         setMatchEndLoser(updatedMatch.loser);
       }
-      setMatchLoading(false);
+      setActionState({
+        type: syncResult.synced ? 'success' : 'info',
+        message: syncResult.synced
+          ? 'Timeout victory confirmed and reflected in the match.'
+          : 'Timeout victory confirmed on-chain. The match UI is still syncing and should update shortly.',
+      });
     } catch (error) {
       console.error('[V2] Claim timeout win error:', error);
+      setActionState({ type: 'error', message: getReadableError(error, 'Could not claim the timeout win.') });
       alert(`Error: ${error.message}`);
+    } finally {
       setMatchLoading(false);
+      setMatchLoadingMessage(DEFAULT_MATCH_LOADING_MESSAGE);
     }
   };
 
@@ -1477,6 +1566,8 @@ export default function TicTacToeV2() {
     const match = matchData || currentMatch;
     if (!match || !activeInstanceContractRef.current) return;
     try {
+      setActionState({ type: 'info', message: 'Confirm the force-elimination in MetaMask...' });
+      setMatchLoadingMessage('Confirm the force-elimination in MetaMask...');
       setMatchLoading(true);
       const { roundNumber, matchNumber } = match;
       const signer = await browserProvider.getSigner();
@@ -1484,7 +1575,10 @@ export default function TicTacToeV2() {
         activeInstanceContractRef.current.target || activeInstanceContractRef.current.address, signer
       );
       const tx = await writableInstance.forceEliminateStalledMatch(roundNumber, matchNumber);
+      setActionState({ type: 'info', message: 'Force-elimination submitted. Waiting for block confirmation...' });
+      setMatchLoadingMessage('Force-elimination submitted. Waiting for block confirmation...');
       await tx.wait();
+      setActionState({ type: 'info', message: 'Force-elimination confirmed. Refreshing tournament bracket...' });
       alert('Stalled match eliminated! Tournament can now continue.');
       setCurrentMatch(null);
       const address = viewingTournament?.address;
@@ -1492,11 +1586,14 @@ export default function TicTacToeV2() {
         const updated = await refreshTournamentBracket(address);
         if (updated) setViewingTournament(updated);
       }
-      setMatchLoading(false);
+      setActionState({ type: 'success', message: 'Stalled match eliminated and tournament state refreshed.' });
     } catch (error) {
       console.error('[V2] Force eliminate error:', error);
+      setActionState({ type: 'error', message: getReadableError(error, 'Could not eliminate the stalled match.') });
       alert(`Error: ${error.message}`);
+    } finally {
       setMatchLoading(false);
+      setMatchLoadingMessage(DEFAULT_MATCH_LOADING_MESSAGE);
     }
   };
 
@@ -1504,6 +1601,8 @@ export default function TicTacToeV2() {
     const match = matchData || currentMatch;
     if (!match || !activeInstanceContractRef.current) return;
     try {
+      setActionState({ type: 'info', message: 'Confirm the replacement claim in MetaMask...' });
+      setMatchLoadingMessage('Confirm the replacement claim in MetaMask...');
       setMatchLoading(true);
       const { roundNumber, matchNumber } = match;
       const signer = await browserProvider.getSigner();
@@ -1511,15 +1610,21 @@ export default function TicTacToeV2() {
         activeInstanceContractRef.current.target || activeInstanceContractRef.current.address, signer
       );
       const tx = await writableInstance.claimMatchSlotByReplacement(roundNumber, matchNumber);
+      setActionState({ type: 'info', message: 'Replacement claim submitted. Waiting for block confirmation...' });
+      setMatchLoadingMessage('Replacement claim submitted. Waiting for block confirmation...');
       await tx.wait();
+      setActionState({ type: 'info', message: 'Replacement claim confirmed. Refreshing tournament state...' });
       alert('Match slot claimed! You have replaced both players and advanced.');
       setCurrentMatch(null);
       setViewingTournament(null);
-      setMatchLoading(false);
+      setActionState({ type: 'success', message: 'Replacement claim confirmed on-chain.' });
     } catch (error) {
       console.error('[V2] Claim slot by replacement error:', error);
+      setActionState({ type: 'error', message: getReadableError(error, 'Could not claim the match slot.') });
       alert(`Error: ${error.message}`);
+    } finally {
       setMatchLoading(false);
+      setMatchLoadingMessage(DEFAULT_MATCH_LOADING_MESSAGE);
     }
   };
 
@@ -2061,6 +2166,7 @@ export default function TicTacToeV2() {
               match={currentMatch}
               account={account}
               loading={matchLoading}
+              loadingMessage={matchLoadingMessage}
               syncDots={syncDots}
               pendingOpponentMove={!!ghostMove}
               onClose={closeMatch}

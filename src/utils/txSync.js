@@ -31,14 +31,20 @@ export function waitForTxOrStateSync({
   isSynced,
   timeoutMs = 90_000,
   pollIntervalMs = 1_000,
+  postReceiptSyncMs = 15_000,
+  onReceipt,
 }) {
   return new Promise((resolve, reject) => {
     let finished = false;
     let pollInFlight = false;
+    let receiptObserved = false;
+    let lastUpdated = null;
+    let postReceiptTimeoutId = null;
 
     const cleanup = () => {
       clearTimeout(timeoutId);
       clearInterval(intervalId);
+      clearTimeout(postReceiptTimeoutId);
     };
 
     const finish = (result) => {
@@ -55,13 +61,35 @@ export function waitForTxOrStateSync({
       reject(error);
     };
 
+    const finishWithReceipt = () => {
+      finish({
+        source: 'receipt',
+        updated: lastUpdated,
+        synced: false,
+        receiptObserved: true,
+      });
+    };
+
+    const schedulePostReceiptFallback = () => {
+      if (postReceiptTimeoutId || finished) return;
+      postReceiptTimeoutId = setTimeout(() => {
+        finishWithReceipt();
+      }, Math.max(0, postReceiptSyncMs));
+    };
+
     const poll = async () => {
       if (finished || pollInFlight) return;
       pollInFlight = true;
       try {
         const updated = await sync();
+        lastUpdated = updated;
         if (updated && isSynced(updated)) {
-          finish({ source: 'state', updated });
+          finish({
+            source: 'state',
+            updated,
+            synced: true,
+            receiptObserved,
+          });
         }
       } catch {
         // Keep waiting; tx.wait() remains the fallback.
@@ -70,11 +98,37 @@ export function waitForTxOrStateSync({
       }
     };
 
-    const timeoutId = setTimeout(() => fail(new Error('TX_TIMEOUT')), timeoutMs);
+    const timeoutId = setTimeout(() => {
+      if (receiptObserved) {
+        finishWithReceipt();
+        return;
+      }
+      fail(new Error('TX_TIMEOUT'));
+    }, timeoutMs);
     const intervalId = setInterval(poll, pollIntervalMs);
 
     tx.wait()
-      .then(() => finish({ source: 'receipt', updated: null }))
+      .then(() => {
+        receiptObserved = true;
+        try {
+          onReceipt?.();
+        } catch {
+          // Ignore UI callback failures and keep syncing.
+        }
+
+        if (lastUpdated && isSynced(lastUpdated)) {
+          finish({
+            source: 'state',
+            updated: lastUpdated,
+            synced: true,
+            receiptObserved: true,
+          });
+          return;
+        }
+
+        schedulePostReceiptFallback();
+        void poll();
+      })
       .catch(fail);
 
     void poll();
