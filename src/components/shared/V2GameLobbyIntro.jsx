@@ -41,7 +41,7 @@ export default function V2GameLobbyIntro({
               type="button"
               onClick={onConnectWallet}
               disabled={isConnecting}
-              className={`inline-flex min-w-[220px] items-center justify-center gap-3 px-6 py-3 text-base md:text-lg font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed ${connectCtaClassName}`}
+              className={`inline-flex min-w-[240px] items-center justify-center gap-3 px-6 py-3 text-base md:text-lg font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed ${connectCtaClassName}`}
             >
               {isConnecting ? <Loader size={20} className="animate-spin" /> : <Wallet size={20} />}
               {isConnecting ? 'Connecting...' : 'Connect Wallet'}

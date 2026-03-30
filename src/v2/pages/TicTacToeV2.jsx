@@ -2323,10 +2323,13 @@ export default function TicTacToeV2() {
                               <button
                                 key={option}
                                 type="button"
+                                disabled={!account}
                                 onClick={() => setPlayerCount(option)}
-                                className={`px-3 py-2.5 rounded-xl font-semibold transition-all ${active
-                                  ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg'
-                                  : 'bg-slate-800/80 border border-slate-700 text-slate-300 hover:border-cyan-400/40'}`}
+                                className={`px-3 py-2.5 rounded-xl font-semibold transition-all ${!account
+                                  ? 'bg-slate-900/80 border border-slate-800 text-slate-500 cursor-not-allowed'
+                                  : active
+                                    ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg'
+                                    : 'bg-slate-800/80 border border-slate-700 text-slate-300 hover:border-cyan-400/40'}`}
                               >
                                 {option}
                               </button>
@@ -2344,9 +2347,12 @@ export default function TicTacToeV2() {
                             min="0.001"
                             max="1"
                             step="0.001"
+                            disabled={!account}
                             value={createForm.entryFee}
                             onChange={event => updateCreateForm('entryFee', event.target.value)}
-                            className="w-full bg-slate-950/80 border border-purple-400/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-400"
+                            className={`w-full rounded-xl px-4 py-3 focus:outline-none ${account
+                              ? 'bg-slate-950/80 border border-purple-400/20 text-white focus:border-purple-400'
+                              : 'bg-slate-900/80 border border-slate-800 text-slate-500 cursor-not-allowed'}`}
                           />
                         </label>
                       </div>
