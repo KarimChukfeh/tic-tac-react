@@ -5,23 +5,28 @@ import TicTacToeV2FactoryData from '../v2/ABIs/TicTacChainFactory-ABI.json';
 
 export const NETWORKS = {
   localhost: {
-    // chainId: 42161,
-    // name: 'Arbitrum One',
-    // rpcUrl: 'https://arb1.arbitrum.io/rpc',
-    // explorerUrl: 'https://arbiscan.io',
-    // explorerName: 'Arbiscan',
     chainId: 412346,
     name: 'Localhost',
     rpcUrl: 'http://127.0.0.1:8545',
     explorerUrl: null,
     explorerName: null,
+    nativeCurrency: {
+      name: 'Ether',
+      symbol: 'ETH',
+      decimals: 18,
+    },
   },
   arbitrumOne: {
     chainId: 42161,
     name: 'Arbitrum One',
-    rpcUrl: 'https://arb1.arbitrum.io/rpc',
+    rpcUrl: 'https://arb-mainnet.g.alchemy.com/v2/yoftG-myZ5Iur7UklgbJR',
     explorerUrl: 'https://arbiscan.io',
     explorerName: 'Arbiscan',
+    nativeCurrency: {
+      name: 'Ether',
+      symbol: 'ETH',
+      decimals: 18,
+    },
   },
 };
 
@@ -40,16 +45,30 @@ function resolveDefaultNetworkKey() {
 
   const manifestChainId = Number(TicTacToeV2FactoryData.chainId);
   const matchedNetwork = Object.entries(NETWORKS).find(([, network]) => network.chainId === manifestChainId);
-  return matchedNetwork?.[0] || 'localhost';
+  return matchedNetwork?.[0] || 'arbitrumOne';
 }
 
-const networkKey = import.meta.env.VITE_NETWORK || resolveDefaultNetworkKey();
-const selectedNetwork = NETWORKS[networkKey] || NETWORKS.localhost;
+const defaultNetworkKey = resolveDefaultNetworkKey();
+const networkKey = import.meta.env.VITE_NETWORK || defaultNetworkKey;
+const selectedNetwork = NETWORKS[networkKey] || NETWORKS[defaultNetworkKey];
+const rpcUrlOverride = import.meta.env.VITE_V2_RPC_URL || import.meta.env.VITE_RPC_URL;
 
 export const CURRENT_NETWORK = {
   ...selectedNetwork,
-  rpcUrl: import.meta.env.VITE_V2_RPC_URL || selectedNetwork.rpcUrl,
+  rpcUrl: rpcUrlOverride || selectedNetwork.rpcUrl,
 };
+
+export const TARGET_CHAIN_ID_HEX = `0x${CURRENT_NETWORK.chainId.toString(16)}`;
+
+export function getWalletAddChainParams() {
+  return {
+    chainId: TARGET_CHAIN_ID_HEX,
+    chainName: CURRENT_NETWORK.name,
+    nativeCurrency: CURRENT_NETWORK.nativeCurrency,
+    rpcUrls: [CURRENT_NETWORK.rpcUrl],
+    blockExplorerUrls: CURRENT_NETWORK.explorerUrl ? [CURRENT_NETWORK.explorerUrl] : undefined,
+  };
+}
 
 // Contract addresses - can be overridden via environment variables
 export const CONTRACT_ADDRESSES = {

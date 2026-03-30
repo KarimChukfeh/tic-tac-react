@@ -29,7 +29,7 @@ import {
   History,
 } from 'lucide-react';
 import { ethers } from 'ethers';
-import { CURRENT_NETWORK, getAddressUrl } from '../../config/networks';
+import { CURRENT_NETWORK, TARGET_CHAIN_ID_HEX, getAddressUrl, getWalletAddChainParams } from '../../config/networks';
 import { shortenAddress, getCellPositionName } from '../../utils/formatters';
 import { generateV2TournamentUrl, parseV2ContractParam } from '../../utils/urlHelpers';
 import { shouldResetOnInitialDocumentLoad } from '../../utils/navigation';
@@ -85,7 +85,6 @@ const TICTACTOE_SYMBOLS = ['✕', '○'];
 // Virtual tier/instance IDs used when adapting V2 instance contracts to V1 component API
 const VIRTUAL_TIER_ID = 0;
 const VIRTUAL_INSTANCE_ID = 0;
-
 const DEFAULT_CREATE_FORM = {
   playerCount: 2,
   entryFee: '0.001',
@@ -387,7 +386,6 @@ const TournamentBracket = ({
   );
 };
 
-const TARGET_CHAIN_ID_HEX = `0x${CURRENT_NETWORK.chainId.toString(16)}`;
 const DEFAULT_MATCH_LOADING_MESSAGE = 'Loading match...';
 
 export default function TicTacToeV2() {
@@ -567,7 +565,7 @@ export default function TicTacToeV2() {
       if (switchError?.code !== 4902) throw switchError;
       await window.ethereum.request({
         method: 'wallet_addEthereumChain',
-        params: [{ chainId: TARGET_CHAIN_ID_HEX, chainName: CURRENT_NETWORK.name, nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 }, rpcUrls: [CURRENT_NETWORK.rpcUrl] }],
+        params: [getWalletAddChainParams()],
       });
     }
   };
@@ -2401,6 +2399,9 @@ export default function TicTacToeV2() {
                 <div id="live-instances">
                   <form onSubmit={createInstance}>
                     <div className="bg-slate-900/50 border border-purple-400/20 rounded-2xl p-4 md:p-5">
+                    <div className="mb-4">
+                      <h2 className="text-xl font-semibold text-white">New Lobby</h2>
+                    </div>
                     <div className="grid gap-4 md:grid-cols-[minmax(0,1.3fr)_minmax(220px,0.7fr)] md:items-end">
                       {/* Player Count */}
                       <div>
