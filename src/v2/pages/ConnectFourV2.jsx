@@ -85,8 +85,8 @@ const currentTheme = {
   heroTitle: 'from-blue-400 via-cyan-400 to-blue-400',
   heroText: 'text-blue-200',
   heroSubtext: 'text-blue-300',
-  buttonGradient: 'from-blue-500 to-cyan-500',
-  buttonHover: 'hover:from-blue-600 hover:to-cyan-600',
+  buttonGradient: 'from-purple-600 to-fuchsia-600',
+  buttonHover: 'hover:from-purple-700 hover:to-fuchsia-700',
   connectButtonGradient: 'from-purple-600 to-fuchsia-600',
   connectButtonHover: 'hover:from-purple-700 hover:to-fuchsia-700',
   connectCtaClassName: 'bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white rounded-xl shadow-2xl border-2 border-purple-400/60 hover:scale-105 hover:from-purple-700 hover:to-fuchsia-700',
@@ -2626,7 +2626,7 @@ export default function ConnectFourV2() {
                           </div>
                         )}
                       </div>
-                      <div className="mt-5 flex justify-center md:justify-end">
+                      <div className="mt-5 flex justify-start">
                         <button
                           type="submit"
                           disabled={createLoading || !account}
