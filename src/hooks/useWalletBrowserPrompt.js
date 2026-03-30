@@ -26,6 +26,9 @@ const USER_CHOICE_KEY = 'wallet_browser_choice';
 export function useWalletBrowserPrompt() {
   const [showPrompt, setShowPrompt] = useState(false);
   const hasChecked = useRef(false);
+  const walletRedirectUrlRef = useRef(
+    typeof window !== 'undefined' ? window.location.href : ''
+  );
 
   useEffect(() => {
     // Only run once per component lifecycle
@@ -56,8 +59,7 @@ export function useWalletBrowserPrompt() {
     if (userChoice && userChoice !== 'continue') {
       // If user previously chose a wallet, automatically redirect
       try {
-        const currentUrl = window.location.href;
-        const deepLink = buildWalletDeepLink(userChoice, currentUrl);
+        const deepLink = buildWalletDeepLink(userChoice, walletRedirectUrlRef.current);
         if (deepLink) {
           window.location.href = deepLink;
         }
@@ -79,9 +81,9 @@ export function useWalletBrowserPrompt() {
       // Mark that user chose a specific wallet
       sessionStorage.setItem(USER_CHOICE_KEY, walletId);
 
-      // Build deep link preserving current URL
-      const currentUrl = window.location.href;
-      const deepLink = buildWalletDeepLink(walletId, currentUrl);
+      // Build the deep link from the URL captured when the prompt opened.
+      // This preserves invite params even if the SPA mutates the address bar.
+      const deepLink = buildWalletDeepLink(walletId, walletRedirectUrlRef.current);
 
       if (deepLink) {
         // Perform redirect
@@ -103,7 +105,8 @@ export function useWalletBrowserPrompt() {
   };
 
   // Function to manually trigger the wallet prompt
-  const triggerWalletPrompt = () => {
+  const triggerWalletPrompt = (targetUrl = window.location.href) => {
+    walletRedirectUrlRef.current = targetUrl;
     setShowPrompt(true);
   };
 
