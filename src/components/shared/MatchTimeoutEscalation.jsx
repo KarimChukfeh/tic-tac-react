@@ -7,6 +7,7 @@
  * - Level 3: Non-advanced player replaces both and advances (ML3)
  *
  * ESCALATION LOGIC (uses contract data directly):
+ * - Participant in stalled match: ML1 only
  * - ML2 CTA: escL2Available && isUserAdvanced
  * - ML3 CTA: escL3Available && !isUserAdvanced
  */
@@ -31,6 +32,7 @@ const MatchTimeoutEscalation = ({
   escL2Available = false,
   escL3Available = false,
   isUserAdvancedForRound = false,
+  isUserMatch = false,
   // Hide ML1 button on mobile (it's shown in the timer row instead)
   hideML1OnMobile = false,
 }) => {
@@ -48,17 +50,21 @@ const MatchTimeoutEscalation = ({
   // Level 1 (Claim Timeout Victory): Available immediately when timeout occurs
   const canClaimTimeout = !isYourTurn;
 
+  // Participants in the stalled match should only ever see ML1.
+  const canShowOutsideEscalations = !isUserMatch;
+
   // Level 2 (Force Eliminate): Use contract flag, only for advanced players
-  const canForceEliminate = escL2Available && isUserAdvancedForRound;
+  const canForceEliminate = canShowOutsideEscalations && escL2Available && isUserAdvancedForRound;
 
   // Level 3 (Replace Players): Use contract flag, only for non-advanced players
-  const canReplace = escL3Available && !isUserAdvancedForRound;
+  const canReplace = canShowOutsideEscalations && escL3Available && !isUserAdvancedForRound;
 
   // Debug logging for escalation timing
   console.log('MatchTimeoutEscalation:', {
     escL2Available,
     escL3Available,
     isUserAdvancedForRound,
+    isUserMatch,
     canClaimTimeout,
     canForceEliminate,
     canReplace,
@@ -86,17 +92,17 @@ const MatchTimeoutEscalation = ({
 
       {/* Countdown timers */}
       <div className="space-y-1 text-xs">
-        {timeToEsc1 > 0 && !escL2Available && (
+        {canShowOutsideEscalations && timeToEsc1 > 0 && !escL2Available && (
           <div className="text-orange-300">ML2 in: {formatEscalationTime(timeToEsc1)}</div>
         )}
-        {timeToEsc2 > 0 && !escL3Available && (
+        {canShowOutsideEscalations && timeToEsc2 > 0 && !escL3Available && (
           <div className="text-orange-300">ML3 in: {formatEscalationTime(timeToEsc2)}</div>
         )}
         {canClaimTimeout && <div className="text-green-400 font-bold">Level 1 Active - Opponent Can Claim</div>}
-        {escL2Available && isUserAdvancedForRound && <div className="text-yellow-400 font-bold">ML2 Active - You Can Force Eliminate</div>}
-        {escL2Available && !isUserAdvancedForRound && <div className="text-yellow-400">ML2 Active (Advanced Players Only)</div>}
-        {escL3Available && !isUserAdvancedForRound && <div className="text-red-400 font-bold">ML3 Active - You Can Replace & Claim</div>}
-        {escL3Available && isUserAdvancedForRound && <div className="text-red-400">ML3 Active (Not Available to Advanced Players)</div>}
+        {canShowOutsideEscalations && escL2Available && isUserAdvancedForRound && <div className="text-yellow-400 font-bold">ML2 Active - You Can Force Eliminate</div>}
+        {canShowOutsideEscalations && escL2Available && !isUserAdvancedForRound && <div className="text-yellow-400">ML2 Active (Advanced Players Only)</div>}
+        {canShowOutsideEscalations && escL3Available && !isUserAdvancedForRound && <div className="text-red-400 font-bold">ML3 Active - You Can Replace & Claim</div>}
+        {canShowOutsideEscalations && escL3Available && isUserAdvancedForRound && <div className="text-red-400">ML3 Active (Not Available to Advanced Players)</div>}
       </div>
 
       {/* ML2: Force Eliminate (Advanced Players Only) */}

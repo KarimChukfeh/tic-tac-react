@@ -92,6 +92,9 @@ function buildMatchEscalation(matchData, timeoutData, tierConfig, roundNumber, m
     roundNumber,
     matchNumber,
     matchStatus,
+    player1,
+    player2: matchData?.player2?.toLowerCase?.() || ZERO_ADDRESS,
+    currentTurn,
     activeEscalation: toNumber(timeoutData?.activeEscalation),
     timeoutActive,
     timeoutAt,
@@ -107,8 +110,8 @@ function buildMatchEscalation(matchData, timeoutData, tierConfig, roundNumber, m
 }
 
 function buildLobbySortScore(lobby) {
-  if (lobby.publicOpportunityCount > 0) return 0;
-  if (lobby.publicOpportunitySoonCount > 0) return 1;
+  if (lobby.featuredEscalationAvailableCount > 0) return 0;
+  if (lobby.featuredEscalationSoonCount > 0) return 1;
   if (lobby.hasEscalationActivity) return 2;
   if (lobby.status === 0) return 3;
   if (lobby.status === 1) return 4;
@@ -205,7 +208,6 @@ export function useActiveLobbies(factoryContract, runner, account, getInstanceCo
         if (!tournamentResult?.success || !infoResult?.success) continue;
 
         const isUserEnrolled = Boolean(enrolledResult?.success ? enrolledResult.result : false);
-        if (account && isUserEnrolled) continue;
 
         const tournament = tournamentResult.result;
         const info = infoResult.result;
@@ -228,6 +230,7 @@ export function useActiveLobbies(factoryContract, runner, account, getInstanceCo
           startedAt: toNumber(info.startTime ?? tournament.startTime),
           isUserEnrolled,
           enrollmentEscalation: buildEnrollmentEscalation(tournament, now),
+          isUserAdvancedForRound: false,
           matchHighlights: [],
           matchEscalationSummary: {
             activeMatchCount: 0,
@@ -237,6 +240,9 @@ export function useActiveLobbies(factoryContract, runner, account, getInstanceCo
             ml1SoonCount: 0,
             ml2SoonCount: 0,
             ml3SoonCount: 0,
+            ml1RelevantAvailableCount: 0,
+            ml2RelevantAvailableCount: 0,
+            ml2RelevantSoonCount: 0,
           },
         });
       }
@@ -251,13 +257,37 @@ export function useActiveLobbies(factoryContract, runner, account, getInstanceCo
         .filter(({ lobby }) => lobby.status === 1);
 
       if (inProgressIndexes.length > 0) {
-        const instanceMetaResults = await multicallContracts(
-          inProgressIndexes.flatMap(({ lobby }) => ([
+        const advancedRoundCallSpecs = account
+          ? inProgressIndexes
+            .filter(({ lobby }) => lobby.isUserEnrolled)
+            .map(({ lobby }) => ({
+              contract: lobby.contract,
+              functionName: 'isPlayerInAdvancedRound',
+              params: [lobby.currentRound, account],
+            }))
+          : [];
+
+        const [instanceMetaResults, advancedRoundResults] = await Promise.all([
+          multicallContracts(
+            inProgressIndexes.flatMap(({ lobby }) => ([
             { contract: lobby.contract, functionName: 'getBracket' },
             { contract: lobby.contract, functionName: 'tierConfig' },
           ])),
-          runner
-        );
+            runner
+          ),
+          advancedRoundCallSpecs.length > 0
+            ? multicallContracts(advancedRoundCallSpecs, runner)
+            : Promise.resolve([]),
+        ]);
+
+        let advancedCursor = 0;
+        for (const { lobby, index } of inProgressIndexes) {
+          if (!lobby.isUserEnrolled || !account) continue;
+          const advancedResult = advancedRoundResults[advancedCursor++];
+          prelim[index].isUserAdvancedForRound = Boolean(
+            advancedResult?.success ? advancedResult.result : false
+          );
+        }
 
         let instanceCursor = 0;
         const matchCallSpecs = [];
@@ -314,7 +344,43 @@ export function useActiveLobbies(factoryContract, runner, account, getInstanceCo
             if (escalation.ml1Soon) lobby.matchEscalationSummary.ml1SoonCount += 1;
             if (escalation.ml2Soon) lobby.matchEscalationSummary.ml2SoonCount += 1;
             if (escalation.ml3Soon && escalation.ml2Available) lobby.matchEscalationSummary.ml3SoonCount += 1;
-            lobby.matchHighlights.push(escalation);
+
+            const accountLower = account?.toLowerCase?.() || null;
+            const isUserParticipant = Boolean(
+              accountLower &&
+              (escalation.player1 === accountLower || escalation.player2 === accountLower)
+            );
+            const ml1RelevantAvailable = Boolean(
+              lobby.isUserEnrolled &&
+              isUserParticipant &&
+              escalation.ml1Available &&
+              escalation.currentTurn !== ZERO_ADDRESS &&
+              escalation.currentTurn !== accountLower
+            );
+            const ml2RelevantAvailable = Boolean(
+              lobby.isUserEnrolled &&
+              lobby.isUserAdvancedForRound &&
+              !isUserParticipant &&
+              escalation.ml2Available
+            );
+            const ml2RelevantSoon = Boolean(
+              lobby.isUserEnrolled &&
+              lobby.isUserAdvancedForRound &&
+              !isUserParticipant &&
+              escalation.ml2Soon
+            );
+
+            if (ml1RelevantAvailable) lobby.matchEscalationSummary.ml1RelevantAvailableCount += 1;
+            if (ml2RelevantAvailable) lobby.matchEscalationSummary.ml2RelevantAvailableCount += 1;
+            if (ml2RelevantSoon) lobby.matchEscalationSummary.ml2RelevantSoonCount += 1;
+
+            lobby.matchHighlights.push({
+              ...escalation,
+              isUserParticipant,
+              ml1RelevantAvailable,
+              ml2RelevantAvailable,
+              ml2RelevantSoon,
+            });
           }
         }
       }
@@ -322,30 +388,47 @@ export function useActiveLobbies(factoryContract, runner, account, getInstanceCo
       const nextLobbies = prelim
         .map((lobby) => {
           const hasEnrollmentEscalationContext = lobby.status === 0;
+          const ownRelevantAvailableCount =
+            (lobby.isUserEnrolled && hasEnrollmentEscalationContext && lobby.enrollmentEscalation.el1Available ? 1 : 0) +
+            lobby.matchEscalationSummary.ml1RelevantAvailableCount +
+            lobby.matchEscalationSummary.ml2RelevantAvailableCount;
+
+          const ownRelevantSoonCount =
+            lobby.matchEscalationSummary.ml2RelevantSoonCount;
+
           const publicOpportunityCount =
-            (hasEnrollmentEscalationContext && lobby.enrollmentEscalation.el2Available ? 1 : 0) +
-            lobby.matchEscalationSummary.ml3AvailableCount;
+            (!lobby.isUserEnrolled && hasEnrollmentEscalationContext && lobby.enrollmentEscalation.el2Available ? 1 : 0) +
+            (!lobby.isUserEnrolled ? lobby.matchEscalationSummary.ml3AvailableCount : 0);
 
           const publicOpportunitySoonCount =
-            (hasEnrollmentEscalationContext && lobby.enrollmentEscalation.el2Soon ? 1 : 0) +
-            lobby.matchEscalationSummary.ml3SoonCount;
+            (!lobby.isUserEnrolled && hasEnrollmentEscalationContext && lobby.enrollmentEscalation.el2Soon ? 1 : 0) +
+            (!lobby.isUserEnrolled ? lobby.matchEscalationSummary.ml3SoonCount : 0);
+
+          const featuredEscalationAvailableCount = ownRelevantAvailableCount + publicOpportunityCount;
+          const featuredEscalationSoonCount = ownRelevantSoonCount + publicOpportunitySoonCount;
 
           const hasEscalationActivity =
-            (hasEnrollmentEscalationContext && (
+            (lobby.isUserEnrolled && hasEnrollmentEscalationContext && lobby.enrollmentEscalation.el1Available) ||
+            (hasEnrollmentEscalationContext && !lobby.isUserEnrolled && (
               lobby.enrollmentEscalation.el1Available ||
               lobby.enrollmentEscalation.el2Available ||
               lobby.enrollmentEscalation.el1Soon ||
               lobby.enrollmentEscalation.el2Soon
             )) ||
-            lobby.matchHighlights.some((match) => match.ml3Available || (match.ml3Soon && match.ml2Available));
+            lobby.matchHighlights.some((match) => (
+              match.ml1RelevantAvailable ||
+              match.ml2RelevantAvailable ||
+              match.ml2RelevantSoon ||
+              (!lobby.isUserEnrolled && (match.ml3Available || (match.ml3Soon && match.ml2Available)))
+            ));
 
           return {
             ...lobby,
             contract: undefined,
             matchHighlights: lobby.matchHighlights
               .sort((a, b) => {
-                const aScore = a.ml3Available ? 0 : a.ml2Available ? 1 : a.ml1Available ? 2 : a.ml3Soon ? 3 : a.ml2Soon ? 4 : 5;
-                const bScore = b.ml3Available ? 0 : b.ml2Available ? 1 : b.ml1Available ? 2 : b.ml3Soon ? 3 : b.ml2Soon ? 4 : 5;
+                const aScore = a.ml1RelevantAvailable ? 0 : a.ml2RelevantAvailable ? 1 : a.ml2RelevantSoon ? 2 : a.ml3Available ? 3 : a.ml3Soon ? 4 : 5;
+                const bScore = b.ml1RelevantAvailable ? 0 : b.ml2RelevantAvailable ? 1 : b.ml2RelevantSoon ? 2 : b.ml3Available ? 3 : b.ml3Soon ? 4 : 5;
                 if (aScore !== bScore) return aScore - bScore;
 
                 const aNext = a.ml3At || a.ml2At || a.timeoutAt || Number.MAX_SAFE_INTEGER;
@@ -353,8 +436,12 @@ export function useActiveLobbies(factoryContract, runner, account, getInstanceCo
                 return aNext - bNext;
               })
               .slice(0, 5),
+            ownRelevantAvailableCount,
+            ownRelevantSoonCount,
             publicOpportunityCount,
             publicOpportunitySoonCount,
+            featuredEscalationAvailableCount,
+            featuredEscalationSoonCount,
             hasEscalationActivity,
           };
         })

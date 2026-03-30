@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { AlertTriangle, Clock3, RefreshCw, Rocket, TimerReset, X, Zap } from 'lucide-react';
+import { AlertTriangle, Check, Clock3, RefreshCw, Rocket, TimerReset, X, Zap } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
 
 const FILTERS = [
@@ -28,11 +28,19 @@ function formatEntryFee(entryFeeEth) {
   return amount.toFixed(3).replace(/\.?0+$/, '');
 }
 
+function formatCountLabel(count, singular, plural = `${singular}s`) {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
 function getLobbyHighlights(lobby, now) {
   const highlights = [];
   const canShowEnrollmentEscalations = lobby.status === 0;
 
-  if (canShowEnrollmentEscalations && lobby.enrollmentEscalation?.el2Available) {
+  if (lobby.isUserEnrolled) {
+    if (canShowEnrollmentEscalations && lobby.enrollmentEscalation?.el1Available) {
+      highlights.push({ key: 'el1-live', label: 'EL1 available now', tone: 'yellow' });
+    }
+  } else if (canShowEnrollmentEscalations && lobby.enrollmentEscalation?.el2Available) {
     highlights.push({ key: 'el2-live', label: 'EL2 available now', tone: 'yellow' });
   } else if (canShowEnrollmentEscalations && lobby.enrollmentEscalation?.el2Soon) {
     highlights.push({
@@ -43,7 +51,34 @@ function getLobbyHighlights(lobby, now) {
   }
 
   for (const match of lobby.matchHighlights || []) {
-    if (match.ml3Available) {
+    if (lobby.isUserEnrolled && match.ml1RelevantAvailable) {
+      highlights.push({
+        key: `ml1-${match.roundNumber}-${match.matchNumber}`,
+        label: `Match ${match.matchNumber + 1}: ML1 available`,
+        tone: 'yellow',
+      });
+      continue;
+    }
+
+    if (lobby.isUserEnrolled && match.ml2RelevantAvailable) {
+      highlights.push({
+        key: `ml2-${match.roundNumber}-${match.matchNumber}`,
+        label: `Match ${match.matchNumber + 1}: ML2 available`,
+        tone: 'yellow',
+      });
+      continue;
+    }
+
+    if (lobby.isUserEnrolled && match.ml2RelevantSoon && match.ml2At > 0) {
+      highlights.push({
+        key: `ml2-soon-${match.roundNumber}-${match.matchNumber}`,
+        label: `Match ${match.matchNumber + 1}: ML2 in ${formatCountdown(match.ml2At, now)}`,
+        tone: 'amber',
+      });
+      continue;
+    }
+
+    if (!lobby.isUserEnrolled && match.ml3Available) {
       highlights.push({
         key: `ml3-${match.roundNumber}-${match.matchNumber}`,
         label: `Match ${match.matchNumber + 1}: ML3 available`,
@@ -52,7 +87,7 @@ function getLobbyHighlights(lobby, now) {
       continue;
     }
 
-    if (match.ml3Soon && match.ml2Available && match.ml3At > 0) {
+    if (!lobby.isUserEnrolled && match.ml3Soon && match.ml2Available && match.ml3At > 0) {
       highlights.push({
         key: `ml3-soon-${match.roundNumber}-${match.matchNumber}`,
         label: `Match ${match.matchNumber + 1}: ML3 in ${formatCountdown(match.ml3At, now)}`,
@@ -71,13 +106,7 @@ function highlightToneClass(tone) {
 }
 
 function hasFeaturedEscalation(lobby) {
-  return Boolean(
-    (lobby?.status === 0 && (
-      lobby?.enrollmentEscalation?.el1Available ||
-      lobby?.enrollmentEscalation?.el2Available
-    )) ||
-    (lobby?.matchEscalationSummary?.ml3AvailableCount || 0) > 0
-  );
+  return (lobby?.featuredEscalationAvailableCount || 0) > 0;
 }
 
 const ActiveLobbiesCard = ({
@@ -103,6 +132,7 @@ const ActiveLobbiesCard = ({
   const [internalIsExpanded, setInternalIsExpanded] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
   const [filter, setFilter] = useState('all');
+  const [hideMine, setHideMine] = useState(false);
   const [now, setNow] = useState(Math.floor(Date.now() / 1000));
   const [toggleRect, setToggleRect] = useState(null);
   const toggleButtonRef = useRef(null);
@@ -180,16 +210,18 @@ const ActiveLobbiesCard = ({
     return () => observer.disconnect();
   }, [isExpanded, lobbies, filter, loading, error, onHeightChange]);
 
-  const filteredLobbies = lobbies.filter((lobby) => {
+  const visibleLobbies = lobbies.filter((lobby) => !(hideMine && lobby.isUserEnrolled));
+
+  const filteredLobbies = visibleLobbies.filter((lobby) => {
     if (filter === 'waiting') return lobby.status === 0;
     if (filter === 'inProgress') return lobby.status === 1;
     if (filter === 'escalations') return hasFeaturedEscalation(lobby);
     return true;
   });
 
-  const totalWaiting = lobbies.filter((lobby) => lobby.status === 0).length;
-  const totalInProgress = lobbies.filter((lobby) => lobby.status === 1).length;
-  const totalEscalations = lobbies.filter((lobby) => hasFeaturedEscalation(lobby)).length;
+  const totalWaiting = visibleLobbies.filter((lobby) => lobby.status === 0).length;
+  const totalInProgress = visibleLobbies.filter((lobby) => lobby.status === 1).length;
+  const totalEscalations = visibleLobbies.filter((lobby) => hasFeaturedEscalation(lobby)).length;
 
   const BASE_TOP_DESKTOP = 80;
   const COLLAPSED_BUTTON_HEIGHT_DESKTOP = 64;
@@ -239,9 +271,9 @@ const ActiveLobbiesCard = ({
             <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-cyan-300 animate-spin"></div>
           )}
 
-          {lobbies.some((lobby) => lobby.publicOpportunityCount > 0) && (
+          {lobbies.some((lobby) => (lobby.featuredEscalationAvailableCount || 0) > 0) && (
             <div className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 bg-red-500 rounded-full flex items-center justify-center text-[10px] font-bold text-white">
-              {lobbies.reduce((sum, lobby) => sum + lobby.publicOpportunityCount, 0)}
+              {lobbies.reduce((sum, lobby) => sum + (lobby.featuredEscalationAvailableCount || 0), 0)}
             </div>
           )}
 
@@ -306,8 +338,20 @@ const ActiveLobbiesCard = ({
                 <span>Discover Lobbies</span>
               </div>
               <p className="text-yellow-100/80 text-sm">
-                Public tournaments and live escalation windows.
+                Active tournaments and relevant escalation windows.
               </p>
+              <label className="mt-3 inline-flex items-center gap-3 text-sm text-slate-200/90 select-none cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={hideMine}
+                  onChange={(event) => setHideMine(event.target.checked)}
+                  className="sr-only peer"
+                />
+                <span className="inline-flex h-5 w-5 items-center justify-center rounded border border-purple-300/25 bg-slate-900/70 text-transparent transition-colors duration-200 peer-checked:border-yellow-300/50 peer-checked:bg-yellow-500/20 peer-checked:text-yellow-200">
+                  <Check size={13} strokeWidth={3} />
+                </span>
+                <span className="font-medium tracking-[0.04em]">Hide mine</span>
+              </label>
             </div>
             <div className="flex items-center gap-1">
               <button
@@ -341,7 +385,7 @@ const ActiveLobbiesCard = ({
                 }`}
                 >
                 {option.label} ({option.id === 'all'
-                  ? lobbies.length
+                  ? visibleLobbies.length
                   : option.id === 'waiting'
                   ? totalWaiting
                   : option.id === 'inProgress'
@@ -354,7 +398,7 @@ const ActiveLobbiesCard = ({
           {loading ? (
             <div className="rounded-xl border border-yellow-200/20 bg-black/15 p-6 text-center text-yellow-50">
               <RefreshCw size={18} className="animate-spin mx-auto mb-3 text-yellow-200" />
-              Scanning public instances...
+              Scanning active lobbies...
             </div>
           ) : error ? (
             <div className="rounded-xl border border-red-300/30 bg-red-950/30 p-4 text-red-100">
@@ -369,8 +413,8 @@ const ActiveLobbiesCard = ({
               <Rocket size={18} className="mx-auto mb-3 text-yellow-200" />
               {filter === 'all' && 'No available lobbies right now.'}
               {filter === 'waiting' && 'No open lobbies are currently waiting for players.'}
-              {filter === 'inProgress' && 'No public lobbies are currently in progress.'}
-              {filter === 'escalations' && 'No live escalation windows are visible right now.'}
+              {filter === 'inProgress' && 'No lobbies are currently in progress.'}
+              {filter === 'escalations' && 'No live escalation windows are available right now.'}
             </div>
           ) : (
             <div className="space-y-3">
@@ -396,7 +440,17 @@ const ActiveLobbiesCard = ({
                           }`}>
                             {lobby.statusLabel}
                           </span>
-                          {lobby.publicOpportunityCount > 0 && (
+                          {lobby.isUserEnrolled && (
+                            <span className="text-[11px] uppercase tracking-[0.16em] px-2 py-1 rounded-full border border-sky-300/30 bg-sky-400/10 text-sky-100">
+                              Yours
+                            </span>
+                          )}
+                          {lobby.isUserEnrolled && lobby.ownRelevantAvailableCount > 0 && (
+                            <span className="text-[11px] uppercase tracking-[0.16em] px-2 py-1 rounded-full border border-yellow-300/40 bg-yellow-300/15 text-yellow-100">
+                              Your Action
+                            </span>
+                          )}
+                          {!lobby.isUserEnrolled && lobby.publicOpportunityCount > 0 && (
                             <span className="text-[11px] uppercase tracking-[0.16em] px-2 py-1 rounded-full border border-yellow-300/40 bg-yellow-300/15 text-yellow-100">
                               Public Opportunity
                             </span>
@@ -410,7 +464,9 @@ const ActiveLobbiesCard = ({
                         onClick={() => onViewTournament?.(lobby.address)}
                         className="shrink-0 rounded-lg bg-yellow-200 text-amber-950 px-3 py-2 text-sm font-semibold hover:bg-yellow-100 transition-colors"
                       >
-                        {lobby.status === 0 ? 'View & Enroll' : 'View Bracket'}
+                        {lobby.status === 0
+                          ? (lobby.isUserEnrolled ? 'View Lobby' : 'View & Enroll')
+                          : 'View Bracket'}
                       </button>
                     </div>
 
@@ -432,10 +488,14 @@ const ActiveLobbiesCard = ({
                           <span>Escalations</span>
                         </div>
                         <div className="text-sm text-white">
-                          {lobby.publicOpportunityCount > 0
-                            ? `${lobby.publicOpportunityCount} live public`
-                            : lobby.publicOpportunitySoonCount > 0
-                            ? `${lobby.publicOpportunitySoonCount} public soon`
+                          {lobby.isUserEnrolled && lobby.ownRelevantAvailableCount > 0
+                            ? `${formatCountLabel(lobby.ownRelevantAvailableCount, 'action')} now`
+                            : lobby.isUserEnrolled && lobby.ownRelevantSoonCount > 0
+                            ? `${formatCountLabel(lobby.ownRelevantSoonCount, 'action')} soon`
+                            : !lobby.isUserEnrolled && lobby.publicOpportunityCount > 0
+                            ? `${formatCountLabel(lobby.publicOpportunityCount, 'public window')} live`
+                            : !lobby.isUserEnrolled && lobby.publicOpportunitySoonCount > 0
+                            ? `${formatCountLabel(lobby.publicOpportunitySoonCount, 'public window')} soon`
                             : lobby.hasEscalationActivity
                             ? 'Monitoring timers'
                             : 'Quiet'}
@@ -445,12 +505,27 @@ const ActiveLobbiesCard = ({
 
                     {lobby.status === 1 && (
                       <div className="flex flex-wrap gap-2 mb-3 text-xs">
-                        {lobby.matchEscalationSummary.ml3AvailableCount > 0 && (
+                        {lobby.isUserEnrolled && lobby.matchEscalationSummary.ml1RelevantAvailableCount > 0 && (
+                          <span className="px-2 py-1 rounded-full bg-yellow-300/15 text-yellow-100 border border-yellow-300/30">
+                            ML1 {lobby.matchEscalationSummary.ml1RelevantAvailableCount}
+                          </span>
+                        )}
+                        {lobby.isUserEnrolled && lobby.matchEscalationSummary.ml2RelevantAvailableCount > 0 && (
+                          <span className="px-2 py-1 rounded-full bg-yellow-300/15 text-yellow-100 border border-yellow-300/30">
+                            ML2 {lobby.matchEscalationSummary.ml2RelevantAvailableCount}
+                          </span>
+                        )}
+                        {lobby.isUserEnrolled && lobby.matchEscalationSummary.ml2RelevantSoonCount > 0 && (
+                          <span className="px-2 py-1 rounded-full bg-yellow-300/10 text-yellow-50 border border-yellow-300/20">
+                            ML2 soon {lobby.matchEscalationSummary.ml2RelevantSoonCount}
+                          </span>
+                        )}
+                        {!lobby.isUserEnrolled && lobby.matchEscalationSummary.ml3AvailableCount > 0 && (
                           <span className="px-2 py-1 rounded-full bg-yellow-300/15 text-yellow-100 border border-yellow-300/30">
                             ML3 {lobby.matchEscalationSummary.ml3AvailableCount}
                           </span>
                         )}
-                        {lobby.matchEscalationSummary.ml3SoonCount > 0 && (
+                        {!lobby.isUserEnrolled && lobby.matchEscalationSummary.ml3SoonCount > 0 && (
                           <span className="px-2 py-1 rounded-full bg-yellow-300/10 text-yellow-50 border border-yellow-300/20">
                             ML3 soon {lobby.matchEscalationSummary.ml3SoonCount}
                           </span>

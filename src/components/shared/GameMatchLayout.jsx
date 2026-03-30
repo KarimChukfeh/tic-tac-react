@@ -156,6 +156,11 @@ const GameMatchLayout = ({
   const zeroAddress = '0x0000000000000000000000000000000000000000';
   const hasWinner = winner && winner !== zeroAddress;
   const userWon = hasWinner && account && winner.toLowerCase() === account.toLowerCase();
+  const isUserMatch =
+    Boolean(account) && (
+      player1?.toLowerCase() === account?.toLowerCase() ||
+      player2?.toLowerCase() === account?.toLowerCase()
+    );
 
   // Show turn timer when match is in progress
   const showTurnTimer = matchStatus === 1;
@@ -588,6 +593,7 @@ const GameMatchLayout = ({
                   escL2Available={match.escL2Available}
                   escL3Available={match.escL3Available}
                   isUserAdvancedForRound={match.isUserAdvancedForRound}
+                  isUserMatch={isUserMatch}
                   hideML1OnMobile={true}
                 />
               )}
@@ -765,6 +771,7 @@ const GameMatchLayout = ({
                   escL2Available={match.escL2Available}
                   escL3Available={match.escL3Available}
                   isUserAdvancedForRound={match.isUserAdvancedForRound}
+                  isUserMatch={isUserMatch}
                   hideML1OnMobile={true}
                 />
               </div>
@@ -922,6 +929,7 @@ const GameMatchLayout = ({
               escL2Available={match.escL2Available}
               escL3Available={match.escL3Available}
               isUserAdvancedForRound={match.isUserAdvancedForRound}
+              isUserMatch={isUserMatch}
               hideML1OnMobile={true}
             />
           </div>
@@ -1082,6 +1090,7 @@ const GameMatchLayout = ({
               escL2Available={match.escL2Available}
               escL3Available={match.escL3Available}
               isUserAdvancedForRound={match.isUserAdvancedForRound}
+              isUserMatch={isUserMatch}
               hideML1OnMobile={true}
             />
           )}
@@ -1140,6 +1149,7 @@ const GameMatchLayout = ({
                   escL2Available={match.escL2Available}
                   escL3Available={match.escL3Available}
                   isUserAdvancedForRound={match.isUserAdvancedForRound}
+                  isUserMatch={isUserMatch}
                   hideML1OnMobile={true}
                 />
               </div>
