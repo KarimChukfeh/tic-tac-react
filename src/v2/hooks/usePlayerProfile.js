@@ -14,7 +14,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { ZERO_ADDRESS, getPlayerProfileContract, getInstanceContract } from '../lib/tictactoe';
+import { getPlayerProfileContract, getInstanceContract, resolvePlayerProfileAddress } from '../lib/tictactoe';
 
 const HISTORY_LIMIT = 20;
 
@@ -37,22 +37,8 @@ export function usePlayerProfile(factoryContract, runner, account) {
     setError(null);
 
     try {
-      // Try factory.players(account) first, fall back to getPlayerProfile
-      let addr = null;
-      try {
-        addr = await factoryContract.players(account);
-      } catch {
-        addr = null;
-      }
-      if (!addr || addr === ZERO_ADDRESS) {
-        try {
-          addr = await factoryContract.getPlayerProfile(account);
-        } catch {
-          addr = null;
-        }
-      }
-
-      if (!addr || addr === ZERO_ADDRESS) {
+      const addr = await resolvePlayerProfileAddress(factoryContract, runner, account);
+      if (!addr) {
         // Player hasn't enrolled in any tournament yet
         setProfileAddress(null);
         setStats(null);
@@ -83,24 +69,13 @@ export function usePlayerProfile(factoryContract, runner, account) {
         const offset = Math.max(0, total - HISTORY_LIMIT);
         const limit = Math.min(total, HISTORY_LIMIT);
         const recs = await profile.getEnrollments(offset, limit).catch(() => []);
-        // Enrich with enrolledCount from each instance, then sort newest first
+        // Enrich only display metadata that is not present on the profile record itself.
         const enriched = await Promise.all([...recs].map(async r => {
           let playerCount = null;
-          let tournamentStatus = null;
-          let tournamentWinner = ZERO_ADDRESS;
-          let resolutionReason = 0;
-          let resolutionCategory = 0;
           try {
             const inst = getInstanceContract(r.instance, runner);
-            const [info, tournament] = await Promise.all([
-              inst.getInstanceInfo(),
-              inst.tournament().catch(() => null),
-            ]);
+            const info = await inst.getInstanceInfo();
             playerCount = Number(info.playerCount ?? info.enrolledCount ?? 0) || null;
-            tournamentStatus = Number(info.status ?? tournament?.status ?? 0);
-            tournamentWinner = info.winner ?? tournament?.winner ?? ZERO_ADDRESS;
-            resolutionReason = Number(info.completionReason ?? tournament?.completionReason ?? 0);
-            resolutionCategory = Number(info.completionCategory ?? tournament?.completionCategory ?? 0);
           } catch { /* ignore */ }
           return {
             instance: r.instance,
@@ -111,10 +86,8 @@ export function usePlayerProfile(factoryContract, runner, account) {
             won: r.won,
             prize: r.prize,
             playerCount,
-            tournamentStatus,
-            tournamentWinner,
-            resolutionReason,
-            resolutionCategory,
+            tournamentResolutionReason: Number(r.tournamentResolutionReason ?? 0),
+            tournamentResolutionCategory: Number(r.tournamentResolutionCategory ?? 0),
           };
         }));
         setEnrollments(enriched.sort((a, b) => b.enrolledAt - a.enrolledAt));

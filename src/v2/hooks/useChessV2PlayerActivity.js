@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { ethers } from 'ethers';
-import { getInstanceContract, getPlayerProfileContract, ZERO_ADDRESS } from '../lib/chess';
+import { getInstanceContract, getPlayerProfileContract, ZERO_ADDRESS, resolvePlayerProfileAddress } from '../lib/chess';
 
 const VIRTUAL_TIER_ID = 0;
 
@@ -151,12 +151,8 @@ export const useChessV2PlayerActivity = (instanceContract, account, factoryContr
 
       if (factoryContract && runner) {
         try {
-          let profileAddr = null;
-          try { profileAddr = await factoryContract.players(account); } catch {}
-          if (!profileAddr || profileAddr === ZERO_ADDRESS) {
-            try { profileAddr = await factoryContract.getPlayerProfile(account); } catch {}
-          }
-          if (profileAddr && profileAddr !== ZERO_ADDRESS) {
+          const profileAddr = await resolvePlayerProfileAddress(factoryContract, runner, account);
+          if (profileAddr) {
             const profile = getPlayerProfileContract(profileAddr, runner);
             const total = Number(await profile.getEnrollmentCount().catch(() => 0n));
             if (total > 0) {

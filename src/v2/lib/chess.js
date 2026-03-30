@@ -3,86 +3,13 @@ import ChessFactoryABIData from '../ABIs/ChessOnChainFactory-ABI.json';
 import LocalhostFactoryData from '../ABIs/localhost-chess-factory.json';
 import HardhatFactoryData from '../ABIs/hardhat-factory.json';
 import ETourFactoryABIs from '../ABIs/ETour-Factory-ABIs.json';
+import PlayerProfileABIData from '../ABIs/PlayerProfile-ABI.json';
+import PlayerRegistryABIData from '../ABIs/PlayerRegistry-ABI.json';
 
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
-
-export const PLAYER_PROFILE_ABI = [
-  {
-    "inputs": [],
-    "name": "getEnrollmentCount",
-    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      { "internalType": "uint256", "name": "offset", "type": "uint256" },
-      { "internalType": "uint256", "name": "limit", "type": "uint256" }
-    ],
-    "name": "getEnrollments",
-    "outputs": [
-      {
-        "components": [
-          { "internalType": "address", "name": "instance", "type": "address" },
-          { "internalType": "uint8", "name": "gameType", "type": "uint8" },
-          { "internalType": "uint256", "name": "enrolledAt", "type": "uint256" },
-          { "internalType": "uint256", "name": "entryFee", "type": "uint256" },
-          { "internalType": "bool", "name": "concluded", "type": "bool" },
-          { "internalType": "bool", "name": "won", "type": "bool" },
-          { "internalType": "uint256", "name": "prize", "type": "uint256" }
-        ],
-        "internalType": "struct PlayerProfile.EnrollmentRecord[]",
-        "name": "",
-        "type": "tuple[]"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      { "internalType": "address", "name": "instanceAddress", "type": "address" }
-    ],
-    "name": "getEnrollmentByInstance",
-    "outputs": [
-      {
-        "components": [
-          { "internalType": "address", "name": "instance", "type": "address" },
-          { "internalType": "uint8", "name": "gameType", "type": "uint8" },
-          { "internalType": "uint256", "name": "enrolledAt", "type": "uint256" },
-          { "internalType": "uint256", "name": "entryFee", "type": "uint256" },
-          { "internalType": "bool", "name": "concluded", "type": "bool" },
-          { "internalType": "bool", "name": "won", "type": "bool" },
-          { "internalType": "uint256", "name": "prize", "type": "uint256" }
-        ],
-        "internalType": "struct PlayerProfile.EnrollmentRecord",
-        "name": "",
-        "type": "tuple"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getStats",
-    "outputs": [
-      {
-        "components": [
-          { "internalType": "uint256", "name": "totalPlayed", "type": "uint256" },
-          { "internalType": "uint256", "name": "totalWins", "type": "uint256" },
-          { "internalType": "uint256", "name": "totalLosses", "type": "uint256" },
-          { "internalType": "int256", "name": "totalNetEarnings", "type": "int256" }
-        ],
-        "internalType": "struct PlayerProfile.Stats",
-        "name": "",
-        "type": "tuple"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  }
-];
+export const PLAYER_PROFILE_ABI = PlayerProfileABIData.contract.abi;
+export const PLAYER_REGISTRY_ABI = PlayerRegistryABIData.contract.abi;
+export const PLAYER_REGISTRY_ADDRESS = PlayerRegistryABIData.addressesByGame?.ChessOnChainFactory || null;
 
 export const CHESS_V2_FACTORY_ADDRESS = ChessFactoryABIData.factory.address;
 export const CHESS_V2_FACTORY_ABI = ChessFactoryABIData.factory.abi;
@@ -154,6 +81,46 @@ export function getInstanceContract(address, runner) {
 
 export function getPlayerProfileContract(address, runner) {
   return new ethers.Contract(address, PLAYER_PROFILE_ABI, runner);
+}
+
+export function getPlayerRegistryContract(runner, address = PLAYER_REGISTRY_ADDRESS) {
+  return new ethers.Contract(address, PLAYER_REGISTRY_ABI, runner);
+}
+
+export async function resolvePlayerProfileAddress(factoryContract, runner, account, registryAddress = PLAYER_REGISTRY_ADDRESS) {
+  if (!factoryContract || !runner || !account) return null;
+
+  if (registryAddress) {
+    try {
+      const code = await runner.getCode(registryAddress);
+      if (code && code !== '0x') {
+        const registry = getPlayerRegistryContract(runner, registryAddress);
+        const gameType = Number(await factoryContract.gameType().catch(() => NaN));
+        if (Number.isFinite(gameType)) {
+          const profileAddr = await registry.getProfile(account, gameType).catch(() => ZERO_ADDRESS);
+          if (profileAddr && profileAddr !== ZERO_ADDRESS) return profileAddr;
+        }
+      }
+    } catch {
+      // Fall through to factory-based lookup when the registry is unavailable.
+    }
+  }
+
+  let profileAddr = null;
+  try {
+    profileAddr = await factoryContract.players(account);
+  } catch {
+    profileAddr = null;
+  }
+  if (!profileAddr || profileAddr === ZERO_ADDRESS) {
+    try {
+      profileAddr = await factoryContract.getPlayerProfile(account);
+    } catch {
+      profileAddr = null;
+    }
+  }
+
+  return profileAddr && profileAddr !== ZERO_ADDRESS ? profileAddr : null;
 }
 
 export function getDefaultTimeouts(playerCount) {

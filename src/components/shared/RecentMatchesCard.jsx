@@ -10,7 +10,7 @@ import { shortenAddress, getCellPositionName } from '../../utils/formatters';
 import {
   CompletionReason,
   getCompletedMatchOutcomeLabel,
-  getPlayerMatchOutcomeReasonValue,
+  getMatchCompletionReasonValue,
   getTournamentResolutionReasonValue,
   isDraw,
 } from '../../utils/completionReasons';
@@ -149,7 +149,7 @@ const RecentMatchesCard = ({
       completionReason: match.completionReason ?? null,
       matchCompletionReason: match.matchCompletionReason ?? null,
       playerOutcomeReason: match.playerOutcomeReason ?? null,
-      resolvedReason: getPlayerMatchOutcomeReasonValue(match),
+      resolvedReason: getMatchCompletionReasonValue(match),
       startTime: match.startTime,
       endTime: match.endTime,
     })));
@@ -713,7 +713,9 @@ const RecentMatchesCard = ({
     return `Round ${roundNumber + 1}/${totalRounds}`;
   };
 
-  const getMatchReason = (match) => getPlayerMatchOutcomeReasonValue(match);
+  // History badges are rendered from the match completion reason.
+  // PlayerProfile `outcome` is a different enum and must not be fed into these helpers.
+  const getMatchReason = (match) => getMatchCompletionReasonValue(match);
 
   const getTournamentResolutionText = (record) => {
     const reason = getTournamentResolutionReasonValue(record);

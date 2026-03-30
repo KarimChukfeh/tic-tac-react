@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { decodeConnectFourMoves, getInstanceContract, getPlayerProfileContract, ZERO_ADDRESS } from '../lib/connectfour';
+import { decodeConnectFourMoves, getInstanceContract, getPlayerProfileContract, ZERO_ADDRESS, resolvePlayerProfileAddress } from '../lib/connectfour';
 
 const VIRTUAL_TIER_ID = 0;
 
@@ -160,13 +160,9 @@ export const useConnectFourV2PlayerActivity = (instanceContract, account, factor
 
       if (factoryContract && runner) {
         try {
-          let profileAddr = null;
-          try { profileAddr = await factoryContract.players(account); } catch {}
-          if (!profileAddr || profileAddr === ZERO_ADDRESS) {
-            try { profileAddr = await factoryContract.getPlayerProfile(account); } catch {}
-          }
+          const profileAddr = await resolvePlayerProfileAddress(factoryContract, runner, account);
 
-          if (profileAddr && profileAddr !== ZERO_ADDRESS) {
+          if (profileAddr) {
             const profile = getPlayerProfileContract(profileAddr, runner);
             const countRaw = await profile.getEnrollmentCount().catch(() => 0n);
             const total = Number(countRaw);

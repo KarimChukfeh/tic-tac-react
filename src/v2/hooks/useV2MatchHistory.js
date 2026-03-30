@@ -7,7 +7,8 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { decodeTicTacToeMoves, getInstanceContract, getPlayerProfileContract, ZERO_ADDRESS } from '../lib/tictactoe';
+import { ethers } from 'ethers';
+import { decodeTicTacToeMoves, getInstanceContract, getPlayerProfileContract, ZERO_ADDRESS, resolvePlayerProfileAddress } from '../lib/tictactoe';
 
 const HISTORY_LIMIT = 30;
 
@@ -23,135 +24,101 @@ export function useV2MatchHistory(factoryContract, runner, account) {
 
     setLoading(true);
     try {
-      // ── 1. Resolve all enrolled instance addresses from PlayerProfile ──────
-      let instanceAddresses = [];
-
-      let profileAddr = null;
-      try { profileAddr = await factoryContract.players(account); } catch { /* */ }
-      if (!profileAddr || profileAddr === ZERO_ADDRESS) {
-        try { profileAddr = await factoryContract.getPlayerProfile(account); } catch { /* */ }
-      }
-
-      if (profileAddr && profileAddr !== ZERO_ADDRESS) {
-        const profile = getPlayerProfileContract(profileAddr, runner);
-        const countRaw = await profile.getEnrollmentCount().catch(() => 0n);
-        const total = Number(countRaw);
-
-        if (total > 0) {
-          const limit = Math.min(total, HISTORY_LIMIT);
-          const offset = Math.max(0, total - limit);
-          const recs = await profile.getEnrollments(offset, limit).catch(() => []);
-          instanceAddresses = recs
-            .map(r => r.instance)
-            .filter(addr => addr && addr !== ZERO_ADDRESS);
-        }
-      }
-
-      if (instanceAddresses.length === 0) {
+      const profileAddr = await resolvePlayerProfileAddress(factoryContract, runner, account);
+      if (!profileAddr) {
         setMatches([]);
         return;
       }
 
-      // ── 2. Scan each instance for the player's completed matches ──────────
-      const allMatches = [];
+      const profile = getPlayerProfileContract(profileAddr, runner);
+      const total = Number(await profile.getMatchRecordCount().catch(() => 0n));
+      if (total === 0) {
+        setMatches([]);
+        return;
+      }
 
-      await Promise.all(instanceAddresses.map(async (instanceAddress) => {
+      const limit = Math.min(total, HISTORY_LIMIT);
+      const offset = Math.max(0, total - limit);
+      const records = await profile.getMatchRecords(offset, limit).catch(() => []);
+      const acc = account.toLowerCase();
+
+      const allMatches = (await Promise.all(records.map(async (record) => {
         try {
+          const instanceAddress = record.instance;
+          if (!instanceAddress || instanceAddress === ZERO_ADDRESS) return null;
+
+          const roundNumber = Number(record.roundNumber);
+          const matchNumber = Number(record.matchNumber);
           const instance = getInstanceContract(instanceAddress, runner);
-          const [bracket, tc] = await Promise.all([
-            instance.getBracket().catch(() => null),
+          const matchKey = ethers.solidityPackedKeccak256(['uint8', 'uint8'], [roundNumber, matchNumber]);
+
+          const [m, fullMatch, boardArr, tc] = await Promise.all([
+            instance.getMatch(roundNumber, matchNumber),
+            instance.matches(matchKey).catch(() => null),
+            instance.getBoard(roundNumber, matchNumber).catch(() => []),
             instance.tierConfig().catch(() => null),
           ]);
 
-          if (!bracket) return;
+          if (Number(m.status) !== 2) return null;
 
-          const totalRounds = Number(bracket.totalRounds || 0);
+          const moves = decodeTicTacToeMoves(m.moves || '');
+          const moveHistory = moves.map((cellIndex, index) => ({
+            player: index % 2 === 0 ? 'X' : 'O',
+            cell: cellIndex,
+          }));
+
+          let packedBoard = 0n;
+          for (let ci = 0; ci < boardArr.length; ci++) {
+            packedBoard |= BigInt(Number(boardArr[ci]) & 3) << BigInt(ci * 2);
+          }
+
+          const winner = m.matchWinner;
+          const winnerLower = winner?.toLowerCase();
+          const matchCompletionReason = Number(m.completionReason || (m.isDraw ? 2 : 0));
+          const matchCompletionCategory = Number(m.completionCategory ?? 0);
+          const playerOutcomeReason = Number(record.outcome ?? matchCompletionReason);
+          const playerOutcomeCategory = Number(record.category ?? matchCompletionCategory);
+          const playerPerspective = Boolean(m.isDraw)
+            ? 'draw'
+            : (winnerLower && winnerLower === acc && winnerLower !== ZERO_ADDRESS.toLowerCase())
+              ? 'winner'
+              : 'loser';
+          const endTime = Number(m.lastMoveTime || record.recordedAt || m.startTime || 0);
           const playerCount = Number(tc?.playerCount || 2);
 
-          for (let roundIdx = 0; roundIdx < totalRounds; roundIdx++) {
-            const matchCount = Number(bracket.matchCounts?.[roundIdx] || 0);
-
-            await Promise.all(
-              Array.from({ length: matchCount }, async (_, matchIdx) => {
-                try {
-                  const m = await instance.getMatch(roundIdx, matchIdx);
-                  const p1 = m.player1?.toLowerCase();
-                  const p2 = m.player2?.toLowerCase();
-                  const acc = account.toLowerCase();
-                  const winner = m.matchWinner;
-                  const winnerLower = winner?.toLowerCase();
-
-                  // Include completed matches the user played in, plus external ML2/ML3 wins.
-                  if (p1 !== acc && p2 !== acc && winnerLower !== acc) return;
-
-                  // Only completed matches (status === 2 = Complete)
-                  const matchStatus = Number(m.status);
-                  if (matchStatus !== 2) return;
-
-                  const moves = decodeTicTacToeMoves(m.moves || '');
-                  const moveHistory = [];
-                  for (const cellIndex of moves) {
-                    const isPlayer1Move = moveHistory.length % 2 === 0;
-                    moveHistory.push({ player: isPlayer1Move ? 'X' : 'O', cell: cellIndex });
-                  }
-
-                  // Fetch board and pack uint8[9] → BigInt for RecentMatchesCard compatibility
-                  // unpackBoard reads cell i from bits i*2 (little-endian, cell 0 = LSB)
-                  let packedBoard = 0n;
-                  try {
-                    const boardArr = await instance.getBoard(roundIdx, matchIdx);
-                    for (let ci = 0; ci < boardArr.length; ci++) {
-                      packedBoard |= BigInt(Number(boardArr[ci]) & 3) << BigInt(ci * 2);
-                    }
-                  } catch { /* ignore */ }
-
-                  // Use lastMoveTime as endTime since getMatch doesn't expose endTime
-                  const endTime = Number(m.lastMoveTime || m.startTime || 0);
-
-                  const matchCompletionReason = Number(m.completionReason || (m.isDraw ? 2 : 0));
-                  const matchCompletionCategory = Number(m.completionCategory ?? 0);
-                  const userIsWinner = Boolean(winnerLower && winnerLower === acc && winnerLower !== ZERO_ADDRESS.toLowerCase());
-                  const playerPerspective = Boolean(m.isDraw)
-                    ? 'draw'
-                    : userIsWinner
-                    ? 'winner'
-                    : 'loser';
-
-                  allMatches.push({
-                    matchId: `0-${instanceAddress}-${roundIdx}-${matchIdx}`,
-                    tierId: 0,
-                    instanceId: instanceAddress,
-                    instanceAddress,
-                    roundNumber: roundIdx,
-                    matchNumber: matchIdx,
-                    playerCount,
-                    totalRounds,
-                    player1: m.player1,
-                    player2: m.player2,
-                    firstPlayer: m.player1, // V2 doesn't expose firstPlayer in getMatch
-                    winner,
-                    reason: matchCompletionReason,
-                    completionReason: matchCompletionReason,
-                    completionCategory: matchCompletionCategory,
-                    matchCompletionReason,
-                    matchCompletionCategory,
-                    playerOutcomeReason: matchCompletionReason,
-                    playerOutcomeCategory: matchCompletionCategory,
-                    playerPerspective,
-                    isScheduledPlayer: p1 === acc || p2 === acc,
-                    isDraw: Boolean(m.isDraw),
-                    board: packedBoard,
-                    startTime: Number(m.startTime || 0),
-                    endTime,
-                    timestamp: endTime,
-                    moveHistory,
-                  });
-                } catch { /* skip bad match */ }
-              })
-            );
-          }
-        } catch { /* skip bad instance */ }
-      }));
+          return {
+            matchId: `0-${instanceAddress}-${roundNumber}-${matchNumber}`,
+            tierId: 0,
+            instanceId: instanceAddress,
+            instanceAddress,
+            roundNumber,
+            matchNumber,
+            playerCount,
+            totalRounds: playerCount > 1 ? Math.ceil(Math.log2(playerCount)) : 1,
+            player1: m.player1,
+            player2: m.player2,
+            firstPlayer: fullMatch?.firstPlayer || m.player1,
+            winner,
+            reason: matchCompletionReason,
+            completionReason: matchCompletionReason,
+            completionCategory: matchCompletionCategory,
+            matchCompletionReason,
+            matchCompletionCategory,
+            playerOutcomeReason,
+            playerOutcomeCategory,
+            playerPerspective,
+            isScheduledPlayer: m.player1?.toLowerCase() === acc || m.player2?.toLowerCase() === acc,
+            isDraw: Boolean(m.isDraw),
+            board: packedBoard,
+            startTime: Number(m.startTime || 0),
+            endTime,
+            timestamp: endTime,
+            moveHistory,
+          };
+        } catch {
+          return null;
+        }
+      }))).filter(Boolean);
 
       // Sort newest first
       allMatches.sort((a, b) => b.endTime - a.endTime);
