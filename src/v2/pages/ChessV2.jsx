@@ -139,7 +139,7 @@ function ActionMessage({ type = 'info', message }) {
 
 function SectionShell({ title, children, right = null, id = null }) {
   return (
-    <div id={id} className="mb-10">
+    <div id={id}>
       <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-6 border border-purple-400/30">
         {(title || right) ? (
           <div className="flex items-center justify-between gap-4 mb-6">
@@ -1807,8 +1807,8 @@ export default function ChessV2() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-12" style={{ position: 'relative', zIndex: 10 }}>
-        <div className="text-center mb-8">
+      <div className="max-w-7xl mx-auto px-6 pt-12" style={{ position: 'relative', zIndex: 10 }}>
+        <div className="text-center mb-8 md:mb-10">
           <div className="inline-block mb-6">
             <div className="relative">
               <div className={`absolute -inset-4 bg-gradient-to-r ${currentTheme.heroGlow} rounded-full blur-xl opacity-50 animate-pulse`} />
@@ -1914,7 +1914,7 @@ export default function ChessV2() {
                 <TournamentBracket tournamentData={viewingTournament} onBack={handleBackToTournaments} onEnterMatch={handlePlayMatch} onForceEliminate={handleForceEliminateStalledMatch} onClaimReplacement={handleClaimMatchSlotByReplacement} onManualStart={handleManualStart} onClaimAbandonedPool={handleClaimAbandonedPool} onResetEnrollmentWindow={handleResetEnrollmentWindow} onEnroll={handleEnroll} onConnectWallet={connectWallet} account={account} loading={tournamentsLoading} connectLoading={isConnecting} syncDots={bracketSyncDots} isEnrolled={viewingTournament?.players?.some(addr => addr.toLowerCase() === account?.toLowerCase())} entryFee={viewingTournament?.entryFeeEth ?? '0'} isFull={viewingTournament?.enrolledCount >= viewingTournament?.playerCount} instanceContract={activeInstanceContract} />
               </div>
             ) : (
-              <>
+              <div className="space-y-8 md:space-y-10">
                 <V2GameLobbyIntro
                   account={account}
                   isConnecting={isConnecting}
@@ -1990,13 +1990,12 @@ export default function ChessV2() {
                     </div>
                   </form>
                 </SectionShell>
-
-              </>
+              </div>
             )}
           </>
         )}
       </div>
-      <div id="user-manual" className="max-w-7xl mx-auto px-6 pb-12" style={{ position: 'relative', zIndex: 10 }}>
+      <div id="user-manual" className="max-w-7xl mx-auto px-6 pt-8 md:pt-10 pb-12" style={{ position: 'relative', zIndex: 10 }}>
         <UserManual contractInstance={null} tierConfigurations={[]} raffleThresholds={['0.001', '0.005', '0.02', '0.05', '0.25', '0.5', '0.75', '1']} />
       </div>
 

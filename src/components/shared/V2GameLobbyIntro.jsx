@@ -11,14 +11,14 @@ export default function V2GameLobbyIntro({
   const [isWhyArbitrumExpanded, setIsWhyArbitrumExpanded] = useState(false);
 
   return (
-    <div className="max-w-lg mx-auto mb-10">
+    <div className="max-w-lg mx-auto space-y-5 md:space-y-6">
       <WhyArbitrum
         variant="blue"
         isExpanded={isWhyArbitrumExpanded}
         onToggle={() => setIsWhyArbitrumExpanded(prev => !prev)}
       />
       {!account && onConnectWallet && (
-        <div className="mt-4 px-6">
+        <div>
           <button
             type="button"
             onClick={onConnectWallet}

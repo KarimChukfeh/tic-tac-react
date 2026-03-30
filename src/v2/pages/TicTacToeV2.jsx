@@ -150,7 +150,7 @@ function MetricBox({ label, value, subtext, tone = 'blue' }) {
 
 function SectionShell({ title, children, right = null, id = null }) {
   return (
-    <div id={id} className="mb-10">
+    <div id={id}>
       <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-6 border border-purple-400/30">
         {(title || right) ? (
           <div className="flex items-center justify-between gap-4 mb-6">
@@ -2141,9 +2141,9 @@ export default function TicTacToeV2() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-12" style={{ position: 'relative', zIndex: 10 }}>
+      <div className="max-w-7xl mx-auto px-6 pt-12" style={{ position: 'relative', zIndex: 10 }}>
         {/* Hero Section */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-8 md:mb-10">
           <div className="inline-block mb-6">
             <div className="relative">
               <div className={`absolute -inset-4 bg-gradient-to-r ${currentTheme.heroGlow} rounded-full blur-xl opacity-50 animate-pulse`}></div>
@@ -2321,7 +2321,7 @@ export default function TicTacToeV2() {
               </div>
             ) : (
               // Landing — lobby + create form
-              <>
+              <div className="space-y-8 md:space-y-10">
                 <V2GameLobbyIntro
                   account={account}
                   isConnecting={isConnecting}
@@ -2471,15 +2471,14 @@ export default function TicTacToeV2() {
                   </div>
                 </form>
               </SectionShell>
-
-              </>
+              </div>
             )}
           </>
         )}
       </div>
 
       {/* User Manual */}
-      <div id="user-manual" className="max-w-7xl mx-auto px-6 pb-12" style={{ position: 'relative', zIndex: 10 }}>
+      <div id="user-manual" className="max-w-7xl mx-auto px-6 pt-8 md:pt-10 pb-12" style={{ position: 'relative', zIndex: 10 }}>
         <UserManual
           contractInstance={null}
           tierConfigurations={[]}

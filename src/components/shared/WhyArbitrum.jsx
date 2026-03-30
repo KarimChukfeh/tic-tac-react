@@ -34,7 +34,7 @@ export default function WhyArbitrum({ variant = 'blue', isExpanded = true, onTog
   const theme = colors[variant] || colors.blue;
 
   return (
-    <div className="mt-6 max-w-lg mx-auto">
+    <div>
       <div className={`${theme.bg} border ${theme.border} rounded-lg overflow-hidden transition-all duration-300`}>
         <button
           onClick={onToggle}
