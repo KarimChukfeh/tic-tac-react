@@ -223,27 +223,6 @@ function ActionMessage({ type = 'info', message }) {
   );
 }
 
-function SectionShell({ title, children, right = null, id = null }) {
-  return (
-    <div id={id}>
-      <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-6 border border-purple-400/30">
-        {(title || right) ? (
-          <div className="flex items-center justify-between gap-4 mb-6">
-            {title ? (
-              <h2 className="text-3xl font-bold text-purple-300 flex items-center gap-3">
-                <Grid size={28} />
-                {title}
-              </h2>
-            ) : <div />}
-            {right}
-          </div>
-        ) : null}
-        {children}
-      </div>
-    </div>
-  );
-}
-
 const ConnectFourBoard = ({
   board,
   onColumnClick,
@@ -2513,7 +2492,7 @@ export default function ConnectFourV2() {
                   onConnectWallet={connectWallet}
                   connectCtaClassName={currentTheme.connectCtaClassName}
                 />
-                <SectionShell id="live-instances">
+                <div id="live-instances">
                   <form onSubmit={createInstance}>
                     <div className="bg-slate-900/50 border border-purple-400/20 rounded-2xl p-4 md:p-5">
                       <div className="grid gap-4 md:grid-cols-[minmax(0,1.3fr)_minmax(220px,0.7fr)] md:items-end">
@@ -2639,7 +2618,7 @@ export default function ConnectFourV2() {
                       </div>
                     </div>
                   </form>
-                </SectionShell>
+                </div>
               </div>
             )}
           </>
