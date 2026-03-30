@@ -148,9 +148,8 @@ export default function EntryFeeSlider({
             <div className="text-sm text-purple-200">Entry Fee</div>
             <div className="mt-2 flex flex-wrap items-end gap-x-3 gap-y-1">
               <span className="text-2xl md:text-3xl font-semibold text-white">{selectedEth} ETH</span>
-              <span className="text-xs md:text-sm font-medium text-cyan-200/85">{formatUsdEstimate(selectedEthNumber)} estimated</span>
+              <span className="text-xs md:text-sm font-medium text-cyan-200/85">{formatUsdEstimate(selectedEthNumber)} estimated*</span>
             </div>
-            <div className="mt-1 text-xs text-slate-400">Dollar estimates assume 1 ETH = ~$2000</div>
           </div>
 
           <div className="winner-gets-pill relative overflow-hidden rounded-xl px-3 py-2 text-sm text-slate-100" style={winnerPillStyle}>
@@ -191,6 +190,8 @@ export default function EntryFeeSlider({
             <span>0.5</span>
             <span>1 ETH</span>
           </div>
+
+          <div className="mt-3 text-[10px] text-slate-500">*Assuming 1 ETH = ~$2000</div>
         </div>
       </div>
     </div>

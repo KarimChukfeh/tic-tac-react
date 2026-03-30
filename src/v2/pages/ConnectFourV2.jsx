@@ -2603,18 +2603,18 @@ export default function ConnectFourV2() {
                         <h2 className="text-xl font-semibold text-white">New Lobby</h2>
                       </div>
                       <div className="grid gap-4 md:grid-cols-[minmax(0,0.2fr)_minmax(0,0.8fr)] md:items-stretch">
-                        <div className={`rounded-2xl border p-4 md:p-5 ${!account ? 'border-slate-800 bg-slate-900/50' : 'border-cyan-400/20 bg-slate-950/60 shadow-[0_0_30px_rgba(56,189,248,0.08)]'}`}>
+                        <div className={`rounded-2xl border p-4 md:p-5 ${createLoading ? 'border-slate-800 bg-slate-900/50' : 'border-cyan-400/20 bg-slate-950/60 shadow-[0_0_30px_rgba(56,189,248,0.08)]'}`}>
                           <div className="text-sm text-purple-200 mb-3">Player Count</div>
-                          <div className="grid grid-cols-2 gap-3">
+                          <div className="grid grid-cols-3 gap-3 md:grid-cols-2">
                             {PLAYER_COUNT_OPTIONS.map(option => {
                               const active = Number(createForm.playerCount) === option;
                               return (
                                 <button
                                   key={option}
                                   type="button"
-                                  disabled={!account}
+                                  disabled={createLoading}
                                   onClick={() => setPlayerCount(option)}
-                                  className={`px-4 py-3 rounded-xl text-base font-semibold transition-all ${option === 32 ? 'col-span-2' : ''} ${!account ? 'bg-slate-900/80 border border-slate-800 text-slate-500 cursor-not-allowed' : active ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg' : 'bg-slate-800/80 border border-slate-700 text-slate-300 hover:border-cyan-400/40'}`}
+                                  className={`px-4 py-3 rounded-xl text-base font-semibold transition-all ${option === 32 ? 'md:col-span-2' : ''} ${createLoading ? 'bg-slate-900/80 border border-slate-800 text-slate-500 cursor-not-allowed' : active ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg' : 'bg-slate-800/80 border border-slate-700 text-slate-300 hover:border-cyan-400/40'}`}
                                 >
                                   {option}
                                 </button>
@@ -2628,7 +2628,7 @@ export default function ConnectFourV2() {
                             factoryRules={factoryRules}
                             entryFee={createForm.entryFee}
                             playerCount={createForm.playerCount}
-                            disabled={!account}
+                            disabled={createLoading}
                             onChange={value => updateCreateForm('entryFee', value)}
                           />
                         </div>
@@ -2708,12 +2708,12 @@ export default function ConnectFourV2() {
                           </div>
                         )}
                       </div>
-                      <div className="mt-5 flex justify-end">
+                      <div className="mt-5 flex justify-stretch md:justify-end">
                         <button
                           type="submit"
                           disabled={createLoading || !account}
                           title={!account ? 'Connect your wallet to create and enrol.' : ''}
-                          className={`inline-flex min-w-[220px] items-center justify-center gap-2.5 px-6 py-3 rounded-xl font-bold text-base md:text-lg shadow-2xl transition-all disabled:cursor-not-allowed ${account ? 'bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 transform hover:scale-105 text-white border border-sky-300/40 shadow-[0_0_30px_rgba(59,130,246,0.35)]' : 'bg-slate-800/90 border border-slate-700 text-slate-500'}`}
+                          className={`inline-flex w-full md:w-auto min-w-[220px] items-center justify-center gap-2.5 px-6 py-3 rounded-xl font-bold text-base md:text-lg shadow-2xl transition-all disabled:cursor-not-allowed ${account ? 'bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 transform hover:scale-105 text-white border border-sky-300/40 shadow-[0_0_30px_rgba(59,130,246,0.35)]' : 'bg-slate-800/90 border border-slate-700 text-slate-500'}`}
                         >
                           {createLoading ? <Loader size={20} className="animate-spin" /> : null}
                           {createLoading ? 'Creating Lobby...' : 'Create Lobby'}
