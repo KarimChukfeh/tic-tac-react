@@ -132,4 +132,39 @@ describe('TournamentHeader', () => {
     expect(onConnectWallet).toHaveBeenCalledTimes(1);
     expect(screen.getByText('Connect your wallet to join this tournament')).toBeInTheDocument();
   });
+
+  it('shows solo-enroller cancel and reset actions instead of force start', async () => {
+    const onCancelTournament = vi.fn();
+    const onResetEnrollmentWindow = vi.fn();
+    const contract = {
+      canResetEnrollmentWindow: {
+        staticCall: vi.fn().mockResolvedValue(true),
+      },
+    };
+
+    render(
+      <TournamentHeader
+        {...baseProps}
+        enrolledCount={1}
+        isEnrolled
+        enrollmentTimeout={{
+          escalation1Start: Math.floor(Date.now() / 1000) + 300,
+          escalation2Start: Math.floor(Date.now() / 1000) + 600,
+          activeEscalation: 0,
+          forfeitPool: 0n,
+        }}
+        onCancelTournament={onCancelTournament}
+        onResetEnrollmentWindow={onResetEnrollmentWindow}
+        onManualStart={vi.fn()}
+        contract={contract}
+      />
+    );
+
+    expect(await screen.findByRole('button', { name: 'EL0: Cancel Tournament' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'EL1*: Reset Enrollment Window' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /EL1: Force Start/i })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'EL0: Cancel Tournament' }));
+    expect(onCancelTournament).toHaveBeenCalledWith(0, 0);
+  });
 });

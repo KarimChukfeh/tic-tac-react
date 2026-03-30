@@ -326,7 +326,7 @@ function calculateCapturedPieces(board) {
   return { white: whiteCaptured, black: blackCaptured };
 }
 
-const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceEliminate, onClaimReplacement, onManualStart, onClaimAbandonedPool, onResetEnrollmentWindow, onEnroll, onConnectWallet, account, loading, connectLoading, syncDots, isEnrolled, entryFee, isFull, instanceContract }) => {
+const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceEliminate, onClaimReplacement, onManualStart, onClaimAbandonedPool, onResetEnrollmentWindow, onCancelTournament, onEnroll, onConnectWallet, account, loading, connectLoading, syncDots, isEnrolled, entryFee, isFull, instanceContract }) => {
   const { status, currentRound, enrolledCount, rounds, playerCount, players, enrollmentTimeout } = tournamentData;
   const bracketViewRef = useRef(null);
   const prevStatusRef = useRef(status);
@@ -417,6 +417,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
         onManualStart={onManualStart ? () => onManualStart(VIRTUAL_TIER_ID, VIRTUAL_INSTANCE_ID) : null}
         onClaimAbandonedPool={onClaimAbandonedPool ? () => onClaimAbandonedPool(VIRTUAL_TIER_ID, VIRTUAL_INSTANCE_ID) : null}
         onResetEnrollmentWindow={onResetEnrollmentWindow ? () => onResetEnrollmentWindow(VIRTUAL_TIER_ID, VIRTUAL_INSTANCE_ID) : null}
+        onCancelTournament={onCancelTournament ? () => onCancelTournament(VIRTUAL_TIER_ID, VIRTUAL_INSTANCE_ID) : null}
         contract={instanceContract}
       />
       <div ref={bracketViewRef} className="bg-gradient-to-br from-slate-900/50 to-purple-900/30 backdrop-blur-lg rounded-2xl p-8 border border-purple-400/30">
@@ -947,7 +948,8 @@ export default function ChessV2() {
       const signer = await browserProvider.getSigner();
       const creator = await signer.getAddress();
       const readFactory = await resolveFactoryContract();
-      const writableFactory = getFactoryContract(signer, factoryAddress);
+      const resolvedFactoryAddress = readFactory.target;
+      const writableFactory = getFactoryContract(signer, resolvedFactoryAddress);
       const [countBeforeRaw, minFeeRaw, feeIncrementRaw, maxFeeRaw] = await Promise.all([
         readFactory.getInstanceCount(),
         readFactory.MIN_ENTRY_FEE(),
@@ -963,7 +965,7 @@ export default function ChessV2() {
       setActionState({ type: 'info', message: 'Transaction submitted. Waiting for block confirmation...' });
       const receipt = await tx.wait();
       setActionState({ type: 'info', message: 'Transaction confirmed. Locating the new instance and syncing tournament data...' });
-      const address = await resolveCreatedInstanceAddress({ factory: await resolveFactoryContract(), provider: getReadRunner(), creator, playerCount: Number(createForm.playerCount), entryFeeWei, countBefore, receipt });
+      const address = await resolveCreatedInstanceAddress({ factory: readFactory, provider: getReadRunner(), creator, playerCount: Number(createForm.playerCount), entryFeeWei, countBefore, receipt });
       if (!address) throw new Error('Transaction mined, but the frontend could not locate the created instance.');
       const createdInstance = getInstanceContract(address, getReadRunner());
       const creatorEnrolled = await createdInstance.isEnrolled(creator).catch(() => false);
@@ -1059,9 +1061,13 @@ export default function ChessV2() {
         return;
       }
       if (enrolledCount < 1) { alert('No enrolled players.'); return; }
+      if (enrolledCount < 2) {
+        alert('Solo-enrolled tournaments can no longer be force-started. Cancel the tournament or reset the enrollment window instead.');
+        return;
+      }
       const isEnrolled = await activeInstanceContract.isEnrolled(account);
       if (!isEnrolled) { alert('You must be enrolled to force-start.'); return; }
-      const msg = enrolledCount === 1 ? `You are the only enrolled player. Force-starting will declare you the winner.${forfeitPool > 0n ? ` Plus ${ethers.formatEther(forfeitPool)} ETH forfeited fees.` : ''} Continue?` : `Force-starting with ${enrolledCount} players.${forfeitPool > 0n ? ` Forfeit pool of ${ethers.formatEther(forfeitPool)} ETH will be distributed.` : ''} Continue?`;
+      const msg = `Force-starting with ${enrolledCount} players.${forfeitPool > 0n ? ` Forfeit pool of ${ethers.formatEther(forfeitPool)} ETH will be distributed.` : ''} Continue?`;
       if (!window.confirm(msg)) return;
       setActionState({ type: 'info', message: 'Confirm the force-start transaction in MetaMask...' });
       const tx = await writableInstance.forceStartTournament();
@@ -1069,11 +1075,8 @@ export default function ChessV2() {
       await tx.wait();
       setActionState({ type: 'info', message: 'Force-start confirmed. Refreshing tournament state...' });
       alert('Tournament force-started successfully!');
-      if (enrolledCount === 1) { setViewingTournament(null); setCurrentMatch(null); }
-      else {
-        const updated = await refreshTournamentBracket(viewingTournament.address);
-        if (updated) setViewingTournament(updated);
-      }
+      const updated = await refreshTournamentBracket(viewingTournament.address);
+      if (updated) setViewingTournament(updated);
       setActionState({ type: 'success', message: 'Tournament state refreshed after the force-start transaction.' });
     } catch (error) {
       console.error('[ChessV2] Force start error:', error);
@@ -1082,6 +1085,38 @@ export default function ChessV2() {
       setTournamentsLoading(false);
     }
   }, [viewingTournament, activeInstanceContract, account, refreshTournamentBracket]);
+
+  const handleCancelTournament = useCallback(async () => {
+    if (!viewingTournament || !activeInstanceContract || !account) { alert('Please connect your wallet first.'); return; }
+    try {
+      setTournamentsLoading(true);
+      const tournamentData = await activeInstanceContract.tournament();
+      const status = Number(tournamentData.status);
+      const enrolledCount = Number(tournamentData.enrolledCount);
+      const isEnrolled = await activeInstanceContract.isEnrolled(account);
+      if (status !== 0) { alert('Tournament has already started, completed, or been cancelled.'); return; }
+      if (!isEnrolled || enrolledCount !== 1) { alert('Only the sole enrolled player can cancel this tournament.'); return; }
+      const entryFee = tournamentData.entryFee ?? viewingTournament.entryFeeWei ?? 0n;
+      if (!window.confirm(`Cancel this tournament and refund your ${ethers.formatEther(entryFee)} ETH entry fee?\n\nThis will be recorded as an EL0 cancellation.`)) return;
+      const writableInstance = await withInstanceSigner(activeInstanceContract);
+      setActionState({ type: 'info', message: 'Confirm the tournament cancellation in MetaMask...' });
+      const tx = await writableInstance.cancelTournament();
+      setActionState({ type: 'info', message: 'Cancellation submitted. Waiting for block confirmation...' });
+      await tx.wait();
+      setActionState({ type: 'success', message: 'Tournament cancelled and refund recorded on-chain.' });
+      alert('Tournament cancelled successfully!');
+      setViewingTournament(null);
+      setCurrentMatch(null);
+      setActiveInstanceContract(null);
+      activeInstanceContractRef.current = null;
+      clearSelectedInstance();
+    } catch (error) {
+      console.error('[ChessV2] Cancel tournament error:', error);
+      alert(`Error cancelling tournament: ${getReadableError(error, 'Unknown error')}`);
+    } finally {
+      setTournamentsLoading(false);
+    }
+  }, [viewingTournament, activeInstanceContract, account]);
 
   const handleResetEnrollmentWindow = useCallback(async () => {
     if (!viewingTournament || !activeInstanceContract || !account) { alert('Please connect your wallet first.'); return; }
@@ -1894,7 +1929,7 @@ export default function ChessV2() {
           <>
             {viewingTournament ? (
               <div ref={tournamentBracketRef}>
-                <TournamentBracket tournamentData={viewingTournament} onBack={handleBackToTournaments} onEnterMatch={handlePlayMatch} onForceEliminate={handleForceEliminateStalledMatch} onClaimReplacement={handleClaimMatchSlotByReplacement} onManualStart={handleManualStart} onClaimAbandonedPool={handleClaimAbandonedPool} onResetEnrollmentWindow={handleResetEnrollmentWindow} onEnroll={handleEnroll} onConnectWallet={connectWallet} account={account} loading={tournamentsLoading} connectLoading={isConnecting} syncDots={bracketSyncDots} isEnrolled={viewingTournament?.players?.some(addr => addr.toLowerCase() === account?.toLowerCase())} entryFee={viewingTournament?.entryFeeEth ?? '0'} isFull={viewingTournament?.enrolledCount >= viewingTournament?.playerCount} instanceContract={activeInstanceContract} />
+                <TournamentBracket tournamentData={viewingTournament} onBack={handleBackToTournaments} onEnterMatch={handlePlayMatch} onForceEliminate={handleForceEliminateStalledMatch} onClaimReplacement={handleClaimMatchSlotByReplacement} onManualStart={handleManualStart} onClaimAbandonedPool={handleClaimAbandonedPool} onResetEnrollmentWindow={handleResetEnrollmentWindow} onCancelTournament={handleCancelTournament} onEnroll={handleEnroll} onConnectWallet={connectWallet} account={account} loading={tournamentsLoading} connectLoading={isConnecting} syncDots={bracketSyncDots} isEnrolled={viewingTournament?.players?.some(addr => addr.toLowerCase() === account?.toLowerCase())} entryFee={viewingTournament?.entryFeeEth ?? '0'} isFull={viewingTournament?.enrolledCount >= viewingTournament?.playerCount} instanceContract={activeInstanceContract} />
               </div>
             ) : (
               <div className="space-y-8 md:space-y-10">

@@ -5,7 +5,7 @@
  * Includes: back button, title, sync indicator, prize pool, stats, enrolled players.
  */
 
-import { Trophy, ChevronDown, Copy, Check, Clock, HelpCircle, Zap, Coins, RefreshCw } from 'lucide-react';
+import { Trophy, ChevronDown, Copy, Check, Clock, HelpCircle, Zap, Coins, RefreshCw, XCircle } from 'lucide-react';
 import { ethers } from 'ethers';
 import { useState, useEffect, useRef } from 'react';
 import { getAddressUrl } from '../../config/networks';
@@ -13,7 +13,7 @@ import { generateTournamentUrl, copyToClipboard } from '../../utils/urlHelpers';
 import StatsGrid from './StatsGrid';
 import EnrolledPlayersList from './EnrolledPlayersList';
 import { formatTime, getTournamentTypeLabel, shortenAddress } from '../../utils/formatters';
-import { getTournamentCompletionText, getTournamentResolutionReasonValue } from '../../utils/completionReasons';
+import { CompletionReason, getTournamentCompletionText, getTournamentResolutionReasonValue } from '../../utils/completionReasons';
 
 // Game-specific configurations
 const GAME_CONFIGS = {
@@ -97,6 +97,7 @@ const TournamentHeader = ({
   onManualStart,
   onClaimAbandonedPool,
   onResetEnrollmentWindow,
+  onCancelTournament,
   contract,
 
   // Optional: override the share URL (e.g. for V2 contract-address-based URLs)
@@ -129,7 +130,6 @@ const TournamentHeader = ({
   const colors = customColors || config.colors;
   const totalRounds = Math.ceil(Math.log2(playerCount));
   const isInProgress = status === 1;
-  const isCompleted = status >= 2;
   const tournamentTypeLabel = getTournamentTypeLabel(playerCount);
   const formattedEntryFee = formatEnrollmentFee(entryFee);
   const showEnrollmentCta = status === 0 && !isEnrolled && !isFull && (account ? !!onEnroll : !!onConnectWallet);
@@ -140,6 +140,8 @@ const TournamentHeader = ({
     ? (loading ? 'Enrolling...' : `Enroll in ${tournamentTypeLabel} (${formattedEntryFee} ETH)`)
     : (connectLoading ? 'Connecting...' : 'Connect to Enrol');
   const tournamentResolutionReason = getTournamentResolutionReasonValue({ resolutionReason, completionReason });
+  const isCancelled = status === 3 || tournamentResolutionReason === CompletionReason.SOLO_ENROLL_CANCELLED;
+  const isCompleted = status >= 2;
   const resolutionText = getTournamentCompletionText(tournamentResolutionReason);
   const winnerLabel = winner && winner !== ethers.ZeroAddress ? shortenAddress(winner) : '0x000';
   const resolutionSummary = tournamentResolutionReason === 0 ? '' : ` by ${resolutionText.summary}`;
@@ -157,6 +159,8 @@ const TournamentHeader = ({
   const formatRecipient = (address) => (
     address && address !== ethers.ZeroAddress ? shortenAddress(address) : 'None'
   );
+  const isSoloEnrollmentState = status === 0 && enrolledCount === 1;
+  const isSoloEnrolled = isSoloEnrollmentState && isEnrolled;
 
   const instanceExplorerUrl = instanceAddress
     ? (getAddressUrl(instanceAddress) || `https://arbiscan.io/address/${instanceAddress}`)
@@ -210,7 +214,7 @@ const TournamentHeader = ({
 
   // Escalation polling effect - only polls when visible and tab is active
   useEffect(() => {
-    if (!enrollmentTimeout) {
+    if (!enrollmentTimeout || status !== 0) {
       setEscalationState({
         activeEscalation: 0,
         canStartEscalation1: false,
@@ -219,6 +223,7 @@ const TournamentHeader = ({
         timeToEscalation2: 0,
         forfeitPool: 0n
       });
+      setCanResetWindow(false);
       return;
     }
 
@@ -253,19 +258,18 @@ const TournamentHeader = ({
         forfeitPool
       });
 
-      // Check canResetEnrollmentWindow when enrollment window expires
-      // Continue checking even when EL2 is active - solo player can still reset
-      if ((canStartEscalation1 || canStartEscalation2) && isEnrolled && contract) {
+      if (isSoloEnrolled && contract?.canResetEnrollmentWindow) {
         try {
-          // Use staticCall to ensure this is a read-only call even if contract has signer
-          const canReset = await contract.canResetEnrollmentWindow.staticCall(tierId, instanceId);
-          setCanResetWindow(canReset);
+          const canResetMethod = contract.canResetEnrollmentWindow;
+          const canReset = typeof canResetMethod.staticCall === 'function'
+            ? await canResetMethod.staticCall()
+            : await canResetMethod();
+          setCanResetWindow(Boolean(canReset));
         } catch (error) {
           console.error('Error checking canResetEnrollmentWindow:', error);
           setCanResetWindow(false);
         }
-      } else if (!canStartEscalation1 && !canStartEscalation2) {
-        // Reset the flag only when both escalation windows are cleared
+      } else {
         setCanResetWindow(false);
       }
     };
@@ -274,7 +278,7 @@ const TournamentHeader = ({
     const interval = setInterval(updateEscalationState, 5000); // Changed from 1000ms to 5000ms
 
     return () => clearInterval(interval);
-  }, [enrollmentTimeout, isEnrolled, contract, tierId, instanceId, isVisible, isTabActive]);
+  }, [enrollmentTimeout, status, isSoloEnrolled, contract, isVisible, isTabActive]);
 
   // Generate shareable URL
   const shareUrl = shareUrlOverride || generateTournamentUrl(gameType, tierId, instanceId);
@@ -343,6 +347,7 @@ const TournamentHeader = ({
         enrolledCount={enrolledCount}
         playerCount={playerCount}
         status={status}
+        resolutionReason={tournamentResolutionReason}
         currentRound={currentRound}
         totalRounds={totalRounds}
         colors={colors}
@@ -381,30 +386,44 @@ const TournamentHeader = ({
       {status === 0 && enrolledCount > 0 && (
         <div className="mt-4">
           <div className={`${
-            isEnrolled && escalationState.canStartEscalation2
+            !isSoloEnrollmentState && isEnrolled && escalationState.canStartEscalation2
               ? 'bg-red-500/20 border-red-400'
-              : 'bg-yellow-500/20 border-yellow-400'
+              : isSoloEnrolled
+                ? 'bg-blue-500/20 border-blue-400'
+                : 'bg-yellow-500/20 border-yellow-400'
           } border rounded-lg p-3`}>
             <div className="flex items-center justify-center gap-2">
               <div className={`w-2 h-2 ${
-                isEnrolled && escalationState.canStartEscalation2
+                !isSoloEnrollmentState && isEnrolled && escalationState.canStartEscalation2
                   ? 'bg-red-400'
-                  : 'bg-yellow-400'
+                  : isSoloEnrolled
+                    ? 'bg-blue-400'
+                    : 'bg-yellow-400'
               } rounded-full animate-pulse`}></div>
               <span className={`${
-                isEnrolled && escalationState.canStartEscalation2
+                !isSoloEnrollmentState && isEnrolled && escalationState.canStartEscalation2
                   ? 'text-red-300'
-                  : 'text-yellow-300'
-              } font-bold text-sm`}>Waiting for more players</span>
+                  : isSoloEnrolled
+                    ? 'text-blue-300'
+                    : 'text-yellow-300'
+              } font-bold text-sm`}>
+                {isSoloEnrolled ? 'You are the sole enroller' : 'Waiting for more players'}
+              </span>
             </div>
-            {isEnrolled && escalationState.timeToEscalation2 > 0 && escalationState.canStartEscalation1 && (
+            {isSoloEnrolled ? (
+              <div className="text-center mt-1">
+                <span className="text-blue-200/80 text-[10px]">
+                  You can cancel or reset the enrollment window at any time while no one else is enrolled
+                </span>
+              </div>
+            ) : isEnrolled && escalationState.timeToEscalation2 > 0 && escalationState.canStartEscalation1 ? (
               <div className="text-center mt-1">
                 <span className="text-yellow-300/70 text-[10px]">
                   {formatTime(escalationState.timeToEscalation2)} until considered abandoned
                 </span>
               </div>
-            )}
-            {isEnrolled && escalationState.canStartEscalation2 && (
+            ) : null}
+            {isEnrolled && !isSoloEnrollmentState && escalationState.canStartEscalation2 && (
               <div className="text-center mt-1">
                 <a
                   href="#el2"
@@ -422,7 +441,7 @@ const TournamentHeader = ({
       {status === 0 && enrollmentTimeout && (
         <>
           {/* EL1 Timer */}
-          {escalationState.timeToEscalation1 > 0 && (
+          {!isSoloEnrollmentState && escalationState.timeToEscalation1 > 0 && (
             <div className="mt-4">
               <div className="relative bg-gradient-to-r from-orange-500/20 to-orange-600/20 border border-orange-400/50 rounded-lg p-3">
                 <div className="flex items-center justify-between pr-6">
@@ -445,7 +464,7 @@ const TournamentHeader = ({
           )}
 
           {/* EL2 Timer - Only show for non-enrolled players */}
-          {escalationState.canStartEscalation1 && escalationState.timeToEscalation2 > 0 && !isEnrolled && (
+          {!isSoloEnrollmentState && escalationState.canStartEscalation1 && escalationState.timeToEscalation2 > 0 && !isEnrolled && (
             <div className="mt-4">
               <div className="relative bg-gradient-to-r from-red-500/20 to-red-600/20 border border-red-400/50 rounded-lg p-3">
                 <div className="flex items-center justify-between pr-6">
@@ -467,8 +486,22 @@ const TournamentHeader = ({
             </div>
           )}
 
+          {/* EL0: Solo player can cancel at any time while still alone */}
+          {isSoloEnrolled && onCancelTournament && (
+            <div className="mt-4">
+              <button
+                onClick={() => onCancelTournament(tierId, instanceId)}
+                disabled={loading || !account}
+                className={`w-full bg-gradient-to-r ${account ? 'from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800' : `${connectCtaGradient} ${connectCtaHover}`} text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-xs`}
+              >
+                <XCircle size={14} />
+                {loading ? 'Cancelling...' : !account ? 'Connect Wallet' : 'EL0: Cancel Tournament'}
+              </button>
+            </div>
+          )}
+
           {/* EL1*: Reset Enrollment Window - Solo player can extend enrollment */}
-          {canResetWindow && isEnrolled && onResetEnrollmentWindow && (
+          {canResetWindow && isSoloEnrolled && onResetEnrollmentWindow && (
             <div className="mt-4">
               <button
                 onClick={() => onResetEnrollmentWindow(tierId, instanceId)}
@@ -482,7 +515,7 @@ const TournamentHeader = ({
           )}
 
           {/* Escalation 1: Enrolled players can force start */}
-          {escalationState.canStartEscalation1 && isEnrolled && onManualStart && (
+          {escalationState.canStartEscalation1 && isEnrolled && enrolledCount > 1 && onManualStart && (
             <div className="mt-4">
               <button
                 onClick={() => onManualStart(tierId, instanceId)}
@@ -527,27 +560,42 @@ const TournamentHeader = ({
         <div className="mt-4 bg-black/20 rounded-lg p-4 border border-purple-400/30">
           <div className="text-purple-300 text-sm mb-1">{detailedResolutionAvailable ? 'Payouts' : 'Resolution'}</div>
           {!detailedResolutionAvailable ? (
-            <div className="text-white text-sm md:text-base">
-              <span className="font-mono">{winnerLabel}</span>
-              <span> wins{resolutionSummary}</span>
-              <span className="text-purple-300"> • </span>
-              <span>Winner awarded <span className="font-semibold text-yellow-400">{formatResolutionEth(prizePool)} ETH</span></span>
-            </div>
+            isCancelled ? (
+              <div className="text-white text-sm md:text-base">
+                Tournament cancelled
+              </div>
+            ) : (
+              <div className="text-white text-sm md:text-base">
+                <span className="font-mono">{winnerLabel}</span>
+                <span> wins{resolutionSummary}</span>
+                <span className="text-purple-300"> • </span>
+                <span>Winner awarded <span className="font-semibold text-yellow-400">{formatResolutionEth(prizePool)} ETH</span></span>
+              </div>
+            )
           ) : (
-            <div className="text-white text-sm md:text-base flex flex-col md:flex-row md:flex-wrap md:items-center gap-2 md:gap-6">
-              <div>
-                <span className="text-purple-300">Prize </span>
+            isCancelled ? (
+              <div className="text-white text-sm md:text-base">
+                <span className="text-purple-300">Refunded </span>
                 <span className="font-semibold text-yellow-400">{formatResolutionEth(resolvedPrizeAwarded)} ETH</span>
                 <span className="text-purple-300"> to </span>
                 <span className="font-mono">{formatRecipient(resolvedPrizeRecipient)}</span>
               </div>
-              <div>
-                <span className="text-purple-300">Raffle </span>
-                <span className="font-semibold text-yellow-400">{formatResolutionEth(resolvedRaffleAwarded)} ETH</span>
-                <span className="text-purple-300"> to </span>
-                <span className="font-mono">{formatRecipient(resolvedRaffleRecipient)}</span>
+            ) : (
+              <div className="text-white text-sm md:text-base flex flex-col md:flex-row md:flex-wrap md:items-center gap-2 md:gap-6">
+                <div>
+                  <span className="text-purple-300">Prize </span>
+                  <span className="font-semibold text-yellow-400">{formatResolutionEth(resolvedPrizeAwarded)} ETH</span>
+                  <span className="text-purple-300"> to </span>
+                  <span className="font-mono">{formatRecipient(resolvedPrizeRecipient)}</span>
+                </div>
+                <div>
+                  <span className="text-purple-300">Raffle </span>
+                  <span className="font-semibold text-yellow-400">{formatResolutionEth(resolvedRaffleAwarded)} ETH</span>
+                  <span className="text-purple-300"> to </span>
+                  <span className="font-mono">{formatRecipient(resolvedRaffleRecipient)}</span>
+                </div>
               </div>
-            </div>
+            )
           )}
         </div>
       )}

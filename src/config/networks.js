@@ -1,7 +1,5 @@
 import TicTacToeV2FactoryData from '../v2/ABIs/TicTacChainFactory-ABI.json';
 
-const HARDCODED_V2_RPC_URL = 'https://arb-mainnet.g.alchemy.com/v2/yoftG-myZ5Iur7UklgbJR';
-
 // Network configuration for ETour gaming platform
 // Switch networks via VITE_NETWORK environment variable
 
@@ -50,7 +48,7 @@ const selectedNetwork = NETWORKS[networkKey] || NETWORKS.localhost;
 
 export const CURRENT_NETWORK = {
   ...selectedNetwork,
-  rpcUrl: HARDCODED_V2_RPC_URL,
+  rpcUrl: import.meta.env.VITE_V2_RPC_URL || selectedNetwork.rpcUrl,
 };
 
 // Contract addresses - can be overridden via environment variables

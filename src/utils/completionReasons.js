@@ -13,7 +13,7 @@ export const CompletionReason = {
   FORCE_ELIMINATION: 3,             // ML2 - Advanced players force eliminated both players
   REPLACEMENT: 4,                   // ML3 - External player replaced stalled players
   ALL_DRAW_SCENARIO: 5,             // All matches in a round resulted in draws (tournament only)
-  SOLO_ENROLL_FORCE_START: 6,       // Solo enroller force started tournament (EL1)
+  SOLO_ENROLL_CANCELLED: 6,         // Solo enroller cancelled tournament (EL0)
   ABANDONED_TOURNAMENT_CLAIMED: 7   // Abandoned tournament claimed by external player (EL2)
 };
 
@@ -66,8 +66,8 @@ export const getTournamentCompletionText = (reason) => {
       return { text: 'ML3 External Player Replacement', link: '#ml3', summary: 'ML3 replacement' };
     case CompletionReason.ALL_DRAW_SCENARIO:
       return { text: 'All-Draw Scenario Resolution', link: '#draws', summary: 'all-draw resolution' };
-    case CompletionReason.SOLO_ENROLL_FORCE_START:
-      return { text: 'EL1 Solo Force Start', link: '#el1', summary: 'solo force start (EL1)' };
+    case CompletionReason.SOLO_ENROLL_CANCELLED:
+      return { text: 'EL0 Cancellation', link: '#el0', summary: 'EL0 cancellation' };
     case CompletionReason.ABANDONED_TOURNAMENT_CLAIMED:
       return { text: 'EL2 Abandoned Pool Claim', link: '#el2', summary: 'abandoned pool claim (EL2)' };
     default:
@@ -137,8 +137,8 @@ export const getCompletionReasonText = (reason, userWon, gameType = 'tictactoe')
     case CompletionReason.ALL_DRAW_SCENARIO:
       return "Tournament Draw";
 
-    case CompletionReason.SOLO_ENROLL_FORCE_START:
-      return 'Solo Force Start';
+    case CompletionReason.SOLO_ENROLL_CANCELLED:
+      return 'Tournament Cancelled';
 
     case CompletionReason.ABANDONED_TOURNAMENT_CLAIMED:
       return 'Abandoned Pool Claimed';
@@ -249,8 +249,8 @@ export const getCompletionReasonDescription = (reason, userWon) => {
     case CompletionReason.ALL_DRAW_SCENARIO:
       return 'All matches in the round resulted in draws';
 
-    case CompletionReason.SOLO_ENROLL_FORCE_START:
-      return 'Solo enrolled player force started the tournament (EL1)';
+    case CompletionReason.SOLO_ENROLL_CANCELLED:
+      return 'Solo enrolled player cancelled the tournament (EL0)';
 
     case CompletionReason.ABANDONED_TOURNAMENT_CLAIMED:
       return 'External player claimed the abandoned tournament pool (EL2)';
@@ -284,8 +284,8 @@ export const getCompletionReasonIcon = (reason, userWon) => {
     case CompletionReason.ALL_DRAW_SCENARIO:
       return 'Equal';
 
-    case CompletionReason.SOLO_ENROLL_FORCE_START:
-      return 'Zap';
+    case CompletionReason.SOLO_ENROLL_CANCELLED:
+      return 'RotateCcw';
 
     case CompletionReason.ABANDONED_TOURNAMENT_CLAIMED:
       return 'DollarSign';

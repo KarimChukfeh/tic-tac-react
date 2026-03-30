@@ -717,7 +717,26 @@ const RecentMatchesCard = ({
   // PlayerProfile `outcome` is a different enum and must not be fed into these helpers.
   const getMatchReason = (match) => getMatchCompletionReasonValue(match);
 
+  const getRecordPrizePool = (record) => record?.prizePool ?? record?.prize ?? 0n;
+  const getRecordPayout = (record) => record?.payout ?? 0n;
+  const getRecordRaffleAward = (record) => record?.wonRaffle ? (record?.rafflePool ?? 0n) : 0n;
+  const isCancelledTournamentRecord = (record) => Number(record?.instanceStatus ?? -1) === 3;
+  const hasCancelledTournamentReason = (record) => (
+    getTournamentResolutionReasonValue(record) === CompletionReason.SOLO_ENROLL_CANCELLED
+  );
+
+  const formatEthAmount = (value, digits = 4) => {
+    const parsed = Number(ethers.formatEther(value ?? 0n));
+    return Number.isFinite(parsed) ? parsed.toFixed(digits) : '0';
+  };
+
   const getTournamentResolutionText = (record) => {
+    if (hasCancelledTournamentReason(record) || isCancelledTournamentRecord(record)) {
+      return getRecordPayout(record) > 0n ? 'EL0 cancellation' : 'Tournament cancelled';
+    }
+    if (!record?.won && getRecordPayout(record) > 0n && record?.entryFee != null && getRecordPayout(record) === record.entryFee) {
+      return 'EL0 cancellation';
+    }
     const reason = getTournamentResolutionReasonValue(record);
     switch (reason) {
       case CompletionReason.NORMAL_WIN:
@@ -732,8 +751,8 @@ const RecentMatchesCard = ({
         return 'ML3 replacement';
       case CompletionReason.ALL_DRAW_SCENARIO:
         return 'All-draw resolution';
-      case CompletionReason.SOLO_ENROLL_FORCE_START:
-        return 'EL1 solo force start';
+      case CompletionReason.SOLO_ENROLL_CANCELLED:
+        return 'EL0 cancellation';
       case CompletionReason.ABANDONED_TOURNAMENT_CLAIMED:
         return 'EL2 abandoned pool claim';
       default:
@@ -1142,9 +1161,9 @@ const RecentMatchesCard = ({
                       <div className="text-xl font-bold text-white">{playerProfile.stats.totalWins}</div>
                     </div>
                     <div className="bg-green-500/15 border border-green-400/30 rounded-xl p-3 text-center">
-                      <div className="text-xs font-semibold mb-1 text-green-300">Prizes (ETH)</div>
+                      <div className="text-xs font-semibold mb-1 text-green-300">Payouts (ETH)</div>
                       <div className="text-sm font-bold text-white leading-tight">
-                        {Number(ethers.formatEther(playerProfile.enrollments.reduce((sum, r) => sum + (r.prize ?? 0n), 0n))).toFixed(4)}
+                        {formatEthAmount(playerProfile.enrollments.reduce((sum, r) => sum + getRecordPayout(r) + getRecordRaffleAward(r), 0n))}
                       </div>
                     </div>
                   </div>
@@ -1157,7 +1176,9 @@ const RecentMatchesCard = ({
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 min-w-0">
                               {rec.concluded ? (
-                                rec.won
+                                hasCancelledTournamentReason(rec) || isCancelledTournamentRecord(rec)
+                                  ? <span className="text-slate-400 font-semibold text-xs">Cancelled</span>
+                                  : rec.won
                                   ? <span className="text-green-300 font-semibold text-xs">Won</span>
                                   : <span className="text-red-300 font-semibold text-xs">Lost</span>
                               ) : (
@@ -1177,16 +1198,23 @@ const RecentMatchesCard = ({
                             </button>
                           </div>
                           <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-1">
-                            {rec.playerCount != null && (
+                            {hasCancelledTournamentReason(rec) || isCancelledTournamentRecord(rec) ? (
+                              <span className="text-slate-400 text-[10px]">(No Players)</span>
+                            ) : rec.playerCount != null && (
                               <span className="text-slate-400 text-[10px]">({rec.playerCount} Players)</span>
                             )}
                             <span className="text-slate-400 text-[10px]">{ethers.formatEther(rec.entryFee)} ETH entry</span>
                             {rec.concluded && (
-                              rec.won && rec.prize > 0n
-                                ? <span className="text-green-400 text-[10px]">+{ethers.formatEther(rec.prize)} ETH prize</span>
-                                : !rec.won && rec.playerCount != null && rec.entryFee > 0n
-                                  ? <span className="text-slate-500 text-[10px]">{ethers.formatEther(rec.entryFee * BigInt(rec.playerCount) * 9n / 10n)} ETH prize</span>
+                              (hasCancelledTournamentReason(rec) || isCancelledTournamentRecord(rec)) && getRecordPayout(rec) > 0n
+                                ? <span className="text-green-400 text-[10px]">+{ethers.formatEther(getRecordPayout(rec))} ETH refunded</span>
+                                : getRecordPayout(rec) > 0n
+                                ? <span className="text-green-400 text-[10px]">+{ethers.formatEther(getRecordPayout(rec))} ETH payout</span>
+                                : !rec.won && getRecordPrizePool(rec) > 0n
+                                  ? <span className="text-slate-500 text-[10px]">{ethers.formatEther(getRecordPrizePool(rec))} ETH prize pool</span>
                                   : null
+                            )}
+                            {rec.concluded && rec.wonRaffle && (rec.rafflePool ?? 0n) > 0n && (
+                              <span className="text-cyan-300 text-[10px]">+{ethers.formatEther(rec.rafflePool)} ETH raffle</span>
                             )}
                           </div>
                           {rec.concluded && (

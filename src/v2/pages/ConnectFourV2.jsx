@@ -411,6 +411,7 @@ const TournamentBracket = ({
   onManualStart,
   onClaimAbandonedPool,
   onResetEnrollmentWindow,
+  onCancelTournament,
   onEnroll,
   onConnectWallet,
   account,
@@ -538,6 +539,7 @@ const TournamentBracket = ({
         onManualStart={onManualStart ? () => onManualStart(VIRTUAL_TIER_ID, VIRTUAL_INSTANCE_ID) : null}
         onClaimAbandonedPool={onClaimAbandonedPool ? () => onClaimAbandonedPool(VIRTUAL_TIER_ID, VIRTUAL_INSTANCE_ID) : null}
         onResetEnrollmentWindow={onResetEnrollmentWindow ? () => onResetEnrollmentWindow(VIRTUAL_TIER_ID, VIRTUAL_INSTANCE_ID) : null}
+        onCancelTournament={onCancelTournament ? () => onCancelTournament(VIRTUAL_TIER_ID, VIRTUAL_INSTANCE_ID) : null}
         contract={instanceContract}
       />
 
@@ -1113,7 +1115,8 @@ export default function ConnectFourV2() {
       const signer = await browserProvider.getSigner();
       const creator = await signer.getAddress();
       const readFactory = await resolveFactoryContract();
-      const writableFactory = getFactoryContract(signer, factoryAddress);
+      const resolvedFactoryAddress = readFactory.target;
+      const writableFactory = getFactoryContract(signer, resolvedFactoryAddress);
       setActionState({ type: 'info', message: 'Reading contract constraints...' });
       const [countBeforeRaw, minFeeRaw, feeIncrementRaw, maxFeeRaw] = await Promise.all([
         readFactory.getInstanceCount(),
@@ -1140,7 +1143,7 @@ export default function ConnectFourV2() {
       const receipt = await tx.wait();
       setActionState({ type: 'info', message: 'Transaction confirmed. Locating the new instance and syncing tournament data...' });
       const address = await resolveCreatedInstanceAddress({
-        factory: await resolveFactoryContract(),
+        factory: readFactory,
         provider: getReadRunner(),
         creator,
         playerCount: Number(createForm.playerCount),
@@ -1266,14 +1269,16 @@ export default function ConnectFourV2() {
         alert('No enrolled players.');
         return;
       }
+      if (enrolledCount < 2) {
+        alert('Solo-enrolled tournaments can no longer be force-started. Cancel the tournament or reset the enrollment window instead.');
+        return;
+      }
       const isEnrolled = await activeInstanceContract.isEnrolled(account);
       if (!isEnrolled) {
         alert('You must be enrolled to force-start.');
         return;
       }
-      const msg = enrolledCount === 1
-        ? `You are the only enrolled player. Force-starting will declare you the winner.${forfeitPool > 0n ? ` Plus ${ethers.formatEther(forfeitPool)} ETH forfeited fees.` : ''} Continue?`
-        : `Force-starting with ${enrolledCount} players.${forfeitPool > 0n ? ` Forfeit pool of ${ethers.formatEther(forfeitPool)} ETH will be distributed.` : ''} Continue?`;
+      const msg = `Force-starting with ${enrolledCount} players.${forfeitPool > 0n ? ` Forfeit pool of ${ethers.formatEther(forfeitPool)} ETH will be distributed.` : ''} Continue?`;
       if (!window.confirm(msg)) return;
       setActionState({ type: 'info', message: 'Confirm the force-start transaction in MetaMask...' });
       const tx = await writableInstance.forceStartTournament();
@@ -1281,13 +1286,8 @@ export default function ConnectFourV2() {
       await tx.wait();
       setActionState({ type: 'info', message: 'Force-start confirmed. Refreshing tournament state...' });
       alert('Tournament force-started successfully!');
-      if (enrolledCount === 1) {
-        setViewingTournament(null);
-        setCurrentMatch(null);
-      } else {
-        const updated = await refreshTournamentBracket(viewingTournament.address);
-        if (updated) setViewingTournament(updated);
-      }
+      const updated = await refreshTournamentBracket(viewingTournament.address);
+      if (updated) setViewingTournament(updated);
       setActionState({ type: 'success', message: 'Tournament state refreshed after the force-start transaction.' });
     } catch (error) {
       console.error('[ConnectFourV2] Force start error:', error);
@@ -1296,6 +1296,49 @@ export default function ConnectFourV2() {
       setTournamentsLoading(false);
     }
   }, [viewingTournament, activeInstanceContract, account, refreshTournamentBracket]);
+
+  const handleCancelTournament = useCallback(async () => {
+    if (!viewingTournament || !activeInstanceContract || !account) {
+      alert('Please connect your wallet first.');
+      return;
+    }
+    try {
+      setTournamentsLoading(true);
+      const tournamentData = await activeInstanceContract.tournament();
+      const status = Number(tournamentData.status);
+      const enrolledCount = Number(tournamentData.enrolledCount);
+      const isEnrolled = await activeInstanceContract.isEnrolled(account);
+      if (status !== 0) {
+        alert('Tournament has already started, completed, or been cancelled.');
+        return;
+      }
+      if (!isEnrolled || enrolledCount !== 1) {
+        alert('Only the sole enrolled player can cancel this tournament.');
+        return;
+      }
+      const entryFee = tournamentData.entryFee ?? viewingTournament.entryFeeWei ?? 0n;
+      if (!window.confirm(`Cancel this tournament and refund your ${ethers.formatEther(entryFee)} ETH entry fee?\n\nThis will be recorded as an EL0 cancellation.`)) {
+        return;
+      }
+      const writableInstance = await withInstanceSigner(activeInstanceContract);
+      setActionState({ type: 'info', message: 'Confirm the tournament cancellation in MetaMask...' });
+      const tx = await writableInstance.cancelTournament();
+      setActionState({ type: 'info', message: 'Cancellation submitted. Waiting for block confirmation...' });
+      await tx.wait();
+      setActionState({ type: 'success', message: 'Tournament cancelled and refund recorded on-chain.' });
+      alert('Tournament cancelled successfully!');
+      setViewingTournament(null);
+      setCurrentMatch(null);
+      setActiveInstanceContract(null);
+      activeInstanceContractRef.current = null;
+      clearSelectedInstance();
+    } catch (error) {
+      console.error('[ConnectFourV2] Cancel tournament error:', error);
+      alert(`Error cancelling tournament: ${getReadableError(error, 'Unknown error')}`);
+    } finally {
+      setTournamentsLoading(false);
+    }
+  }, [viewingTournament, activeInstanceContract, account]);
 
   const handleResetEnrollmentWindow = useCallback(async () => {
     if (!viewingTournament || !activeInstanceContract || !account) {
@@ -2473,6 +2516,7 @@ export default function ConnectFourV2() {
                   onManualStart={handleManualStart}
                   onClaimAbandonedPool={handleClaimAbandonedPool}
                   onResetEnrollmentWindow={handleResetEnrollmentWindow}
+                  onCancelTournament={handleCancelTournament}
                   onEnroll={handleEnroll}
                   onConnectWallet={connectWallet}
                   account={account}

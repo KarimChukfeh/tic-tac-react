@@ -5,12 +5,24 @@
  * Used in tournament bracket headers.
  */
 
+import { CompletionReason } from '../../utils/completionReasons';
+
 /**
  * Get status display text and styling from status code
- * @param {number} status - 0: Enrolling, 1: In Progress, 2: Completed
+ * @param {number} status - 0: Enrolling, 1: In Progress, 2: Completed, 3: Cancelled
+ * @param {number|null} resolutionReason - Tournament completion reason
  * @returns {Object} { text, color, bgColor, borderColor }
  */
-const getStatusDisplay = (status) => {
+const getStatusDisplay = (status, resolutionReason = null) => {
+  if (status >= 2 && Number(resolutionReason) === CompletionReason.SOLO_ENROLL_CANCELLED) {
+    return {
+      text: 'Cancelled',
+      color: 'text-slate-300',
+      bgColor: 'bg-slate-500/20',
+      borderColor: 'border-slate-400',
+      dotColor: 'bg-slate-400'
+    };
+  }
   switch (status) {
     case 0:
       return {
@@ -36,6 +48,14 @@ const getStatusDisplay = (status) => {
         borderColor: 'border-green-400',
         dotColor: 'bg-green-400'
       };
+    case 3:
+      return {
+        text: 'Cancelled',
+        color: 'text-slate-300',
+        bgColor: 'bg-slate-500/20',
+        borderColor: 'border-slate-400',
+        dotColor: 'bg-slate-400'
+      };
     default:
       return {
         text: 'Unknown',
@@ -51,14 +71,15 @@ const getStatusDisplay = (status) => {
  * @param {Object} props
  * @param {number} props.enrolledCount - Number of enrolled players
  * @param {number} props.playerCount - Max players in tournament
- * @param {number} props.status - Tournament status (0: Enrolling, 1: In Progress, 2: Completed)
+ * @param {number} props.status - Tournament status (0: Enrolling, 1: In Progress, 2: Completed, 3: Cancelled)
  * @param {number} props.currentRound - Current round (0-indexed)
  * @param {number} props.totalRounds - Total number of rounds
  * @param {Object} props.colors - Color theme object with 'text' property
  * @param {number} props.syncDots - Number of dots for syncing indicator (1-3)
+ * @param {number|null} props.resolutionReason - Tournament completion reason
  */
-const StatsGrid = ({ enrolledCount, playerCount, status, currentRound, totalRounds, colors, syncDots = 1 }) => {
-  const statusDisplay = getStatusDisplay(status);
+const StatsGrid = ({ enrolledCount, playerCount, status, currentRound, totalRounds, colors, syncDots = 1, resolutionReason = null }) => {
+  const statusDisplay = getStatusDisplay(status, resolutionReason);
 
   // Don't show status message if tournament is enrolling with 0 players
   const showStatus = !(status === 0 && enrolledCount === 0);

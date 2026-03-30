@@ -258,14 +258,29 @@ export function isZeroAddress(value) {
   return !value || value === ZERO_ADDRESS;
 }
 
+function getInstanceAddressFromEventArgs(args) {
+  return args?.instance ?? args?.tournamentInstance ?? args?.[0] ?? null;
+}
+
 export function extractInstanceAddressFromReceipt(receipt) {
   const iface = new ethers.Interface(CONNECTFOUR_V2_FACTORY_ABI);
 
-  for (const log of receipt.logs) {
+  for (const log of receipt?.logs || []) {
+    const directName = log?.fragment?.name ?? log?.eventName ?? log?.name;
+    if (directName === 'InstanceDeployed') {
+      const directAddress = getInstanceAddressFromEventArgs(log?.args);
+      if (directAddress && !isZeroAddress(directAddress)) {
+        return directAddress;
+      }
+    }
+
     try {
       const parsed = iface.parseLog(log);
       if (parsed?.name === 'InstanceDeployed') {
-        return parsed.args.instance;
+        const parsedAddress = getInstanceAddressFromEventArgs(parsed.args);
+        if (parsedAddress && !isZeroAddress(parsedAddress)) {
+          return parsedAddress;
+        }
       }
     } catch {
       continue;
@@ -304,6 +319,10 @@ export async function resolveCreatedInstanceAddress({
 
   if (countBefore !== null && afterCount > countBefore) {
     const newAddresses = await factory.getInstances(countBefore, afterCount - countBefore);
+    const nonZeroNewAddresses = newAddresses.filter((address) => !isZeroAddress(address));
+    if (nonZeroNewAddresses.length === 1) {
+      return nonZeroNewAddresses[0];
+    }
     candidateAddresses.push(...newAddresses);
   }
 

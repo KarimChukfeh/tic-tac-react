@@ -50,7 +50,7 @@ const ENROLLMENT_TIMEOUT_EVENTS = [
     title: 'EL1: Force-Start Tournament After Enrollment Window Expires',
     paragraphs: [
       'Sometimes players enroll in a tournament but not enough join to fill all spots. Without intervention, these enrolled players would be stuck waiting indefinitely.',
-      'Once the enrollment window elapses, any enrolled player can start the tournament early with whoever has joined so far.'
+      'Once the enrollment window elapses, enrolled players can start the tournament early with whoever has joined so far, as long as at least two players are enrolled.'
     ],
     highlight: 'This gives enrolled players the power to autonomously begin the tournament they paid to enter. No waiting on a full lobby, no relying on an admin.'
   },
@@ -58,10 +58,11 @@ const ENROLLMENT_TIMEOUT_EVENTS = [
     id: 'el1x',
     title: 'EL1*: Extend Enrollment Window When Solo Enrolled',
     paragraphs: [
-      'Sometimes a player enrolls in a tournament but remains the only participant when the enrollment window expires.',
-      'Rather than being forced to start a solo tournament or lose their entry fee, enrolled players have the option to extend the enrollment period.'
+      'Sometimes a player enrolls in a tournament and remains the only participant.',
+      'While they are still the sole enroler, they can reset the enrollment window at any time to keep looking for opponents.'
     ],
-    highlight: 'This gives solo players the option to wait for competition without penalty or escalation consequences, just a fresh enrollment window to build a proper tournament.'
+    highlight: 'This gives solo players a clean way to keep the tournament alive without forcing a one-player start.',
+    note: 'If they no longer want to wait, the sole enroler can cancel the tournament and receive a full entry-fee refund instead.'
   },
   {
     id: 'el2',

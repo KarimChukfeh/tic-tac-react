@@ -54,24 +54,55 @@ export function useConnectFourPlayerProfile(factoryContract, runner, account) {
         const recs = await profile.getEnrollments(offset, limit).catch(() => []);
         const enriched = await Promise.all([...recs].map(async r => {
           let playerCount = null;
+          let instanceStatus = null;
+          let instanceResolutionReason = null;
+          let instanceResolutionCategory = null;
+          let instanceWinner = null;
+          let instancePrizeAwarded = 0n;
           try {
             const inst = getInstanceContract(r.instance, runner);
             const info = await inst.getInstanceInfo();
             playerCount = Number(info.playerCount ?? info.enrolledCount ?? 0) || null;
+            instanceStatus = Number(info.status);
+            instanceResolutionReason = Number(info.completionReason ?? 0);
+            instanceResolutionCategory = Number(info.completionCategory ?? 0);
+            instanceWinner = info.winner ?? null;
+            instancePrizeAwarded = info.prizeAwarded ?? 0n;
           } catch {
             playerCount = null;
           }
+          const isCancelled = instanceStatus === 3;
+          const isResolvedOnChain = instanceStatus === 2 || isCancelled;
+          const inferredResolutionReason = (!r.concluded && isResolvedOnChain)
+            ? instanceResolutionReason
+            : Number(r.tournamentResolutionReason ?? 0);
+          const inferredResolutionCategory = (!r.concluded && isResolvedOnChain)
+            ? instanceResolutionCategory
+            : Number(r.tournamentResolutionCategory ?? 0);
+          const inferredWin = (!r.concluded && isResolvedOnChain && instanceWinner)
+            ? String(instanceWinner).toLowerCase() === String(account).toLowerCase()
+            : Boolean(r.won);
+          const inferredPayout = (!r.concluded && isResolvedOnChain && instanceWinner
+            && String(instanceWinner).toLowerCase() === String(account).toLowerCase())
+            ? (r.payout && r.payout > 0n ? r.payout : instancePrizeAwarded)
+            : (r.payout ?? 0n);
           return {
             instance: r.instance,
             gameType: Number(r.gameType),
             enrolledAt: Number(r.enrolledAt),
             entryFee: r.entryFee,
-            concluded: r.concluded,
-            won: r.won,
+            concluded: Boolean(r.concluded) || isResolvedOnChain,
+            won: inferredResolutionReason === 6 ? false : (isCancelled ? false : inferredWin),
             prize: r.prize,
+            prizePool: r.prize,
+            payout: inferredPayout,
+            payoutReason: Number(r.payoutReason ?? 0),
+            rafflePool: r.rafflePool ?? 0n,
+            wonRaffle: Boolean(r.wonRaffle ?? false),
             playerCount,
-            tournamentResolutionReason: Number(r.tournamentResolutionReason ?? 0),
-            tournamentResolutionCategory: Number(r.tournamentResolutionCategory ?? 0),
+            instanceStatus,
+            tournamentResolutionReason: inferredResolutionReason,
+            tournamentResolutionCategory: inferredResolutionCategory,
           };
         }));
         setEnrollments(enriched.sort((a, b) => b.enrolledAt - a.enrolledAt));
