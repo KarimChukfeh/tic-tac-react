@@ -525,7 +525,7 @@ export default function ChessV2() {
   const [account, setAccount] = useState('');
   const [rpcReady, setRpcReady] = useState(false);
   const [rpcProvider, setRpcProvider] = useState(null);
-  const [walletBootDone, setWalletBootDone] = useState(!isWalletAvailable());
+  const [, setWalletBootDone] = useState(!isWalletAvailable());
   const [isConnecting, setIsConnecting] = useState(false);
   const [contractsExpanded, setContractsExpanded] = useState(false);
 
@@ -1906,7 +1906,7 @@ export default function ChessV2() {
                 <SectionShell id="live-instances">
                   <form onSubmit={createInstance}>
                     <div className="bg-slate-900/50 border border-purple-400/20 rounded-2xl p-4 md:p-5">
-                      <div className="grid gap-4 md:grid-cols-[minmax(0,1.3fr)_minmax(220px,0.7fr)_minmax(240px,0.8fr)] md:items-end">
+                      <div className="grid gap-4 md:grid-cols-[minmax(0,1.3fr)_minmax(220px,0.7fr)] md:items-end">
                         <div>
                           <div className="text-sm text-purple-200 mb-2">Player Count</div>
                           <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
@@ -1922,14 +1922,13 @@ export default function ChessV2() {
                             <input type="number" min="0.001" max="1" step="0.001" value={createForm.entryFee} onChange={event => updateCreateForm('entryFee', event.target.value)} className="w-full bg-slate-950/80 border border-purple-400/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-400" />
                           </label>
                         </div>
-                        <div className="hidden md:block">
-                          <div className="text-sm text-transparent mb-2 select-none" aria-hidden="true">Create</div>
-                          {walletBootDone && !account ? (
-                            <button type="button" onClick={connectWallet} disabled={isConnecting} className={`w-full flex items-center justify-center gap-3 bg-gradient-to-r ${currentTheme.connectButtonGradient} ${currentTheme.connectButtonHover} px-6 py-3 rounded-2xl font-bold text-base shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed`}>{isConnecting ? <Loader size={20} className="animate-spin" /> : <Wallet size={20} />}{isConnecting ? 'Connecting...' : 'Connect to Create'}</button>
-                          ) : (
-                            <button type="submit" disabled={createLoading} className={`w-full flex items-center justify-center gap-3 bg-gradient-to-r ${currentTheme.buttonGradient} ${currentTheme.buttonHover} px-6 py-3 rounded-2xl font-bold text-base shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed`}>{createLoading ? <Loader size={20} className="animate-spin" /> : <Plus size={20} />}{createLoading ? 'Creating Tournament...' : 'Create and Enrol'}</button>
-                          )}
-                        </div>
+                      </div>
+                      <div className="mt-4">
+                        {account ? (
+                          <button type="submit" disabled={createLoading} className={`w-full flex items-center justify-center gap-3 bg-gradient-to-r ${currentTheme.buttonGradient} ${currentTheme.buttonHover} px-8 py-4 rounded-2xl font-bold text-lg md:text-xl shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed`}>{createLoading ? <Loader size={22} className="animate-spin" /> : <Plus size={22} />}{createLoading ? 'Creating Tournament...' : 'Create and Enrol'}</button>
+                        ) : (
+                          <button type="button" onClick={connectWallet} disabled={isConnecting} className={`w-full flex items-center justify-center gap-3 px-8 py-4 text-lg md:text-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed ${currentTheme.connectCtaClassName}`}>{isConnecting ? <Loader size={22} className="animate-spin" /> : <Wallet size={22} />}{isConnecting ? 'Connecting...' : 'Connect Wallet to Start'}</button>
+                        )}
                       </div>
                       <div className="mt-4 mb-4">
                         <button type="button" onClick={() => setShowAdvancedSettings(!showAdvancedSettings)} className="flex items-center gap-2 text-purple-300 hover:text-purple-200 transition-colors mb-2">{showAdvancedSettings ? <ChevronUp size={20} /> : <ChevronDown size={20} />}<span className="text-sm font-semibold">More Settings</span></button>
@@ -1964,13 +1963,6 @@ export default function ChessV2() {
                               </div>
                             </div>
                           </div>
-                        )}
-                      </div>
-                      <div className="flex flex-col gap-3 md:hidden">
-                        {walletBootDone && !account ? (
-                          <button type="button" onClick={connectWallet} disabled={isConnecting} className={`w-full flex items-center justify-center gap-3 bg-gradient-to-r ${currentTheme.connectButtonGradient} ${currentTheme.connectButtonHover} px-8 py-4 rounded-2xl font-bold text-xl shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed`}>{isConnecting ? <Loader size={22} className="animate-spin" /> : <Wallet size={22} />}{isConnecting ? 'Connecting...' : 'Connect to Create'}</button>
-                        ) : (
-                          <button type="submit" disabled={createLoading} className={`w-full flex items-center justify-center gap-3 bg-gradient-to-r ${currentTheme.buttonGradient} ${currentTheme.buttonHover} px-8 py-4 rounded-2xl font-bold text-xl shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed`}>{createLoading ? <Loader size={22} className="animate-spin" /> : <Plus size={22} />}{createLoading ? 'Creating Tournament...' : 'Create and Enrol'}</button>
                         )}
                       </div>
                     </div>
