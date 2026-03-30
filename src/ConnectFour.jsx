@@ -4492,7 +4492,7 @@ export default function ConnectFour() {
                 className={`w-full flex items-center justify-center gap-3 bg-gradient-to-r ${currentTheme.buttonGradient} ${currentTheme.buttonHover} px-10 py-5 rounded-2xl font-bold text-2xl shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed scroll-mt-6`}
               >
                 <Wallet size={28} />
-                {loading ? 'Connecting...' : 'Connect Wallet to Enter'}
+                {loading ? 'Connecting...' : 'Connect Wallet'}
               </button>
             </div>
           ) : (

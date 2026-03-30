@@ -24,7 +24,6 @@ import {
   CheckCircle,
   AlertCircle,
   Loader,
-  Plus,
   ChevronDown,
   ChevronUp,
   History,
@@ -51,6 +50,7 @@ import GamesCard from '../../components/shared/GamesCard';
 import BracketScrollHint from '../../components/shared/BracketScrollHint';
 import RecentInstanceCard from '../../components/shared/RecentInstanceCard';
 import V2GameLobbyIntro from '../../components/shared/V2GameLobbyIntro';
+import UserManualAnchorIcon from '../../components/shared/UserManualAnchorIcon';
 import WalletBrowserPrompt from '../../components/WalletBrowserPrompt';
 import { useInitialDocumentScrollTop } from '../../hooks/useInitialDocumentScrollTop';
 import { useWalletBrowserPrompt } from '../../hooks/useWalletBrowserPrompt';
@@ -2135,6 +2135,7 @@ export default function TicTacToeV2() {
           <p className="text-2xl text-blue-200 mb-6">Provably Fair • Zero Trust • 100% On-Chain</p>
           <p className={`text-lg ${currentTheme.heroSubtext} max-w-3xl mx-auto`}>
             Play Tic-Tac-Toe on the blockchain. Real opponents. Real ETH on the line.
+            <UserManualAnchorIcon className={`ml-2 ${currentTheme.heroSubtext}`} />
             <br />
             No servers required. No trust needed.
             <br />
@@ -2443,8 +2444,8 @@ export default function TicTacToeV2() {
                         title={!account ? 'Connect your wallet to create and enrol.' : ''}
                         className={`inline-flex min-w-[220px] items-center justify-center gap-2.5 px-6 py-3 rounded-xl font-bold text-base md:text-lg shadow-2xl transition-all disabled:cursor-not-allowed ${account ? `bg-gradient-to-r ${currentTheme.buttonGradient} ${currentTheme.buttonHover} transform hover:scale-105 text-white` : 'bg-slate-800/90 border border-slate-700 text-slate-500'}`}
                       >
-                        {createLoading ? <Loader size={20} className="animate-spin" /> : <Plus size={20} />}
-                        {createLoading ? 'Creating Tournament...' : 'Create and Enrol'}
+                        {createLoading ? <Loader size={20} className="animate-spin" /> : null}
+                        {createLoading ? 'Creating Tournament...' : 'Start Instance'}
                       </button>
                     </div>
                   </div>

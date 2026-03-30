@@ -451,7 +451,7 @@ const TournamentCard = ({
           className={`w-full bg-gradient-to-r ${colors.buttonEnter} text-white font-bold py-3 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2`}
         >
           <Play size={18} />
-          {loading ? 'Loading...' : !account ? 'Connect Wallet to Enter' : `Enter ${tournamentTypeLabel}`}
+          {loading ? 'Loading...' : !account ? 'Connect Wallet' : `Enter ${tournamentTypeLabel}`}
         </button>
       ) : (
         <>
