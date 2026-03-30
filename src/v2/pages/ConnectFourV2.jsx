@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import {
-  Wallet,
   Grid,
   Clock,
   Shield,
@@ -2508,7 +2507,12 @@ export default function ConnectFourV2() {
               </div>
             ) : (
               <>
-                <V2GameLobbyIntro />
+                <V2GameLobbyIntro
+                  account={account}
+                  isConnecting={isConnecting}
+                  onConnectWallet={connectWallet}
+                  connectCtaClassName={currentTheme.connectCtaClassName}
+                />
                 <SectionShell id="live-instances">
                   <form onSubmit={createInstance}>
                     <div className="bg-slate-900/50 border border-purple-400/20 rounded-2xl p-4 md:p-5">
@@ -2547,29 +2551,6 @@ export default function ConnectFourV2() {
                           </label>
                         </div>
 
-                      </div>
-
-                      <div className="mt-4">
-                        {account ? (
-                          <button
-                            type="submit"
-                            disabled={createLoading}
-                            className={`w-full flex items-center justify-center gap-3 bg-gradient-to-r ${currentTheme.buttonGradient} ${currentTheme.buttonHover} px-8 py-4 rounded-2xl font-bold text-lg md:text-xl shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
-                          >
-                            {createLoading ? <Loader size={22} className="animate-spin" /> : <Plus size={22} />}
-                            {createLoading ? 'Creating Tournament...' : 'Create and Enrol'}
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={connectWallet}
-                            disabled={isConnecting}
-                            className={`w-full flex items-center justify-center gap-3 px-8 py-4 text-lg md:text-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed ${currentTheme.connectCtaClassName}`}
-                          >
-                            {isConnecting ? <Loader size={22} className="animate-spin" /> : <Wallet size={22} />}
-                            {isConnecting ? 'Connecting...' : 'Connect Wallet to Start'}
-                          </button>
-                        )}
                       </div>
 
                       <div className="mt-4 mb-4">
@@ -2644,6 +2625,17 @@ export default function ConnectFourV2() {
                             </div>
                           </div>
                         )}
+                      </div>
+                      <div className="mt-5 flex justify-center md:justify-end">
+                        <button
+                          type="submit"
+                          disabled={createLoading || !account}
+                          title={!account ? 'Connect your wallet to create and enrol.' : ''}
+                          className={`inline-flex min-w-[220px] items-center justify-center gap-2.5 px-6 py-3 rounded-xl font-bold text-base md:text-lg shadow-2xl transition-all disabled:cursor-not-allowed ${account ? `bg-gradient-to-r ${currentTheme.buttonGradient} ${currentTheme.buttonHover} transform hover:scale-105 text-white` : 'bg-slate-800/90 border border-slate-700 text-slate-500'}`}
+                        >
+                          {createLoading ? <Loader size={20} className="animate-spin" /> : <Plus size={20} />}
+                          {createLoading ? 'Creating Tournament...' : 'Create and Enrol'}
+                        </button>
                       </div>
                     </div>
                   </form>
