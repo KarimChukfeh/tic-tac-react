@@ -42,9 +42,11 @@ import ActiveMatchAlertModal from '../../components/shared/ActiveMatchAlertModal
 import GameMatchLayout from '../../components/shared/GameMatchLayout';
 import TournamentHeader from '../../components/shared/TournamentHeader';
 import PlayerActivity from '../../components/shared/PlayerActivity';
+import ActiveLobbiesCard from '../../components/shared/ActiveLobbiesCard';
 import { useV2PlayerActivity } from '../hooks/useV2PlayerActivity';
 import { usePlayerProfile } from '../hooks/usePlayerProfile';
 import { useV2MatchHistory } from '../hooks/useV2MatchHistory';
+import { useActiveLobbies } from '../hooks/useActiveLobbies';
 import RecentMatchesCard from '../../components/shared/RecentMatchesCard';
 import GamesCard from '../../components/shared/GamesCard';
 import BracketScrollHint from '../../components/shared/BracketScrollHint';
@@ -477,6 +479,7 @@ export default function TicTacToeV2() {
 
   const playerProfile = usePlayerProfile(resolvedFactoryContract, rpcProvider, account);
   const v2MatchHistory = useV2MatchHistory(resolvedFactoryContract, rpcProvider, account);
+  const activeLobbies = useActiveLobbies(resolvedFactoryContract, rpcProvider, account, getInstanceContract);
 
   // --- Active match alert ---
   const [showMatchAlert, setShowMatchAlert] = useState(false);
@@ -488,6 +491,7 @@ export default function TicTacToeV2() {
   // Card heights for stacking
   const [gamesCardHeight, setGamesCardHeight] = useState(0);
   const [playerActivityHeight, setPlayerActivityHeight] = useState(0);
+  const [recentMatchesCardHeight, setRecentMatchesCardHeight] = useState(0);
 
   // Polling refs
   const currentMatchRef = useRef(currentMatch);
@@ -2066,7 +2070,7 @@ export default function TicTacToeV2() {
             gameEmoji="✖️"
             gamesCardHeight={gamesCardHeight}
             playerActivityHeight={playerActivityHeight}
-            onHeightChange={() => {}}
+            onHeightChange={setRecentMatchesCardHeight}
             isExpanded={expandedPanel === 'recentMatches'}
             onToggleExpand={() => setExpandedPanel(expandedPanel === 'recentMatches' ? null : 'recentMatches')}
             tierConfig={{}}
@@ -2084,6 +2088,25 @@ export default function TicTacToeV2() {
             getTournamentTypeLabel={getTournamentTypeLabel}
             v2Matches={v2MatchHistory.matches}
             v2MatchesLoading={v2MatchHistory.loading}
+          />
+          <ActiveLobbiesCard
+            lobbies={activeLobbies.lobbies}
+            loading={activeLobbies.loading}
+            syncing={activeLobbies.syncing}
+            error={activeLobbies.error}
+            gamesCardHeight={gamesCardHeight}
+            playerActivityHeight={playerActivityHeight}
+            recentMatchesCardHeight={recentMatchesCardHeight}
+            onRefresh={activeLobbies.refetch}
+            isExpanded={expandedPanel === 'activeLobbies'}
+            onToggleExpand={() => setExpandedPanel(expandedPanel === 'activeLobbies' ? null : 'activeLobbies')}
+            onViewTournament={enterInstanceBracket}
+            getTournamentTypeLabel={getTournamentTypeLabel}
+            disabled={!account}
+            showTooltip={activeTooltip === 'activeLobbies'}
+            onShowTooltip={() => setActiveTooltip('activeLobbies')}
+            onHideTooltip={() => setActiveTooltip(null)}
+            connectCtaClassName={currentTheme.connectCtaClassName}
           />
         </div>
         {/* Desktop */}
@@ -2125,7 +2148,7 @@ export default function TicTacToeV2() {
             gameEmoji="✖️"
             gamesCardHeight={gamesCardHeight}
             playerActivityHeight={playerActivityHeight}
-            onHeightChange={() => {}}
+            onHeightChange={setRecentMatchesCardHeight}
             isExpanded={expandedPanel === 'recentMatches'}
             onToggleExpand={() => setExpandedPanel(expandedPanel === 'recentMatches' ? null : 'recentMatches')}
             tierConfig={{}}
@@ -2141,6 +2164,25 @@ export default function TicTacToeV2() {
             getTournamentTypeLabel={getTournamentTypeLabel}
             v2Matches={v2MatchHistory.matches}
             v2MatchesLoading={v2MatchHistory.loading}
+          />
+          <ActiveLobbiesCard
+            lobbies={activeLobbies.lobbies}
+            loading={activeLobbies.loading}
+            syncing={activeLobbies.syncing}
+            error={activeLobbies.error}
+            gamesCardHeight={gamesCardHeight}
+            playerActivityHeight={playerActivityHeight}
+            recentMatchesCardHeight={recentMatchesCardHeight}
+            onRefresh={activeLobbies.refetch}
+            isExpanded={expandedPanel === 'activeLobbies'}
+            onToggleExpand={() => setExpandedPanel(expandedPanel === 'activeLobbies' ? null : 'activeLobbies')}
+            onViewTournament={enterInstanceBracket}
+            getTournamentTypeLabel={getTournamentTypeLabel}
+            disabled={!account}
+            showTooltip={activeTooltip === 'activeLobbies'}
+            onShowTooltip={() => setActiveTooltip('activeLobbies')}
+            onHideTooltip={() => setActiveTooltip(null)}
+            connectCtaClassName={currentTheme.connectCtaClassName}
           />
         </div>
       </div>

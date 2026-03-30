@@ -146,6 +146,111 @@ export async function multicall(contract, functionName, paramsArray, provider, a
 }
 
 /**
+ * Batch heterogeneous contract calls using Multicall3.
+ *
+ * @param {Array<{contract: ethers.Contract, functionName: string, params?: Array, allowFailure?: boolean}>} callSpecs
+ * @param {ethers.Provider} provider
+ * @param {number} chunkSize
+ * @returns {Promise<Array<{success: boolean, result?: any, error?: Error}>>}
+ */
+export async function multicallContracts(callSpecs, provider, chunkSize = 150) {
+  if (!Array.isArray(callSpecs) || callSpecs.length === 0) return [];
+
+  const multicallAvailable = await isMulticallAvailable(provider);
+  const chunks = [];
+  for (let i = 0; i < callSpecs.length; i += chunkSize) {
+    chunks.push(callSpecs.slice(i, i + chunkSize));
+  }
+
+  const allResults = [];
+
+  for (const chunk of chunks) {
+    if (!multicallAvailable) {
+      const fallbackResults = await Promise.all(
+        chunk.map(async ({ contract, functionName, params = [] }) => {
+          try {
+            const result = await contract[functionName](...params);
+            return { success: true, result };
+          } catch (error) {
+            return { success: false, error };
+          }
+        })
+      );
+      allResults.push(...fallbackResults);
+      continue;
+    }
+
+    const preparedCalls = chunk.map((spec) => {
+      const fragment = spec.contract.interface.getFunction(spec.functionName);
+      if (!fragment) {
+        throw new Error(`Function ${spec.functionName} not found in contract interface`);
+      }
+
+      return {
+        ...spec,
+        fragment,
+        call: {
+          target: spec.contract.target,
+          allowFailure: spec.allowFailure ?? true,
+          callData: spec.contract.interface.encodeFunctionData(fragment, spec.params || []),
+        },
+      };
+    });
+
+    const multicallContract = new ethers.Contract(
+      MULTICALL3_ADDRESS,
+      MULTICALL3_ABI,
+      provider
+    );
+
+    let results;
+    try {
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Multicall timeout after 10s')), 10000)
+      );
+
+      const callPromise = multicallContract.aggregate3.staticCall(
+        preparedCalls.map(({ call }) => call)
+      );
+
+      results = await Promise.race([callPromise, timeoutPromise]);
+    } catch (error) {
+      const fallbackResults = await Promise.all(
+        chunk.map(async ({ contract, functionName, params = [] }) => {
+          try {
+            const result = await contract[functionName](...params);
+            return { success: true, result };
+          } catch (fallbackError) {
+            return { success: false, error: fallbackError };
+          }
+        })
+      );
+      allResults.push(...fallbackResults);
+      continue;
+    }
+
+    const decodedResults = results.map((result, index) => {
+      if (!result.success) {
+        return { success: false, error: new Error('Call failed') };
+      }
+
+      try {
+        const { contract, fragment } = preparedCalls[index];
+        const decoded = contract.interface.decodeFunctionResult(fragment, result.returnData);
+        const finalResult = decoded.length === 1 ? decoded[0] : decoded;
+        return { success: true, result: finalResult };
+      } catch (error) {
+        return { success: false, error };
+      }
+    });
+
+    allResults.push(...decodedResults);
+  }
+
+  return allResults;
+}
+
+/**
  * Specialized function for fetching tournament data in batch
  * For TicTacChain contract (uses tournaments() function)
  *

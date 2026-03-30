@@ -29,6 +29,7 @@ import ActiveMatchAlertModal from '../../components/shared/ActiveMatchAlertModal
 import GameMatchLayout from '../../components/shared/GameMatchLayout';
 import TournamentHeader from '../../components/shared/TournamentHeader';
 import PlayerActivity from '../../components/shared/PlayerActivity';
+import ActiveLobbiesCard from '../../components/shared/ActiveLobbiesCard';
 import RecentMatchesCard from '../../components/shared/RecentMatchesCard';
 import GamesCard from '../../components/shared/GamesCard';
 import BracketScrollHint from '../../components/shared/BracketScrollHint';
@@ -43,6 +44,7 @@ import { didMatchStateAdvance, waitForTxOrStateSync } from '../../utils/txSync';
 import { useConnectFourV2PlayerActivity } from '../hooks/useConnectFourV2PlayerActivity';
 import { useConnectFourPlayerProfile } from '../hooks/useConnectFourPlayerProfile';
 import { useConnectFourV2MatchHistory } from '../hooks/useConnectFourV2MatchHistory';
+import { useActiveLobbies } from '../hooks/useActiveLobbies';
 import {
   PLAYER_COUNT_OPTIONS,
   TIME_PER_PLAYER_OPTIONS,
@@ -681,12 +683,14 @@ export default function ConnectFourV2() {
   const [alertMatch, setAlertMatch] = useState(null);
   const [gamesCardHeight, setGamesCardHeight] = useState(0);
   const [playerActivityHeight, setPlayerActivityHeight] = useState(0);
+  const [recentMatchesCardHeight, setRecentMatchesCardHeight] = useState(0);
 
   const { showPrompt, handleWalletChoice, handleContinueChoice, triggerWalletPrompt } = useWalletBrowserPrompt();
 
   const v2PlayerActivity = useConnectFourV2PlayerActivity(activeInstanceContract, account, resolvedFactoryContract, rpcProvider);
   const playerProfile = useConnectFourPlayerProfile(resolvedFactoryContract, rpcProvider, account);
   const v2MatchHistory = useConnectFourV2MatchHistory(resolvedFactoryContract, rpcProvider, account);
+  const activeLobbies = useActiveLobbies(resolvedFactoryContract, rpcProvider, account, getInstanceContract);
 
   const currentMatchRef = useRef(currentMatch);
   const accountRefForMatch = useRef(account);
@@ -2270,7 +2274,7 @@ export default function ConnectFourV2() {
             gameEmoji="🔴"
             gamesCardHeight={gamesCardHeight}
             playerActivityHeight={playerActivityHeight}
-            onHeightChange={() => {}}
+            onHeightChange={setRecentMatchesCardHeight}
             isExpanded={expandedPanel === 'recentMatches'}
             onToggleExpand={() => setExpandedPanel(expandedPanel === 'recentMatches' ? null : 'recentMatches')}
             tierConfig={{}}
@@ -2286,6 +2290,25 @@ export default function ConnectFourV2() {
             getTournamentTypeLabel={getTournamentTypeLabel}
             v2Matches={v2MatchHistory.matches}
             v2MatchesLoading={v2MatchHistory.loading}
+          />
+          <ActiveLobbiesCard
+            lobbies={activeLobbies.lobbies}
+            loading={activeLobbies.loading}
+            syncing={activeLobbies.syncing}
+            error={activeLobbies.error}
+            gamesCardHeight={gamesCardHeight}
+            playerActivityHeight={playerActivityHeight}
+            recentMatchesCardHeight={recentMatchesCardHeight}
+            onRefresh={activeLobbies.refetch}
+            isExpanded={expandedPanel === 'activeLobbies'}
+            onToggleExpand={() => setExpandedPanel(expandedPanel === 'activeLobbies' ? null : 'activeLobbies')}
+            onViewTournament={enterInstanceBracket}
+            getTournamentTypeLabel={getTournamentTypeLabel}
+            disabled={!account}
+            showTooltip={activeTooltip === 'activeLobbies'}
+            onShowTooltip={() => setActiveTooltip('activeLobbies')}
+            onHideTooltip={() => setActiveTooltip(null)}
+            connectCtaClassName={currentTheme.connectCtaClassName}
           />
         </div>
 
@@ -2327,7 +2350,7 @@ export default function ConnectFourV2() {
             gameEmoji="🔴"
             gamesCardHeight={gamesCardHeight}
             playerActivityHeight={playerActivityHeight}
-            onHeightChange={() => {}}
+            onHeightChange={setRecentMatchesCardHeight}
             isExpanded={expandedPanel === 'recentMatches'}
             onToggleExpand={() => setExpandedPanel(expandedPanel === 'recentMatches' ? null : 'recentMatches')}
             tierConfig={{}}
@@ -2343,6 +2366,25 @@ export default function ConnectFourV2() {
             getTournamentTypeLabel={getTournamentTypeLabel}
             v2Matches={v2MatchHistory.matches}
             v2MatchesLoading={v2MatchHistory.loading}
+          />
+          <ActiveLobbiesCard
+            lobbies={activeLobbies.lobbies}
+            loading={activeLobbies.loading}
+            syncing={activeLobbies.syncing}
+            error={activeLobbies.error}
+            gamesCardHeight={gamesCardHeight}
+            playerActivityHeight={playerActivityHeight}
+            recentMatchesCardHeight={recentMatchesCardHeight}
+            onRefresh={activeLobbies.refetch}
+            isExpanded={expandedPanel === 'activeLobbies'}
+            onToggleExpand={() => setExpandedPanel(expandedPanel === 'activeLobbies' ? null : 'activeLobbies')}
+            onViewTournament={enterInstanceBracket}
+            getTournamentTypeLabel={getTournamentTypeLabel}
+            disabled={!account}
+            showTooltip={activeTooltip === 'activeLobbies'}
+            onShowTooltip={() => setActiveTooltip('activeLobbies')}
+            onHideTooltip={() => setActiveTooltip(null)}
+            connectCtaClassName={currentTheme.connectCtaClassName}
           />
         </div>
       </div>

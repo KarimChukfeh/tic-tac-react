@@ -63,6 +63,7 @@ const RecentMatchesCard = ({
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [totalEarnings, setTotalEarnings] = useState(0n);
   const [isScrolled, setIsScrolled] = useState(false); // Track if user has scrolled
+  const panelShellRef = useRef(null);
   const expandedPanelRef = useRef(null);
   const prevExpandedRef = useRef(false);
   const matchCardRefs = useRef({});
@@ -201,7 +202,7 @@ const RecentMatchesCard = ({
 
   // Measure and report height whenever content changes
   useEffect(() => {
-    if (isExpanded && expandedPanelRef.current && onHeightChange) {
+    if (isExpanded && panelShellRef.current && onHeightChange) {
       const observer = new ResizeObserver((entries) => {
         for (const entry of entries) {
           const height = entry.target.offsetHeight;
@@ -209,10 +210,10 @@ const RecentMatchesCard = ({
         }
       });
 
-      observer.observe(expandedPanelRef.current);
+      observer.observe(panelShellRef.current);
 
       // Report initial height immediately
-      onHeightChange(expandedPanelRef.current.offsetHeight);
+      onHeightChange(panelShellRef.current.offsetHeight);
 
       return () => observer.disconnect();
     } else if (!isExpanded && onHeightChange) {
@@ -1068,6 +1069,7 @@ const RecentMatchesCard = ({
       {/* Expanded State */}
       {isExpanded && (
         <div
+          ref={panelShellRef}
           className="max-md:fixed max-md:bottom-20 max-md:left-4 max-md:right-4 max-md:w-auto md:mt-3 bg-gradient-to-br from-teal-900/95 to-cyan-900/95 backdrop-blur-lg rounded-2xl border-2 border-teal-400/40 shadow-2xl md:w-[464px] overflow-hidden flex flex-col"
           style={{
             maxHeight: isDesktop ? `calc(100vh - ${topPositionDesktop}px - 6rem)` : 'min(80vh, calc(100vh - 7rem))'
