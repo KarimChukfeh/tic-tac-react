@@ -129,7 +129,7 @@ export const useChessV2PlayerActivity = (instanceContract, account, factoryContr
   const [error, setError] = useState(null);
   const [dismissedMatches, setDismissedMatches] = useState(new Set());
   const [matchAlert, setMatchAlert] = useState(null);
-  const previousActiveMatchesRef = useRef(new Set());
+  const alertedMatchKeysRef = useRef(new Set());
 
   const fetchActivity = useCallback(async (isInitialLoad = false) => {
     if (!account) {
@@ -209,15 +209,14 @@ export const useChessV2PlayerActivity = (instanceContract, account, factoryContr
         next.terminatedMatches.push(...scan.terminatedMatches);
       }
 
-      const currentActive = new Set(next.activeMatches.filter(m => m.matchStatus === 1).map(m => `${m.instanceId}-${m.roundIdx}-${m.matchIdx}`));
       for (const match of next.activeMatches) {
         const key = `${match.instanceId}-${match.roundIdx}-${match.matchIdx}`;
-        if (match.matchStatus === 1 && !previousActiveMatchesRef.current.has(key) && match.isMyTurn) {
+        if (match.matchStatus === 1 && match.isMyTurn && !alertedMatchKeysRef.current.has(key)) {
+          alertedMatchKeysRef.current.add(key);
           setMatchAlert(match);
           break;
         }
       }
-      previousActiveMatchesRef.current = currentActive;
       setData(next);
     } catch (err) {
       console.error('[useChessV2PlayerActivity] Error:', err);
@@ -234,6 +233,10 @@ export const useChessV2PlayerActivity = (instanceContract, account, factoryContr
     const id = setInterval(() => fetchActivity(false), 5000);
     return () => clearInterval(id);
   }, [account, fetchActivity]);
+
+  useEffect(() => {
+    alertedMatchKeysRef.current = new Set();
+  }, [account]);
 
   const dismissMatch = useCallback((tierId, instanceId, roundIdx, matchIdx) => {
     const key = `${tierId}-${instanceId}-${roundIdx}-${matchIdx}`;

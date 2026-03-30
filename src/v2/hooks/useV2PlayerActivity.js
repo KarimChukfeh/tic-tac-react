@@ -169,7 +169,7 @@ export const useV2PlayerActivity = (instanceContract, account, factoryContract, 
   const [error, setError] = useState(null);
   const [dismissedMatches, setDismissedMatches] = useState(new Set());
   const [matchAlert, setMatchAlert] = useState(null);
-  const previousActiveMatchesRef = useRef(new Set());
+  const alertedMatchKeysRef = useRef(new Set());
 
   const fetchActivity = useCallback(async (isInitialLoad = false) => {
     if (!account) {
@@ -305,14 +305,11 @@ export const useV2PlayerActivity = (instanceContract, account, factoryContract, 
       if (inProgressMatches.length > 0) {
         const priority = inProgressMatches[0];
         const key = `${priority.tierId}-${priority.instanceId}-${priority.roundIdx}-${priority.matchIdx}`;
-        if (isInitialLoad || !previousActiveMatchesRef.current.has(key)) {
+        if (!alertedMatchKeysRef.current.has(key)) {
+          alertedMatchKeysRef.current.add(key);
           setMatchAlert(priority);
         }
       }
-
-      previousActiveMatchesRef.current = new Set(
-        merged.activeMatches.map(m => `${m.tierId}-${m.instanceId}-${m.roundIdx}-${m.matchIdx}`)
-      );
 
       setData({ ...EMPTY_DATA, ...merged });
     } catch (err) {
@@ -335,6 +332,10 @@ export const useV2PlayerActivity = (instanceContract, account, factoryContract, 
     const interval = setInterval(() => fetchActivity(false), 5000);
     return () => clearInterval(interval);
   }, [account, fetchActivity]);
+
+  useEffect(() => {
+    alertedMatchKeysRef.current = new Set();
+  }, [account]);
 
   const refetch = useCallback(() => fetchActivity(false), [fetchActivity]);
 

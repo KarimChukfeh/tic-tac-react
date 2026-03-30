@@ -116,18 +116,28 @@ const TournamentHeader = ({
   // Optional: Custom colors override
   colors: customColors
 }) => {
+  const formatEnrollmentFee = (value) => {
+    if (typeof value === 'bigint') return ethers.formatEther(value);
+    if (typeof value === 'string') {
+      if (/^\d+$/.test(value)) return ethers.formatEther(BigInt(value));
+      return value;
+    }
+    return String(value ?? '0');
+  };
+
   const config = GAME_CONFIGS[gameType] || GAME_CONFIGS.tictactoe;
   const colors = customColors || config.colors;
   const totalRounds = Math.ceil(Math.log2(playerCount));
   const isInProgress = status === 1;
   const isCompleted = status >= 2;
   const tournamentTypeLabel = getTournamentTypeLabel(playerCount);
+  const formattedEntryFee = formatEnrollmentFee(entryFee);
   const showEnrollmentCta = status === 0 && !isEnrolled && !isFull && (account ? !!onEnroll : !!onConnectWallet);
   const enrollmentCtaLoading = account ? loading : connectLoading;
   const connectCtaGradient = connectButtonGradient || colors.buttonGradient;
   const connectCtaHover = connectButtonHover || colors.buttonHover;
   const enrollmentCtaLabel = account
-    ? (loading ? 'Enrolling...' : `Enroll in ${tournamentTypeLabel} (${entryFee} ETH)`)
+    ? (loading ? 'Enrolling...' : `Enroll in ${tournamentTypeLabel} (${formattedEntryFee} ETH)`)
     : (connectLoading ? 'Connecting...' : 'Connect to Enrol');
   const tournamentResolutionReason = getTournamentResolutionReasonValue({ resolutionReason, completionReason });
   const resolutionText = getTournamentCompletionText(tournamentResolutionReason);

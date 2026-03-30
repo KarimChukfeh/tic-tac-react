@@ -1444,6 +1444,14 @@ export default function ConnectFourV2() {
     }
   }, []);
 
+  const applyMoveHistoryUpdate = useCallback((history) => {
+    setMoveHistory(prev => {
+      if (!Array.isArray(history)) return prev;
+      if (history.length === 0 && prev.length > 0) return prev;
+      return history;
+    });
+  }, []);
+
   const refreshMatchData = useCallback(async (instanceCont, userAccount, matchInfo) => {
     try {
       const { roundNumber, matchNumber } = matchInfo;
@@ -1695,7 +1703,7 @@ export default function ConnectFourV2() {
       if (updated) {
         try {
           const history = await fetchMoveHistory(activeInstanceContractRef.current, roundNumber, matchNumber);
-          setMoveHistory(history);
+          applyMoveHistoryUpdate(history);
         } catch (historyError) {
           console.error('[ConnectFourV2] Error refreshing move history after move:', historyError);
         }
@@ -2002,7 +2010,7 @@ export default function ConnectFourV2() {
 
         if (boardChanged) {
           const history = await fetchMoveHistory(instanceCont, match.roundNumber, match.matchNumber);
-          setMoveHistory(history);
+          applyMoveHistoryUpdate(history);
         }
         previousBoardRef.current = [...updatedMatch.board];
       } catch (error) {
@@ -2148,6 +2156,12 @@ export default function ConnectFourV2() {
     currentMatch.matchNumber === alertMatch.matchIdx
   );
 
+  useEffect(() => {
+    if (showMatchAlert && isAlertMatchAlreadyOpen) {
+      handleMatchAlertClose();
+    }
+  }, [showMatchAlert, isAlertMatchAlreadyOpen]);
+
   return (
     <div
       style={{
@@ -2184,7 +2198,7 @@ export default function ConnectFourV2() {
         />
       )}
 
-      {showMatchAlert && alertMatch && (
+      {showMatchAlert && alertMatch && !isAlertMatchAlreadyOpen && (
         <ActiveMatchAlertModal
           match={alertMatch}
           autoDismiss={isAlertMatchAlreadyOpen}
@@ -2487,7 +2501,7 @@ export default function ConnectFourV2() {
                   connectLoading={isConnecting}
                   syncDots={bracketSyncDots}
                   isEnrolled={viewingTournament?.players?.some(addr => addr.toLowerCase() === account?.toLowerCase())}
-                  entryFee={viewingTournament?.entryFeeWei ?? '0'}
+                  entryFee={viewingTournament?.entryFeeEth ?? '0'}
                   isFull={viewingTournament?.enrolledCount >= viewingTournament?.playerCount}
                   instanceContract={activeInstanceContract}
                 />

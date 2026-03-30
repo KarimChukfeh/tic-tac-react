@@ -1196,6 +1196,14 @@ export default function ChessV2() {
     }
   }, []);
 
+  const applyMoveHistoryUpdate = useCallback((history) => {
+    setMoveHistory(prev => {
+      if (!Array.isArray(history)) return prev;
+      if (history.length === 0 && prev.length > 0) return prev;
+      return history;
+    });
+  }, []);
+
   const refreshMatchData = useCallback(async (instanceCont, userAccount, matchInfo) => {
     try {
       const { roundNumber, matchNumber } = matchInfo;
@@ -1411,7 +1419,7 @@ export default function ChessV2() {
 
       if (updated) {
         try {
-          setMoveHistory(await fetchMoveHistory(activeInstanceContractRef.current, currentMatch.roundNumber, currentMatch.matchNumber));
+          applyMoveHistoryUpdate(await fetchMoveHistory(activeInstanceContractRef.current, currentMatch.roundNumber, currentMatch.matchNumber));
         } catch (historyError) {
           console.error('[ChessV2] Error refreshing move history after move:', historyError);
         }
@@ -1660,7 +1668,7 @@ export default function ChessV2() {
           if (prev.matchStatus === 2) return prev;
           return { ...prev, board: updatedMatch.board, packedBoard: updatedMatch.packedBoard, packedState: updatedMatch.packedState, currentTurn: updatedMatch.currentTurn, isYourTurn: updatedMatch.isYourTurn, player1TimeRemaining: updatedMatch.player1TimeRemaining, player2TimeRemaining: updatedMatch.player2TimeRemaining, lastMoveTime: updatedMatch.lastMoveTime, whiteInCheck: updatedMatch.whiteInCheck, blackInCheck: updatedMatch.blackInCheck, lastMove: updatedMatch.lastMove };
         });
-        if (boardChanged) setMoveHistory(await fetchMoveHistory(instanceCont, match.roundNumber, match.matchNumber));
+        if (boardChanged) applyMoveHistoryUpdate(await fetchMoveHistory(instanceCont, match.roundNumber, match.matchNumber));
         previousBoardRef.current = JSON.stringify(updatedMatch.board);
       } catch (error) {
         console.error('[ChessV2 Polling] Error syncing match:', error);
@@ -1760,12 +1768,18 @@ export default function ChessV2() {
     currentMatch.matchNumber === alertMatch.matchIdx
   );
 
+  useEffect(() => {
+    if (showMatchAlert && isAlertMatchAlreadyOpen) {
+      handleMatchAlertClose();
+    }
+  }, [showMatchAlert, isAlertMatchAlreadyOpen]);
+
   return (
     <div style={{ minHeight: '100vh', background: currentTheme.gradient, color: '#fff', position: 'relative', overflow: 'clip', transition: 'background 0.8s ease-in-out' }}>
       <ParticleBackground colors={currentTheme.particleColors} symbols={CHESS_PIECES} fontSize="40px" />
       {showPrompt && <WalletBrowserPrompt onWalletChoice={handleWalletChoice} onContinueChoice={handleContinueChoice} />}
       {matchEndResult && <MatchEndModal result={matchEndResult.result} completionReason={matchEndResult.completionReason} winnerLabel={matchEndWinnerLabel} winnerAddress={matchEndWinner} loserAddress={matchEndLoser} currentAccount={account} hasNextMatch={!!nextActiveMatch} onClose={handleMatchEndModalClose} onEnterNextMatch={handleEnterNextMatch} onReturnToBracket={handleReturnToBracket} gameType="chess" roundNumber={currentMatch?.roundNumber} totalRounds={viewingTournament?.totalRounds} prizePool={viewingTournament?.prizePoolWei} />}
-      {showMatchAlert && alertMatch && <ActiveMatchAlertModal match={alertMatch} autoDismiss={isAlertMatchAlreadyOpen} onEnterMatch={() => { handleMatchAlertClose(); handlePlayMatch(alertMatch.tierId, alertMatch.instanceId, alertMatch.roundIdx, alertMatch.matchIdx); }} onDismiss={handleMatchAlertClose} />}
+      {showMatchAlert && alertMatch && !isAlertMatchAlreadyOpen && <ActiveMatchAlertModal match={alertMatch} autoDismiss={isAlertMatchAlreadyOpen} onEnterMatch={() => { handleMatchAlertClose(); handlePlayMatch(alertMatch.tierId, alertMatch.instanceId, alertMatch.roundIdx, alertMatch.matchIdx); }} onDismiss={handleMatchAlertClose} />}
 
       <div className="fixed bottom-0 left-0 right-0 z-50 md:static md:z-auto">
         <div className="md:hidden bg-gradient-to-b from-slate-800 to-slate-900 border-t border-purple-400/30 px-4 py-2.5 flex items-center justify-between">
@@ -1898,7 +1912,7 @@ export default function ChessV2() {
           <>
             {viewingTournament ? (
               <div ref={tournamentBracketRef}>
-                <TournamentBracket tournamentData={viewingTournament} onBack={handleBackToTournaments} onEnterMatch={handlePlayMatch} onForceEliminate={handleForceEliminateStalledMatch} onClaimReplacement={handleClaimMatchSlotByReplacement} onManualStart={handleManualStart} onClaimAbandonedPool={handleClaimAbandonedPool} onResetEnrollmentWindow={handleResetEnrollmentWindow} onEnroll={handleEnroll} onConnectWallet={connectWallet} account={account} loading={tournamentsLoading} connectLoading={isConnecting} syncDots={bracketSyncDots} isEnrolled={viewingTournament?.players?.some(addr => addr.toLowerCase() === account?.toLowerCase())} entryFee={viewingTournament?.entryFeeWei ?? '0'} isFull={viewingTournament?.enrolledCount >= viewingTournament?.playerCount} instanceContract={activeInstanceContract} />
+                <TournamentBracket tournamentData={viewingTournament} onBack={handleBackToTournaments} onEnterMatch={handlePlayMatch} onForceEliminate={handleForceEliminateStalledMatch} onClaimReplacement={handleClaimMatchSlotByReplacement} onManualStart={handleManualStart} onClaimAbandonedPool={handleClaimAbandonedPool} onResetEnrollmentWindow={handleResetEnrollmentWindow} onEnroll={handleEnroll} onConnectWallet={connectWallet} account={account} loading={tournamentsLoading} connectLoading={isConnecting} syncDots={bracketSyncDots} isEnrolled={viewingTournament?.players?.some(addr => addr.toLowerCase() === account?.toLowerCase())} entryFee={viewingTournament?.entryFeeEth ?? '0'} isFull={viewingTournament?.enrolledCount >= viewingTournament?.playerCount} instanceContract={activeInstanceContract} />
               </div>
             ) : (
               <>
