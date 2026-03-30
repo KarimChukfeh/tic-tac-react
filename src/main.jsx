@@ -1,6 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import Landing from './Landing.jsx'
 import TicTacChain from './TicTacChain.jsx'
 import Chess from './Chess.jsx'
@@ -15,22 +15,37 @@ import './index.css'
 import { useWalletBrowserPrompt } from './hooks/useWalletBrowserPrompt'
 import { useErudaDebugConsole } from './hooks/useErudaDebugConsole'
 
+function ScrollToTopOnPathChange() {
+  const location = useLocation();
+
+  React.useLayoutEffect(() => {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, [location.pathname]);
+
+  return null;
+}
+
 function AppRoutes() {
   useErudaDebugConsole();
 
   return (
-    <Routes>
-      <Route path="/" element={<Landing />} />
-      <Route path="/tictactoe" element={<TicTacChain />} />
-      <Route path="/chess" element={<Chess />} />
-      <Route path="/connect4" element={<ConnectFour />} />
-      <Route path="/v2/tictactoe" element={<TicTacToeV2 />} />
-      <Route path="/v2/connec4" element={<ConnectFourV2 />} />
-      <Route path="/v2/connect4" element={<ConnectFourV2 />} />
-      <Route path="/v2/chess" element={<ChessV2 />} />
-      <Route path="/whitepaper" element={<Whitepaper />} />
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+    <>
+      <ScrollToTopOnPathChange />
+      <Routes>
+        <Route path="/" element={<Landing />} />
+        <Route path="/tictactoe" element={<TicTacChain />} />
+        <Route path="/chess" element={<Chess />} />
+        <Route path="/connect4" element={<ConnectFour />} />
+        <Route path="/v2/tictactoe" element={<TicTacToeV2 />} />
+        <Route path="/v2/connec4" element={<ConnectFourV2 />} />
+        <Route path="/v2/connect4" element={<ConnectFourV2 />} />
+        <Route path="/v2/chess" element={<ChessV2 />} />
+        <Route path="/whitepaper" element={<Whitepaper />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </>
   )
 }
 

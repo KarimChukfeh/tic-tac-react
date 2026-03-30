@@ -477,7 +477,16 @@ export default function TicTacToeV2() {
 
   const playerProfile = usePlayerProfile(resolvedFactoryContract, rpcProvider, account);
   const v2MatchHistory = useV2MatchHistory(resolvedFactoryContract, rpcProvider, account);
-  const activeLobbies = useActiveLobbies(resolvedFactoryContract, rpcProvider, account, getInstanceContract);
+  const activeLobbies = useActiveLobbies(
+    resolvedFactoryContract,
+    rpcProvider,
+    account,
+    getInstanceContract,
+    {
+      enabled: expandedPanel === 'activeLobbies',
+      pollIntervalMs: 3000,
+    }
+  );
 
   // --- Active match alert ---
   const [showMatchAlert, setShowMatchAlert] = useState(false);
@@ -902,7 +911,6 @@ export default function TicTacToeV2() {
       setActionState({ type: 'success', message: `Instance created and enrollment verified on-chain at ${address}.` });
       await refreshDashboard();
       // Navigate directly to bracket view after creation
-      pendingScrollAddressRef.current = address;
       await enterInstanceBracket(address);
     } catch (error) {
       console.error('[V2 createInstance] raw error:', error);
@@ -920,6 +928,7 @@ export default function TicTacToeV2() {
       setTournamentsLoading(true);
       const bracketData = await refreshTournamentBracket(address);
       if (bracketData) {
+        pendingScrollAddressRef.current = address;
         const runner = getReadRunner();
         const instance = getInstanceContract(address, runner);
         setActiveInstanceContract(instance);
@@ -930,12 +939,6 @@ export default function TicTacToeV2() {
           replace: false,
           state: { view: 'bracket', instanceAddress: address, from: location.state?.view || 'landing' },
         });
-        setTimeout(() => {
-          if (tournamentBracketRef.current) {
-            tournamentBracketRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }
-          if (collapseActivityPanelRef.current) collapseActivityPanelRef.current();
-        }, 100);
       }
       setTournamentsLoading(false);
     } catch (error) {
@@ -943,6 +946,21 @@ export default function TicTacToeV2() {
       setTournamentsLoading(false);
     }
   }, [refreshTournamentBracket, navigate, location.state?.view]);
+
+  useEffect(() => {
+    const pendingAddress = pendingScrollAddressRef.current;
+    if (!pendingAddress || !viewingTournament || viewingTournament.address !== pendingAddress) {
+      return undefined;
+    }
+
+    const frameId = window.requestAnimationFrame(() => {
+      tournamentBracketRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      collapseActivityPanelRef.current?.();
+      pendingScrollAddressRef.current = null;
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [viewingTournament]);
 
   // When ?instance= param changes, load that instance
   useEffect(() => {

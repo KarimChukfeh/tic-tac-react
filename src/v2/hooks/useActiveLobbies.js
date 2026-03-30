@@ -128,7 +128,8 @@ function sortLobbies(a, b) {
   return a.address.localeCompare(b.address);
 }
 
-export function useActiveLobbies(factoryContract, runner, account, getInstanceContract) {
+export function useActiveLobbies(factoryContract, runner, account, getInstanceContract, options = {}) {
+  const { enabled = false, pollIntervalMs = 3000 } = options;
   const [lobbies, setLobbies] = useState(EMPTY_DATA);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -458,18 +459,25 @@ export function useActiveLobbies(factoryContract, runner, account, getInstanceCo
   }, [account, factoryContract, getInstanceContract, runner]);
 
   useEffect(() => {
-    fetchLobbies(true);
-  }, [fetchLobbies]);
+    if (enabled) {
+      fetchLobbies(true);
+      return undefined;
+    }
+
+    setLoading(false);
+    setSyncing(false);
+    return undefined;
+  }, [enabled, fetchLobbies]);
 
   useEffect(() => {
-    if (!factoryContract || !runner) return undefined;
+    if (!enabled || !factoryContract || !runner) return undefined;
 
     const id = setInterval(() => {
       fetchLobbies(false);
-    }, 12000);
+    }, pollIntervalMs);
 
     return () => clearInterval(id);
-  }, [factoryContract, fetchLobbies, runner]);
+  }, [enabled, factoryContract, fetchLobbies, pollIntervalMs, runner]);
 
   return {
     lobbies,

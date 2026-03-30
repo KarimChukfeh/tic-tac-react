@@ -499,6 +499,7 @@ export default function ChessV2() {
   const navigate = useNavigate();
 
   const rpcProviderRef = useRef(null);
+  const pendingScrollAddressRef = useRef(null);
   const tournamentBracketRef = useRef(null);
   const matchViewRef = useRef(null);
   const collapseActivityPanelRef = useRef(null);
@@ -561,7 +562,16 @@ export default function ChessV2() {
   const playerActivity = useChessV2PlayerActivity(activeInstanceContract, account, resolvedFactoryContract, rpcProvider);
   const playerProfile = useChessPlayerProfile(resolvedFactoryContract, rpcProvider, account);
   const v2MatchHistory = useChessV2MatchHistory(resolvedFactoryContract, rpcProvider, account);
-  const activeLobbies = useActiveLobbies(resolvedFactoryContract, rpcProvider, account, getInstanceContract);
+  const activeLobbies = useActiveLobbies(
+    resolvedFactoryContract,
+    rpcProvider,
+    account,
+    getInstanceContract,
+    {
+      enabled: expandedPanel === 'activeLobbies',
+      pollIntervalMs: 3000,
+    }
+  );
 
   const currentMatchRef = useRef(currentMatch);
   const accountRefForMatch = useRef(account);
@@ -889,16 +899,13 @@ export default function ChessV2() {
       setTournamentsLoading(true);
       const bracketData = await refreshTournamentBracket(address);
       if (bracketData) {
+        pendingScrollAddressRef.current = address;
         const instance = getInstanceContract(address, getReadRunner());
         setActiveInstanceContract(instance);
         activeInstanceContractRef.current = instance;
         setViewingTournament(bracketData);
         skipNavEffectRef.current = true;
         navigate('/v2/chess', { replace: false, state: { view: 'bracket', instanceAddress: address, from: location.state?.view || 'landing' } });
-        setTimeout(() => {
-          tournamentBracketRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          collapseActivityPanelRef.current?.();
-        }, 100);
       }
     } catch (error) {
       console.error('[ChessV2] Error entering bracket:', error);
@@ -906,6 +913,21 @@ export default function ChessV2() {
       setTournamentsLoading(false);
     }
   }, [refreshTournamentBracket, navigate, location.state?.view]);
+
+  useEffect(() => {
+    const pendingAddress = pendingScrollAddressRef.current;
+    if (!pendingAddress || !viewingTournament || viewingTournament.address !== pendingAddress) {
+      return undefined;
+    }
+
+    const frameId = window.requestAnimationFrame(() => {
+      tournamentBracketRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      collapseActivityPanelRef.current?.();
+      pendingScrollAddressRef.current = null;
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [viewingTournament]);
 
   useEffect(() => {
     if (!allowInitialUrlHydration || !selectedAddress) return;
