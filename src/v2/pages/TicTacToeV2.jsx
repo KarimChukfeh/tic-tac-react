@@ -37,7 +37,7 @@ import { shouldResetOnInitialDocumentLoad } from '../../utils/navigation';
 import { isDraw, getCompletionReasonText, getCompletionReasonDescription } from '../../utils/completionReasons';
 import ParticleBackground from '../../components/shared/ParticleBackground';
 import MatchCard from '../../components/shared/MatchCard';
-import UserManual from '../../components/shared/UserManual';
+import UserManualV2 from '../components/UserManualV2';
 import MatchEndModal from '../../components/shared/MatchEndModal';
 import ActiveMatchAlertModal from '../../components/shared/ActiveMatchAlertModal';
 import GameMatchLayout from '../../components/shared/GameMatchLayout';
@@ -2458,7 +2458,7 @@ export default function TicTacToeV2() {
 
       {/* User Manual */}
       <div id="user-manual" className="max-w-7xl mx-auto px-6 pt-8 md:pt-10 pb-12" style={{ position: 'relative', zIndex: 10 }}>
-        <UserManual
+        <UserManualV2
           contractInstance={null}
           tierConfigurations={[]}
           raffleThresholds={['0.001', '0.005', '0.02', '0.05', '0.25', '0.5', '0.75', '1']}
