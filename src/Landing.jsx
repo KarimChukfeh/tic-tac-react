@@ -290,20 +290,39 @@ function WhitepaperSection() {
 
 
 const HERO_PHRASES = ["Challenge Your Crew", "Pick Your Stakes", "Settle The Score"];
+const HERO_VISIBLE_MS = 2200;
+const HERO_FADE_MS = 450;
 
 function useHeroCycle() {
   const [index, setIndex] = useState(0);
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setVisible(false);
-      setTimeout(() => {
-        setIndex((i) => (i + 1) % HERO_PHRASES.length);
-        setVisible(true);
-      }, 600);
-    }, 2800);
-    return () => clearInterval(interval);
+    let visibleTimeoutId;
+    let fadeTimeoutId;
+    let cancelled = false;
+
+    const scheduleNext = () => {
+      visibleTimeoutId = window.setTimeout(() => {
+        if (cancelled) return;
+        setVisible(false);
+
+        fadeTimeoutId = window.setTimeout(() => {
+          if (cancelled) return;
+          setIndex((i) => (i + 1) % HERO_PHRASES.length);
+          setVisible(true);
+          scheduleNext();
+        }, HERO_FADE_MS);
+      }, HERO_VISIBLE_MS);
+    };
+
+    scheduleNext();
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(visibleTimeoutId);
+      window.clearTimeout(fadeTimeoutId);
+    };
   }, []);
 
   return { phrase: HERO_PHRASES[index], visible };
@@ -408,12 +427,14 @@ export default function Landing() {
           </div>
 
           {/* Main Headline */}
-          <h1 className="text-5xl md:text-7xl lg:text-8xl font-black text-center leading-[1.1] mb-8 py-2 mt-4">
-            <span
-              className="block text-white pb-1"
-              style={{ transition: 'opacity 0.6s ease', opacity: visible ? 1 : 0 }}
-            >
+          <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-black text-center leading-[1.05] mb-8 py-2 mt-4">
+            <span className="hero-phrase-slot block text-white pb-1">
+              <span
+                className={`hero-phrase ${visible ? 'hero-phrase-visible' : 'hero-phrase-hidden'}`}
+                aria-live="polite"
+              >
               {phrase}
+              </span>
             </span>
             <span
               className="block bg-clip-text text-transparent py-1 text-3xl md:text-5xl lg:text-6xl"
@@ -842,6 +863,39 @@ export default function Landing() {
       
       {/* Keyframe Animations */}
       <style>{`
+        .hero-phrase-slot {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 2.35em;
+        }
+
+        .hero-phrase {
+          display: block;
+          width: 100%;
+          text-align: center;
+          padding: 0 0.12em;
+          will-change: opacity, transform;
+          transition: opacity ${HERO_FADE_MS}ms ease, transform ${HERO_FADE_MS}ms ease;
+          backface-visibility: hidden;
+        }
+
+        .hero-phrase-visible {
+          opacity: 1;
+          transform: translateY(0);
+        }
+
+        .hero-phrase-hidden {
+          opacity: 0;
+          transform: translateY(-14%);
+        }
+
+        @media (min-width: 640px) {
+          .hero-phrase-slot {
+            min-height: 1.3em;
+          }
+        }
+
         @keyframes particle-hover {
           0%   { transform: translate(0px, 0px) rotate(0deg); opacity: 0.25; }
           20%  { transform: translate(12px, -15px) rotate(36deg); opacity: 0.18; }
