@@ -23,8 +23,7 @@ body {
 .page-transition-shell {
   position: relative;
   min-height: 100vh;
-  transform-origin: center top;
-  will-change: opacity, transform, filter;
+  will-change: opacity;
 }
 
 .page-transition-shell::after {
@@ -36,6 +35,8 @@ body {
   background:
     radial-gradient(circle at 50% 18%, rgba(34, 211, 238, 0.14), transparent 42%),
     radial-gradient(circle at 50% 82%, rgba(168, 85, 247, 0.1), transparent 44%);
+  transform: scale(0.985);
+  transform-origin: center center;
 }
 
 .page-transition-shell--entering,
@@ -51,26 +52,40 @@ body {
 @keyframes page-route-enter {
   0% {
     opacity: 0;
-    transform: translateY(14px) scale(1.02);
-    filter: blur(12px);
   }
   100% {
     opacity: 1;
-    transform: translateY(0) scale(1);
-    filter: blur(0);
   }
 }
 
 @keyframes page-route-exit {
   0% {
     opacity: 1;
-    transform: translateY(0) scale(1);
-    filter: blur(0);
   }
   100% {
     opacity: 0;
-    transform: translateY(-10px) scale(0.985);
-    filter: blur(10px);
+  }
+}
+
+@keyframes page-transition-overlay-enter {
+  0% {
+    opacity: 0;
+    transform: scale(1.035);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes page-transition-overlay-exit {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.982);
   }
 }
 
@@ -82,13 +97,19 @@ body {
   animation: page-route-exit 180ms cubic-bezier(0.4, 0, 1, 1) forwards;
 }
 
+.page-transition-shell--entering::after {
+  animation: page-transition-overlay-enter 320ms cubic-bezier(0.2, 0.9, 0.2, 1) forwards;
+}
+
+.page-transition-shell--exiting::after {
+  animation: page-transition-overlay-exit 180ms cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .page-transition-shell,
   .page-transition-shell--entering,
   .page-transition-shell--exiting {
     animation: none !important;
-    filter: none !important;
-    transform: none !important;
   }
 
   .page-transition-shell::after {
