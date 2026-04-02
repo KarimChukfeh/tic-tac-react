@@ -74,10 +74,10 @@ const QuickGuideModal = ({ isOpen, onClose }) => {
                 Quick Guide
               </div>
               <h2 className="mt-4 text-3xl font-bold text-white md:text-4xl">
-                Start With Five Steps
+                Five Steps
               </h2>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-blue-100/80 md:text-base">
-                Connect, configure, invite, compete, conclude.
+                Connect, configure, invite, play, conclude.
               </p>
             </div>
 
