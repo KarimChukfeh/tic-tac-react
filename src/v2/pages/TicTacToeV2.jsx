@@ -1224,52 +1224,19 @@ export default function TicTacToeV2() {
 
   // ─── Match data helpers ──────────────────────────────────────────────────────
 
-  const fetchMoveHistory = useCallback(async (instanceCont, roundNumber, matchNumber) => {
-    try {
-      // V2: getMatchMoves(roundNumber, matchNumber) returns a moves string
-      let movesString = '';
-      try {
-        movesString = await instanceCont.getMatchMoves(roundNumber, matchNumber);
-      } catch {
-        const matchData = await instanceCont.getMatch(roundNumber, matchNumber);
-        movesString = matchData.moves || '';
-      }
-
-      console.log('[V2] fetchMoveHistory - movesString:', movesString, 'length:', movesString.length);
-
-      if (!movesString || movesString.length === 0) {
-        console.log('[V2] fetchMoveHistory - No moves found, returning empty array');
-        return [];
-      }
-
-      // Get match data and firstPlayer from matches mapping
-      const matchKey = ethers.keccak256(ethers.solidityPacked(['uint8', 'uint8'], [roundNumber, matchNumber]));
-      const [matchData, fullMatch] = await Promise.all([
-        instanceCont.getMatch(roundNumber, matchNumber),
-        instanceCont.matches(matchKey),
-      ]);
-
-      const firstPlayer = fullMatch.firstPlayer;
-      const player1 = matchData.player1;
-      const player2 = matchData.player2;
-
-      console.log('[V2] fetchMoveHistory - firstPlayer:', firstPlayer, 'player1:', player1, 'player2:', player2);
-
-      const moves = decodeTicTacToeMoves(movesString);
-      console.log('[V2] fetchMoveHistory - parsed moves:', moves);
-
-      const history = moves.map((cellIndex, idx) => {
-        const isFirstPlayerMove = idx % 2 === 0;
-        const movePlayer = isFirstPlayerMove ? firstPlayer : (firstPlayer === player1 ? player2 : player1);
-        return { player: isFirstPlayerMove ? 'X' : 'O', cell: cellIndex, address: movePlayer };
-      });
-
-      console.log('[V2] fetchMoveHistory - returning history:', history);
-      return history;
-    } catch (error) {
-      console.error('[V2] Error fetching move history:', error);
+  const buildMoveHistory = useCallback((movesString, firstPlayer, player1, player2) => {
+    if (!movesString || movesString.length === 0) {
       return [];
     }
+
+    const moves = decodeTicTacToeMoves(movesString);
+    console.log('[V2] buildMoveHistory - parsed moves:', moves);
+
+    return moves.map((cellIndex, idx) => {
+      const isFirstPlayerMove = idx % 2 === 0;
+      const movePlayer = isFirstPlayerMove ? firstPlayer : (firstPlayer === player1 ? player2 : player1);
+      return { player: isFirstPlayerMove ? 'X' : 'O', cell: cellIndex, address: movePlayer };
+    });
   }, []);
 
   const applyMoveHistoryUpdate = useCallback((history) => {
@@ -1407,6 +1374,7 @@ export default function TicTacToeV2() {
         escL2Available, escL3Available, isUserAdvancedForRound,
         tierId: VIRTUAL_TIER_ID,
         instanceId: VIRTUAL_INSTANCE_ID,
+        movesString: matchData.moves || '',
       };
       return result;
     } catch (error) {
@@ -1454,7 +1422,7 @@ export default function TicTacToeV2() {
         setMatchEndLoser(null);
         setMatchEndWinnerLabel('');
         matchEndModalShownRef.current = updated.matchStatus === 2;
-        const history = await fetchMoveHistory(instanceCont, roundNumber, matchNumber);
+        const history = buildMoveHistory(updated.movesString, updated.firstPlayer, updated.player1, updated.player2);
         console.log('[V2] handleLoadMatch - Setting moveHistory:', history);
         setMoveHistory(history);
         skipNavEffectRef.current = true;
@@ -1473,7 +1441,7 @@ export default function TicTacToeV2() {
       alert(`Error loading match: ${error.message}`);
       setMatchLoading(false);
     }
-  }, [account, viewingTournament, refreshMatchData, fetchMoveHistory, navigate, location.state?.view, rpcProvider]);
+  }, [account, viewingTournament, refreshMatchData, buildMoveHistory, navigate, location.state?.view, rpcProvider]);
 
   const handleCellClick = async (cellIndex) => {
     if (!currentMatch || !activeInstanceContractRef.current || !account) return;
@@ -1528,7 +1496,7 @@ export default function TicTacToeV2() {
 
       if (updated) {
         try {
-          const history = await fetchMoveHistory(activeInstanceContractRef.current, roundNumber, matchNumber);
+          const history = buildMoveHistory(updated.movesString, updated.firstPlayer, updated.player1, updated.player2);
           console.log('[V2] handleCellClick - Setting moveHistory after move:', history);
           applyMoveHistoryUpdate(history);
         } catch (historyError) {
@@ -1784,7 +1752,7 @@ export default function TicTacToeV2() {
 
         if (updatedMatch.matchStatus === 2) {
           try {
-            const finalHistory = await fetchMoveHistory(instanceCont, match.roundNumber, match.matchNumber);
+            const finalHistory = buildMoveHistory(updatedMatch.movesString, updatedMatch.firstPlayer, updatedMatch.player1, updatedMatch.player2);
             console.log('[V2] Match completion polling - Setting moveHistory:', finalHistory);
             if (finalHistory && finalHistory.length > 0) setMoveHistory(finalHistory);
           } catch { /* ignore */ }
@@ -1838,7 +1806,7 @@ export default function TicTacToeV2() {
         });
 
         if (boardChanged) {
-          const history = await fetchMoveHistory(instanceCont, match.roundNumber, match.matchNumber);
+          const history = buildMoveHistory(updatedMatch.movesString, updatedMatch.firstPlayer, updatedMatch.player1, updatedMatch.player2);
           applyMoveHistoryUpdate(history);
         }
         previousBoardRef.current = [...updatedMatch.board];
@@ -1851,7 +1819,7 @@ export default function TicTacToeV2() {
     doMatchSyncRef.current = doMatchSync;
     const matchPollInterval = setInterval(doMatchSync, 1500);
     return () => clearInterval(matchPollInterval);
-  }, [currentMatch?.instanceAddress, currentMatch?.roundNumber, currentMatch?.matchNumber, account, refreshMatchData, fetchMoveHistory]);
+  }, [currentMatch?.instanceAddress, currentMatch?.roundNumber, currentMatch?.matchNumber, account, refreshMatchData, buildMoveHistory]);
 
   // MoveMade event listener (V2 instance emits same event)
   useEffect(() => {
@@ -1943,7 +1911,7 @@ export default function TicTacToeV2() {
               setMatchEndLoser(null);
               setMatchEndWinnerLabel('');
               matchEndModalShownRef.current = updated.matchStatus === 2;
-              const history = await fetchMoveHistory(instanceCont, state.roundNumber, state.matchNumber);
+              const history = buildMoveHistory(updated.movesString, updated.firstPlayer, updated.player1, updated.player2);
               setMoveHistory(history);
             }
             setMatchLoading(false);

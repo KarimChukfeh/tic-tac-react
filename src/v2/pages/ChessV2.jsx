@@ -1221,29 +1221,22 @@ export default function ChessV2() {
     navigate(-1);
   };
 
-  const fetchMoveHistory = useCallback(async (instanceCont, roundNumber, matchNumber) => {
-    try {
-      let movesString = '';
-      try { movesString = await instanceCont.getMatchMoves(roundNumber, matchNumber); } catch {
-        const matchData = await instanceCont.getMatch(roundNumber, matchNumber);
-        movesString = matchData.moves || '';
-      }
-      if (!movesString) return [];
-      const moves = movesToPairs(movesString);
-      const matchKey = ethers.solidityPackedKeccak256(['uint8', 'uint8'], [roundNumber, matchNumber]);
-      const [matchData, fullMatch] = await Promise.all([instanceCont.getMatch(roundNumber, matchNumber), instanceCont.matches(matchKey)]);
-      const firstPlayer = fullMatch.firstPlayer;
-      const player1 = matchData.player1;
-      const player2 = matchData.player2;
-      return moves.map((move, idx) => {
-        const isFirstMove = idx % 2 === 0;
-        const movePlayer = isFirstMove ? firstPlayer : (firstPlayer?.toLowerCase() === player1?.toLowerCase() ? player2 : player1);
-        return { player: isFirstMove ? '♔' : '♚', move: `${indexToChessNotation(move.from)}→${indexToChessNotation(move.to)}`, from: move.from, to: move.to, promotion: 0, address: movePlayer };
-      });
-    } catch (error) {
-      console.error('[ChessV2] Error fetching move history:', error);
-      return [];
-    }
+  const buildMoveHistory = useCallback((movesString, firstPlayer, player1, player2) => {
+    if (!movesString) return [];
+
+    const moves = movesToPairs(movesString);
+    return moves.map((move, idx) => {
+      const isFirstMove = idx % 2 === 0;
+      const movePlayer = isFirstMove ? firstPlayer : (firstPlayer?.toLowerCase() === player1?.toLowerCase() ? player2 : player1);
+      return {
+        player: isFirstMove ? '♔' : '♚',
+        move: `${indexToChessNotation(move.from)}→${indexToChessNotation(move.to)}`,
+        from: move.from,
+        to: move.to,
+        promotion: 0,
+        address: movePlayer,
+      };
+    });
   }, []);
 
   const applyMoveHistoryUpdate = useCallback((history) => {
@@ -1371,6 +1364,7 @@ export default function ChessV2() {
         whiteInCheck,
         blackInCheck,
         lastMove,
+        movesString: matchData.moves || fullMatch.moves || '',
       };
     } catch (error) {
       console.error('[ChessV2] Error refreshing match data:', error);
@@ -1401,7 +1395,7 @@ export default function ChessV2() {
         setMatchEndLoser(null);
         setMatchEndWinnerLabel('');
         matchEndModalShownRef.current = updated.matchStatus === 2;
-        setMoveHistory(await fetchMoveHistory(instanceCont, roundNumber, matchNumber));
+        setMoveHistory(buildMoveHistory(updated.movesString, updated.firstPlayer, updated.player1, updated.player2));
         skipNavEffectRef.current = true;
         navigate('/v2/chess', { replace: false, state: { view: 'match', instanceAddress, roundNumber, matchNumber, from: location.state?.view || 'bracket' } });
         setTimeout(() => {
@@ -1415,7 +1409,7 @@ export default function ChessV2() {
     } finally {
       setMatchLoading(false);
     }
-  }, [account, viewingTournament, refreshMatchData, fetchMoveHistory, navigate, location.state?.view]);
+  }, [account, viewingTournament, refreshMatchData, buildMoveHistory, navigate, location.state?.view]);
 
   const handleMakeMove = async (fromSquare, toSquare, promotion = 0) => {
     if (!currentMatch || !activeInstanceContractRef.current || !account) return;
@@ -1468,7 +1462,7 @@ export default function ChessV2() {
 
       if (updated) {
         try {
-          applyMoveHistoryUpdate(await fetchMoveHistory(activeInstanceContractRef.current, currentMatch.roundNumber, currentMatch.matchNumber));
+          applyMoveHistoryUpdate(buildMoveHistory(updated.movesString, updated.firstPlayer, updated.player1, updated.player2));
         } catch (historyError) {
           console.error('[ChessV2] Error refreshing move history after move:', historyError);
         }
@@ -1685,7 +1679,7 @@ export default function ChessV2() {
         if (!updatedMatch) return;
         if (updatedMatch.matchStatus === 2) {
           try {
-            const finalHistory = await fetchMoveHistory(instanceCont, match.roundNumber, match.matchNumber);
+            const finalHistory = buildMoveHistory(updatedMatch.movesString, updatedMatch.firstPlayer, updatedMatch.player1, updatedMatch.player2);
             if (finalHistory && finalHistory.length > 0) setMoveHistory(finalHistory);
           } catch {}
           setCurrentMatch(prev => (!prev || prev.matchStatus === 2 ? prev : updatedMatch));
@@ -1717,7 +1711,7 @@ export default function ChessV2() {
           if (prev.matchStatus === 2) return prev;
           return { ...prev, board: updatedMatch.board, packedBoard: updatedMatch.packedBoard, packedState: updatedMatch.packedState, currentTurn: updatedMatch.currentTurn, isYourTurn: updatedMatch.isYourTurn, player1TimeRemaining: updatedMatch.player1TimeRemaining, player2TimeRemaining: updatedMatch.player2TimeRemaining, lastMoveTime: updatedMatch.lastMoveTime, whiteInCheck: updatedMatch.whiteInCheck, blackInCheck: updatedMatch.blackInCheck, lastMove: updatedMatch.lastMove };
         });
-        if (boardChanged) applyMoveHistoryUpdate(await fetchMoveHistory(instanceCont, match.roundNumber, match.matchNumber));
+        if (boardChanged) applyMoveHistoryUpdate(buildMoveHistory(updatedMatch.movesString, updatedMatch.firstPlayer, updatedMatch.player1, updatedMatch.player2));
         previousBoardRef.current = JSON.stringify(updatedMatch.board);
       } catch (error) {
         console.error('[ChessV2 Polling] Error syncing match:', error);
@@ -1727,7 +1721,7 @@ export default function ChessV2() {
     doMatchSyncRef.current = doMatchSync;
     const id = setInterval(doMatchSync, 1500);
     return () => clearInterval(id);
-  }, [currentMatch?.instanceAddress, currentMatch?.roundNumber, currentMatch?.matchNumber, account, refreshMatchData, fetchMoveHistory, checkForNextActiveMatch]);
+  }, [currentMatch?.instanceAddress, currentMatch?.roundNumber, currentMatch?.matchNumber, account, refreshMatchData, buildMoveHistory, checkForNextActiveMatch]);
 
   useEffect(() => {
     if (!currentMatch || !activeInstanceContract || !account) return;
@@ -1784,7 +1778,7 @@ export default function ChessV2() {
               setMatchEndLoser(null);
               setMatchEndWinnerLabel('');
               matchEndModalShownRef.current = updated.matchStatus === 2;
-              setMoveHistory(await fetchMoveHistory(instanceCont, state.roundNumber, state.matchNumber));
+              setMoveHistory(buildMoveHistory(updated.movesString, updated.firstPlayer, updated.player1, updated.player2));
             }
           } catch (error) {
             console.error('[ChessV2] Error loading match from history:', error);

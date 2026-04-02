@@ -1447,42 +1447,19 @@ export default function ConnectFourV2() {
     navigate(-1);
   };
 
-  const fetchMoveHistory = useCallback(async (instanceCont, roundNumber, matchNumber) => {
-    try {
-      let movesString = '';
-      try {
-        movesString = await instanceCont.getMatchMoves(roundNumber, matchNumber);
-      } catch {
-        const matchData = await instanceCont.getMatch(roundNumber, matchNumber);
-        movesString = matchData.moves || '';
-      }
+  const buildMoveHistory = useCallback((movesString, firstPlayer, player1, player2) => {
+    if (!movesString) return [];
 
-      if (!movesString) return [];
-
-      const columns = decodeConnectFourMoves(movesString);
-      const matchKey = ethers.keccak256(ethers.solidityPacked(['uint8', 'uint8'], [roundNumber, matchNumber]));
-      const [matchData, fullMatch] = await Promise.all([
-        instanceCont.getMatch(roundNumber, matchNumber),
-        instanceCont.matches(matchKey),
-      ]);
-
-      const firstPlayer = fullMatch.firstPlayer;
-      const player1 = matchData.player1;
-      const player2 = matchData.player2;
-
-      return columns.map((column, idx) => {
-        const isFirstPlayerMove = idx % 2 === 0;
-        const movePlayer = isFirstPlayerMove ? firstPlayer : (firstPlayer?.toLowerCase() === player1?.toLowerCase() ? player2 : player1);
-        return {
-          player: isFirstPlayerMove ? 'Red' : 'Blue',
-          column: column + 1,
-          address: movePlayer,
-        };
-      });
-    } catch (error) {
-      console.error('[ConnectFourV2] Error fetching move history:', error);
-      return [];
-    }
+    const columns = decodeConnectFourMoves(movesString);
+    return columns.map((column, idx) => {
+      const isFirstPlayerMove = idx % 2 === 0;
+      const movePlayer = isFirstPlayerMove ? firstPlayer : (firstPlayer?.toLowerCase() === player1?.toLowerCase() ? player2 : player1);
+      return {
+        player: isFirstPlayerMove ? 'Red' : 'Blue',
+        column: column + 1,
+        address: movePlayer,
+      };
+    });
   }, []);
 
   const applyMoveHistoryUpdate = useCallback((history) => {
@@ -1616,6 +1593,7 @@ export default function ConnectFourV2() {
         instanceId: VIRTUAL_INSTANCE_ID,
         instanceAddress: matchInfo.instanceAddress || viewingTournament?.address,
         lastColumn,
+        movesString: moves,
       };
     } catch (error) {
       console.error('[ConnectFourV2] Error refreshing match data:', error);
@@ -1663,7 +1641,7 @@ export default function ConnectFourV2() {
         setMatchEndLoser(null);
         setMatchEndWinnerLabel('');
         matchEndModalShownRef.current = updated.matchStatus === 2;
-        const history = await fetchMoveHistory(instanceCont, roundNumber, matchNumber);
+        const history = buildMoveHistory(updated.movesString, updated.firstPlayer, updated.player1, updated.player2);
         setMoveHistory(history);
         skipNavEffectRef.current = true;
         navigate('/v2/connect4', {
@@ -1681,7 +1659,7 @@ export default function ConnectFourV2() {
     } finally {
       setMatchLoading(false);
     }
-  }, [account, viewingTournament, refreshMatchData, fetchMoveHistory, navigate, location.state?.view]);
+  }, [account, viewingTournament, refreshMatchData, buildMoveHistory, navigate, location.state?.view]);
 
   const handleColumnClick = async (columnIndex) => {
     if (!currentMatch || !activeInstanceContractRef.current || !account) return;
@@ -1743,7 +1721,7 @@ export default function ConnectFourV2() {
 
       if (updated) {
         try {
-          const history = await fetchMoveHistory(activeInstanceContractRef.current, roundNumber, matchNumber);
+          const history = buildMoveHistory(updated.movesString, updated.firstPlayer, updated.player1, updated.player2);
           applyMoveHistoryUpdate(history);
         } catch (historyError) {
           console.error('[ConnectFourV2] Error refreshing move history after move:', historyError);
@@ -1995,7 +1973,7 @@ export default function ConnectFourV2() {
 
         if (updatedMatch.matchStatus === 2) {
           try {
-            const finalHistory = await fetchMoveHistory(instanceCont, match.roundNumber, match.matchNumber);
+            const finalHistory = buildMoveHistory(updatedMatch.movesString, updatedMatch.firstPlayer, updatedMatch.player1, updatedMatch.player2);
             if (finalHistory && finalHistory.length > 0) setMoveHistory(finalHistory);
           } catch {}
 
@@ -2050,7 +2028,7 @@ export default function ConnectFourV2() {
         });
 
         if (boardChanged) {
-          const history = await fetchMoveHistory(instanceCont, match.roundNumber, match.matchNumber);
+          const history = buildMoveHistory(updatedMatch.movesString, updatedMatch.firstPlayer, updatedMatch.player1, updatedMatch.player2);
           applyMoveHistoryUpdate(history);
         }
         previousBoardRef.current = [...updatedMatch.board];
@@ -2063,7 +2041,7 @@ export default function ConnectFourV2() {
     doMatchSyncRef.current = doMatchSync;
     const interval = setInterval(doMatchSync, 1500);
     return () => clearInterval(interval);
-  }, [currentMatch?.instanceAddress, currentMatch?.roundNumber, currentMatch?.matchNumber, account, refreshMatchData, fetchMoveHistory, checkForNextActiveMatch]);
+  }, [currentMatch?.instanceAddress, currentMatch?.roundNumber, currentMatch?.matchNumber, account, refreshMatchData, buildMoveHistory, checkForNextActiveMatch]);
 
   useEffect(() => {
     if (!currentMatch || !activeInstanceContract || !account) return;
@@ -2155,7 +2133,7 @@ export default function ConnectFourV2() {
               setMatchEndLoser(null);
               setMatchEndWinnerLabel('');
               matchEndModalShownRef.current = updated.matchStatus === 2;
-              const history = await fetchMoveHistory(instanceCont, state.roundNumber, state.matchNumber);
+              const history = buildMoveHistory(updated.movesString, updated.firstPlayer, updated.player1, updated.player2);
               setMoveHistory(history);
             }
           } catch (error) {
