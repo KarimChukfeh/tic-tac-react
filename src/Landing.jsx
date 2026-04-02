@@ -507,9 +507,8 @@ export default function Landing() {
             <GameCard
               icon="✖️"
               title="Tic-Tac-Toe"
-              tagline="The game everyone knows."
               features={[
-                "Each player gets 2 minutes",
+                "The game everyone knows",
                 "Perfect for your first match",
                 "Quick games, instant results",
               ]}
@@ -520,9 +519,8 @@ export default function Landing() {
             <GameCard
               icon="🔴"
               title="Connect Four"
-              tagline="Drop. Connect. Collect."
               features={[
-                "Each player gets 5 minutes",
+                "Drop. Connect. Collect.",
                 "Deceptively deep strategy",
                 "First to four wins it all"
               ]}
@@ -533,11 +531,10 @@ export default function Landing() {
             <GameCard
               icon="♔"
               title="Chess"
-              tagline="Full chess. Every rule."
               features={[
-                "Each player gets 10 minutes",
-                "Castling/En-Passant/Promotions, etc..",
-                "Higher stakes for elite players",
+                "Full chess. Every rule.",
+                "Castling. En-Passant. Promotions. Etc..",
+                "Now with real stakes",
               ]}
               href="/v2/chess"
               accentColor="#fbbf24"
@@ -548,47 +545,8 @@ export default function Landing() {
 
         </section>
 
-        {/* ============ HOW IT WORKS ============ */}
-        <section className="px-6 py-24">
-          <div className="max-w-4xl mx-auto">
-            
-            <div className="text-center mb-16">
-              <h2 className="text-4xl font-bold text-white mb-4">Dead Simple</h2>
-              <p className="text-slate-400 text-lg">No accounts. No downloads. No nonsense.</p>
-            </div>
-            
-            <div className="grid md:grid-cols-3 gap-12">
-              
-              <div className="text-center">
-                <div className="w-16 h-16 rounded-full bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-2xl font-bold text-cyan-400 mx-auto mb-6">
-                  1
-                </div>
-                <h3 className="text-xl font-bold text-white mb-3">Connect Wallet</h3>
-                <p className="text-slate-500">MetaMask, Brave, whatever. If it holds ETH, it works.</p>
-              </div>
-              
-              <div className="text-center">
-                <div className="w-16 h-16 rounded-full bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-2xl font-bold text-purple-400 mx-auto mb-6">
-                  2
-                </div>
-                <h3 className="text-xl font-bold text-white mb-3">Pick Your Stakes</h3>
-                <p className="text-slate-500">From micro stakes to serious money. You choose the tier that fits.</p>
-              </div>
-              
-              <div className="text-center">
-                <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-2xl font-bold text-emerald-400 mx-auto mb-6">
-                  3
-                </div>
-                <h3 className="text-xl font-bold text-white mb-3">Win & Withdraw</h3>
-                <p className="text-slate-500">Win and the ETH hits your wallet. Instant, reliable, with minimal fees.</p>
-              </div>
-              
-            </div>
-          </div>
-        </section>
-        
         {/* ============ WHY TRUST THIS ============ */}
-        <section className="px-6 py-24 border-t border-slate-800/50">
+        <section className="px-6 py-24">
           <div className="max-w-5xl mx-auto">
             
             <div className="text-center mb-16">
@@ -673,7 +631,6 @@ export default function Landing() {
             Ready to Prove Yourself?
           </h2>
           <p className="text-xl text-slate-400 mb-12 max-w-xl mx-auto">
-            Put real ETH on the line and see where you stand.
           </p>
           <div className="flex flex-col items-center gap-4">
             <button
