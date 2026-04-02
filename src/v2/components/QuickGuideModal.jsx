@@ -5,13 +5,13 @@ const QUICK_GUIDE_STEPS = [
   {
     number: '01',
     title: 'Connect Your Wallet',
-    description: 'Your wallet is your player profile. Pick a well funded Arbitrum ETH wallet.',
+    description: 'Your wallet is your player ID. Pick a well funded Arbitrum ETH wallet.',
     Icon: Wallet,
   },
   {
     number: '02',
     title: 'Configure Your Lobby',
-    description: "Decide your lobby's player count (2 - 32) and entry fee per player (0.0001 ETH - 1 ETH).",
+    description: 'Decide the size of your lobby (2 - 32 players) and the entry fee per player (0.0001 ETH - 1 ETH).',
     Icon: Settings2,
   },
   {
@@ -22,7 +22,7 @@ const QUICK_GUIDE_STEPS = [
   },
   {
     number: '04',
-    title: 'Play',
+    title: 'Play Your Matches',
     description: 'Matches begin automatically once the lobby is full. Play your matches all the way to the finals.',
     Icon: Swords,
   },
