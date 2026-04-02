@@ -25,6 +25,7 @@ import { didMatchStateAdvance, waitForTxOrStateSync } from '../../utils/txSync';
 import ParticleBackground from '../../components/shared/ParticleBackground';
 import MatchCard from '../../components/shared/MatchCard';
 import UserManualV2 from '../components/UserManualV2';
+import QuickGuideModal from '../components/QuickGuideModal';
 import MatchEndModal from '../../components/shared/MatchEndModal';
 import ActiveMatchAlertModal from '../../components/shared/ActiveMatchAlertModal';
 import GameMatchLayout from '../../components/shared/GameMatchLayout';
@@ -101,7 +102,7 @@ const PIECE_SVGS = {
 };
 const PIECE_TYPES = ['', 'pawn', 'knight', 'bishop', 'rook', 'queen', 'king'];
 const HERO_LINKS = [
-  { label: 'Quick Guide', type: 'placeholder' },
+  { label: 'Quick Guide', type: 'quick-guide' },
   { label: 'User Manual', type: 'manual' },
   { label: 'Visual Demos', type: 'placeholder' },
 ];
@@ -495,6 +496,7 @@ export default function ChessV2() {
   const [createLoading, setCreateLoading] = useState(false);
   const [actionState, setActionState] = useState({ type: 'info', message: '' });
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
+  const [isQuickGuideOpen, setIsQuickGuideOpen] = useState(false);
   const [heroLinkNoticeVisible, setHeroLinkNoticeVisible] = useState(false);
   const heroLinkNoticeTimeoutRef = useRef(null);
 
@@ -514,6 +516,16 @@ export default function ChessV2() {
     if (heroLinkNoticeTimeoutRef.current) {
       clearTimeout(heroLinkNoticeTimeoutRef.current);
     }
+  }, []);
+
+  const handleQuickGuideLinkClick = useCallback((event) => {
+    event.preventDefault();
+    if (heroLinkNoticeTimeoutRef.current) {
+      clearTimeout(heroLinkNoticeTimeoutRef.current);
+      heroLinkNoticeTimeoutRef.current = null;
+    }
+    setHeroLinkNoticeVisible(false);
+    setIsQuickGuideOpen(true);
   }, []);
 
   const handleUserManualLinkClick = useCallback((event) => {
@@ -1879,7 +1891,13 @@ export default function ChessV2() {
                   {index > 0 ? <span aria-hidden="true">•</span> : null}
                   <a
                     href={link.type === 'manual' ? '#user-manual' : '#'}
-                    onClick={link.type === 'manual' ? handleUserManualLinkClick : handlePlaceholderLinkClick}
+                    onClick={
+                      link.type === 'manual'
+                        ? handleUserManualLinkClick
+                        : link.type === 'quick-guide'
+                          ? handleQuickGuideLinkClick
+                          : handlePlaceholderLinkClick
+                    }
                     className="underline decoration-dotted underline-offset-4 transition-colors hover:text-white"
                   >
                     {link.label}
@@ -2079,6 +2097,11 @@ export default function ChessV2() {
           <div className="text-center pt-8 border-t border-slate-800/30"><p className="text-slate-600 text-xs">No company needed. No trust required. No servers to shutdown.</p></div>
         </div>
       </footer>
+
+      <QuickGuideModal
+        isOpen={isQuickGuideOpen}
+        onClose={() => setIsQuickGuideOpen(false)}
+      />
 
       <style>{`
         html { scroll-behavior: smooth; }
