@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getPlayerProfileContract, getInstanceContract, resolvePlayerProfileAddress } from '../lib/connectfour';
+import { adjustProfileWinTotal, isProfileEnrollmentWin } from '../lib/playerProfileStats';
 
 const HISTORY_LIMIT = 20;
 const POLL_INTERVAL_MS = 8000;
@@ -39,21 +40,15 @@ export function useConnectFourPlayerProfile(factoryContract, runner, account) {
         profile.getEnrollmentCount().catch(() => 0n),
       ]);
 
-      if (rawStats) {
-        setStats({
-          totalPlayed: Number(rawStats.totalPlayed),
-          totalWins: Number(rawStats.totalWins),
-          totalLosses: Number(rawStats.totalLosses),
-          totalNetEarnings: rawStats.totalNetEarnings,
-        });
-      }
-
       const total = Number(count);
+      let recs = [];
+      let enriched = [];
+
       if (total > 0) {
         const offset = Math.max(0, total - HISTORY_LIMIT);
         const limit = Math.min(total, HISTORY_LIMIT);
-        const recs = await profile.getEnrollments(offset, limit).catch(() => []);
-        const enriched = await Promise.all([...recs].map(async r => {
+        recs = await profile.getEnrollments(offset, limit).catch(() => []);
+        enriched = await Promise.all([...recs].map(async r => {
           let playerCount = null;
           let instanceStatus = null;
           let instanceResolutionReason = null;
@@ -87,13 +82,18 @@ export function useConnectFourPlayerProfile(factoryContract, runner, account) {
             && String(instanceWinner).toLowerCase() === String(account).toLowerCase())
             ? (r.payout && r.payout > 0n ? r.payout : instancePrizeAwarded)
             : (r.payout ?? 0n);
+          const normalizedWon = isProfileEnrollmentWin({
+            won: inferredWin,
+            instanceStatus,
+            resolutionReason: inferredResolutionReason,
+          });
           return {
             instance: r.instance,
             gameType: Number(r.gameType),
             enrolledAt: Number(r.enrolledAt),
             entryFee: r.entryFee,
             concluded: Boolean(r.concluded) || isResolvedOnChain,
-            won: inferredResolutionReason === 6 ? false : (isCancelled ? false : inferredWin),
+            won: normalizedWon,
             prize: r.prize,
             prizePool: r.prize,
             payout: inferredPayout,
@@ -107,6 +107,15 @@ export function useConnectFourPlayerProfile(factoryContract, runner, account) {
         setEnrollments(enriched.sort((a, b) => b.enrolledAt - a.enrolledAt));
       } else {
         setEnrollments([]);
+      }
+
+      if (rawStats) {
+        setStats({
+          totalPlayed: Number(rawStats.totalPlayed),
+          totalWins: adjustProfileWinTotal(rawStats.totalWins, recs, enriched),
+          totalLosses: Number(rawStats.totalLosses),
+          totalNetEarnings: rawStats.totalNetEarnings,
+        });
       }
     } catch (err) {
       console.error('[useConnectFourPlayerProfile] Error:', err);
