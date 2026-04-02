@@ -37,6 +37,7 @@ import BracketScrollHint from '../../components/shared/BracketScrollHint';
 import RecentInstanceCard from '../../components/shared/RecentInstanceCard';
 import CapturedPieces from '../../components/shared/CapturedPieces';
 import V2GameLobbyIntro from '../../components/shared/V2GameLobbyIntro';
+import V2ContractsTable from '../../components/shared/V2ContractsTable';
 import WalletBrowserPrompt from '../../components/WalletBrowserPrompt';
 import EntryFeeSlider, { DEFAULT_SELECTED_ENTRY_FEE } from '../components/EntryFeeSlider';
 import TimeoutSettingSlider, { clampCreateTimeoutValue, isCreateTimeoutField, normalizeCreateTimeouts } from '../components/TimeoutSettingSlider';
@@ -2074,17 +2075,7 @@ export default function ChessV2() {
               <Link to="/" className="text-slate-500 hover:text-white transition-colors text-sm">Back Home</Link>
             </div>
           </div>
-          {contractsExpanded && (
-            <div className="mb-8 overflow-x-auto">
-              <table className="w-full border-collapse bg-slate-900/60 rounded-lg">
-                <thead><tr className="border-b border-slate-700/50"><th className="text-left p-4 text-cyan-300 font-semibold">Deployment</th><th className="text-left p-4 text-cyan-300 font-semibold">Address</th></tr></thead>
-                <tbody>
-                  <tr className="border-b border-slate-800/30"><td className="p-4 text-slate-300">Chess v2 Factory</td><td className="p-4 font-mono text-slate-400 break-all">{factoryAddress}</td></tr>
-                  <tr><td className="p-4 text-slate-300">Chess v2 Instance Implementation</td><td className="p-4 font-mono text-slate-400 break-all">{implementationAddress}</td></tr>
-                </tbody>
-              </table>
-            </div>
-          )}
+          {contractsExpanded && <V2ContractsTable scope="chess" />}
           <div className="text-center pt-8 border-t border-slate-800/30"><p className="text-slate-600 text-xs">No company needed. No trust required. No servers to shutdown.</p></div>
         </div>
       </footer>

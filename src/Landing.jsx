@@ -4,10 +4,8 @@ import { Shield, Lock, Eye, CheckCircle, ChevronDown, ChevronUp, HelpCircle } fr
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
-import tttABI from './TTTABI-modular.json';
-import chessABI from './ChessOnChain-ABI-modular.json';
-import connectFourABI from './ConnectFourABI-modular.json';
 import TotalEarningsCard from './components/shared/TotalEarningsCard';
+import V2ContractsTable from './components/shared/V2ContractsTable';
 
 // Floating Game Particles - each hovers around its initial position
 function FloatingParticles() {
@@ -746,108 +744,7 @@ export default function Landing() {
 
             </div>
 
-            {/* Expandable Contracts Table */}
-            {contractsExpanded && (
-              <div className="mb-8 overflow-x-auto">
-                <table className="w-full border-collapse bg-slate-900/60 rounded-lg">
-                  <thead>
-                    <tr className="border-b border-slate-700/50">
-                      <th className="text-left p-4 text-cyan-300 font-semibold">ETour Modules</th>
-                      <th className="text-left p-4 text-cyan-300 font-semibold">Game Contracts</th>
-                      <th className="text-left p-4 text-cyan-300 font-semibold">Game Modules</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td className="p-4 align-top">
-                        <div className="space-y-2">
-                          <a
-                            href={`https://arbiscan.io/address/${tttABI.modules.core}#code`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="block text-slate-400 hover:text-cyan-400 transition-colors text-sm"
-                          >
-                            ETour_Core.sol
-                          </a>
-                          <a
-                            href={`https://arbiscan.io/address/${tttABI.modules.matches}#code`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="block text-slate-400 hover:text-cyan-400 transition-colors text-sm"
-                          >
-                            ETour_Matches.sol
-                          </a>
-                          <a
-                            href={`https://arbiscan.io/address/${tttABI.modules.prizes}#code`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="block text-slate-400 hover:text-cyan-400 transition-colors text-sm"
-                          >
-                            ETour_Prizes.sol
-                          </a>
-                          <a
-                            href={`https://arbiscan.io/address/${tttABI.modules.raffle}#code`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="block text-slate-400 hover:text-cyan-400 transition-colors text-sm"
-                          >
-                            ETour_Raffle.sol
-                          </a>
-                          <a
-                            href={`https://arbiscan.io/address/${tttABI.modules.escalation}#code`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="block text-slate-400 hover:text-cyan-400 transition-colors text-sm"
-                          >
-                            ETour_Escalation.sol
-                          </a>
-                        </div>
-                      </td>
-                      <td className="p-4 align-top">
-                        <div className="space-y-2">
-                          <a
-                            href={`https://arbiscan.io/address/${tttABI.address}#code`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="block text-slate-400 hover:text-cyan-400 transition-colors text-sm"
-                          >
-                            TicTacChain.sol
-                          </a>
-                          <a
-                            href={`https://arbiscan.io/address/${chessABI.address}#code`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="block text-slate-400 hover:text-cyan-400 transition-colors text-sm"
-                          >
-                            ChessOnChain.sol
-                          </a>
-                          <a
-                            href={`https://arbiscan.io/address/${connectFourABI.address}#code`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="block text-slate-400 hover:text-cyan-400 transition-colors text-sm"
-                          >
-                            ConnectFourOnChain.sol
-                          </a>
-                        </div>
-                      </td>
-                      <td className="p-4 align-top">
-                        <div className="space-y-2">
-                          <a
-                            href={`https://arbiscan.io/address/${chessABI.modules.chessRules}#code`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="block text-slate-400 hover:text-cyan-400 transition-colors text-sm"
-                          >
-                            ChessRules.sol
-                          </a>
-                        </div>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            )}
+            {contractsExpanded && <V2ContractsTable scope="landing" />}
 
             {/* Bottom Line */}
             <div className="text-center pt-8 border-t border-slate-800/30">
