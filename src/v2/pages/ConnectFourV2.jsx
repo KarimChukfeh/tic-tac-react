@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import {
   Grid,
-  Clock,
   Shield,
   Lock,
   Eye,
@@ -442,11 +441,9 @@ const TournamentBracket = ({
   const prevStatusRef = useRef(status);
   const totalRounds = Math.ceil(Math.log2(playerCount));
   const tournamentTypeLabel = getTournamentTypeLabel(playerCount);
-  const ENROLLMENT_DURATION = 60;
-  const [timeRemaining, setTimeRemaining] = useState(0);
-  const [countdownExpired, setCountdownExpired] = useState(false);
-  const firstEnrollmentTime = tournamentData.firstEnrollmentTime || 0;
-  const countdownActive = tournamentData.countdownActive || false;
+  const enrollmentWindowDeadline = status === 0 && enrolledCount > 0
+    ? Number(enrollmentTimeout?.escalation1Start ?? 0)
+    : 0;
 
   useEffect(() => {
     if (prevStatusRef.current === 0 && status === 1 && isEnrolled && bracketViewRef.current) {
@@ -458,38 +455,12 @@ const TournamentBracket = ({
     prevStatusRef.current = status;
   }, [status, isEnrolled]);
 
-  useEffect(() => {
-    if (!countdownActive || !firstEnrollmentTime || status !== 0) {
-      setTimeRemaining(0);
-      setCountdownExpired(false);
-      return;
-    }
-
-    const update = () => {
-      const now = Math.floor(Date.now() / 1000);
-      const deadline = firstEnrollmentTime + ENROLLMENT_DURATION;
-      const remaining = deadline - now;
-      if (remaining <= 0) {
-        setTimeRemaining(0);
-        setCountdownExpired(true);
-      } else {
-        setTimeRemaining(remaining);
-        setCountdownExpired(false);
-      }
-    };
-
-    update();
-    const interval = setInterval(update, 1000);
-    return () => clearInterval(interval);
-  }, [countdownActive, firstEnrollmentTime, status]);
-
   const hasValidRounds = rounds && rounds.length > 0 && rounds.some(round =>
     round.matches && round.matches.length > 0 && round.matches.some(match =>
       match.player1 && match.player1 !== ethers.ZeroAddress
     )
   );
 
-  const formatTime = (seconds) => `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
   const prizePool = tournamentData.prizePoolWei || 0n;
 
   return (
@@ -524,21 +495,7 @@ const TournamentBracket = ({
         connectLoading={connectLoading}
         connectButtonGradient={currentTheme.connectButtonGradient}
         connectButtonHover={currentTheme.connectButtonHover}
-        renderCountdown={countdownActive && status === 0 ? () => (
-          <div className="mt-4 bg-orange-500/20 border border-orange-400/50 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Clock className="text-orange-400" size={20} />
-                <span className="text-orange-300 font-semibold">
-                  {countdownExpired ? 'Enrollment Countdown Expired' : 'Enrollment Time Remaining'}
-                </span>
-              </div>
-              <span className="text-orange-300 font-bold text-lg">
-                {countdownExpired ? '0m 0s' : formatTime(timeRemaining)}
-              </span>
-            </div>
-          </div>
-        ) : null}
+        statusTimerTarget={enrollmentWindowDeadline}
         enrollmentTimeout={enrollmentTimeout}
         onManualStart={onManualStart ? () => onManualStart(VIRTUAL_TIER_ID, VIRTUAL_INSTANCE_ID) : null}
         onClaimAbandonedPool={onClaimAbandonedPool ? () => onClaimAbandonedPool(VIRTUAL_TIER_ID, VIRTUAL_INSTANCE_ID) : null}
@@ -1006,19 +963,9 @@ export default function ConnectFourV2() {
 
     const snapshot = normalizeInstanceSnapshot(address, info, tournament, players, enrolled);
 
-    let firstEnrollmentTime = 0;
-    let countdownActive = false;
-    try {
-      const tournamentData = await instance.tournament();
-      firstEnrollmentTime = Number(tournamentData.firstEnrollmentTime || 0);
-      countdownActive = Boolean(tournamentData.countdownActive);
-    } catch {}
-
     return {
       ...snapshot,
       rounds,
-      firstEnrollmentTime,
-      countdownActive,
       tierId: VIRTUAL_TIER_ID,
       instanceId: VIRTUAL_INSTANCE_ID,
     };

@@ -23,6 +23,7 @@ const baseProps = {
 describe('TournamentHeader', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useRealTimers();
     window.IntersectionObserver = class {
       observe() {}
       disconnect() {}
@@ -178,5 +179,22 @@ describe('TournamentHeader', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'EL0: Cancel Tournament' }));
     expect(onCancelTournament).toHaveBeenCalledWith(0, 0);
+  });
+
+  it('shows the enrolment window timer inside the status card when a deadline is provided', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-04-02T12:00:00Z'));
+
+    render(
+      <TournamentHeader
+        {...baseProps}
+        enrolledCount={2}
+        status={0}
+        statusTimerTarget={Math.floor(Date.now() / 1000) + 90}
+      />
+    );
+
+    expect(screen.getByText('Window closes in 1m 30s')).toBeInTheDocument();
+    expect(screen.queryByText('Enrollment Time Remaining')).not.toBeInTheDocument();
   });
 });

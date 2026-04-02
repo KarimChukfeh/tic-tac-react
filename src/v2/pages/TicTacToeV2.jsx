@@ -15,7 +15,6 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import {
   Grid,
-  Clock,
   Shield,
   Lock,
   Eye,
@@ -192,13 +191,9 @@ const TournamentBracket = ({
   const prevStatusRef = useRef(status);
   const totalRounds = Math.ceil(Math.log2(playerCount));
   const tournamentTypeLabel = getTournamentTypeLabel(playerCount);
-
-  const ENROLLMENT_DURATION = 1 * 60;
-  const [timeRemaining, setTimeRemaining] = useState(0);
-  const [countdownExpired, setCountdownExpired] = useState(false);
-
-  const firstEnrollmentTime = tournamentData.firstEnrollmentTime || 0;
-  const countdownActive = tournamentData.countdownActive || false;
+  const enrollmentWindowDeadline = status === 0 && enrolledCount > 0
+    ? Number(enrollmentTimeout?.escalation1Start ?? 0)
+    : 0;
 
   useEffect(() => {
     if (prevStatusRef.current === 0 && status === 1 && isEnrolled && bracketViewRef.current) {
@@ -209,35 +204,6 @@ const TournamentBracket = ({
     }
     prevStatusRef.current = status;
   }, [status, isEnrolled]);
-
-  useEffect(() => {
-    if (!countdownActive || !firstEnrollmentTime || status !== 0) {
-      setTimeRemaining(0);
-      setCountdownExpired(false);
-      return;
-    }
-    const updateTimer = () => {
-      const now = Math.floor(Date.now() / 1000);
-      const deadline = firstEnrollmentTime + ENROLLMENT_DURATION;
-      const remaining = deadline - now;
-      if (remaining <= 0) {
-        setTimeRemaining(0);
-        setCountdownExpired(true);
-      } else {
-        setTimeRemaining(remaining);
-        setCountdownExpired(false);
-      }
-    };
-    updateTimer();
-    const interval = setInterval(updateTimer, 1000);
-    return () => clearInterval(interval);
-  }, [firstEnrollmentTime, countdownActive, status]);
-
-  const formatTime = (seconds) => {
-    const minutes = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${minutes}m ${secs}s`;
-  };
 
   const matchStatusOptions = { doubleForfeitText: 'Eliminated - Double Forfeit' };
 
@@ -291,21 +257,7 @@ const TournamentBracket = ({
         connectLoading={connectLoading}
         connectButtonGradient={currentTheme.connectButtonGradient}
         connectButtonHover={currentTheme.connectButtonHover}
-        renderCountdown={countdownActive && status === 0 ? () => (
-          <div className="mt-4 bg-orange-500/20 border border-orange-400/50 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Clock className="text-orange-400" size={20} />
-                <span className="text-orange-300 font-semibold">
-                  {countdownExpired ? 'Enrollment Countdown Expired' : 'Enrollment Time Remaining'}
-                </span>
-              </div>
-              <span className="text-orange-300 font-bold text-lg">
-                {countdownExpired ? '0m 0s' : formatTime(timeRemaining)}
-              </span>
-            </div>
-          </div>
-        ) : null}
+        statusTimerTarget={enrollmentWindowDeadline}
         enrollmentTimeout={enrollmentTimeout}
         onManualStart={onManualStart ? () => onManualStart(tierId, instanceId) : null}
         onClaimAbandonedPool={onClaimAbandonedPool ? () => onClaimAbandonedPool(tierId, instanceId) : null}
@@ -807,20 +759,9 @@ export default function TicTacToeV2() {
 
     const snapshot = normalizeInstanceSnapshot(address, info, tournament, players, enrolled);
 
-    // Extract countdown data
-    let firstEnrollmentTime = 0;
-    let countdownActive = false;
-    try {
-      const tournamentData = await instance.tournament();
-      firstEnrollmentTime = Number(tournamentData.firstEnrollmentTime || 0);
-      countdownActive = Boolean(tournamentData.countdownActive);
-    } catch { /* ignore */ }
-
     return {
       ...snapshot,
       rounds,
-      firstEnrollmentTime,
-      countdownActive,
       // Match the shape TournamentHeader / bracket expects
       tierId: VIRTUAL_TIER_ID,
       instanceId: VIRTUAL_INSTANCE_ID,

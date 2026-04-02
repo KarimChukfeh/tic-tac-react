@@ -98,6 +98,9 @@ const TournamentHeader = ({
   // Optional: Countdown timer content (render prop)
   renderCountdown,
 
+  // Optional: Status-card timer target (unix seconds)
+  statusTimerTarget,
+
   // Escalation system props
   enrollmentTimeout,
   onManualStart,
@@ -373,6 +376,7 @@ const TournamentHeader = ({
         totalRounds={totalRounds}
         colors={colors}
         syncDots={syncDots}
+        statusTimerTarget={statusTimerTarget}
       />
 
       {/* Enroll Button */}
