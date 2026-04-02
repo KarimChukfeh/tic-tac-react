@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BookOpen, Trophy, Wallet, Swords, Settings2, X } from 'lucide-react';
+import { BookOpen, MailPlus, Trophy, Wallet, Swords, Settings2, X } from 'lucide-react';
 
 const QUICK_GUIDE_STEPS = [
   {
@@ -18,13 +18,13 @@ const QUICK_GUIDE_STEPS = [
     number: '03',
     title: 'Invite Your Foes',
     description: 'Once your lobby is created, you are provided with a custom invite link to share with your friends and foes.',
-    Icon: Swords,
+    Icon: MailPlus,
   },
   {
     number: '04',
     title: 'Play',
     description: 'Matches begin automatically once the lobby is full. Play your matches all the way to the finals.',
-    Icon: BookOpen,
+    Icon: Swords,
   },
   {
     number: '05',
