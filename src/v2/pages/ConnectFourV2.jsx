@@ -35,7 +35,6 @@ import GamesCard from '../../components/shared/GamesCard';
 import BracketScrollHint from '../../components/shared/BracketScrollHint';
 import RecentInstanceCard from '../../components/shared/RecentInstanceCard';
 import V2GameLobbyIntro from '../../components/shared/V2GameLobbyIntro';
-import UserManualAnchorIcon from '../../components/shared/UserManualAnchorIcon';
 import WalletBrowserPrompt from '../../components/WalletBrowserPrompt';
 import EntryFeeSlider, { DEFAULT_SELECTED_ENTRY_FEE } from '../components/EntryFeeSlider';
 import TimeoutSettingSlider, { clampCreateTimeoutValue, isCreateTimeoutField, normalizeCreateTimeouts } from '../components/TimeoutSettingSlider';
@@ -93,6 +92,12 @@ const currentTheme = {
   primary: 'rgba(0, 255, 255, 0.5)',
   secondary: 'rgba(255, 0, 255, 0.5)',
 };
+
+const HERO_LINKS = [
+  { label: 'Quick Guide', type: 'placeholder' },
+  { label: 'User Manual', type: 'manual' },
+  { label: 'Visual Demos', type: 'placeholder' },
+];
 
 function isWalletAvailable() {
   return typeof window !== 'undefined' && typeof window.ethereum !== 'undefined';
@@ -650,6 +655,40 @@ export default function ConnectFourV2() {
   const [createLoading, setCreateLoading] = useState(false);
   const [actionState, setActionState] = useState({ type: 'info', message: '' });
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
+  const [heroLinkNoticeVisible, setHeroLinkNoticeVisible] = useState(false);
+  const heroLinkNoticeTimeoutRef = useRef(null);
+
+  const handlePlaceholderLinkClick = useCallback((event) => {
+    event.preventDefault();
+    if (heroLinkNoticeTimeoutRef.current) {
+      clearTimeout(heroLinkNoticeTimeoutRef.current);
+    }
+    setHeroLinkNoticeVisible(true);
+    heroLinkNoticeTimeoutRef.current = window.setTimeout(() => {
+      setHeroLinkNoticeVisible(false);
+      heroLinkNoticeTimeoutRef.current = null;
+    }, 1800);
+  }, []);
+
+  useEffect(() => () => {
+    if (heroLinkNoticeTimeoutRef.current) {
+      clearTimeout(heroLinkNoticeTimeoutRef.current);
+    }
+  }, []);
+
+  const handleUserManualLinkClick = useCallback((event) => {
+    event.preventDefault();
+    if (heroLinkNoticeTimeoutRef.current) {
+      clearTimeout(heroLinkNoticeTimeoutRef.current);
+      heroLinkNoticeTimeoutRef.current = null;
+    }
+    setHeroLinkNoticeVisible(false);
+    window.dispatchEvent(new Event('open-user-manual'));
+    window.requestAnimationFrame(() => {
+      const manualSection = document.getElementById('user-manual');
+      manualSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, []);
 
   const selectedAddress = searchParams.get('instance');
   const explorerUrl = getAddressUrl(factoryAddress);
@@ -2463,12 +2502,28 @@ export default function ConnectFourV2() {
           <p className={`text-2xl ${currentTheme.heroText} mb-6`}>Provably Fair • Zero Trust • 100% On-Chain</p>
           <p className={`text-lg ${currentTheme.heroSubtext} max-w-3xl mx-auto`}>
             Play Connect Four on the blockchain. Real opponents. Real ETH on the line.
-            <UserManualAnchorIcon className={`ml-2 ${currentTheme.heroSubtext}`} />
-            <br />
-            No servers required. No trust needed.
-            <br />
-            Every move is a transaction. Every outcome is permanently on-chain.
           </p>
+          <div className="mt-4 flex justify-center">
+            <div className={`relative flex flex-wrap items-center justify-center gap-2 text-sm md:text-base ${currentTheme.heroSubtext}`}>
+              {heroLinkNoticeVisible ? (
+                <div className="pointer-events-none absolute bottom-full left-1/2 mb-3 -translate-x-1/2 whitespace-nowrap rounded-full border border-cyan-400/40 bg-slate-950/90 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white shadow-lg shadow-cyan-500/20 backdrop-blur-sm animate-pulse">
+                  Coming Soon
+                </div>
+              ) : null}
+              {HERO_LINKS.map((link, index) => (
+                <div key={link.label} className="flex items-center gap-2">
+                  {index > 0 ? <span aria-hidden="true">•</span> : null}
+                  <a
+                    href={link.type === 'manual' ? '#user-manual' : '#'}
+                    onClick={link.type === 'manual' ? handleUserManualLinkClick : handlePlaceholderLinkClick}
+                    className="underline decoration-dotted underline-offset-4 transition-colors hover:text-white"
+                  >
+                    {link.label}
+                  </a>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
         {(actionState.message || dashboardError) ? (
