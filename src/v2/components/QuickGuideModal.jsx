@@ -57,7 +57,7 @@ const QuickGuideModal = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[140] flex items-center justify-center p-4 md:p-6">
+    <div className="fixed inset-0 z-[140] flex items-start justify-center overflow-y-auto p-4 md:items-center md:p-6">
       <button
         type="button"
         aria-label="Close quick guide"
@@ -65,7 +65,7 @@ const QuickGuideModal = ({ isOpen, onClose }) => {
         className="absolute inset-0 bg-slate-950/80 backdrop-blur-md"
       />
 
-      <div className="relative z-10 max-h-[88vh] w-full max-w-5xl overflow-hidden rounded-[2rem] border border-cyan-400/20 bg-[linear-gradient(160deg,rgba(2,6,23,0.97)_0%,rgba(23,37,84,0.94)_45%,rgba(88,28,135,0.92)_100%)] shadow-[0_30px_120px_rgba(8,145,178,0.28)]">
+      <div className="relative z-10 my-auto flex max-h-[calc(100dvh-2rem)] w-full max-w-5xl flex-col overflow-hidden rounded-[2rem] border border-cyan-400/20 bg-[linear-gradient(160deg,rgba(2,6,23,0.97)_0%,rgba(23,37,84,0.94)_45%,rgba(88,28,135,0.92)_100%)] shadow-[0_30px_120px_rgba(8,145,178,0.28)] md:max-h-[88vh]">
         <div className="border-b border-white/10 px-5 py-4 md:px-8 md:py-6">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -77,7 +77,7 @@ const QuickGuideModal = ({ isOpen, onClose }) => {
                 Start With Five Steps
               </h2>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-blue-100/80 md:text-base">
-                Connect, configure, invite, compete, and let the finals decide who claims the pool.
+                Connect, configure, invite, compete, conclude.
               </p>
             </div>
 
@@ -91,7 +91,7 @@ const QuickGuideModal = ({ isOpen, onClose }) => {
           </div>
         </div>
 
-        <div className="max-h-[calc(88vh-120px)] overflow-y-auto px-5 py-5 md:px-8 md:py-7">
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 pb-8 md:px-8 md:py-7 md:pb-10">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[repeat(5,minmax(0,1fr))]">
             {QUICK_GUIDE_STEPS.map(({ number, title, description, Icon }) => (
               <article
