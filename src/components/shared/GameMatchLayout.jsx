@@ -337,14 +337,14 @@ const GameMatchLayout = ({
             : `${cardColors.border} ${cardBg}`
         } pt-4 px-3 pb-3 space-y-2`}>
           {/* Turn Indicator Badge — always reserves space so both cards stay aligned */}
-          <div className="absolute -top-4 left-0 right-0 flex justify-center h-4">
+          <div className="absolute -top-5 left-0 right-0 flex h-8 items-center justify-center">
             {isTurn && !isGameOver && (
               isYou ? (
-                <div className="bg-gradient-to-r from-green-500 to-emerald-500 text-white text-sm font-bold px-3 py-1 rounded-full whitespace-nowrap shadow-lg animate-bounce z-10 leading-none">
+                <div className="inline-flex min-h-[28px] items-center justify-center bg-gradient-to-r from-green-500 to-emerald-500 px-3.5 py-0.5 text-sm font-bold leading-none text-white whitespace-nowrap rounded-full shadow-lg animate-bounce z-10">
                   YOUR TURN!
                 </div>
               ) : (
-                <div className="bg-gradient-to-r from-red-500 to-rose-500 text-white text-sm font-bold px-3 py-1 rounded-full whitespace-nowrap shadow-lg animate-bounce z-10 leading-none">
+                <div className="inline-flex min-h-[28px] items-center justify-center bg-gradient-to-r from-red-500 to-rose-500 px-3.5 py-0.5 text-sm font-bold leading-none text-white whitespace-nowrap rounded-full shadow-lg animate-bounce z-10">
                   THEIR TURN
                 </div>
               )
