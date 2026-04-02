@@ -5,7 +5,6 @@ import { shortenAddress } from '../../utils/formatters';
 const FILTERS = [
   { id: 'all', label: 'All' },
   { id: 'waiting', label: 'Waiting' },
-  { id: 'inProgress', label: 'In Progress' },
   { id: 'escalations', label: 'Escalations' },
 ];
 
@@ -149,6 +148,11 @@ const ActiveLobbiesCard = ({
     setInternalIsExpanded(value);
   };
 
+  const handleViewTournament = (address) => {
+    handleSetExpanded(false);
+    onViewTournament?.(address);
+  };
+
   useEffect(() => {
     const handleResize = () => setIsDesktop(window.innerWidth >= 768);
     window.addEventListener('resize', handleResize);
@@ -214,13 +218,11 @@ const ActiveLobbiesCard = ({
 
   const filteredLobbies = visibleLobbies.filter((lobby) => {
     if (filter === 'waiting') return lobby.status === 0;
-    if (filter === 'inProgress') return lobby.status === 1;
     if (filter === 'escalations') return hasFeaturedEscalation(lobby);
     return true;
   });
 
   const totalWaiting = visibleLobbies.filter((lobby) => lobby.status === 0).length;
-  const totalInProgress = visibleLobbies.filter((lobby) => lobby.status === 1).length;
   const totalEscalations = visibleLobbies.filter((lobby) => hasFeaturedEscalation(lobby)).length;
 
   const BASE_TOP_DESKTOP = 80;
@@ -337,9 +339,6 @@ const ActiveLobbiesCard = ({
                 <Zap size={18} className="text-yellow-200" />
                 <span>Discover Lobbies</span>
               </div>
-              <p className="text-yellow-100/80 text-sm">
-                Active tournaments and relevant escalation windows.
-              </p>
               <label className="mt-3 inline-flex items-center gap-3 text-sm text-slate-200/90 select-none cursor-pointer">
                 <input
                   type="checkbox"
@@ -388,8 +387,6 @@ const ActiveLobbiesCard = ({
                   ? visibleLobbies.length
                   : option.id === 'waiting'
                   ? totalWaiting
-                  : option.id === 'inProgress'
-                  ? totalInProgress
                   : totalEscalations})
               </button>
             ))}
@@ -413,7 +410,6 @@ const ActiveLobbiesCard = ({
               <Rocket size={18} className="mx-auto mb-3 text-yellow-200" />
               {filter === 'all' && 'No available lobbies right now.'}
               {filter === 'waiting' && 'No open lobbies are currently waiting for players.'}
-              {filter === 'inProgress' && 'No lobbies are currently in progress.'}
               {filter === 'escalations' && 'No live escalation windows are available right now.'}
             </div>
           ) : (
@@ -461,7 +457,7 @@ const ActiveLobbiesCard = ({
                         </div>
                       </div>
                       <button
-                        onClick={() => onViewTournament?.(lobby.address)}
+                        onClick={() => handleViewTournament(lobby.address)}
                         className="shrink-0 rounded-lg bg-yellow-200 text-amber-950 px-3 py-2 text-sm font-semibold hover:bg-yellow-100 transition-colors"
                       >
                         {lobby.status === 0
