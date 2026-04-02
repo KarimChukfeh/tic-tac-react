@@ -11,6 +11,7 @@ import { ethers } from 'ethers';
 import { decodeTicTacToeMoves, getInstanceContract, getPlayerProfileContract, ZERO_ADDRESS, resolvePlayerProfileAddress } from '../lib/tictactoe';
 
 const HISTORY_LIMIT = 30;
+const POLL_INTERVAL_MS = 8000;
 
 export function useV2MatchHistory(factoryContract, runner, account) {
   const [matches, setMatches] = useState([]);
@@ -150,6 +151,12 @@ export function useV2MatchHistory(factoryContract, runner, account) {
   useEffect(() => {
     fetch();
   }, [fetch]);
+
+  useEffect(() => {
+    if (!factoryContract || !runner || !account) return;
+    const id = setInterval(() => fetch(), POLL_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, [account, factoryContract, fetch, runner]);
 
   return { matches, loading, refetch: fetch };
 }

@@ -40,6 +40,7 @@ const RecentMatchesCard = ({
   onShowTooltip, // Callback to show this component's tooltip
   onHideTooltip, // Callback to hide this component's tooltip
   onNavigateToTournament, // Callback to navigate to tournament bracket view
+  onRefresh = null, // External refresh for pre-fetched data sources
   leaderboard = [], // Leaderboard data to find player earnings
   onMatchesLoad, // Callback(matches) fired after matches are fetched
   onScrollToMatch, // Callback(fn) receives the scrollToMatch function for external callers
@@ -76,6 +77,7 @@ const RecentMatchesCard = ({
   const matchCardRefs = useRef({});
   const tournamentItemRefs = useRef({});
   const useV2ReasonLabels = reasonLabelMode === 'v2';
+  const isRefreshing = syncing || v2MatchesLoading;
 
   // Use external state if provided, otherwise use internal state
   const isExpanded = externalIsExpanded !== undefined ? externalIsExpanded : internalIsExpanded;
@@ -178,13 +180,16 @@ const RecentMatchesCard = ({
     if (isExpanded && !prevExpandedRef.current) {
       setCurrentPage(1); // Reset to first page when opening
       setIsScrolled(false); // Reset scroll state when opening
+      if (onRefresh) {
+        onRefresh();
+      }
       if (v2Matches === null) {
         fetchRecentMatches();
         fetchTransactionHistory();
       }
     }
     prevExpandedRef.current = isExpanded;
-  }, [isExpanded]);
+  }, [isExpanded, onRefresh, v2Matches]);
 
   // Handle scroll events to show/hide header styling and scroll-to-top button
   useEffect(() => {
@@ -383,9 +388,14 @@ const RecentMatchesCard = ({
   };
 
   const handleRefresh = () => {
-    setRecentMatches([]);
     setCurrentPage(1); // Reset to first page on refresh
-    fetchRecentMatches();
+    if (onRefresh) {
+      onRefresh();
+    }
+    if (v2Matches === null) {
+      setRecentMatches([]);
+      fetchRecentMatches();
+    }
     // Also refresh transaction history if it's visible
     if (showTransactionHistory) {
       fetchTransactionHistory();
@@ -1138,12 +1148,12 @@ const RecentMatchesCard = ({
                 {/* Refresh Button */}
                 <button
                   onClick={handleRefresh}
-                  disabled={syncing}
+                  disabled={isRefreshing}
                   className="text-slate-400 hover:text-white transition-colors p-1 hover:bg-slate-700/50 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                   aria-label="Refresh"
                   title="Refresh recent matches"
                 >
-                  <RefreshCw size={18} className={syncing ? 'animate-spin' : ''} />
+                  <RefreshCw size={18} className={isRefreshing ? 'animate-spin' : ''} />
                 </button>
                 {/* Close Button */}
                 <button

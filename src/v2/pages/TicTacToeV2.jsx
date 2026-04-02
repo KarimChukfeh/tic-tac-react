@@ -479,6 +479,10 @@ export default function TicTacToeV2() {
 
   const playerProfile = usePlayerProfile(resolvedFactoryContract, rpcProvider, account);
   const v2MatchHistory = useV2MatchHistory(resolvedFactoryContract, rpcProvider, account);
+  const refreshHistoryPanel = useCallback(() => {
+    playerProfile.refetch();
+    v2MatchHistory.refetch();
+  }, [playerProfile.refetch, v2MatchHistory.refetch]);
   const activeLobbies = useActiveLobbies(
     resolvedFactoryContract,
     rpcProvider,
@@ -2104,6 +2108,7 @@ export default function TicTacToeV2() {
             onMatchesLoad={() => {}}
             onScrollToMatch={(fn) => { recentMatchesScrollRef.current = fn; }}
             playerProfile={playerProfile}
+            onRefresh={refreshHistoryPanel}
             showTournamentRaffles={false}
             onViewTournament={enterInstanceBracket}
             getTournamentTypeLabel={getTournamentTypeLabel}
@@ -2183,6 +2188,7 @@ export default function TicTacToeV2() {
             onNavigateToTournament={() => {}}
             leaderboard={leaderboard}
             playerProfile={playerProfile}
+            onRefresh={refreshHistoryPanel}
             showTournamentRaffles={false}
             onViewTournament={enterInstanceBracket}
             getTournamentTypeLabel={getTournamentTypeLabel}

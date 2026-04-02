@@ -18,6 +18,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { getPlayerProfileContract, getInstanceContract, resolvePlayerProfileAddress } from '../lib/tictactoe';
 
 const HISTORY_LIMIT = 20;
+const POLL_INTERVAL_MS = 8000;
 
 export function usePlayerProfile(factoryContract, runner, account) {
   const [profileAddress, setProfileAddress] = useState(null);
@@ -135,6 +136,12 @@ export function usePlayerProfile(factoryContract, runner, account) {
   useEffect(() => {
     fetch();
   }, [fetch]);
+
+  useEffect(() => {
+    if (!factoryContract || !runner || !account) return;
+    const id = setInterval(() => fetch(), POLL_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, [account, factoryContract, fetch, runner]);
 
   return { profileAddress, stats, enrollments, loading, error, refetch: fetch };
 }

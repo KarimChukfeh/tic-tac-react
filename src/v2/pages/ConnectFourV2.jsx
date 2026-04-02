@@ -692,6 +692,10 @@ export default function ConnectFourV2() {
   const v2PlayerActivity = useConnectFourV2PlayerActivity(activeInstanceContract, account, resolvedFactoryContract, rpcProvider);
   const playerProfile = useConnectFourPlayerProfile(resolvedFactoryContract, rpcProvider, account);
   const v2MatchHistory = useConnectFourV2MatchHistory(resolvedFactoryContract, rpcProvider, account);
+  const refreshHistoryPanel = useCallback(() => {
+    playerProfile.refetch();
+    v2MatchHistory.refetch();
+  }, [playerProfile.refetch, v2MatchHistory.refetch]);
   const activeLobbies = useActiveLobbies(
     resolvedFactoryContract,
     rpcProvider,
@@ -2306,6 +2310,7 @@ export default function ConnectFourV2() {
             onNavigateToTournament={() => {}}
             leaderboard={leaderboard}
             playerProfile={playerProfile}
+            onRefresh={refreshHistoryPanel}
             showTournamentRaffles={false}
             onViewTournament={enterInstanceBracket}
             getTournamentTypeLabel={getTournamentTypeLabel}
@@ -2385,6 +2390,7 @@ export default function ConnectFourV2() {
             onNavigateToTournament={() => {}}
             leaderboard={leaderboard}
             playerProfile={playerProfile}
+            onRefresh={refreshHistoryPanel}
             showTournamentRaffles={false}
             onViewTournament={enterInstanceBracket}
             getTournamentTypeLabel={getTournamentTypeLabel}

@@ -3,6 +3,7 @@ import { ethers } from 'ethers';
 import { getInstanceContract, getPlayerProfileContract, ZERO_ADDRESS, resolvePlayerProfileAddress } from '../lib/chess';
 
 const HISTORY_LIMIT = 30;
+const POLL_INTERVAL_MS = 8000;
 
 export function useChessV2MatchHistory(factoryContract, runner, account) {
   const [matches, setMatches] = useState([]);
@@ -148,6 +149,12 @@ export function useChessV2MatchHistory(factoryContract, runner, account) {
   }, [factoryContract, runner, account]);
 
   useEffect(() => { fetch(); }, [fetch]);
+
+  useEffect(() => {
+    if (!factoryContract || !runner || !account) return;
+    const id = setInterval(() => fetch(), POLL_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, [account, factoryContract, fetch, runner]);
 
   return { matches, loading, refetch: fetch };
 }
