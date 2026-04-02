@@ -64,6 +64,7 @@ import {
   resolveCreatedInstanceAddress,
   unpackBoard,
 } from '../lib/chess';
+import { resolveChessBoardState } from '../lib/matchBoardState';
 
 const CHESS_PIECES = ['♔', '♕', '♖', '♗', '♘', '♙', '♚', '♛', '♜', '♝', '♞', '♟'];
 const VIRTUAL_TIER_ID = 0;
@@ -691,12 +692,11 @@ export default function ChessV2() {
     const [matchData, fullMatch, boardResult, tierConfig] = await Promise.all([
       instanceCont.getMatch(roundNumber, matchNumber),
       instanceCont.matches(matchKey),
-      instanceCont.getBoard(roundNumber, matchNumber).catch(() => [0n, 0n]),
+      instanceCont.getBoard(roundNumber, matchNumber).catch(() => null),
       instanceCont.tierConfig(),
     ]);
 
-    const packedBoard = Array.isArray(boardResult) ? boardResult[0] : boardResult.board;
-    const packedState = Array.isArray(boardResult) ? boardResult[1] : boardResult.state;
+    const { packedBoard, packedState } = resolveChessBoardState(boardResult, matchInfo);
     const board = unpackBoard(packedBoard);
     const tierMatchTime = Number(tierConfig.timeouts?.matchTimePerPlayer ?? tierConfig.matchTimePerPlayer ?? 600);
     const player1 = matchData.player1 || matchInfo.player1;
@@ -1261,11 +1261,10 @@ export default function ChessV2() {
       const [matchData, fullMatch, boardResult, tierConfig] = await Promise.all([
         instanceCont.getMatch(roundNumber, matchNumber),
         instanceCont.matches(matchKey),
-        instanceCont.getBoard(roundNumber, matchNumber).catch(() => [0n, 0n]),
+        instanceCont.getBoard(roundNumber, matchNumber).catch(() => null),
         instanceCont.tierConfig(),
       ]);
-      const packedBoard = Array.isArray(boardResult) ? boardResult[0] : boardResult.board;
-      const packedState = Array.isArray(boardResult) ? boardResult[1] : boardResult.state;
+      const { packedBoard, packedState } = resolveChessBoardState(boardResult, matchInfo);
       const board = unpackBoard(packedBoard);
       const tierMatchTime = Number(tierConfig.timeouts?.matchTimePerPlayer ?? tierConfig.matchTimePerPlayer ?? 600);
       const player1 = matchData.player1 || matchInfo.player1;

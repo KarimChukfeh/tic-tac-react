@@ -74,8 +74,8 @@ import {
   normalizeInstanceSnapshot,
   normalizeMatch,
   resolveCreatedInstanceAddress,
-  unpackBoard,
 } from '../lib/tictactoe';
+import { resolveFlatBoard } from '../lib/matchBoardState';
 
 const TICTACTOE_SYMBOLS = ['✕', '○'];
 
@@ -636,7 +636,7 @@ export default function TicTacToeV2() {
     const firstPlayer = fullMatch.firstPlayer;
     const p1TimeRaw = fullMatch.player1TimeRemaining !== undefined ? Number(fullMatch.player1TimeRemaining) : tierMatchTime;
     const p2TimeRaw = fullMatch.player2TimeRemaining !== undefined ? Number(fullMatch.player2TimeRemaining) : tierMatchTime;
-    const board = boardRaw ? Array.from({ length: 9 }, (_, i) => Number(boardRaw[i] ?? 0)) : Array(9).fill(0);
+    const board = resolveFlatBoard(boardRaw, matchInfo.board, 9);
 
     const now = Math.floor(Date.now() / 1000);
     const elapsed = lastMoveTime > 0 ? now - lastMoveTime : 0;
@@ -1317,7 +1317,7 @@ export default function TicTacToeV2() {
       const p1TimeRaw = fullMatch.player1TimeRemaining !== undefined ? Number(fullMatch.player1TimeRemaining) : tierMatchTime;
       const p2TimeRaw = fullMatch.player2TimeRemaining !== undefined ? Number(fullMatch.player2TimeRemaining) : tierMatchTime;
       // getBoard returns uint8[9] — convert directly, no bit-unpacking needed
-      const board = boardRaw ? Array.from({ length: 9 }, (_, i) => Number(boardRaw[i] ?? 0)) : Array(9).fill(0);
+      const board = resolveFlatBoard(boardRaw, matchInfo.board, 9);
 
       // Calculate time remaining client-side
       const now = Math.floor(Date.now() / 1000);

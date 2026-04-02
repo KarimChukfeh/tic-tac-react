@@ -62,6 +62,7 @@ import {
   normalizeMatch,
   resolveCreatedInstanceAddress,
 } from '../lib/connectfour';
+import { resolveFlatBoard } from '../lib/matchBoardState';
 
 const CONNECTFOUR_SYMBOLS = ['🔴', '🔵'];
 const VIRTUAL_TIER_ID = 0;
@@ -837,7 +838,7 @@ export default function ConnectFourV2() {
     const firstPlayer = fullMatch.firstPlayer;
     const p1TimeRaw = fullMatch.player1TimeRemaining !== undefined ? Number(fullMatch.player1TimeRemaining) : tierMatchTime;
     const p2TimeRaw = fullMatch.player2TimeRemaining !== undefined ? Number(fullMatch.player2TimeRemaining) : tierMatchTime;
-    const board = boardRaw ? Array.from({ length: 42 }, (_, i) => Number(boardRaw[i] ?? 0)) : Array(42).fill(0);
+    const board = resolveFlatBoard(boardRaw, matchInfo.board, 42);
 
     const now = Math.floor(Date.now() / 1000);
     const elapsed = lastMoveTime > 0 ? now - lastMoveTime : 0;
@@ -1522,7 +1523,7 @@ export default function ConnectFourV2() {
       const firstPlayer = fullMatch.firstPlayer;
       const p1TimeRaw = fullMatch.player1TimeRemaining !== undefined ? Number(fullMatch.player1TimeRemaining) : tierMatchTime;
       const p2TimeRaw = fullMatch.player2TimeRemaining !== undefined ? Number(fullMatch.player2TimeRemaining) : tierMatchTime;
-      const board = boardRaw ? Array.from({ length: 42 }, (_, i) => Number(boardRaw[i] ?? 0)) : Array(42).fill(0);
+      const board = resolveFlatBoard(boardRaw, matchInfo.board, 42);
 
       const now = Math.floor(Date.now() / 1000);
       const elapsed = lastMoveTime > 0 ? now - lastMoveTime : 0;
