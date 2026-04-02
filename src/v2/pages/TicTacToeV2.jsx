@@ -54,16 +54,14 @@ import RecentInstanceCard from '../../components/shared/RecentInstanceCard';
 import V2GameLobbyIntro from '../../components/shared/V2GameLobbyIntro';
 import UserManualAnchorIcon from '../../components/shared/UserManualAnchorIcon';
 import WalletBrowserPrompt from '../../components/WalletBrowserPrompt';
-import EntryFeeSlider, { DEFAULT_MIN_ENTRY_FEE } from '../components/EntryFeeSlider';
+import EntryFeeSlider, { DEFAULT_SELECTED_ENTRY_FEE } from '../components/EntryFeeSlider';
+import TimeoutSettingSlider, { clampCreateTimeoutValue, isCreateTimeoutField, normalizeCreateTimeouts } from '../components/TimeoutSettingSlider';
 import { useInitialDocumentScrollTop } from '../../hooks/useInitialDocumentScrollTop';
 import { useWalletBrowserPrompt } from '../../hooks/useWalletBrowserPrompt';
 import { isMobileDevice, isWalletBrowser } from '../../utils/mobileDetection';
 import { didMatchStateAdvance, waitForTxOrStateSync } from '../../utils/txSync';
 import {
   PLAYER_COUNT_OPTIONS,
-  TIME_PER_PLAYER_OPTIONS,
-  TIME_INCREMENT_OPTIONS,
-  ENROLLMENT_WINDOW_OPTIONS,
   TICTACTOE_V2_FACTORY_ADDRESS,
   TICTACTOE_V2_FACTORY_ADDRESS_CANDIDATES,
   TICTACTOE_V2_IMPLEMENTATION_ADDRESS,
@@ -88,7 +86,7 @@ const VIRTUAL_TIER_ID = 0;
 const VIRTUAL_INSTANCE_ID = 0;
 const DEFAULT_CREATE_FORM = {
   playerCount: 2,
-  entryFee: DEFAULT_MIN_ENTRY_FEE,
+  entryFee: DEFAULT_SELECTED_ENTRY_FEE,
   ...getDefaultTimeouts(2),
 };
 
@@ -602,7 +600,7 @@ export default function TicTacToeV2() {
         setFactoryRules({ minEntryFee, feeIncrement });
         setImplementationAddress(implementation);
         setResolvedFactoryContract(liveFactory);
-        setCreateForm(prev => ({ ...prev, entryFee: ethers.formatEther(minEntryFee) }));
+        setCreateForm(prev => ({ ...prev, entryFee: DEFAULT_SELECTED_ENTRY_FEE }));
         setLastUpdated(Date.now());
       } catch (error) {
         if (cancelled) return;
@@ -855,8 +853,15 @@ export default function TicTacToeV2() {
     setSearchParams(next);
   };
 
-  const updateCreateForm = (field, value) => setCreateForm(prev => ({ ...prev, [field]: value }));
-  const setPlayerCount = (playerCount) => setCreateForm(prev => ({ ...prev, playerCount, ...getDefaultTimeouts(playerCount) }));
+  const updateCreateForm = (field, value) => setCreateForm(prev => ({
+    ...prev,
+    [field]: isCreateTimeoutField(field) ? clampCreateTimeoutValue(field, value) : value,
+  }));
+  const setPlayerCount = (playerCount) => setCreateForm(prev => ({
+    ...prev,
+    playerCount,
+    ...normalizeCreateTimeouts(getDefaultTimeouts(playerCount)),
+  }));
 
   const createInstance = async (event) => {
     event.preventDefault();
@@ -867,6 +872,8 @@ export default function TicTacToeV2() {
     setCreateLoading(true);
     setActionState({ type: 'info', message: 'Submitting createInstance transaction...' });
     try {
+      const normalizedTimeouts = normalizeCreateTimeouts(createForm);
+      setCreateForm(prev => ({ ...prev, ...normalizedTimeouts }));
       const signer = await browserProvider.getSigner();
       const creator = await signer.getAddress();
       const readFactory = await resolveFactoryContract();
@@ -888,9 +895,9 @@ export default function TicTacToeV2() {
       const tx = await writableFactory.createInstance(
         Number(createForm.playerCount),
         entryFeeWei,
-        BigInt(createForm.enrollmentWindow),
-        BigInt(createForm.matchTimePerPlayer),
-        BigInt(createForm.timeIncrementPerMove),
+        BigInt(normalizedTimeouts.enrollmentWindow),
+        BigInt(normalizedTimeouts.matchTimePerPlayer),
+        BigInt(normalizedTimeouts.timeIncrementPerMove),
         { value: entryFeeWei }
       );
       setActionState({ type: 'info', message: 'Transaction submitted. Waiting for block confirmation...' });
@@ -2488,76 +2495,29 @@ export default function TicTacToeV2() {
 
                       {showAdvancedSettings && (
                         <div className="grid gap-4 lg:grid-cols-3 bg-slate-950/50 border border-purple-400/10 rounded-xl p-4">
-                          {/* Enrollment Window */}
-                          <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-3">
-                            <div className="text-sm text-purple-200 mb-2">Enrollment Window</div>
-                            <div className="grid grid-cols-2 gap-2">
-                              {ENROLLMENT_WINDOW_OPTIONS.map(seconds => {
-                                const active = Number(createForm.enrollmentWindow) === seconds;
-                                const label = seconds < 60 ? `${seconds}s` : `${seconds / 60}min`;
-                                return (
-                                  <button
-                                    key={seconds}
-                                    type="button"
-                                    onClick={() => updateCreateForm('enrollmentWindow', seconds)}
-                                    className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all ${active
-                                      ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md'
-                                      : 'bg-slate-800/80 border border-slate-700 text-slate-300 hover:border-blue-400/40'}`}
-                                  >
-                                    {label}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-
-                          {/* Time Per Player */}
-                          <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-3">
-                            <div className="text-sm text-purple-200 mb-2">Time Per Player</div>
-                            <div className="grid grid-cols-2 gap-2">
-                              {TIME_PER_PLAYER_OPTIONS.map(seconds => {
-                                const active = Number(createForm.matchTimePerPlayer) === seconds;
-                                const label = `${seconds / 60}min`;
-                                return (
-                                  <button
-                                    key={seconds}
-                                    type="button"
-                                    onClick={() => updateCreateForm('matchTimePerPlayer', seconds)}
-                                    className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all ${active
-                                      ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md'
-                                      : 'bg-slate-800/80 border border-slate-700 text-slate-300 hover:border-blue-400/40'}`}
-                                  >
-                                    {label}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-
-                          {/* Increment Time */}
-                          <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-3">
-                            <div className="text-sm text-purple-200 mb-2">Increment Time</div>
-                            <div className="grid grid-cols-2 gap-2">
-                              {TIME_INCREMENT_OPTIONS.map(seconds => {
-                                const active = Number(createForm.timeIncrementPerMove) === seconds;
-                                const label = `${seconds}s`;
-                                return (
-                                  <button
-                                    key={seconds}
-                                    type="button"
-                                    onClick={() => updateCreateForm('timeIncrementPerMove', seconds)}
-                                    className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all ${active
-                                      ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md'
-                                      : 'bg-slate-800/80 border border-slate-700 text-slate-300 hover:border-blue-400/40'}`}
-                                  >
-                                    {label}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-                          </div>
-                        )}
+                          <TimeoutSettingSlider
+                            field="enrollmentWindow"
+                            label="Enrollment Window"
+                            value={createForm.enrollmentWindow}
+                            disabled={createLoading}
+                            onChange={value => updateCreateForm('enrollmentWindow', value)}
+                          />
+                          <TimeoutSettingSlider
+                            field="matchTimePerPlayer"
+                            label="Time Per Player"
+                            value={createForm.matchTimePerPlayer}
+                            disabled={createLoading}
+                            onChange={value => updateCreateForm('matchTimePerPlayer', value)}
+                          />
+                          <TimeoutSettingSlider
+                            field="timeIncrementPerMove"
+                            label="Increment Time"
+                            value={createForm.timeIncrementPerMove}
+                            disabled={createLoading}
+                            onChange={value => updateCreateForm('timeIncrementPerMove', value)}
+                          />
+                        </div>
+                      )}
                       </div>
                     <div className="mt-5 flex justify-stretch md:justify-end">
                       <button

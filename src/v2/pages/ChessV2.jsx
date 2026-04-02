@@ -40,7 +40,8 @@ import CapturedPieces from '../../components/shared/CapturedPieces';
 import V2GameLobbyIntro from '../../components/shared/V2GameLobbyIntro';
 import UserManualAnchorIcon from '../../components/shared/UserManualAnchorIcon';
 import WalletBrowserPrompt from '../../components/WalletBrowserPrompt';
-import EntryFeeSlider, { DEFAULT_MIN_ENTRY_FEE } from '../components/EntryFeeSlider';
+import EntryFeeSlider, { DEFAULT_SELECTED_ENTRY_FEE } from '../components/EntryFeeSlider';
+import TimeoutSettingSlider, { clampCreateTimeoutValue, isCreateTimeoutField, normalizeCreateTimeouts } from '../components/TimeoutSettingSlider';
 import { useInitialDocumentScrollTop } from '../../hooks/useInitialDocumentScrollTop';
 import { useWalletBrowserPrompt } from '../../hooks/useWalletBrowserPrompt';
 import { isMobileDevice, isWalletBrowser } from '../../utils/mobileDetection';
@@ -50,9 +51,6 @@ import { useChessV2MatchHistory } from '../hooks/useChessV2MatchHistory';
 import { useActiveLobbies } from '../hooks/useActiveLobbies';
 import {
   PLAYER_COUNT_OPTIONS,
-  TIME_PER_PLAYER_OPTIONS,
-  TIME_INCREMENT_OPTIONS,
-  ENROLLMENT_WINDOW_OPTIONS,
   CHESS_V2_FACTORY_ADDRESS,
   CHESS_V2_FACTORY_ADDRESS_CANDIDATES,
   CHESS_V2_IMPLEMENTATION_ADDRESS,
@@ -76,7 +74,7 @@ const DEFAULT_MATCH_LOADING_MESSAGE = 'Loading match...';
 
 const DEFAULT_CREATE_FORM = {
   playerCount: 2,
-  entryFee: DEFAULT_MIN_ENTRY_FEE,
+  entryFee: DEFAULT_SELECTED_ENTRY_FEE,
   ...getDefaultTimeouts(2),
 };
 
@@ -669,7 +667,7 @@ export default function ChessV2() {
         setFactoryRules({ minEntryFee, feeIncrement });
         setImplementationAddress(implementation);
         setResolvedFactoryContract(liveFactory);
-        setCreateForm(prev => ({ ...prev, entryFee: ethers.formatEther(minEntryFee) }));
+        setCreateForm(prev => ({ ...prev, entryFee: DEFAULT_SELECTED_ENTRY_FEE }));
         setLastUpdated(Date.now());
       } catch (error) {
         if (cancelled) return;
@@ -895,8 +893,15 @@ export default function ChessV2() {
     next.delete('instance');
     setSearchParams(next);
   };
-  const updateCreateForm = (field, value) => setCreateForm(prev => ({ ...prev, [field]: value }));
-  const setPlayerCount = (playerCount) => setCreateForm(prev => ({ ...prev, playerCount, ...getDefaultTimeouts(playerCount) }));
+  const updateCreateForm = (field, value) => setCreateForm(prev => ({
+    ...prev,
+    [field]: isCreateTimeoutField(field) ? clampCreateTimeoutValue(field, value) : value,
+  }));
+  const setPlayerCount = (playerCount) => setCreateForm(prev => ({
+    ...prev,
+    playerCount,
+    ...normalizeCreateTimeouts(getDefaultTimeouts(playerCount)),
+  }));
 
   const enterInstanceBracket = useCallback(async (address) => {
     if (!address) return;
@@ -975,6 +980,8 @@ export default function ChessV2() {
     setCreateLoading(true);
     setActionState({ type: 'info', message: 'Submitting createInstance transaction...' });
     try {
+      const normalizedTimeouts = normalizeCreateTimeouts(createForm);
+      setCreateForm(prev => ({ ...prev, ...normalizedTimeouts }));
       const signer = await browserProvider.getSigner();
       const creator = await signer.getAddress();
       const readFactory = await resolveFactoryContract();
@@ -991,7 +998,7 @@ export default function ChessV2() {
       if (entryFeeWei < minFeeRaw) throw new Error(`Entry fee too low. Minimum is ${ethers.formatEther(minFeeRaw)} ETH.`);
       if (maxFeeRaw > 0n && entryFeeWei > maxFeeRaw) throw new Error(`Entry fee too high. Maximum is ${ethers.formatEther(maxFeeRaw)} ETH.`);
       if (feeIncrementRaw > 0n && entryFeeWei % feeIncrementRaw !== 0n) throw new Error(`Entry fee must be a multiple of ${ethers.formatEther(feeIncrementRaw)} ETH.`);
-      const tx = await writableFactory.createInstance(Number(createForm.playerCount), entryFeeWei, BigInt(createForm.enrollmentWindow), BigInt(createForm.matchTimePerPlayer), BigInt(createForm.timeIncrementPerMove), { value: entryFeeWei });
+      const tx = await writableFactory.createInstance(Number(createForm.playerCount), entryFeeWei, BigInt(normalizedTimeouts.enrollmentWindow), BigInt(normalizedTimeouts.matchTimePerPlayer), BigInt(normalizedTimeouts.timeIncrementPerMove), { value: entryFeeWei });
       setActionState({ type: 'info', message: 'Transaction submitted. Waiting for block confirmation...' });
       const receipt = await tx.wait();
       setActionState({ type: 'info', message: 'Transaction confirmed. Locating the new instance and syncing tournament data...' });
@@ -2002,34 +2009,27 @@ export default function ChessV2() {
                         <button type="button" onClick={() => setShowAdvancedSettings(!showAdvancedSettings)} className="flex items-center gap-2 text-purple-300 hover:text-purple-200 transition-colors mb-2">{showAdvancedSettings ? <ChevronUp size={20} /> : <ChevronDown size={20} />}<span className="text-sm font-semibold">More Settings</span></button>
                         {showAdvancedSettings && (
                           <div className="grid gap-4 lg:grid-cols-3 bg-slate-950/50 border border-purple-400/10 rounded-xl p-4">
-                            <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-3">
-                              <div className="text-sm text-purple-200 mb-2">Enrollment Window</div>
-                              <div className="grid grid-cols-2 gap-2">
-                                {ENROLLMENT_WINDOW_OPTIONS.map(seconds => {
-                                  const active = Number(createForm.enrollmentWindow) === seconds;
-                                  const label = seconds < 60 ? `${seconds}s` : `${seconds / 60}min`;
-                                  return <button key={seconds} type="button" onClick={() => updateCreateForm('enrollmentWindow', seconds)} className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all ${active ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md' : 'bg-slate-800/80 border border-slate-700 text-slate-300 hover:border-blue-400/40'}`}>{label}</button>;
-                                })}
-                              </div>
-                            </div>
-                            <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-3">
-                              <div className="text-sm text-purple-200 mb-2">Time Per Player</div>
-                              <div className="grid grid-cols-2 gap-2">
-                                {TIME_PER_PLAYER_OPTIONS.map(seconds => {
-                                  const active = Number(createForm.matchTimePerPlayer) === seconds;
-                                  return <button key={seconds} type="button" onClick={() => updateCreateForm('matchTimePerPlayer', seconds)} className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all ${active ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md' : 'bg-slate-800/80 border border-slate-700 text-slate-300 hover:border-blue-400/40'}`}>{seconds / 60}min</button>;
-                                })}
-                              </div>
-                            </div>
-                            <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-3">
-                              <div className="text-sm text-purple-200 mb-2">Increment Time</div>
-                              <div className="grid grid-cols-2 gap-2">
-                                {TIME_INCREMENT_OPTIONS.map(seconds => {
-                                  const active = Number(createForm.timeIncrementPerMove) === seconds;
-                                  return <button key={seconds} type="button" onClick={() => updateCreateForm('timeIncrementPerMove', seconds)} className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all ${active ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md' : 'bg-slate-800/80 border border-slate-700 text-slate-300 hover:border-blue-400/40'}`}>{seconds}s</button>;
-                                })}
-                              </div>
-                            </div>
+                            <TimeoutSettingSlider
+                              field="enrollmentWindow"
+                              label="Enrollment Window"
+                              value={createForm.enrollmentWindow}
+                              disabled={createLoading}
+                              onChange={value => updateCreateForm('enrollmentWindow', value)}
+                            />
+                            <TimeoutSettingSlider
+                              field="matchTimePerPlayer"
+                              label="Time Per Player"
+                              value={createForm.matchTimePerPlayer}
+                              disabled={createLoading}
+                              onChange={value => updateCreateForm('matchTimePerPlayer', value)}
+                            />
+                            <TimeoutSettingSlider
+                              field="timeIncrementPerMove"
+                              label="Increment Time"
+                              value={createForm.timeIncrementPerMove}
+                              disabled={createLoading}
+                              onChange={value => updateCreateForm('timeIncrementPerMove', value)}
+                            />
                           </div>
                         )}
                       </div>

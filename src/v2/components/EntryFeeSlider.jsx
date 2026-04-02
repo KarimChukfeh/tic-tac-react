@@ -1,6 +1,7 @@
 import { ethers } from 'ethers';
 
-export const DEFAULT_MIN_ENTRY_FEE = '0.0005';
+export const DEFAULT_MIN_ENTRY_FEE = '0.0001';
+export const DEFAULT_SELECTED_ENTRY_FEE = '0.001';
 
 const DEFAULT_MAX_ENTRY_FEE = '1';
 const USD_PER_ETH_ESTIMATE = 2000;
@@ -20,8 +21,16 @@ function formatEthString(value) {
 }
 
 function formatUsdEstimate(ethAmount) {
-  const estimate = Math.max(1, Math.round(ethAmount * USD_PER_ETH_ESTIMATE));
-  return `~$${estimate.toLocaleString()}`;
+  const estimate = Math.max(0, ethAmount * USD_PER_ETH_ESTIMATE);
+  const maximumFractionDigits = estimate >= 100 ? 0 : 2;
+  const minimumFractionDigits = estimate >= 100 ? 0 : 2;
+
+  return `~${estimate.toLocaleString('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits,
+    maximumFractionDigits,
+  })}`;
 }
 
 function mixChannel(start, end, progress) {
@@ -92,7 +101,7 @@ function findClosestValueIndex(values, entryFeeEth) {
 
   let targetWei;
   try {
-    targetWei = ethers.parseEther(entryFeeEth || DEFAULT_MIN_ENTRY_FEE);
+    targetWei = ethers.parseEther(entryFeeEth || DEFAULT_SELECTED_ENTRY_FEE);
   } catch {
     return 0;
   }
