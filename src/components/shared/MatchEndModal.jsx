@@ -3,6 +3,7 @@ import { Trophy, Frown, Equal, X, AlertCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { ethers } from 'ethers';
 import { shortenAddress } from '../../utils/formatters';
+import { getV2NeutralMatchReasonLabel } from '../../v2/lib/reasonLabels';
 
 /**
  * MatchEndModal - Shared component for displaying match end feedback
@@ -35,8 +36,12 @@ const MatchEndModal = ({
   totalRounds,
   prizePool,
   completionReason,
-  tournamentWinner
+  tournamentWinner,
+  reasonLabelMode = 'default',
 }) => {
+  const useV2ReasonLabels = reasonLabelMode === 'v2';
+  const v2NeutralReasonLabel = useV2ReasonLabels ? getV2NeutralMatchReasonLabel(completionReason) : '';
+
   // Debug logging for modal visibility
   useEffect(() => {
     if (isVisible) {
@@ -289,7 +294,7 @@ const MatchEndModal = ({
       icon: Trophy,
       title: isFinalRound ? 'Tournament Champion!' : 'You Win!',
       subtitle: completionReason === 1
-        ? 'Victory via ML1'
+        ? (useV2ReasonLabels ? 'ML1 Victory by Timeout' : 'Victory via ML1')
         : completionReason === 3 || completionReason === 4
         ? `Victory via ${completionReason === 3 ? 'ML2' : 'ML3'}`
         : 'Victory by Forfeit!',
@@ -422,8 +427,12 @@ const MatchEndModal = ({
     },
     lose: {
       icon: completionReason === 3 || completionReason === 4 ? AlertCircle : Frown,
-      title: completionReason === 3 || completionReason === 4 ? 'Match Eliminated' : getDefeatText(),
-      subtitle: completionReason === 3 || completionReason === 4 ? 'Tournament Escalation' : 'Better luck next time!',
+      title: completionReason === 3 || completionReason === 4
+        ? (useV2ReasonLabels ? v2NeutralReasonLabel : 'Match Eliminated')
+        : getDefeatText(),
+      subtitle: completionReason === 3 || completionReason === 4
+        ? (useV2ReasonLabels ? 'Tournament Resolution' : 'Tournament Escalation')
+        : 'Better luck next time!',
       description: completionReason === 3 || completionReason === 4 ? (
         <div className="space-y-2">
           <p className="text-white/90">
@@ -462,7 +471,7 @@ const MatchEndModal = ({
     },
     forfeit_lose: {
       icon: Frown,
-      title: 'Timeout!',
+      title: useV2ReasonLabels ? 'ML1 Timeout!' : 'Timeout!',
       subtitle: 'You ran out of time',
       description: winnerAddress && loserAddress ? (
         <div className="space-y-2">
@@ -492,7 +501,7 @@ const MatchEndModal = ({
     },
     draw: {
       icon: Equal,
-      title: "It's a Draw!",
+      title: useV2ReasonLabels ? v2NeutralReasonLabel : "It's a Draw!",
       subtitle: 'Evenly matched',
       description: 'Neither player could secure a victory.',
       bgGradient: 'from-blue-500/20 via-cyan-500/20 to-teal-500/20',

@@ -97,8 +97,6 @@ export function useConnectFourPlayerProfile(factoryContract, runner, account) {
             prizePool: r.prize,
             payout: inferredPayout,
             payoutReason: Number(r.payoutReason ?? 0),
-            rafflePool: r.rafflePool ?? 0n,
-            wonRaffle: Boolean(r.wonRaffle ?? false),
             playerCount,
             instanceStatus,
             tournamentResolutionReason: inferredResolutionReason,

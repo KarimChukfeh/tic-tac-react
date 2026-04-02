@@ -107,6 +107,9 @@ const GameMatchLayout = ({
   // Ghost move indicator — shown when MoveMade event detected before polling confirms
   pendingOpponentMove = false,
 
+  // Optional reason label behavior
+  reasonLabelMode = 'default',
+
   // Children = the game board component
   children
 }) => {
@@ -606,6 +609,7 @@ const GameMatchLayout = ({
                   winner={winner}
                   loser={loser}
                   currentAccount={account}
+                  reasonLabelMode={reasonLabelMode}
                   gameSpecificText={!isMatchDraw ? theme.completeText : undefined}
                   hasNextActiveMatch={hasNextActiveMatch}
                   onEnterNextMatch={onEnterNextMatch}
@@ -786,6 +790,7 @@ const GameMatchLayout = ({
                   winner={winner}
                   loser={loser}
                   currentAccount={account}
+                  reasonLabelMode={reasonLabelMode}
                   gameSpecificText={!isMatchDraw ? theme.completeText : undefined}
                   hasNextActiveMatch={hasNextActiveMatch}
                   onEnterNextMatch={onEnterNextMatch}
@@ -1103,6 +1108,7 @@ const GameMatchLayout = ({
               winner={winner}
               loser={loser}
               currentAccount={account}
+              reasonLabelMode={reasonLabelMode}
               gameSpecificText={!isMatchDraw ? theme.completeText : undefined}
               hasNextActiveMatch={hasNextActiveMatch}
               onEnterNextMatch={onEnterNextMatch}
@@ -1164,6 +1170,7 @@ const GameMatchLayout = ({
                   winner={winner}
                   loser={loser}
                   currentAccount={account}
+                  reasonLabelMode={reasonLabelMode}
                   gameSpecificText={!isMatchDraw ? theme.completeText : undefined}
                   hasNextActiveMatch={hasNextActiveMatch}
                   onEnterNextMatch={onEnterNextMatch}
@@ -1214,6 +1221,7 @@ const GameMatchLayout = ({
         icon={theme.icon}
         matchStatus={matchStatus}
         completionReason={completionReason}
+        reasonLabelMode={reasonLabelMode}
         onClose={onClose}
         tournamentInfo={{
           tierId: match.tierId,

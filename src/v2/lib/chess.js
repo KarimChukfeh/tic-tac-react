@@ -207,8 +207,6 @@ export function normalizeInstanceSnapshot(address, info, tournament, players, is
     tournamentResolutionCategory,
     prizeAwarded: info.prizeAwarded ?? tournament.prizeAwarded ?? 0n,
     prizeRecipient: info.prizeRecipient ?? tournament.prizeRecipient ?? ZERO_ADDRESS,
-    raffleAwarded: info.raffleAwarded ?? tournament.raffleAwarded ?? 0n,
-    raffleRecipient: info.raffleRecipient ?? tournament.raffleRecipient ?? ZERO_ADDRESS,
     players,
     isEnrolled,
     currentRound: Number(tournament.currentRound),

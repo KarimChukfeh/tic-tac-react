@@ -85,30 +85,42 @@ describe('TournamentHeader', () => {
     expect(screen.getByText((_, element) => element?.textContent === 'Winner awarded 1.00000 ETH')).toBeInTheDocument();
   });
 
-  it('shows detailed prize and raffle resolution values when provided', () => {
+  it('shows detailed prize and owner-cut resolution values when provided', () => {
     render(
       <TournamentHeader
         {...baseProps}
         status={2}
         winner="0x1234567890abcdef1234567890abcdef12345678"
         completionReason={1}
+        totalEntryFeesAccrued={1000000000000000000n}
         prizeAwarded={800000000000000000n}
         prizeRecipient="0x1234567890abcdef1234567890abcdef12345678"
-        raffleAwarded={200000000000000000n}
-        raffleRecipient="0xabcdefabcdefabcdefabcdefabcdefabcdefabcd"
       />
     );
 
     expect(screen.getByText('Payouts')).toBeInTheDocument();
     expect(screen.getByText((_, element) => element?.textContent?.trim() === 'Prize')).toBeInTheDocument();
-    expect(screen.getByText((_, element) => element?.textContent?.trim() === 'Raffle')).toBeInTheDocument();
+    expect(screen.getByText((_, element) => element?.textContent?.trim() === 'Owner cut')).toBeInTheDocument();
     expect(screen.getByText('0.80000 ETH')).toBeInTheDocument();
     expect(screen.getByText('0.20000 ETH')).toBeInTheDocument();
     expect(screen.getByText(/0x1234\.\.\.5678/)).toBeInTheDocument();
-    expect(screen.getByText(/0xabcd\.\.\.abcd/i)).toBeInTheDocument();
     expect(screen.queryByText('Resolution')).not.toBeInTheDocument();
     expect(screen.queryByText(/wins by timeout \(ML1\)/i)).not.toBeInTheDocument();
     expect(screen.queryByText((_, element) => element?.textContent === 'Winner awarded 1.00000 ETH')).not.toBeInTheDocument();
+  });
+
+  it('uses V2-coded resolution labels when explicitly enabled', () => {
+    render(
+      <TournamentHeader
+        {...baseProps}
+        status={2}
+        winner="0x1234567890abcdef1234567890abcdef12345678"
+        completionReason={7}
+        reasonLabelMode="v2"
+      />
+    );
+
+    expect(screen.getByText(/wins by r2 uncontested finals resolution/i)).toBeInTheDocument();
   });
 
   it('shows a connect-to-enrol CTA when the wallet is not connected', () => {

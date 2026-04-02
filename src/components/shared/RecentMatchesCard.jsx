@@ -14,6 +14,11 @@ import {
   getTournamentResolutionReasonValue,
   isDraw,
 } from '../../utils/completionReasons';
+import {
+  getV2CompletedMatchOutcomeLabel,
+  getV2TournamentResolutionText,
+  isV2TournamentCancelledReason,
+} from '../../v2/lib/reasonLabels';
 import CapturedPieces from './CapturedPieces';
 import CompletedMatchOutcomeBadge from './CompletedMatchOutcomeBadge';
 import { ethers } from 'ethers';
@@ -43,7 +48,9 @@ const RecentMatchesCard = ({
   getTournamentTypeLabel = null, // Function(playerCount) => string
   v2Matches = null, // Pre-fetched matches array (bypasses internal contract fetch)
   v2MatchesLoading = false, // Loading state for v2Matches
+  showTournamentRaffles = true,
   connectCtaClassName = 'bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl shadow-2xl border-2 border-purple-400/60 hover:scale-105',
+  reasonLabelMode = 'default',
 }) => {
   const [internalIsExpanded, setInternalIsExpanded] = useState(false);
   const [historyTab, setHistoryTab] = useState('matches'); // 'matches' | 'tournaments'
@@ -68,6 +75,7 @@ const RecentMatchesCard = ({
   const prevExpandedRef = useRef(false);
   const matchCardRefs = useRef({});
   const tournamentItemRefs = useRef({});
+  const useV2ReasonLabels = reasonLabelMode === 'v2';
 
   // Use external state if provided, otherwise use internal state
   const isExpanded = externalIsExpanded !== undefined ? externalIsExpanded : internalIsExpanded;
@@ -608,10 +616,17 @@ const RecentMatchesCard = ({
     const tierLabel = getTierLabel(match.tierId);
     const tierPrefix = tierLabel === 'Duel' ? 'Duel' : 'Tournament';
 
-    if (matchIsDraw) return `${tierPrefix} Draw`;
+    if (matchIsDraw) {
+      const outcome = useV2ReasonLabels
+        ? getV2CompletedMatchOutcomeLabel(reason, false, gameName)
+        : 'Draw';
+      return `${tierPrefix} ${outcome}`;
+    }
 
     const isWinner = winnerLower === accountLower;
-    const outcome = getCompletedMatchOutcomeLabel(reason, isWinner, gameName);
+    const outcome = useV2ReasonLabels
+      ? getV2CompletedMatchOutcomeLabel(reason, isWinner, gameName)
+      : getCompletedMatchOutcomeLabel(reason, isWinner, gameName);
     return `${tierPrefix} ${outcome}`;
   };
 
@@ -720,10 +735,16 @@ const RecentMatchesCard = ({
 
   const getRecordPrizePool = (record) => record?.prizePool ?? record?.prize ?? 0n;
   const getRecordPayout = (record) => record?.payout ?? 0n;
-  const getRecordRaffleAward = (record) => record?.wonRaffle ? (record?.rafflePool ?? 0n) : 0n;
   const isCancelledTournamentRecord = (record) => Number(record?.instanceStatus ?? -1) === 3;
+  const isDrawTournamentRecord = (record) => (
+    useV2ReasonLabels &&
+    getTournamentResolutionReasonValue(record) === 2 &&
+    getRecordPayout(record) > 0n
+  );
   const hasCancelledTournamentReason = (record) => (
-    getTournamentResolutionReasonValue(record) === CompletionReason.SOLO_ENROLL_CANCELLED
+    useV2ReasonLabels
+      ? isV2TournamentCancelledReason(getTournamentResolutionReasonValue(record))
+      : getTournamentResolutionReasonValue(record) === CompletionReason.SOLO_ENROLL_CANCELLED
   );
 
   const formatEthAmount = (value, digits = 4) => {
@@ -732,6 +753,16 @@ const RecentMatchesCard = ({
   };
 
   const getTournamentResolutionText = (record) => {
+    if (useV2ReasonLabels) {
+      if (hasCancelledTournamentReason(record) || isCancelledTournamentRecord(record)) {
+        return getV2TournamentResolutionText(5).text;
+      }
+      if (!record?.won && getRecordPayout(record) > 0n && record?.entryFee != null && getRecordPayout(record) === record.entryFee) {
+        return getV2TournamentResolutionText(5).text;
+      }
+      return getV2TournamentResolutionText(getTournamentResolutionReasonValue(record)).text;
+    }
+
     if (hasCancelledTournamentReason(record) || isCancelledTournamentRecord(record)) {
       return getRecordPayout(record) > 0n ? 'EL0 cancellation' : 'Tournament cancelled';
     }
@@ -756,6 +787,8 @@ const RecentMatchesCard = ({
         return 'EL0 cancellation';
       case CompletionReason.ABANDONED_TOURNAMENT_CLAIMED:
         return 'EL2 abandoned pool claim';
+      case CompletionReason.UNCONTESTED_FINALS_WIN:
+        return 'Uncontested Finalist Resolution';
       default:
         return 'Tournament completed';
     }
@@ -1165,7 +1198,7 @@ const RecentMatchesCard = ({
                     <div className="bg-green-500/15 border border-green-400/30 rounded-xl p-3 text-center">
                       <div className="text-xs font-semibold mb-1 text-green-300">Payouts (ETH)</div>
                       <div className="text-sm font-bold text-white leading-tight">
-                        {formatEthAmount(playerProfile.enrollments.reduce((sum, r) => sum + getRecordPayout(r) + getRecordRaffleAward(r), 0n))}
+                        {formatEthAmount(playerProfile.enrollments.reduce((sum, r) => sum + getRecordPayout(r), 0n))}
                       </div>
                     </div>
                   </div>
@@ -1180,6 +1213,8 @@ const RecentMatchesCard = ({
                               {rec.concluded ? (
                                 hasCancelledTournamentReason(rec) || isCancelledTournamentRecord(rec)
                                   ? <span className="text-slate-400 font-semibold text-xs">Cancelled</span>
+                                  : isDrawTournamentRecord(rec)
+                                  ? <span className="text-yellow-300 font-semibold text-xs">Draw</span>
                                   : rec.won
                                   ? <span className="text-green-300 font-semibold text-xs">Won</span>
                                   : <span className="text-red-300 font-semibold text-xs">Lost</span>
@@ -1215,7 +1250,7 @@ const RecentMatchesCard = ({
                                   ? <span className="text-slate-500 text-[10px]">{ethers.formatEther(getRecordPrizePool(rec))} ETH prize pool</span>
                                   : null
                             )}
-                            {rec.concluded && rec.wonRaffle && (rec.rafflePool ?? 0n) > 0n && (
+                            {showTournamentRaffles && rec.concluded && rec.wonRaffle && (rec.rafflePool ?? 0n) > 0n && (
                               <span className="text-cyan-300 text-[10px]">+{ethers.formatEther(rec.rafflePool)} ETH raffle</span>
                             )}
                           </div>
@@ -1375,6 +1410,7 @@ const RecentMatchesCard = ({
                           reason={reason}
                           isWinner={isWinner}
                           gameName={gameName}
+                          reasonLabelMode={reasonLabelMode}
                           onClick={() => handleSetExpanded(false)}
                         />
                       </div>
@@ -2040,6 +2076,7 @@ const RecentMatchesCard = ({
                         reason={reason}
                         isWinner={isWinner}
                         gameName={gameName}
+                        reasonLabelMode={reasonLabelMode}
                         className="text-xs px-2 py-1 block text-center"
                       />
                     </div>

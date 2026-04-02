@@ -90,6 +90,7 @@ const MatchCard = ({
   colors = {},
   gameName,
   isTournamentCompleted = false,
+  reasonLabelMode = 'default',
 }) => {
   // Handle both matchStatus and status field names (V1 vs V2)
   const matchStatus = match.matchStatus ?? match.status;
@@ -332,6 +333,7 @@ const MatchCard = ({
                   reason={completionReason}
                   isWinner={userWon}
                   gameName={gameName}
+                  reasonLabelMode={reasonLabelMode}
                   variant="bracket"
                   viewerRelation={viewerRelation}
                 />
@@ -342,6 +344,7 @@ const MatchCard = ({
                 reason={completionReason}
                 isWinner={false}
                 gameName={gameName}
+                reasonLabelMode={reasonLabelMode}
                 variant="bracket"
                 viewerRelation={viewerRelation}
                 winnerAddress={match.winner}

@@ -5,7 +5,7 @@
  * Once an instance is selected, the UI mirrors V1 exactly:
  * - Tournament bracket view with TournamentBracket component
  * - Match board view with GameMatchLayout
- * - Player dashboard (PlayerActivity, RecentMatchesCard, GamesCard, CommunityRaffleCard)
+ * - Player dashboard (PlayerActivity, RecentMatchesCard, GamesCard)
  * - Winners leaderboard
  * - User manual
  * - Match end modal, active match alert modal
@@ -260,6 +260,7 @@ const TournamentBracket = ({
     <div className="mb-16">
       <TournamentHeader
         gameType="tictactoe"
+        reasonLabelMode="v2"
         tierId={tierId}
         instanceId={instanceId}
         instanceAddress={tournamentData.address}
@@ -275,8 +276,6 @@ const TournamentBracket = ({
         totalEntryFeesAccrued={tournamentData.totalEntryFeesAccrued}
         prizeAwarded={tournamentData.prizeAwarded}
         prizeRecipient={tournamentData.prizeRecipient}
-        raffleAwarded={tournamentData.raffleAwarded}
-        raffleRecipient={tournamentData.raffleRecipient}
         syncDots={syncDots}
         account={account}
         onBack={onBack}
@@ -332,6 +331,7 @@ const TournamentBracket = ({
                     <div key={matchIdx}>
                       <MatchCard
                         match={match}
+                        reasonLabelMode="v2"
                         matchIdx={matchIdx}
                         roundIdx={roundIdx}
                         tierId={tierId}
@@ -371,6 +371,7 @@ const TournamentBracket = ({
                   contract={instanceContract}
                   tierName={tournamentTypeLabel}
                   walletAddress={account}
+                  reasonLabelMode="v2"
                 />
               </div>
             )}
@@ -466,7 +467,7 @@ export default function TicTacToeV2() {
   const matchEndModalShownRef = useRef(false);
   const [ghostMove, setGhostMove] = useState(null);
 
-  // --- Leaderboard / raffle ---
+  // --- Leaderboard / history ---
   const [leaderboard] = useState([]);
 
   // --- Mobile panel coordination ---
@@ -2030,6 +2031,7 @@ export default function TicTacToeV2() {
           roundNumber={currentMatch?.roundNumber}
           totalRounds={viewingTournament?.totalRounds}
           prizePool={viewingTournament?.prizePoolWei}
+          reasonLabelMode="v2"
         />
       )}
 
@@ -2079,6 +2081,7 @@ export default function TicTacToeV2() {
             onShowTooltip={() => setActiveTooltip('playerActivity')}
             onHideTooltip={() => setActiveTooltip(null)}
             connectCtaClassName={currentTheme.connectCtaClassName}
+            reasonLabelMode="v2"
           />
           <RecentMatchesCard
             contract={null}
@@ -2101,10 +2104,12 @@ export default function TicTacToeV2() {
             onMatchesLoad={() => {}}
             onScrollToMatch={(fn) => { recentMatchesScrollRef.current = fn; }}
             playerProfile={playerProfile}
+            showTournamentRaffles={false}
             onViewTournament={enterInstanceBracket}
             getTournamentTypeLabel={getTournamentTypeLabel}
             v2Matches={v2MatchHistory.matches}
             v2MatchesLoading={v2MatchHistory.loading}
+            reasonLabelMode="v2"
           />
           <ActiveLobbiesCard
             lobbies={activeLobbies.lobbies}
@@ -2157,6 +2162,7 @@ export default function TicTacToeV2() {
             onShowTooltip={() => setActiveTooltip('playerActivity')}
             onHideTooltip={() => setActiveTooltip(null)}
             connectCtaClassName={currentTheme.connectCtaClassName}
+            reasonLabelMode="v2"
           />
           <RecentMatchesCard
             contract={null}
@@ -2177,10 +2183,12 @@ export default function TicTacToeV2() {
             onNavigateToTournament={() => {}}
             leaderboard={leaderboard}
             playerProfile={playerProfile}
+            showTournamentRaffles={false}
             onViewTournament={enterInstanceBracket}
             getTournamentTypeLabel={getTournamentTypeLabel}
             v2Matches={v2MatchHistory.matches}
             v2MatchesLoading={v2MatchHistory.loading}
+            reasonLabelMode="v2"
           />
           <ActiveLobbiesCard
             lobbies={activeLobbies.lobbies}
@@ -2261,6 +2269,7 @@ export default function TicTacToeV2() {
           <div ref={matchViewRef}>
             <GameMatchLayout
               gameType="tictactoe"
+              reasonLabelMode="v2"
               match={currentMatch}
               account={account}
               loading={matchLoading}
@@ -2566,11 +2575,7 @@ export default function TicTacToeV2() {
 
       {/* User Manual */}
       <div id="user-manual" className="max-w-7xl mx-auto px-6 pt-8 md:pt-10 pb-12" style={{ position: 'relative', zIndex: 10 }}>
-        <UserManualV2
-          contractInstance={null}
-          tierConfigurations={[]}
-          raffleThresholds={['0.001', '0.005', '0.02', '0.05', '0.25', '0.5', '0.75', '1']}
-        />
+        <UserManualV2 />
       </div>
 
       {/* Footer */}

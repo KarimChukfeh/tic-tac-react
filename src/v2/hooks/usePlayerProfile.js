@@ -8,7 +8,7 @@
  *   profileAddress   — address of the PlayerProfile clone (null if not yet created)
  *   stats            — { totalPlayed, totalWins, totalLosses, totalNetEarnings } or null
  *   enrollments      — array of EnrollmentRecord (newest first, up to HISTORY_LIMIT)
- *                      including payout and raffle fields from the profile record
+ *                      including payout fields from the profile record
  *   loading          — true during the initial fetch
  *   error            — error message string or null
  *   refetch          — manual refresh
@@ -114,8 +114,6 @@ export function usePlayerProfile(factoryContract, runner, account) {
             prizePool: r.prize,
             payout: inferredPayout,
             payoutReason: Number(r.payoutReason ?? 0),
-            rafflePool: r.rafflePool ?? 0n,
-            wonRaffle: Boolean(r.wonRaffle ?? false),
             playerCount,
             instanceStatus,
             tournamentResolutionReason: inferredResolutionReason,

@@ -14,7 +14,8 @@ export const CompletionReason = {
   REPLACEMENT: 4,                   // ML3 - External player replaced stalled players
   ALL_DRAW_SCENARIO: 5,             // All matches in a round resulted in draws (tournament only)
   SOLO_ENROLL_CANCELLED: 6,         // Solo enroller cancelled tournament (EL0)
-  ABANDONED_TOURNAMENT_CLAIMED: 7   // Abandoned tournament claimed by external player (EL2)
+  ABANDONED_TOURNAMENT_CLAIMED: 7,  // Abandoned tournament claimed by external player (EL2)
+  UNCONTESTED_FINALS_WIN: 8         // Tournament resolved with one uncontested finalist
 };
 
 const toReasonNumber = (value, fallback = 0) => {
@@ -70,6 +71,8 @@ export const getTournamentCompletionText = (reason) => {
       return { text: 'EL0 Cancellation', link: '#el0', summary: 'EL0 cancellation' };
     case CompletionReason.ABANDONED_TOURNAMENT_CLAIMED:
       return { text: 'EL2 Abandoned Pool Claim', link: '#el2', summary: 'abandoned pool claim (EL2)' };
+    case CompletionReason.UNCONTESTED_FINALS_WIN:
+      return { text: 'Uncontested Finalist Resolution', link: null, summary: 'uncontested finalist resolution' };
     default:
       return { text: 'Tournament Completion', link: null, summary: 'tournament completion' };
   }
@@ -142,6 +145,9 @@ export const getCompletionReasonText = (reason, userWon, gameType = 'tictactoe')
 
     case CompletionReason.ABANDONED_TOURNAMENT_CLAIMED:
       return 'Abandoned Pool Claimed';
+
+    case CompletionReason.UNCONTESTED_FINALS_WIN:
+      return 'Uncontested Finalist Resolution';
 
     default:
       return userWon ? 'Victory!' : 'Defeat';
@@ -255,6 +261,9 @@ export const getCompletionReasonDescription = (reason, userWon) => {
     case CompletionReason.ABANDONED_TOURNAMENT_CLAIMED:
       return 'External player claimed the abandoned tournament pool (EL2)';
 
+    case CompletionReason.UNCONTESTED_FINALS_WIN:
+      return 'The tournament resolved because only one finalist remained';
+
     default:
       return userWon ? 'You won!' : 'You lost';
   }
@@ -289,6 +298,9 @@ export const getCompletionReasonIcon = (reason, userWon) => {
 
     case CompletionReason.ABANDONED_TOURNAMENT_CLAIMED:
       return 'DollarSign';
+
+    case CompletionReason.UNCONTESTED_FINALS_WIN:
+      return 'Trophy';
 
     default:
       return userWon ? 'Trophy' : 'Frown';

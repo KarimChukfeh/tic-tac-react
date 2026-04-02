@@ -493,6 +493,7 @@ const TournamentBracket = ({
     <div className="mb-16">
       <TournamentHeader
         gameType="connectfour"
+        reasonLabelMode="v2"
         tierId={VIRTUAL_TIER_ID}
         instanceId={VIRTUAL_INSTANCE_ID}
         instanceAddress={tournamentData.address}
@@ -508,8 +509,6 @@ const TournamentBracket = ({
         totalEntryFeesAccrued={tournamentData.totalEntryFeesAccrued}
         prizeAwarded={tournamentData.prizeAwarded}
         prizeRecipient={tournamentData.prizeRecipient}
-        raffleAwarded={tournamentData.raffleAwarded}
-        raffleRecipient={tournamentData.raffleRecipient}
         syncDots={syncDots}
         account={account}
         onBack={onBack}
@@ -565,6 +564,7 @@ const TournamentBracket = ({
                     <div key={matchIdx}>
                       <MatchCard
                         match={match}
+                        reasonLabelMode="v2"
                         matchIdx={matchIdx}
                         roundIdx={roundIdx}
                         tierId={VIRTUAL_TIER_ID}
@@ -602,6 +602,7 @@ const TournamentBracket = ({
                   contract={instanceContract}
                   tierName={tournamentTypeLabel}
                   walletAddress={account}
+                  reasonLabelMode="v2"
                 />
               </div>
             )}
@@ -2237,6 +2238,7 @@ export default function ConnectFourV2() {
           roundNumber={currentMatch?.roundNumber}
           totalRounds={viewingTournament?.totalRounds}
           prizePool={viewingTournament?.prizePoolWei}
+          reasonLabelMode="v2"
         />
       )}
 
@@ -2283,6 +2285,7 @@ export default function ConnectFourV2() {
             onShowTooltip={() => setActiveTooltip('playerActivity')}
             onHideTooltip={() => setActiveTooltip(null)}
             connectCtaClassName={currentTheme.connectCtaClassName}
+            reasonLabelMode="v2"
           />
           <RecentMatchesCard
             contract={null}
@@ -2303,10 +2306,12 @@ export default function ConnectFourV2() {
             onNavigateToTournament={() => {}}
             leaderboard={leaderboard}
             playerProfile={playerProfile}
+            showTournamentRaffles={false}
             onViewTournament={enterInstanceBracket}
             getTournamentTypeLabel={getTournamentTypeLabel}
             v2Matches={v2MatchHistory.matches}
             v2MatchesLoading={v2MatchHistory.loading}
+            reasonLabelMode="v2"
           />
           <ActiveLobbiesCard
             lobbies={activeLobbies.lobbies}
@@ -2359,6 +2364,7 @@ export default function ConnectFourV2() {
             onShowTooltip={() => setActiveTooltip('playerActivity')}
             onHideTooltip={() => setActiveTooltip(null)}
             connectCtaClassName={currentTheme.connectCtaClassName}
+            reasonLabelMode="v2"
           />
           <RecentMatchesCard
             contract={null}
@@ -2379,10 +2385,12 @@ export default function ConnectFourV2() {
             onNavigateToTournament={() => {}}
             leaderboard={leaderboard}
             playerProfile={playerProfile}
+            showTournamentRaffles={false}
             onViewTournament={enterInstanceBracket}
             getTournamentTypeLabel={getTournamentTypeLabel}
             v2Matches={v2MatchHistory.matches}
             v2MatchesLoading={v2MatchHistory.loading}
+            reasonLabelMode="v2"
           />
           <ActiveLobbiesCard
             lobbies={activeLobbies.lobbies}
@@ -2461,6 +2469,7 @@ export default function ConnectFourV2() {
           <div ref={matchViewRef}>
             <GameMatchLayout
               gameType="connectfour"
+              reasonLabelMode="v2"
               match={currentMatch}
               account={account}
               loading={matchLoading}
@@ -2729,11 +2738,7 @@ export default function ConnectFourV2() {
       </div>
 
       <div id="user-manual" className="max-w-7xl mx-auto px-6 pt-8 md:pt-10 pb-12" style={{ position: 'relative', zIndex: 10 }}>
-        <UserManualV2
-          contractInstance={null}
-          tierConfigurations={[]}
-          raffleThresholds={['0.001', '0.005', '0.02', '0.05', '0.25', '0.5', '0.75', '1']}
-        />
+        <UserManualV2 />
       </div>
 
       <footer className="border-t border-slate-800/50 px-6 py-12" style={{ position: 'relative', zIndex: 10 }}>

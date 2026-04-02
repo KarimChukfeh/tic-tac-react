@@ -3,7 +3,7 @@
  *
  * Keeps the existing visual language while using the new V2 copy and
  * structure for onboarding, prize distribution, anti-griefing, draws,
- * and tournament raffle behavior.
+ * and the simplified V2 fee split.
  */
 
 import { useEffect, useState } from 'react';
@@ -33,15 +33,13 @@ const ETOR_STEPS = [
 ];
 
 const PRIZE_POOL_SHARES = [
-  { recipient: 'Tournament Winner', share: '90%' },
-  { recipient: 'Creator Reward', share: '7.5%' },
-  { recipient: 'Contract Reserve', share: '2.5%' }
+  { recipient: 'Tournament Winner', share: '95%' },
+  { recipient: 'Owner Cut', share: '5%' }
 ];
 
 const PRIZE_POOL_EXAMPLE = [
-  { allocation: 'Tournament Winner (90%)', amount: '0.036 ETH' },
-  { allocation: 'Creator Reward (7.5%)', amount: '0.003 ETH' },
-  { allocation: 'Contract Reserve (2.5%)', amount: '0.001 ETH' }
+  { allocation: 'Tournament Winner (95%)', amount: '0.038 ETH' },
+  { allocation: 'Owner Cut (5%)', amount: '0.002 ETH' }
 ];
 
 const ENROLLMENT_TIMEOUT_EVENTS = [
@@ -109,22 +107,14 @@ const MATCH_TIMEOUT_EVENTS = [
   }
 ];
 
-const TOURNAMENT_RAFFLE_BULLETS = [
-  'No ETH accumulates indefinitely in the contract',
-  'Every participant has a chance to win back more than they paid in',
-  'The raffle resolves automatically when the tournament concludes'
-];
-
 const MANUAL_SECTION_IDS = [
   'user-manual',
   'draws',
-  'community-raffles',
   ...ENROLLMENT_TIMEOUT_EVENTS.map((event) => event.id),
   ...MATCH_TIMEOUT_EVENTS.map((event) => event.id)
 ];
 
 const UserManualV2 = ({
-  protocolFeePercent = 2.5,
   isElite = false,
   gameSpecificContent = null
 }) => {
@@ -196,8 +186,6 @@ const UserManualV2 = ({
     };
   }, []);
 
-  const reserveFee = Number(protocolFeePercent).toFixed(1);
-
   return (
     <div className={`bg-gradient-to-br ${colors.bg} border ${colors.border} rounded-2xl p-6`}>
       <button
@@ -249,7 +237,7 @@ const UserManualV2 = ({
         <div className="space-y-4">
           <h2 className={`text-2xl font-bold ${colors.secondary}`}>Prize Pool</h2>
           <p className="text-gray-300">
-            All entry fees pool together. At the end of the tournament, the pool is distributed as follows:
+            All entry fees pool together. When the tournament resolves, 95% of the total goes to the winner and 5% goes to the owner.
           </p>
 
           <div className="overflow-x-auto">
@@ -462,41 +450,6 @@ const UserManualV2 = ({
                 <strong>Note:</strong> Draws are relatively uncommon in most games, but this rule ensures fair outcomes when they do occur at critical moments.
               </p>
             </div>
-          </div>
-        </div>
-
-        <hr className={colors.borderDark} />
-
-        <div id="community-raffles">
-          <h2 className={`text-2xl font-bold ${colors.secondary} mb-6 scroll-mt-24`}>How Does the Tournament Raffle Work?</h2>
-
-          <div className="space-y-3 text-gray-300">
-            <p>
-              ETour keeps {reserveFee}% of every entry fee as a Contract Reserve. This reserve covers the operational costs the protocol incurs on-chain.
-            </p>
-            <p>
-              Whatever remains unused from the accumulated reserve after those costs are covered doesn't sit idle. When a tournament concludes, the leftover reserve balance from that tournament is raffled to a randomly selected participant from that tournament.
-            </p>
-            <p>
-              Fees that aren't needed for operations flow directly back to the players who generated them.
-            </p>
-
-            <div className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-400/30 rounded-lg p-4">
-              <p className="text-gray-200 font-bold mb-2">
-                Reserve ETH is not meant to pile up passively.
-              </p>
-              <p className="text-gray-200 font-bold">
-                What isn't needed for operations gets recycled back into the same tournament's player base.
-              </p>
-            </div>
-
-            <ul className="space-y-2 text-gray-300 ml-4">
-              {TOURNAMENT_RAFFLE_BULLETS.map((bullet) => (
-                <li key={bullet} className="flex items-start gap-2">
-                  <span>• {bullet}</span>
-                </li>
-              ))}
-            </ul>
           </div>
         </div>
         </div>

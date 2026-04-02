@@ -14,6 +14,12 @@ import StatsGrid from './StatsGrid';
 import EnrolledPlayersList from './EnrolledPlayersList';
 import { formatTime, getTournamentTypeLabel, shortenAddress } from '../../utils/formatters';
 import { CompletionReason, getTournamentCompletionText, getTournamentResolutionReasonValue } from '../../utils/completionReasons';
+import {
+  getV2StatsResolutionReason,
+  getV2TournamentResolutionText,
+  isV2TournamentCancelledReason,
+  V2TournamentResolutionReason,
+} from '../../v2/lib/reasonLabels';
 
 // Game-specific configurations
 const GAME_CONFIGS = {
@@ -111,11 +117,10 @@ const TournamentHeader = ({
   totalEntryFeesAccrued,
   prizeAwarded,
   prizeRecipient,
-  raffleAwarded,
-  raffleRecipient,
 
   // Optional: Custom colors override
-  colors: customColors
+  colors: customColors,
+  reasonLabelMode = 'default',
 }) => {
   const formatEnrollmentFee = (value) => {
     if (typeof value === 'bigint') return ethers.formatEther(value);
@@ -136,25 +141,41 @@ const TournamentHeader = ({
   const enrollmentCtaLoading = account ? loading : connectLoading;
   const connectCtaGradient = connectButtonGradient || colors.buttonGradient;
   const connectCtaHover = connectButtonHover || colors.buttonHover;
+  const useV2ReasonLabels = reasonLabelMode === 'v2';
   const enrollmentCtaLabel = account
     ? (loading ? 'Enrolling...' : `Enroll in ${tournamentTypeLabel} (${formattedEntryFee} ETH)`)
     : (connectLoading ? 'Connecting...' : 'Connect to Enrol');
   const tournamentResolutionReason = getTournamentResolutionReasonValue({ resolutionReason, completionReason });
-  const isCancelled = status === 3 || tournamentResolutionReason === CompletionReason.SOLO_ENROLL_CANCELLED;
+  const isCancelled = status === 3 || (
+    useV2ReasonLabels
+      ? isV2TournamentCancelledReason(tournamentResolutionReason)
+      : tournamentResolutionReason === CompletionReason.SOLO_ENROLL_CANCELLED
+  );
   const isCompleted = status >= 2;
-  const resolutionText = getTournamentCompletionText(tournamentResolutionReason);
+  const resolutionText = useV2ReasonLabels
+    ? getV2TournamentResolutionText(tournamentResolutionReason)
+    : getTournamentCompletionText(tournamentResolutionReason);
+  const cancelledResolutionText = useV2ReasonLabels
+    ? getV2TournamentResolutionText(
+      isV2TournamentCancelledReason(tournamentResolutionReason)
+        ? tournamentResolutionReason
+        : V2TournamentResolutionReason.SOLO_ENROLL_CANCELLED
+    )
+    : getTournamentCompletionText(CompletionReason.SOLO_ENROLL_CANCELLED);
   const winnerLabel = winner && winner !== ethers.ZeroAddress ? shortenAddress(winner) : '0x000';
   const resolutionSummary = tournamentResolutionReason === 0 ? '' : ` by ${resolutionText.summary}`;
+  const statsResolutionReason = useV2ReasonLabels
+    ? getV2StatsResolutionReason(tournamentResolutionReason)
+    : tournamentResolutionReason;
+  const resolvedPrizeAwarded = prizeAwarded ?? prizePool ?? 0n;
+  const resolvedPrizeRecipient = prizeRecipient ?? winner ?? ethers.ZeroAddress;
+  const resolvedTotalEntryFeesAccrued = typeof totalEntryFeesAccrued === 'bigint' ? totalEntryFeesAccrued : 0n;
+  const payoutBase = resolvedTotalEntryFeesAccrued > 0n ? resolvedTotalEntryFeesAccrued : (prizePool ?? 0n);
+  const resolvedOwnerCutAwarded = payoutBase > resolvedPrizeAwarded ? payoutBase - resolvedPrizeAwarded : 0n;
   const detailedResolutionAvailable = [
     prizeAwarded,
     prizeRecipient,
-    raffleAwarded,
-    raffleRecipient,
-  ].some((value) => value !== undefined && value !== null);
-  const resolvedPrizeAwarded = prizeAwarded ?? prizePool ?? 0n;
-  const resolvedPrizeRecipient = prizeRecipient ?? winner ?? ethers.ZeroAddress;
-  const resolvedRaffleAwarded = raffleAwarded ?? 0n;
-  const resolvedRaffleRecipient = raffleRecipient ?? ethers.ZeroAddress;
+  ].some((value) => value !== undefined && value !== null) || resolvedOwnerCutAwarded > 0n;
   const formatResolutionEth = (value) => Number.parseFloat(ethers.formatEther(value ?? 0n)).toFixed(5);
   const formatRecipient = (address) => (
     address && address !== ethers.ZeroAddress ? shortenAddress(address) : 'None'
@@ -347,7 +368,7 @@ const TournamentHeader = ({
         enrolledCount={enrolledCount}
         playerCount={playerCount}
         status={status}
-        resolutionReason={tournamentResolutionReason}
+        resolutionReason={statsResolutionReason}
         currentRound={currentRound}
         totalRounds={totalRounds}
         colors={colors}
@@ -562,19 +583,25 @@ const TournamentHeader = ({
           {!detailedResolutionAvailable ? (
             isCancelled ? (
               <div className="text-white text-sm md:text-base">
-                Tournament cancelled
+                {cancelledResolutionText.text}
               </div>
             ) : (
               <div className="text-white text-sm md:text-base">
                 <span className="font-mono">{winnerLabel}</span>
                 <span> wins{resolutionSummary}</span>
                 <span className="text-purple-300"> • </span>
-                <span>Winner awarded <span className="font-semibold text-yellow-400">{formatResolutionEth(prizePool)} ETH</span></span>
+                <span>Winner awarded <span className="font-semibold text-yellow-400">{formatResolutionEth(resolvedPrizeAwarded)} ETH</span></span>
               </div>
             )
           ) : (
             isCancelled ? (
               <div className="text-white text-sm md:text-base">
+                {useV2ReasonLabels && (
+                  <>
+                    <span className="text-purple-300">{cancelledResolutionText.text}</span>
+                    <span className="text-purple-300"> • </span>
+                  </>
+                )}
                 <span className="text-purple-300">Refunded </span>
                 <span className="font-semibold text-yellow-400">{formatResolutionEth(resolvedPrizeAwarded)} ETH</span>
                 <span className="text-purple-300"> to </span>
@@ -588,12 +615,12 @@ const TournamentHeader = ({
                   <span className="text-purple-300"> to </span>
                   <span className="font-mono">{formatRecipient(resolvedPrizeRecipient)}</span>
                 </div>
-                <div>
-                  <span className="text-purple-300">Raffle </span>
-                  <span className="font-semibold text-yellow-400">{formatResolutionEth(resolvedRaffleAwarded)} ETH</span>
-                  <span className="text-purple-300"> to </span>
-                  <span className="font-mono">{formatRecipient(resolvedRaffleRecipient)}</span>
-                </div>
+                {resolvedOwnerCutAwarded > 0n && (
+                  <div>
+                    <span className="text-purple-300">Owner cut </span>
+                    <span className="font-semibold text-yellow-400">{formatResolutionEth(resolvedOwnerCutAwarded)} ETH</span>
+                  </div>
+                )}
               </div>
             )
           )}

@@ -12,6 +12,7 @@ import { Users, X, Zap, Trophy, Clock, Play, Eye, RefreshCw, ChevronDown, Chevro
 import { shortenAddress } from '../../utils/formatters';
 import { formatTimeRemaining } from '../../utils/activityHelpers';
 import { getCompletionReasonText, isDraw as isDrawReason } from '../../utils/completionReasons';
+import { getV2CompletionReasonText } from '../../v2/lib/reasonLabels';
 
 const PlayerActivity = ({
   activity,
@@ -38,6 +39,7 @@ const PlayerActivity = ({
   onShowTooltip, // Callback to show this component's tooltip
   onHideTooltip, // Callback to hide this component's tooltip
   connectCtaClassName = 'bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl shadow-2xl border-2 border-purple-400/60 hover:scale-105',
+  reasonLabelMode = 'default',
 }) => {
   const [internalIsExpanded, setInternalIsExpanded] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
@@ -84,12 +86,13 @@ const PlayerActivity = ({
   const getCompletedMatchOutcome = (match, account) => {
     const reason = match.completionReason ?? 0;
     const matchIsDraw = match.isDraw || isDrawReason(reason);
+    const getReasonText = reasonLabelMode === 'v2' ? getV2CompletionReasonText : getCompletionReasonText;
 
-    if (matchIsDraw) return { label: 'Draw', color: 'text-yellow-300 bg-yellow-900/30' };
+    if (matchIsDraw) return { label: getReasonText(reason, false, gameName), color: 'text-yellow-300 bg-yellow-900/30' };
     if (!match.winner) return null;
 
     const isWinner = match.winner.toLowerCase() === account?.toLowerCase();
-    const label = getCompletionReasonText(reason, isWinner, gameName);
+    const label = getReasonText(reason, isWinner, gameName);
 
     return isWinner
       ? { label, color: 'text-green-300 bg-green-900/30' }

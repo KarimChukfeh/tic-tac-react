@@ -10,6 +10,7 @@
 import { Trophy, Frown, ArrowRight } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
 import { isDraw } from '../../utils/completionReasons';
+import { getV2NeutralMatchReasonLabel } from '../../v2/lib/reasonLabels';
 
 const MatchComplete = ({
   completionReason,
@@ -20,11 +21,13 @@ const MatchComplete = ({
   // CTA props
   hasNextActiveMatch = false, // Whether player has an active match in next round
   onEnterNextMatch, // Callback to enter the next match
-  onReturnToBracket // Callback to return to tournament bracket
+  onReturnToBracket, // Callback to return to tournament bracket
+  reasonLabelMode = 'default',
 }) => {
   const zeroAddress = '0x0000000000000000000000000000000000000000';
 
   const isMatchDraw = isDraw(completionReason);
+  const useV2ReasonLabels = reasonLabelMode === 'v2';
   const userWon = !isMatchDraw && winner && currentAccount &&
     winner.toLowerCase() === currentAccount.toLowerCase();
   const userLost = !isMatchDraw && loser && currentAccount &&
@@ -42,7 +45,9 @@ const MatchComplete = ({
           boxShadow: '0 0 20px rgba(59, 130, 246, 0.15)'
         }}
       >
-        <p className="text-white font-bold text-xl mb-2">It's a Draw!</p>
+        <p className="text-white font-bold text-xl mb-2">
+          {useV2ReasonLabels ? getV2NeutralMatchReasonLabel(completionReason) : "It's a Draw!"}
+        </p>
         <p className="text-blue-300 text-sm mb-3">Evenly matched</p>
 
         {/* CTA Button */}
@@ -136,11 +141,14 @@ const MatchComplete = ({
   const getCompletionText = () => {
     if (gameSpecificText) return gameSpecificText;
 
-    if (isMatchDraw) return 'Draw';
+    if (isMatchDraw) return useV2ReasonLabels ? getV2NeutralMatchReasonLabel(completionReason) : 'Draw';
 
     // ML2 (3) or ML3 (4) - no winner
-    if (completionReason === 3) return 'Force Eliminated (ML2)';
-    if (completionReason === 4) return 'Replacement Claimed (ML3)';
+    if (completionReason === 3 || completionReason === 4) {
+      return useV2ReasonLabels
+        ? getV2NeutralMatchReasonLabel(completionReason)
+        : (completionReason === 3 ? 'Force Eliminated (ML2)' : 'Replacement Claimed (ML3)');
+    }
 
     return hasWinner ? 'Victory!' : 'Match Complete';
   };

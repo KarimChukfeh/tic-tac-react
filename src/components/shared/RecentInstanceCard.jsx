@@ -9,8 +9,9 @@ import { ethers } from 'ethers';
 import { Clock, Trophy, Award, Users } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
 import { getTournamentCompletionText, getTournamentResolutionReasonValue } from '../../utils/completionReasons';
+import { getV2TournamentResolutionText } from '../../v2/lib/reasonLabels';
 
-const RecentInstanceCard = ({ tierId, instanceId, contract, tierName = 'Tournament', walletAddress }) => {
+const RecentInstanceCard = ({ tierId, instanceId, contract, tierName = 'Tournament', walletAddress, reasonLabelMode = 'default' }) => {
   const [recentData, setRecentData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showTooltip, setShowTooltip] = useState(false);
@@ -109,7 +110,9 @@ const RecentInstanceCard = ({ tierId, instanceId, contract, tierName = 'Tourname
   }
 
   const resolutionReason = getTournamentResolutionReasonValue(recentData);
-  const reasonData = getTournamentCompletionText(resolutionReason);
+  const reasonData = reasonLabelMode === 'v2'
+    ? getV2TournamentResolutionText(resolutionReason)
+    : getTournamentCompletionText(resolutionReason);
 
   return (
     <div className="py-4">
