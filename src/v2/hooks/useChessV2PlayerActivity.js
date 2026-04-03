@@ -234,6 +234,8 @@ export const useChessV2PlayerActivity = (instanceContract, account, factoryContr
     alertedMatchKeysRef.current = new Set();
   }, [account]);
 
+  const refetch = useCallback(() => fetchActivity(false), [fetchActivity]);
+
   const dismissMatch = useCallback((tierId, instanceId, roundIdx, matchIdx) => {
     const key = `${tierId}-${instanceId}-${roundIdx}-${matchIdx}`;
     setDismissedMatches(prev => new Set(prev).add(key));
@@ -241,5 +243,5 @@ export const useChessV2PlayerActivity = (instanceContract, account, factoryContr
 
   const clearMatchAlert = useCallback(() => setMatchAlert(null), []);
 
-  return { data, loading, syncing, error, matchAlert, refetch: () => fetchActivity(false), dismissMatch, clearMatchAlert };
+  return { data, loading, syncing, error, matchAlert, refetch, dismissMatch, clearMatchAlert };
 };

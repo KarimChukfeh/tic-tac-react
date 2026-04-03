@@ -268,6 +268,8 @@ export const useConnectFourV2PlayerActivity = (instanceContract, account, factor
     alertedMatchKeysRef.current = new Set();
   }, [account]);
 
+  const refetch = useCallback(() => fetchActivity(false), [fetchActivity]);
+
   const dismissMatch = useCallback((tierId, instanceId, roundIdx, matchIdx) => {
     const key = `${tierId}-${instanceId}-${roundIdx}-${matchIdx}`;
     setDismissedMatches(prev => new Set(prev).add(key));
@@ -281,7 +283,7 @@ export const useConnectFourV2PlayerActivity = (instanceContract, account, factor
     syncing,
     error,
     matchAlert,
-    refetch: () => fetchActivity(false),
+    refetch,
     dismissMatch,
     clearMatchAlert,
   };
