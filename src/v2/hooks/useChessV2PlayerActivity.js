@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { ethers } from 'ethers';
 import { getInstanceContract, getPlayerProfileContract, ZERO_ADDRESS, resolvePlayerProfileAddress } from '../lib/chess';
+import { multicallContracts } from '../../utils/multicall';
 
 const VIRTUAL_TIER_ID = 0;
 
@@ -12,23 +13,8 @@ const EMPTY_DATA = {
   totalEarnings: 0n,
 };
 
-async function scanInstance(instanceContract, account, dismissedMatches, instanceAddress) {
-  const instanceId = instanceAddress;
-  const [isEnrolled, tournament, tc, bracket] = await Promise.all([
-    instanceContract.isEnrolled(account).catch(() => false),
-    instanceContract.tournament(),
-    instanceContract.tierConfig().catch(() => null),
-    instanceContract.getBracket().catch(() => null),
-  ]);
-
-  if (!isEnrolled) return null;
-  const status = Number(tournament.status);
-  if (status === 2) return null;
-
-  const currentRound = Number(tournament.currentRound || 0);
-  const enrolledCount = Number(tournament.enrolledCount || 0);
-  const playerCount = Number(tc?.playerCount || 2);
-  const matchTimePerPlayer = tc ? Number(tc.timeouts.matchTimePerPlayer) : 600;
+function buildInstanceActivity(instance, account, dismissedMatches, matchResults) {
+  const { instanceId, status, currentRound, enrolledCount, playerCount, matchTimePerPlayer } = instance;
 
   if (status === 0) {
     return {
@@ -38,24 +24,6 @@ async function scanInstance(instanceContract, account, dismissedMatches, instanc
       terminatedMatches: [],
     };
   }
-
-  const totalRounds = Number(bracket?.totalRounds || 0);
-  const matchFetches = [];
-  for (let roundIdx = 0; roundIdx <= currentRound && roundIdx < totalRounds; roundIdx++) {
-    const matchCount = Number(bracket.matchCounts[roundIdx] || 0);
-    for (let matchIdx = 0; matchIdx < matchCount; matchIdx++) {
-      matchFetches.push((async () => {
-        const matchKey = ethers.solidityPackedKeccak256(['uint8', 'uint8'], [roundIdx, matchIdx]);
-        const [m, full] = await Promise.all([
-          instanceContract.getMatch(roundIdx, matchIdx),
-          instanceContract.matches(matchKey),
-        ]);
-        return { roundIdx, matchIdx, m, full };
-      })().catch(() => null));
-    }
-  }
-
-  const matchResults = await Promise.all(matchFetches);
   const activeMatches = [];
   const terminatedMatches = [];
   let hasActiveMatch = false;
@@ -91,8 +59,10 @@ async function scanInstance(instanceContract, account, dismissedMatches, instanc
       const opponent = isPlayer1 ? m.player2 : m.player1;
       const now = Math.floor(Date.now() / 1000);
       const elapsed = Number(m.lastMoveTime || 0) > 0 ? now - Number(m.lastMoveTime) : 0;
-      const baseTime = isPlayer1 ? Number(full.player1TimeRemaining || matchTimePerPlayer) : Number(full.player2TimeRemaining || matchTimePerPlayer);
-      const isMyTurn = matchStatus === 1 ? full.currentTurn?.toLowerCase() === acc : false;
+      const baseTime = isPlayer1
+        ? Number(full?.player1TimeRemaining || matchTimePerPlayer)
+        : Number(full?.player2TimeRemaining || matchTimePerPlayer);
+      const isMyTurn = matchStatus === 1 ? full?.currentTurn?.toLowerCase() === acc : false;
       const timeRemaining = isMyTurn ? Math.max(0, baseTime - elapsed) : baseTime;
       activeMatches.push({
         tierId: VIRTUAL_TIER_ID,
@@ -175,15 +145,37 @@ export const useChessV2PlayerActivity = (instanceContract, account, factoryContr
           try {
             const activeCount = Number(await factoryContract.getActiveTournamentCount().catch(() => 0n));
             if (activeCount > 0) {
-              const addresses = await Promise.all(Array.from({ length: activeCount }, (_, i) => factoryContract.activeTournaments(i).catch(() => null)));
-              const checks = await Promise.all(addresses.map(async (addr) => {
-                if (!addr || addr === ZERO_ADDRESS) return null;
-                const lower = addr.toLowerCase();
-                if (instanceMap.has(lower)) return null;
-                const contract = getInstanceContract(addr, runner);
-                const enrolled = await contract.isEnrolled(account).catch(() => false);
-                return enrolled ? { lower, contract } : null;
-              }));
+              const addressResults = await multicallContracts(
+                Array.from({ length: activeCount }, (_, index) => ({
+                  contract: factoryContract,
+                  functionName: 'activeTournaments',
+                  params: [index],
+                })),
+                runner
+              );
+              const addresses = addressResults
+                .filter((result) => result.success && result.result && result.result !== ZERO_ADDRESS)
+                .map((result) => result.result);
+
+              const contractsToCheck = addresses
+                .map((addr) => ({ addr, lower: addr.toLowerCase() }))
+                .filter(({ lower }) => !instanceMap.has(lower))
+                .map(({ addr, lower }) => ({ lower, contract: getInstanceContract(addr, runner) }));
+
+              const enrollmentResults = contractsToCheck.length > 0
+                ? await multicallContracts(
+                  contractsToCheck.map(({ contract }) => ({
+                    contract,
+                    functionName: 'isEnrolled',
+                    params: [account],
+                  })),
+                  runner
+                )
+                : [];
+
+              const checks = contractsToCheck.map((entry, index) => (
+                enrollmentResults[index]?.success && enrollmentResults[index].result ? entry : null
+              ));
               for (const entry of checks) if (entry) instanceMap.set(entry.lower, entry.contract);
             }
           } catch (factoryErr) {
@@ -192,12 +184,102 @@ export const useChessV2PlayerActivity = (instanceContract, account, factoryContr
         }
       }
 
-      const scans = await Promise.all(
-        [...instanceMap.entries()].map(([address, contract]) => scanInstance(contract, account, dismissedMatches, address).catch(() => null))
-      );
+      const instanceEntries = [...instanceMap.entries()].map(([address, contract]) => ({ address, contract }));
 
+      const baseCallSpecs = instanceEntries.flatMap(({ contract }) => ([
+        { contract, functionName: 'isEnrolled', params: [account] },
+        { contract, functionName: 'tournament' },
+        { contract, functionName: 'tierConfig' },
+        { contract, functionName: 'getBracket' },
+      ]));
+
+      const baseResults = await multicallContracts(baseCallSpecs, runner);
+
+      const trackedInstances = [];
+      const matchCallSpecs = [];
+      const matchDescriptors = [];
       const next = { activeMatches: [], inProgressTournaments: [], unfilledTournaments: [], terminatedMatches: [], totalEarnings: 0n };
-      for (const scan of scans) {
+
+      let cursor = 0;
+      for (const { address, contract } of instanceEntries) {
+        const enrolledResult = baseResults[cursor++];
+        const tournamentResult = baseResults[cursor++];
+        const tierConfigResult = baseResults[cursor++];
+        const bracketResult = baseResults[cursor++];
+
+        if (!enrolledResult?.success || !enrolledResult.result || !tournamentResult?.success) continue;
+
+        const tournament = tournamentResult.result;
+        const tc = tierConfigResult?.success ? tierConfigResult.result : null;
+        const bracket = bracketResult?.success ? bracketResult.result : null;
+        const status = Number(tournament.status);
+
+        if (status === 2) continue;
+
+        const instance = {
+          address,
+          instanceId: address,
+          status,
+          currentRound: Number(tournament.currentRound || 0),
+          enrolledCount: Number(tournament.enrolledCount || 0),
+          playerCount: Number(tc?.playerCount || 2),
+          matchTimePerPlayer: tc ? Number(tc.timeouts.matchTimePerPlayer) : 600,
+        };
+
+        if (status === 0) {
+          next.unfilledTournaments.push({
+            tierId: VIRTUAL_TIER_ID,
+            instanceId: address,
+            enrolledCount: instance.enrolledCount,
+            playerCount: instance.playerCount,
+          });
+          continue;
+        }
+
+        trackedInstances.push(instance);
+
+        const totalRounds = Number(bracket?.totalRounds || 0);
+        for (let roundIdx = 0; roundIdx <= instance.currentRound && roundIdx < totalRounds; roundIdx++) {
+          const matchCount = Number(bracket?.matchCounts?.[roundIdx] || 0);
+          for (let matchIdx = 0; matchIdx < matchCount; matchIdx++) {
+            const matchKey = ethers.solidityPackedKeccak256(['uint8', 'uint8'], [roundIdx, matchIdx]);
+            matchDescriptors.push({ address, roundIdx, matchIdx });
+            matchCallSpecs.push(
+              { contract, functionName: 'getMatch', params: [roundIdx, matchIdx] },
+              { contract, functionName: 'matches', params: [matchKey] }
+            );
+          }
+        }
+      }
+
+      const matchResults = matchCallSpecs.length > 0
+        ? await multicallContracts(matchCallSpecs, runner)
+        : [];
+
+      const matchResultsByInstance = new Map();
+      let matchCursor = 0;
+      for (const descriptor of matchDescriptors) {
+        const matchResult = matchResults[matchCursor++];
+        const fullResult = matchResults[matchCursor++];
+        if (!matchResult?.success) continue;
+
+        const entries = matchResultsByInstance.get(descriptor.address) || [];
+        entries.push({
+          roundIdx: descriptor.roundIdx,
+          matchIdx: descriptor.matchIdx,
+          m: matchResult.result,
+          full: fullResult?.success ? fullResult.result : null,
+        });
+        matchResultsByInstance.set(descriptor.address, entries);
+      }
+
+      for (const instance of trackedInstances) {
+        const scan = buildInstanceActivity(
+          instance,
+          account,
+          dismissedMatches,
+          matchResultsByInstance.get(instance.address) || []
+        );
         if (!scan) continue;
         next.activeMatches.push(...scan.activeMatches);
         next.inProgressTournaments.push(...scan.inProgressTournaments);

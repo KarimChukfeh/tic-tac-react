@@ -2,9 +2,9 @@
  * useV2PlayerActivity Hook
  *
  * On wallet connect, resolves the player's PlayerProfile and fetches all
- * non-concluded tournament enrollments from it. Each tournament address is
- * then queried in parallel (Promise.all acting as a client-side multicall)
- * to build the activity dashboard.
+ * non-concluded tournament enrollments from it. The hook batches instance
+ * and match reads through Multicall3 whenever available to avoid per-match
+ * RPC bursts during polling.
  *
  * The currently-viewed instanceContract (if any) is always included and its
  * data takes priority so the bracket view stays in sync.
@@ -16,6 +16,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { decodeTicTacToeMoves, getInstanceContract, getPlayerProfileContract, ZERO_ADDRESS, resolvePlayerProfileAddress } from '../lib/tictactoe';
+import { multicallContracts } from '../../utils/multicall';
 
 const VIRTUAL_TIER_ID = 0;
 
@@ -27,29 +28,9 @@ const EMPTY_DATA = {
   totalEarnings: 0n,
 };
 
-// ─── Per-instance activity scanner ──────────────────────────────────────────
+function buildInstanceActivity(instance, account, dismissedMatches, matchResults) {
+  const { instanceId, status, currentRound, enrolledCount, playerCount, matchTimePerPlayer } = instance;
 
-async function scanInstance(instanceContract, account, dismissedMatches, instanceAddress) {
-  const instanceId = instanceAddress; // use address as instanceId for routing
-
-  const [isEnrolled, tournament, tc] = await Promise.all([
-    instanceContract.isEnrolled(account).catch(() => false),
-    instanceContract.tournament(),
-    instanceContract.tierConfig().catch(() => null),
-  ]);
-
-  if (!isEnrolled) return null;
-
-  const status = Number(tournament.status);
-
-  // Don't show anything in the activity panel for completed tournaments
-  if (status === 2) return null;
-  const currentRound = Number(tournament.currentRound || 0);
-  const enrolledCount = Number(tournament.enrolledCount || 0);
-  const playerCount = Number(tc?.playerCount || 2);
-  const matchTimePerPlayer = tc ? Number(tc.timeouts.matchTimePerPlayer) : 120;
-
-  // Enrolling — waiting for players
   if (status === 0) {
     return {
       activeMatches: [],
@@ -58,25 +39,6 @@ async function scanInstance(instanceContract, account, dismissedMatches, instanc
       terminatedMatches: [],
     };
   }
-
-  // Active or completed — scan matches
-  const bracket = await instanceContract.getBracket();
-  const totalRounds = Number(bracket.totalRounds || 0);
-
-  // Fetch all matches for rounds 0..currentRound in parallel
-  const matchFetches = [];
-  for (let roundIdx = 0; roundIdx <= currentRound && roundIdx < totalRounds; roundIdx++) {
-    const matchCount = Number(bracket.matchCounts[roundIdx] || 0);
-    for (let matchIdx = 0; matchIdx < matchCount; matchIdx++) {
-      matchFetches.push(
-        instanceContract.getMatch(roundIdx, matchIdx)
-          .then(m => ({ roundIdx, matchIdx, m }))
-          .catch(() => null)
-      );
-    }
-  }
-
-  const matchResults = await Promise.all(matchFetches);
 
   const activeMatches = [];
   const terminatedMatches = [];
@@ -228,22 +190,37 @@ export const useV2PlayerActivity = (instanceContract, account, factoryContract, 
           try {
             const activeCount = Number(await factoryContract.getActiveTournamentCount().catch(() => 0n));
             if (activeCount > 0) {
-              const addresses = await Promise.all(
-                Array.from({ length: activeCount }, (_, i) =>
-                  factoryContract.activeTournaments(i).catch(() => null)
+              const addressResults = await multicallContracts(
+                Array.from({ length: activeCount }, (_, index) => ({
+                  contract: factoryContract,
+                  functionName: 'activeTournaments',
+                  params: [index],
+                })),
+                runner
+              );
+              const addresses = addressResults
+                .filter((result) => result.success && result.result && result.result !== ZERO_ADDRESS)
+                .map((result) => result.result);
+
+              const contractsToCheck = addresses
+                .map((addr) => ({ addr, lower: addr.toLowerCase() }))
+                .filter(({ lower }) => !instanceMap.has(lower))
+                .map(({ addr, lower }) => ({ lower, contract: getInstanceContract(addr, runner) }));
+
+              const enrollmentResults = contractsToCheck.length > 0
+                ? await multicallContracts(
+                  contractsToCheck.map(({ contract }) => ({
+                    contract,
+                    functionName: 'isEnrolled',
+                    params: [account],
+                  })),
+                  runner
                 )
-              );
-              // Check enrollment in parallel
-              const checks = await Promise.all(
-                addresses.map(async addr => {
-                  if (!addr || addr === ZERO_ADDRESS) return null;
-                  const lower = addr.toLowerCase();
-                  if (instanceMap.has(lower)) return null;
-                  const contract = getInstanceContract(addr, runner);
-                  const enrolled = await contract.isEnrolled(account).catch(() => false);
-                  return enrolled ? { lower, contract } : null;
-                })
-              );
+                : [];
+
+              const checks = contractsToCheck.map((entry, index) => (
+                enrollmentResults[index]?.success && enrollmentResults[index].result ? entry : null
+              ));
               for (const entry of checks) {
                 if (entry) instanceMap.set(entry.lower, entry.contract);
               }
@@ -261,17 +238,20 @@ export const useV2PlayerActivity = (instanceContract, account, factoryContract, 
         return;
       }
 
-      // ── 2. Scan all instances in parallel ────────────────────────────────
-      const scanResults = await Promise.all(
-        [...instanceMap.entries()].map(([addr, contract]) =>
-          scanInstance(contract, account, dismissedMatches, addr).catch(err => {
-            console.warn(`[V2PlayerActivity] scanInstance(${addr}) failed:`, err.message);
-            return null;
-          })
-        )
-      );
+      const instanceEntries = [...instanceMap.entries()].map(([address, contract]) => ({ address, contract }));
 
-      // ── 3. Merge results ─────────────────────────────────────────────────
+      const baseCallSpecs = instanceEntries.flatMap(({ contract }) => ([
+        { contract, functionName: 'isEnrolled', params: [account] },
+        { contract, functionName: 'tournament' },
+        { contract, functionName: 'tierConfig' },
+        { contract, functionName: 'getBracket' },
+      ]));
+
+      const baseResults = await multicallContracts(baseCallSpecs, runner);
+
+      const trackedInstances = [];
+      const matchCallSpecs = [];
+      const matchDescriptors = [];
       const merged = {
         activeMatches: [],
         inProgressTournaments: [],
@@ -279,7 +259,85 @@ export const useV2PlayerActivity = (instanceContract, account, factoryContract, 
         terminatedMatches: [],
       };
 
-      for (const result of scanResults) {
+      let cursor = 0;
+      for (const { address, contract } of instanceEntries) {
+        const enrolledResult = baseResults[cursor++];
+        const tournamentResult = baseResults[cursor++];
+        const tierConfigResult = baseResults[cursor++];
+        const bracketResult = baseResults[cursor++];
+
+        if (!enrolledResult?.success || !enrolledResult.result || !tournamentResult?.success) continue;
+
+        const tournament = tournamentResult.result;
+        const tc = tierConfigResult?.success ? tierConfigResult.result : null;
+        const bracket = bracketResult?.success ? bracketResult.result : null;
+        const status = Number(tournament.status);
+
+        if (status === 2) continue;
+
+        const instance = {
+          address,
+          instanceId: address,
+          status,
+          currentRound: Number(tournament.currentRound || 0),
+          enrolledCount: Number(tournament.enrolledCount || 0),
+          playerCount: Number(tc?.playerCount || 2),
+          matchTimePerPlayer: tc ? Number(tc.timeouts.matchTimePerPlayer) : 120,
+        };
+
+        if (status === 0) {
+          merged.unfilledTournaments.push({
+            tierId: VIRTUAL_TIER_ID,
+            instanceId: address,
+            enrolledCount: instance.enrolledCount,
+            playerCount: instance.playerCount,
+          });
+          continue;
+        }
+
+        trackedInstances.push(instance);
+
+        const totalRounds = Number(bracket?.totalRounds || 0);
+        for (let roundIdx = 0; roundIdx <= instance.currentRound && roundIdx < totalRounds; roundIdx++) {
+          const matchCount = Number(bracket?.matchCounts?.[roundIdx] || 0);
+          for (let matchIdx = 0; matchIdx < matchCount; matchIdx++) {
+            matchDescriptors.push({ address, roundIdx, matchIdx });
+            matchCallSpecs.push({
+              contract,
+              functionName: 'getMatch',
+              params: [roundIdx, matchIdx],
+            });
+          }
+        }
+      }
+
+      const matchResultCalls = matchCallSpecs.length > 0
+        ? await multicallContracts(matchCallSpecs, runner)
+        : [];
+
+      const matchResultsByInstance = new Map();
+      for (let index = 0; index < matchDescriptors.length; index++) {
+        const descriptor = matchDescriptors[index];
+        const callResult = matchResultCalls[index];
+        if (!callResult?.success) continue;
+
+        const entries = matchResultsByInstance.get(descriptor.address) || [];
+        entries.push({
+          roundIdx: descriptor.roundIdx,
+          matchIdx: descriptor.matchIdx,
+          m: callResult.result,
+        });
+        matchResultsByInstance.set(descriptor.address, entries);
+      }
+
+      // ── 3. Merge results ─────────────────────────────────────────────────
+      for (const instance of trackedInstances) {
+        const result = buildInstanceActivity(
+          instance,
+          account,
+          dismissedMatches,
+          matchResultsByInstance.get(instance.address) || []
+        );
         if (!result) continue;
         merged.activeMatches.push(...result.activeMatches);
         merged.inProgressTournaments.push(...result.inProgressTournaments);
