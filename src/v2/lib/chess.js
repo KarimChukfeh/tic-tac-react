@@ -13,7 +13,7 @@ export const PLAYER_REGISTRY_ADDRESS = PlayerRegistryABIData.addressesByGame?.Ch
 
 export const CHESS_V2_FACTORY_ADDRESS = ChessFactoryABIData.factory.address;
 export const CHESS_V2_FACTORY_ABI = ChessFactoryABIData.factory.abi;
-export const CHESS_V2_INSTANCE_ABI = ChessFactoryABIData.instance.instanceAbi;
+export const CHESS_V2_INSTANCE_ABI = ChessFactoryABIData.instance.abi ?? ChessFactoryABIData.instance.instanceAbi;
 export const CHESS_V2_IMPLEMENTATION_ADDRESS = ChessFactoryABIData.instance.address;
 export const CHESS_V2_FACTORY_ADDRESS_CANDIDATES = [
   ChessFactoryABIData.factory.address,
