@@ -479,11 +479,13 @@ export function useActiveLobbies(factoryContract, runner, account, getInstanceCo
     return () => clearInterval(id);
   }, [enabled, factoryContract, fetchLobbies, pollIntervalMs, runner]);
 
+  const refetch = useCallback(() => fetchLobbies(false), [fetchLobbies]);
+
   return {
     lobbies,
     loading,
     syncing,
     error,
-    refetch: () => fetchLobbies(false),
+    refetch,
   };
 }

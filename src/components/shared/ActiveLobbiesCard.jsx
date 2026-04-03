@@ -166,12 +166,6 @@ const ActiveLobbiesCard = ({
   }, [isExpanded]);
 
   useEffect(() => {
-    if (isExpanded && onRefresh) {
-      onRefresh();
-    }
-  }, [isExpanded, onRefresh]);
-
-  useEffect(() => {
     if (!isExpanded || !toggleButtonRef.current) {
       setToggleRect(null);
       return undefined;
