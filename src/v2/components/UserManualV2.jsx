@@ -1,124 +1,148 @@
-/**
- * UserManualV2 - V2-specific ETour user manual.
- *
- * Keeps the existing visual language while using the new V2 copy and
- * structure for onboarding, prize distribution, anti-griefing, draws,
- * and the simplified V2 fee split.
- */
+import { isValidElement, useEffect, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { AlertCircle, BookOpen, ChevronDown, ChevronUp } from 'lucide-react';
 
-import { useEffect, useState } from 'react';
-import { BookOpen, ChevronDown, ChevronUp, Shield } from 'lucide-react';
+const HEADING_ALIASES = {
+  '8-draws': ['draws'],
+  '10-r0--normal-resolution': ['r0'],
+  '11-r1--draw-resolution': ['r1'],
+  '12-r2--uncontested-finalist': ['r2'],
+  '13-el0--canceled-tournament': ['el0'],
+  'el1--force-start-tournament-after-enrollment-window-expires': ['el1'],
+  'el1--extend-enrollment-window-when-solo-enrolled': ['el1x'],
+  'el2--claim-abandoned-prize-pool-when-tournament-never-started': ['el2'],
+  'ml1--claim-victory-by-opponent-timeout': ['ml1'],
+  'ml2--eliminate-both-players-in-a-stalled-match': ['ml2'],
+  'ml3--replace-players-in-an-abandoned-match': ['ml3'],
+};
 
-const ETOR_STEPS = [
-  {
-    title: 'Choose your configuration',
-    body: 'Pick a player count (2 to 32 players) and set an entry fee in ETH.'
-  },
-  {
-    title: 'Create your instance',
-    body: 'Your tournament is deployed on-chain and you are automatically enrolled as the first participant.'
-  },
-  {
-    title: 'Share your invite link',
-    body: 'Every tournament comes with a unique link. Share it with friends, your community, or anyone you want to compete against.'
-  },
-  {
-    title: 'Players enroll',
-    body: 'Anyone with your link can join by paying the entry fee you set. No accounts, no approvals, no intermediaries.'
-  },
-  {
-    title: 'Tournament starts automatically',
-    body: 'The moment the last spot is filled, the tournament begins. No admin needed.'
+const MANUAL_ALIAS_IDS = Object.values(HEADING_ALIASES).flat();
+
+const slugifyHeading = (value = '') => value
+  .normalize('NFKD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase()
+  .replace(/[^\w\s-]/g, '')
+  .trim()
+  .replace(/\s/g, '-');
+
+const getTextContent = (value) => {
+  if (typeof value === 'string' || typeof value === 'number') {
+    return String(value);
   }
-];
 
-const PRIZE_POOL_SHARES = [
-  { recipient: 'Tournament Winner', share: '95%' },
-  { recipient: 'Owner Cut', share: '5%' }
-];
-
-const PRIZE_POOL_EXAMPLE = [
-  { allocation: 'Tournament Winner (95%)', amount: '0.038 ETH' },
-  { allocation: 'Owner Cut (5%)', amount: '0.002 ETH' }
-];
-
-const ENROLLMENT_TIMEOUT_EVENTS = [
-  {
-    id: 'el1',
-    title: 'EL1: Force-Start Tournament After Enrollment Window Expires',
-    paragraphs: [
-      'Sometimes players enroll in a tournament but not enough join to fill all spots. Without intervention, these enrolled players would be stuck waiting indefinitely.',
-      'Once the enrollment window elapses, enrolled players can start the tournament early with whoever has joined so far, as long as at least two players are enrolled.'
-    ],
-    highlight: 'This gives enrolled players the power to autonomously begin the tournament they paid to enter. No waiting on a full lobby, no relying on an admin.'
-  },
-  {
-    id: 'el1x',
-    title: 'EL1*: Extend Enrollment Window When Solo Enrolled',
-    paragraphs: [
-      'Sometimes a player enrolls in a tournament and remains the only participant.',
-      'While they are still the sole enroler, they can reset the enrollment window at any time to keep looking for opponents.'
-    ],
-    highlight: 'This gives solo players a clean way to keep the tournament alive without forcing a one-player start.',
-    note: 'If they no longer want to wait, the sole enroler can cancel the tournament and receive a full entry-fee refund instead.'
-  },
-  {
-    id: 'el2',
-    title: 'EL2: Claim Abandoned Prize Pool When Tournament Never Started',
-    paragraphs: [
-      'If EL1 is available but no enrolled player starts the tournament, the prize pool sits idle.',
-      '5 minutes after EL1, anyone (even someone who never enrolled) can claim the entire prize pool.'
-    ],
-    highlight: 'This ensures no ETH ever gets trapped in an abandoned tournament. Someone will always have an incentive to resolve it.',
-    note: "The mere existence of EL2 pressures enrolled players to trigger EL1 first. If they don't, they risk losing their entire entry fee to an outsider."
+  if (Array.isArray(value)) {
+    return value.map(getTextContent).join('');
   }
-];
 
-const MATCH_TIMEOUT_EVENTS = [
-  {
-    id: 'ml1',
-    title: 'ML1: Claim Victory by Opponent Timeout',
-    paragraphs: [
-      'Each player gets 5 minutes per match to make all their moves. However during a match one player may run out of time on their clock.',
-      "Their opponent shouldn't have to wait forever for a move that's never coming.",
-      'When your opponent\'s clock hits zero, you can claim victory by forfeit.'
-    ],
-    highlight: 'This protects active players from being held hostage by opponents who walk away mid-game.'
-  },
-  {
-    id: 'ml2',
-    title: 'ML2: Eliminate Both Players in a Stalled Match',
-    paragraphs: [
-      "If ML1 is available but the winning player doesn't claim their victory, the match blocks the entire tournament from progressing.",
-      '2 minutes after ML1, any player who has already advanced in the tournament can step in, eliminate both players, and keep things moving.'
-    ],
-    highlight: 'This empowers players with skin in the game to protect their tournament investment by clearing stalled matches ahead of them.',
-    note: "The mere existence of ML2 pressures the winning player to claim ML1 promptly. If they don't, they risk being eliminated alongside their opponent."
-  },
-  {
-    id: 'ml3',
-    title: 'ML3: Replace Players in Abandoned Match',
-    paragraphs: [
-      'If ML2 is available but no advanced player steps in, the match is considered fully abandoned.',
-      '2 minutes after ML2, anyone (even someone outside the tournament) can replace both players and take their spot in the bracket.'
-    ],
-    highlight: 'At this point, resolving the stall is risk-free profit. This final level guarantees that every match will eventually complete; someone will always claim the free ETH.',
-    note: "The mere existence of ML3 pressures advanced players to act at ML2 first. If they don't, an outsider can swoop in and take a spot in the bracket that should have been theirs to protect."
+  if (isValidElement(value)) {
+    return getTextContent(value.props.children);
   }
-];
 
-const MANUAL_SECTION_IDS = [
-  'user-manual',
-  'draws',
-  ...ENROLLMENT_TIMEOUT_EVENTS.map((event) => event.id),
-  ...MATCH_TIMEOUT_EVENTS.map((event) => event.id)
-];
+  return '';
+};
+
+const extractHeadingIds = (markdown) => markdown
+  .split('\n')
+  .map((line) => line.match(/^#{2,4}\s+(.*)$/)?.[1]?.trim())
+  .filter(Boolean)
+  .map(slugifyHeading);
+
+const transformTocForMarkdown = (markdown) => {
+  const separator = '\n---\n';
+  const separatorIndex = markdown.indexOf(separator);
+
+  if (separatorIndex === -1 || !markdown.startsWith('## Table of Contents')) {
+    return markdown;
+  }
+
+  const tocBlock = markdown.slice(0, separatorIndex);
+  const remainder = markdown.slice(separatorIndex);
+  const transformedToc = tocBlock
+    .split('\n')
+    .map((line) => {
+      const trimmed = line.trim();
+
+      if (/^\[.+\]\(#.+\)$/.test(trimmed)) {
+        return `- ${trimmed}`;
+      }
+
+      if (/^\s+-\s+\[.+\]\(#.+\)$/.test(line)) {
+        return `  ${trimmed}`;
+      }
+
+      return line;
+    })
+    .join('\n');
+
+  return `${transformedToc}${remainder}`;
+};
+
+const createHeading = (Tag, className) => {
+  const Heading = ({ children }) => {
+    const headingText = getTextContent(children);
+    const headingId = slugifyHeading(headingText);
+    const aliases = HEADING_ALIASES[headingId] ?? [];
+
+    return (
+      <>
+        {aliases.map((alias) => (
+          <span
+            key={alias}
+            id={alias}
+            data-heading-id={headingId}
+            className="block relative -top-24 h-0 invisible"
+            aria-hidden="true"
+          />
+        ))}
+        <Tag
+          id={headingId}
+          data-manual-heading="true"
+          className={`${className} scroll-mt-24`}
+        >
+          {children}
+        </Tag>
+      </>
+    );
+  };
+
+  Heading.displayName = `UserManual${Tag.toUpperCase()}`;
+
+  return Heading;
+};
+
+const MarkdownLink = ({ href = '', children, ...props }) => {
+  const isExternal = /^https?:\/\//.test(href);
+
+  return (
+    <a
+      href={href}
+      target={isExternal ? '_blank' : undefined}
+      rel={isExternal ? 'noreferrer' : undefined}
+      className="text-sky-300 underline decoration-sky-500/60 underline-offset-4 hover:text-sky-200"
+      {...props}
+    >
+      {children}
+    </a>
+  );
+};
+
+const MarkdownTable = ({ children }) => (
+  <div className="overflow-x-auto rounded-xl border border-slate-700/70">
+    <table className="w-full text-sm">{children}</table>
+  </div>
+);
 
 const UserManualV2 = ({
   isElite = false,
-  gameSpecificContent = null
+  gameSpecificContent = null,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [markdown, setMarkdown] = useState('');
+  const [headingIds, setHeadingIds] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const colors = isElite ? {
     primary: 'text-[#fbbf24]',
@@ -127,10 +151,8 @@ const UserManualV2 = ({
     bg: 'from-[#fbbf24]/10 to-[#f59e0b]/10',
     border: 'border-[#d4a012]/30',
     borderDark: 'border-[#d4a012]/20',
-    highlight: 'bg-[#fbbf24]/20 border-[#d4a012]/40',
-    highlightText: 'text-[#fff8e7]',
-    accentBg: 'bg-[#fbbf24]/10',
-    accentBorder: 'border-[#d4a012]/30'
+    panel: 'bg-[#1f1707]/40',
+    panelBorder: 'border-[#d4a012]/20',
   } : {
     primary: 'text-purple-400',
     secondary: 'text-purple-200',
@@ -138,42 +160,83 @@ const UserManualV2 = ({
     bg: 'from-blue-500/10 to-purple-500/10',
     border: 'border-purple-400/30',
     borderDark: 'border-purple-400/20',
-    highlight: 'bg-purple-500/20 border-purple-400/40',
-    highlightText: 'text-purple-100',
-    accentBg: 'bg-purple-500/10',
-    accentBorder: 'border-purple-400/30'
+    panel: 'bg-slate-950/35',
+    panelBorder: 'border-slate-700/60',
   };
 
   useEffect(() => {
+    let isCancelled = false;
+
+    const loadManual = async () => {
+      try {
+        setIsLoading(true);
+        setErrorMessage('');
+
+        const response = await fetch('/User_Manual.md');
+        if (!response.ok) {
+          throw new Error(`Request failed with status ${response.status}`);
+        }
+
+        const rawMarkdown = await response.text();
+        if (isCancelled) return;
+
+        setMarkdown(transformTocForMarkdown(rawMarkdown));
+        setHeadingIds(extractHeadingIds(rawMarkdown));
+      } catch (error) {
+        if (isCancelled) return;
+        setErrorMessage(error instanceof Error ? error.message : 'Unable to load the user manual.');
+      } finally {
+        if (!isCancelled) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadManual();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const knownHashes = new Set(['user-manual', ...MANUAL_ALIAS_IDS, ...headingIds]);
+
     const handleHashChange = () => {
       const hash = window.location.hash.slice(1);
       if (!hash) return;
 
-      if (MANUAL_SECTION_IDS.includes(hash)) {
+      if (knownHashes.has(hash)) {
         setIsExpanded(true);
       }
 
       window.requestAnimationFrame(() => {
-        const element = document.getElementById(hash);
-        if (element && (element.tagName === 'H3' || element.tagName === 'H2')) {
-          document.querySelectorAll('.highlight-target').forEach((target) => {
-            target.classList.remove('highlight-target');
-          });
+        const target = document.getElementById(hash);
+        const headingId = target?.dataset?.headingId || hash;
+        const heading = document.getElementById(headingId);
 
-          element.classList.add('highlight-target');
-          setTimeout(() => {
-            element.classList.remove('highlight-target');
-          }, 3500);
+        if (!heading || heading.dataset.manualHeading !== 'true') {
+          return;
         }
+
+        document.querySelectorAll('.highlight-target').forEach((element) => {
+          element.classList.remove('highlight-target');
+        });
+
+        heading.classList.add('highlight-target');
+        window.setTimeout(() => {
+          heading.classList.remove('highlight-target');
+        }, 3500);
       });
     };
 
     handleHashChange();
     window.addEventListener('hashchange', handleHashChange);
+
     return () => {
       window.removeEventListener('hashchange', handleHashChange);
     };
-  }, []);
+  }, [headingIds]);
 
   useEffect(() => {
     const handleOpenManual = () => {
@@ -204,254 +267,60 @@ const UserManualV2 = ({
       </button>
 
       {isExpanded && (
-        <div className="space-y-8 mt-6">
-        <div className="space-y-4">
-          <h2 className={`text-2xl font-bold ${colors.secondary}`}>How Does ETour Work?</h2>
-          <p className="text-gray-300">
-            Starting a tournament on ETour is simple:
-          </p>
-
-          <ol className="list-decimal list-inside space-y-3 text-gray-300 ml-2">
-            {ETOR_STEPS.map((step) => (
-              <li key={step.title}>
-                <span className={`font-semibold ${colors.secondary}`}>{step.title}</span>
-                <span>{' '} - {step.body}</span>
-              </li>
-            ))}
-          </ol>
-
-          <div className="relative bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border-2 border-cyan-400/50 rounded-xl p-5 shadow-lg shadow-cyan-500/10 !mt-8">
-            <div className="flex items-start gap-3">
-              <Shield className="text-cyan-400 flex-shrink-0 mt-1" size={28} />
-              <div className="text-gray-100 text-lg font-bold leading-relaxed space-y-2">
-                <p>Every tournament lives on-chain from creation to payout.</p>
-                <p>No accounts, no approvals, no admin intervention.</p>
+        <div className={`mt-6 rounded-2xl border ${colors.panelBorder} ${colors.panel} p-5 md:p-6`}>
+          {isLoading ? (
+            <p className="text-sm text-slate-300">Loading manual...</p>
+          ) : errorMessage ? (
+            <div className="flex items-start gap-3 rounded-xl border border-rose-400/30 bg-rose-950/30 p-4 text-sm text-rose-100">
+              <AlertCircle className="mt-0.5 shrink-0 text-rose-300" size={18} />
+              <div>
+                <p className="font-semibold">Unable to load the user manual.</p>
+                <p className="mt-1 text-rose-200/90">{errorMessage}</p>
+                <p className="mt-2">
+                  <a href="/User_Manual.md" className="underline decoration-dotted underline-offset-4 hover:text-white">
+                    Open the raw markdown document
+                  </a>
+                </p>
               </div>
             </div>
-            <div className="absolute inset-0 bg-gradient-to-r from-cyan-400/5 to-blue-400/5 rounded-xl blur-xl -z-10"></div>
-          </div>
-        </div>
-
-        <hr className={colors.borderDark} />
-
-        <div className="space-y-4">
-          <h2 className={`text-2xl font-bold ${colors.secondary}`}>Prize Pool</h2>
-          <p className="text-gray-300">
-            All entry fees pool together. When the tournament resolves, 95% of the total goes to the winner and 5% goes to the owner.
-          </p>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className={`border-b ${colors.border}`}>
-                  <th className="text-left py-3 px-4 text-blue-200 font-semibold">Recipient</th>
-                  <th className="text-left py-3 px-4 text-blue-200 font-semibold">Share</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-blue-500/20">
-                {PRIZE_POOL_SHARES.map((row) => (
-                  <tr key={row.recipient} className="hover:bg-blue-500/5 transition-colors">
-                    <td className="py-3 px-4 text-gray-300">{row.recipient}</td>
-                    <td className="py-3 px-4 text-gray-300 font-mono">{row.share}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <p className="font-semibold text-gray-200">
-            For example, in a 4-player tournament with a 0.01 ETH entry fee (0.04 ETH total pool):
-          </p>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className={`border-b ${colors.border}`}>
-                  <th className="text-left py-3 px-4 text-blue-200 font-semibold">Allocation</th>
-                  <th className="text-left py-3 px-4 text-blue-200 font-semibold">Amount</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-blue-500/20">
-                {PRIZE_POOL_EXAMPLE.map((row) => (
-                  <tr key={row.allocation} className="hover:bg-blue-500/5 transition-colors">
-                    <td className="py-3 px-4 text-gray-300">{row.allocation}</td>
-                    <td className="py-3 px-4 text-gray-300 font-mono">{row.amount}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <hr className={colors.borderDark} />
-
-        <div className="space-y-4">
-          <h2 className={`text-2xl font-bold ${colors.secondary}`}>How Does Anti-Griefing Work?</h2>
-          <p className="text-gray-300">
-            Griefing is when players intentionally disrupt a game and prevent it from progressing or concluding.
-          </p>
-          <p className="text-gray-300">
-            Competitive tournaments can get stuck during:
-          </p>
-
-          <ol className="list-decimal list-inside space-y-2 text-gray-300 ml-2">
-            <li>
-              <span className={`font-semibold ${colors.secondary}`}>Enrollment</span>
-              <span>{' '} - some players enroll, but not enough to start the tournament.</span>
-            </li>
-            <li>
-              <span className={`font-semibold ${colors.secondary}`}>Match Play</span>
-              <span>{' '} - one or both players in a match stop making moves.</span>
-            </li>
-          </ol>
-
-          <p className="text-gray-300">
-            Legacy systems rely on centralized authorities to resolve these stalls, which requires trust in a person or a company.
-          </p>
-
-          <div className="relative bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border-2 border-cyan-400/50 rounded-xl p-5 shadow-lg shadow-cyan-500/10 !mt-8">
-            <div className="flex items-start gap-3">
-              <Shield className="text-cyan-400 flex-shrink-0 mt-1" size={28} />
-              <div className="text-gray-100 text-lg font-bold leading-relaxed space-y-2">
-                <p>ETour rewards ETH to whoever steps in to resolve these scenarios.</p>
-                <p>Rewards are instant, blockchain-enforced, and don't require a centralized authority.</p>
-              </div>
+          ) : (
+            <div className="prose prose-invert max-w-none prose-headings:font-bold prose-p:leading-7">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  h2: createHeading('h2', `text-2xl font-bold ${colors.secondary} mt-10 first:mt-0`),
+                  h3: createHeading('h3', `text-xl font-semibold ${colors.secondary} mt-8`),
+                  h4: createHeading('h4', `text-lg font-semibold ${colors.muted} mt-6`),
+                  p: ({ children }) => <p className="text-gray-300 mb-4 last:mb-0">{children}</p>,
+                  strong: ({ children }) => <strong className={`font-semibold ${colors.secondary}`}>{children}</strong>,
+                  em: ({ children }) => <em className="text-slate-300 italic">{children}</em>,
+                  a: MarkdownLink,
+                  ul: ({ children }) => <ul className="list-disc ml-6 mb-4 space-y-2 text-gray-300">{children}</ul>,
+                  ol: ({ children }) => <ol className="list-decimal ml-6 mb-4 space-y-2 text-gray-300">{children}</ol>,
+                  li: ({ children }) => <li className="pl-1">{children}</li>,
+                  hr: () => <hr className={`my-8 ${colors.borderDark}`} />,
+                  table: MarkdownTable,
+                  thead: ({ children }) => <thead className="bg-slate-900/70">{children}</thead>,
+                  tbody: ({ children }) => <tbody className="divide-y divide-slate-800">{children}</tbody>,
+                  tr: ({ children }) => <tr className="align-top">{children}</tr>,
+                  th: ({ children }) => <th className="px-4 py-3 text-left font-semibold text-slate-100">{children}</th>,
+                  td: ({ children }) => <td className="px-4 py-3 text-gray-300">{children}</td>,
+                  code: ({ children }) => (
+                    <code className="rounded bg-slate-900/80 px-1.5 py-0.5 text-sm text-sky-200">{children}</code>
+                  ),
+                }}
+              >
+                {markdown}
+              </ReactMarkdown>
             </div>
-            <div className="absolute inset-0 bg-gradient-to-r from-cyan-400/5 to-blue-400/5 rounded-xl blur-xl -z-10"></div>
-          </div>
+          )}
 
-          <div className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-400/30 rounded-lg p-4 !mt-8">
-            <ul className="space-y-2 text-gray-200 font-medium mb-3">
-              <li className="flex items-start gap-2">
-                <span className={`${colors.primary} mt-0.5`}>•</span>
-                <span>It's fair and simple, and follows common sense</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className={`${colors.primary} mt-0.5`}>•</span>
-                <span>The closer you are to the prize, the sooner you get a chance to resolve a stall</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className={`${colors.primary} mt-0.5`}>•</span>
-                <span>Payouts are instant and impossible to stop</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className={`${colors.primary} mt-0.5`}>•</span>
-                <span><strong>Griefing is impossible when stallers lose and resolvers earn real ETH</strong></span>
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        <hr className={colors.borderDark} />
-
-        <div className="space-y-8">
-          <div>
-            <h2 className={`text-2xl font-bold ${colors.secondary} mb-4`}>Timeout Events</h2>
-            <p className="text-gray-300 mb-2">
-              ETour gracefully handles all enrollment and match stalling scenarios.
-            </p>
-            <p className="text-gray-300 mb-2">
-              Each event progresses to the next over time. Early levels reward those with skin in the game, while later levels open up to anyone.
-            </p>
-            <p className="text-gray-300">
-              By the final level, resolving a stall becomes risk-free profit, guaranteeing someone will always step in.
-            </p>
-          </div>
-
-          <hr className={colors.borderDark} />
-
-          <div>
-            <h2 className={`text-xl font-bold ${colors.muted} mb-6`}>Enrollment Timeout Events</h2>
-            <div className="space-y-8">
-              {ENROLLMENT_TIMEOUT_EVENTS.map((event) => (
-                <div key={event.id}>
-                  <h3 id={event.id} className={`text-lg font-semibold ${colors.highlightText} mb-3 scroll-mt-24`}>
-                    {event.title}
-                  </h3>
-                  <div className="space-y-3 text-gray-300">
-                    {event.paragraphs.map((paragraph) => (
-                      <p key={paragraph}>{paragraph}</p>
-                    ))}
-                    <div className={`${colors.highlight} border rounded-lg p-3`}>
-                      <p className={colors.highlightText}>{event.highlight}</p>
-                    </div>
-                    {event.note ? <p className="italic">{event.note}</p> : null}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <hr className={colors.borderDark} />
-
-          <div>
-            <h2 className={`text-xl font-bold ${colors.muted} mb-6`}>Match Timeout Events</h2>
-            <div className="space-y-8">
-              {MATCH_TIMEOUT_EVENTS.map((event) => (
-                <div key={event.id}>
-                  <h3 id={event.id} className={`text-lg font-semibold ${colors.highlightText} mb-3 scroll-mt-24`}>
-                    {event.title}
-                  </h3>
-                  <div className="space-y-3 text-gray-300">
-                    {event.paragraphs.map((paragraph) => (
-                      <p key={paragraph}>{paragraph}</p>
-                    ))}
-                    <div className={`${colors.highlight} border rounded-lg p-3`}>
-                      <p className={colors.highlightText}>{event.highlight}</p>
-                    </div>
-                    {event.note ? <p className="italic">{event.note}</p> : null}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {gameSpecificContent && (
-          <>
-            <hr className={colors.borderDark} />
-            {gameSpecificContent}
-          </>
-        )}
-
-        <hr className={colors.borderDark} />
-
-        <div>
-          <h2 id="draws" className={`text-2xl font-bold ${colors.secondary} mb-6 scroll-mt-24`}>How Are Draws Handled?</h2>
-
-          <div className="space-y-3 text-gray-300">
-            <p>
-              In most cases, <span className={colors.highlightText}>a draw means both players are eliminated</span> from the tournament. There is no winner, and neither player advances to the next round.
-            </p>
-
-            <div className={`${colors.accentBg} border ${colors.accentBorder} rounded-lg p-4 mt-4`}>
-              <h4 className={`text-base font-semibold ${colors.highlightText} mb-2`}>Exception: Final Round Draws</h4>
-              <p>
-                If <strong>all matches</strong> in the final round result in draws, the situation is handled differently:
-              </p>
-              <ul className="list-disc list-inside space-y-2 mt-3 ml-2">
-                <li>
-                  <strong>Finals draw:</strong> If the finals match ends in a draw, the two finalists split the prize pool evenly.
-                </li>
-                <li>
-                  <strong>Semi-finals draws:</strong> If both semi-final matches end in draws, all four semi-finalists split the prize pool evenly.
-                </li>
-                <li>
-                  <strong>Quarter-finals draws:</strong> If all quarter-final matches end in draws, all eight quarter-finalists split the prize pool evenly.
-                </li>
-              </ul>
-              <p className="mt-3">
-                This ensures that when the final round concludes with no clear winners, the remaining players share the prize rather than the tournament ending without distribution.
-              </p>
-            </div>
-
-            <div className="mt-4 pt-4 border-t border-gray-700">
-              <p className="text-sm italic text-gray-400">
-                <strong>Note:</strong> Draws are relatively uncommon in most games, but this rule ensures fair outcomes when they do occur at critical moments.
-              </p>
-            </div>
-          </div>
-        </div>
+          {gameSpecificContent ? (
+            <>
+              <hr className={`my-8 ${colors.borderDark}`} />
+              {gameSpecificContent}
+            </>
+          ) : null}
         </div>
       )}
     </div>
