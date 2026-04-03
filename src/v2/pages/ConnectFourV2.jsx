@@ -699,7 +699,10 @@ export default function ConnectFourV2() {
 
   const v2PlayerActivity = useConnectFourV2PlayerActivity(activeInstanceContract, account, resolvedFactoryContract, rpcProvider);
   const playerProfile = useConnectFourPlayerProfile(resolvedFactoryContract, rpcProvider, account);
-  const v2MatchHistory = useConnectFourV2MatchHistory(resolvedFactoryContract, rpcProvider, account);
+  const v2MatchHistory = useConnectFourV2MatchHistory(resolvedFactoryContract, rpcProvider, account, {
+    enabled: expandedPanel === 'recentMatches',
+    pollIntervalMs: 8000,
+  });
   const refreshHistoryPanel = useCallback(() => {
     playerProfile.refetch();
     v2MatchHistory.refetch();

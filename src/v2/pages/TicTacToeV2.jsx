@@ -480,7 +480,10 @@ export default function TicTacToeV2() {
   const v2PlayerActivity = useV2PlayerActivity(activeInstanceContract, account, resolvedFactoryContract, rpcProvider);
 
   const playerProfile = usePlayerProfile(resolvedFactoryContract, rpcProvider, account);
-  const v2MatchHistory = useV2MatchHistory(resolvedFactoryContract, rpcProvider, account);
+  const v2MatchHistory = useV2MatchHistory(resolvedFactoryContract, rpcProvider, account, {
+    enabled: expandedPanel === 'recentMatches',
+    pollIntervalMs: 8000,
+  });
   const refreshHistoryPanel = useCallback(() => {
     playerProfile.refetch();
     v2MatchHistory.refetch();

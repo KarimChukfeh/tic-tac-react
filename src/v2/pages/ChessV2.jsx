@@ -578,7 +578,10 @@ export default function ChessV2() {
 
   const playerActivity = useChessV2PlayerActivity(activeInstanceContract, account, resolvedFactoryContract, rpcProvider);
   const playerProfile = useChessPlayerProfile(resolvedFactoryContract, rpcProvider, account);
-  const v2MatchHistory = useChessV2MatchHistory(resolvedFactoryContract, rpcProvider, account);
+  const v2MatchHistory = useChessV2MatchHistory(resolvedFactoryContract, rpcProvider, account, {
+    enabled: expandedPanel === 'recentMatches',
+    pollIntervalMs: 8000,
+  });
   const refreshHistoryPanel = useCallback(() => {
     playerProfile.refetch();
     v2MatchHistory.refetch();

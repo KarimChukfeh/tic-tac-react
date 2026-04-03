@@ -5,7 +5,8 @@ import { getInstanceContract, getPlayerProfileContract, ZERO_ADDRESS, resolvePla
 const HISTORY_LIMIT = 30;
 const POLL_INTERVAL_MS = 8000;
 
-export function useChessV2MatchHistory(factoryContract, runner, account) {
+export function useChessV2MatchHistory(factoryContract, runner, account, options = {}) {
+  const { enabled = false, pollIntervalMs = POLL_INTERVAL_MS } = options;
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -148,13 +149,28 @@ export function useChessV2MatchHistory(factoryContract, runner, account) {
     }
   }, [factoryContract, runner, account]);
 
-  useEffect(() => { fetch(); }, [fetch]);
+  useEffect(() => {
+    if (!factoryContract || !runner || !account) {
+      setMatches([]);
+      setLoading(false);
+    }
+  }, [account, factoryContract, runner]);
 
   useEffect(() => {
-    if (!factoryContract || !runner || !account) return;
-    const id = setInterval(() => fetch(), POLL_INTERVAL_MS);
+    if (!enabled) {
+      setLoading(false);
+      return undefined;
+    }
+
+    fetch();
+    return undefined;
+  }, [enabled, fetch]);
+
+  useEffect(() => {
+    if (!enabled || !factoryContract || !runner || !account) return undefined;
+    const id = setInterval(() => fetch(), pollIntervalMs);
     return () => clearInterval(id);
-  }, [account, factoryContract, fetch, runner]);
+  }, [account, enabled, factoryContract, fetch, pollIntervalMs, runner]);
 
   return { matches, loading, refetch: fetch };
 }
