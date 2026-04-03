@@ -11,13 +11,13 @@ const QUICK_GUIDE_STEPS = [
   {
     number: '02',
     title: 'Configure Your Lobby',
-    description: 'Decide the size of your lobby (2 - 32 players) and the entry fee per player (0.0001 ETH - 1 ETH).',
+    description: 'Determine the size of your lobby (2 - 32 players) and the entry fee per player (0.0001 - 1 ETH).',
     Icon: Settings2,
   },
   {
     number: '03',
-    title: 'Invite Your Foes',
-    description: 'Once your lobby is created, you are provided with a custom invite link to share with your friends and foes.',
+    title: 'Invite Your Players',
+    description: 'After creating your lobby you can share the custom invite link with your friends and foes.',
     Icon: MailPlus,
   },
   {

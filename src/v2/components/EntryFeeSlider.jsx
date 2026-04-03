@@ -6,7 +6,6 @@ export const DEFAULT_SELECTED_ENTRY_FEE = '0.001';
 const DEFAULT_MAX_ENTRY_FEE = '1';
 const USD_PER_ETH_ESTIMATE = 2000;
 const WINNER_PAYOUT_SHARE = 0.95;
-const OWNER_CUT_SHARE = 0.05;
 const SLIDER_SEGMENTS = [
   { endEth: '0.01', stepMultiplier: 1n },
   { endEth: '0.05', stepMultiplier: 5n },
@@ -137,9 +136,7 @@ export default function EntryFeeSlider({
   const normalizedPlayerCount = Number(playerCount) || 2;
   const totalEntryFeesEth = selectedEthNumber * normalizedPlayerCount;
   const winnerPayoutEth = totalEntryFeesEth * WINNER_PAYOUT_SHARE;
-  const ownerCutEth = totalEntryFeesEth * OWNER_CUT_SHARE;
   const winnerPayoutEthDisplay = winnerPayoutEth.toFixed(4).replace(/\.?0+$/, '');
-  const ownerCutEthDisplay = ownerCutEth.toFixed(4).replace(/\.?0+$/, '');
   const progressRatio = feeOptions.length > 1 ? selectedIndex / (feeOptions.length - 1) : 0;
   const progress = progressRatio * 100;
   const sliderBackground = {
@@ -204,9 +201,6 @@ export default function EntryFeeSlider({
             <span>1 ETH</span>
           </div>
 
-          <div className="mt-3 text-[11px] text-slate-400">
-            Prize pool {winnerPayoutEthDisplay} ETH at 95% • Owner cut {ownerCutEthDisplay} ETH at 5%
-          </div>
           <div className="mt-3 text-[10px] text-slate-500">*Assuming 1 ETH = ~$2000</div>
         </div>
       </div>

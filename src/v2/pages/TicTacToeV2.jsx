@@ -2221,7 +2221,7 @@ export default function TicTacToeV2() {
           </h1>
           <p className="text-2xl text-blue-200 mb-6">Provably Fair • Zero Trust • 100% On-Chain</p>
           <p className={`text-lg ${currentTheme.heroSubtext} max-w-3xl mx-auto`}>
-            Play Tic-Tac-Toe on the blockchain. Real opponents. Real ETH on the line.
+            Play Tic-Tac-Toe on the blockchain with real ETH on the line.
           </p>
           <div className="mt-4 flex justify-center">
             <div className={`relative flex flex-wrap items-center justify-center gap-2 text-sm md:text-base ${currentTheme.heroSubtext}`}>
