@@ -1,5 +1,7 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { BookOpen, MailPlus, Trophy, Wallet, Swords, Settings2, X } from 'lucide-react';
+
+const QUICK_GUIDE_TRANSITION_MS = 220;
 
 const QUICK_GUIDE_STEPS = [
   {
@@ -35,8 +37,37 @@ const QUICK_GUIDE_STEPS = [
 ];
 
 const QuickGuideModal = ({ isOpen, onClose }) => {
+  const [shouldRender, setShouldRender] = useState(isOpen);
+  const [isVisible, setIsVisible] = useState(false);
+
   useEffect(() => {
-    if (!isOpen) return undefined;
+    let timeoutId = null;
+    let frameId = null;
+
+    if (isOpen) {
+      setShouldRender(true);
+      frameId = window.requestAnimationFrame(() => {
+        setIsVisible(true);
+      });
+    } else if (shouldRender) {
+      setIsVisible(false);
+      timeoutId = window.setTimeout(() => {
+        setShouldRender(false);
+      }, QUICK_GUIDE_TRANSITION_MS);
+    }
+
+    return () => {
+      if (timeoutId) {
+        window.clearTimeout(timeoutId);
+      }
+      if (frameId) {
+        window.cancelAnimationFrame(frameId);
+      }
+    };
+  }, [isOpen, shouldRender]);
+
+  useEffect(() => {
+    if (!shouldRender) return undefined;
 
     const previousOverflow = document.body.style.overflow;
     const handleEscape = (event) => {
@@ -52,9 +83,9 @@ const QuickGuideModal = ({ isOpen, onClose }) => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener('keydown', handleEscape);
     };
-  }, [isOpen, onClose]);
+  }, [shouldRender, onClose]);
 
-  if (!isOpen) return null;
+  if (!shouldRender) return null;
 
   return (
     <div className="fixed inset-0 z-[140] flex items-start justify-center overflow-y-auto p-4 md:items-center md:p-6">
@@ -62,10 +93,16 @@ const QuickGuideModal = ({ isOpen, onClose }) => {
         type="button"
         aria-label="Close quick guide"
         onClick={onClose}
-        className="absolute inset-0 bg-slate-950/80 backdrop-blur-md"
+        className={`absolute inset-0 bg-slate-950/80 backdrop-blur-md transition-opacity duration-[220ms] ease-out ${
+          isVisible ? 'opacity-100' : 'opacity-0'
+        }`}
       />
 
-      <div className="relative z-10 my-auto flex max-h-[calc(100dvh-2rem)] w-full max-w-5xl flex-col overflow-hidden rounded-[2rem] border border-cyan-400/20 bg-[linear-gradient(160deg,rgba(2,6,23,0.97)_0%,rgba(23,37,84,0.94)_45%,rgba(88,28,135,0.92)_100%)] shadow-[0_30px_120px_rgba(8,145,178,0.28)] md:max-h-[88vh]">
+      <div
+        className={`relative z-10 my-auto flex max-h-[calc(100dvh-2rem)] w-full max-w-5xl flex-col overflow-hidden rounded-[2rem] border border-cyan-400/20 bg-[linear-gradient(160deg,rgba(2,6,23,0.97)_0%,rgba(23,37,84,0.94)_45%,rgba(88,28,135,0.92)_100%)] shadow-[0_30px_120px_rgba(8,145,178,0.28)] transition-[opacity,transform] duration-[220ms] ease-out md:max-h-[88vh] ${
+          isVisible ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-5 scale-[0.985] opacity-0'
+        }`}
+      >
         <div className="border-b border-white/10 px-5 py-4 md:px-8 md:py-6">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -96,7 +133,9 @@ const QuickGuideModal = ({ isOpen, onClose }) => {
             {QUICK_GUIDE_STEPS.map(({ number, title, description, Icon }) => (
               <article
                 key={number}
-                className="group rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-transform hover:-translate-y-1"
+                className={`group rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-[transform,opacity] duration-300 hover:-translate-y-1 ${
+                  isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
+                }`}
               >
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-xs font-semibold uppercase tracking-[0.28em] text-cyan-200/80">
