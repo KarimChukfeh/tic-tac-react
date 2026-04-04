@@ -390,24 +390,23 @@ The mere existence of ML3 creates a cascading pressure effect across all three m
 
 ### 5.1: What's Griefing?
 
-**Why It Exists**
-Every competitive system faces the same problem: players who stop engaging. In chess, letting the clock run. Online, disconnecting and hoping opponents quit. In tournaments with real money on the line, stalling becomes a deliberate strategy — frustrate your opponent into leaving and claim a default victory.
+Griefing is when players intentionally disrupt a game and prevent it from progressing or concluding.
 
-Traditional platforms solve this with human intervention — moderators, support tickets, manual reviews. These introduce bias, delays, and a dependency on centralized authority that goes against everything ETour stands for.
+Competitive tournaments can get stuck during:
 
-ETour solves stalling without admins through a system of escalating economic incentives. The longer a stall persists, the more people gain the right to intervene — and the more profitable that intervention becomes. Stalling is never rewarded. Resolution is always profitable.
+1. **Enrollment** - some players enroll, but not enough to start the tournament.
+2. **Match Play** - one or both players in a match stop making moves.
 
-**How Incentives Align**
-The escalation system is designed so that every level benefits someone:
+Legacy systems rely on centralized authorities to resolve these stalls, which requires trust in a person or a company.
 
-- The stalled player's **opponent** benefits from 4.6 (ML1) — free victory by timeout
-- **Advanced players** benefit from 4.7 (ML2) — clear the bracket, protect their path
-- **Outsiders** benefit from 4.8 (ML3) and 4.5 (EL2) — free tournament entry or free prize pool
+> ETour rewards ETH to whoever steps in to resolve these scenarios.
+>
+> Rewards are instant, blockchain-enforced, and don't require a centralized authority.
 
-The only party that doesn't benefit from escalation is the staller. This is not punishment — it's game theory. ETour makes stalling costly and resolution profitable at every level.
-
-**The Escalation Ladder**
-Escalation levels progress over time. Early levels reward players with skin in the game. Later levels open up to anyone. By the final level, resolving a stall is risk-free profit — someone will always step in.
+- It's fair and simple, and follows common sense
+- The closer you are to the prize, the sooner you get a chance to resolve a stall
+- Payouts are instant and impossible to stop
+- **Griefing is impossible when stallers lose and resolvers earn real ETH**
 
 ### 5.2: Enrollment Escalations
 

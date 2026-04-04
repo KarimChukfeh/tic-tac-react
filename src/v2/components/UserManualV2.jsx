@@ -368,6 +368,52 @@ const MarkdownBody = ({
   );
 };
 
+const AntiGriefingOverviewBody = ({
+  markdown,
+  colors,
+}) => {
+  if (!markdown) return null;
+
+  return (
+    <div className="space-y-6">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          p: ({ children }) => <p className="text-[1.05rem] leading-9 text-gray-300">{children}</p>,
+          strong: ({ children }) => <strong className={`font-semibold ${colors.secondary}`}>{children}</strong>,
+          em: ({ children }) => <em className="italic text-slate-300">{children}</em>,
+          a: MarkdownLink,
+          ol: ({ children }) => <ol className="ml-8 list-decimal space-y-5 text-[1.02rem] leading-8 text-gray-300">{children}</ol>,
+          ul: ({ children }) => (
+            <div className="rounded-[1.75rem] border border-violet-300/25 bg-violet-500/8 px-7 py-6 shadow-[0_24px_70px_rgba(76,29,149,0.16)]">
+              <ul className="ml-6 list-disc space-y-5 text-[1.02rem] leading-8 text-gray-200 marker:text-violet-300">
+                {children}
+              </ul>
+            </div>
+          ),
+          li: ({ children }) => <li>{children}</li>,
+          blockquote: ({ children }) => (
+            <div className="rounded-[1.75rem] border-2 border-cyan-400/75 bg-[linear-gradient(135deg,rgba(30,64,175,0.36),rgba(59,130,246,0.14),rgba(30,41,59,0.2))] px-7 py-7 shadow-[0_24px_70px_rgba(34,211,238,0.14)]">
+              <div className="flex items-start gap-4">
+                <div className="mt-1 shrink-0 text-cyan-300">
+                  <svg width="34" height="34" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M12 3l7 3v6c0 5-3.5 8-7 9-3.5-1-7-4-7-9V6l7-3z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+                  </svg>
+                </div>
+                <div className="space-y-3 text-[1.02rem] leading-8 text-white [&>p]:m-0 [&>p]:font-semibold">
+                  {children}
+                </div>
+              </div>
+            </div>
+          ),
+        }}
+      >
+        {markdown}
+      </ReactMarkdown>
+    </div>
+  );
+};
+
 const TocNav = ({
   groups,
   activeHash,
@@ -451,6 +497,7 @@ const SectionHeader = ({
 };
 
 const TopicCard = ({
+  id,
   title,
   markdown,
   nestedSubsections,
@@ -474,7 +521,11 @@ const TopicCard = ({
           </span>
         ) : null}
       </div>
-      <MarkdownBody markdown={markdown} colors={colors} />
+      {id === '51-whats-griefing' ? (
+        <AntiGriefingOverviewBody markdown={markdown} colors={colors} />
+      ) : (
+        <MarkdownBody markdown={markdown} colors={colors} />
+      )}
 
       {nestedSubsections.length ? (
         <div className="mt-6 space-y-4 border-t border-slate-800 pt-5">
@@ -595,6 +646,7 @@ const renderSectionBody = ({
       {section.subsections.map((subsection) => (
         <TopicCard
           key={subsection.id}
+          id={subsection.id}
           title={subsection.title}
           markdown={subsection.markdown}
           nestedSubsections={subsection.nestedSubsections}
