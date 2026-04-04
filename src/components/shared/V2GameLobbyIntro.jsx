@@ -7,6 +7,7 @@ export default function V2GameLobbyIntro({
   isConnecting = false,
   onConnectWallet,
   connectCtaClassName = '',
+  children = null,
 }) {
   const [isTooltipOpen, setIsTooltipOpen] = useState(false);
   const tooltipRef = useRef(null);
@@ -79,6 +80,12 @@ export default function V2GameLobbyIntro({
           </div>
         ) : null}
       </div>
+
+      {children ? (
+        <div className="flex justify-center text-center">
+          {children}
+        </div>
+      ) : null}
     </div>
   );
 }

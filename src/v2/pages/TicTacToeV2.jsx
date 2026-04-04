@@ -2212,7 +2212,7 @@ export default function TicTacToeV2() {
 
       <div className="max-w-7xl mx-auto px-6 pt-12" style={{ position: 'relative', zIndex: 10 }}>
         {/* Hero Section */}
-        <div className="text-center mb-8 md:mb-10">
+        <div className="text-center mb-5 md:mb-6">
           <div className="inline-block mb-6">
             <div className="relative">
               <div className={`absolute -inset-4 bg-gradient-to-r ${currentTheme.heroGlow} rounded-full blur-xl opacity-50 animate-pulse`}></div>
@@ -2226,33 +2226,6 @@ export default function TicTacToeV2() {
           <p className={`text-lg ${currentTheme.heroSubtext} max-w-3xl mx-auto`}>
             Play Tic-Tac-Toe on the blockchain with real ETH on the line.
           </p>
-          <div className="mt-4 flex justify-center">
-            <div className={`relative flex flex-wrap items-center justify-center gap-2 text-sm md:text-base ${currentTheme.heroSubtext}`}>
-              {heroLinkNoticeVisible ? (
-                <div className="pointer-events-none absolute bottom-full left-1/2 mb-3 -translate-x-1/2 whitespace-nowrap rounded-full border border-cyan-400/40 bg-slate-950/90 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white shadow-lg shadow-cyan-500/20 backdrop-blur-sm animate-pulse">
-                  Coming Soon
-                </div>
-              ) : null}
-              {HERO_LINKS.map((link, index) => (
-                <div key={link.label} className="flex items-center gap-2">
-                  {index > 0 ? <span aria-hidden="true">•</span> : null}
-                  <a
-                    href={link.type === 'manual' ? '#user-manual' : '#'}
-                    onClick={
-                      link.type === 'manual'
-                        ? handleUserManualLinkClick
-                        : link.type === 'quick-guide'
-                          ? handleQuickGuideLinkClick
-                          : handlePlaceholderLinkClick
-                    }
-                    className="underline decoration-dotted underline-offset-4 transition-colors hover:text-white"
-                  >
-                    {link.label}
-                  </a>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
 
         {/* Action messages */}
@@ -2421,7 +2394,33 @@ export default function TicTacToeV2() {
                   isConnecting={isConnecting}
                   onConnectWallet={connectWallet}
                   connectCtaClassName={currentTheme.connectCtaClassName}
-                />
+                >
+                  <div className={`relative flex flex-wrap items-center justify-center gap-2 text-sm md:text-base ${currentTheme.heroSubtext}`}>
+                    {heroLinkNoticeVisible ? (
+                      <div className="pointer-events-none absolute bottom-full left-1/2 mb-3 -translate-x-1/2 whitespace-nowrap rounded-full border border-cyan-400/40 bg-slate-950/90 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white shadow-lg shadow-cyan-500/20 backdrop-blur-sm animate-pulse">
+                        Coming Soon
+                      </div>
+                    ) : null}
+                    {HERO_LINKS.map((link, index) => (
+                      <div key={link.label} className="flex items-center gap-2">
+                        {index > 0 ? <span aria-hidden="true">•</span> : null}
+                        <a
+                          href={link.type === 'manual' ? '#user-manual' : '#'}
+                          onClick={
+                            link.type === 'manual'
+                              ? handleUserManualLinkClick
+                              : link.type === 'quick-guide'
+                                ? handleQuickGuideLinkClick
+                                : handlePlaceholderLinkClick
+                          }
+                          className="underline decoration-dotted underline-offset-4 transition-colors hover:text-white"
+                        >
+                          {link.label}
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                </V2GameLobbyIntro>
                 {/* Create Tournament section */}
                 <div id="live-instances">
                   <form onSubmit={createInstance}>
