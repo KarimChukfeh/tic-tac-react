@@ -660,8 +660,10 @@ const renderSectionBody = ({
 const UserManualV2 = ({
   isElite = false,
   gameSpecificContent = null,
+  defaultExpanded = false,
+  collapsible = true,
 }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded || !collapsible);
   const [manualData, setManualData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
@@ -891,20 +893,27 @@ const UserManualV2 = ({
 
   return (
     <div className={`bg-gradient-to-br ${colors.bg} border ${colors.border} rounded-2xl p-6`}>
-      <button
-        type="button"
-        onClick={() => setIsExpanded((expanded) => !expanded)}
-        aria-expanded={isExpanded}
-        className="w-full flex items-center justify-between gap-4 text-left"
-      >
-        <span className="flex items-center gap-3">
+      {collapsible ? (
+        <button
+          type="button"
+          onClick={() => setIsExpanded((expanded) => !expanded)}
+          aria-expanded={isExpanded}
+          className="w-full flex items-center justify-between gap-4 text-left"
+        >
+          <span className="flex items-center gap-3">
+            <BookOpen className={colors.primary} size={24} />
+            <h3 className={`text-xl font-bold ${colors.secondary}`}>User Manual</h3>
+          </span>
+          <span className={colors.primary}>
+            {isExpanded ? <ChevronUp size={22} /> : <ChevronDown size={22} />}
+          </span>
+        </button>
+      ) : (
+        <div className="flex items-center gap-3">
           <BookOpen className={colors.primary} size={24} />
           <h3 className={`text-xl font-bold ${colors.secondary}`}>User Manual</h3>
-        </span>
-        <span className={colors.primary}>
-          {isExpanded ? <ChevronUp size={22} /> : <ChevronDown size={22} />}
-        </span>
-      </button>
+        </div>
+      )}
 
       {isExpanded ? (
         <div className="mt-6">

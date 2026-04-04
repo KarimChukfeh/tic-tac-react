@@ -39,8 +39,8 @@ export function useWalletBrowserPrompt() {
 
     hasChecked.current = true;
 
-    // Skip wallet prompt on whitepaper page
-    if (window.location.pathname === '/whitepaper') {
+    // Skip wallet prompt on document-style routes
+    if (window.location.pathname === '/whitepaper' || window.location.pathname === '/manual') {
       return;
     }
 
