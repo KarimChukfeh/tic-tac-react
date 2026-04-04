@@ -68,11 +68,13 @@ No accounts, no admins, no intermediaries.
 
 To play on ETour you need three things:
 
-- **A wallet.** Your wallet is your identity on ETour. No username, no email, no account. Just a wallet address.
-- **ETH on Arbitrum.** All entry fees and payouts are in ETH on the Arbitrum network. Make sure your wallet is funded before you enroll.
-- **A browser.** ETour runs in any modern browser. No downloads, no installs.
+- **A wallet** Your wallet is your identity on ETour. No username, no email, no account. Just a wallet address.
+- **ETH on Arbitrum** All entry fees and payouts are in ETH on the Arbitrum network. Make sure your wallet is funded before you enroll.
+- **A browser** ETour runs in any modern browser. No downloads, no installs.
 
-If you're new to Arbitrum, you'll need to bridge ETH from Ethereum mainnet to Arbitrum. Gas fees on Arbitrum are minimal, typically less than $0.05 per transaction.
+If you're new to Arbitrum, you'll need to bridge ETH from Ethereum mainnet to Arbitrum. 
+
+Gas fees on Arbitrum are minimal, typically less than a $0.02 per transaction.
 
 ### 1.3: The Five Steps
 
@@ -104,12 +106,6 @@ Lobbies support 2 to 32 players in powers of two: 2, 4, 8, 16, or 32. The player
 
 **Entry Fee**
 You set the entry fee per player. The minimum is 0.0001 ETH and the maximum is 1 ETH. Every player who enrolls pays the same entry fee. The total prize pool is the entry fee multiplied by the number of players.
-
-**Public vs Private Lobbies**
-Lobbies can be public or private.
-
-- A **public lobby** is visible to anyone browsing ETour. Anyone can find it and enroll.
-- A **private lobby** is invite-only. Only wallet addresses you whitelist can enroll. Use private lobbies when you want to compete exclusively within a known group: friends, a community, or a league.
 
 **Your Invite Link**
 Every lobby comes with a unique invite link the moment it's created. Share this link with whoever you want to compete against. Anyone with the link can enroll directly by paying the entry fee. No account needed.
