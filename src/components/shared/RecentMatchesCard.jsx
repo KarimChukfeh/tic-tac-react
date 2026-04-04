@@ -71,13 +71,20 @@ const RecentMatchesCard = ({
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [totalEarnings, setTotalEarnings] = useState(0n);
   const [isScrolled, setIsScrolled] = useState(false); // Track if user has scrolled
+  const [displayTournamentStats, setDisplayTournamentStats] = useState(null);
+  const [displayTournamentEnrollments, setDisplayTournamentEnrollments] = useState([]);
   const panelShellRef = useRef(null);
   const expandedPanelRef = useRef(null);
   const prevExpandedRef = useRef(false);
+  const prevAccountRef = useRef(account);
   const matchCardRefs = useRef({});
   const tournamentItemRefs = useRef({});
   const useV2ReasonLabels = reasonLabelMode === 'v2';
   const isRefreshing = syncing || v2MatchesLoading;
+  const hasRenderedMatches = recentMatches.length > 0;
+  const showMatchesLoadingState = (loadingRecentMatches || v2MatchesLoading) && !hasRenderedMatches;
+  const hasTournamentData = Boolean(displayTournamentStats) || displayTournamentEnrollments.length > 0;
+  const showTournamentLoadingState = Boolean(playerProfile?.loading) && !hasTournamentData;
 
   // Use external state if provided, otherwise use internal state
   const isExpanded = externalIsExpanded !== undefined ? externalIsExpanded : internalIsExpanded;
@@ -132,6 +139,31 @@ const RecentMatchesCard = ({
       }
     }
   }, [account, leaderboard]);
+
+  useEffect(() => {
+    if (prevAccountRef.current !== account) {
+      prevAccountRef.current = account;
+      setDisplayTournamentStats(null);
+      setDisplayTournamentEnrollments([]);
+    }
+  }, [account]);
+
+  useEffect(() => {
+    if (!account) {
+      setDisplayTournamentStats(null);
+      setDisplayTournamentEnrollments([]);
+      return;
+    }
+
+    const nextStats = playerProfile?.stats ?? null;
+    const nextEnrollments = Array.isArray(playerProfile?.enrollments) ? playerProfile.enrollments : [];
+    const hasFreshTournamentData = Boolean(nextStats) || nextEnrollments.length > 0;
+
+    if (hasFreshTournamentData || !playerProfile?.loading) {
+      setDisplayTournamentStats(nextStats);
+      setDisplayTournamentEnrollments(nextEnrollments);
+    }
+  }, [account, playerProfile]);
 
   // When v2Matches is provided externally, sync it into recentMatches state
   useEffect(() => {
@@ -393,7 +425,6 @@ const RecentMatchesCard = ({
       onRefresh();
     }
     if (v2Matches === null) {
-      setRecentMatches([]);
       fetchRecentMatches();
     }
     // Also refresh transaction history if it's visible
@@ -1193,30 +1224,41 @@ const RecentMatchesCard = ({
           {/* Tournaments Tab */}
           {historyTab === 'tournaments' && (
             <>
-              {playerProfile?.stats ? (
+              {showTournamentLoadingState ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-teal-400 mx-auto"></div>
+                  <p className="text-slate-400 mt-2 text-xs">Loading tournament history...</p>
+                </div>
+              ) : displayTournamentStats ? (
                 <>
+                  {playerProfile?.loading && (
+                    <div className="flex items-center gap-2 text-[11px] text-teal-300 mb-3">
+                      <RefreshCw size={12} className="animate-spin" />
+                      <span>Syncing latest tournaments...</span>
+                    </div>
+                  )}
                   {/* Summary metrics */}
                   <div className="grid grid-cols-3 gap-3 mb-5">
                     <div className="bg-blue-500/15 border border-blue-400/30 rounded-xl p-3 text-center">
                       <div className="text-xs font-semibold text-blue-300 mb-1">Played</div>
-                      <div className="text-xl font-bold text-white">{playerProfile.stats.totalPlayed}</div>
+                      <div className="text-xl font-bold text-white">{displayTournamentStats.totalPlayed}</div>
                     </div>
                     <div className="bg-green-500/15 border border-green-400/30 rounded-xl p-3 text-center">
                       <div className="text-xs font-semibold text-green-300 mb-1">Wins</div>
-                      <div className="text-xl font-bold text-white">{playerProfile.stats.totalWins}</div>
+                      <div className="text-xl font-bold text-white">{displayTournamentStats.totalWins}</div>
                     </div>
                     <div className="bg-green-500/15 border border-green-400/30 rounded-xl p-3 text-center">
                       <div className="text-xs font-semibold mb-1 text-green-300">Payouts (ETH)</div>
                       <div className="text-sm font-bold text-white leading-tight">
-                        {formatEthAmount(playerProfile.enrollments.reduce((sum, r) => sum + getRecordPayout(r), 0n))}
+                        {formatEthAmount(displayTournamentEnrollments.reduce((sum, r) => sum + getRecordPayout(r), 0n))}
                       </div>
                     </div>
                   </div>
 
                   {/* Tournament list */}
-                  {playerProfile.enrollments.length > 0 ? (
+                  {displayTournamentEnrollments.length > 0 ? (
                     <div className="space-y-2">
-                      {playerProfile.enrollments.map((rec, idx) => (
+                      {displayTournamentEnrollments.map((rec, idx) => (
                         <div key={idx} ref={(el) => { if (el && rec.instance) tournamentItemRefs.current[rec.instance.toLowerCase()] = el; }} className="bg-slate-900/60 border border-purple-400/15 rounded-xl px-3 py-2.5">
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 min-w-0">
@@ -1294,7 +1336,7 @@ const RecentMatchesCard = ({
 
           {/* Content */}
           <h3 className="text-white font-semibold text-lg md:text-md mb-3">Match History</h3>
-          {(loadingRecentMatches || v2MatchesLoading) ? (
+          {showMatchesLoadingState ? (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-teal-400 mx-auto"></div>
               <p className="text-slate-400 mt-2 text-xs">Loading recent matches...</p>
@@ -1307,6 +1349,12 @@ const RecentMatchesCard = ({
             </div>
           ) : (
             <div className="space-y-6">
+              {isRefreshing && (
+                <div className="flex items-center gap-2 text-[11px] text-teal-300 -mb-3">
+                  <RefreshCw size={12} className="animate-spin" />
+                  <span>Syncing latest history...</span>
+                </div>
+              )}
               {/* Pagination calculations */}
               {(() => {
                 const totalPages = Math.ceil(recentMatches.length / itemsPerPage);
