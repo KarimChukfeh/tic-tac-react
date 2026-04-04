@@ -1872,9 +1872,9 @@ export default function ChessV2() {
       <div className="max-w-7xl mx-auto px-6 pt-12" style={{ position: 'relative', zIndex: 10 }}>
         <div className="text-center mb-5 md:mb-6">
           <div className="inline-block mb-6">
-            <div className="relative">
-              <div className={`absolute -inset-4 bg-gradient-to-r ${currentTheme.heroGlow} rounded-full blur-xl opacity-50 animate-pulse`} />
-              <span className="relative text-8xl">♚</span>
+            <div className="relative flex h-28 w-28 items-center justify-center md:h-32 md:w-32">
+              <div className={`absolute inset-0 bg-gradient-to-r ${currentTheme.heroGlow} rounded-full blur-xl opacity-50 animate-pulse`} />
+              <span className="relative text-[5rem] leading-none md:text-[5.5rem]">♚</span>
             </div>
           </div>
           <h1 className={`text-6xl md:text-7xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r ${currentTheme.heroTitle}`}>ETour Chess</h1>

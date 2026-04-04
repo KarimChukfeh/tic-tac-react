@@ -170,7 +170,7 @@ const AnimatedDisc = ({ delay = 0, size = 'large' }) => {
     return () => clearInterval(interval);
   }, [started]);
 
-  const svgSize = size === 'large' ? 128 : 32;
+  const svgSize = typeof size === 'number' ? size : size === 'large' ? 128 : 32;
 
   return (
     <span className="relative inline-block">
@@ -2431,10 +2431,10 @@ export default function ConnectFourV2() {
       <div className="max-w-7xl mx-auto px-6 pt-12" style={{ position: 'relative', zIndex: 10 }}>
         <div className="text-center mb-5 md:mb-6">
           <div className="inline-block mb-6">
-            <div className="relative">
-              <div className={`absolute -inset-4 bg-gradient-to-r ${currentTheme.heroGlow} rounded-full blur-xl opacity-50 animate-pulse`} />
+            <div className="relative flex h-28 w-28 items-center justify-center md:h-32 md:w-32">
+              <div className={`absolute inset-0 bg-gradient-to-r ${currentTheme.heroGlow} rounded-full blur-xl opacity-50 animate-pulse`} />
               <div className="relative">
-                <AnimatedDisc />
+                <AnimatedDisc size={88} />
               </div>
             </div>
           </div>

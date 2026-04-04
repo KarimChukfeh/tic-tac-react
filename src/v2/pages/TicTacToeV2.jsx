@@ -2214,9 +2214,9 @@ export default function TicTacToeV2() {
         {/* Hero Section */}
         <div className="text-center mb-5 md:mb-6">
           <div className="inline-block mb-6">
-            <div className="relative">
-              <div className={`absolute -inset-4 bg-gradient-to-r ${currentTheme.heroGlow} rounded-full blur-xl opacity-50 animate-pulse`}></div>
-              <Grid className={`relative ${currentTheme.heroIcon} animate-float`} size={80} />
+            <div className="relative flex h-28 w-28 items-center justify-center md:h-32 md:w-32">
+              <div className={`absolute inset-0 bg-gradient-to-r ${currentTheme.heroGlow} rounded-full blur-xl opacity-50 animate-pulse`}></div>
+              <Grid className={`relative ${currentTheme.heroIcon} animate-float`} size={88} />
             </div>
           </div>
           <h1 className={`text-6xl md:text-7xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r ${currentTheme.heroTitle}`}>
