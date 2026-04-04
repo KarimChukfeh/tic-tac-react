@@ -66,7 +66,7 @@ To play on ETour you need three things:
 - **ETH on Arbitrum.** All entry fees and payouts are in ETH on the Arbitrum network. Make sure your wallet is funded before you enroll.
 - **A browser.** ETour runs in any modern browser. No downloads, no installs.
 
-If you're new to Arbitrum, you'll need to bridge ETH from Ethereum mainnet to Arbitrum. Gas fees on Arbitrum are minimal — typically less than $0.05 per transaction.
+If you're new to Arbitrum, you'll need to bridge ETH from Ethereum mainnet to Arbitrum. Gas fees on Arbitrum are minimal, typically less than $0.05 per transaction.
 
 ### 1.3: The Five Steps
 
@@ -79,7 +79,7 @@ Connect your Arbitrum wallet to etour.games. Your wallet is your player ID. No s
 Choose your game, set the number of players (2 to 32), and set the entry fee per player (0.0001 ETH to 1 ETH). Once your lobby is created, you are automatically enrolled as the first participant and receive a unique invite link.
 
 **Step 3: Invite Your Foes**
-Share your invite link with whoever you want to compete against — friends, your community, anyone. Anyone with the link can join by paying the entry fee. No account needed on their end either.
+Share your invite link with whoever you want to compete against: friends, your community, anyone. Anyone with the link can join by paying the entry fee. No account needed on their end either.
 
 **Step 4: Play Your Matches**
 The moment the last spot is filled, the tournament starts automatically. No admin needed. Players are paired into matches. Winners advance round by round until the finals.
@@ -103,7 +103,7 @@ You set the entry fee per player. The minimum is 0.0001 ETH and the maximum is 1
 Lobbies can be public or private.
 
 - A **public lobby** is visible to anyone browsing ETour. Anyone can find it and enroll.
-- A **private lobby** is invite-only. Only wallet addresses you whitelist can enroll. Use private lobbies when you want to compete exclusively within a known group — friends, a community, a league.
+- A **private lobby** is invite-only. Only wallet addresses you whitelist can enroll. Use private lobbies when you want to compete exclusively within a known group: friends, a community, or a league.
 
 **Your Invite Link**
 Every lobby comes with a unique invite link the moment it's created. Share this link with whoever you want to compete against. Anyone with the link can enroll directly by paying the entry fee. No account needed.
@@ -117,7 +117,7 @@ To enroll in a lobby, you pay the entry fee. The moment your ETH transaction con
 The moment the last spot is filled, the tournament starts automatically. Players are paired into first-round matches immediately. No admin trigger needed.
 
 **Enrollment Window and Timer**
-If the lobby doesn't fill immediately, there is an enrollment window during which players can continue to join. The enrollment window can be reset by the lobby creator while they are still the sole enrollee — this gives creators flexibility to keep the lobby open while they look for opponents.
+If the lobby doesn't fill immediately, there is an enrollment window during which players can continue to join. The enrollment window can be reset by the lobby creator while they are still the sole enrollee. This gives creators flexibility to keep the lobby open while they look for opponents.
 
 Once at least two players are enrolled and the enrollment window expires, enrolled players can force-start the tournament with however many players have joined so far. A 4-player lobby with only 3 enrollees can start as a 3-player tournament. The prize pool adjusts accordingly.
 
@@ -151,7 +151,7 @@ These percentages are hardcoded in the smart contract and cannot be changed by a
 **When and How You Get Paid**
 The winner receives their ETH the moment the final match resolves. No withdrawal step, no waiting period, no approval required. The smart contract sends the prize pool directly to the winner's wallet automatically.
 
-If a tournament resolves in an unusual way — via escalation, draw, or abandonment — the prize pool is distributed according to the resolution reason. See Section 4: Resolution for full details on every possible payout scenario.
+If a tournament resolves in an unusual way, whether via escalation, draw, or abandonment, the prize pool is distributed according to the resolution reason. See Section 4: Resolution for full details on every possible payout scenario.
 
 ## 3. Matches & Play
 
@@ -171,12 +171,12 @@ ETour uses single elimination brackets. Every match has one winner and one loser
 Matches within the same round run simultaneously. In an 8-player tournament, four matches run at the same time in round one. Winners of those four matches are then paired into two semifinal matches, and so on.
 
 **Making Moves On-Chain**
-Every move you make is a blockchain transaction. This means every move costs a small amount of gas — typically less than $0.01 on Arbitrum. Make sure your wallet has enough ETH to cover both your entry fee and the gas cost of your moves.
+Every move you make is a blockchain transaction. This means every move costs a small amount of gas, typically less than $0.01 on Arbitrum. Make sure your wallet has enough ETH to cover both your entry fee and the gas cost of your moves.
 
 Every move is permanent and publicly verifiable. Nobody can alter a move after it's been made. Nobody can reverse an outcome after it's been determined.
 
 **The Fischer Timer**
-Each player has a time bank for their moves. This is a Fischer timer — you start with a base time and receive a small increment added back to your clock after each move you make.
+Each player has a time bank for their moves. This is a Fischer timer. You start with a base time and receive a small increment added back to your clock after each move you make.
 
 Time management is part of the game. Run low on time and you must play faster, potentially making mistakes under pressure. Your opponent knows when you're running low and may try to complicate positions to exploit your time trouble.
 
@@ -188,10 +188,10 @@ If your clock hits zero, your opponent can claim victory by timeout. See 4.6 (ML
 Some games can end in draws. In chess, draws can occur via perpetual check, insufficient material, the fifty-move rule, or threefold repetition. In Tic-Tac-Toe, perfect play always results in a draw.
 
 **How Draws Are Handled Mid-Tournament**
-In regular rounds, a draw means both players are eliminated. Neither player advances to the next round. This creates natural pressure to play for wins rather than safe draws — a draw is as bad as a loss.
+In regular rounds, a draw means both players are eliminated. Neither player advances to the next round. This creates natural pressure to play for wins rather than safe draws. A draw is as bad as a loss.
 
 **Odd Advancement**
-When draws eliminate players mid-tournament, the bracket may produce an odd number of remaining players. ETour handles this automatically — one player receives a walkover and advances without playing. Orphaned winners advance automatically and incomplete brackets consolidate remaining players. These are deliberate design decisions ensuring tournaments always resolve fairly.
+When draws eliminate players mid-tournament, the bracket may produce an odd number of remaining players. ETour handles this automatically. One player receives a walkover and advances without playing. Orphaned winners advance automatically and incomplete brackets consolidate remaining players. These are deliberate design decisions ensuring tournaments always resolve fairly.
 
 **Final Round Draw Exceptions**
 The final round is handled differently. If the finals match ends in a draw, the two finalists split the prize pool equally. They've proven themselves equally matched and share the victory.
@@ -205,7 +205,7 @@ These are resolution reasons 4.2 (R1) and 4.3 (R2). See Section 4: Resolution fo
 ### 4.0: Taxonomy Overview
 
 **What is a Resolution Reason?**
-Every tournament on ETour ends for a reason. That reason is codified as a resolution code — a short identifier that tells you exactly why and how a tournament concluded.
+Every tournament on ETour ends for a reason. That reason is codified as a resolution code, a short identifier that tells you exactly why and how a tournament concluded.
 
 Resolution reasons exist at two levels:
 
@@ -232,7 +232,7 @@ Understanding resolution reasons helps you know exactly what happened to your to
 ### 4.1: Normal Resolution
 
 **What it is**
-R0 is the happy path. The tournament runs exactly as designed — full enrollment, all matches played to completion, no timeouts, no draws, no escalations. One player wins every match they play, advances through the bracket, wins the finals, and claims the prize pool.
+R0 is the happy path. The tournament runs exactly as designed: full enrollment, all matches played to completion, no timeouts, no draws, and no escalations. One player wins every match they play, advances through the bracket, wins the finals, and claims the prize pool.
 
 **What triggers it**
 The final match concludes with a clear winner.
@@ -255,9 +255,9 @@ R1 occurs when a draw ends the tournament. This happens in one of two ways: the 
 - All matches in a round end in draws, leaving no players to advance
 
 **What happens**
-The remaining players — the two finalists in a finals draw, or all surviving players in a full-round draw — split the prize pool equally. Each receives an equal share of the 95% prize pool.
+The remaining players, either the two finalists in a finals draw or all surviving players in a full-round draw, split the prize pool equally. Each receives an equal share of the 95% prize pool.
 
-**Payout example — finals draw**
+**Payout example: finals draw**
 4-player lobby, 0.01 ETH entry fee, 0.04 ETH total pool, 0.038 ETH prize pool (95%):
 - Each finalist receives: 0.019 ETH
 - ETour receives: 0.002 ETH
@@ -277,7 +277,7 @@ A player advances to the finals. The other semifinal match ends in a draw, elimi
 The uncontested finalist wins the tournament by default without playing the final match. They receive 95% of the prize pool instantly.
 
 **Example scenario**
-8-player tournament. You win your quarterfinal and semifinal. You're in the finals waiting for your opponent. The other semifinal ends in a draw — both players are eliminated. You are now the only finalist. The tournament resolves as R2. You win.
+8-player tournament. You win your quarterfinal and semifinal. You're in the finals waiting for your opponent. The other semifinal ends in a draw, and both players are eliminated. You are now the only finalist. The tournament resolves as R2. You win.
 
 **Important note**
 R2 is not an escalation. No timer, no trigger, no action required. The moment the other semifinal draws and leaves you as the only finalist, the tournament resolves automatically in your favor.
@@ -306,13 +306,13 @@ EL2 occurs when a lobby attracts some enrollees but not enough to fill, and the 
 - No enrolled player triggers EL1 to force-start the tournament, AND
 - 5 minutes pass after EL1 becomes available without action
 
-At this point, EL2 becomes available to anyone — including players who never enrolled.
+At this point, EL2 becomes available to anyone, including players who never enrolled.
 
 **What happens**
-Any player — even one who never enrolled — can claim the entire prize pool by triggering EL2. The outsider receives 95% of the prize pool. ETour receives 5%. All enrolled players lose their entry fees.
+Any player, even one who never enrolled, can claim the entire prize pool by triggering EL2. The outsider receives 95% of the prize pool. ETour receives 5%. All enrolled players lose their entry fees.
 
 **Why this exists**
-ETour cannot allow ETH to sit trapped in an abandoned prize pool forever. EL2 guarantees that someone always has an incentive to resolve a stuck tournament. The threat of EL2 also incentivizes enrolled players to act — if you're enrolled and don't trigger EL1 when you should, you risk losing your entire entry fee to an outsider.
+ETour cannot allow ETH to sit trapped in an abandoned prize pool forever. EL2 guarantees that someone always has an incentive to resolve a stuck tournament. The threat of EL2 also incentivizes enrolled players to act. If you're enrolled and don't trigger EL1 when you should, you risk losing your entire entry fee to an outsider.
 
 **Important note**
 EL2 is the nuclear option. It exists to ensure tournaments never get permanently stuck. If you're enrolled in a lobby that isn't filling up, trigger EL1 to force-start the tournament before EL2 becomes available to outsiders.
@@ -342,7 +342,7 @@ Your opponent is not required to claim victory immediately when your clock hits 
 ### 4.7: Advanced Player Wins via Stalled Semifinal
 
 **What it is**
-ML2 occurs when a player who has already advanced to a later round — typically the finals — is being held up by a stalled match in an earlier round. ML2 allows that advanced player to step in, eliminate both stalled players, and clear their path.
+ML2 occurs when a player who has already advanced to a later round, typically the finals, is being held up by a stalled match in an earlier round. ML2 allows that advanced player to step in, eliminate both stalled players, and clear their path.
 
 **What triggers it**
 - A match is stalled (neither player is making moves), AND
@@ -358,12 +358,12 @@ The advanced player triggers ML2. Both stalled players are eliminated. The brack
 Your tournament progress should not be held hostage by two players who stop making moves in an earlier round. ML2 gives advanced players the power to protect their investment and keep the tournament moving.
 
 **Important note**
-The mere existence of ML2 puts pressure on stalled players to act. If you're in a stalled match and your opponent hasn't claimed 4.6 (ML1) yet, you're both at risk of being eliminated by an advanced player stepping in. Stalling doesn't just hurt your opponent — it puts both of you at risk.
+The mere existence of ML2 puts pressure on stalled players to act. If you're in a stalled match and your opponent hasn't claimed 4.6 (ML1) yet, you're both at risk of being eliminated by an advanced player stepping in. Stalling doesn't just hurt your opponent. It puts both of you at risk.
 
 ### 4.8: Outsider Replaces Both Players
 
 **What it is**
-ML3 is the match-level nuclear option. If both players in a match have stalled and no advanced player has triggered ML2, any outsider — even someone not enrolled in the tournament — can step in, replace both stalled players, and take their spot in the bracket.
+ML3 is the match-level nuclear option. If both players in a match have stalled and no advanced player has triggered ML2, any outsider, even someone not enrolled in the tournament, can step in, replace both stalled players, and take their spot in the bracket.
 
 **What triggers it**
 - A match is stalled, AND
@@ -376,7 +376,7 @@ At this point ML3 becomes available to anyone.
 An outsider triggers ML3. Both stalled players are eliminated and replaced by the outsider. The outsider takes their position in the bracket and continues competing. If ML3 is triggered in the finals, the outsider wins the tournament immediately and receives the prize pool.
 
 **Why this exists**
-ETour guarantees that every tournament resolves. ML3 is the final guarantee — if nobody else acts, a profit-motivated outsider always will. The prize pool is always claimed. ETH never gets permanently stuck.
+ETour guarantees that every tournament resolves. ML3 is the final guarantee. If nobody else acts, a profit-motivated outsider always will. The prize pool is always claimed. ETH never gets permanently stuck.
 
 **Scope**
 ML3 can apply at multiple levels:
@@ -410,7 +410,7 @@ Legacy systems rely on centralized authorities to resolve these stalls, which re
 
 ### 5.2: Enrollment Escalations
 
-Enrollment escalations apply during the enrollment phase — after a lobby is created but before the tournament starts.
+Enrollment escalations apply during the enrollment phase, after a lobby is created and before the tournament starts.
 
 #### 5.2.1: EL1 — Force-Start Tournament After Enrollment Window Expires
 
@@ -418,7 +418,7 @@ Enrollment escalations apply during the enrollment phase — after a lobby is cr
 EL1 gives enrolled players the power to start the tournament before the lobby is completely full.
 
 **When it becomes available**
-The enrollment window expires and at least two players are enrolled — even if the lobby hasn't reached its configured player count.
+The enrollment window expires and at least two players are enrolled, even if the lobby hasn't reached its configured player count.
 
 **Who can trigger it**
 Any enrolled player.
@@ -427,7 +427,7 @@ Any enrolled player.
 The player triggers EL1. The tournament starts immediately with however many players have enrolled so far. A lobby configured for 8 players with only 5 enrollees starts as a 5-player tournament. The bracket and prize pool adjust accordingly.
 
 **Why it matters**
-Without EL1, enrolled players would be stuck waiting indefinitely for a lobby that may never fill. EL1 gives them autonomy — start competing now with whoever showed up, rather than waiting for a full lobby that may never arrive.
+Without EL1, enrolled players would be stuck waiting indefinitely for a lobby that may never fill. EL1 gives them autonomy: start competing now with whoever showed up, rather than waiting for a full lobby that may never arrive.
 
 #### 5.2.2: EL1* — Extend Enrollment Window When Solo Enrolled
 
@@ -446,31 +446,31 @@ The enrollment window resets. You continue waiting for other players to join. Yo
 If you no longer want to wait, you can cancel the lobby instead and receive a full refund. See 4.4 (EL0).
 
 **Why it matters**
-EL1* prevents a solo enrollee from being forced into an unresolvable state. You keep control — reset and wait, or cancel and leave. Your ETH is never trapped.
+EL1* prevents a solo enrollee from being forced into an unresolvable state. You keep control: reset and wait, or cancel and leave. Your ETH is never trapped.
 
 #### 5.2.3: EL2 — Claim Abandoned Prize Pool When Tournament Never Started
 
 **What it is**
-EL2 is the final enrollment escalation. If EL1 was available but no enrolled player triggered it, the prize pool sits idle. EL2 opens the prize pool to anyone — including complete outsiders — to claim.
+EL2 is the final enrollment escalation. If EL1 was available but no enrolled player triggered it, the prize pool sits idle. EL2 opens the prize pool to anyone, including complete outsiders, to claim.
 
 **When it becomes available**
 5 minutes after EL1 becomes available without any enrolled player triggering it.
 
 **Who can trigger it**
-Anyone — including players who never enrolled in the tournament.
+Anyone, including players who never enrolled in the tournament.
 
 **What happens**
 The outsider claims the entire prize pool. They receive 95% of the total pool. ETour receives 5%. All enrolled players lose their entry fees. The tournament is terminated.
 
 **Why it matters**
-ETH cannot sit trapped in an abandoned prize pool forever. EL2 guarantees resolution. The threat of EL2 creates strong pressure on enrolled players to trigger EL1 before the window closes — if you don't act, a stranger will, and they'll take your money.
+ETH cannot sit trapped in an abandoned prize pool forever. EL2 guarantees resolution. The threat of EL2 creates strong pressure on enrolled players to trigger EL1 before the window closes. If you don't act, a stranger will, and they'll take your money.
 
 **The pressure dynamic**
-The mere existence of EL2 is what makes EL1 urgent. Enrolled players who ignore EL1 risk losing everything to an outsider. This ensures that tournaments either start or get resolved — never stuck in limbo indefinitely.
+The mere existence of EL2 is what makes EL1 urgent. Enrolled players who ignore EL1 risk losing everything to an outsider. This ensures that tournaments either start or get resolved, never stuck in limbo indefinitely.
 
 ### 5.3: Match Escalations
 
-Match escalations apply during active gameplay — after the tournament has started and matches are in progress.
+Match escalations apply during active gameplay, after the tournament has started and matches are in progress.
 
 #### 5.3.1: ML1 — Claim Victory by Opponent Timeout
 
@@ -481,7 +481,7 @@ ML1 is the first and most direct match escalation. When your opponent's clock hi
 Your opponent's Fischer timer reaches zero.
 
 **Who can trigger it**
-The active opponent in the match — the player whose clock has not hit zero.
+The active opponent in the match, the player whose clock has not hit zero.
 
 **What happens**
 You claim victory. Your opponent is eliminated. The match resolves as ML1. You advance to the next round normally.
@@ -490,7 +490,7 @@ You claim victory. Your opponent is eliminated. The match resolves as ML1. You a
 Without ML1, a player could simply stop making moves and hold their opponent hostage indefinitely. ML1 ensures that time is a real resource with real consequences. Run out of time and your opponent can end the match immediately.
 
 **The pressure dynamic**
-ML1 puts full responsibility on players to manage their time. Your opponent is not required to claim immediately — they may choose to wait — but the option is always available to them once your clock hits zero. Playing on a nearly depleted clock is a significant strategic liability.
+ML1 puts full responsibility on players to manage their time. Your opponent is not required to claim immediately. They may choose to wait, but the option is always available to them once your clock hits zero. Playing on a nearly depleted clock is a significant strategic liability.
 
 #### 5.3.2: ML2 — Eliminate Both Players in a Stalled Match
 
@@ -510,18 +510,18 @@ The triggering player eliminates both stalled players. The stalled match resolve
 Your tournament progress should not be held hostage by two players who stop making moves in an earlier round. ML2 gives advanced players the power to protect their investment and keep the tournament moving.
 
 **The pressure dynamic**
-The mere existence of ML2 puts pressure on stalled players to act. If you're in a stalled match and your opponent hasn't claimed ML1 yet, you're both at risk of being eliminated by an advanced player stepping in. Stalling doesn't just hurt your opponent — it puts both of you at risk.
+The mere existence of ML2 puts pressure on stalled players to act. If you're in a stalled match and your opponent hasn't claimed ML1 yet, you're both at risk of being eliminated by an advanced player stepping in. Stalling doesn't just hurt your opponent. It puts both of you at risk.
 
 #### 5.3.3: ML3 — Replace Players in an Abandoned Match
 
 **What it is**
-ML3 is the final match escalation. If a match has stalled and no advanced player has triggered ML2, ML3 opens the match to complete outsiders — anyone can step in, replace both stalled players, and take their spot in the bracket.
+ML3 is the final match escalation. If a match has stalled and no advanced player has triggered ML2, ML3 opens the match to complete outsiders. Anyone can step in, replace both stalled players, and take their spot in the bracket.
 
 **When it becomes available**
 2 minutes after ML2 becomes available without any advanced player triggering it.
 
 **Who can trigger it**
-Anyone — including players not enrolled in the tournament and complete strangers.
+Anyone, including players not enrolled in the tournament and complete strangers.
 
 **What happens**
 The outsider replaces both stalled players. They take the position in the bracket and continue competing. If ML3 is triggered in the finals, the outsider wins the entire tournament immediately and receives the prize pool.
@@ -559,7 +559,7 @@ From ETour's perspective, a disconnected opponent is identical to a stalling opp
 If your opponent stops making moves:
 
 1. Wait for their Fischer timer to hit zero
-2. Claim victory via 5.3.1 (ML1) — your opponent is eliminated, you advance
+2. Claim victory via 5.3.1 (ML1). Your opponent is eliminated, and you advance.
 
 Do not wait indefinitely for a disconnected opponent to return. Once their clock hits zero, claim your victory immediately. The option is available to you and it does not expire.
 
@@ -567,13 +567,13 @@ Do not wait indefinitely for a disconnected opponent to return. Once their clock
 
 If every match in a round ends in a draw simultaneously, all players in those matches are eliminated. If no players remain to advance, the tournament cannot continue.
 
-In this case the tournament resolves as 4.2 (R1) — all surviving players at the time of the full-round draw split the prize pool equally.
+In this case the tournament resolves as 4.2 (R1). All surviving players at the time of the full-round draw split the prize pool equally.
 
 This scenario is rare but fully handled. No ETH is ever lost or stuck. The prize pool is always distributed.
 
 ### 6.4: What if I'm the only finalist left?
 
-If you have advanced to the finals but your opponent never materializes — because the other semifinal ended in a draw, eliminating both semifinalists — you are the uncontested finalist.
+If you have advanced to the finals but your opponent never materializes because the other semifinal ended in a draw, eliminating both semifinalists, you are the uncontested finalist.
 
 The tournament resolves as 4.3 (R2). You win by default without playing the final match. You receive 95% of the prize pool instantly. No action required on your part.
 
@@ -581,9 +581,9 @@ The tournament resolves as 4.3 (R2). You win by default without playing the fina
 
 If both players in the finals stop making moves, the escalation system kicks in:
 
-1. **5.3.1 (ML1) becomes available** — each finalist can claim victory over the other by timeout once their opponent's clock hits zero
-2. **5.3.2 (ML2) does not apply** — there are no advanced players in the finals
-3. **5.3.3 (ML3) becomes available** — 2 minutes after ML2 would have been available, any outsider can step in, replace both finalists, and win the entire tournament
+1. **5.3.1 (ML1) becomes available:** each finalist can claim victory over the other by timeout once their opponent's clock hits zero
+2. **5.3.2 (ML2) does not apply:** there are no advanced players in the finals
+3. **5.3.3 (ML3) becomes available:** 2 minutes after ML2 would have been available, any outsider can step in, replace both finalists, and win the entire tournament
 
 If you are a finalist and both you and your opponent have stalled, be aware that an outsider can step in via 5.3.3 (ML3) and claim the prize pool that should have been yours. Claim ML1 the moment your opponent's clock hits zero. Do not wait.
 
@@ -591,7 +591,7 @@ If you are a finalist and both you and your opponent have stalled, be aware that
 
 If your Fischer timer hits zero, your opponent can claim victory over you via 5.3.1 (ML1) at any moment. You cannot make any more moves once your clock hits zero.
 
-There is no appeal, no extension, no grace period. Time management is your responsibility. If your clock hits zero, you have lost the match — your opponent simply needs to claim it.
+There is no appeal, no extension, and no grace period. Time management is your responsibility. If your clock hits zero, you have lost the match. Your opponent simply needs to claim it.
 
 **Prevention:** Manage your time bank carefully. The Fischer timer gives you a small increment after each move you make, so staying active keeps your clock healthier than going silent for long periods.
 
@@ -601,7 +601,7 @@ No. Once you have enrolled in a lobby by paying the entry fee, your ETH is commi
 
 This is by design. Withdrawals would allow players to sabotage tournaments by enrolling and then pulling out at the last moment. The no-withdrawal rule protects all enrolled players and ensures the prize pool is always intact.
 
-If you enrolled in a lobby that never starts because not enough players join, your ETH is protected by the escalation system — 5.2.1 (EL1) lets enrolled players force-start the tournament, and 5.2.3 (EL2) ensures the prize pool is always claimed even if the tournament never starts.
+If you enrolled in a lobby that never starts because not enough players join, your ETH is protected by the escalation system. 5.2.1 (EL1) lets enrolled players force-start the tournament, and 5.2.3 (EL2) ensures the prize pool is always claimed even if the tournament never starts.
 
 ### 6.8: What happens to my ETH if the tournament never starts?
 
@@ -610,7 +610,7 @@ Your ETH is never permanently trapped. ETour guarantees resolution in every scen
 If you are enrolled in a lobby that never fills:
 
 - **You can trigger 5.2.1 (EL1)** to force-start the tournament with however many players have joined
-- **If you don't trigger EL1**, an outsider can trigger 5.2.3 (EL2) after the window closes and claim the entire prize pool — including your entry fee
+- **If you don't trigger EL1**, an outsider can trigger 5.2.3 (EL2) after the window closes and claim the entire prize pool, including your entry fee
 
 The safest path: if your lobby isn't filling and the enrollment window is expiring, trigger EL1 yourself. Start the tournament with whoever showed up. Don't wait for EL2 to become available to outsiders.
 
