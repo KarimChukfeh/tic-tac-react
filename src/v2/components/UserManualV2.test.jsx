@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import UserManualV2 from './UserManualV2';
 
 const manualMarkdown = `## Table of Contents
@@ -206,5 +206,21 @@ describe('UserManualV2', () => {
     fireEvent.click(enrollmentToggle);
 
     expect(screen.getByRole('button', { name: /collapse 5.2: enrollment escalations/i })).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('opens to the first subsection when the manual open event targets 1.1', async () => {
+    render(<UserManualV2 />);
+
+    await act(async () => {
+      window.dispatchEvent(new CustomEvent('open-user-manual', {
+        detail: { targetHash: '11-what-is-etour' },
+      }));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /user manual/i })).toHaveAttribute('aria-expanded', 'true');
+      expect(screen.getByRole('button', { name: '1. Getting Started' })).toHaveAttribute('aria-expanded', 'true');
+      expect(window.location.hash).toBe('#11-what-is-etour');
+    });
   });
 });

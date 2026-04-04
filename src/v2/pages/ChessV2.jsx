@@ -535,7 +535,9 @@ export default function ChessV2() {
       heroLinkNoticeTimeoutRef.current = null;
     }
     setHeroLinkNoticeVisible(false);
-    window.dispatchEvent(new Event('open-user-manual'));
+    window.dispatchEvent(new CustomEvent('open-user-manual', {
+      detail: { targetHash: '11-what-is-etour' },
+    }));
     window.requestAnimationFrame(() => {
       const manualSection = document.getElementById('user-manual');
       manualSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });

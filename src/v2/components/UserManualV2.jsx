@@ -925,8 +925,14 @@ const UserManualV2 = ({
   };
 
   useEffect(() => {
-    const handleOpenManual = () => {
+    const handleOpenManual = (event) => {
       setIsExpanded(true);
+
+      const targetHash = event?.detail?.targetHash;
+      if (targetHash) {
+        window.history.replaceState(null, '', `#${targetHash}`);
+        window.dispatchEvent(new HashChangeEvent('hashchange'));
+      }
     };
 
     window.addEventListener('open-user-manual', handleOpenManual);
