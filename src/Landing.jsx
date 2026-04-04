@@ -644,17 +644,26 @@ export default function Landing() {
               Start Playing
             </button>
             <span className="text-slate-500 text-lg font-medium">or</span>
-            <Link
-              id="read-the-whitepaper"
-              to="/whitepaper"
-              className="font-bold text-xl text-cyan-400 transition-all duration-300 hover:text-cyan-300"
-              style={whitepaperGlow ? {
-                textShadow: '0 0 8px #22d3ee, 0 0 20px #22d3ee, 0 0 40px #06b6d4',
-                animation: 'whitepaperPulse 2s ease-out forwards',
-              } : {}}
-            >
-              Read The Whitepaper
-            </Link>
+            <div className="grid items-center gap-x-3 gap-y-2 text-xl font-bold sm:grid-cols-[1fr_auto_1fr]">
+              <Link
+                id="read-the-whitepaper"
+                to="/whitepaper"
+                className="text-cyan-400 transition-all duration-300 hover:text-cyan-300 sm:justify-self-end"
+                style={whitepaperGlow ? {
+                  textShadow: '0 0 8px #22d3ee, 0 0 20px #22d3ee, 0 0 40px #06b6d4',
+                  animation: 'whitepaperPulse 2s ease-out forwards',
+                } : {}}
+              >
+                Read The Whitepaper
+              </Link>
+              <span className="text-center text-slate-500">or</span>
+              <Link
+                to="/manual"
+                className="text-cyan-400 transition-colors duration-300 hover:text-cyan-300 sm:justify-self-start"
+              >
+                Browse The Manual
+              </Link>
+            </div>
           </div>
         </section>
         
