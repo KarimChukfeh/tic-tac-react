@@ -146,8 +146,8 @@ body {
   }
 }
 
-h3:target,
-h3.highlight-target {
+[data-manual-heading="true"]:target,
+[data-manual-heading="true"].highlight-target {
   animation: target-highlight 3.5s ease-out;
   border-radius: 0.5rem;
   padding-left: 0.5rem;

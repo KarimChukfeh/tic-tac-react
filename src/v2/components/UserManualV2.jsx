@@ -1,23 +1,36 @@
-import { isValidElement, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { AlertCircle, BookOpen, ChevronDown, ChevronUp } from 'lucide-react';
+import {
+  AlertCircle,
+  BookOpen,
+  ChevronDown,
+  ChevronRight,
+  ChevronUp,
+  LayoutList,
+} from 'lucide-react';
 
 const HEADING_ALIASES = {
-  '8-draws': ['draws'],
-  '10-r0--normal-resolution': ['r0'],
-  '11-r1--draw-resolution': ['r1'],
-  '12-r2--uncontested-finalist': ['r2'],
-  '13-el0--canceled-tournament': ['el0'],
-  'el1--force-start-tournament-after-enrollment-window-expires': ['el1'],
-  'el1--extend-enrollment-window-when-solo-enrolled': ['el1x'],
-  'el2--claim-abandoned-prize-pool-when-tournament-never-started': ['el2'],
-  'ml1--claim-victory-by-opponent-timeout': ['ml1'],
-  'ml2--eliminate-both-players-in-a-stalled-match': ['ml2'],
-  'ml3--replace-players-in-an-abandoned-match': ['ml3'],
+  '32-draws': ['draws'],
+  '41-normal-resolution': ['r0'],
+  '42-draw-resolution': ['r1'],
+  '43-uncontested-finalist': ['r2'],
+  '44-canceled-tournament': ['el0'],
+  '521-el1--force-start-tournament-after-enrollment-window-expires': ['el1'],
+  '522-el1--extend-enrollment-window-when-solo-enrolled': ['el1x'],
+  '523-el2--claim-abandoned-prize-pool-when-tournament-never-started': ['el2'],
+  '531-ml1--claim-victory-by-opponent-timeout': ['ml1'],
+  '532-ml2--eliminate-both-players-in-a-stalled-match': ['ml2'],
+  '533-ml3--replace-players-in-an-abandoned-match': ['ml3'],
 };
 
-const MANUAL_ALIAS_IDS = Object.values(HEADING_ALIASES).flat();
+const ALIAS_IDS = Object.values(HEADING_ALIASES).flat();
+const ALIAS_TO_HEADING = Object.fromEntries(
+  Object.entries(HEADING_ALIASES).flatMap(([headingId, aliases]) => aliases.map((alias) => [alias, headingId])),
+);
+const CONTENT_TRANSITION_MS = 220;
+
+const trimBlock = (value = '') => value.replace(/^\n+|\n+$/g, '');
 
 const slugifyHeading = (value = '') => value
   .normalize('NFKD')
@@ -27,89 +40,274 @@ const slugifyHeading = (value = '') => value
   .trim()
   .replace(/\s/g, '-');
 
-const getTextContent = (value) => {
-  if (typeof value === 'string' || typeof value === 'number') {
-    return String(value);
+const splitTitle = (title = '') => {
+  const sectionMatch = title.match(/^(\d+\.)\s+(.+)$/) || title.match(/^([A-Z]\))\s+(.+)$/);
+  if (sectionMatch) {
+    return { eyebrow: sectionMatch[1], label: sectionMatch[2] };
   }
 
-  if (Array.isArray(value)) {
-    return value.map(getTextContent).join('');
+  const topicMatch = title.match(/^(\d+(?:\.\d+)+):\s+(.+)$/) || title.match(/^([A-Z](?:-[A-Za-z0-9*]+)?):\s+(.+)$/);
+  if (topicMatch) {
+    return { eyebrow: topicMatch[1], label: topicMatch[2] };
   }
 
-  if (isValidElement(value)) {
-    return getTextContent(value.props.children);
-  }
-
-  return '';
+  return { eyebrow: '', label: title };
 };
 
-const extractHeadingIds = (markdown) => markdown
-  .split('\n')
-  .map((line) => line.match(/^#{2,4}\s+(.*)$/)?.[1]?.trim())
-  .filter(Boolean)
-  .map(slugifyHeading);
-
-const transformTocForMarkdown = (markdown) => {
-  const separator = '\n---\n';
-  const separatorIndex = markdown.indexOf(separator);
-
-  if (separatorIndex === -1 || !markdown.startsWith('## Table of Contents')) {
-    return markdown;
-  }
-
-  const tocBlock = markdown.slice(0, separatorIndex);
-  const remainder = markdown.slice(separatorIndex);
-  const transformedToc = tocBlock
-    .split('\n')
-    .map((line) => {
-      const trimmed = line.trim();
-
-      if (/^\[.+\]\(#.+\)$/.test(trimmed)) {
-        return `- ${trimmed}`;
-      }
-
-      if (/^\s+-\s+\[.+\]\(#.+\)$/.test(line)) {
-        return `  ${trimmed}`;
-      }
-
-      return line;
-    })
-    .join('\n');
-
-  return `${transformedToc}${remainder}`;
+const extractCode = (title = '') => {
+  const match = title.match(/\b(R0|R1|R2|EL0|EL1\*?|EL2|ML1|ML2|ML3)\b/);
+  return match ? match[1] : '';
 };
 
-const createHeading = (Tag, className) => {
-  const Heading = ({ children }) => {
-    const headingText = getTextContent(children);
-    const headingId = slugifyHeading(headingText);
-    const aliases = HEADING_ALIASES[headingId] ?? [];
+const splitMarkdownByLevel = (markdown, level) => {
+  const marker = `${'#'.repeat(level)} `;
+  const lines = trimBlock(markdown).split('\n');
+  const introLines = [];
+  const items = [];
+  let current = null;
 
-    return (
-      <>
-        {aliases.map((alias) => (
-          <span
-            key={alias}
-            id={alias}
-            data-heading-id={headingId}
-            className="block relative -top-24 h-0 invisible"
-            aria-hidden="true"
-          />
-        ))}
-        <Tag
-          id={headingId}
-          data-manual-heading="true"
-          className={`${className} scroll-mt-24`}
-        >
-          {children}
-        </Tag>
-      </>
-    );
+  const pushCurrent = () => {
+    if (!current) return;
+    items.push({
+      title: current.title,
+      id: slugifyHeading(current.title),
+      markdown: trimBlock(current.lines.join('\n')),
+    });
+    current = null;
   };
 
-  Heading.displayName = `UserManual${Tag.toUpperCase()}`;
+  lines.forEach((line) => {
+    if (line.startsWith(marker)) {
+      pushCurrent();
+      current = { title: line.slice(marker.length).trim(), lines: [] };
+      return;
+    }
 
-  return Heading;
+    if (current) {
+      current.lines.push(line);
+      return;
+    }
+
+    introLines.push(line);
+  });
+
+  pushCurrent();
+
+  return {
+    introMarkdown: trimBlock(introLines.join('\n')),
+    items,
+  };
+};
+
+const parseTocGroups = (markdown) => {
+  const groups = [];
+  let currentGroup = null;
+
+  const ensureGroup = () => {
+    if (currentGroup) return currentGroup;
+    currentGroup = { label: 'Browse', id: 'browse', items: [] };
+    groups.push(currentGroup);
+    return currentGroup;
+  };
+
+  trimBlock(markdown).split('\n').forEach((line) => {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed === '---') {
+      return;
+    }
+
+    if (/^\*\*.+\*\*$/.test(trimmed) && !trimmed.includes('](')) {
+      currentGroup = {
+        label: trimmed.replace(/^\*\*|\*\*$/g, '').trim(),
+        id: slugifyHeading(trimmed.replace(/^\*\*|\*\*$/g, '').trim()),
+        items: [],
+      };
+      groups.push(currentGroup);
+      return;
+    }
+
+    const listItemMatch = line.match(/^(\s*)-\s+\[([^\]]+)\]\((#[^)]+)\)$/);
+    if (listItemMatch) {
+      ensureGroup().items.push({
+        label: listItemMatch[2],
+        href: listItemMatch[3],
+        depth: listItemMatch[1].length > 0 ? 1 : 0,
+      });
+      return;
+    }
+
+    const directLinkMatch = trimmed.match(/^\*\*\[([^\]]+)\]\((#[^)]+)\)\*\*$/);
+    if (directLinkMatch) {
+      currentGroup = {
+        label: directLinkMatch[1],
+        id: slugifyHeading(directLinkMatch[1]),
+        items: [{
+        label: directLinkMatch[1],
+        href: directLinkMatch[2],
+        depth: 0,
+        }],
+      };
+      groups.push(currentGroup);
+    }
+  });
+
+  return groups.filter((group) => group.items.length > 0);
+};
+
+const parseGlossary = (markdown) => {
+  const lines = trimBlock(markdown).split('\n');
+  const entries = [];
+  const footerLines = [];
+  let currentTerm = null;
+  let currentLines = [];
+  let inFooter = false;
+
+  const pushCurrent = () => {
+    if (!currentTerm) return;
+    entries.push({
+      term: currentTerm,
+      markdown: trimBlock(currentLines.join('\n')),
+    });
+    currentTerm = null;
+    currentLines = [];
+  };
+
+  lines.forEach((line) => {
+    const trimmed = line.trim();
+
+    if (inFooter) {
+      footerLines.push(line);
+      return;
+    }
+
+    if (trimmed === '---' && currentTerm) {
+      pushCurrent();
+      inFooter = true;
+      footerLines.push(line);
+      return;
+    }
+
+    const termMatch = trimmed.match(/^\*\*(.+)\*\*$/);
+    if (termMatch) {
+      pushCurrent();
+      currentTerm = termMatch[1];
+      return;
+    }
+
+    if (currentTerm) {
+      currentLines.push(line);
+    }
+  });
+
+  pushCurrent();
+
+  return {
+    entries,
+    footerMarkdown: trimBlock(footerLines.join('\n')),
+  };
+};
+
+const parseManual = (rawMarkdown) => {
+  const normalized = rawMarkdown.replace(/\r\n/g, '\n').trim();
+  const { items: h2Sections } = splitMarkdownByLevel(normalized, 2);
+  const tocSection = h2Sections.find((section) => section.title === 'Table of Contents');
+  const contentSections = h2Sections
+    .filter((section) => section.title !== 'Table of Contents')
+    .map((section) => {
+      const { introMarkdown, items: subsections } = splitMarkdownByLevel(section.markdown, 3);
+      return {
+        title: section.title,
+        id: section.id,
+        introMarkdown,
+        subsections: subsections.map((subsection) => {
+          const { introMarkdown: subsectionIntro, items: nestedSubsections } = splitMarkdownByLevel(subsection.markdown, 4);
+          return {
+            title: subsection.title,
+            id: subsection.id,
+            markdown: subsectionIntro,
+            nestedSubsections: nestedSubsections.map((nested) => ({
+              title: nested.title,
+              id: nested.id,
+              markdown: nested.markdown,
+            })),
+          };
+        }),
+      };
+    });
+
+  const glossarySection = contentSections.find((section) => section.id === '7-glossary');
+  const glossary = glossarySection ? parseGlossary(glossarySection.introMarkdown) : { entries: [], footerMarkdown: '' };
+
+  const headingIds = contentSections.flatMap((section) => [
+    section.id,
+    ...section.subsections.flatMap((subsection) => [
+      subsection.id,
+      ...subsection.nestedSubsections.map((nested) => nested.id),
+    ]),
+  ]);
+
+  const headingToSectionId = Object.fromEntries(contentSections.flatMap((section) => ([
+    [section.id, section.id],
+    ...section.subsections.flatMap((subsection) => ([
+      [subsection.id, section.id],
+      ...subsection.nestedSubsections.map((nested) => [nested.id, section.id]),
+    ])),
+  ])));
+
+  const faqIds = (contentSections.find((section) => section.id === '6-edge-cases--faq')?.subsections ?? [])
+    .map((subsection) => subsection.id);
+
+  const tocGroups = (tocSection ? parseTocGroups(tocSection.markdown) : []).map((group) => {
+    const firstItemId = group.items[0]?.href?.slice(1) ?? '';
+    return {
+      ...group,
+      id: headingToSectionId[firstItemId] ?? group.id,
+    };
+  });
+
+  return {
+    tocGroups,
+    sections: contentSections,
+    headingIds,
+    headingToSectionId,
+    faqIds,
+    glossary,
+  };
+};
+
+const ManualAliasAnchors = ({ headingId }) => {
+  const aliases = HEADING_ALIASES[headingId] ?? [];
+
+  return aliases.map((alias) => (
+    <span
+      key={alias}
+      id={alias}
+      data-heading-id={headingId}
+      className="block relative -top-24 h-0 invisible"
+      aria-hidden="true"
+    />
+  ));
+};
+
+const ManualHeading = ({
+  level = 2,
+  title,
+  className,
+}) => {
+  const Tag = `h${level}`;
+
+  return (
+    <>
+      <ManualAliasAnchors headingId={slugifyHeading(title)} />
+      <Tag
+        id={slugifyHeading(title)}
+        data-manual-heading="true"
+        className={className}
+      >
+        {title}
+      </Tag>
+    </>
+  );
 };
 
 const MarkdownLink = ({ href = '', children, ...props }) => {
@@ -134,20 +332,298 @@ const MarkdownTable = ({ children }) => (
   </div>
 );
 
+const MarkdownBody = ({
+  markdown,
+  colors,
+}) => {
+  if (!markdown) return null;
+
+  return (
+    <div className="prose prose-invert max-w-none prose-p:leading-7">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          p: ({ children }) => <p className="mb-4 text-gray-300 last:mb-0">{children}</p>,
+          strong: ({ children }) => <strong className={`font-semibold ${colors.secondary}`}>{children}</strong>,
+          em: ({ children }) => <em className="italic text-slate-300">{children}</em>,
+          a: MarkdownLink,
+          ul: ({ children }) => <ul className="mb-4 ml-6 list-disc space-y-2 text-gray-300">{children}</ul>,
+          ol: ({ children }) => <ol className="mb-4 ml-6 list-decimal space-y-2 text-gray-300">{children}</ol>,
+          li: ({ children }) => <li className="pl-1">{children}</li>,
+          hr: () => <hr className={`my-6 ${colors.borderDark}`} />,
+          table: MarkdownTable,
+          thead: ({ children }) => <thead className="bg-slate-900/70">{children}</thead>,
+          tbody: ({ children }) => <tbody className="divide-y divide-slate-800">{children}</tbody>,
+          tr: ({ children }) => <tr className="align-top">{children}</tr>,
+          th: ({ children }) => <th className="px-4 py-3 text-left font-semibold text-slate-100">{children}</th>,
+          td: ({ children }) => <td className="px-4 py-3 text-gray-300">{children}</td>,
+          code: ({ children }) => (
+            <code className="rounded bg-slate-900/80 px-1.5 py-0.5 text-sm text-sky-200">{children}</code>
+          ),
+        }}
+      >
+        {markdown}
+      </ReactMarkdown>
+    </div>
+  );
+};
+
+const TocNav = ({
+  groups,
+  activeHash,
+  expandedSectionId,
+  onToggleSection,
+}) => (
+  <nav className="rounded-2xl border border-slate-700/60 bg-slate-950/60 p-4 backdrop-blur-sm">
+    <div className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
+      <LayoutList size={15} />
+      <span>Browse The Manual</span>
+    </div>
+    <div className="space-y-5">
+      {groups.map((group) => (
+        <div key={group.label}>
+          <button
+            type="button"
+            onClick={() => onToggleSection(group.id)}
+            aria-expanded={expandedSectionId === group.id}
+            className={`flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left text-sm font-semibold transition-all duration-300 ease-out ${
+              expandedSectionId === group.id
+                ? 'bg-slate-900/80 text-white shadow-[0_16px_40px_rgba(15,23,42,0.32)]'
+                : 'text-slate-200 hover:bg-slate-900/60 hover:text-white'
+            }`}
+          >
+            <span>{group.label}</span>
+            <ChevronRight
+              size={16}
+              className={`transition-all duration-300 ease-out ${expandedSectionId === group.id ? 'rotate-90 text-sky-300' : 'text-slate-500'}`}
+            />
+          </button>
+          <div
+            className={`grid transition-[grid-template-rows,opacity,transform,margin] duration-300 ease-out ${
+              expandedSectionId === group.id
+                ? 'mt-2 grid-rows-[1fr] opacity-100 translate-y-0'
+                : 'mt-0 grid-rows-[0fr] opacity-0 -translate-y-1'
+            }`}
+          >
+            <div className="overflow-hidden">
+              <div className="space-y-1.5 pt-0.5">
+              {group.items.map((item) => {
+                const isActive = item.href === `#${activeHash}`;
+
+                return (
+                  <a
+                    key={`${group.label}-${item.href}`}
+                    href={item.href}
+                    className={`block rounded-xl py-2 text-sm transition-all duration-300 ease-out ${
+                      isActive
+                        ? 'bg-sky-500/20 text-white ring-1 ring-sky-400/40 shadow-[0_10px_24px_rgba(14,165,233,0.15)]'
+                        : 'text-slate-300 hover:bg-slate-900/80 hover:text-white'
+                    } ${item.depth ? 'ml-10 border-l border-slate-700/70 pl-5 text-slate-400' : 'ml-5 pl-4'}`}
+                  >
+                    {item.label}
+                  </a>
+                );
+              })}
+              </div>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  </nav>
+);
+
+const SectionHeader = ({
+  title,
+  colors,
+  subtitle,
+}) => {
+  return (
+    <div className="mb-6">
+      <ManualHeading
+        level={2}
+        title={title}
+        className={`scroll-mt-24 text-2xl font-bold ${colors.secondary}`}
+      />
+      {subtitle ? <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">{subtitle}</p> : null}
+    </div>
+  );
+};
+
+const TopicCard = ({
+  title,
+  markdown,
+  nestedSubsections,
+  colors,
+}) => {
+  const code = extractCode(title);
+
+  return (
+    <article className="rounded-2xl border border-slate-700/60 bg-slate-950/45 p-5 shadow-[0_18px_60px_rgba(2,6,23,0.26)]">
+      <div className="mb-4 flex flex-wrap items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <ManualHeading
+            level={3}
+            title={title}
+            className={`scroll-mt-24 text-xl font-semibold ${colors.secondary}`}
+          />
+        </div>
+        {code ? (
+          <span className="rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-200">
+            {code}
+          </span>
+        ) : null}
+      </div>
+      <MarkdownBody markdown={markdown} colors={colors} />
+
+      {nestedSubsections.length ? (
+        <div className="mt-6 space-y-4 border-t border-slate-800 pt-5">
+          {nestedSubsections.map((nested) => {
+            const nestedCode = extractCode(nested.title);
+
+            return (
+              <div key={nested.id} className="rounded-xl border border-slate-800/80 bg-slate-900/65 p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <ManualHeading
+                      level={4}
+                      title={nested.title}
+                      className={`scroll-mt-24 text-base font-semibold ${colors.highlightText ?? colors.secondary}`}
+                    />
+                  </div>
+                  {nestedCode ? (
+                    <span className="rounded-full border border-violet-400/25 bg-violet-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-violet-200">
+                      {nestedCode}
+                    </span>
+                  ) : null}
+                </div>
+                <MarkdownBody markdown={nested.markdown} colors={colors} />
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+    </article>
+  );
+};
+
+const FaqItem = ({
+  item,
+  colors,
+  isOpen,
+  onToggle,
+}) => (
+  <article className="overflow-hidden rounded-2xl border border-slate-700/60 bg-slate-950/45">
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={isOpen}
+      className="flex w-full items-start justify-between gap-4 p-5 text-left"
+    >
+      <div className="min-w-0 flex-1">
+        <ManualHeading
+          level={3}
+          title={item.title}
+          className={`scroll-mt-24 text-lg font-semibold ${colors.secondary}`}
+        />
+      </div>
+      <span className={`mt-1 transition-transform ${isOpen ? 'rotate-90' : ''}`}>
+        <ChevronRight size={18} className={colors.primary} />
+      </span>
+    </button>
+
+    {isOpen ? (
+      <div className="border-t border-slate-800 px-5 pb-5 pt-4">
+        <MarkdownBody markdown={item.markdown} colors={colors} />
+      </div>
+    ) : null}
+  </article>
+);
+
+const GlossaryGrid = ({
+  glossary,
+  colors,
+}) => (
+  <div className="space-y-6">
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {glossary.entries.map((entry) => (
+        <article key={entry.term} className="rounded-2xl border border-slate-700/60 bg-slate-950/45 p-5">
+          <h3 className={`mb-3 text-lg font-semibold ${colors.secondary}`}>{entry.term}</h3>
+          <MarkdownBody markdown={entry.markdown} colors={colors} />
+        </article>
+      ))}
+    </div>
+    {glossary.footerMarkdown ? (
+      <div className="rounded-2xl border border-slate-700/60 bg-slate-950/60 p-5">
+        <MarkdownBody markdown={glossary.footerMarkdown} colors={colors} />
+      </div>
+    ) : null}
+  </div>
+);
+
+const renderSectionBody = ({
+  section,
+  colors,
+  faqOpenId,
+  setFaqOpenId,
+  glossary,
+}) => {
+  if (section.id === '7-glossary') {
+    return <GlossaryGrid glossary={glossary} colors={colors} />;
+  }
+
+  if (section.id === '6-edge-cases--faq') {
+    return (
+      <div className="space-y-4">
+        {section.subsections.map((subsection) => (
+          <FaqItem
+            key={subsection.id}
+            item={subsection}
+            colors={colors}
+            isOpen={faqOpenId === subsection.id}
+            onToggle={() => setFaqOpenId((current) => (current === subsection.id ? null : subsection.id))}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  const gridClass = 'space-y-4';
+
+  return (
+    <div className={gridClass}>
+      {section.subsections.map((subsection) => (
+        <TopicCard
+          key={subsection.id}
+          title={subsection.title}
+          markdown={subsection.markdown}
+          nestedSubsections={subsection.nestedSubsections}
+          colors={colors}
+        />
+      ))}
+    </div>
+  );
+};
+
 const UserManualV2 = ({
   isElite = false,
   gameSpecificContent = null,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [markdown, setMarkdown] = useState('');
-  const [headingIds, setHeadingIds] = useState([]);
+  const [manualData, setManualData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
+  const [activeHash, setActiveHash] = useState('');
+  const [faqOpenId, setFaqOpenId] = useState(null);
+  const [expandedSectionId, setExpandedSectionId] = useState('1-getting-started');
+  const [displayedSectionId, setDisplayedSectionId] = useState('1-getting-started');
+  const [contentVisible, setContentVisible] = useState(true);
 
   const colors = isElite ? {
     primary: 'text-[#fbbf24]',
     secondary: 'text-[#fff8e7]',
     muted: 'text-[#d4b866]',
+    highlightText: 'text-[#fff8e7]',
     bg: 'from-[#fbbf24]/10 to-[#f59e0b]/10',
     border: 'border-[#d4a012]/30',
     borderDark: 'border-[#d4a012]/20',
@@ -157,6 +633,7 @@ const UserManualV2 = ({
     primary: 'text-purple-400',
     secondary: 'text-purple-200',
     muted: 'text-purple-300',
+    highlightText: 'text-purple-100',
     bg: 'from-blue-500/10 to-purple-500/10',
     border: 'border-purple-400/30',
     borderDark: 'border-purple-400/20',
@@ -180,8 +657,7 @@ const UserManualV2 = ({
         const rawMarkdown = await response.text();
         if (isCancelled) return;
 
-        setMarkdown(transformTocForMarkdown(rawMarkdown));
-        setHeadingIds(extractHeadingIds(rawMarkdown));
+        setManualData(parseManual(rawMarkdown));
       } catch (error) {
         if (isCancelled) return;
         setErrorMessage(error instanceof Error ? error.message : 'Unable to load the user manual.');
@@ -200,7 +676,8 @@ const UserManualV2 = ({
   }, []);
 
   useEffect(() => {
-    const knownHashes = new Set(['user-manual', ...MANUAL_ALIAS_IDS, ...headingIds]);
+    const knownHashes = new Set(['user-manual', ...ALIAS_IDS, ...(manualData?.headingIds ?? [])]);
+    const faqHashes = new Set(manualData?.faqIds ?? []);
 
     const handleHashChange = () => {
       const hash = window.location.hash.slice(1);
@@ -212,21 +689,16 @@ const UserManualV2 = ({
 
       window.requestAnimationFrame(() => {
         const target = document.getElementById(hash);
-        const headingId = target?.dataset?.headingId || hash;
-        const heading = document.getElementById(headingId);
+        const resolvedHeadingId = target?.dataset?.headingId || ALIAS_TO_HEADING[hash] || hash;
 
-        if (!heading || heading.dataset.manualHeading !== 'true') {
-          return;
+        if (faqHashes.has(resolvedHeadingId)) {
+          setFaqOpenId(resolvedHeadingId);
         }
 
-        document.querySelectorAll('.highlight-target').forEach((element) => {
-          element.classList.remove('highlight-target');
-        });
-
-        heading.classList.add('highlight-target');
-        window.setTimeout(() => {
-          heading.classList.remove('highlight-target');
-        }, 3500);
+        setActiveHash(resolvedHeadingId);
+        if (manualData?.headingToSectionId?.[resolvedHeadingId]) {
+          setExpandedSectionId(manualData.headingToSectionId[resolvedHeadingId]);
+        }
       });
     };
 
@@ -236,7 +708,44 @@ const UserManualV2 = ({
     return () => {
       window.removeEventListener('hashchange', handleHashChange);
     };
-  }, [headingIds]);
+  }, [manualData]);
+
+  useEffect(() => {
+    if (!activeHash) {
+      return;
+    }
+
+    const timer = window.requestAnimationFrame(() => {
+      const rawHash = window.location.hash.slice(1);
+      const target = document.getElementById(rawHash) || document.getElementById(activeHash);
+      const resolvedHeadingId = target?.dataset?.headingId || activeHash;
+      const heading = document.getElementById(resolvedHeadingId);
+
+      if (!heading || heading.dataset.manualHeading !== 'true') {
+        return;
+      }
+
+      heading.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+      document.querySelectorAll('[data-manual-heading="true"].highlight-target').forEach((element) => {
+        element.classList.remove('highlight-target');
+      });
+
+      heading.classList.add('highlight-target');
+      window.setTimeout(() => {
+        heading.classList.remove('highlight-target');
+      }, 3500);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(timer);
+    };
+  }, [activeHash, expandedSectionId]);
+
+  const expandedSection = manualData?.sections.find((section) => section.id === expandedSectionId) ?? null;
+  const hasExpandedSection = Boolean(expandedSection);
+  const displayedSection = manualData?.sections.find((section) => section.id === displayedSectionId) ?? null;
+  const hasDisplayedSection = Boolean(displayedSection);
 
   useEffect(() => {
     const handleOpenManual = () => {
@@ -248,6 +757,62 @@ const UserManualV2 = ({
       window.removeEventListener('open-user-manual', handleOpenManual);
     };
   }, []);
+
+  useEffect(() => {
+    let timeoutId = null;
+    let frameId = null;
+
+    if (expandedSectionId === displayedSectionId) {
+      if (expandedSectionId) {
+        frameId = window.requestAnimationFrame(() => {
+          setContentVisible(true);
+        });
+      }
+
+      return () => {
+        if (timeoutId) window.clearTimeout(timeoutId);
+        if (frameId) window.cancelAnimationFrame(frameId);
+      };
+    }
+
+    if (!expandedSectionId) {
+      setContentVisible(false);
+      timeoutId = window.setTimeout(() => {
+        setDisplayedSectionId(null);
+      }, CONTENT_TRANSITION_MS);
+
+      return () => {
+        if (timeoutId) window.clearTimeout(timeoutId);
+        if (frameId) window.cancelAnimationFrame(frameId);
+      };
+    }
+
+    if (!displayedSectionId) {
+      setDisplayedSectionId(expandedSectionId);
+      setContentVisible(false);
+      frameId = window.requestAnimationFrame(() => {
+        setContentVisible(true);
+      });
+
+      return () => {
+        if (timeoutId) window.clearTimeout(timeoutId);
+        if (frameId) window.cancelAnimationFrame(frameId);
+      };
+    }
+
+    setContentVisible(false);
+    timeoutId = window.setTimeout(() => {
+      setDisplayedSectionId(expandedSectionId);
+      frameId = window.requestAnimationFrame(() => {
+        setContentVisible(true);
+      });
+    }, CONTENT_TRANSITION_MS);
+
+    return () => {
+      if (timeoutId) window.clearTimeout(timeoutId);
+      if (frameId) window.cancelAnimationFrame(frameId);
+    };
+  }, [expandedSectionId, displayedSectionId]);
 
   return (
     <div className={`bg-gradient-to-br ${colors.bg} border ${colors.border} rounded-2xl p-6`}>
@@ -266,7 +831,7 @@ const UserManualV2 = ({
         </span>
       </button>
 
-      {isExpanded && (
+      {isExpanded ? (
         <div className={`mt-6 rounded-2xl border ${colors.panelBorder} ${colors.panel} p-5 md:p-6`}>
           {isLoading ? (
             <p className="text-sm text-slate-300">Loading manual...</p>
@@ -283,46 +848,89 @@ const UserManualV2 = ({
                 </p>
               </div>
             </div>
-          ) : (
-            <div className="prose prose-invert max-w-none prose-headings:font-bold prose-p:leading-7">
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                components={{
-                  h2: createHeading('h2', `text-2xl font-bold ${colors.secondary} mt-10 first:mt-0`),
-                  h3: createHeading('h3', `text-xl font-semibold ${colors.secondary} mt-8`),
-                  h4: createHeading('h4', `text-lg font-semibold ${colors.muted} mt-6`),
-                  p: ({ children }) => <p className="text-gray-300 mb-4 last:mb-0">{children}</p>,
-                  strong: ({ children }) => <strong className={`font-semibold ${colors.secondary}`}>{children}</strong>,
-                  em: ({ children }) => <em className="text-slate-300 italic">{children}</em>,
-                  a: MarkdownLink,
-                  ul: ({ children }) => <ul className="list-disc ml-6 mb-4 space-y-2 text-gray-300">{children}</ul>,
-                  ol: ({ children }) => <ol className="list-decimal ml-6 mb-4 space-y-2 text-gray-300">{children}</ol>,
-                  li: ({ children }) => <li className="pl-1">{children}</li>,
-                  hr: () => <hr className={`my-8 ${colors.borderDark}`} />,
-                  table: MarkdownTable,
-                  thead: ({ children }) => <thead className="bg-slate-900/70">{children}</thead>,
-                  tbody: ({ children }) => <tbody className="divide-y divide-slate-800">{children}</tbody>,
-                  tr: ({ children }) => <tr className="align-top">{children}</tr>,
-                  th: ({ children }) => <th className="px-4 py-3 text-left font-semibold text-slate-100">{children}</th>,
-                  td: ({ children }) => <td className="px-4 py-3 text-gray-300">{children}</td>,
-                  code: ({ children }) => (
-                    <code className="rounded bg-slate-900/80 px-1.5 py-0.5 text-sm text-sky-200">{children}</code>
-                  ),
-                }}
+          ) : manualData ? (
+            <div className="flex flex-col gap-6 xl:flex-row xl:items-start">
+              <aside
+                className={`space-y-4 transition-[max-width,transform,opacity] duration-500 ease-out ${
+                  hasExpandedSection
+                    ? 'xl:sticky xl:top-24 xl:w-[320px] xl:min-w-[320px] xl:max-w-[320px]'
+                    : 'xl:mx-auto xl:w-full xl:max-w-4xl'
+                }`}
               >
-                {markdown}
-              </ReactMarkdown>
-            </div>
-          )}
+                <div
+                  className={`transition-[transform,width,max-width] duration-500 ease-out ${
+                    hasExpandedSection ? 'xl:translate-x-0' : 'xl:translate-x-0'
+                  }`}
+                >
+                  <TocNav
+                    groups={manualData.tocGroups}
+                    activeHash={activeHash}
+                    expandedSectionId={expandedSectionId}
+                    onToggleSection={(sectionId) => {
+                      setExpandedSectionId((current) => (current === sectionId ? null : sectionId));
+                      setFaqOpenId(null);
+                    }}
+                  />
+                </div>
+              </aside>
 
-          {gameSpecificContent ? (
-            <>
-              <hr className={`my-8 ${colors.borderDark}`} />
-              {gameSpecificContent}
-            </>
+              <div
+                className={`min-w-0 overflow-hidden transition-[max-width,opacity,transform,margin] duration-500 ease-out ${
+                  hasExpandedSection
+                    ? 'xl:flex-1 xl:max-w-none xl:translate-x-0 xl:opacity-100'
+                    : 'xl:max-w-0 xl:translate-x-10 xl:opacity-0 xl:pointer-events-none'
+                }`}
+                aria-hidden={!hasExpandedSection}
+              >
+                <div
+                  className={`space-y-6 transition-[opacity,transform] duration-[220ms] ease-out ${
+                    contentVisible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'
+                  }`}
+                >
+                  {displayedSection ? (
+                    <section
+                      key={displayedSection.id}
+                      className="rounded-[1.6rem] border border-slate-700/60 bg-slate-950/40 p-5 md:p-6"
+                    >
+                      <SectionHeader
+                        title={displayedSection.title}
+                        colors={colors}
+                        subtitle={displayedSection.id === '6-edge-cases--faq'
+                          ? 'FAQ items now render as interactive accordions backed by the markdown headings.'
+                          : displayedSection.id === '7-glossary'
+                          ? 'Glossary entries are parsed into discrete cards while still authored in one markdown section.'
+                          : null}
+                      />
+
+                      {displayedSection.id !== '7-glossary' ? (
+                        <MarkdownBody markdown={displayedSection.introMarkdown} colors={colors} />
+                      ) : null}
+
+                      {displayedSection.id !== '7-glossary' && displayedSection.introMarkdown && displayedSection.subsections.length ? (
+                        <hr className={`my-6 ${colors.borderDark}`} />
+                      ) : null}
+
+                      {renderSectionBody({
+                        section: displayedSection,
+                        colors,
+                        faqOpenId,
+                        setFaqOpenId,
+                        glossary: manualData.glossary,
+                      })}
+                    </section>
+                  ) : null}
+
+                  {hasDisplayedSection && gameSpecificContent ? (
+                    <section className="rounded-[1.6rem] border border-slate-700/60 bg-slate-950/40 p-5 md:p-6">
+                      {gameSpecificContent}
+                    </section>
+                  ) : null}
+                </div>
+              </div>
+            </div>
           ) : null}
         </div>
-      )}
+      ) : null}
     </div>
   );
 };
