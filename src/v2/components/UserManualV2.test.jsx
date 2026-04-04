@@ -11,6 +11,9 @@ const manualMarkdown = `## Table of Contents
 - [3.2: Draws](#32-draws)
 
 **5. Anti-Griefing**
+- [5.1: What's Griefing?](#51-whats-griefing)
+- [5.2: Enrollment Escalations](#52-enrollment-escalations)
+  - [5.2.1: EL1 — Force-Start Tournament](#521-el1--force-start-tournament-after-enrollment-window-expires)
 - [5.3: Match Escalations](#53-match-escalations)
   - [5.3.1: ML1 — Claim Victory by Opponent Timeout](#531-ml1--claim-victory-by-opponent-timeout)
 
@@ -34,6 +37,18 @@ ETour is a fully on-chain tournament platform.
 Draws eliminate both players.
 
 ## 5. Anti-Griefing
+
+### 5.1: What's Griefing?
+
+Griefing blocks progress.
+
+### 5.2: Enrollment Escalations
+
+Enrollment escalations protect stalled tournaments.
+
+#### 5.2.1: EL1 — Force-Start Tournament After Enrollment Window Expires
+
+Force-start the tournament.
 
 ### 5.3: Match Escalations
 
@@ -174,5 +189,22 @@ describe('UserManualV2', () => {
       expect(screen.getByRole('button', { name: '3. Matches & Play' })).toHaveAttribute('aria-expanded', 'true');
       expect(screen.getByRole('button', { name: '1. Getting Started' })).toHaveAttribute('aria-expanded', 'false');
     });
+  });
+
+  it('keeps nested anti-griefing subsections collapsed until expanded', async () => {
+    render(<UserManualV2 />);
+
+    fireEvent.click(screen.getByRole('button', { name: /user manual/i }));
+    fireEvent.click(await screen.findByRole('button', { name: '5. Anti-Griefing' }));
+
+    const enrollmentToggle = await screen.findByRole('button', { name: /expand 5.2: enrollment escalations/i });
+    const matchToggle = screen.getByRole('button', { name: /expand 5.3: match escalations/i });
+
+    expect(enrollmentToggle).toHaveAttribute('aria-expanded', 'false');
+    expect(matchToggle).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.click(enrollmentToggle);
+
+    expect(screen.getByRole('button', { name: /collapse 5.2: enrollment escalations/i })).toHaveAttribute('aria-expanded', 'true');
   });
 });

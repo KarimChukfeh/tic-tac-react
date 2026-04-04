@@ -102,6 +102,7 @@ const splitMarkdownByLevel = (markdown, level) => {
 const parseTocGroups = (markdown) => {
   const groups = [];
   let currentGroup = null;
+  let currentParentItem = null;
 
   const ensureGroup = () => {
     if (currentGroup) return currentGroup;
@@ -122,17 +123,28 @@ const parseTocGroups = (markdown) => {
         id: slugifyHeading(trimmed.replace(/^\*\*|\*\*$/g, '').trim()),
         items: [],
       };
+      currentParentItem = null;
       groups.push(currentGroup);
       return;
     }
 
     const listItemMatch = line.match(/^(\s*)-\s+\[([^\]]+)\]\((#[^)]+)\)$/);
     if (listItemMatch) {
-      ensureGroup().items.push({
+      const item = {
         label: listItemMatch[2],
         href: listItemMatch[3],
+        id: listItemMatch[3].slice(1),
         depth: listItemMatch[1].length > 0 ? 1 : 0,
-      });
+        children: [],
+      };
+
+      if (item.depth > 0 && currentParentItem) {
+        currentParentItem.children.push(item);
+        return;
+      }
+
+      ensureGroup().items.push(item);
+      currentParentItem = item;
       return;
     }
 
@@ -142,11 +154,14 @@ const parseTocGroups = (markdown) => {
         label: directLinkMatch[1],
         id: slugifyHeading(directLinkMatch[1]),
         items: [{
-        label: directLinkMatch[1],
-        href: directLinkMatch[2],
-        depth: 0,
+          label: directLinkMatch[1],
+          href: directLinkMatch[2],
+          id: directLinkMatch[2].slice(1),
+          depth: 0,
+          children: [],
         }],
       };
+      currentParentItem = null;
       groups.push(currentGroup);
     }
   });
@@ -334,13 +349,13 @@ const MarkdownTable = ({ children }) => (
 
 const HighlightCallout = ({ children }) => (
   <div className="rounded-[1.75rem] border-2 border-cyan-400/75 bg-[linear-gradient(135deg,rgba(30,64,175,0.36),rgba(59,130,246,0.14),rgba(30,41,59,0.2))] px-7 py-7 shadow-[0_24px_70px_rgba(34,211,238,0.14)]">
-    <div className="flex items-start gap-4">
-      <div className="mt-1 shrink-0 text-cyan-300">
+    <div className="flex flex-col gap-3 md:flex-row md:items-start md:gap-4">
+      <div className="shrink-0 text-cyan-300">
         <svg width="34" height="34" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path d="M12 3l7 3v6c0 5-3.5 8-7 9-3.5-1-7-4-7-9V6l7-3z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
         </svg>
       </div>
-      <div className="space-y-3 text-[0.92rem] leading-7 text-white md:text-[1.02rem] md:leading-8 [&>p]:m-0 [&>p]:font-semibold">
+      <div className="min-w-0 space-y-3 text-[0.85rem] leading-6 text-white md:text-[1.02rem] md:leading-8 [&>p]:m-0 [&>p]:font-semibold">
         {children}
       </div>
     </div>
@@ -417,6 +432,85 @@ const AntiGriefingOverviewBody = ({
   );
 };
 
+const TocNavItem = ({
+  item,
+  activeHash,
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const isActive = item.href === `#${activeHash}`;
+  const hasActiveChild = item.children.some((child) => child.href === `#${activeHash}`);
+  const isExpanded = item.children.length ? (isOpen || isActive || hasActiveChild) : false;
+
+  return (
+    <div className={item.depth ? 'ml-10 border-l border-slate-700/70 pl-5' : 'ml-5'}>
+      <div
+        className={`flex items-center gap-2 rounded-xl transition-all duration-300 ease-out ${
+          isActive
+            ? 'bg-sky-500/20 text-white ring-1 ring-sky-400/40 shadow-[0_10px_24px_rgba(14,165,233,0.15)]'
+            : hasActiveChild
+            ? 'bg-slate-900/80 text-white'
+            : 'text-slate-300 hover:bg-slate-900/80 hover:text-white'
+        }`}
+      >
+        <a
+          href={item.href}
+          className={`min-w-0 flex-1 rounded-xl py-2 text-sm transition-all duration-300 ease-out ${
+            item.depth ? 'pl-0 pr-2 text-slate-400' : 'pl-4 pr-2'
+          }`}
+        >
+          {item.label}
+        </a>
+        {item.children.length ? (
+          <button
+            type="button"
+            aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${item.label}`}
+            aria-expanded={isExpanded}
+            onClick={() => setIsOpen((current) => !current)}
+            className="mr-1 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
+          >
+            <ChevronRight
+              size={15}
+              className={`transition-transform duration-300 ease-out ${isExpanded ? 'rotate-90 text-sky-300' : ''}`}
+            />
+          </button>
+        ) : null}
+      </div>
+
+      {item.children.length ? (
+        <div
+          className={`grid transition-[grid-template-rows,opacity,transform,margin] duration-300 ease-out ${
+            isExpanded
+              ? 'mt-1.5 grid-rows-[1fr] opacity-100 translate-y-0'
+              : 'mt-0 grid-rows-[0fr] opacity-0 -translate-y-1'
+          }`}
+        >
+          <div className="overflow-hidden">
+            <div className="space-y-1 border-l border-slate-800/80 pl-4">
+              {item.children.map((child) => {
+                const isChildActive = child.href === `#${activeHash}`;
+
+                return (
+                  <a
+                    key={child.href}
+                    href={child.href}
+                    className={`block rounded-xl py-2 pl-4 pr-3 text-sm transition-all duration-300 ease-out ${
+                      isChildActive
+                        ? 'bg-sky-500/20 text-white ring-1 ring-sky-400/40 shadow-[0_10px_24px_rgba(14,165,233,0.15)]'
+                        : 'text-slate-400 hover:bg-slate-900/80 hover:text-white'
+                    }`}
+                  >
+                    {child.label}
+                  </a>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
 const TocNav = ({
   groups,
   activeHash,
@@ -456,23 +550,13 @@ const TocNav = ({
           >
             <div className="overflow-hidden">
               <div className="space-y-1.5 pt-0.5">
-              {group.items.map((item) => {
-                const isActive = item.href === `#${activeHash}`;
-
-                return (
-                  <a
+                {group.items.map((item) => (
+                  <TocNavItem
                     key={`${group.label}-${item.href}`}
-                    href={item.href}
-                    className={`block rounded-xl py-2 text-sm transition-all duration-300 ease-out ${
-                      isActive
-                        ? 'bg-sky-500/20 text-white ring-1 ring-sky-400/40 shadow-[0_10px_24px_rgba(14,165,233,0.15)]'
-                        : 'text-slate-300 hover:bg-slate-900/80 hover:text-white'
-                    } ${item.depth ? 'ml-10 border-l border-slate-700/70 pl-5 text-slate-400' : 'ml-5 pl-4'}`}
-                  >
-                    {item.label}
-                  </a>
-                );
-              })}
+                    item={item}
+                    activeHash={activeHash}
+                  />
+                ))}
               </div>
             </div>
           </div>
