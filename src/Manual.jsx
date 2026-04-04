@@ -18,7 +18,7 @@ const Manual = () => {
         </button>
 
         <div id="user-manual">
-          <UserManualV2 defaultExpanded collapsible={false} />
+          <UserManualV2 defaultExpanded collapsible={false} showAllSections />
         </div>
       </div>
     </div>

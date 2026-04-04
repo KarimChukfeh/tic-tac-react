@@ -662,6 +662,7 @@ const UserManualV2 = ({
   gameSpecificContent = null,
   defaultExpanded = false,
   collapsible = true,
+  showAllSections = false,
 }) => {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded || !collapsible);
   const [manualData, setManualData] = useState(null);
@@ -804,6 +805,18 @@ const UserManualV2 = ({
   const handleToggleSection = (group) => {
     if (!group) return;
 
+    if (showAllSections) {
+      setExpandedSectionId(group.id);
+      setActiveHash(group.id);
+      setFaqOpenId(null);
+      window.history.replaceState(null, '', `#${group.id}`);
+      window.requestAnimationFrame(() => {
+        const sectionHeading = document.getElementById(group.id);
+        sectionHeading?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+      return;
+    }
+
     if (expandedSectionId === group.id) {
       setExpandedSectionId(null);
       setActiveHash('');
@@ -836,6 +849,10 @@ const UserManualV2 = ({
   }, []);
 
   useEffect(() => {
+    if (showAllSections) {
+      return undefined;
+    }
+
     let timeoutId = null;
     let frameId = null;
 
@@ -889,7 +906,89 @@ const UserManualV2 = ({
       if (timeoutId) window.clearTimeout(timeoutId);
       if (frameId) window.cancelAnimationFrame(frameId);
     };
-  }, [expandedSectionId, displayedSectionId]);
+  }, [expandedSectionId, displayedSectionId, showAllSections]);
+
+  useEffect(() => {
+    if (!showAllSections || !manualData || !isExpanded) {
+      return undefined;
+    }
+
+    let frameId = null;
+
+    const syncExpandedSectionWithScroll = () => {
+      frameId = null;
+
+      const threshold = 180;
+      let currentSectionId = manualData.sections[0]?.id ?? null;
+
+      manualData.sections.forEach((section) => {
+        const heading = document.getElementById(section.id);
+        if (!heading) return;
+
+        const { top } = heading.getBoundingClientRect();
+        if (top <= threshold) {
+          currentSectionId = section.id;
+        }
+      });
+
+      if (currentSectionId) {
+        setExpandedSectionId((previousId) => (previousId === currentSectionId ? previousId : currentSectionId));
+      }
+    };
+
+    const handleScroll = () => {
+      if (frameId !== null) {
+        return;
+      }
+
+      frameId = window.requestAnimationFrame(syncExpandedSectionWithScroll);
+    };
+
+    syncExpandedSectionWithScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', handleScroll);
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleScroll);
+      if (frameId !== null) {
+        window.cancelAnimationFrame(frameId);
+      }
+    };
+  }, [showAllSections, manualData, isExpanded]);
+
+  const renderSectionPanel = (section) => (
+    <section
+      key={section.id}
+      className="rounded-[1.6rem] border border-slate-700/60 bg-slate-950/40 p-5 md:p-6"
+    >
+      <SectionHeader
+        title={section.title}
+        colors={colors}
+        subtitle={section.id === '6-edge-cases--faq'
+          ? 'FAQ items now render as interactive accordions backed by the markdown headings.'
+          : section.id === '7-glossary'
+          ? 'Glossary entries are parsed into discrete cards while still authored in one markdown section.'
+          : null}
+      />
+
+      {section.id !== '7-glossary' ? (
+        <MarkdownBody markdown={section.introMarkdown} colors={colors} />
+      ) : null}
+
+      {section.id !== '7-glossary' && section.introMarkdown && section.subsections.length ? (
+        <hr className={`my-6 ${colors.borderDark}`} />
+      ) : null}
+
+      {renderSectionBody({
+        section,
+        colors,
+        faqOpenId,
+        setFaqOpenId,
+        glossary: manualData.glossary,
+      })}
+    </section>
+  );
 
   return (
     <div className={`bg-gradient-to-br ${colors.bg} border ${colors.border} rounded-2xl p-6`}>
@@ -936,7 +1035,9 @@ const UserManualV2 = ({
             <div className="flex flex-col gap-6 xl:flex-row xl:items-start">
               <aside
                 className={`space-y-4 transition-[max-width,transform,opacity] duration-500 ease-out ${
-                  hasExpandedSection
+                  showAllSections
+                    ? 'xl:sticky xl:top-24 xl:w-[320px] xl:min-w-[320px] xl:max-w-[320px]'
+                    : hasExpandedSection
                     ? 'xl:sticky xl:top-24 xl:w-[320px] xl:min-w-[320px] xl:max-w-[320px]'
                     : 'xl:flex-1 xl:w-full xl:max-w-none'
                 }`}
@@ -955,56 +1056,33 @@ const UserManualV2 = ({
 
               <div
                 className={`min-w-0 overflow-hidden transition-[max-width,opacity,transform,margin] duration-500 ease-out ${
-                  hasExpandedSection
+                  showAllSections
+                    ? 'xl:flex-1 xl:max-w-none xl:translate-x-0 xl:opacity-100'
+                    : hasExpandedSection
                     ? 'xl:flex-1 xl:max-w-none xl:translate-x-0 xl:opacity-100'
                     : 'xl:max-w-0 xl:translate-x-10 xl:opacity-0 xl:pointer-events-none'
                 }`}
-                aria-hidden={!hasExpandedSection}
+                aria-hidden={showAllSections ? false : !hasExpandedSection}
               >
-                <div
-                  className={`space-y-6 transition-[opacity,transform] duration-[220ms] ease-out ${
-                    contentVisible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'
-                  }`}
-                >
-                  {displayedSection ? (
-                    <section
-                      key={displayedSection.id}
-                      className="rounded-[1.6rem] border border-slate-700/60 bg-slate-950/40 p-5 md:p-6"
-                    >
-                      <SectionHeader
-                        title={displayedSection.title}
-                        colors={colors}
-                        subtitle={displayedSection.id === '6-edge-cases--faq'
-                          ? 'FAQ items now render as interactive accordions backed by the markdown headings.'
-                          : displayedSection.id === '7-glossary'
-                          ? 'Glossary entries are parsed into discrete cards while still authored in one markdown section.'
-                          : null}
-                      />
+                {showAllSections ? (
+                  <div className="space-y-6">
+                    {manualData.sections.map((section) => renderSectionPanel(section))}
+                  </div>
+                ) : (
+                  <div
+                    className={`space-y-6 transition-[opacity,transform] duration-[220ms] ease-out ${
+                      contentVisible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'
+                    }`}
+                  >
+                    {displayedSection ? renderSectionPanel(displayedSection) : null}
 
-                      {displayedSection.id !== '7-glossary' ? (
-                        <MarkdownBody markdown={displayedSection.introMarkdown} colors={colors} />
-                      ) : null}
-
-                      {displayedSection.id !== '7-glossary' && displayedSection.introMarkdown && displayedSection.subsections.length ? (
-                        <hr className={`my-6 ${colors.borderDark}`} />
-                      ) : null}
-
-                      {renderSectionBody({
-                        section: displayedSection,
-                        colors,
-                        faqOpenId,
-                        setFaqOpenId,
-                        glossary: manualData.glossary,
-                      })}
-                    </section>
-                  ) : null}
-
-                  {hasDisplayedSection && gameSpecificContent ? (
-                    <section className="rounded-[1.6rem] border border-slate-700/60 bg-slate-950/40 p-5 md:p-6">
-                      {gameSpecificContent}
-                    </section>
-                  ) : null}
-                </div>
+                    {hasDisplayedSection && gameSpecificContent ? (
+                      <section className="rounded-[1.6rem] border border-slate-700/60 bg-slate-950/40 p-5 md:p-6">
+                        {gameSpecificContent}
+                      </section>
+                    ) : null}
+                  </div>
+                )}
               </div>
             </div>
           ) : null}

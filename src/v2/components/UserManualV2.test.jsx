@@ -58,6 +58,8 @@ describe('UserManualV2', () => {
     vi.clearAllMocks();
     window.location.hash = '';
     window.HTMLElement.prototype.scrollIntoView = vi.fn();
+    vi.stubGlobal('requestAnimationFrame', (callback) => window.setTimeout(callback, 0));
+    vi.stubGlobal('cancelAnimationFrame', (id) => window.clearTimeout(id));
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
       text: vi.fn().mockResolvedValue(manualMarkdown),
@@ -120,5 +122,57 @@ describe('UserManualV2', () => {
     });
 
     expect(fetch).toHaveBeenCalledWith('/User_Manual.md');
+  });
+
+  it('can render the full manual as a sticky document view', async () => {
+    render(<UserManualV2 defaultExpanded collapsible={false} showAllSections />);
+
+    expect(await screen.findByRole('heading', { name: '1.1: What is ETour?' })).toBeInTheDocument();
+    expect(screen.getByText('Draws eliminate both players.')).toBeInTheDocument();
+    expect(screen.getByText('Trigger ML1 when your opponent times out.')).toBeInTheDocument();
+    expect(screen.getByText('Batch')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '3. Matches & Play' }));
+
+    await waitFor(() => {
+      expect(window.location.hash).toBe('#3-matches--play');
+    });
+  });
+
+  it('auto-expands the section currently in view in full document mode', async () => {
+    render(<UserManualV2 defaultExpanded collapsible={false} showAllSections />);
+
+    await screen.findByRole('heading', { name: '1.1: What is ETour?' });
+
+    const firstSection = document.getElementById('1-getting-started');
+    const thirdSection = document.getElementById('3-matches--play');
+    const fifthSection = document.getElementById('5-anti-griefing');
+    const sixthSection = document.getElementById('6-edge-cases--faq');
+    const seventhSection = document.getElementById('7-glossary');
+
+    const createRect = (top) => ({
+      top,
+      bottom: top + 100,
+      left: 0,
+      right: 0,
+      width: 0,
+      height: 100,
+      x: 0,
+      y: top,
+      toJSON: () => ({}),
+    });
+
+    firstSection.getBoundingClientRect = vi.fn(() => createRect(-240));
+    thirdSection.getBoundingClientRect = vi.fn(() => createRect(120));
+    fifthSection.getBoundingClientRect = vi.fn(() => createRect(560));
+    sixthSection.getBoundingClientRect = vi.fn(() => createRect(940));
+    seventhSection.getBoundingClientRect = vi.fn(() => createRect(1280));
+
+    fireEvent.scroll(window);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '3. Matches & Play' })).toHaveAttribute('aria-expanded', 'true');
+      expect(screen.getByRole('button', { name: '1. Getting Started' })).toHaveAttribute('aria-expanded', 'false');
+    });
   });
 });
