@@ -332,6 +332,21 @@ const MarkdownTable = ({ children }) => (
   </div>
 );
 
+const HighlightCallout = ({ children }) => (
+  <div className="rounded-[1.75rem] border-2 border-cyan-400/75 bg-[linear-gradient(135deg,rgba(30,64,175,0.36),rgba(59,130,246,0.14),rgba(30,41,59,0.2))] px-7 py-7 shadow-[0_24px_70px_rgba(34,211,238,0.14)]">
+    <div className="flex items-start gap-4">
+      <div className="mt-1 shrink-0 text-cyan-300">
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 3l7 3v6c0 5-3.5 8-7 9-3.5-1-7-4-7-9V6l7-3z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+        </svg>
+      </div>
+      <div className="space-y-3 text-[0.92rem] leading-7 text-white md:text-[1.02rem] md:leading-8 [&>p]:m-0 [&>p]:font-semibold">
+        {children}
+      </div>
+    </div>
+  </div>
+);
+
 const MarkdownBody = ({
   markdown,
   colors,
@@ -350,6 +365,7 @@ const MarkdownBody = ({
           ul: ({ children }) => <ul className="mb-4 ml-6 list-disc space-y-2 text-[0.9rem] text-gray-300 md:text-base">{children}</ul>,
           ol: ({ children }) => <ol className="mb-4 ml-6 list-decimal space-y-2 text-[0.9rem] text-gray-300 md:text-base">{children}</ol>,
           li: ({ children }) => <li className="pl-1">{children}</li>,
+          blockquote: ({ children }) => <HighlightCallout>{children}</HighlightCallout>,
           hr: () => <hr className={`my-6 ${colors.borderDark}`} />,
           table: MarkdownTable,
           thead: ({ children }) => <thead className="bg-slate-900/70">{children}</thead>,
@@ -392,20 +408,7 @@ const AntiGriefingOverviewBody = ({
             </div>
           ),
           li: ({ children }) => <li>{children}</li>,
-          blockquote: ({ children }) => (
-            <div className="rounded-[1.75rem] border-2 border-cyan-400/75 bg-[linear-gradient(135deg,rgba(30,64,175,0.36),rgba(59,130,246,0.14),rgba(30,41,59,0.2))] px-7 py-7 shadow-[0_24px_70px_rgba(34,211,238,0.14)]">
-              <div className="flex items-start gap-4">
-                <div className="mt-1 shrink-0 text-cyan-300">
-                  <svg width="34" height="34" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <path d="M12 3l7 3v6c0 5-3.5 8-7 9-3.5-1-7-4-7-9V6l7-3z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
-                  </svg>
-                </div>
-                <div className="space-y-3 text-[0.92rem] leading-7 text-white md:text-[1.02rem] md:leading-8 [&>p]:m-0 [&>p]:font-semibold">
-                  {children}
-                </div>
-              </div>
-            </div>
-          ),
+          blockquote: ({ children }) => <HighlightCallout>{children}</HighlightCallout>,
         }}
       >
         {markdown}

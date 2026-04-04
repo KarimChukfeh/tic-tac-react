@@ -54,9 +54,15 @@
 
 ### 1.1: What is ETour?
 
-ETour is a fully on-chain tournament platform built on Arbitrum. You compete in skill-based games against real opponents over ETH stakes. No accounts, no admins, no intermediaries. Every move is a transaction. Every outcome is immutable. Every payout is instant and automatic.
+ETour is a fully on-chain tournament platform. You compete in skill-based games against real opponents over ETH stakes. 
 
-ETour is not a casino. There is no house edge, no randomness, no luck. The best player wins. The winner gets paid. That's it.
+Every move is a transaction. Every outcome is immutable. Every payout is instant and automatic.
+
+No accounts, no admins, no intermediaries.
+
+> ETour is not a casino. There is no house edge, no randomness, no luck.
+> 
+> The best player wins. The winner gets paid.
 
 ### 1.2: What You Need
 
