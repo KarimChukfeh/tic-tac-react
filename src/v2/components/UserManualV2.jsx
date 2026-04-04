@@ -384,7 +384,7 @@ const TocNav = ({
         <div key={group.label}>
           <button
             type="button"
-            onClick={() => onToggleSection(group.id)}
+            onClick={() => onToggleSection(group)}
             aria-expanded={expandedSectionId === group.id}
             className={`flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left text-sm font-semibold transition-all duration-300 ease-out ${
               expandedSectionId === group.id
@@ -740,12 +740,35 @@ const UserManualV2 = ({
     return () => {
       window.cancelAnimationFrame(timer);
     };
-  }, [activeHash, expandedSectionId]);
+  }, [activeHash, expandedSectionId, displayedSectionId]);
 
   const expandedSection = manualData?.sections.find((section) => section.id === expandedSectionId) ?? null;
   const hasExpandedSection = Boolean(expandedSection);
   const displayedSection = manualData?.sections.find((section) => section.id === displayedSectionId) ?? null;
   const hasDisplayedSection = Boolean(displayedSection);
+
+  const handleToggleSection = (group) => {
+    if (!group) return;
+
+    if (expandedSectionId === group.id) {
+      setExpandedSectionId(null);
+      setActiveHash('');
+      setFaqOpenId(null);
+      window.history.replaceState(null, '', '#user-manual');
+      return;
+    }
+
+    const firstHref = group.items[0]?.href ?? '';
+    const firstTargetId = firstHref.startsWith('#') ? firstHref.slice(1) : group.id;
+
+    setExpandedSectionId(group.id);
+    setActiveHash(firstTargetId);
+    setFaqOpenId(null);
+
+    if (firstTargetId) {
+      window.history.replaceState(null, '', `#${firstTargetId}`);
+    }
+  };
 
   useEffect(() => {
     const handleOpenManual = () => {
@@ -832,7 +855,7 @@ const UserManualV2 = ({
       </button>
 
       {isExpanded ? (
-        <div className={`mt-6 rounded-2xl border ${colors.panelBorder} ${colors.panel} p-5 md:p-6`}>
+        <div className="mt-6">
           {isLoading ? (
             <p className="text-sm text-slate-300">Loading manual...</p>
           ) : errorMessage ? (
@@ -854,22 +877,17 @@ const UserManualV2 = ({
                 className={`space-y-4 transition-[max-width,transform,opacity] duration-500 ease-out ${
                   hasExpandedSection
                     ? 'xl:sticky xl:top-24 xl:w-[320px] xl:min-w-[320px] xl:max-w-[320px]'
-                    : 'xl:mx-auto xl:w-full xl:max-w-4xl'
+                    : 'xl:flex-1 xl:w-full xl:max-w-none'
                 }`}
               >
                 <div
-                  className={`transition-[transform,width,max-width] duration-500 ease-out ${
-                    hasExpandedSection ? 'xl:translate-x-0' : 'xl:translate-x-0'
-                  }`}
+                  className="w-full transition-[transform,width,max-width] duration-500 ease-out xl:translate-x-0"
                 >
                   <TocNav
                     groups={manualData.tocGroups}
                     activeHash={activeHash}
                     expandedSectionId={expandedSectionId}
-                    onToggleSection={(sectionId) => {
-                      setExpandedSectionId((current) => (current === sectionId ? null : sectionId));
-                      setFaqOpenId(null);
-                    }}
+                    onToggleSection={handleToggleSection}
                   />
                 </div>
               </aside>

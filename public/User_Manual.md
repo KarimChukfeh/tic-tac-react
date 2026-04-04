@@ -5,17 +5,17 @@
 - [1.2: What You Need](#12-what-you-need)
 - [1.3: The Five Steps](#13-the-five-steps)
 
-**2. Lobby & Enrollment**
+**2. Lobbies & Enrollment**
 - [2.1: Creating a Lobby](#21-creating-a-lobby)
 - [2.2: Enrolling in a Lobby](#22-enrolling-in-a-lobby)
 - [2.3: Prize Pool](#23-prize-pool)
 
-**3. Match Play**
+**3. Matches & Play**
 - [3.1: How Matches Work](#31-how-matches-work)
 - [3.2: Draws](#32-draws)
 
-**4. Resolution Reasons**
-- [4.0: Resolution Taxonomy Overview](#40-resolution-taxonomy-overview)
+**4. Resolution**
+- [4.0: Taxonomy Overview](#40-taxonomy-overview)
 - [4.1: Normal Resolution](#41-normal-resolution)
 - [4.2: Draw Resolution](#42-draw-resolution)
 - [4.3: Uncontested Finalist](#43-uncontested-finalist)
@@ -25,8 +25,8 @@
 - [4.7: Advanced Player Wins via Stalled Semifinal](#47-advanced-player-wins-via-stalled-semifinal)
 - [4.8: Outsider Replaces Both Players](#48-outsider-replaces-both-players)
 
-**5. Escalation System**
-- [5.1: What is Escalation?](#51-what-is-escalation)
+**5. Anti-Griefing**
+- [5.1: What's Griefing?](#51-whats-griefing)
 - [5.2: Enrollment Escalations](#52-enrollment-escalations)
   - [5.2.1: EL1 — Force-Start Tournament](#521-el1--force-start-tournament-after-enrollment-window-expires)
   - [5.2.2: EL1* — Extend Enrollment Window](#522-el1--extend-enrollment-window-when-solo-enrolled)
@@ -87,7 +87,7 @@ The moment the last spot is filled, the tournament starts automatically. No admi
 **Step 5: Winner Takes All**
 When the tournament concludes, the prize pool is distributed instantly and automatically to the winner's wallet. No withdrawal, no waiting, no approval. The ETH arrives the moment the final match resolves.
 
-## 2. Lobby & Enrollment
+## 2. Lobbies & Enrollment
 
 ### 2.1: Creating a Lobby
 
@@ -151,9 +151,9 @@ These percentages are hardcoded in the smart contract and cannot be changed by a
 **When and How You Get Paid**
 The winner receives their ETH the moment the final match resolves. No withdrawal step, no waiting period, no approval required. The smart contract sends the prize pool directly to the winner's wallet automatically.
 
-If a tournament resolves in an unusual way — via escalation, draw, or abandonment — the prize pool is distributed according to the resolution reason. See Section 4: Resolution Reasons for full details on every possible payout scenario.
+If a tournament resolves in an unusual way — via escalation, draw, or abandonment — the prize pool is distributed according to the resolution reason. See Section 4: Resolution for full details on every possible payout scenario.
 
-## 3. Match Play
+## 3. Matches & Play
 
 ### 3.1: How Matches Work
 
@@ -198,11 +198,11 @@ The final round is handled differently. If the finals match ends in a draw, the 
 
 If all matches in a round end in draws simultaneously, the tournament cannot continue. All remaining players split the prize pool equally.
 
-These are resolution reasons 4.2 (R1) and 4.3 (R2). See Section 4: Resolution Reasons for full details.
+These are resolution reasons 4.2 (R1) and 4.3 (R2). See Section 4: Resolution for full details.
 
-## 4. Resolution Reasons
+## 4. Resolution
 
-### 4.0: Resolution Taxonomy Overview
+### 4.0: Taxonomy Overview
 
 **What is a Resolution Reason?**
 Every tournament on ETour ends for a reason. That reason is codified as a resolution code — a short identifier that tells you exactly why and how a tournament concluded.
@@ -386,9 +386,9 @@ ML3 can apply at multiple levels:
 **Important note**
 The mere existence of ML3 creates a cascading pressure effect across all three match escalation levels. Stalled players know their opponent can claim 4.6 (ML1). Opponents who don't claim 4.6 (ML1) risk having advanced players trigger 4.7 (ML2). Advanced players who don't trigger 4.7 (ML2) risk an outsider stepping in via 4.8 (ML3). Inaction at every level is punished. Action at every level is rewarded.
 
-## 5. Escalation System
+## 5. Anti-Griefing
 
-### 5.1: What is Escalation?
+### 5.1: What's Griefing?
 
 **Why It Exists**
 Every competitive system faces the same problem: players who stop engaging. In chess, letting the clock run. Online, disconnecting and hoping opponents quit. In tournaments with real money on the line, stalling becomes a deliberate strategy — frustrate your opponent into leaving and claim a default victory.
