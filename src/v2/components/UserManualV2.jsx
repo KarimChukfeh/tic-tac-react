@@ -343,12 +343,12 @@ const MarkdownBody = ({
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          p: ({ children }) => <p className="mb-4 text-gray-300 last:mb-0">{children}</p>,
+          p: ({ children }) => <p className="mb-4 text-[0.9rem] text-gray-300 last:mb-0 md:text-base">{children}</p>,
           strong: ({ children }) => <strong className={`font-semibold ${colors.secondary}`}>{children}</strong>,
           em: ({ children }) => <em className="italic text-slate-300">{children}</em>,
           a: MarkdownLink,
-          ul: ({ children }) => <ul className="mb-4 ml-6 list-disc space-y-2 text-gray-300">{children}</ul>,
-          ol: ({ children }) => <ol className="mb-4 ml-6 list-decimal space-y-2 text-gray-300">{children}</ol>,
+          ul: ({ children }) => <ul className="mb-4 ml-6 list-disc space-y-2 text-[0.9rem] text-gray-300 md:text-base">{children}</ul>,
+          ol: ({ children }) => <ol className="mb-4 ml-6 list-decimal space-y-2 text-[0.9rem] text-gray-300 md:text-base">{children}</ol>,
           li: ({ children }) => <li className="pl-1">{children}</li>,
           hr: () => <hr className={`my-6 ${colors.borderDark}`} />,
           table: MarkdownTable,
@@ -356,7 +356,7 @@ const MarkdownBody = ({
           tbody: ({ children }) => <tbody className="divide-y divide-slate-800">{children}</tbody>,
           tr: ({ children }) => <tr className="align-top">{children}</tr>,
           th: ({ children }) => <th className="px-4 py-3 text-left font-semibold text-slate-100">{children}</th>,
-          td: ({ children }) => <td className="px-4 py-3 text-gray-300">{children}</td>,
+          td: ({ children }) => <td className="px-4 py-3 text-[0.9rem] text-gray-300 md:text-base">{children}</td>,
           code: ({ children }) => (
             <code className="rounded bg-slate-900/80 px-1.5 py-0.5 text-sm text-sky-200">{children}</code>
           ),
@@ -379,14 +379,14 @@ const AntiGriefingOverviewBody = ({
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          p: ({ children }) => <p className="text-[1.05rem] leading-9 text-gray-300">{children}</p>,
+          p: ({ children }) => <p className="text-[0.92rem] leading-7 text-gray-300 md:text-[1.05rem] md:leading-9">{children}</p>,
           strong: ({ children }) => <strong className={`font-semibold ${colors.secondary}`}>{children}</strong>,
           em: ({ children }) => <em className="italic text-slate-300">{children}</em>,
           a: MarkdownLink,
-          ol: ({ children }) => <ol className="ml-8 list-decimal space-y-5 text-[1.02rem] leading-8 text-gray-300">{children}</ol>,
+          ol: ({ children }) => <ol className="ml-8 list-decimal space-y-5 text-[0.92rem] leading-7 text-gray-300 md:text-[1.02rem] md:leading-8">{children}</ol>,
           ul: ({ children }) => (
             <div className="rounded-[1.75rem] border border-violet-300/25 bg-violet-500/8 px-7 py-6 shadow-[0_24px_70px_rgba(76,29,149,0.16)]">
-              <ul className="ml-6 list-disc space-y-5 text-[1.02rem] leading-8 text-gray-200 marker:text-violet-300">
+              <ul className="ml-6 list-disc space-y-5 text-[0.92rem] leading-7 text-gray-200 marker:text-violet-300 md:text-[1.02rem] md:leading-8">
                 {children}
               </ul>
             </div>
@@ -400,7 +400,7 @@ const AntiGriefingOverviewBody = ({
                     <path d="M12 3l7 3v6c0 5-3.5 8-7 9-3.5-1-7-4-7-9V6l7-3z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
                   </svg>
                 </div>
-                <div className="space-y-3 text-[1.02rem] leading-8 text-white [&>p]:m-0 [&>p]:font-semibold">
+                <div className="space-y-3 text-[0.92rem] leading-7 text-white md:text-[1.02rem] md:leading-8 [&>p]:m-0 [&>p]:font-semibold">
                   {children}
                 </div>
               </div>
