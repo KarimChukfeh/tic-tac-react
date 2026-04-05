@@ -10,6 +10,9 @@ const manualMarkdown = `## Table of Contents
 **3. Matches & Play**
 - [3.2: Draws](#32-draws)
 
+**4. Resolution**
+- [4.6: ML1 - Match Timeout](#46-ml1---match-timeout)
+
 **5. Anti-Griefing**
 - [5.1: What's Griefing?](#51-whats-griefing)
 - [5.2: Enrollment Escalations](#52-enrollment-escalations)
@@ -35,6 +38,12 @@ ETour is a fully on-chain tournament platform.
 ### 3.2: Draws
 
 Draws eliminate both players.
+
+## 4. Resolution
+
+### 4.6: ML1 - Match Timeout
+
+ML1 resolves a match when a player's clock hits zero.
 
 ## 5. Anti-Griefing
 
@@ -132,7 +141,7 @@ describe('UserManualV2', () => {
     fireEvent(window, new HashChangeEvent('hashchange'));
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: '5. Anti-Griefing' })).toHaveAttribute('aria-expanded', 'true');
+      expect(screen.getByRole('button', { name: '4. Resolution' })).toHaveAttribute('aria-expanded', 'true');
       expect(container.querySelector('#ml1')).toBeInTheDocument();
     });
 
@@ -161,6 +170,7 @@ describe('UserManualV2', () => {
 
     const firstSection = document.getElementById('1-getting-started');
     const thirdSection = document.getElementById('3-matches--play');
+    const fourthSection = document.getElementById('4-resolution');
     const fifthSection = document.getElementById('5-anti-griefing');
     const sixthSection = document.getElementById('6-edge-cases--faq');
     const seventhSection = document.getElementById('7-glossary');
@@ -179,9 +189,10 @@ describe('UserManualV2', () => {
 
     firstSection.getBoundingClientRect = vi.fn(() => createRect(-240));
     thirdSection.getBoundingClientRect = vi.fn(() => createRect(120));
-    fifthSection.getBoundingClientRect = vi.fn(() => createRect(560));
-    sixthSection.getBoundingClientRect = vi.fn(() => createRect(940));
-    seventhSection.getBoundingClientRect = vi.fn(() => createRect(1280));
+    fourthSection.getBoundingClientRect = vi.fn(() => createRect(560));
+    fifthSection.getBoundingClientRect = vi.fn(() => createRect(940));
+    sixthSection.getBoundingClientRect = vi.fn(() => createRect(1280));
+    seventhSection.getBoundingClientRect = vi.fn(() => createRect(1620));
 
     fireEvent.scroll(window);
 

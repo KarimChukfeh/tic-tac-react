@@ -11,6 +11,7 @@ import {
   getV2CompletionReasonManualLabel,
   getV2NeutralMatchReasonLabel,
 } from '../../v2/lib/reasonLabels';
+import UserManualAnchorLink from './UserManualAnchorLink';
 
 const getReasonSuffix = (completionReason) => {
   switch (completionReason) {
@@ -119,14 +120,14 @@ const CompletedMatchOutcomeBadge = ({
 
   if (href) {
     return (
-      <a
+      <UserManualAnchorLink
         href={href}
         onClick={onClick}
         className={`${mergedClassName} hover:opacity-80 transition-colors underline decoration-dotted cursor-pointer`}
         title={manualLabel ? `Learn more about ${manualLabel} in the User Manual` : ''}
       >
         {label}
-      </a>
+      </UserManualAnchorLink>
     );
   }
 

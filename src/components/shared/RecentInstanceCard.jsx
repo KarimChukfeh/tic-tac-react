@@ -10,6 +10,7 @@ import { Clock, Trophy, Award, Users } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
 import { getTournamentCompletionText, getTournamentResolutionReasonValue } from '../../utils/completionReasons';
 import { getV2TournamentResolutionText } from '../../v2/lib/reasonLabels';
+import UserManualAnchorLink from './UserManualAnchorLink';
 
 const RecentInstanceCard = ({ tierId, instanceId, contract, tierName = 'Tournament', walletAddress, reasonLabelMode = 'default' }) => {
   const [recentData, setRecentData] = useState(null);
@@ -141,12 +142,12 @@ const RecentInstanceCard = ({ tierId, instanceId, contract, tierName = 'Tourname
         <p className="text-sm text-purple-300 ml-10">
           Resolved via{' '}
           {reasonData.link ? (
-            <a
+            <UserManualAnchorLink
               href={reasonData.link}
               className="font-semibold text-white hover:text-cyan-300 underline transition-colors"
             >
               {reasonData.text}
-            </a>
+            </UserManualAnchorLink>
           ) : (
             <span className="font-semibold text-white">{reasonData.text}</span>
           )}

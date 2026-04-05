@@ -13,6 +13,7 @@ import { shortenAddress } from '../../utils/formatters';
 import { formatTimeRemaining } from '../../utils/activityHelpers';
 import { getCompletionReasonText, isDraw as isDrawReason } from '../../utils/completionReasons';
 import { getV2CompletionReasonText } from '../../v2/lib/reasonLabels';
+import { linkifyReasonText } from './UserManualAnchorLink';
 
 const PlayerActivity = ({
   activity,
@@ -511,7 +512,7 @@ const PlayerActivity = ({
                               const outcome = getCompletedMatchOutcome(match, account);
                               return outcome ? (
                                 <span className={`${outcome.color} font-mono text-xs font-bold px-2 py-1 rounded`}>
-                                  {outcome.label}
+                                  {linkifyReasonText(outcome.label, { keyPrefix: `player-activity-${matchKey}`, linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white' })}
                                 </span>
                               ) : null;
                             })() : (

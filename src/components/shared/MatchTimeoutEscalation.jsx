@@ -13,6 +13,8 @@
  */
 
 import { Clock } from 'lucide-react';
+import UserManualAnchorLink, { linkifyReasonText } from './UserManualAnchorLink';
+import { getUserManualHrefForReasonCode } from '../../utils/userManualLinks';
 
 const formatEscalationTime = (secs) => {
   const mins = Math.floor(secs / 60);
@@ -93,38 +95,96 @@ const MatchTimeoutEscalation = ({
       {/* Countdown timers */}
       <div className="space-y-1 text-xs">
         {canShowOutsideEscalations && timeToEsc1 > 0 && !escL2Available && (
-          <div className="text-orange-300">ML2 in: {formatEscalationTime(timeToEsc1)}</div>
+          <div className="text-orange-300">
+            {linkifyReasonText(`ML2 in: ${formatEscalationTime(timeToEsc1)}`, {
+              keyPrefix: 'match-timeout-ml2-in',
+              linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white',
+            })}
+          </div>
         )}
         {canShowOutsideEscalations && timeToEsc2 > 0 && !escL3Available && (
-          <div className="text-orange-300">ML3 in: {formatEscalationTime(timeToEsc2)}</div>
+          <div className="text-orange-300">
+            {linkifyReasonText(`ML3 in: ${formatEscalationTime(timeToEsc2)}`, {
+              keyPrefix: 'match-timeout-ml3-in',
+              linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white',
+            })}
+          </div>
         )}
         {canClaimTimeout && <div className="text-green-400 font-bold">Level 1 Active - Opponent Can Claim</div>}
-        {canShowOutsideEscalations && escL2Available && isUserAdvancedForRound && <div className="text-yellow-400 font-bold">ML2 Active - You Can Force Eliminate</div>}
-        {canShowOutsideEscalations && escL2Available && !isUserAdvancedForRound && <div className="text-yellow-400">ML2 Active (Advanced Players Only)</div>}
-        {canShowOutsideEscalations && escL3Available && !isUserAdvancedForRound && <div className="text-red-400 font-bold">ML3 Active - You Can Replace & Claim</div>}
-        {canShowOutsideEscalations && escL3Available && isUserAdvancedForRound && <div className="text-red-400">ML3 Active (Not Available to Advanced Players)</div>}
+        {canShowOutsideEscalations && escL2Available && isUserAdvancedForRound && (
+          <div className="text-yellow-400 font-bold">
+            {linkifyReasonText('ML2 Active - You Can Force Eliminate', {
+              keyPrefix: 'match-timeout-ml2-active-you',
+              linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white',
+            })}
+          </div>
+        )}
+        {canShowOutsideEscalations && escL2Available && !isUserAdvancedForRound && (
+          <div className="text-yellow-400">
+            {linkifyReasonText('ML2 Active (Advanced Players Only)', {
+              keyPrefix: 'match-timeout-ml2-active-advanced',
+              linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white',
+            })}
+          </div>
+        )}
+        {canShowOutsideEscalations && escL3Available && !isUserAdvancedForRound && (
+          <div className="text-red-400 font-bold">
+            {linkifyReasonText('ML3 Active - You Can Replace & Claim', {
+              keyPrefix: 'match-timeout-ml3-active-you',
+              linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white',
+            })}
+          </div>
+        )}
+        {canShowOutsideEscalations && escL3Available && isUserAdvancedForRound && (
+          <div className="text-red-400">
+            {linkifyReasonText('ML3 Active (Not Available to Advanced Players)', {
+              keyPrefix: 'match-timeout-ml3-active-not-advanced',
+              linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white',
+            })}
+          </div>
+        )}
       </div>
 
       {/* ML2: Force Eliminate (Advanced Players Only) */}
       {canForceEliminate && (
-        <button
-          onClick={onForceEliminate}
-          disabled={loading}
-          className="w-full mt-2 bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-all disabled:opacity-50"
-        >
-          ML2: Force Eliminate Both
-        </button>
+        <>
+          <button
+            onClick={onForceEliminate}
+            disabled={loading}
+            className="w-full mt-2 bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-all disabled:opacity-50"
+          >
+            Force Eliminate Both
+          </button>
+          <UserManualAnchorLink
+            href={getUserManualHrefForReasonCode('ML2')}
+            className="mt-2 block text-center text-xs text-yellow-200 hover:text-yellow-100 underline decoration-dotted underline-offset-2"
+          >
+            {linkifyReasonText('Learn more about ML2 (Force Eliminate)', {
+              keyPrefix: 'match-timeout-ml2-learn',
+            })}
+          </UserManualAnchorLink>
+        </>
       )}
 
       {/* ML3: Replace Both Players (Non-Advanced Players Only) */}
       {canReplace && (
-        <button
-          onClick={onClaimReplacement}
-          disabled={loading}
-          className="w-full mt-2 bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white font-bold py-2 px-4 rounded-lg transition-all disabled:opacity-50"
-        >
-          ML3: Replace Both & Advance
-        </button>
+        <>
+          <button
+            onClick={onClaimReplacement}
+            disabled={loading}
+            className="w-full mt-2 bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white font-bold py-2 px-4 rounded-lg transition-all disabled:opacity-50"
+          >
+            Replace Both & Advance
+          </button>
+          <UserManualAnchorLink
+            href={getUserManualHrefForReasonCode('ML3')}
+            className="mt-2 block text-center text-xs text-red-200 hover:text-red-100 underline decoration-dotted underline-offset-2"
+          >
+            {linkifyReasonText('Learn more about ML3 (Replace Players)', {
+              keyPrefix: 'match-timeout-ml3-learn',
+            })}
+          </UserManualAnchorLink>
+        </>
       )}
     </div>
   );

@@ -5,6 +5,8 @@
  * user-friendly messages for match endings.
  */
 
+import { getUserManualHrefForReasonCode } from './userManualLinks';
+
 // CompletionReason enum values (matches ETour_Storage.CompletionReason)
 export const CompletionReason = {
   NORMAL_WIN: 0,                    // Normal gameplay win (checkmate, connect 4, etc.)
@@ -56,23 +58,23 @@ export const getTournamentResolutionCategoryValue = (record) => toReasonNumber(
 export const getTournamentCompletionText = (reason) => {
   switch (reason) {
     case CompletionReason.NORMAL_WIN:
-      return { text: 'Normal Victory', link: null, summary: 'normal victory' };
+      return { text: 'Normal Victory', link: getUserManualHrefForReasonCode('R0'), summary: 'normal victory' };
     case CompletionReason.TIMEOUT:
-      return { text: 'ML1 Timeout Elimination', link: '#ml1', summary: 'timeout (ML1)' };
+      return { text: 'ML1 Timeout Elimination', link: getUserManualHrefForReasonCode('ML1'), summary: 'timeout (ML1)' };
     case CompletionReason.DRAW:
-      return { text: 'Draw Resolution', link: '#draws', summary: 'draw resolution' };
+      return { text: 'Draw Resolution', link: getUserManualHrefForReasonCode('R1'), summary: 'draw resolution' };
     case CompletionReason.FORCE_ELIMINATION:
-      return { text: 'ML2 Advanced Player Elimination', link: '#ml2', summary: 'ML2 elimination' };
+      return { text: 'ML2 Advanced Player Elimination', link: getUserManualHrefForReasonCode('ML2'), summary: 'ML2 elimination' };
     case CompletionReason.REPLACEMENT:
-      return { text: 'ML3 External Player Replacement', link: '#ml3', summary: 'ML3 replacement' };
+      return { text: 'ML3 External Player Replacement', link: getUserManualHrefForReasonCode('ML3'), summary: 'ML3 replacement' };
     case CompletionReason.ALL_DRAW_SCENARIO:
-      return { text: 'All-Draw Scenario Resolution', link: '#draws', summary: 'all-draw resolution' };
+      return { text: 'All-Draw Scenario Resolution', link: getUserManualHrefForReasonCode('R1'), summary: 'all-draw resolution' };
     case CompletionReason.SOLO_ENROLL_CANCELLED:
-      return { text: 'EL0 Cancellation', link: '#el0', summary: 'EL0 cancellation' };
+      return { text: 'EL0 Cancellation', link: getUserManualHrefForReasonCode('EL0'), summary: 'EL0 cancellation' };
     case CompletionReason.ABANDONED_TOURNAMENT_CLAIMED:
-      return { text: 'EL2 Abandoned Pool Claim', link: '#el2', summary: 'abandoned pool claim (EL2)' };
+      return { text: 'EL2 Abandoned Pool Claim', link: getUserManualHrefForReasonCode('EL2'), summary: 'abandoned pool claim (EL2)' };
     case CompletionReason.UNCONTESTED_FINALS_WIN:
-      return { text: 'Uncontested Finalist Resolution', link: null, summary: 'uncontested finalist resolution' };
+      return { text: 'Uncontested Finalist Resolution', link: getUserManualHrefForReasonCode('R2'), summary: 'uncontested finalist resolution' };
     default:
       return { text: 'Tournament Completion', link: null, summary: 'tournament completion' };
   }
@@ -188,14 +190,20 @@ export const getCompletedMatchOutcomeLabel = (reason, userWon, gameType = 'ticta
 export const getCompletionReasonHref = (reason) => {
   switch (reason) {
     case CompletionReason.TIMEOUT:
-      return '#ml1';
+      return getUserManualHrefForReasonCode('ML1');
     case CompletionReason.DRAW:
     case CompletionReason.ALL_DRAW_SCENARIO:
-      return '#draws';
+      return getUserManualHrefForReasonCode('R1');
     case CompletionReason.FORCE_ELIMINATION:
-      return '#ml2';
+      return getUserManualHrefForReasonCode('ML2');
     case CompletionReason.REPLACEMENT:
-      return '#ml3';
+      return getUserManualHrefForReasonCode('ML3');
+    case CompletionReason.SOLO_ENROLL_CANCELLED:
+      return getUserManualHrefForReasonCode('EL0');
+    case CompletionReason.ABANDONED_TOURNAMENT_CLAIMED:
+      return getUserManualHrefForReasonCode('EL2');
+    case CompletionReason.UNCONTESTED_FINALS_WIN:
+      return getUserManualHrefForReasonCode('R2');
     default:
       return null;
   }

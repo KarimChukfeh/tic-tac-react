@@ -20,6 +20,8 @@ import {
   isV2TournamentCancelledReason,
   V2TournamentResolutionReason,
 } from '../../v2/lib/reasonLabels';
+import UserManualAnchorLink, { linkifyReasonText } from './UserManualAnchorLink';
+import { getUserManualHrefForReasonCode } from '../../utils/userManualLinks';
 
 // Game-specific configurations
 const GAME_CONFIGS = {
@@ -450,12 +452,12 @@ const TournamentHeader = ({
             ) : null}
             {isEnrolled && !isSoloEnrollmentState && escalationState.canStartEscalation2 && (
               <div className="text-center mt-1">
-                <a
-                  href="#el2"
+                <UserManualAnchorLink
+                  href={getUserManualHrefForReasonCode('EL2')}
                   className="text-red-300 hover:text-red-200 text-[10px] underline underline-offset-[2px]"
                 >
-                  Abandoned! (EL2 active)
-                </a>
+                  {linkifyReasonText('Abandoned! (EL2 active)', { keyPrefix: 'tournament-header-el2-active' })}
+                </UserManualAnchorLink>
               </div>
             )}
           </div>
@@ -473,17 +475,17 @@ const TournamentHeader = ({
                   <div className="flex items-center gap-2">
                     <Clock className="text-orange-400" size={16} />
                     <span className="text-orange-300 text-xs font-semibold">
-                      EL1: Force Start in {formatTime(escalationState.timeToEscalation1)}
+                      {linkifyReasonText(`EL1: Force Start in ${formatTime(escalationState.timeToEscalation1)}`, { keyPrefix: 'tournament-header-el1-timer', linkClassName: 'underline decoration-dotted underline-offset-[2px] hover:text-orange-200' })}
                     </span>
                   </div>
                 </div>
-                <a
-                  href="#el1"
+                <UserManualAnchorLink
+                  href={getUserManualHrefForReasonCode('EL1')}
                   className="absolute top-3 right-3 text-orange-400 hover:text-orange-300 transition-colors"
                   title="Learn more about force-starting tournaments"
                 >
                   <HelpCircle size={16} />
-                </a>
+                </UserManualAnchorLink>
               </div>
             </div>
           )}
@@ -496,17 +498,17 @@ const TournamentHeader = ({
                   <div className="flex items-center gap-2">
                     <Clock className="text-red-400" size={16} />
                     <span className="text-red-300 text-xs font-semibold">
-                      EL2: Claim Abandoned Pool in {formatTime(escalationState.timeToEscalation2)}
+                      {linkifyReasonText(`EL2: Claim Abandoned Pool in ${formatTime(escalationState.timeToEscalation2)}`, { keyPrefix: 'tournament-header-el2-timer', linkClassName: 'underline decoration-dotted underline-offset-[2px] hover:text-red-200' })}
                     </span>
                   </div>
                 </div>
-                <a
-                  href="#el2"
+                <UserManualAnchorLink
+                  href={getUserManualHrefForReasonCode('EL2')}
                   className="absolute top-3 right-3 text-red-400 hover:text-red-300 transition-colors"
                   title="Learn more about claiming abandoned pools"
                 >
                   <HelpCircle size={16} />
-                </a>
+                </UserManualAnchorLink>
               </div>
             </div>
           )}
@@ -520,8 +522,16 @@ const TournamentHeader = ({
                 className={`w-full bg-gradient-to-r ${account ? 'from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800' : `${connectCtaGradient} ${connectCtaHover}`} text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-xs`}
               >
                 <XCircle size={14} />
-                {loading ? 'Cancelling...' : !account ? 'Connect Wallet' : 'EL0: Cancel Tournament'}
+                {loading ? 'Cancelling...' : !account ? 'Connect Wallet' : 'Cancel Tournament'}
               </button>
+              {!loading && account ? (
+                <UserManualAnchorLink
+                  href={getUserManualHrefForReasonCode('EL0')}
+                  className="mt-2 block w-full text-center text-slate-300 hover:text-slate-200 hover:bg-slate-500/10 text-xs py-2 px-4 rounded-lg border border-slate-400/30 hover:border-slate-400/50 transition-all"
+                >
+                  Learn more about EL0 (Cancel Tournament)
+                </UserManualAnchorLink>
+              ) : null}
             </div>
           )}
 
@@ -534,8 +544,16 @@ const TournamentHeader = ({
                 className={`w-full bg-gradient-to-r ${account ? 'from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700' : `${connectCtaGradient} ${connectCtaHover}`} text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-xs`}
               >
                 <RefreshCw size={14} />
-                {loading ? 'Resetting...' : !account ? 'Connect Wallet' : 'EL1*: Reset Enrollment Window'}
+                {loading ? 'Resetting...' : !account ? 'Connect Wallet' : 'Reset Enrollment Window'}
               </button>
+              {!loading && account ? (
+                <UserManualAnchorLink
+                  href={getUserManualHrefForReasonCode('EL1*')}
+                  className="mt-2 block w-full text-center text-yellow-300 hover:text-yellow-200 hover:bg-yellow-500/10 text-xs py-2 px-4 rounded-lg border border-yellow-400/30 hover:border-yellow-400/50 transition-all"
+                >
+                  Learn more about EL1* (Reset Enrollment Window)
+                </UserManualAnchorLink>
+              ) : null}
             </div>
           )}
 
@@ -548,14 +566,14 @@ const TournamentHeader = ({
                 className={`w-full bg-gradient-to-r ${account ? 'from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600' : `${connectCtaGradient} ${connectCtaHover}`} text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-xs`}
               >
                 <Zap size={14} />
-                {loading ? 'Starting...' : !account ? 'Connect Wallet' : `EL1: Force Start with ${enrolledCount} Players`}
+                {loading ? 'Starting...' : !account ? 'Connect Wallet' : `Force Start with ${enrolledCount} Players`}
               </button>
-              <a
-                href="#el1"
+              <UserManualAnchorLink
+                href={getUserManualHrefForReasonCode('EL1')}
                 className="block w-full text-center text-orange-300 hover:text-orange-200 hover:bg-orange-500/10 text-xs mt-2 py-2 px-4 rounded-lg border border-orange-400/30 hover:border-orange-400/50 transition-all"
               >
-                Learn more about EL1 (Force Start)
-              </a>
+                {linkifyReasonText('Learn more about EL1 (Force Start)', { keyPrefix: 'tournament-header-el1-learn' })}
+              </UserManualAnchorLink>
             </div>
           )}
 
@@ -568,14 +586,14 @@ const TournamentHeader = ({
                 className={`w-full bg-gradient-to-r ${account ? 'from-red-600 to-red-700 hover:from-red-700 hover:to-red-800' : `${connectCtaGradient} ${connectCtaHover}`} text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-xs`}
               >
                 <Coins size={14} />
-                {loading ? 'Claiming...' : !account ? 'Connect Wallet' : 'EL2: Claim Abandoned Pool'}
+                {loading ? 'Claiming...' : !account ? 'Connect Wallet' : 'Claim Abandoned Pool'}
               </button>
-              <a
-                href="#el2"
+              <UserManualAnchorLink
+                href={getUserManualHrefForReasonCode('EL2')}
                 className="block w-full text-center text-red-300 hover:text-red-200 hover:bg-red-500/10 text-xs mt-2 py-2 px-4 rounded-lg border border-red-400/30 hover:border-red-400/50 transition-all"
               >
-                Learn more about EL2 (Claim Pool)
-              </a>
+                {linkifyReasonText('Learn more about EL2 (Claim Pool)', { keyPrefix: 'tournament-header-el2-learn' })}
+              </UserManualAnchorLink>
             </div>
           )}
         </>
@@ -587,7 +605,7 @@ const TournamentHeader = ({
           {!detailedResolutionAvailable ? (
             isCancelled ? (
               <div className="text-white text-sm md:text-base">
-                {cancelledResolutionText.text}
+                {linkifyReasonText(cancelledResolutionText.text, { keyPrefix: 'tournament-header-cancelled-resolution', linkClassName: 'font-semibold underline decoration-dotted underline-offset-4 hover:text-cyan-300' })}
               </div>
             ) : (
               <div className="text-white text-sm md:text-base">
@@ -602,7 +620,9 @@ const TournamentHeader = ({
               <div className="text-white text-sm md:text-base">
                 {useV2ReasonLabels && (
                   <>
-                    <span className="text-purple-300">{cancelledResolutionText.text}</span>
+                    <span className="text-purple-300">
+                      {linkifyReasonText(cancelledResolutionText.text, { keyPrefix: 'tournament-header-cancelled-summary', linkClassName: 'font-semibold underline decoration-dotted underline-offset-4 hover:text-cyan-300' })}
+                    </span>
                     <span className="text-purple-300"> • </span>
                   </>
                 )}

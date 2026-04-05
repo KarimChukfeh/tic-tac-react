@@ -4,6 +4,8 @@ import confetti from 'canvas-confetti';
 import { ethers } from 'ethers';
 import { shortenAddress } from '../../utils/formatters';
 import { getV2NeutralMatchReasonLabel } from '../../v2/lib/reasonLabels';
+import UserManualAnchorLink, { linkifyReasonText } from './UserManualAnchorLink';
+import { getUserManualHrefForReasonCode } from '../../utils/userManualLinks';
 
 /**
  * MatchEndModal - Shared component for displaying match end feedback
@@ -318,12 +320,12 @@ const MatchEndModal = ({
           )}
           <p className="text-white/90">
             Your opponent timed out via{' '}
-            <a
-              href="#ml1"
+            <UserManualAnchorLink
+              href={getUserManualHrefForReasonCode('ML1')}
               className="text-orange-400 underline decoration-dotted hover:text-orange-300 font-semibold"
             >
               ML1
-            </a>
+            </UserManualAnchorLink>
             {' '}timeout escalation.
           </p>
           {isFinalRound ? (
@@ -361,12 +363,12 @@ const MatchEndModal = ({
           )}
           <p className="text-white/90">
             Your opponent was eliminated via{' '}
-            <a
-              href={completionReason === 3 ? '#ml2' : '#ml3'}
+            <UserManualAnchorLink
+              href={completionReason === 3 ? getUserManualHrefForReasonCode('ML2') : getUserManualHrefForReasonCode('ML3')}
               className="text-orange-400 underline decoration-dotted hover:text-orange-300 font-semibold"
             >
               {completionReason === 3 ? 'ML2' : 'ML3'}
-            </a>
+            </UserManualAnchorLink>
             {' '}match escalation.
           </p>
           {isFinalRound ? (
@@ -437,12 +439,12 @@ const MatchEndModal = ({
         <div className="space-y-2">
           <p className="text-white/90">
             Your match was eliminated via{' '}
-            <a
-              href={completionReason === 3 ? '#ml2' : '#ml3'}
+            <UserManualAnchorLink
+              href={completionReason === 3 ? getUserManualHrefForReasonCode('ML2') : getUserManualHrefForReasonCode('ML3')}
               className="text-orange-400 underline decoration-dotted hover:text-orange-300 font-semibold"
             >
               {completionReason === 3 ? 'ML2' : 'ML3'}
-            </a>
+            </UserManualAnchorLink>
             {' '}due to match escalation.
           </p>
         </div>
@@ -603,12 +605,16 @@ const MatchEndModal = ({
 
         {/* Title */}
         <h2 className={`text-4xl font-bold text-center mb-2 ${currentConfig.titleColor}`}>
-          {currentConfig.title}
+          {typeof currentConfig.title === 'string'
+            ? linkifyReasonText(currentConfig.title, { keyPrefix: `match-end-title-${result}`, linkClassName: 'underline decoration-dotted underline-offset-4 hover:text-white' })
+            : currentConfig.title}
         </h2>
 
         {/* Subtitle */}
         <p className="text-xl text-center text-white/90 mb-4">
-          {currentConfig.subtitle}
+          {typeof currentConfig.subtitle === 'string'
+            ? linkifyReasonText(currentConfig.subtitle, { keyPrefix: `match-end-subtitle-${result}`, linkClassName: 'underline decoration-dotted underline-offset-4 hover:text-white' })
+            : currentConfig.subtitle}
         </p>
 
         {/* Description */}

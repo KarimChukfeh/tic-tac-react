@@ -18,6 +18,8 @@ import { getMatchCompletionReasonValue } from '../../utils/completionReasons';
 import CompletedMatchOutcomeBadge from './CompletedMatchOutcomeBadge';
 import { getMatchStatusText, getMatchStatusColor } from '../../utils/matchStatus';
 import { calculatePlayerTimes } from '../../utils/timeCalculations';
+import UserManualAnchorLink, { linkifyReasonText } from './UserManualAnchorLink';
+import { getUserManualHrefForReasonCode } from '../../utils/userManualLinks';
 
 /**
  * Format seconds into MM:SS display
@@ -362,14 +364,14 @@ const MatchCard = ({
 
       {/* Dev-only escalation timers for bracket cards - only after ML1 is active */}
       {showEscalation && matchStatus === 1 && hasDevEscalationTiming && (
-        <div className="mb-3 rounded-lg border border-cyan-400/30 bg-cyan-500/10 p-3">
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-mono text-cyan-200">
-            <span>ML1 in {formatEscalationTime(timeToML1)}</span>
-            <span>ML2 in {formatEscalationTime(Math.max(0, timeToML2 ?? 0))}</span>
-            <span>ML3 in {formatEscalationTime(Math.max(0, timeToML3 ?? 0))}</span>
+          <div className="mb-3 rounded-lg border border-cyan-400/30 bg-cyan-500/10 p-3">
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-mono text-cyan-200">
+            <span>{linkifyReasonText(`ML1 in ${formatEscalationTime(timeToML1)}`, { keyPrefix: `match-card-ml1-dev-${tierId}-${instanceId}-${roundIdx}-${matchIdx}`, linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white' })}</span>
+            <span>{linkifyReasonText(`ML2 in ${formatEscalationTime(Math.max(0, timeToML2 ?? 0))}`, { keyPrefix: `match-card-ml2-dev-${tierId}-${instanceId}-${roundIdx}-${matchIdx}`, linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white' })}</span>
+            <span>{linkifyReasonText(`ML3 in ${formatEscalationTime(Math.max(0, timeToML3 ?? 0))}`, { keyPrefix: `match-card-ml3-dev-${tierId}-${instanceId}-${roundIdx}-${matchIdx}`, linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white' })}</span>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* Escalation countdown timers - show only the next pending timer */}
       {showEscalation && matchStatus === 1 && isStalled && !isUserMatch && (
@@ -381,17 +383,17 @@ const MatchCard = ({
                 <div className="flex items-center gap-2">
                   <Clock className="text-yellow-400" size={16} />
                   <span className="text-yellow-300 text-xs font-semibold">
-                    ML2: Force Eliminate in {formatEscalationTime(timeToML2)}
+                    {linkifyReasonText(`ML2: Force Eliminate in ${formatEscalationTime(timeToML2)}`, { keyPrefix: `match-card-ml2-timer-${tierId}-${instanceId}-${roundIdx}-${matchIdx}`, linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white' })}
                   </span>
                 </div>
               </div>
-              <a
-                href="#ml2"
+              <UserManualAnchorLink
+                href={getUserManualHrefForReasonCode('ML2')}
                 className="absolute top-3 right-3 text-yellow-400 hover:text-yellow-300 transition-colors"
                 title="Learn more about force elimination"
               >
                 <HelpCircle size={16} />
-              </a>
+              </UserManualAnchorLink>
             </div>
           )}
           {/* ML3 Timer: ML2 available but ML3 not yet - Non-Advanced Players Only */}
@@ -401,17 +403,17 @@ const MatchCard = ({
                 <div className="flex items-center gap-2">
                   <Clock className="text-red-400" size={16} />
                   <span className="text-red-300 text-xs font-semibold">
-                    ML3: Replace Players in {formatEscalationTime(timeToML3)}
+                    {linkifyReasonText(`ML3: Replace Players in ${formatEscalationTime(timeToML3)}`, { keyPrefix: `match-card-ml3-timer-${tierId}-${instanceId}-${roundIdx}-${matchIdx}`, linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white' })}
                   </span>
                 </div>
               </div>
-              <a
-                href="#ml3"
+              <UserManualAnchorLink
+                href={getUserManualHrefForReasonCode('ML3')}
                 className="absolute top-3 right-3 text-red-400 hover:text-red-300 transition-colors"
                 title="Learn more about replacing players"
               >
                 <HelpCircle size={16} />
-              </a>
+              </UserManualAnchorLink>
             </div>
           )}
         </div>
@@ -588,14 +590,14 @@ const MatchCard = ({
                   className="w-full bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 flex items-center justify-center gap-2 text-xs"
                 >
                   <Zap size={14} />
-                  {loading ? 'Eliminating...' : 'ML2: Force Eliminate Both'}
+                  {loading ? 'Eliminating...' : 'Force Eliminate Both'}
                 </button>
-                <a
-                  href="#ml2"
+                <UserManualAnchorLink
+                  href={getUserManualHrefForReasonCode('ML2')}
                   className="block w-full text-center text-yellow-300 hover:text-yellow-200 hover:bg-yellow-500/10 text-xs mt-2 py-2 px-4 rounded-lg border border-yellow-400/30 hover:border-yellow-400/50 transition-all"
                 >
-                  Learn more about ML2 (Force Eliminate)
-                </a>
+                  {linkifyReasonText('Learn more about ML2 (Force Eliminate)', { keyPrefix: `match-card-ml2-learn-${tierId}-${instanceId}-${roundIdx}-${matchIdx}` })}
+                </UserManualAnchorLink>
               </div>
             )}
 
@@ -613,14 +615,14 @@ const MatchCard = ({
                   className="w-full bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 flex items-center justify-center gap-2 text-xs"
                 >
                   <Users size={14} />
-                  {loading ? 'Claiming...' : 'ML3: Replace & Claim Match'}
+                  {loading ? 'Claiming...' : 'Replace & Claim Match'}
                 </button>
-                <a
-                  href="#ml3"
+                <UserManualAnchorLink
+                  href={getUserManualHrefForReasonCode('ML3')}
                   className="block w-full text-center text-red-300 hover:text-red-200 hover:bg-red-500/10 text-xs mt-2 py-2 px-4 rounded-lg border border-red-400/30 hover:border-red-400/50 transition-all"
                 >
-                  Learn more about ML3 (Replace Players)
-                </a>
+                  {linkifyReasonText('Learn more about ML3 (Replace Players)', { keyPrefix: `match-card-ml3-learn-${tierId}-${instanceId}-${roundIdx}-${matchIdx}` })}
+                </UserManualAnchorLink>
               </div>
             )}
           </>

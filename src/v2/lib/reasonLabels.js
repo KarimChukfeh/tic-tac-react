@@ -1,4 +1,5 @@
 import { CompletionReason } from '../../utils/completionReasons';
+import { getUserManualHrefForReasonCode } from '../../utils/userManualLinks';
 
 export const V2TournamentResolutionReason = {
   NORMAL_WIN: 0,
@@ -34,12 +35,14 @@ const TOURNAMENT_LABELS = {
 };
 
 const TOURNAMENT_LINKS = {
-  1: '#ml1',
-  2: '#draws',
-  3: '#ml2',
-  4: '#ml3',
-  5: '#el0',
-  6: '#el2',
+  0: getUserManualHrefForReasonCode('R0'),
+  1: getUserManualHrefForReasonCode('ML1'),
+  2: getUserManualHrefForReasonCode('R1'),
+  3: getUserManualHrefForReasonCode('ML2'),
+  4: getUserManualHrefForReasonCode('ML3'),
+  5: getUserManualHrefForReasonCode('EL0'),
+  6: getUserManualHrefForReasonCode('EL2'),
+  7: getUserManualHrefForReasonCode('R2'),
 };
 
 const toReasonNumber = (value, fallback = 0) => {

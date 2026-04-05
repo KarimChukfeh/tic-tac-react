@@ -12,16 +12,16 @@ import {
 
 const HEADING_ALIASES = {
   '32-draws': ['draws'],
-  '41-normal-resolution': ['r0'],
-  '42-draw-resolution': ['r1'],
-  '43-uncontested-finalist': ['r2'],
-  '44-canceled-tournament': ['el0'],
+  '41-r0---normal-resolution': ['r0'],
+  '42-r1---draw-resolution': ['r1'],
+  '43-r2---uncontested-finalist': ['r2'],
+  '44-el0---canceled-tournament': ['el0'],
   '521-el1--force-start-tournament-after-enrollment-window-expires': ['el1'],
   '522-el1--extend-enrollment-window-when-solo-enrolled': ['el1x'],
-  '523-el2--claim-abandoned-prize-pool-when-tournament-never-started': ['el2'],
-  '531-ml1--claim-victory-by-opponent-timeout': ['ml1'],
-  '532-ml2--eliminate-both-players-in-a-stalled-match': ['ml2'],
-  '533-ml3--replace-players-in-an-abandoned-match': ['ml3'],
+  '45-el2---abandoned-tournament': ['el2'],
+  '46-ml1---match-timeout': ['ml1'],
+  '47-ml2---advanced-player-wins-via-stalled-semifinal': ['ml2'],
+  '48-ml3---outsider-replaces-both-players': ['ml3'],
 };
 
 const ALIAS_IDS = Object.values(HEADING_ALIASES).flat();

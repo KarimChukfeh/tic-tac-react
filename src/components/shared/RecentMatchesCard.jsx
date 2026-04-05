@@ -22,6 +22,7 @@ import {
 import CapturedPieces from './CapturedPieces';
 import CompletedMatchOutcomeBadge from './CompletedMatchOutcomeBadge';
 import { ethers } from 'ethers';
+import { linkifyReasonText } from './UserManualAnchorLink';
 
 const RecentMatchesCard = ({
   contract,
@@ -1308,7 +1309,7 @@ const RecentMatchesCard = ({
                           </div>
                           {rec.concluded && (
                             <div className="mt-1 text-[10px] text-slate-400">
-                              Resolved via <span className="text-slate-200">{getTournamentResolutionText(rec)}</span>
+                              Resolved via <span className="text-slate-200">{linkifyReasonText(getTournamentResolutionText(rec), { keyPrefix: `recent-matches-resolution-${rec.id ?? rec.instanceId ?? 'record'}`, linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white' })}</span>
                             </div>
                           )}
                         </div>
@@ -1668,7 +1669,9 @@ const RecentMatchesCard = ({
                               <span className={`font-mono ${isWinner ? 'text-green-400 font-semibold' : 'text-red-400'}`}>
                                 {shortenAddress(match.winner)}
                               </span>
-                              <span className="text-slate-400"> (ML3)</span>
+                              <span className="text-slate-400">
+                                {' '}({linkifyReasonText('ML3', { keyPrefix: `recent-matches-ml3-${matchKey}`, linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white' })})
+                              </span>
                             </div>
                           ) : null}
                         </div>

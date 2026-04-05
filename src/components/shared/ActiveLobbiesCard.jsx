@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { AlertTriangle, Check, Clock3, RefreshCw, Rocket, TimerReset, X, Zap } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
+import { linkifyReasonText } from './UserManualAnchorLink';
 
 const FILTERS = [
   { id: 'all', label: 'All' },
@@ -497,27 +498,42 @@ const ActiveLobbiesCard = ({
                       <div className="flex flex-wrap gap-2 mb-3 text-xs">
                         {lobby.isUserEnrolled && lobby.matchEscalationSummary.ml1RelevantAvailableCount > 0 && (
                           <span className="px-2 py-1 rounded-full bg-yellow-300/15 text-yellow-100 border border-yellow-300/30">
-                            ML1 {lobby.matchEscalationSummary.ml1RelevantAvailableCount}
+                            {linkifyReasonText(`ML1 ${lobby.matchEscalationSummary.ml1RelevantAvailableCount}`, {
+                              keyPrefix: `active-lobbies-ml1-${lobby.instanceAddress ?? lobby.instanceId ?? 'unknown'}`,
+                              linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white',
+                            })}
                           </span>
                         )}
                         {lobby.isUserEnrolled && lobby.matchEscalationSummary.ml2RelevantAvailableCount > 0 && (
                           <span className="px-2 py-1 rounded-full bg-yellow-300/15 text-yellow-100 border border-yellow-300/30">
-                            ML2 {lobby.matchEscalationSummary.ml2RelevantAvailableCount}
+                            {linkifyReasonText(`ML2 ${lobby.matchEscalationSummary.ml2RelevantAvailableCount}`, {
+                              keyPrefix: `active-lobbies-ml2-${lobby.instanceAddress ?? lobby.instanceId ?? 'unknown'}`,
+                              linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white',
+                            })}
                           </span>
                         )}
                         {lobby.isUserEnrolled && lobby.matchEscalationSummary.ml2RelevantSoonCount > 0 && (
                           <span className="px-2 py-1 rounded-full bg-yellow-300/10 text-yellow-50 border border-yellow-300/20">
-                            ML2 soon {lobby.matchEscalationSummary.ml2RelevantSoonCount}
+                            {linkifyReasonText(`ML2 soon ${lobby.matchEscalationSummary.ml2RelevantSoonCount}`, {
+                              keyPrefix: `active-lobbies-ml2-soon-${lobby.instanceAddress ?? lobby.instanceId ?? 'unknown'}`,
+                              linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white',
+                            })}
                           </span>
                         )}
                         {!lobby.isUserEnrolled && lobby.matchEscalationSummary.ml3AvailableCount > 0 && (
                           <span className="px-2 py-1 rounded-full bg-yellow-300/15 text-yellow-100 border border-yellow-300/30">
-                            ML3 {lobby.matchEscalationSummary.ml3AvailableCount}
+                            {linkifyReasonText(`ML3 ${lobby.matchEscalationSummary.ml3AvailableCount}`, {
+                              keyPrefix: `active-lobbies-ml3-${lobby.instanceAddress ?? lobby.instanceId ?? 'unknown'}`,
+                              linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white',
+                            })}
                           </span>
                         )}
                         {!lobby.isUserEnrolled && lobby.matchEscalationSummary.ml3SoonCount > 0 && (
                           <span className="px-2 py-1 rounded-full bg-yellow-300/10 text-yellow-50 border border-yellow-300/20">
-                            ML3 soon {lobby.matchEscalationSummary.ml3SoonCount}
+                            {linkifyReasonText(`ML3 soon ${lobby.matchEscalationSummary.ml3SoonCount}`, {
+                              keyPrefix: `active-lobbies-ml3-soon-${lobby.instanceAddress ?? lobby.instanceId ?? 'unknown'}`,
+                              linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white',
+                            })}
                           </span>
                         )}
                       </div>
@@ -530,7 +546,10 @@ const ActiveLobbiesCard = ({
                             key={highlight.key}
                             className={`rounded-lg border px-3 py-2 text-sm ${highlightToneClass(highlight.tone)}`}
                           >
-                            {highlight.label}
+                            {linkifyReasonText(highlight.label, {
+                              keyPrefix: `active-lobbies-highlight-${highlight.key}`,
+                              linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white',
+                            })}
                           </div>
                         ))}
                       </div>

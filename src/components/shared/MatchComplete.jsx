@@ -11,6 +11,7 @@ import { Trophy, Frown, ArrowRight } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
 import { isDraw } from '../../utils/completionReasons';
 import { getV2NeutralMatchReasonLabel } from '../../v2/lib/reasonLabels';
+import { linkifyReasonText } from './UserManualAnchorLink';
 
 const MatchComplete = ({
   completionReason,
@@ -46,7 +47,7 @@ const MatchComplete = ({
         }}
       >
         <p className="text-white font-bold text-xl mb-2">
-          {useV2ReasonLabels ? getV2NeutralMatchReasonLabel(completionReason) : "It's a Draw!"}
+          {useV2ReasonLabels ? linkifyReasonText(getV2NeutralMatchReasonLabel(completionReason), { keyPrefix: 'match-complete-draw', linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white' }) : "It's a Draw!"}
         </p>
         <p className="text-blue-300 text-sm mb-3">Evenly matched</p>
 
@@ -170,7 +171,7 @@ const MatchComplete = ({
         Winner: {hasWinner ? shortenAddress(winner) : 'No winner'}
       </p>
       <p className="text-green-300 text-xs">
-        {getCompletionText()}
+        {linkifyReasonText(getCompletionText(), { keyPrefix: 'match-complete-summary', linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white' })}
       </p>
     </div>
   );

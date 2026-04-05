@@ -16,14 +16,14 @@
 
 **4. Resolution**
 - [4.0: Taxonomy Overview](#40-taxonomy-overview)
-- [4.1: Normal Resolution](#41-normal-resolution)
-- [4.2: Draw Resolution](#42-draw-resolution)
-- [4.3: Uncontested Finalist](#43-uncontested-finalist)
-- [4.4: Canceled Tournament](#44-canceled-tournament)
-- [4.5: Abandoned Tournament](#45-abandoned-tournament)
-- [4.6: Match Timeout](#46-match-timeout)
-- [4.7: Advanced Player Wins via Stalled Semifinal](#47-advanced-player-wins-via-stalled-semifinal)
-- [4.8: Outsider Replaces Both Players](#48-outsider-replaces-both-players)
+- [4.1: R0 - Normal Resolution](#41-r0---normal-resolution)
+- [4.2: R1 - Draw Resolution](#42-r1---draw-resolution)
+- [4.3: R2 - Uncontested Finalist](#43-r2---uncontested-finalist)
+- [4.4: EL0 - Canceled Tournament](#44-el0---canceled-tournament)
+- [4.5: EL2 - Abandoned Tournament](#45-el2---abandoned-tournament)
+- [4.6: ML1 - Match Timeout](#46-ml1---match-timeout)
+- [4.7: ML2 - Advanced Player Wins via Stalled Semifinal](#47-ml2---advanced-player-wins-via-stalled-semifinal)
+- [4.8: ML3 - Outsider Replaces Both Players](#48-ml3---outsider-replaces-both-players)
 
 **5. Anti-Griefing**
 - [5.1: What's Griefing?](#51-whats-griefing)
@@ -231,7 +231,7 @@ Understanding resolution reasons helps you know exactly what happened to your to
 | ML2 | Advanced player wins | Stalled match eliminated by advanced player |
 | ML3 | Outsider replaces both players | Both players stall, outsider claims their spots |
 
-### 4.1: Normal Resolution
+### 4.1: R0 - Normal Resolution
 
 **What it is**
 R0 is the happy path. The tournament runs exactly as designed: full enrollment, all matches played to completion, no timeouts, no draws, and no escalations. One player wins every match they play, advances through the bracket, wins the finals, and claims the prize pool.
@@ -247,7 +247,7 @@ The winner receives 95% of the total prize pool instantly and automatically. ETo
 - Winner receives: 0.076 ETH
 - ETour receives: 0.004 ETH
 
-### 4.2: Draw Resolution
+### 4.2: R1 - Draw Resolution
 
 **What it is**
 R1 occurs when a draw ends the tournament. This happens in one of two ways: the finals match ends in a draw, or every match in a round ends in a draw simultaneously.
@@ -267,7 +267,7 @@ The remaining players, either the two finalists in a finals draw or all survivin
 **Important note**
 In regular rounds, a draw eliminates both players and neither advances. R1 only applies when a draw occurs in the finals or when an entire round draws simultaneously with no survivors to continue the tournament.
 
-### 4.3: Uncontested Finalist
+### 4.3: R2 - Uncontested Finalist
 
 **What it is**
 R2 occurs when a player reaches the finals but their opponent never materializes because the other semifinal ended in a draw.
@@ -284,7 +284,7 @@ The uncontested finalist wins the tournament by default without playing the fina
 **Important note**
 R2 is not an escalation. No timer, no trigger, no action required. The moment the other semifinal draws and leaves you as the only finalist, the tournament resolves automatically in your favor.
 
-### 4.4: Canceled Tournament
+### 4.4: EL0 - Canceled Tournament
 
 **What it is**
 EL0 occurs when a lobby creator cancels their lobby before anyone else enrolls.
@@ -298,7 +298,7 @@ The tournament is canceled. The creator receives a full 100% refund of their ent
 **Important note**
 EL0 is only available while you are the sole enrollee. The moment a second player enrolls, you can no longer cancel the lobby. Your entry fee is committed to the prize pool.
 
-### 4.5: Abandoned Tournament
+### 4.5: EL2 - Abandoned Tournament
 
 **What it is**
 EL2 occurs when a lobby attracts some enrollees but not enough to fill, and the enrolled players fail to force-start the tournament within the enrollment window. The tournament is considered abandoned and an outsider can claim the entire prize pool.
@@ -319,7 +319,7 @@ ETour cannot allow ETH to sit trapped in an abandoned prize pool forever. EL2 gu
 **Important note**
 EL2 is the nuclear option. It exists to ensure tournaments never get permanently stuck. If you're enrolled in a lobby that isn't filling up, trigger EL1 to force-start the tournament before EL2 becomes available to outsiders.
 
-### 4.6: Match Timeout
+### 4.6: ML1 - Match Timeout
 
 **What it is**
 ML1 occurs when a player's clock hits zero during a match. Their opponent can claim victory by forfeit.
@@ -341,7 +341,7 @@ ML1 can apply at three levels:
 **Important note**
 Your opponent is not required to claim victory immediately when your clock hits zero. They can choose to wait. But once your clock is at zero, the option is available to them at any time. Don't rely on your opponent not noticing.
 
-### 4.7: Advanced Player Wins via Stalled Semifinal
+### 4.7: ML2 - Advanced Player Wins via Stalled Semifinal
 
 **What it is**
 ML2 occurs when a player who has already advanced to a later round, typically the finals, is being held up by a stalled match in an earlier round. ML2 allows that advanced player to step in, eliminate both stalled players, and clear their path.
@@ -362,7 +362,7 @@ Your tournament progress should not be held hostage by two players who stop maki
 **Important note**
 The mere existence of ML2 puts pressure on stalled players to act. If you're in a stalled match and your opponent hasn't claimed 4.6 (ML1) yet, you're both at risk of being eliminated by an advanced player stepping in. Stalling doesn't just hurt your opponent. It puts both of you at risk.
 
-### 4.8: Outsider Replaces Both Players
+### 4.8: ML3 - Outsider Replaces Both Players
 
 **What it is**
 ML3 is the match-level nuclear option. If both players in a match have stalled and no advanced player has triggered ML2, any outsider, even someone not enrolled in the tournament, can step in, replace both stalled players, and take their spot in the bracket.

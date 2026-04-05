@@ -173,11 +173,11 @@ describe('TournamentHeader', () => {
       />
     );
 
-    expect(await screen.findByRole('button', { name: 'EL0: Cancel Tournament' })).toBeInTheDocument();
-    expect(await screen.findByRole('button', { name: 'EL1*: Reset Enrollment Window' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /EL1: Force Start/i })).not.toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Cancel Tournament' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Reset Enrollment Window' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Force Start/i })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'EL0: Cancel Tournament' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel Tournament' }));
     expect(onCancelTournament).toHaveBeenCalledWith(0, 0);
   });
 

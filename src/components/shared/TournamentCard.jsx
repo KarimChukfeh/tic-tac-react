@@ -10,6 +10,8 @@ import { Trophy, Play, Users, Zap, Coins, Eye, RefreshCw } from 'lucide-react';
 import { ethers } from 'ethers';
 import EscalationTimer from './EscalationTimer';
 import { formatTime, getTournamentTypeLabel } from '../../utils/formatters';
+import UserManualAnchorLink, { linkifyReasonText } from './UserManualAnchorLink';
+import { getUserManualHrefForReasonCode } from '../../utils/userManualLinks';
 
 // Default color theme (purple/blue - TicTacToe style)
 const DEFAULT_COLORS = {
@@ -285,12 +287,12 @@ const TournamentCard = ({
               )}
               {isEnrolled && escalationState.canStartEscalation2 && (
                 <div className="text-center mt-1">
-                  <a
-                    href="#el2"
+                  <UserManualAnchorLink
+                    href={getUserManualHrefForReasonCode('EL2')}
                     className="text-red-300 hover:text-red-200 text-[10px] underline underline-offset-[2px]"
                   >
-                    Abandoned! (EL2 active)
-                  </a>
+                    {linkifyReasonText('Abandoned! (EL2 active)', { keyPrefix: `tournament-card-el2-active-${tierId}-${instanceId}` })}
+                  </UserManualAnchorLink>
                 </div>
               )}
             </div>
@@ -378,14 +380,14 @@ const TournamentCard = ({
             className="w-full bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-xs"
           >
             <Users size={14} />
-            {loading ? 'Loading...' : 'ML3: Replace & Claim Match'}
+            {loading ? 'Loading...' : 'Replace & Claim Match'}
           </button>
-          <a
-            href="#ml3"
+          <UserManualAnchorLink
+            href={getUserManualHrefForReasonCode('ML3')}
             className="block w-full text-center text-red-300 hover:text-red-200 hover:bg-red-500/10 text-xs mt-2 py-2 px-4 rounded-lg border border-red-400/30 hover:border-red-400/50 transition-all"
           >
-            Learn more about ML3 (Replace Players)
-          </a>
+            {linkifyReasonText('Learn more about ML3 (Replace Players)', { keyPrefix: `tournament-card-ml3-learn-${tierId}-${instanceId}` })}
+          </UserManualAnchorLink>
         </div>
       )}
 
@@ -399,8 +401,16 @@ const TournamentCard = ({
             className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-xs"
           >
             <RefreshCw size={14} />
-            {loading ? 'Resetting...' : !account ? 'Connect Wallet' : 'EL1*: Reset Enrollment Window'}
+            {loading ? 'Resetting...' : !account ? 'Connect Wallet' : 'Reset Enrollment Window'}
           </button>
+          {!loading && account ? (
+            <UserManualAnchorLink
+              href={getUserManualHrefForReasonCode('EL1*')}
+              className="block w-full text-center text-yellow-300 hover:text-yellow-200 hover:bg-yellow-500/10 text-xs mt-2 py-2 px-4 rounded-lg border border-yellow-400/30 hover:border-yellow-400/50 transition-all"
+            >
+              {linkifyReasonText('Learn more about EL1* (Reset Enrollment Window)', { keyPrefix: `tournament-card-el1x-learn-${tierId}-${instanceId}` })}
+            </UserManualAnchorLink>
+          ) : null}
         </div>
       )}
 
@@ -413,14 +423,14 @@ const TournamentCard = ({
             className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-xs"
           >
             <Zap size={14} />
-            {loading ? 'Starting...' : !account ? 'Connect Wallet' : `EL1: Force Start with ${currentEnrolled} Players`}
+            {loading ? 'Starting...' : !account ? 'Connect Wallet' : `Force Start with ${currentEnrolled} Players`}
           </button>
-          <a
-            href="#el1"
+          <UserManualAnchorLink
+            href={getUserManualHrefForReasonCode('EL1')}
             className="block w-full text-center text-orange-300 hover:text-orange-200 hover:bg-orange-500/10 text-xs mt-2 py-2 px-4 rounded-lg border border-orange-400/30 hover:border-orange-400/50 transition-all"
           >
-            Learn more about EL1 (Force Start)
-          </a>
+            {linkifyReasonText('Learn more about EL1 (Force Start)', { keyPrefix: `tournament-card-el1-learn-${tierId}-${instanceId}` })}
+          </UserManualAnchorLink>
         </div>
       )}
 
@@ -433,14 +443,14 @@ const TournamentCard = ({
             className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-xs"
           >
             <Coins size={14} />
-            {loading ? 'Claiming...' : !account ? 'Connect Wallet' : 'EL2: Claim Abandoned Pool'}
+            {loading ? 'Claiming...' : !account ? 'Connect Wallet' : 'Claim Abandoned Pool'}
           </button>
-          <a
-            href="#el2"
+          <UserManualAnchorLink
+            href={getUserManualHrefForReasonCode('EL2')}
             className="block w-full text-center text-red-300 hover:text-red-200 hover:bg-red-500/10 text-xs mt-2 py-2 px-4 rounded-lg border border-red-400/30 hover:border-red-400/50 transition-all"
           >
-            Learn more about EL2 (Claim Pool)
-          </a>
+            {linkifyReasonText('Learn more about EL2 (Claim Pool)', { keyPrefix: `tournament-card-el2-learn-${tierId}-${instanceId}` })}
+          </UserManualAnchorLink>
         </div>
       )}
 
@@ -508,14 +518,14 @@ const TournamentCard = ({
             className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-xs"
           >
             <Coins size={14} />
-            {loading ? 'Claiming...' : !account ? 'Connect Wallet' : `EL2: Claim Pool (${ethers.formatEther(escalationState.forfeitPool)} ETH)`}
+            {loading ? 'Claiming...' : !account ? 'Connect Wallet' : `Claim Pool (${ethers.formatEther(escalationState.forfeitPool)} ETH)`}
           </button>
-          <a
-            href="#el2"
+          <UserManualAnchorLink
+            href={getUserManualHrefForReasonCode('EL2')}
             className="block w-full text-center text-purple-300 hover:text-purple-200 hover:bg-purple-500/10 text-xs mt-2 py-2 px-4 rounded-lg border border-purple-400/30 hover:border-purple-400/50 transition-all"
           >
-            Learn more about EL2 (Claim Pool)
-          </a>
+            {linkifyReasonText('Learn more about EL2 (Claim Pool)', { keyPrefix: `tournament-card-el2-claim-${tierId}-${instanceId}` })}
+          </UserManualAnchorLink>
         </div>
       )}
     </div>
