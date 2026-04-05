@@ -5,22 +5,33 @@ import HardhatFactoryData from '../ABIs/hardhat-factory.json';
 import ETourFactoryABIs from '../ABIs/ETour-Factory-ABIs.json';
 import PlayerProfileABIData from '../ABIs/PlayerProfile-ABI.json';
 import PlayerRegistryABIData from '../ABIs/PlayerRegistry-ABI.json';
+import {
+  getFactoryAbi,
+  getFactoryAddress,
+  getFactoryAddressCandidates,
+  getImplementationAddress,
+  getInstanceAbi,
+  getPlayerProfileAbi,
+  getPlayerRegistryAbi,
+  getPlayerRegistryAddress,
+} from './abiContracts';
 
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
-export const PLAYER_PROFILE_ABI = PlayerProfileABIData.contract.abi;
-export const PLAYER_REGISTRY_ABI = PlayerRegistryABIData.contract.abi;
-export const PLAYER_REGISTRY_ADDRESS = PlayerRegistryABIData.addressesByGame?.ConnectFourFactory || null;
+export const PLAYER_PROFILE_ABI = getPlayerProfileAbi(ConnectFourFactoryABIData, PlayerProfileABIData);
+export const PLAYER_REGISTRY_ABI = getPlayerRegistryAbi(ConnectFourFactoryABIData, PlayerRegistryABIData);
+export const PLAYER_REGISTRY_ADDRESS = getPlayerRegistryAddress(ConnectFourFactoryABIData, PlayerRegistryABIData, 'ConnectFourFactory');
 
-export const CONNECTFOUR_V2_FACTORY_ADDRESS = ConnectFourFactoryABIData.factory.address;
-export const CONNECTFOUR_V2_FACTORY_ABI = ConnectFourFactoryABIData.factory.abi;
-export const CONNECTFOUR_V2_INSTANCE_ABI = ConnectFourFactoryABIData.instance.abi;
-export const CONNECTFOUR_V2_IMPLEMENTATION_ADDRESS = ConnectFourFactoryABIData.instance.address;
-export const CONNECTFOUR_V2_FACTORY_ADDRESS_CANDIDATES = [
-  ConnectFourFactoryABIData.factory.address,
-  LocalhostFactoryData.factory?.ConnectFourFactory,
-  HardhatFactoryData.factories?.ConnectFourFactory,
-  ETourFactoryABIs.factories?.ConnectFourFactory?.address,
-].filter((value, index, array) => value && array.indexOf(value) === index);
+export const CONNECTFOUR_V2_FACTORY_ADDRESS = getFactoryAddress(ConnectFourFactoryABIData);
+export const CONNECTFOUR_V2_FACTORY_ABI = getFactoryAbi(ConnectFourFactoryABIData);
+export const CONNECTFOUR_V2_INSTANCE_ABI = getInstanceAbi(ConnectFourFactoryABIData);
+export const CONNECTFOUR_V2_IMPLEMENTATION_ADDRESS = getImplementationAddress(ConnectFourFactoryABIData);
+export const CONNECTFOUR_V2_FACTORY_ADDRESS_CANDIDATES = getFactoryAddressCandidates({
+  gameAbiData: ConnectFourFactoryABIData,
+  localhostFactoryData: LocalhostFactoryData,
+  hardhatFactoryData: HardhatFactoryData,
+  etourFactoryAbis: ETourFactoryABIs,
+  factoryName: 'ConnectFourFactory',
+});
 
 export const PLAYER_COUNT_OPTIONS = [2, 4, 8, 16, 32];
 export const TIME_PER_PLAYER_OPTIONS = [120, 300, 600, 900];
