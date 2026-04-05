@@ -338,7 +338,7 @@ const GameMatchLayout = ({
             : `${cardColors.border} ${cardBg}`
         } ${compactChessMatchView ? 'pt-2.5 px-2 pb-1.5 space-y-1' : 'pt-4 px-3 pb-3 space-y-2'}`}>
           {/* Turn Indicator Badge — always reserves space so both cards stay aligned */}
-          <div className={`absolute left-0 right-0 flex items-center justify-center ${compactChessMatchView ? '-top-2.5 h-4.5' : '-top-4 h-6'}`}>
+          <div className={`absolute left-0 right-0 flex items-center justify-center ${compactChessMatchView ? '-top-2.5 h-[1.125rem]' : '-top-4 h-6'}`}>
             {isTurn && !isGameOver && (
               isYou ? (
                 <div className={`inline-flex items-center justify-center bg-gradient-to-r from-green-500 to-emerald-500 font-bold leading-none text-white whitespace-nowrap rounded-full shadow-lg animate-bounce z-10 ${compactChessMatchView ? 'min-h-[17px] px-1.5 py-0 text-[8px]' : 'min-h-[22px] px-2.5 py-0.5 text-[11px]'}`}>
@@ -358,11 +358,11 @@ const GameMatchLayout = ({
               <img
                 src={icon === '♚' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
                 alt={label}
-                className={compactChessMatchView ? 'w-6.5 h-6.5' : 'w-10 h-10'}
+                className={compactChessMatchView ? 'w-[1.625rem] h-[1.625rem]' : 'w-10 h-10'}
                 draggable="false"
               />
             ) : (
-              <div className={`${compactChessMatchView ? 'w-6.5 h-6.5 text-[15px]' : 'w-10 h-10 text-xl'} ${cardColors.iconBg} rounded-full flex items-center justify-center font-bold border ${
+              <div className={`${compactChessMatchView ? 'w-[1.625rem] h-[1.625rem] text-[15px]' : 'w-10 h-10 text-xl'} ${cardColors.iconBg} rounded-full flex items-center justify-center font-bold border ${
                 isTurn && !isGameOver ? 'border-green-400' : cardColors.border
               }`}>
                 {icon}
