@@ -1,221 +1,200 @@
-# ETour - On-Chain Gaming Platform
+ETour is tournament infrastructure on the blockchain. 
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Built with React](https://img.shields.io/badge/React-18-61DAFB?logo=react)](https://reactjs.org/)
-[![Arbitrum](https://img.shields.io/badge/Arbitrum-One-28A0F0?logo=arbitrum)](https://arbitrum.io/)
+Developers inherit this infrastructure by implementing a simple game contract.
 
-**Provably Fair • Zero Trust • 100% On-Chain**
+Players connect their wallets and compete.
 
-A decentralized gaming platform built on Arbitrum. Play classic games with real stakes where every move is a transaction and every game is provably fair.
+ETour handles matchmaking, brackets, timeouts, prize distribution, and more.
 
-## Games
+---
 
-| Game | Description | Entry Fee |
-|------|-------------|-----------|
-| **Tic-Tac-Chain** | Classic 3x3 grid game | 0.002 ETH |
-| **Connect Four** | Drop discs to connect four | 0.002 ETH |
-| **Chess** | Full chess implementation | 0.002 ETH |
+This whitepaper explains why ETour was built this way and what becomes possible when competitive gaming is built on trustless infrastructure.
 
-## Features
+---
 
-- 🎮 **100% On-Chain Gameplay** - Every move is a blockchain transaction
-- 🎲 **Provably Random** - Fair coin flip determines first move
-- 💰 **Real Stakes** - Play with ETH, winner takes 95%
-- 📜 **Complete History** - All games permanently recorded on-chain
-- 🔒 **Zero Trust** - No servers, no operators, just smart contracts
-- ⚡ **Arbitrum Powered** - Fast transactions, low fees
+## 1. The Philosophy of ETour
 
-## Quick Start
+Web3 gaming has become synonymous with speculation, ponzi schemes, and "play-to-earn" models that always collapse.
 
-### Prerequisites
+The focus shifted from creating fun games to engineering complex tokenomics. Players became investors, games became financial instruments, and fun became secondary to ROI calculations.
 
-- Node.js v18+
-- MetaMask or compatible Web3 wallet
-- ETH on Arbitrum One for the current v2 deployment
+This is backwards.
 
-### Installation
+Competitive players have simple desires that haven't changed since the dawn of gaming:
 
-```bash
-# Clone the repository
-git clone https://github.com/your-org/tic-tac-react.git
-cd tic-tac-react
+- Fair matches where skill determines outcomes
+- Real stakes that make victory meaningful
+- Instant resolution with no delays
 
-# Install dependencies
-npm install
+Adding a Web3 layer to games is counterproductive unless it delivers on those core needs first *and* adds value that wouldn't be possible without blockchain.
 
-# Copy environment config
-cp .env.example .env
+ETour inverts the typical Web3 gaming approach:
 
-# Start development server
-npm run dev
-```
+- **Current Web3:** Here's our token/coin/scheme. You must learn about its tokenomics, governance, and yield farming. There's also a game somewhere.
 
-The app will be available at `http://localhost:5173`
+- **ETour:** Play games you already know over ETH stakes. Winner takes all.
 
-## Configuration
+### Why Blockchain Matters
 
-### Environment Variables
+Centralized gaming requires trust in multiple parties: the server not to manipulate game state, the operator not to freeze your funds, payment processors not to reverse transactions, the company not to shut down tomorrow.
 
-Create a `.env` file based on `.env.example`:
+Most of the time, this trust is justified.
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `VITE_NETWORK` | Target v2 network (`arbitrumOne` or `localhost`) | ABI manifest default |
-| `VITE_V2_RPC_URL` | Custom v2 RPC endpoint (preferred) | Network default |
-| `VITE_RPC_URL` | Legacy RPC override fallback | Unset |
+But when real money is involved, "most of the time" isn't good enough.
 
-### Network Configuration
+Blockchain provides three irreplaceable properties for competitive gaming:
 
-The v2 app now derives its default network from the checked-in ABI manifests under `src/v2/ABIs`. With the current ABI set, the default target is Arbitrum One mainnet.
+**Transparency.** Every game state, every move, every outcome is visible on-chain. Not just verifiable, actually traceable. Anyone can reconstruct any game from transaction history.
 
-**Arbitrum One (current default):**
-```env
-VITE_NETWORK=arbitrumOne
-VITE_V2_RPC_URL=https://arb-mainnet.g.alchemy.com/v2/yoftG-myZ5Iur7UklgbJR
-```
+**Immutability.** Once a move is made, it cannot be changed. Once a winner is determined, it cannot be overridden. Once prizes are distributed, they cannot be clawed back.
 
-**Local override (only if you intentionally want local v2 testing):**
-```env
-VITE_NETWORK=localhost
-VITE_V2_RPC_URL=http://127.0.0.1:8545
-```
+**Autonomy.** No servers to maintain. No admins to trust. No company to depend on.
 
-### MetaMask Setup
+These aren't "extra features." These are properties we inherited by building on blockchain. ETour runs itself forever according to its code.
 
-| Network | Chain ID | RPC URL |
-|---------|----------|---------|
-| Localhost | 412346 | `http://127.0.0.1:8545` |
-| Arbitrum One | 42161 | `https://arb-mainnet.g.alchemy.com/v2/yoftG-myZ5Iur7UklgbJR` |
+### The RW3 Movement
 
-## Development
+ETour is built on the principles of Reclaim Web3 (RW3): a commitment to real utility, fully on-chain verification, self-sustaining economics, fair and equitable access, and no altcoins.
 
-### Available Scripts
+These principles reject the speculation-first mindset that has corrupted Web3. 
 
-```bash
-npm run dev        # Start development server
-npm run build      # Build for production
-npm run preview    # Preview production build
-npm run test       # Run tests in watch mode
-npm run test:run   # Run tests once
-npm run test:ui    # Run tests with UI
-```
+RW3 commits to:
 
-### Running Tests
+- **Real Utility:** The platform solves a genuine problem that wouldn't be possible without blockchain.
+- **Fully On-Chain:** No off-chain databases, no centralized APIs. Everything that matters must live in the smart contracts.
+- **Self-Sustaining:** Revenue comes from fair fees on actual gameplay, not token sales or venture funding.
+- **Fair and Equitable:** No insider advantages, no token-holder voting that distorts the game, no governance theater.
+- **No Altcoins:** ETH only. Not because we couldn't create a token, but because tokens corrupt competitive gaming. With a token, players become investors, competition becomes secondary to price action, and simplicity becomes complexity.
 
-```bash
-# Run all tests
-npm run test:run
+These commitments shape every technical decision in ETour. They're not roadmap items or future work. They're the foundation.
 
-# Run tests in watch mode
-npm run test
+---
 
-# Run with coverage
-npm run test:run -- --coverage
-```
+## 2. The Problems with Competitive Gaming
 
-### Local Blockchain Setup
+### The Trust Problem
 
-For local v2 testing, you'll need a running blockchain node with contracts deployed using a localhost ABI set. See the [e-tour](https://github.com/your-org/e-tour) repository for contract deployment instructions.
+Every online competitive system faces the same fundamental issue: you must trust a third party to keep your money, execute the rules fairly, and actually pay you if you win.
 
-## Deployment
+- A platform can freeze your account and keep your funds.
+- A server operator can manipulate game state to favor certain players.
+- A payment processor can reverse transactions after the fact.
+- A company can shut down tomorrow, taking your winnings with them.
 
-### Static Hosting (Render, Vercel, Netlify)
+Traditional solutions require accepting this risk because there was no alternative. Web3 changes that.
 
-The project includes `render.yaml` for one-click Render deployment:
+### The Griefing Problem
 
-```bash
-npm run build
-# Deploy the `dist` folder
-```
+Every competitive system faces the same behavioral problem: losing players stall to avoid defeat.
 
-### Build Output
+In chess, they let the clock run. In poker, they tank every decision. Online, they disconnect and hope opponents quit.
 
-Production files are generated in the `dist` directory, ready for any static hosting provider.
+Traditional solutions require human intervention - moderators, support tickets, manual reviews. These introduce bias and centralization that goes directly against what Web3 stands for.
 
-## How to Play
+ETour solves stalling through economic incentives that escalate over time. The longer someone stalls, the more people benefit from their inaction. The only party that doesn't benefit is the staller. This is game theory, not punishment.
 
-1. **Connect Wallet** - Click "Connect Wallet" and approve in MetaMask
-2. **Choose Game** - Select Tic-Tac-Chain, Connect Four, or Chess
-3. **Join Match** - Pay the entry fee to join as Player 1 or Player 2
-4. **Start Game** - Once both players join, start the match
-5. **Make Moves** - Each move is recorded on-chain
-6. **Claim Victory** - Winner receives 95% of the pot automatically
+### The Cost Problem
 
-### Payout Structure
+Every action on a blockchain costs gas. But the real cost problem isn't the price per move — it's how costs accumulate over time.
 
-| Outcome | Winner | Loser | House |
-|---------|--------|-------|-------|
-| Win | 95% | 0% | 5% |
-| Draw | 45% | 45% | 10% |
+Traditional Web3 games write every move, every match, every outcome to storage indiscriminately. This accumulates fast. As the game grows more popular, storage fills up, and gas costs for every subsequent move increase.
 
-## Project Structure
+The more people play, the more expensive it gets. The more expensive it gets, the fewer people play. The game collapses.
 
-```
-tic-tac-react/
-├── src/
-│   ├── TicTacChain.jsx      # Tic-Tac-Toe game component
-│   ├── Chess.jsx            # Chess game component
-│   ├── ConnectFour.jsx      # Connect Four game component
-│   ├── Landing.jsx          # Landing page
-│   ├── main.jsx             # React entry point
-│   ├── index.css            # Global styles (Tailwind)
-│   ├── config/
-│   │   └── networks.js      # Network & contract configuration
-│   ├── utils/
-│   │   ├── formatters.js    # Display formatters
-│   │   └── matchStatus.js   # Game state utilities
-│   ├── components/          # Shared UI components
-│   ├── TicTacChainABI.json  # TicTacChain contract ABI
-│   ├── COCABI.json          # Chess contract ABI
-│   ├── CFOCABI.json         # Connect Four contract ABI
-│   └── test/                # Test utilities
-├── public/                  # Static assets
-├── dist/                    # Production build output
-├── .env.example             # Environment template
-├── render.yaml              # Render deployment config
-├── vite.config.js           # Vite configuration
-├── vitest.config.js         # Test configuration
-├── tailwind.config.js       # Tailwind CSS configuration
-└── package.json             # Dependencies & scripts
-```
+This isn't a gas problem. It's a design problem.
 
-## Technology Stack
+ETour was built from day one to avoid this trap through deliberate storage architecture. Historical data lives in read-only, append-only storage and is never used in active gameplay logic.
 
-| Category | Technology |
-|----------|------------|
-| **Frontend** | React 18, Vite |
-| **Styling** | Tailwind CSS |
-| **Blockchain** | ethers.js v6 |
-| **Network** | Arbitrum One |
-| **Icons** | Lucide React |
-| **Testing** | Vitest |
-| **Deployment** | Render (static) |
+The gas cost of a move in round one of the billionth tournament is identical to the cost of a move in round one of the first tournament.
 
-## Security
+### Platform Dependency
 
-- Smart contracts are the source of truth for all game state
-- No backend servers - fully decentralized
-- Wallet signatures required for all transactions
-- Never share your private keys
+All competitive gaming lives inside a company's walled garden. The company controls the rules, the matchmaking, the fee structure, and ultimately whether the platform survives.
 
-### Reporting Vulnerabilities
+Players have no recourse. Their history, their stats, their hard-won ranking — all of it evaporates if the company shuts down.
 
-If you discover a security vulnerability, please email security@your-org.com rather than opening a public issue.
+ETour eliminates this dependency. The protocol is code, not discretion. The rules are transparent and unchangeable. The platform survives independently of any company's viability.
 
-## Contributing
+---
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+## 3. The ETour Approach
 
-## License
+### Settlement Integrity
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Every player who enters a tournament receives an ironclad guarantee: the outcome will be settled automatically, permanently, and without human intervention.
 
-## Links
+No refunds. No reversals. No exceptions. The smart contracts execute exactly as written.
 
-- [Live Demo](https://etour.your-domain.com)
-- [Smart Contracts](https://github.com/your-org/e-tour)
-- [Arbiscan](https://arbiscan.io)
+This sounds harsh until you realize what it means for competitive integrity. There is no human in the middle. There is no appeal to a support team that might be biased, underpaid, or simply overloaded. There is only code and economics.
+
+Players compete knowing that victory is final and failure is permanent. This is the foundation of trustless competition.
+
+### Fair by Design
+
+ETour is not trying to prevent cheating or eliminate bots. That's an endless cat-and-mouse game where billion-dollar companies lose constantly.
+
+Instead, ETour operates under the assumption that bad actors exist and builds the system to be resilient to them.
+
+What ETour does prevent is the *platform* exploiting players. There is no hidden rake. There is no algorithm optimizing for the house's profit. There is no governance vote that changes the rules in favor of token holders.
+
+The fee structure is hardcoded and transparent: 90% to the winner, 7.5% to the creator, 2.5% to sustain the protocol. These percentages cannot be changed. No governance, no voting, no discretion.
+
+The prize pool can only go to the winner. It cannot be forfeited. It cannot be delayed. It cannot be taken back.
+
+This is fairness by design: the code enforces equity more reliably than any human audit ever could.
+
+### Self-Sustaining Economics
+
+ETour doesn't need token sales, venture funding, or financial engineering to survive.
+
+As long as people want to compete, ETour generates enough revenue to run itself. The 7.5% creator fee and 2.5% protocol fee fund development and infrastructure. The economics are simple enough for anyone to verify: prize pool size multiplied by entry fee equals total revenue. Subtract the fees, and you see exactly how much reaches the winner.
+
+This simplicity is intentional. A self-sustaining business model is the most radical form of trustlessness — the company can't fail and take the platform with it because the platform doesn't depend on the company. It depends only on Arbitrum's continued existence.
+
+---
+
+## 4. The Future of Competition
+
+### ETour as Infrastructure
+
+ETour separates universal tournament logic from game-specific rules.
+
+Game contracts only need to implement move validation, win detection, and state management. Everything else — brackets, matchmaking, timeouts, escalation, prizes, leaderboards — is inherited from the protocol.
+
+This means any developer can build a game on ETour by implementing roughly a dozen functions. Focus on making your game fun and strategic. Let ETour handle the competitive infrastructure.
+
+The three games launching with ETour (Tic-Tac-Toe, Chess, Connect Four) prove this approach works. Each is built by implementing game logic only. The tournament orchestration is not reimplemented — it's reused.
+
+As more games build on the protocol, network effects emerge naturally: shared player bases, unified leaderboards, cross-game achievements. But growth isn't the goal — sustainability is.
+
+### What Becomes Possible
+
+ETour proves that blockchain applications can be simple, useful, and sustainable without tokens or speculation.
+
+This model (fee-based services with transparent economics) represents blockchain's true potential: not as financial engineering, but as trust(less) infrastructure for human coordination.
+
+Competitive gaming is just the beginning. Any system where fairness matters and transparency creates value can be rebuilt on this foundation. The same principles that make trustless tournaments possible apply to audits, verification, dispute resolution, and reputation systems.
+
+ETour succeeds if it's still running unchanged in ten years, facilitating fair competition for whoever wants to play.
+
+---
+
+## 5. Conclusion
+
+ETour is built on a simple belief: competitive players don't need tokens, governance votes, or complex economics. They need fair matches, transparent outcomes, and reliable payouts.
+
+Everything else is noise.
+
+If you're a player: pick a game and compete. Test yourself against others with real stakes on the line.
+
+If you're a developer: build your game on ETour. Inherit our infrastructure and focus on what makes your game special.
+
+If you're a skeptic: read the code. Verify the claims. Find flaws.
+
+ETour will be running on Arbitrum long after this whitepaper is outdated. Code is its forever guarantee.
+
+---
+
+### User Manual
+
+[Read The Full User Manual Here](https://github.com/KarimChukfeh/tic-tac-react/blob/main/public/User_Manual.md)
