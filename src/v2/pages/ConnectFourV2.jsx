@@ -2717,7 +2717,7 @@ export default function ConnectFourV2() {
         )}
       </div>
 
-      <div id="user-manual" className="max-w-7xl mx-auto px-6 pt-8 md:pt-10 pb-12" style={{ position: 'relative', zIndex: 10 }}>
+      <div id="user-manual" className="max-w-7xl mx-auto px-2 pt-8 pb-12 md:px-6 md:pt-10" style={{ position: 'relative', zIndex: 10 }}>
         <UserManualV2 />
       </div>
 

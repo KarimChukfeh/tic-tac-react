@@ -349,9 +349,9 @@ const MarkdownTable = ({ children }) => (
 
 const HighlightCallout = ({ children }) => (
   <div className="rounded-[1.75rem] border-2 border-cyan-400/75 bg-[linear-gradient(135deg,rgba(30,64,175,0.36),rgba(59,130,246,0.14),rgba(30,41,59,0.2))] px-7 py-7 shadow-[0_24px_70px_rgba(34,211,238,0.14)]">
-    <div className="flex flex-col gap-3 md:flex-row md:items-start md:gap-4">
+    <div className="flex items-start gap-2.5 md:gap-4">
       <div className="shrink-0 text-cyan-300">
-        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <svg className="h-6 w-6 md:h-[34px] md:w-[34px]" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path d="M12 3l7 3v6c0 5-3.5 8-7 9-3.5-1-7-4-7-9V6l7-3z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
         </svg>
       </div>
@@ -373,12 +373,12 @@ const MarkdownBody = ({
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          p: ({ children }) => <p className="mb-4 text-[0.9rem] text-gray-300 last:mb-0 md:text-base">{children}</p>,
+          p: ({ children }) => <p className="mb-4 text-[0.84rem] text-gray-300 last:mb-0 md:text-base">{children}</p>,
           strong: ({ children }) => <strong className={`font-semibold ${colors.secondary}`}>{children}</strong>,
           em: ({ children }) => <em className="italic text-slate-300">{children}</em>,
           a: MarkdownLink,
-          ul: ({ children }) => <ul className="mb-4 ml-6 list-disc space-y-2 text-[0.9rem] text-gray-300 md:text-base">{children}</ul>,
-          ol: ({ children }) => <ol className="mb-4 ml-6 list-decimal space-y-2 text-[0.9rem] text-gray-300 md:text-base">{children}</ol>,
+          ul: ({ children }) => <ul className="mb-4 ml-5 list-disc space-y-2 text-[0.84rem] text-gray-300 md:ml-6 md:text-base">{children}</ul>,
+          ol: ({ children }) => <ol className="mb-4 ml-5 list-decimal space-y-2 text-[0.84rem] text-gray-300 md:ml-6 md:text-base">{children}</ol>,
           li: ({ children }) => <li className="pl-1">{children}</li>,
           blockquote: ({ children }) => <HighlightCallout>{children}</HighlightCallout>,
           hr: () => <hr className={`my-6 ${colors.borderDark}`} />,
@@ -387,7 +387,7 @@ const MarkdownBody = ({
           tbody: ({ children }) => <tbody className="divide-y divide-slate-800">{children}</tbody>,
           tr: ({ children }) => <tr className="align-top">{children}</tr>,
           th: ({ children }) => <th className="px-4 py-3 text-left font-semibold text-slate-100">{children}</th>,
-          td: ({ children }) => <td className="px-4 py-3 text-[0.9rem] text-gray-300 md:text-base">{children}</td>,
+          td: ({ children }) => <td className="px-3 py-2.5 text-[0.84rem] text-gray-300 md:px-4 md:py-3 md:text-base">{children}</td>,
           code: ({ children }) => (
             <code className="rounded bg-slate-900/80 px-1.5 py-0.5 text-sm text-sky-200">{children}</code>
           ),
@@ -410,14 +410,14 @@ const AntiGriefingOverviewBody = ({
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          p: ({ children }) => <p className="text-[0.92rem] leading-7 text-gray-300 md:text-[1.05rem] md:leading-9">{children}</p>,
+          p: ({ children }) => <p className="text-[0.86rem] leading-6 text-gray-300 md:text-[1.05rem] md:leading-9">{children}</p>,
           strong: ({ children }) => <strong className={`font-semibold ${colors.secondary}`}>{children}</strong>,
           em: ({ children }) => <em className="italic text-slate-300">{children}</em>,
           a: MarkdownLink,
-          ol: ({ children }) => <ol className="ml-8 list-decimal space-y-5 text-[0.92rem] leading-7 text-gray-300 md:text-[1.02rem] md:leading-8">{children}</ol>,
+          ol: ({ children }) => <ol className="ml-6 list-decimal space-y-4 text-[0.86rem] leading-6 text-gray-300 md:ml-8 md:space-y-5 md:text-[1.02rem] md:leading-8">{children}</ol>,
           ul: ({ children }) => (
             <div className="rounded-[1.75rem] border border-violet-300/25 bg-violet-500/8 px-7 py-6 shadow-[0_24px_70px_rgba(76,29,149,0.16)]">
-              <ul className="ml-6 list-disc space-y-5 text-[0.92rem] leading-7 text-gray-200 marker:text-violet-300 md:text-[1.02rem] md:leading-8">
+              <ul className="ml-5 list-disc space-y-4 text-[0.86rem] leading-6 text-gray-200 marker:text-violet-300 md:ml-6 md:space-y-5 md:text-[1.02rem] md:leading-8">
                 {children}
               </ul>
             </div>
@@ -593,7 +593,7 @@ const TopicCard = ({
   const code = extractCode(title);
 
   return (
-    <article className="rounded-2xl border border-slate-700/60 bg-slate-950/45 p-5 shadow-[0_18px_60px_rgba(2,6,23,0.26)]">
+    <article className="rounded-2xl border border-slate-700/60 bg-slate-950/45 p-3.5 shadow-[0_18px_60px_rgba(2,6,23,0.26)] md:p-5">
       <div className="mb-4 flex flex-wrap items-start gap-3">
         <div className="min-w-0 flex-1">
           <ManualHeading
@@ -620,7 +620,7 @@ const TopicCard = ({
             const nestedCode = extractCode(nested.title);
 
             return (
-              <div key={nested.id} className="rounded-xl border border-slate-800/80 bg-slate-900/65 p-4">
+              <div key={nested.id} className="rounded-xl border border-slate-800/80 bg-slate-900/65 p-3 md:p-4">
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <ManualHeading
@@ -656,7 +656,7 @@ const FaqItem = ({
       type="button"
       onClick={onToggle}
       aria-expanded={isOpen}
-      className="flex w-full items-start justify-between gap-4 p-5 text-left"
+      className="flex w-full items-start justify-between gap-4 p-3.5 text-left md:p-5"
     >
       <div className="min-w-0 flex-1">
         <ManualHeading
@@ -671,7 +671,7 @@ const FaqItem = ({
     </button>
 
     {isOpen ? (
-      <div className="border-t border-slate-800 px-5 pb-5 pt-4">
+      <div className="border-t border-slate-800 px-3.5 pb-3.5 pt-3 md:px-5 md:pb-5 md:pt-4">
         <MarkdownBody markdown={item.markdown} colors={colors} />
       </div>
     ) : null}
@@ -685,14 +685,14 @@ const GlossaryGrid = ({
   <div className="space-y-6">
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       {glossary.entries.map((entry) => (
-        <article key={entry.term} className="rounded-2xl border border-slate-700/60 bg-slate-950/45 p-5">
+        <article key={entry.term} className="rounded-2xl border border-slate-700/60 bg-slate-950/45 p-3.5 md:p-5">
           <h3 className={`mb-3 text-lg font-semibold ${colors.secondary}`}>{entry.term}</h3>
           <MarkdownBody markdown={entry.markdown} colors={colors} />
         </article>
       ))}
     </div>
     {glossary.footerMarkdown ? (
-      <div className="rounded-2xl border border-slate-700/60 bg-slate-950/60 p-5">
+      <div className="rounded-2xl border border-slate-700/60 bg-slate-950/60 p-3.5 md:p-5">
         <MarkdownBody markdown={glossary.footerMarkdown} colors={colors} />
       </div>
     ) : null}
@@ -1053,7 +1053,7 @@ const UserManualV2 = ({
   const renderSectionPanel = (section) => (
     <section
       key={section.id}
-      className="rounded-[1.6rem] border border-slate-700/60 bg-slate-950/40 p-5 md:p-6"
+      className="rounded-[1.45rem] border border-slate-700/60 bg-slate-950/40 p-3.5 md:rounded-[1.6rem] md:p-6"
     >
       <SectionHeader
         title={section.title}
@@ -1084,7 +1084,7 @@ const UserManualV2 = ({
   );
 
   return (
-    <div className={`bg-gradient-to-br ${colors.bg} border ${colors.border} rounded-2xl p-6`}>
+    <div className={`bg-gradient-to-br ${colors.bg} border ${colors.border} rounded-2xl p-3 md:p-6`}>
       {collapsible ? (
         <button
           type="button"
@@ -1108,7 +1108,7 @@ const UserManualV2 = ({
       )}
 
       {isExpanded ? (
-        <div className="mt-6">
+        <div className="mt-4 md:mt-6">
           {isLoading ? (
             <p className="text-sm text-slate-300">Loading manual...</p>
           ) : errorMessage ? (
@@ -1170,7 +1170,7 @@ const UserManualV2 = ({
                     {displayedSection ? renderSectionPanel(displayedSection) : null}
 
                     {hasDisplayedSection && gameSpecificContent ? (
-                      <section className="rounded-[1.6rem] border border-slate-700/60 bg-slate-950/40 p-5 md:p-6">
+                      <section className="rounded-[1.45rem] border border-slate-700/60 bg-slate-950/40 p-3.5 md:rounded-[1.6rem] md:p-6">
                         {gameSpecificContent}
                       </section>
                     ) : null}
