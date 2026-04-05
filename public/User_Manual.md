@@ -71,7 +71,7 @@ You decide who competes and what's at stake:
 
 1) Create a lobby by configuring its **player count** and **entry fee**. 
 
-2) Then share its link with your friends, community, or whoever you want to challenge. 
+2) Share it with your friends, community, or whoever you want to challenge. 
 
 3) Players enrol by paying the entry fee.
 
