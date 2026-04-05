@@ -405,7 +405,7 @@ const GameMatchLayout = ({
               <button
                 onClick={onClaimTimeoutWin}
                 disabled={loading}
-                className="mt-1.5 w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-1.5 px-2 rounded-lg transition-all disabled:opacity-50 text-[11px]"
+                className="mt-1 w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-1 px-2 rounded-lg transition-all disabled:opacity-50 text-[10px]"
               >
                 Claim Timeout
               </button>

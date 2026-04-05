@@ -167,7 +167,7 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
 
       if (isMobileViewport) {
         const containerTop = containerRef.current?.getBoundingClientRect().top || 0;
-        const bottomReserve = 124;
+        const bottomReserve = 92;
         const sideSafetyMargin = 10;
         const availableHeight = Math.max(180, viewportHeight - containerTop - bottomReserve);
         const widthBudget = Math.max(180, containerWidth - sideSafetyMargin);
