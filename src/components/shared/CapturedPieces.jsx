@@ -43,15 +43,6 @@ const PIECE_NAMES = {
 const CapturedPieces = ({ capturedPieces, color, collapsible = false }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const toggleExpanded = (nextValue) => {
-    setIsExpanded(nextValue);
-    if (typeof window !== 'undefined') {
-      window.requestAnimationFrame(() => {
-        window.dispatchEvent(new Event('resize'));
-      });
-    }
-  };
-
   if (!capturedPieces || capturedPieces.length === 0) {
     return null;
   }
@@ -122,7 +113,7 @@ const CapturedPieces = ({ capturedPieces, color, collapsible = false }) => {
             {pieceBadges}
           </div>
           <button
-            onClick={() => toggleExpanded(false)}
+            onClick={() => setIsExpanded(false)}
             className="mt-1 flex items-center gap-1 text-[10px] text-gray-400 hover:text-gray-200 transition-colors w-full justify-end"
             aria-label="Collapse lost pieces"
           >
@@ -132,7 +123,7 @@ const CapturedPieces = ({ capturedPieces, color, collapsible = false }) => {
         </>
       ) : (
         <button
-          onClick={() => toggleExpanded(true)}
+          onClick={() => setIsExpanded(true)}
           className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-gray-200 transition-colors w-full"
           aria-label="Show lost pieces"
         >

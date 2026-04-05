@@ -266,8 +266,6 @@ const GameMatchLayout = ({
 
   // Render mobile consolidated header (used across all layouts)
   const renderMobileConsolidatedHeader = () => {
-    const compactChessMobileHeader = gameType === 'chess' && layout === 'players-board-history';
-
     // Timer values come from state (client-side ticking)
     const totalTime = match.matchTimePerPlayer ?? 300;
 
@@ -319,17 +317,6 @@ const GameMatchLayout = ({
       const colorScheme = isPlayer1 ? theme.player1Color : theme.player2Color;
       const extraContent = isPlayer1 ? renderPlayer1Extra?.(true) : renderPlayer2Extra?.(true);
       const showCTA = showML1CTA && isTurn;
-      const cardPaddingClass = compactChessMobileHeader ? 'pt-3 px-2.5 pb-2 space-y-1.5' : 'pt-4 px-3 pb-3 space-y-2';
-      const iconSizeClass = compactChessMobileHeader ? 'w-8 h-8' : 'w-10 h-10';
-      const addressClass = compactChessMobileHeader ? 'font-mono text-[10px] truncate text-white' : 'font-mono text-[11px] truncate text-white';
-      const youLabelClass = compactChessMobileHeader ? 'text-yellow-300 text-[9px] font-bold flex-shrink-0' : 'text-yellow-300 text-[10px] font-bold flex-shrink-0';
-      const timerShellClass = compactChessMobileHeader ? 'border rounded p-1 mt-0.5' : 'border rounded p-1 mt-0.5 mr-1';
-      const timerLabel = compactChessMobileHeader ? 'Time' : 'Time Left';
-      const timerTextClass = compactChessMobileHeader ? 'font-mono text-[11px] font-bold' : 'font-mono text-xs font-bold';
-      const ctaClass = compactChessMobileHeader
-        ? 'w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-1.5 px-2 rounded-lg transition-all disabled:opacity-50 text-[11px]'
-        : 'w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-2 px-3 rounded-lg transition-all disabled:opacity-50 text-xs';
-      const extraContentClass = compactChessMobileHeader ? 'min-w-0' : '';
 
       // Get color config for player
       const COLOR_CONFIGS = {
@@ -343,92 +330,21 @@ const GameMatchLayout = ({
       const cardColors = COLOR_CONFIGS[colorScheme] || COLOR_CONFIGS.blue;
       const cardBg = isMobileHeaderFixed ? cardColors.bgFixed : cardColors.bg;
 
-      if (compactChessMobileHeader) {
-        return (
-          <div className={`relative rounded-lg border-2 mt-1 ${
-            isTurn && isYou && !isGameOver
-              ? `border-green-400 ${isMobileHeaderFixed ? 'bg-green-900' : 'bg-green-500/10'} ring-2 ring-green-400/30`
-              : `${cardColors.border} ${cardBg}`
-          } pt-2 px-2 pb-2`}>
-            <div className="absolute -top-3 left-0 right-0 flex h-5 items-center justify-center">
-              {isTurn && !isGameOver && (
-                isYou ? (
-                  <div className="inline-flex min-h-[18px] items-center justify-center bg-gradient-to-r from-green-500 to-emerald-500 px-2 py-0 text-[9px] font-bold leading-none text-white whitespace-nowrap rounded-full shadow-lg animate-bounce z-10">
-                    YOUR TURN!
-                  </div>
-                ) : (
-                  <div className="inline-flex min-h-[18px] items-center justify-center bg-gradient-to-r from-red-500 to-rose-500 px-2 py-0 text-[9px] font-bold leading-none text-white whitespace-nowrap rounded-full shadow-lg z-10">
-                    THEIR TURN
-                  </div>
-                )
-              )}
-            </div>
-
-            <div className="flex items-center gap-2 min-h-[44px]">
-              {(icon === '♚' || icon === '♔') ? (
-                <img
-                  src={icon === '♚' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
-                  alt={label}
-                  className="w-7 h-7 shrink-0"
-                  draggable="false"
-                />
-              ) : (
-                <div className={`w-7 h-7 shrink-0 ${cardColors.iconBg} rounded-full flex items-center justify-center text-sm font-bold border ${
-                  isTurn && !isGameOver ? 'border-green-400' : cardColors.border
-                }`}>
-                  {icon}
-                </div>
-              )}
-
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1">
-                  <div className="font-mono text-[10px] truncate text-white">
-                    {playerAddress ? `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : ''}
-                  </div>
-                  {isYou && <span className="text-yellow-300 text-[9px] font-bold flex-shrink-0">YOU</span>}
-                  {extraContent}
-                </div>
-              </div>
-
-              {showTurnTimer && !showCTA && (
-                <div className={`shrink-0 rounded-md px-2 py-1 ${
-                  isTurn ? `${colors.border} ${colors.bg} border` : 'border border-gray-600/30 bg-gray-800/20 opacity-60'
-                }`}>
-                  <span className={`font-mono text-[11px] font-bold ${colors.text}`}>
-                    {timeLeft > 0 ? formatTime(timeLeft) : 'OUT'}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {showTurnTimer && showCTA && (
-              <button
-                onClick={onClaimTimeoutWin}
-                disabled={loading}
-                className="mt-1 w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-1 px-2 rounded-lg transition-all disabled:opacity-50 text-[10px]"
-              >
-                Claim Timeout
-              </button>
-            )}
-          </div>
-        );
-      }
-
       return (
-        <div className={`relative rounded-lg border-2 ${compactChessMobileHeader ? 'mt-2' : 'mt-3'} ${
+        <div className={`relative rounded-lg border-2 mt-3 ${
           isTurn && isYou && !isGameOver
             ? `border-green-400 ${isMobileHeaderFixed ? 'bg-green-900' : 'bg-green-500/10'} ring-2 ring-green-400/30`
             : `${cardColors.border} ${cardBg}`
-        } ${cardPaddingClass}`}>
+        } pt-4 px-3 pb-3 space-y-2`}>
           {/* Turn Indicator Badge — always reserves space so both cards stay aligned */}
-          <div className={`absolute left-0 right-0 flex items-center justify-center ${compactChessMobileHeader ? '-top-3 h-5' : '-top-4 h-6'}`}>
+          <div className="absolute -top-4 left-0 right-0 flex h-6 items-center justify-center">
             {isTurn && !isGameOver && (
               isYou ? (
-                <div className={`inline-flex items-center justify-center bg-gradient-to-r from-green-500 to-emerald-500 font-bold leading-none text-white whitespace-nowrap rounded-full shadow-lg animate-bounce z-10 ${compactChessMobileHeader ? 'min-h-[18px] px-2 py-0 text-[9px]' : 'min-h-[22px] px-2.5 py-0.5 text-[11px]'}`}>
+                <div className="inline-flex min-h-[22px] items-center justify-center bg-gradient-to-r from-green-500 to-emerald-500 px-2.5 py-0.5 text-[11px] font-bold leading-none text-white whitespace-nowrap rounded-full shadow-lg animate-bounce z-10">
                   YOUR TURN!
                 </div>
               ) : (
-                <div className={`inline-flex items-center justify-center bg-gradient-to-r from-red-500 to-rose-500 font-bold leading-none text-white whitespace-nowrap rounded-full shadow-lg animate-bounce z-10 ${compactChessMobileHeader ? 'min-h-[18px] px-2 py-0 text-[9px]' : 'min-h-[22px] px-2.5 py-0.5 text-[11px]'}`}>
+                <div className="inline-flex min-h-[22px] items-center justify-center bg-gradient-to-r from-red-500 to-rose-500 px-2.5 py-0.5 text-[11px] font-bold leading-none text-white whitespace-nowrap rounded-full shadow-lg animate-bounce z-10">
                   THEIR TURN
                 </div>
               )
@@ -436,16 +352,16 @@ const GameMatchLayout = ({
           </div>
 
           {/* Player Info Section */}
-          <div className={`flex items-center ${compactChessMobileHeader ? 'gap-1.5' : 'gap-2'}`}>
+          <div className="flex items-center gap-2">
             {(icon === '♚' || icon === '♔') ? (
               <img
                 src={icon === '♚' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
                 alt={label}
-                className={iconSizeClass}
+                className="w-10 h-10"
                 draggable="false"
               />
             ) : (
-              <div className={`${iconSizeClass} ${cardColors.iconBg} rounded-full flex items-center justify-center ${compactChessMobileHeader ? 'text-base' : 'text-xl'} font-bold border ${
+              <div className={`w-10 h-10 ${cardColors.iconBg} rounded-full flex items-center justify-center text-xl font-bold border ${
                 isTurn && !isGameOver ? 'border-green-400' : cardColors.border
               }`}>
                 {icon}
@@ -453,16 +369,16 @@ const GameMatchLayout = ({
             )}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1">
-                <div className={addressClass}>{playerAddress ? `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : ''}</div>
-                {isYou && <span className={youLabelClass}>YOU</span>}
+                <div className="font-mono text-[11px] truncate text-white">{playerAddress ? `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : ''}</div>
+                {isYou && <span className="text-yellow-300 text-[10px] font-bold flex-shrink-0">YOU</span>}
               </div>
               {showTurnTimer && (
-                <div className={`${timerShellClass} ${
+                <div className={`border rounded p-1 mt-0.5 mr-1 ${
                   isTurn ? `${colors.border} ${colors.bg}` : 'border-gray-600/30 opacity-60'
                 }`}>
                   <div className="flex items-center justify-between mb-0.5">
-                    <span className={`font-bold text-gray-300 ${compactChessMobileHeader ? 'text-[9px]' : 'text-[10px]'}`}>{timerLabel}</span>
-                    <span className={`${timerTextClass} ${colors.text}`}>
+                    <span className="text-[10px] font-bold text-gray-300">Time Left</span>
+                    <span className={`font-mono text-xs font-bold ${colors.text}`}>
                       {timeLeft > 0 ? formatTime(timeLeft) : 'OUT'}
                     </span>
                   </div>
@@ -479,14 +395,14 @@ const GameMatchLayout = ({
             <button
               onClick={onClaimTimeoutWin}
               disabled={loading}
-              className={ctaClass}
+              className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-2 px-3 rounded-lg transition-all disabled:opacity-50 text-xs"
             >
               Claim Timeout Victory
             </button>
           )}
 
           {/* Extra Content (Lost Pieces) - Below Timer */}
-          {extraContent && <div className={extraContentClass}>{extraContent}</div>}
+          {extraContent && <div>{extraContent}</div>}
         </div>
       );
     };
@@ -494,10 +410,10 @@ const GameMatchLayout = ({
     const headerContent = (
       <div
         ref={mobileHeaderRef}
-        className={`lg:hidden ${isMobileHeaderFixed ? `fixed left-0 right-0 z-[9999] ${compactChessMobileHeader ? 'px-3' : 'px-4'} bg-black/95 backdrop-blur-sm border border-purple-500 [box-shadow:0_0_8px_rgba(168,85,247,0.7),0_0_20px_rgba(168,85,247,0.4)] [animation:glow-pulse_2s_ease-in-out_infinite] ${isBoardBelow ? 'bottom-20 pt-2 pb-2' : compactChessMobileHeader ? 'top-0 pt-2.5 pb-2.5' : 'top-0 pt-3 pb-3'}` : compactChessMobileHeader ? 'mb-4' : 'mb-6'}`}
+        className={`lg:hidden ${isMobileHeaderFixed ? `fixed left-0 right-0 z-[9999] px-4 bg-black/95 backdrop-blur-sm border border-purple-500 [box-shadow:0_0_8px_rgba(168,85,247,0.7),0_0_20px_rgba(168,85,247,0.4)] [animation:glow-pulse_2s_ease-in-out_infinite] ${isBoardBelow ? 'bottom-20 pt-2 pb-2' : 'top-0 pt-3 pb-3'}` : 'mb-6'}`}
       >
         {/* Single row: Combined player cards with timers */}
-        <div className={`grid grid-cols-2 ${compactChessMobileHeader ? 'gap-2' : 'gap-3'}`}>
+        <div className="grid grid-cols-2 gap-3">
           {renderPlayerCard(1)}
           {renderPlayerCard(2)}
         </div>
