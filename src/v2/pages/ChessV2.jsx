@@ -158,7 +158,7 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
 
   useEffect(() => {
     const updateSize = () => {
-      const viewportLimit = window.innerHeight * 0.57;
+      const viewportLimit = window.innerHeight * 0.55;
       const containerWidth = containerRef.current?.offsetWidth || window.innerWidth * 0.9;
       setBoardSize(Math.min(viewportLimit, containerWidth, maxSize));
     };
@@ -284,7 +284,7 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
   return (
     <div className="relative flex flex-col items-center">
       <div ref={containerRef} className="w-full flex justify-center">
-        <div className="relative rounded-xl overflow-hidden" style={{ width: boardSize || 400, height: boardSize || 400, minWidth: 264, minHeight: 264, background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.9))', border: '1px solid rgba(148, 163, 184, 0.2)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(6, 182, 212, 0.1), inset 0 1px 0 rgba(255,255,255,0.05)' }}>
+        <div className="relative rounded-xl overflow-hidden" style={{ width: boardSize || 400, height: boardSize || 400, minWidth: 248, minHeight: 248, background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.9))', border: '1px solid rgba(148, 163, 184, 0.2)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(6, 182, 212, 0.1), inset 0 1px 0 rgba(255,255,255,0.05)' }}>
           <div className="grid gap-0 w-full h-full" style={{ gridTemplateColumns: 'repeat(8, 1fr)', gridTemplateRows: 'repeat(8, 1fr)' }}>{renderBoard()}</div>
         </div>
       </div>
@@ -1988,7 +1988,7 @@ export default function ChessV2() {
                 </>
               ) : undefined}
             >
-              <ChessBoard board={currentMatch.board} onMove={isSpectator ? null : handleMakeMove} currentTurn={currentMatch.currentTurn} account={isSpectator ? null : account} player1={currentMatch.player1} player2={currentMatch.player2} firstPlayer={currentMatch.firstPlayer} matchStatus={currentMatch.matchStatus} loading={matchLoading} whiteInCheck={currentMatch.whiteInCheck} blackInCheck={currentMatch.blackInCheck} lastMoveTime={currentMatch.lastMoveTime} startTime={currentMatch.startTime} lastMove={currentMatch.lastMove} maxSize={860} ghostMove={ghostMove} />
+              <ChessBoard board={currentMatch.board} onMove={isSpectator ? null : handleMakeMove} currentTurn={currentMatch.currentTurn} account={isSpectator ? null : account} player1={currentMatch.player1} player2={currentMatch.player2} firstPlayer={currentMatch.firstPlayer} matchStatus={currentMatch.matchStatus} loading={matchLoading} whiteInCheck={currentMatch.whiteInCheck} blackInCheck={currentMatch.blackInCheck} lastMoveTime={currentMatch.lastMoveTime} startTime={currentMatch.startTime} lastMove={currentMatch.lastMove} maxSize={820} ghostMove={ghostMove} />
             </GameMatchLayout>
 
             {moveTxTimeout && (
