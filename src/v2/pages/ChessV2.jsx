@@ -391,6 +391,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
         onClaimAbandonedPool={onClaimAbandonedPool ? () => onClaimAbandonedPool(VIRTUAL_TIER_ID, VIRTUAL_INSTANCE_ID) : null}
         onResetEnrollmentWindow={onResetEnrollmentWindow ? () => onResetEnrollmentWindow(VIRTUAL_TIER_ID, VIRTUAL_INSTANCE_ID) : null}
         onCancelTournament={onCancelTournament ? () => onCancelTournament(VIRTUAL_TIER_ID, VIRTUAL_INSTANCE_ID) : null}
+        forceShowResetEnrollmentWindow={Boolean(status === 0 && enrolledCount === 1 && isEnrolled)}
         contract={instanceContract}
       />
       <div ref={bracketViewRef} className="bg-gradient-to-br from-slate-900/50 to-purple-900/30 backdrop-blur-lg rounded-2xl p-8 border border-purple-400/30">

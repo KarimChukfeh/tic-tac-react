@@ -181,6 +181,28 @@ describe('TournamentHeader', () => {
     expect(onCancelTournament).toHaveBeenCalledWith(0, 0);
   });
 
+  it('shows the solo-enroller reset action when a wrapper forces the CTA', async () => {
+    render(
+      <TournamentHeader
+        {...baseProps}
+        enrolledCount={1}
+        isEnrolled
+        enrollmentTimeout={{
+          escalation1Start: Math.floor(Date.now() / 1000) + 300,
+          escalation2Start: Math.floor(Date.now() / 1000) + 600,
+          activeEscalation: 0,
+          forfeitPool: 0n,
+        }}
+        onCancelTournament={vi.fn()}
+        onResetEnrollmentWindow={vi.fn()}
+        forceShowResetEnrollmentWindow
+      />
+    );
+
+    expect(await screen.findByRole('button', { name: 'Cancel Tournament' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Reset Enrollment Window' })).toBeInTheDocument();
+  });
+
   it('shows the enrolment window timer inside the status card when a deadline is provided', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-04-02T12:00:00Z'));

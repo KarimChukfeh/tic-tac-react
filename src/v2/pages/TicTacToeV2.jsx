@@ -266,6 +266,7 @@ const TournamentBracket = ({
         onClaimAbandonedPool={onClaimAbandonedPool ? () => onClaimAbandonedPool(tierId, instanceId) : null}
         onResetEnrollmentWindow={onResetEnrollmentWindow ? () => onResetEnrollmentWindow(tierId, instanceId) : null}
         onCancelTournament={onCancelTournament ? () => onCancelTournament(tierId, instanceId) : null}
+        forceShowResetEnrollmentWindow={Boolean(status === 0 && enrolledCount === 1 && isEnrolled)}
         contract={instanceContract}
       />
 

@@ -109,6 +109,7 @@ const TournamentHeader = ({
   onClaimAbandonedPool,
   onResetEnrollmentWindow,
   onCancelTournament,
+  forceShowResetEnrollmentWindow = false,
   contract,
 
   // Optional: override the share URL (e.g. for V2 contract-address-based URLs)
@@ -536,7 +537,7 @@ const TournamentHeader = ({
           )}
 
           {/* EL1*: Reset Enrollment Window - Solo player can extend enrollment */}
-          {canResetWindow && isSoloEnrolled && onResetEnrollmentWindow && (
+          {(forceShowResetEnrollmentWindow || canResetWindow) && isSoloEnrolled && onResetEnrollmentWindow && (
             <div className="mt-4">
               <button
                 onClick={() => onResetEnrollmentWindow(tierId, instanceId)}
