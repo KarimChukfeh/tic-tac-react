@@ -158,13 +158,36 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
 
   useEffect(() => {
     const updateSize = () => {
-      const vh60 = window.innerHeight * 0.60;
-      const containerWidth = containerRef.current?.offsetWidth || window.innerWidth * 0.9;
-      setBoardSize(Math.min(vh60, containerWidth, maxSize));
+      const viewportHeight = window.visualViewport?.height || window.innerHeight;
+      const viewportWidth = window.visualViewport?.width || window.innerWidth;
+      const isMobileViewport = viewportWidth < 1024;
+      const containerWidth = containerRef.current?.offsetWidth || viewportWidth * 0.9;
+
+      let nextBoardSize;
+
+      if (isMobileViewport) {
+        const containerTop = containerRef.current?.getBoundingClientRect().top || 0;
+        const bottomReserve = 96;
+        const availableHeight = Math.max(180, viewportHeight - containerTop - bottomReserve);
+        nextBoardSize = Math.min(containerWidth, availableHeight, maxSize);
+      } else {
+        const desktopHeightBudget = viewportHeight * 0.60;
+        nextBoardSize = Math.min(containerWidth, desktopHeightBudget, maxSize);
+      }
+
+      setBoardSize(nextBoardSize);
     };
+
     updateSize();
     window.addEventListener('resize', updateSize);
-    return () => window.removeEventListener('resize', updateSize);
+    window.addEventListener('orientationchange', updateSize);
+    window.visualViewport?.addEventListener('resize', updateSize);
+
+    return () => {
+      window.removeEventListener('resize', updateSize);
+      window.removeEventListener('orientationchange', updateSize);
+      window.visualViewport?.removeEventListener('resize', updateSize);
+    };
   }, [maxSize]);
 
   const getActualIndex = (displayIdx) => {
@@ -284,7 +307,7 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
   return (
     <div className="relative flex flex-col items-center">
       <div ref={containerRef} className="w-full flex justify-center">
-        <div className="relative rounded-xl overflow-hidden" style={{ width: boardSize || 400, height: boardSize || 400, minWidth: 280, minHeight: 280, background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.9))', border: '1px solid rgba(148, 163, 184, 0.2)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(6, 182, 212, 0.1), inset 0 1px 0 rgba(255,255,255,0.05)' }}>
+        <div className="relative rounded-xl overflow-hidden" style={{ width: boardSize || 400, height: boardSize || 400, minWidth: boardSize || 220, minHeight: boardSize || 220, background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.9))', border: '1px solid rgba(148, 163, 184, 0.2)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(6, 182, 212, 0.1), inset 0 1px 0 rgba(255,255,255,0.05)' }}>
           <div className="grid gap-0 w-full h-full" style={{ gridTemplateColumns: 'repeat(8, 1fr)', gridTemplateRows: 'repeat(8, 1fr)' }}>{renderBoard()}</div>
         </div>
       </div>
@@ -1956,18 +1979,44 @@ export default function ChessV2() {
               isSpectator={isSpectator}
               renderPlayer1Extra={(isMobile) => {
                 const capturedPieces = calculateCapturedPieces(currentMatch.board);
+                if (isMobile) {
+                  return (
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <CapturedPieces capturedPieces={capturedPieces.black} color="black" collapsible />
+                      {currentMatch.whiteInCheck && (
+                        <span className="inline-flex items-center rounded-md border border-red-400/60 bg-red-500/15 px-2 py-0.5 text-[10px] font-bold tracking-[0.08em] text-red-300">
+                          CHECK
+                        </span>
+                      )}
+                    </div>
+                  );
+                }
+
                 return (
                   <>
-                    <CapturedPieces capturedPieces={capturedPieces.black} color="black" collapsible={!!isMobile} />
+                    <CapturedPieces capturedPieces={capturedPieces.black} color="black" collapsible={false} />
                     {currentMatch.whiteInCheck && <div className="bg-red-500/20 border border-red-400 rounded-lg p-2 text-center mt-2"><span className="text-red-300 text-xs font-bold">CHECK</span></div>}
                   </>
                 );
               }}
               renderPlayer2Extra={(isMobile) => {
                 const capturedPieces = calculateCapturedPieces(currentMatch.board);
+                if (isMobile) {
+                  return (
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <CapturedPieces capturedPieces={capturedPieces.white} color="white" collapsible />
+                      {currentMatch.blackInCheck && (
+                        <span className="inline-flex items-center rounded-md border border-red-400/60 bg-red-500/15 px-2 py-0.5 text-[10px] font-bold tracking-[0.08em] text-red-300">
+                          CHECK
+                        </span>
+                      )}
+                    </div>
+                  );
+                }
+
                 return (
                   <>
-                    <CapturedPieces capturedPieces={capturedPieces.white} color="white" collapsible={!!isMobile} />
+                    <CapturedPieces capturedPieces={capturedPieces.white} color="white" collapsible={false} />
                     {currentMatch.blackInCheck && <div className="bg-red-500/20 border border-red-400 rounded-lg p-2 text-center mt-2"><span className="text-red-300 text-xs font-bold">CHECK</span></div>}
                   </>
                 );
