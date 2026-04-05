@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Shield, Lock, Eye, CheckCircle, ChevronDown, ChevronUp, HelpCircle } from 'lucide-react';
+import { Shield, Lock, Eye, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
@@ -327,8 +327,6 @@ function useHeroCycle() {
 }
 
 export default function Landing() {
-  const [whitepaperExpanded, setWhitepaperExpanded] = useState(false);
-  const [expandedFaq, setExpandedFaq] = useState(null);
   const [contractsExpanded, setContractsExpanded] = useState(false);
   const [whitepaperGlow, setWhitepaperGlow] = useState(false);
   const whitepaperGlowTimer = useRef(null);
@@ -337,26 +335,6 @@ export default function Landing() {
   useEffect(() => {
     document.title = 'ETour - Pure Competition. No Nonsense.';
   }, []);
-
-  // FAQ data
-  const faqs = [
-    {
-      q: "How does ETour work?",
-      a: "ETour matches enrolled players on the blockchain. Players enroll by paying an entry fee, then they take turns making moves on-chain. The winner receives 90% of the total entry fees (with 7.5% to owner and 2.5% to protocol)."
-    },
-    {
-      q: "Why play games on the blockchain?",
-      a: "Strategy games are perfect for blockchain: they're deterministic and impossible to cheat when moves are recorded on-chain. Unlike poker or casino games that require trusted randomness, our games are pure skill. Every move is recorded on-chain, and game outcomes are secured by the blockchain."
-    },
-    {
-      q: "What if my opponent doesn't move?",
-      a: "Each player has a time limit per move. If a player fails to make a move within the time limit, they automatically forfeit the game. The smart contract enforces all timeouts. No disputes required, no moderators needed."
-    },
-    {
-      q: "How do I know the prize pool is safe?",
-      a: "All entry fees go directly to the smart contract on Arbitrum. The contract holds the funds and distributes them automatically when a winner is determined. No human can access the funds. You can verify this by reading the contract code on Arbiscan."
-    }
-  ];
 
   return (
     <div 
@@ -444,22 +422,7 @@ export default function Landing() {
 
           {/* Subheadline */}
           <p className="text-xl md:text-2xl text-slate-400 text-center max-w-2xl mb-12 leading-relaxed">
-            <a
-              href="#how-does-etour-work"
-              onClick={(e) => {
-                e.preventDefault();
-                const faqSection = document.getElementById('how-does-etour-work');
-                if (faqSection) {
-                  faqSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                  // Expand the FAQ item after scrolling
-                  setTimeout(() => setExpandedFaq(0), 500);
-                }
-              }}
-              className="inline-flex items-center gap-2 hover:text-slate-300 transition-colors cursor-pointer underline decoration-dotted decoration-slate-500 underline-offset-4"
-            >
-              Classic games. ETH stakes. No hidden costs.
-              <HelpCircle size={20} className="text-cyan-400" />
-            </a>
+            Classic games. ETH stakes. No hidden costs.
             <br />
             <span className="text-white font-semibold inline-block mt-4">Skill vs skill. Real ETH on the line.</span>
           </p>
@@ -546,7 +509,7 @@ export default function Landing() {
         </section>
 
         {/* ============ WHY TRUST THIS ============ */}
-        <section className="px-6 py-24">
+        <section className="px-6 py-16">
           <div className="max-w-5xl mx-auto">
             
             <div className="text-center mb-16">
@@ -596,37 +559,8 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* ============ FAQ SECTION ============ */}
-        <section className="px-6 py-12 border-t border-slate-800/50">
-          <div className="max-w-4xl mx-auto">
-            <h2 className="text-4xl font-bold mb-12 text-center text-white">Frequently Asked Questions</h2>
-            <div className="space-y-4">
-              {faqs.map((faq, idx) => (
-                <div
-                  key={idx}
-                  id={idx === 0 ? 'how-does-etour-work' : undefined}
-                  className="border border-slate-700/50 rounded-xl overflow-hidden bg-slate-900/60"
-                >
-                  <button
-                    onClick={() => setExpandedFaq(expandedFaq === idx ? null : idx)}
-                    className="w-full px-6 py-5 flex items-center justify-between hover:bg-slate-800/50 transition-colors cursor-pointer"
-                  >
-                    <span className="font-semibold text-left text-white">{faq.q}</span>
-                    {expandedFaq === idx ? <ChevronUp size={20} className="text-cyan-400" /> : <ChevronDown size={20} className="text-slate-400" />}
-                  </button>
-                  {expandedFaq === idx && (
-                    <div className="px-6 py-5 bg-slate-800/30 border-t border-slate-700/50">
-                      <p className="text-slate-300 leading-relaxed">{faq.a}</p>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
         {/* ============ FINAL CTA ============ */}
-        <section className="px-6 py-8 text-center">
+        <section className="px-6 py-16 text-center">
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
             Ready to Prove Yourself?
           </h2>
