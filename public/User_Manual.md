@@ -2,8 +2,9 @@
 
 **1. Getting Started**
 - [1.1: What is ETour?](#11-what-is-etour)
-- [1.2: What You Need](#12-what-you-need)
-- [1.3: The Five Steps](#13-the-five-steps)
+- [1.2: How it Works](#12-how-it-works)
+- [1.3: What You Need](#13-what-you-need)
+- [1.4: The Five Steps](#14-the-five-steps)
 
 **2. Lobbies & Enrollment**
 - [2.1: Creating a Lobby](#21-creating-a-lobby)
@@ -64,7 +65,23 @@ No accounts, no admins, no intermediaries.
 > 
 > The best player wins. The winner gets paid.
 
-### 1.2: What You Need
+### 1.2 How it Works
+
+You decide who competes and what's at stake:
+
+1) You create a lobby by configuring its **player count** and **entry fee**. 
+
+2) You share it your friends or whoever you want to challenge. 
+
+3) Players enrol by paying the entry fee.
+
+4) Once the last spot fills, matches begin automatically. 
+
+5) Winners advance. Losers are eliminated. 
+
+6) The champion takes **the entire prize pool** (95% of the all entry fees).
+
+### 1.3: What You Need
 
 To play on ETour you need three things:
 
@@ -76,7 +93,7 @@ If you're new to Arbitrum, you'll need to bridge ETH from Ethereum mainnet to Ar
 
 Gas fees on Arbitrum are minimal, typically less than a $0.02 per transaction.
 
-### 1.3: The Five Steps
+### 1.4: The Five Steps
 
 Everything on ETour follows the same five steps regardless of which game you're playing.
 
