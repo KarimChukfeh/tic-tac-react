@@ -422,7 +422,21 @@ export default function Landing() {
 
           {/* Subheadline */}
           <p className="text-xl md:text-2xl text-slate-400 text-center max-w-2xl mb-12 leading-relaxed">
-            Classic games. ETH stakes. No hidden costs.
+            <a
+              href="#learn-more-links"
+              onClick={(e) => {
+                e.preventDefault();
+                document.getElementById('learn-more-links')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                clearTimeout(whitepaperGlowTimer.current);
+                setTimeout(() => {
+                  setWhitepaperGlow(true);
+                  whitepaperGlowTimer.current = setTimeout(() => setWhitepaperGlow(false), 2000);
+                }, 600);
+              }}
+              className="inline-flex items-center hover:text-slate-300 transition-colors cursor-pointer underline decoration-dotted decoration-slate-500 underline-offset-4"
+            >
+              Classic games. ETH stakes. No hidden costs.
+            </a>
             <br />
             <span className="text-white font-semibold inline-block mt-4">Skill vs skill. Real ETH on the line.</span>
           </p>
@@ -578,7 +592,10 @@ export default function Landing() {
               Start Playing
             </button>
             <span className="text-slate-500 text-lg font-medium">or</span>
-            <div className="grid items-center gap-x-3 gap-y-2 text-xl font-bold sm:grid-cols-[1fr_auto_1fr]">
+            <div
+              id="learn-more-links"
+              className="grid items-center gap-x-3 gap-y-2 text-xl font-bold sm:grid-cols-[1fr_auto_1fr]"
+            >
               <Link
                 id="read-the-whitepaper"
                 to="/whitepaper"
