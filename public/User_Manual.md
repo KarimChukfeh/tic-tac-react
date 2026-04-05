@@ -212,9 +212,7 @@ Every tournament on ETour ends for a reason. That reason is codified as a resolu
 Resolution reasons exist at two levels:
 
 - **Tournament level:** The entire tournament ends and the prize pool is distributed.
-- **Match and batch level:** A single match or an entire round of matches resolves due to the same underlying event.
-
-The same code can apply at multiple levels. 4.6 (ML1), for example, can resolve a single match (one player times out), an entire round of matches (multiple timeouts across the bracket), or the entire tournament (timeout in the finals). Same code, same meaning, different scope.
+- **Match level:** A single match or an entire round of matches resolves due to the same underlying event.
 
 Understanding resolution reasons helps you know exactly what happened to your tournament, why your ETH was distributed the way it was, and what your options were at any point during the process.
 
@@ -334,9 +332,8 @@ If ML1 occurs in the finals, the tournament resolves immediately. The claiming p
 
 **Scope**
 ML1 can apply at three levels:
-- **Match level:** One match resolves via timeout. The winner advances. The tournament continues.
-- **Batch level:** Multiple matches in the same round resolve via timeout simultaneously. Multiple winners advance. The tournament continues.
 - **Tournament level:** The finals match resolves via timeout. The tournament ends and the prize pool is distributed.
+- **Match level:** One match resolves via timeout. The winner advances. The tournament continues.
 
 **Important note**
 Your opponent is not required to claim victory immediately when your clock hits zero. They can choose to wait. But once your clock is at zero, the option is available to them at any time. Don't rely on your opponent not noticing.
@@ -617,9 +614,6 @@ If you are enrolled in a lobby that never fills:
 The safest path: if your lobby isn't filling and the enrollment window is expiring, trigger EL1 yourself. Start the tournament with whoever showed up. Don't wait for EL2 to become available to outsiders.
 
 ## 7. Glossary
-
-**Batch**
-All matches within the same round of a tournament. In an 8-player tournament, the first round is a batch of four matches running simultaneously.
 
 **Bracket**
 The single elimination structure that pairs players into matches round by round until one player remains.
