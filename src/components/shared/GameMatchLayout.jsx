@@ -114,6 +114,7 @@ const GameMatchLayout = ({
   children
 }) => {
   let theme = GAME_THEMES[gameType] || GAME_THEMES.tictactoe;
+  const compactChessMatchView = gameType === 'chess' && layout === 'players-board-history';
 
   const {
     player1,
@@ -335,16 +336,16 @@ const GameMatchLayout = ({
           isTurn && isYou && !isGameOver
             ? `border-green-400 ${isMobileHeaderFixed ? 'bg-green-900' : 'bg-green-500/10'} ring-2 ring-green-400/30`
             : `${cardColors.border} ${cardBg}`
-        } pt-4 px-3 pb-3 space-y-2`}>
+        } ${compactChessMatchView ? 'pt-3 px-2.5 pb-2.5 space-y-1.5' : 'pt-4 px-3 pb-3 space-y-2'}`}>
           {/* Turn Indicator Badge — always reserves space so both cards stay aligned */}
-          <div className="absolute -top-4 left-0 right-0 flex h-6 items-center justify-center">
+          <div className={`absolute left-0 right-0 flex items-center justify-center ${compactChessMatchView ? '-top-3.5 h-5' : '-top-4 h-6'}`}>
             {isTurn && !isGameOver && (
               isYou ? (
-                <div className="inline-flex min-h-[22px] items-center justify-center bg-gradient-to-r from-green-500 to-emerald-500 px-2.5 py-0.5 text-[11px] font-bold leading-none text-white whitespace-nowrap rounded-full shadow-lg animate-bounce z-10">
+                <div className={`inline-flex items-center justify-center bg-gradient-to-r from-green-500 to-emerald-500 font-bold leading-none text-white whitespace-nowrap rounded-full shadow-lg animate-bounce z-10 ${compactChessMatchView ? 'min-h-[20px] px-2 py-0.5 text-[10px]' : 'min-h-[22px] px-2.5 py-0.5 text-[11px]'}`}>
                   YOUR TURN!
                 </div>
               ) : (
-                <div className="inline-flex min-h-[22px] items-center justify-center bg-gradient-to-r from-red-500 to-rose-500 px-2.5 py-0.5 text-[11px] font-bold leading-none text-white whitespace-nowrap rounded-full shadow-lg animate-bounce z-10">
+                <div className={`inline-flex items-center justify-center bg-gradient-to-r from-red-500 to-rose-500 font-bold leading-none text-white whitespace-nowrap rounded-full shadow-lg animate-bounce z-10 ${compactChessMatchView ? 'min-h-[20px] px-2 py-0.5 text-[10px]' : 'min-h-[22px] px-2.5 py-0.5 text-[11px]'}`}>
                   THEIR TURN
                 </div>
               )
@@ -352,33 +353,33 @@ const GameMatchLayout = ({
           </div>
 
           {/* Player Info Section */}
-          <div className="flex items-center gap-2">
+          <div className={`flex items-center ${compactChessMatchView ? 'gap-1.5' : 'gap-2'}`}>
             {(icon === '♚' || icon === '♔') ? (
               <img
                 src={icon === '♚' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
                 alt={label}
-                className="w-10 h-10"
+                className={compactChessMatchView ? 'w-8 h-8' : 'w-10 h-10'}
                 draggable="false"
               />
             ) : (
-              <div className={`w-10 h-10 ${cardColors.iconBg} rounded-full flex items-center justify-center text-xl font-bold border ${
+              <div className={`${compactChessMatchView ? 'w-8 h-8 text-lg' : 'w-10 h-10 text-xl'} ${cardColors.iconBg} rounded-full flex items-center justify-center font-bold border ${
                 isTurn && !isGameOver ? 'border-green-400' : cardColors.border
               }`}>
                 {icon}
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1">
-                <div className="font-mono text-[11px] truncate text-white">{playerAddress ? `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : ''}</div>
-                {isYou && <span className="text-yellow-300 text-[10px] font-bold flex-shrink-0">YOU</span>}
+              <div className={`flex items-center ${compactChessMatchView ? 'gap-0.5' : 'gap-1'}`}>
+                <div className={`font-mono truncate text-white ${compactChessMatchView ? 'text-[10px]' : 'text-[11px]'}`}>{playerAddress ? `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : ''}</div>
+                {isYou && <span className={`text-yellow-300 font-bold flex-shrink-0 ${compactChessMatchView ? 'text-[9px]' : 'text-[10px]'}`}>YOU</span>}
               </div>
               {showTurnTimer && (
-                <div className={`border rounded p-1 mt-0.5 mr-1 ${
+                <div className={`border rounded mt-0.5 ${compactChessMatchView ? 'p-0.5' : 'p-1'} ${
                   isTurn ? `${colors.border} ${colors.bg}` : 'border-gray-600/30 opacity-60'
                 }`}>
                   <div className="flex items-center justify-between mb-0.5">
-                    <span className="text-[10px] font-bold text-gray-300">Time Left</span>
-                    <span className={`font-mono text-xs font-bold ${colors.text}`}>
+                    <span className={`font-bold text-gray-300 ${compactChessMatchView ? 'text-[9px]' : 'text-[10px]'}`}>Time Left</span>
+                    <span className={`font-mono font-bold ${colors.text} ${compactChessMatchView ? 'text-[11px]' : 'text-xs'}`}>
                       {timeLeft > 0 ? formatTime(timeLeft) : 'OUT'}
                     </span>
                   </div>
@@ -395,7 +396,7 @@ const GameMatchLayout = ({
             <button
               onClick={onClaimTimeoutWin}
               disabled={loading}
-              className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-2 px-3 rounded-lg transition-all disabled:opacity-50 text-xs"
+              className={`w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold rounded-lg transition-all disabled:opacity-50 ${compactChessMatchView ? 'py-1.5 px-2 text-[11px]' : 'py-2 px-3 text-xs'}`}
             >
               Claim Timeout Victory
             </button>
@@ -681,37 +682,37 @@ const GameMatchLayout = ({
       const cardColors = COLOR_CONFIGS[colorScheme] || COLOR_CONFIGS.blue;
 
       return (
-        <div className={`relative ${cardColors.bg} backdrop-blur-lg rounded-2xl p-6 border-2 ${cardColors.border}`}>
+        <div className={`relative ${cardColors.bg} backdrop-blur-lg border-2 ${cardColors.border} ${compactChessMatchView ? 'rounded-xl p-5' : 'rounded-2xl p-6'}`}>
           {/* Turn Indicator Badge */}
           {isTurn && !isGameOver && (
             isYou ? (
-              <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap shadow-lg animate-bounce z-50">
+              <div className={`absolute left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-green-500 to-emerald-500 text-white font-bold rounded-full whitespace-nowrap shadow-lg animate-bounce z-50 ${compactChessMatchView ? '-top-2.5 text-[11px] px-2.5 py-0.5' : '-top-3 text-xs px-3 py-1'}`}>
                 YOUR TURN!
               </div>
             ) : (
-              <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-red-500 to-rose-500 text-white text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap shadow-lg z-50">
+              <div className={`absolute left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-red-500 to-rose-500 text-white font-bold rounded-full whitespace-nowrap shadow-lg z-50 ${compactChessMatchView ? '-top-2.5 text-[11px] px-2.5 py-0.5' : '-top-3 text-xs px-3 py-1'}`}>
                 THEIR TURN
               </div>
             )
           )}
 
           {/* Player Info */}
-          <div className="flex items-center gap-3 mb-2">
+          <div className={`flex items-center mb-2 ${compactChessMatchView ? 'gap-2.5' : 'gap-3'}`}>
             {(icon === '♚' || icon === '♔') ? (
               <img
                 src={icon === '♚' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
                 alt={label}
-                className="w-14 h-14 flex-shrink-0"
+                className={`${compactChessMatchView ? 'w-12 h-12' : 'w-14 h-14'} flex-shrink-0`}
                 draggable="false"
               />
             ) : (
-              <div className={`w-12 h-12 flex-shrink-0 ${cardColors.iconBg} rounded-full flex items-center justify-center text-2xl font-bold border-2 ${cardColors.border}`}>
+              <div className={`${compactChessMatchView ? 'w-10 h-10 text-xl' : 'w-12 h-12 text-2xl'} flex-shrink-0 ${cardColors.iconBg} rounded-full flex items-center justify-center font-bold border-2 ${cardColors.border}`}>
                 {icon}
               </div>
             )}
             <div className="flex flex-col">
-              {isYou && <span className="text-yellow-400 text-sm font-bold leading-tight">YOU</span>}
-              <p className={`${cardColors.text} font-mono text-xs`}>
+              {isYou && <span className={`text-yellow-400 font-bold leading-tight ${compactChessMatchView ? 'text-xs' : 'text-sm'}`}>YOU</span>}
+              <p className={`${cardColors.text} font-mono ${compactChessMatchView ? 'text-[11px]' : 'text-xs'}`}>
                 {playerAddress ? `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : ''}
               </p>
             </div>
@@ -1040,21 +1041,21 @@ const GameMatchLayout = ({
               <button
                 onClick={onClaimTimeoutWin}
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-2 px-3 rounded-lg transition-all disabled:opacity-50 shadow-lg text-sm mb-2"
+                className={`w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold rounded-lg transition-all disabled:opacity-50 shadow-lg mb-2 ${compactChessMatchView ? 'py-1.5 px-2.5 text-xs' : 'py-2 px-3 text-sm'}`}
               >
                 Claim Timeout Victory
               </button>
             ) : (
-              <div className={`border-2 rounded-lg p-2 mb-2 ${
+              <div className={`border-2 rounded-lg mb-2 ${compactChessMatchView ? 'p-1.5' : 'p-2'} ${
                 isTurn ? `${colors.border} ${colors.bg}` : 'border-gray-600/30 bg-gray-800/20 opacity-60'
               }`}>
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-bold text-gray-300">Time Left</span>
-                  <span className={`font-mono text-sm font-bold ${colors.text}`}>
+                  <span className={`font-bold text-gray-300 ${compactChessMatchView ? 'text-[11px]' : 'text-xs'}`}>Time Left</span>
+                  <span className={`font-mono font-bold ${colors.text} ${compactChessMatchView ? 'text-[13px]' : 'text-sm'}`}>
                     {timeLeft > 0 ? formatTime(timeLeft) : 'OUT'}
                   </span>
                 </div>
-                <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                <div className={`${compactChessMatchView ? 'h-1.5' : 'h-1.5'} bg-gray-700 rounded-full overflow-hidden`}>
                   <div className={`h-full ${colors.bar} transition-all duration-500`} style={{ width: `${Math.min(progress, 100)}%` }} />
                 </div>
               </div>
@@ -1062,7 +1063,7 @@ const GameMatchLayout = ({
           )}
 
           {/* Extra Content (Lost Pieces) - Below Timer */}
-          {extraContent && <div className="mt-4">{extraContent}</div>}
+          {extraContent && <div className={compactChessMatchView ? 'mt-3' : 'mt-4'}>{extraContent}</div>}
         </div>
       );
     };
@@ -1127,7 +1128,7 @@ const GameMatchLayout = ({
         {/* Desktop Layout (>= lg breakpoint) - Three-column layout with timers */}
         <div className="hidden lg:grid lg:grid-cols-[18%_52%_30%] gap-4 items-start">
           {/* Left Column - Both Player Panels with Timers */}
-          <div className="space-y-7 max-h-[800px] overflow-y-auto pr-2 pt-6 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-purple-950/40 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-purple-500/70 [&::-webkit-scrollbar-thumb]:to-pink-500/70 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border [&::-webkit-scrollbar-thumb]:border-purple-400/30 hover:[&::-webkit-scrollbar-thumb]:from-purple-400 hover:[&::-webkit-scrollbar-thumb]:to-pink-400 [scrollbar-width:thin] [scrollbar-color:rgb(168_85_247_/_0.7)_rgb(24_24_27_/_0.4)]">
+          <div className={`${compactChessMatchView ? 'space-y-5 pt-5' : 'space-y-7 pt-6'} max-h-[800px] overflow-y-auto pr-2 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-purple-950/40 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-purple-500/70 [&::-webkit-scrollbar-thumb]:to-pink-500/70 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border [&::-webkit-scrollbar-thumb]:border-purple-400/30 hover:[&::-webkit-scrollbar-thumb]:from-purple-400 hover:[&::-webkit-scrollbar-thumb]:to-pink-400 [scrollbar-width:thin] [scrollbar-color:rgb(168_85_247_/_0.7)_rgb(24_24_27_/_0.4)]`}>
             {renderHistoryPlayerCard(1)}
             {renderHistoryPlayerCard(2)}
           </div>
