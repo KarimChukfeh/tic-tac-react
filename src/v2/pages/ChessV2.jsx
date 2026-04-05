@@ -167,9 +167,11 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
 
       if (isMobileViewport) {
         const containerTop = containerRef.current?.getBoundingClientRect().top || 0;
-        const bottomReserve = 96;
+        const bottomReserve = 124;
+        const sideSafetyMargin = 10;
         const availableHeight = Math.max(180, viewportHeight - containerTop - bottomReserve);
-        nextBoardSize = Math.min(containerWidth, availableHeight, maxSize);
+        const widthBudget = Math.max(180, containerWidth - sideSafetyMargin);
+        nextBoardSize = Math.min(widthBudget, availableHeight, maxSize);
       } else {
         const desktopHeightBudget = viewportHeight * 0.60;
         nextBoardSize = Math.min(containerWidth, desktopHeightBudget, maxSize);
@@ -326,7 +328,7 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
         </div>
       )}
       {(whiteInCheck || blackInCheck) && matchStatus === 1 && (
-        <div className="mt-3 text-center py-2 px-6 rounded-full text-red-300 font-semibold text-sm animate-pulse" style={{ ...(boardSize ? { width: boardSize } : { maxWidth: '100%' }), background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.4)', boxShadow: '0 0 20px rgba(239, 68, 68, 0.2)' }}>
+        <div className="hidden md:block mt-3 text-center py-2 px-6 rounded-full text-red-300 font-semibold text-sm animate-pulse" style={{ ...(boardSize ? { width: boardSize } : { maxWidth: '100%' }), background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.4)', boxShadow: '0 0 20px rgba(239, 68, 68, 0.2)' }}>
           {whiteInCheck ? 'White' : 'Black'} King in Check
         </div>
       )}
@@ -1980,16 +1982,11 @@ export default function ChessV2() {
               renderPlayer1Extra={(isMobile) => {
                 const capturedPieces = calculateCapturedPieces(currentMatch.board);
                 if (isMobile) {
-                  return (
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <CapturedPieces capturedPieces={capturedPieces.black} color="black" collapsible />
-                      {currentMatch.whiteInCheck && (
-                        <span className="inline-flex items-center rounded-md border border-red-400/60 bg-red-500/15 px-2 py-0.5 text-[10px] font-bold tracking-[0.08em] text-red-300">
-                          CHECK
-                        </span>
-                      )}
-                    </div>
-                  );
+                  return currentMatch.whiteInCheck ? (
+                    <span className="inline-flex items-center rounded-full border border-red-400/60 bg-red-500/15 px-1.5 py-0.5 text-[8px] font-bold tracking-[0.08em] text-red-300 shrink-0">
+                      CHECK
+                    </span>
+                  ) : null;
                 }
 
                 return (
@@ -2002,16 +1999,11 @@ export default function ChessV2() {
               renderPlayer2Extra={(isMobile) => {
                 const capturedPieces = calculateCapturedPieces(currentMatch.board);
                 if (isMobile) {
-                  return (
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <CapturedPieces capturedPieces={capturedPieces.white} color="white" collapsible />
-                      {currentMatch.blackInCheck && (
-                        <span className="inline-flex items-center rounded-md border border-red-400/60 bg-red-500/15 px-2 py-0.5 text-[10px] font-bold tracking-[0.08em] text-red-300">
-                          CHECK
-                        </span>
-                      )}
-                    </div>
-                  );
+                  return currentMatch.blackInCheck ? (
+                    <span className="inline-flex items-center rounded-full border border-red-400/60 bg-red-500/15 px-1.5 py-0.5 text-[8px] font-bold tracking-[0.08em] text-red-300 shrink-0">
+                      CHECK
+                    </span>
+                  ) : null;
                 }
 
                 return (

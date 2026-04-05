@@ -343,6 +343,77 @@ const GameMatchLayout = ({
       const cardColors = COLOR_CONFIGS[colorScheme] || COLOR_CONFIGS.blue;
       const cardBg = isMobileHeaderFixed ? cardColors.bgFixed : cardColors.bg;
 
+      if (compactChessMobileHeader) {
+        return (
+          <div className={`relative rounded-lg border-2 mt-1 ${
+            isTurn && isYou && !isGameOver
+              ? `border-green-400 ${isMobileHeaderFixed ? 'bg-green-900' : 'bg-green-500/10'} ring-2 ring-green-400/30`
+              : `${cardColors.border} ${cardBg}`
+          } pt-2 px-2 pb-2`}>
+            <div className="absolute -top-3 left-0 right-0 flex h-5 items-center justify-center">
+              {isTurn && !isGameOver && (
+                isYou ? (
+                  <div className="inline-flex min-h-[18px] items-center justify-center bg-gradient-to-r from-green-500 to-emerald-500 px-2 py-0 text-[9px] font-bold leading-none text-white whitespace-nowrap rounded-full shadow-lg animate-bounce z-10">
+                    YOUR TURN!
+                  </div>
+                ) : (
+                  <div className="inline-flex min-h-[18px] items-center justify-center bg-gradient-to-r from-red-500 to-rose-500 px-2 py-0 text-[9px] font-bold leading-none text-white whitespace-nowrap rounded-full shadow-lg z-10">
+                    THEIR TURN
+                  </div>
+                )
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 min-h-[44px]">
+              {(icon === '♚' || icon === '♔') ? (
+                <img
+                  src={icon === '♚' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
+                  alt={label}
+                  className="w-7 h-7 shrink-0"
+                  draggable="false"
+                />
+              ) : (
+                <div className={`w-7 h-7 shrink-0 ${cardColors.iconBg} rounded-full flex items-center justify-center text-sm font-bold border ${
+                  isTurn && !isGameOver ? 'border-green-400' : cardColors.border
+                }`}>
+                  {icon}
+                </div>
+              )}
+
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1">
+                  <div className="font-mono text-[10px] truncate text-white">
+                    {playerAddress ? `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : ''}
+                  </div>
+                  {isYou && <span className="text-yellow-300 text-[9px] font-bold flex-shrink-0">YOU</span>}
+                  {extraContent}
+                </div>
+              </div>
+
+              {showTurnTimer && !showCTA && (
+                <div className={`shrink-0 rounded-md px-2 py-1 ${
+                  isTurn ? `${colors.border} ${colors.bg} border` : 'border border-gray-600/30 bg-gray-800/20 opacity-60'
+                }`}>
+                  <span className={`font-mono text-[11px] font-bold ${colors.text}`}>
+                    {timeLeft > 0 ? formatTime(timeLeft) : 'OUT'}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {showTurnTimer && showCTA && (
+              <button
+                onClick={onClaimTimeoutWin}
+                disabled={loading}
+                className="mt-1.5 w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-1.5 px-2 rounded-lg transition-all disabled:opacity-50 text-[11px]"
+              >
+                Claim Timeout
+              </button>
+            )}
+          </div>
+        );
+      }
+
       return (
         <div className={`relative rounded-lg border-2 ${compactChessMobileHeader ? 'mt-2' : 'mt-3'} ${
           isTurn && isYou && !isGameOver
