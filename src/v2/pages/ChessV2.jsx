@@ -496,10 +496,14 @@ export default function ChessV2() {
   const [createForm, setCreateForm] = useState(DEFAULT_CREATE_FORM);
   const [createLoading, setCreateLoading] = useState(false);
   const [actionState, setActionState] = useState({ type: 'info', message: '' });
+  const [isCreateFormExpanded, setIsCreateFormExpanded] = useState(false);
+  const [shouldRenderCreateFormBody, setShouldRenderCreateFormBody] = useState(false);
+  const [isCreateFormBodyVisible, setIsCreateFormBodyVisible] = useState(false);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [isQuickGuideOpen, setIsQuickGuideOpen] = useState(false);
   const [heroLinkNoticeVisible, setHeroLinkNoticeVisible] = useState(false);
   const heroLinkNoticeTimeoutRef = useRef(null);
+  const hadConnectedAccountRef = useRef(false);
 
   const handlePlaceholderLinkClick = useCallback((event) => {
     event.preventDefault();
@@ -518,6 +522,40 @@ export default function ChessV2() {
       clearTimeout(heroLinkNoticeTimeoutRef.current);
     }
   }, []);
+
+  useEffect(() => {
+    const hasAccount = Boolean(account);
+    if (hasAccount && !hadConnectedAccountRef.current) {
+      setIsCreateFormExpanded(true);
+    }
+    hadConnectedAccountRef.current = hasAccount;
+  }, [account]);
+
+  useEffect(() => {
+    let timeoutId = null;
+    let frameId = null;
+
+    if (isCreateFormExpanded) {
+      setShouldRenderCreateFormBody(true);
+      frameId = window.requestAnimationFrame(() => {
+        setIsCreateFormBodyVisible(true);
+      });
+    } else if (shouldRenderCreateFormBody) {
+      setIsCreateFormBodyVisible(false);
+      timeoutId = window.setTimeout(() => {
+        setShouldRenderCreateFormBody(false);
+      }, 220);
+    }
+
+    return () => {
+      if (timeoutId) {
+        window.clearTimeout(timeoutId);
+      }
+      if (frameId) {
+        window.cancelAnimationFrame(frameId);
+      }
+    };
+  }, [isCreateFormExpanded, shouldRenderCreateFormBody]);
 
   const handleQuickGuideLinkClick = useCallback((event) => {
     event.preventDefault();
@@ -2012,73 +2050,101 @@ export default function ChessV2() {
                 <div id="live-instances">
                   <form onSubmit={createInstance}>
                     <div className="bg-slate-900/50 border border-purple-400/20 rounded-2xl p-4 md:p-5">
-                      <div className="mb-4 flex items-center gap-2">
-                        <h2 className="text-xl font-semibold text-white">Configure Your Lobby</h2>
-                        <UserManualAnchorIcon
-                          href="#21-creating-a-lobby"
-                          title="Open User Manual section 2.1: Creating a Lobby"
-                          className="text-cyan-200/75 hover:text-white"
-                        />
-                      </div>
-                      <div className="grid gap-4 md:grid-cols-[minmax(0,0.2fr)_minmax(0,0.8fr)] md:items-stretch">
-                        <div className={`rounded-2xl border p-4 md:p-5 ${createLoading ? 'border-slate-800 bg-slate-900/50' : 'border-cyan-400/20 bg-slate-950/60 shadow-[0_0_30px_rgba(56,189,248,0.08)]'}`}>
-                          <div className="text-sm text-purple-200 mb-3">Player Count</div>
-                          <div className="grid grid-cols-3 gap-3 md:grid-cols-2">
-                            {PLAYER_COUNT_OPTIONS.map(option => {
-                              const active = Number(createForm.playerCount) === option;
-                              return <button key={option} type="button" disabled={createLoading} onClick={() => setPlayerCount(option)} className={`px-4 py-3 rounded-xl text-base font-semibold transition-all ${option === 32 ? 'md:col-span-2' : ''} ${createLoading ? 'bg-slate-900/80 border border-slate-800 text-slate-500 cursor-not-allowed' : active ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg' : 'bg-slate-800/80 border border-slate-700 text-slate-300 hover:border-cyan-400/40'}`}>{option}</button>;
-                            })}
-                          </div>
-                        </div>
-                        <div>
-                          <EntryFeeSlider
-                            factoryRules={factoryRules}
-                            entryFee={createForm.entryFee}
-                            playerCount={createForm.playerCount}
-                            disabled={createLoading}
-                            onChange={value => updateCreateForm('entryFee', value)}
+                      <div className="mb-4 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          <h2 className="text-xl font-semibold text-white">Configure Your Lobby</h2>
+                          <UserManualAnchorIcon
+                            href="#21-creating-a-lobby"
+                            title="Open User Manual section 2.1: Creating a Lobby"
+                            className="text-cyan-200/75 hover:text-white"
                           />
                         </div>
+                        {!account ? (
+                          <button
+                            type="button"
+                            aria-expanded={isCreateFormExpanded}
+                            aria-controls="configure-lobby-panel-chess"
+                            onClick={() => setIsCreateFormExpanded((current) => !current)}
+                            className="inline-flex items-center gap-2 rounded-full border border-purple-400/20 bg-slate-950/50 px-3 py-2 text-sm font-semibold text-purple-200 transition-colors hover:border-cyan-400/40 hover:text-white"
+                          >
+                            <span>{isCreateFormExpanded ? 'Collapse' : 'Expand'}</span>
+                            {isCreateFormExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                          </button>
+                        ) : null}
                       </div>
-                      <div className="mt-4 mb-4">
-                        <button type="button" onClick={() => setShowAdvancedSettings(!showAdvancedSettings)} className="flex items-center gap-2 text-purple-300 hover:text-purple-200 transition-colors mb-2">{showAdvancedSettings ? <ChevronUp size={20} /> : <ChevronDown size={20} />}<span className="text-sm font-semibold">More Settings</span></button>
-                        {showAdvancedSettings && (
-                          <div className="grid gap-4 lg:grid-cols-3 bg-slate-950/50 border border-purple-400/10 rounded-xl p-4">
-                            <TimeoutSettingSlider
-                              field="enrollmentWindow"
-                              label="Enrollment Window"
-                              value={createForm.enrollmentWindow}
-                              disabled={createLoading}
-                              onChange={value => updateCreateForm('enrollmentWindow', value)}
-                            />
-                            <TimeoutSettingSlider
-                              field="matchTimePerPlayer"
-                              label="Time Per Player"
-                              value={createForm.matchTimePerPlayer}
-                              disabled={createLoading}
-                              onChange={value => updateCreateForm('matchTimePerPlayer', value)}
-                            />
-                            <TimeoutSettingSlider
-                              field="timeIncrementPerMove"
-                              label="Increment Time"
-                              value={createForm.timeIncrementPerMove}
-                              disabled={createLoading}
-                              onChange={value => updateCreateForm('timeIncrementPerMove', value)}
-                            />
-                          </div>
-                        )}
-                      </div>
-                      <div className="mt-5 flex justify-stretch md:justify-end">
-                        <button
-                          type="submit"
-                          disabled={createLoading || !account}
-                          title={!account ? 'Connect your wallet to create and enrol.' : ''}
-                          className={`inline-flex w-full md:w-auto min-w-[220px] items-center justify-center gap-2.5 px-6 py-3 rounded-xl font-bold text-base md:text-lg shadow-2xl transition-all disabled:cursor-not-allowed ${account ? 'bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 transform hover:scale-105 text-white border border-sky-300/40 shadow-[0_0_30px_rgba(59,130,246,0.35)]' : 'bg-slate-800/90 border border-slate-700 text-slate-500'}`}
+                      {!isCreateFormExpanded ? (
+                        <p className="text-sm leading-6 text-slate-300">
+                          Connect your wallet to create a custom lobby.
+                        </p>
+                      ) : null}
+                      {shouldRenderCreateFormBody ? (
+                        <div
+                          id="configure-lobby-panel-chess"
+                          className={`overflow-hidden transition-[max-height,opacity,transform] duration-[220ms] ease-out ${
+                            isCreateFormBodyVisible ? 'max-h-[1200px] translate-y-0 opacity-100' : 'max-h-0 -translate-y-2 opacity-0'
+                          }`}
                         >
-                          {createLoading ? <Loader size={20} className="animate-spin" /> : null}
-                          {createLoading ? 'Creating Lobby...' : 'Create Lobby'}
-                        </button>
-                      </div>
+                          <div className="grid gap-4 md:grid-cols-[minmax(0,0.2fr)_minmax(0,0.8fr)] md:items-stretch">
+                            <div className={`rounded-2xl border p-4 md:p-5 ${createLoading ? 'border-slate-800 bg-slate-900/50' : 'border-cyan-400/20 bg-slate-950/60 shadow-[0_0_30px_rgba(56,189,248,0.08)]'}`}>
+                              <div className="text-sm text-purple-200 mb-3">Player Count</div>
+                              <div className="grid grid-cols-3 gap-3 md:grid-cols-2">
+                                {PLAYER_COUNT_OPTIONS.map(option => {
+                                  const active = Number(createForm.playerCount) === option;
+                                  return <button key={option} type="button" disabled={createLoading} onClick={() => setPlayerCount(option)} className={`px-4 py-3 rounded-xl text-base font-semibold transition-all ${option === 32 ? 'md:col-span-2' : ''} ${createLoading ? 'bg-slate-900/80 border border-slate-800 text-slate-500 cursor-not-allowed' : active ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg' : 'bg-slate-800/80 border border-slate-700 text-slate-300 hover:border-cyan-400/40'}`}>{option}</button>;
+                                })}
+                              </div>
+                            </div>
+                            <div>
+                              <EntryFeeSlider
+                                factoryRules={factoryRules}
+                                entryFee={createForm.entryFee}
+                                playerCount={createForm.playerCount}
+                                disabled={createLoading}
+                                onChange={value => updateCreateForm('entryFee', value)}
+                              />
+                            </div>
+                          </div>
+                          <div className="mt-4 mb-4">
+                            <button type="button" onClick={() => setShowAdvancedSettings(!showAdvancedSettings)} className="flex items-center gap-2 text-purple-300 hover:text-purple-200 transition-colors mb-2">{showAdvancedSettings ? <ChevronUp size={20} /> : <ChevronDown size={20} />}<span className="text-sm font-semibold">More Settings</span></button>
+                            {showAdvancedSettings && (
+                              <div className="grid gap-4 lg:grid-cols-3 bg-slate-950/50 border border-purple-400/10 rounded-xl p-4">
+                                <TimeoutSettingSlider
+                                  field="enrollmentWindow"
+                                  label="Enrollment Window"
+                                  value={createForm.enrollmentWindow}
+                                  disabled={createLoading}
+                                  onChange={value => updateCreateForm('enrollmentWindow', value)}
+                                />
+                                <TimeoutSettingSlider
+                                  field="matchTimePerPlayer"
+                                  label="Time Per Player"
+                                  value={createForm.matchTimePerPlayer}
+                                  disabled={createLoading}
+                                  onChange={value => updateCreateForm('matchTimePerPlayer', value)}
+                                />
+                                <TimeoutSettingSlider
+                                  field="timeIncrementPerMove"
+                                  label="Increment Time"
+                                  value={createForm.timeIncrementPerMove}
+                                  disabled={createLoading}
+                                  onChange={value => updateCreateForm('timeIncrementPerMove', value)}
+                                />
+                              </div>
+                            )}
+                          </div>
+                          <div className="mt-5 flex justify-stretch md:justify-end">
+                            <button
+                              type="submit"
+                              disabled={createLoading || !account}
+                              title={!account ? 'Connect your wallet to create and enrol.' : ''}
+                              className={`inline-flex w-full md:w-auto min-w-[220px] items-center justify-center gap-2.5 px-6 py-3 rounded-xl font-bold text-base md:text-lg shadow-2xl transition-all disabled:cursor-not-allowed ${account ? 'bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 transform hover:scale-105 text-white border border-sky-300/40 shadow-[0_0_30px_rgba(59,130,246,0.35)]' : 'bg-slate-800/90 border border-slate-700 text-slate-500'}`}
+                            >
+                              {createLoading ? <Loader size={20} className="animate-spin" /> : null}
+                              {createLoading ? 'Creating Lobby...' : 'Create Lobby'}
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
                   </form>
                 </div>
