@@ -8,6 +8,7 @@
 import { ChevronDown } from 'lucide-react';
 import { getTournamentTypeLabel } from '../../utils/formatters';
 import { isDraw } from '../../utils/completionReasons';
+import { getV2NeutralMatchReasonLabel } from '../../v2/lib/reasonLabels';
 
 const MatchHeader = ({
   // gameType available for future game-specific customization
@@ -18,9 +19,11 @@ const MatchHeader = ({
   completionReason,
   onClose,
   tournamentInfo, // { tierId, instanceId, roundNumber, matchNumber, playerCount }
-  theme
+  theme,
+  reasonLabelMode = 'default',
 }) => {
   const getStatusBadge = () => {
+    const useV2ReasonLabels = reasonLabelMode === 'v2';
     if (matchStatus === 0) {
       return { text: 'Not Started', className: 'bg-gray-500/20 text-gray-300' };
     }
@@ -28,7 +31,12 @@ const MatchHeader = ({
       return { text: 'In Progress', className: 'bg-yellow-500/20 text-yellow-300' };
     }
     if (matchStatus === 2) {
-      return { text: isDraw(completionReason) ? 'Draw' : 'Complete', className: 'bg-green-500/20 text-green-300' };
+      return {
+        text: isDraw(completionReason)
+          ? (useV2ReasonLabels ? getV2NeutralMatchReasonLabel(completionReason) : 'Draw')
+          : 'Complete',
+        className: 'bg-green-500/20 text-green-300'
+      };
     }
     return { text: 'Unknown', className: 'bg-gray-500/20 text-gray-300' };
   };

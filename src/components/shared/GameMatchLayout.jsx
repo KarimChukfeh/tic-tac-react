@@ -71,6 +71,7 @@ const GameMatchLayout = ({
   match,
   account,
   loading,
+  loadingMessage,
   syncDots,
 
   // Handlers
@@ -105,6 +106,9 @@ const GameMatchLayout = ({
 
   // Ghost move indicator — shown when MoveMade event detected before polling confirms
   pendingOpponentMove = false,
+
+  // Optional reason label behavior
+  reasonLabelMode = 'default',
 
   // Children = the game board component
   children
@@ -155,6 +159,11 @@ const GameMatchLayout = ({
   const zeroAddress = '0x0000000000000000000000000000000000000000';
   const hasWinner = winner && winner !== zeroAddress;
   const userWon = hasWinner && account && winner.toLowerCase() === account.toLowerCase();
+  const isUserMatch =
+    Boolean(account) && (
+      player1?.toLowerCase() === account?.toLowerCase() ||
+      player2?.toLowerCase() === account?.toLowerCase()
+    );
 
   // Show turn timer when match is in progress
   const showTurnTimer = matchStatus === 1;
@@ -328,14 +337,14 @@ const GameMatchLayout = ({
             : `${cardColors.border} ${cardBg}`
         } pt-4 px-3 pb-3 space-y-2`}>
           {/* Turn Indicator Badge — always reserves space so both cards stay aligned */}
-          <div className="absolute -top-4 left-0 right-0 flex justify-center h-4">
+          <div className="absolute -top-4 left-0 right-0 flex h-6 items-center justify-center">
             {isTurn && !isGameOver && (
               isYou ? (
-                <div className="bg-gradient-to-r from-green-500 to-emerald-500 text-white text-sm font-bold px-3 py-1 rounded-full whitespace-nowrap shadow-lg animate-bounce z-10 leading-none">
+                <div className="inline-flex min-h-[22px] items-center justify-center bg-gradient-to-r from-green-500 to-emerald-500 px-2.5 py-0.5 text-[11px] font-bold leading-none text-white whitespace-nowrap rounded-full shadow-lg animate-bounce z-10">
                   YOUR TURN!
                 </div>
               ) : (
-                <div className="bg-gradient-to-r from-red-500 to-rose-500 text-white text-sm font-bold px-3 py-1 rounded-full whitespace-nowrap shadow-lg animate-bounce z-10 leading-none">
+                <div className="inline-flex min-h-[22px] items-center justify-center bg-gradient-to-r from-red-500 to-rose-500 px-2.5 py-0.5 text-[11px] font-bold leading-none text-white whitespace-nowrap rounded-full shadow-lg animate-bounce z-10">
                   THEIR TURN
                 </div>
               )
@@ -587,6 +596,7 @@ const GameMatchLayout = ({
                   escL2Available={match.escL2Available}
                   escL3Available={match.escL3Available}
                   isUserAdvancedForRound={match.isUserAdvancedForRound}
+                  isUserMatch={isUserMatch}
                   hideML1OnMobile={true}
                 />
               )}
@@ -599,6 +609,7 @@ const GameMatchLayout = ({
                   winner={winner}
                   loser={loser}
                   currentAccount={account}
+                  reasonLabelMode={reasonLabelMode}
                   gameSpecificText={!isMatchDraw ? theme.completeText : undefined}
                   hasNextActiveMatch={hasNextActiveMatch}
                   onEnterNextMatch={onEnterNextMatch}
@@ -764,6 +775,7 @@ const GameMatchLayout = ({
                   escL2Available={match.escL2Available}
                   escL3Available={match.escL3Available}
                   isUserAdvancedForRound={match.isUserAdvancedForRound}
+                  isUserMatch={isUserMatch}
                   hideML1OnMobile={true}
                 />
               </div>
@@ -778,6 +790,7 @@ const GameMatchLayout = ({
                   winner={winner}
                   loser={loser}
                   currentAccount={account}
+                  reasonLabelMode={reasonLabelMode}
                   gameSpecificText={!isMatchDraw ? theme.completeText : undefined}
                   hasNextActiveMatch={hasNextActiveMatch}
                   onEnterNextMatch={onEnterNextMatch}
@@ -869,7 +882,7 @@ const GameMatchLayout = ({
                   <button
                     onClick={onClaimTimeoutWin}
                     disabled={loading}
-                    className="mt-1 w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-1.5 px-2 rounded-lg transition-all disabled:opacity-50 shadow-lg text-xs"
+                    className="mt-1 w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-1 px-2 rounded-lg transition-all disabled:opacity-50 shadow-lg text-[11px]"
                   >
                     Claim Timeout Victory
                   </button>
@@ -921,6 +934,7 @@ const GameMatchLayout = ({
               escL2Available={match.escL2Available}
               escL3Available={match.escL3Available}
               isUserAdvancedForRound={match.isUserAdvancedForRound}
+              isUserMatch={isUserMatch}
               hideML1OnMobile={true}
             />
           </div>
@@ -1081,6 +1095,7 @@ const GameMatchLayout = ({
               escL2Available={match.escL2Available}
               escL3Available={match.escL3Available}
               isUserAdvancedForRound={match.isUserAdvancedForRound}
+              isUserMatch={isUserMatch}
               hideML1OnMobile={true}
             />
           )}
@@ -1093,6 +1108,7 @@ const GameMatchLayout = ({
               winner={winner}
               loser={loser}
               currentAccount={account}
+              reasonLabelMode={reasonLabelMode}
               gameSpecificText={!isMatchDraw ? theme.completeText : undefined}
               hasNextActiveMatch={hasNextActiveMatch}
               onEnterNextMatch={onEnterNextMatch}
@@ -1139,6 +1155,7 @@ const GameMatchLayout = ({
                   escL2Available={match.escL2Available}
                   escL3Available={match.escL3Available}
                   isUserAdvancedForRound={match.isUserAdvancedForRound}
+                  isUserMatch={isUserMatch}
                   hideML1OnMobile={true}
                 />
               </div>
@@ -1153,6 +1170,7 @@ const GameMatchLayout = ({
                   winner={winner}
                   loser={loser}
                   currentAccount={account}
+                  reasonLabelMode={reasonLabelMode}
                   gameSpecificText={!isMatchDraw ? theme.completeText : undefined}
                   hasNextActiveMatch={hasNextActiveMatch}
                   onEnterNextMatch={onEnterNextMatch}
@@ -1203,6 +1221,7 @@ const GameMatchLayout = ({
         icon={theme.icon}
         matchStatus={matchStatus}
         completionReason={completionReason}
+        reasonLabelMode={reasonLabelMode}
         onClose={onClose}
         tournamentInfo={{
           tierId: match.tierId,
@@ -1241,7 +1260,7 @@ const GameMatchLayout = ({
       )}
 
       {/* Loading Overlay */}
-      {loading && <LoadingOverlay />}
+      {loading && <LoadingOverlay message={loadingMessage} />}
     </div>
   );
 };

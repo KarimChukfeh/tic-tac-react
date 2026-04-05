@@ -5,13 +5,23 @@
  * Includes: back button, title, sync indicator, prize pool, stats, enrolled players.
  */
 
-import { Trophy, ChevronDown, Copy, Check, Clock, HelpCircle, Zap, Coins, RefreshCw } from 'lucide-react';
+import { Trophy, ChevronDown, Copy, Check, Clock, HelpCircle, Zap, Coins, RefreshCw, XCircle } from 'lucide-react';
 import { ethers } from 'ethers';
 import { useState, useEffect, useRef } from 'react';
+import { getAddressUrl } from '../../config/networks';
 import { generateTournamentUrl, copyToClipboard } from '../../utils/urlHelpers';
 import StatsGrid from './StatsGrid';
 import EnrolledPlayersList from './EnrolledPlayersList';
-import { formatTime, getTournamentTypeLabel } from '../../utils/formatters';
+import { formatTime, getTournamentTypeLabel, shortenAddress } from '../../utils/formatters';
+import { CompletionReason, getTournamentCompletionText, getTournamentResolutionReasonValue } from '../../utils/completionReasons';
+import {
+  getV2StatsResolutionReason,
+  getV2TournamentResolutionText,
+  isV2TournamentCancelledReason,
+  V2TournamentResolutionReason,
+} from '../../v2/lib/reasonLabels';
+import UserManualAnchorLink, { linkifyReasonText } from './UserManualAnchorLink';
+import { getUserManualHrefForReasonCode } from '../../utils/userManualLinks';
 
 // Game-specific configurations
 const GAME_CONFIGS = {
@@ -81,27 +91,106 @@ const TournamentHeader = ({
   isFull,
   entryFee,
   onEnroll,
+  onConnectWallet,
   loading,
+  connectLoading,
+  connectButtonGradient,
+  connectButtonHover,
 
   // Optional: Countdown timer content (render prop)
   renderCountdown,
+
+  // Optional: Status-card timer target (unix seconds)
+  statusTimerTarget,
 
   // Escalation system props
   enrollmentTimeout,
   onManualStart,
   onClaimAbandonedPool,
   onResetEnrollmentWindow,
+  onCancelTournament,
   contract,
 
+  // Optional: override the share URL (e.g. for V2 contract-address-based URLs)
+  shareUrlOverride,
+  instanceAddress,
+
+  // Optional: completed tournament summary
+  winner,
+  completionReason,
+  resolutionReason,
+  totalEntryFeesAccrued,
+  prizeAwarded,
+  prizeRecipient,
+
   // Optional: Custom colors override
-  colors: customColors
+  colors: customColors,
+  reasonLabelMode = 'default',
 }) => {
+  const formatEnrollmentFee = (value) => {
+    if (typeof value === 'bigint') return ethers.formatEther(value);
+    if (typeof value === 'string') {
+      if (/^\d+$/.test(value)) return ethers.formatEther(BigInt(value));
+      return value;
+    }
+    return String(value ?? '0');
+  };
+
   const config = GAME_CONFIGS[gameType] || GAME_CONFIGS.tictactoe;
   const colors = customColors || config.colors;
   const totalRounds = Math.ceil(Math.log2(playerCount));
-
-  // Determine tournament type label (Duel vs Tournament)
+  const isInProgress = status === 1;
   const tournamentTypeLabel = getTournamentTypeLabel(playerCount);
+  const formattedEntryFee = formatEnrollmentFee(entryFee);
+  const showEnrollmentCta = status === 0 && !isEnrolled && !isFull && (account ? !!onEnroll : !!onConnectWallet);
+  const enrollmentCtaLoading = account ? loading : connectLoading;
+  const connectCtaGradient = connectButtonGradient || colors.buttonGradient;
+  const connectCtaHover = connectButtonHover || colors.buttonHover;
+  const useV2ReasonLabels = reasonLabelMode === 'v2';
+  const enrollmentCtaLabel = account
+    ? (loading ? 'Enrolling...' : `Enroll in ${tournamentTypeLabel} (${formattedEntryFee} ETH)`)
+    : (connectLoading ? 'Connecting...' : 'Connect to Enrol');
+  const tournamentResolutionReason = getTournamentResolutionReasonValue({ resolutionReason, completionReason });
+  const isCancelled = status === 3 || (
+    useV2ReasonLabels
+      ? isV2TournamentCancelledReason(tournamentResolutionReason)
+      : tournamentResolutionReason === CompletionReason.SOLO_ENROLL_CANCELLED
+  );
+  const isCompleted = status >= 2;
+  const resolutionText = useV2ReasonLabels
+    ? getV2TournamentResolutionText(tournamentResolutionReason)
+    : getTournamentCompletionText(tournamentResolutionReason);
+  const cancelledResolutionText = useV2ReasonLabels
+    ? getV2TournamentResolutionText(
+      isV2TournamentCancelledReason(tournamentResolutionReason)
+        ? tournamentResolutionReason
+        : V2TournamentResolutionReason.SOLO_ENROLL_CANCELLED
+    )
+    : getTournamentCompletionText(CompletionReason.SOLO_ENROLL_CANCELLED);
+  const winnerLabel = winner && winner !== ethers.ZeroAddress ? shortenAddress(winner) : '0x000';
+  const resolutionSummary = tournamentResolutionReason === 0 ? '' : ` by ${resolutionText.summary}`;
+  const statsResolutionReason = useV2ReasonLabels
+    ? getV2StatsResolutionReason(tournamentResolutionReason)
+    : tournamentResolutionReason;
+  const resolvedPrizeAwarded = prizeAwarded ?? prizePool ?? 0n;
+  const resolvedPrizeRecipient = prizeRecipient ?? winner ?? ethers.ZeroAddress;
+  const resolvedTotalEntryFeesAccrued = typeof totalEntryFeesAccrued === 'bigint' ? totalEntryFeesAccrued : 0n;
+  const payoutBase = resolvedTotalEntryFeesAccrued > 0n ? resolvedTotalEntryFeesAccrued : (prizePool ?? 0n);
+  const resolvedOwnerCutAwarded = payoutBase > resolvedPrizeAwarded ? payoutBase - resolvedPrizeAwarded : 0n;
+  const detailedResolutionAvailable = [
+    prizeAwarded,
+    prizeRecipient,
+  ].some((value) => value !== undefined && value !== null) || resolvedOwnerCutAwarded > 0n;
+  const formatResolutionEth = (value) => Number.parseFloat(ethers.formatEther(value ?? 0n)).toFixed(5);
+  const formatRecipient = (address) => (
+    address && address !== ethers.ZeroAddress ? shortenAddress(address) : 'None'
+  );
+  const isSoloEnrollmentState = status === 0 && enrolledCount === 1;
+  const isSoloEnrolled = isSoloEnrollmentState && isEnrolled;
+
+  const instanceExplorerUrl = instanceAddress
+    ? (getAddressUrl(instanceAddress) || `https://arbiscan.io/address/${instanceAddress}`)
+    : null;
 
   // State for copy feedback
   const [copiedUrl, setCopiedUrl] = useState(false);
@@ -151,7 +240,7 @@ const TournamentHeader = ({
 
   // Escalation polling effect - only polls when visible and tab is active
   useEffect(() => {
-    if (!enrollmentTimeout) {
+    if (!enrollmentTimeout || status !== 0) {
       setEscalationState({
         activeEscalation: 0,
         canStartEscalation1: false,
@@ -160,6 +249,7 @@ const TournamentHeader = ({
         timeToEscalation2: 0,
         forfeitPool: 0n
       });
+      setCanResetWindow(false);
       return;
     }
 
@@ -194,19 +284,18 @@ const TournamentHeader = ({
         forfeitPool
       });
 
-      // Check canResetEnrollmentWindow when enrollment window expires
-      // Continue checking even when EL2 is active - solo player can still reset
-      if ((canStartEscalation1 || canStartEscalation2) && isEnrolled && contract) {
+      if (isSoloEnrolled && contract?.canResetEnrollmentWindow) {
         try {
-          // Use staticCall to ensure this is a read-only call even if contract has signer
-          const canReset = await contract.canResetEnrollmentWindow.staticCall(tierId, instanceId);
-          setCanResetWindow(canReset);
+          const canResetMethod = contract.canResetEnrollmentWindow;
+          const canReset = typeof canResetMethod.staticCall === 'function'
+            ? await canResetMethod.staticCall()
+            : await canResetMethod();
+          setCanResetWindow(Boolean(canReset));
         } catch (error) {
           console.error('Error checking canResetEnrollmentWindow:', error);
           setCanResetWindow(false);
         }
-      } else if (!canStartEscalation1 && !canStartEscalation2) {
-        // Reset the flag only when both escalation windows are cleared
+      } else {
         setCanResetWindow(false);
       }
     };
@@ -215,10 +304,10 @@ const TournamentHeader = ({
     const interval = setInterval(updateEscalationState, 5000); // Changed from 1000ms to 5000ms
 
     return () => clearInterval(interval);
-  }, [enrollmentTimeout, isEnrolled, contract, tierId, instanceId, isVisible, isTabActive]);
+  }, [enrollmentTimeout, status, isSoloEnrolled, contract, isVisible, isTabActive]);
 
   // Generate shareable URL
-  const shareUrl = generateTournamentUrl(gameType, tierId, instanceId);
+  const shareUrl = shareUrlOverride || generateTournamentUrl(gameType, tierId, instanceId);
 
   // Copy handler
   const handleCopyUrl = async () => {
@@ -251,11 +340,23 @@ const TournamentHeader = ({
 
           <div className="min-w-0">
             <h2 className="text-2xl md:text-4xl font-bold text-white truncate">
-              {config.gameName} {tournamentTypeLabel} T{tierId + 1}-I{instanceId + 1}
+              {config.gameName} {tournamentTypeLabel}{instanceAddress ? '' : ` T${tierId + 1}-I${instanceId + 1}`}
             </h2>
-            <p className={colors.text}>
-              Round {currentRound + 1}/{totalRounds}
-            </p>
+            {instanceAddress && instanceExplorerUrl && (
+              <a
+                href={instanceExplorerUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`${colors.text} ${colors.textHover} transition-colors text-xs md:text-sm break-all`}
+              >
+                {instanceAddress}
+              </a>
+            )}
+            {!instanceAddress && (
+              <p className={colors.text}>
+                Round {currentRound + 1}/{totalRounds}
+              </p>
+            )}
           </div>
         </div>
 
@@ -272,25 +373,35 @@ const TournamentHeader = ({
         enrolledCount={enrolledCount}
         playerCount={playerCount}
         status={status}
+        resolutionReason={statsResolutionReason}
         currentRound={currentRound}
         totalRounds={totalRounds}
         colors={colors}
         syncDots={syncDots}
+        statusTimerTarget={statusTimerTarget}
       />
 
       {/* Enroll Button */}
-      {status === 0 && account && !isEnrolled && !isFull && onEnroll && (
+      {showEnrollmentCta && (
         <div className="mt-4">
           <button
-            onClick={() => onEnroll(tierId, instanceId, entryFee)}
-            disabled={loading}
-            className={`w-full bg-gradient-to-r ${colors.buttonGradient} ${colors.buttonHover} text-white font-bold py-4 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2`}
+            onClick={() => {
+              if (account) {
+                onEnroll?.(tierId, instanceId, entryFee);
+                return;
+              }
+              onConnectWallet?.();
+            }}
+            disabled={enrollmentCtaLoading}
+            className={`w-full bg-gradient-to-r ${account ? colors.buttonGradient : connectCtaGradient} ${account ? colors.buttonHover : connectCtaHover} text-white font-bold py-4 px-6 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2`}
           >
             <Trophy size={20} />
-            {loading ? 'Enrolling...' : `Enroll in ${tournamentTypeLabel} (${entryFee} ETH)`}
+            {enrollmentCtaLabel}
           </button>
           <p className={`${colors.textMuted} text-xs text-center mt-2`}>
-            Join this {tournamentTypeLabel.toLowerCase()} and compete for the prize pool
+            {account
+              ? `Join this ${tournamentTypeLabel.toLowerCase()} and compete for the prize pool`
+              : `Connect your wallet to join this ${tournamentTypeLabel.toLowerCase()}`}
           </p>
         </div>
       )}
@@ -302,37 +413,51 @@ const TournamentHeader = ({
       {status === 0 && enrolledCount > 0 && (
         <div className="mt-4">
           <div className={`${
-            isEnrolled && escalationState.canStartEscalation2
+            !isSoloEnrollmentState && isEnrolled && escalationState.canStartEscalation2
               ? 'bg-red-500/20 border-red-400'
-              : 'bg-yellow-500/20 border-yellow-400'
+              : isSoloEnrolled
+                ? 'bg-blue-500/20 border-blue-400'
+                : 'bg-yellow-500/20 border-yellow-400'
           } border rounded-lg p-3`}>
             <div className="flex items-center justify-center gap-2">
               <div className={`w-2 h-2 ${
-                isEnrolled && escalationState.canStartEscalation2
+                !isSoloEnrollmentState && isEnrolled && escalationState.canStartEscalation2
                   ? 'bg-red-400'
-                  : 'bg-yellow-400'
+                  : isSoloEnrolled
+                    ? 'bg-blue-400'
+                    : 'bg-yellow-400'
               } rounded-full animate-pulse`}></div>
               <span className={`${
-                isEnrolled && escalationState.canStartEscalation2
+                !isSoloEnrollmentState && isEnrolled && escalationState.canStartEscalation2
                   ? 'text-red-300'
-                  : 'text-yellow-300'
-              } font-bold text-sm`}>Waiting for more players</span>
+                  : isSoloEnrolled
+                    ? 'text-blue-300'
+                    : 'text-yellow-300'
+              } font-bold text-sm`}>
+                {isSoloEnrolled ? 'You are the sole enroller' : 'Waiting for more players'}
+              </span>
             </div>
-            {isEnrolled && escalationState.timeToEscalation2 > 0 && escalationState.canStartEscalation1 && (
+            {isSoloEnrolled ? (
+              <div className="text-center mt-1">
+                <span className="text-blue-200/80 text-[10px]">
+                  You can cancel or reset the enrollment window at any time while no one else is enrolled
+                </span>
+              </div>
+            ) : isEnrolled && escalationState.timeToEscalation2 > 0 && escalationState.canStartEscalation1 ? (
               <div className="text-center mt-1">
                 <span className="text-yellow-300/70 text-[10px]">
                   {formatTime(escalationState.timeToEscalation2)} until considered abandoned
                 </span>
               </div>
-            )}
-            {isEnrolled && escalationState.canStartEscalation2 && (
+            ) : null}
+            {isEnrolled && !isSoloEnrollmentState && escalationState.canStartEscalation2 && (
               <div className="text-center mt-1">
-                <a
-                  href="#el2"
+                <UserManualAnchorLink
+                  href={getUserManualHrefForReasonCode('EL2')}
                   className="text-red-300 hover:text-red-200 text-[10px] underline underline-offset-[2px]"
                 >
-                  Abandoned! (EL2 active)
-                </a>
+                  {linkifyReasonText('Abandoned! (EL2 active)', { keyPrefix: 'tournament-header-el2-active' })}
+                </UserManualAnchorLink>
               </div>
             )}
           </div>
@@ -343,82 +468,112 @@ const TournamentHeader = ({
       {status === 0 && enrollmentTimeout && (
         <>
           {/* EL1 Timer */}
-          {escalationState.timeToEscalation1 > 0 && (
+          {!isSoloEnrollmentState && escalationState.timeToEscalation1 > 0 && (
             <div className="mt-4">
               <div className="relative bg-gradient-to-r from-orange-500/20 to-orange-600/20 border border-orange-400/50 rounded-lg p-3">
                 <div className="flex items-center justify-between pr-6">
                   <div className="flex items-center gap-2">
                     <Clock className="text-orange-400" size={16} />
                     <span className="text-orange-300 text-xs font-semibold">
-                      EL1: Force Start in {formatTime(escalationState.timeToEscalation1)}
+                      {linkifyReasonText(`EL1: Force Start in ${formatTime(escalationState.timeToEscalation1)}`, { keyPrefix: 'tournament-header-el1-timer', linkClassName: 'underline decoration-dotted underline-offset-[2px] hover:text-orange-200' })}
                     </span>
                   </div>
                 </div>
-                <a
-                  href="#el1"
+                <UserManualAnchorLink
+                  href={getUserManualHrefForReasonCode('EL1')}
                   className="absolute top-3 right-3 text-orange-400 hover:text-orange-300 transition-colors"
                   title="Learn more about force-starting tournaments"
                 >
                   <HelpCircle size={16} />
-                </a>
+                </UserManualAnchorLink>
               </div>
             </div>
           )}
 
           {/* EL2 Timer - Only show for non-enrolled players */}
-          {escalationState.canStartEscalation1 && escalationState.timeToEscalation2 > 0 && !isEnrolled && (
+          {!isSoloEnrollmentState && escalationState.canStartEscalation1 && escalationState.timeToEscalation2 > 0 && !isEnrolled && (
             <div className="mt-4">
               <div className="relative bg-gradient-to-r from-red-500/20 to-red-600/20 border border-red-400/50 rounded-lg p-3">
                 <div className="flex items-center justify-between pr-6">
                   <div className="flex items-center gap-2">
                     <Clock className="text-red-400" size={16} />
                     <span className="text-red-300 text-xs font-semibold">
-                      EL2: Claim Abandoned Pool in {formatTime(escalationState.timeToEscalation2)}
+                      {linkifyReasonText(`EL2: Claim Abandoned Pool in ${formatTime(escalationState.timeToEscalation2)}`, { keyPrefix: 'tournament-header-el2-timer', linkClassName: 'underline decoration-dotted underline-offset-[2px] hover:text-red-200' })}
                     </span>
                   </div>
                 </div>
-                <a
-                  href="#el2"
+                <UserManualAnchorLink
+                  href={getUserManualHrefForReasonCode('EL2')}
                   className="absolute top-3 right-3 text-red-400 hover:text-red-300 transition-colors"
                   title="Learn more about claiming abandoned pools"
                 >
                   <HelpCircle size={16} />
-                </a>
+                </UserManualAnchorLink>
               </div>
             </div>
           )}
 
+          {/* EL0: Solo player can cancel at any time while still alone */}
+          {isSoloEnrolled && onCancelTournament && (
+            <div className="mt-4">
+              <button
+                onClick={() => onCancelTournament(tierId, instanceId)}
+                disabled={loading || !account}
+                className={`w-full bg-gradient-to-r ${account ? 'from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800' : `${connectCtaGradient} ${connectCtaHover}`} text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-xs`}
+              >
+                <XCircle size={14} />
+                {loading ? 'Cancelling...' : !account ? 'Connect Wallet' : 'Cancel Tournament'}
+              </button>
+              {!loading && account ? (
+                <UserManualAnchorLink
+                  href={getUserManualHrefForReasonCode('EL0')}
+                  className="mt-2 block w-full text-center text-slate-300 hover:text-slate-200 hover:bg-slate-500/10 text-xs py-2 px-4 rounded-lg border border-slate-400/30 hover:border-slate-400/50 transition-all"
+                >
+                  Learn more about EL0 (Cancel Tournament)
+                </UserManualAnchorLink>
+              ) : null}
+            </div>
+          )}
+
           {/* EL1*: Reset Enrollment Window - Solo player can extend enrollment */}
-          {canResetWindow && isEnrolled && onResetEnrollmentWindow && (
+          {canResetWindow && isSoloEnrolled && onResetEnrollmentWindow && (
             <div className="mt-4">
               <button
                 onClick={() => onResetEnrollmentWindow(tierId, instanceId)}
                 disabled={loading || !account}
-                className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-xs"
+                className={`w-full bg-gradient-to-r ${account ? 'from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700' : `${connectCtaGradient} ${connectCtaHover}`} text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-xs`}
               >
                 <RefreshCw size={14} />
-                {loading ? 'Resetting...' : !account ? 'Connect Wallet' : 'EL1*: Reset Enrollment Window'}
+                {loading ? 'Resetting...' : !account ? 'Connect Wallet' : 'Reset Enrollment Window'}
               </button>
+              {!loading && account ? (
+                <UserManualAnchorLink
+                  href={getUserManualHrefForReasonCode('EL1*')}
+                  className="mt-2 block w-full text-center text-yellow-300 hover:text-yellow-200 hover:bg-yellow-500/10 text-xs py-2 px-4 rounded-lg border border-yellow-400/30 hover:border-yellow-400/50 transition-all"
+                >
+                  Learn more about EL1* (Reset Enrollment Window)
+                </UserManualAnchorLink>
+              ) : null}
             </div>
           )}
 
           {/* Escalation 1: Enrolled players can force start */}
-          {escalationState.canStartEscalation1 && isEnrolled && onManualStart && (
+          {escalationState.canStartEscalation1 && isEnrolled && enrolledCount > 1 && onManualStart && (
             <div className="mt-4">
               <button
                 onClick={() => onManualStart(tierId, instanceId)}
                 disabled={loading || !account}
-                className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-xs"
+                className={`w-full bg-gradient-to-r ${account ? 'from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600' : `${connectCtaGradient} ${connectCtaHover}`} text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-xs`}
               >
                 <Zap size={14} />
-                {loading ? 'Starting...' : !account ? 'Connect Wallet' : `EL1: Force Start with ${enrolledCount} Players`}
+                {loading ? 'Starting...' : !account ? 'Connect Wallet' : `Force Start with ${enrolledCount} Players`}
               </button>
-              <a
-                href="#el1"
+              <UserManualAnchorLink
+                href={getUserManualHrefForReasonCode('EL1')}
                 className="block w-full text-center text-orange-300 hover:text-orange-200 hover:bg-orange-500/10 text-xs mt-2 py-2 px-4 rounded-lg border border-orange-400/30 hover:border-orange-400/50 transition-all"
               >
-                Learn more about EL1 (Force Start)
-              </a>
+                {linkifyReasonText('Learn more about EL1 (Force Start)', { keyPrefix: 'tournament-header-el1-learn' })}
+              </UserManualAnchorLink>
             </div>
           )}
 
@@ -428,20 +583,72 @@ const TournamentHeader = ({
               <button
                 onClick={() => onClaimAbandonedPool(tierId, instanceId)}
                 disabled={loading || !account}
-                className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-xs"
+                className={`w-full bg-gradient-to-r ${account ? 'from-red-600 to-red-700 hover:from-red-700 hover:to-red-800' : `${connectCtaGradient} ${connectCtaHover}`} text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-xs`}
               >
                 <Coins size={14} />
-                {loading ? 'Claiming...' : !account ? 'Connect Wallet' : 'EL2: Claim Abandoned Pool'}
+                {loading ? 'Claiming...' : !account ? 'Connect Wallet' : 'Claim Abandoned Pool'}
               </button>
-              <a
-                href="#el2"
+              <UserManualAnchorLink
+                href={getUserManualHrefForReasonCode('EL2')}
                 className="block w-full text-center text-red-300 hover:text-red-200 hover:bg-red-500/10 text-xs mt-2 py-2 px-4 rounded-lg border border-red-400/30 hover:border-red-400/50 transition-all"
               >
-                Learn more about EL2 (Claim Pool)
-              </a>
+                {linkifyReasonText('Learn more about EL2 (Claim Pool)', { keyPrefix: 'tournament-header-el2-learn' })}
+              </UserManualAnchorLink>
             </div>
           )}
         </>
+      )}
+
+      {isCompleted && (
+        <div className="mt-4 bg-black/20 rounded-lg p-4 border border-purple-400/30">
+          <div className="text-purple-300 text-sm mb-1">{detailedResolutionAvailable ? 'Payouts' : 'Resolution'}</div>
+          {!detailedResolutionAvailable ? (
+            isCancelled ? (
+              <div className="text-white text-sm md:text-base">
+                {linkifyReasonText(cancelledResolutionText.text, { keyPrefix: 'tournament-header-cancelled-resolution', linkClassName: 'font-semibold underline decoration-dotted underline-offset-4 hover:text-cyan-300' })}
+              </div>
+            ) : (
+              <div className="text-white text-sm md:text-base">
+                <span className="font-mono">{winnerLabel}</span>
+                <span> wins{resolutionSummary}</span>
+                <span className="text-purple-300"> • </span>
+                <span>Winner awarded <span className="font-semibold text-yellow-400">{formatResolutionEth(resolvedPrizeAwarded)} ETH</span></span>
+              </div>
+            )
+          ) : (
+            isCancelled ? (
+              <div className="text-white text-sm md:text-base">
+                {useV2ReasonLabels && (
+                  <>
+                    <span className="text-purple-300">
+                      {linkifyReasonText(cancelledResolutionText.text, { keyPrefix: 'tournament-header-cancelled-summary', linkClassName: 'font-semibold underline decoration-dotted underline-offset-4 hover:text-cyan-300' })}
+                    </span>
+                    <span className="text-purple-300"> • </span>
+                  </>
+                )}
+                <span className="text-purple-300">Refunded </span>
+                <span className="font-semibold text-yellow-400">{formatResolutionEth(resolvedPrizeAwarded)} ETH</span>
+                <span className="text-purple-300"> to </span>
+                <span className="font-mono">{formatRecipient(resolvedPrizeRecipient)}</span>
+              </div>
+            ) : (
+              <div className="text-white text-sm md:text-base flex flex-col md:flex-row md:flex-wrap md:items-center gap-2 md:gap-6">
+                <div>
+                  <span className="text-purple-300">Prize </span>
+                  <span className="font-semibold text-yellow-400">{formatResolutionEth(resolvedPrizeAwarded)} ETH</span>
+                  <span className="text-purple-300"> to </span>
+                  <span className="font-mono">{formatRecipient(resolvedPrizeRecipient)}</span>
+                </div>
+                {resolvedOwnerCutAwarded > 0n && (
+                  <div>
+                    <span className="text-purple-300">Owner cut </span>
+                    <span className="font-semibold text-yellow-400">{formatResolutionEth(resolvedOwnerCutAwarded)} ETH</span>
+                  </div>
+                )}
+              </div>
+            )
+          )}
+        </div>
       )}
 
       {/* Enrolled Players */}
@@ -452,27 +659,29 @@ const TournamentHeader = ({
       />
 
       {/* Shareable URL Section */}
-      <div className="mt-4 bg-purple-500/10 border border-purple-400/30 rounded-lg p-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <div className="text-purple-300 text-sm mb-1">Invite a Friend</div>
-            <div className="font-mono text-xs md:text-sm text-white bg-black/20 rounded px-3 py-2 overflow-x-auto">
-              {shareUrl}
+      {!isInProgress && (
+        <div className="mt-4 bg-purple-500/10 border border-purple-400/30 rounded-lg p-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="text-purple-300 text-sm mb-1">{isCompleted ? 'Share results' : 'Invite a Friend'}</div>
+              <div className="font-mono text-xs md:text-sm text-white bg-black/20 rounded px-3 py-2 overflow-x-auto">
+                {shareUrl}
+              </div>
             </div>
+            <button
+              onClick={handleCopyUrl}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap ${
+                copiedUrl
+                  ? 'bg-green-500/20 text-green-400 border border-green-400/30'
+                  : 'bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white'
+              }`}
+            >
+              {copiedUrl ? <Check size={18} /> : <Copy size={18} />}
+              {copiedUrl ? 'Copied!' : 'Copy Link'}
+            </button>
           </div>
-          <button
-            onClick={handleCopyUrl}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap ${
-              copiedUrl
-                ? 'bg-green-500/20 text-green-400 border border-green-400/30'
-                : 'bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white'
-            }`}
-          >
-            {copiedUrl ? <Check size={18} /> : <Copy size={18} />}
-            {copiedUrl ? 'Copied!' : 'Copy Link'}
-          </button>
         </div>
-      </div>
+      )}
     </div>
   );
 };

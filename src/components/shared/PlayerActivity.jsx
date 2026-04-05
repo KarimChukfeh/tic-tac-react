@@ -11,6 +11,9 @@ import { useState, useRef, useEffect } from 'react';
 import { Users, X, Zap, Trophy, Clock, Play, Eye, RefreshCw, ChevronDown, ChevronUp, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
 import { formatTimeRemaining } from '../../utils/activityHelpers';
+import { getCompletionReasonText, isDraw as isDrawReason } from '../../utils/completionReasons';
+import { getV2CompletionReasonText } from '../../v2/lib/reasonLabels';
+import { linkifyReasonText } from './UserManualAnchorLink';
 
 const PlayerActivity = ({
   activity,
@@ -36,6 +39,8 @@ const PlayerActivity = ({
   showTooltip = false, // External control for tooltip visibility
   onShowTooltip, // Callback to show this component's tooltip
   onHideTooltip, // Callback to hide this component's tooltip
+  connectCtaClassName = 'bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl shadow-2xl border-2 border-purple-400/60 hover:scale-105',
+  reasonLabelMode = 'default',
 }) => {
   const [internalIsExpanded, setInternalIsExpanded] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
@@ -56,6 +61,17 @@ const PlayerActivity = ({
     return `Instance ${instanceId + 1}`;
   };
 
+  const isAddressBackedInstance = (instanceId) => (
+    typeof instanceId === 'string' && instanceId.startsWith('0x')
+  );
+
+  const getTournamentLabel = (tierId, instanceId) => {
+    if (isAddressBackedInstance(instanceId)) {
+      return `Tournament ${shortenAddress(instanceId)}`;
+    }
+    return `Tier ${tierId + 1} Instance ${Number(instanceId) + 1}`;
+  };
+
   const getRoundLabel = (tierId, roundNumber) => {
     if (!tierConfig || !tierConfig[tierId]) return `Round ${roundNumber + 1}`;
     const playerCount = tierConfig[tierId].playerCount;
@@ -68,25 +84,20 @@ const PlayerActivity = ({
     return `Round ${roundNumber + 1}`;
   };
 
-  const getOutcomeLabel = (isDraw, isWinner, reason) => {
-    const reasons = {
-      0: 'Normal',
-      1: 'Timeout (ML1)',
-      2: 'Draw',
-      3: 'Force Elimination (ML2)',
-      4: 'Abandoned Match (ML3)',
-      5: 'All Draw'
-    };
+  const getCompletedMatchOutcome = (match, account) => {
+    const reason = match.completionReason ?? 0;
+    const matchIsDraw = match.isDraw || isDrawReason(reason);
+    const getReasonText = reasonLabelMode === 'v2' ? getV2CompletionReasonText : getCompletionReasonText;
 
-    if (isDraw) return 'Draw';
+    if (matchIsDraw) return { label: getReasonText(reason, false, gameName), color: 'text-yellow-300 bg-yellow-900/30' };
+    if (!match.winner) return null;
 
-    const reasonText = reasons[reason] || `Unknown (${reason})`;
+    const isWinner = match.winner.toLowerCase() === account?.toLowerCase();
+    const label = getReasonText(reason, isWinner, gameName);
 
-    if (isWinner) {
-      return reason === 0 ? 'Victory' : `Victory by ${reasonText}`;
-    } else {
-      return reason === 0 ? 'Defeat' : `Defeat by ${reasonText}`;
-    }
+    return isWinner
+      ? { label, color: 'text-green-300 bg-green-900/30' }
+      : { label, color: 'text-red-300 bg-red-900/30' };
   };
 
   // Use external state if provided, otherwise use internal state
@@ -285,8 +296,8 @@ const PlayerActivity = ({
   const hasActivity = activity && (
     displayMatches.length > 0 ||
     (activity.terminatedMatches && activity.terminatedMatches.length > 0) ||
-    activity.inProgressTournaments.length > 0 ||
-    activity.unfilledTournaments.length > 0
+    (activity.inProgressTournaments?.length > 0) ||
+    (activity.unfilledTournaments?.length > 0)
   );
 
   // Desktop positioning (vertical stack below GamesCard)
@@ -354,13 +365,13 @@ const PlayerActivity = ({
           )}
 
         {/* Tooltip - Desktop only */}
-        {disabled ? (
-          <a
-            href="#connect-wallet-cta"
-            className="max-md:hidden absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all shadow-2xl border-2 border-purple-400/60 hover:scale-105"
-          >
-            Connect Wallet to View Your Activity
-          </a>
+          {disabled ? (
+            <a
+              href="#connect-wallet-cta"
+              className={`max-md:hidden absolute left-full ml-3 top-1/2 -translate-y-1/2 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all ${connectCtaClassName}`}
+            >
+              Connect Wallet to View Your Activity
+            </a>
         ) : (
           <div className="max-md:hidden absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
             Your Activity
@@ -380,7 +391,7 @@ const PlayerActivity = ({
             e.stopPropagation(); // Allow navigation but prevent document click
             if (onHideTooltip) onHideTooltip();
           }}
-          className="md:hidden fixed bottom-20 left-4 right-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-6 py-3 rounded-xl z-[100] animate-fade-in shadow-2xl border-2 border-purple-400/60 hover:scale-105 transition-transform text-center"
+          className={`md:hidden fixed bottom-20 left-4 right-4 px-6 py-3 z-[100] animate-fade-in transition-transform text-center ${connectCtaClassName}`}
         >
           Connect Wallet to View Your Activity
         </a>
@@ -484,7 +495,7 @@ const PlayerActivity = ({
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-2">
                               <span className="text-white font-semibold text-sm">
-                                Tier {match.tierId + 1} Instance {match.instanceId + 1}
+                                {getTournamentLabel(match.tierId, match.instanceId)}
                               </span>
                               {isCompleted ? (
                                 <span className="bg-slate-500 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase flex items-center gap-1">
@@ -497,9 +508,18 @@ const PlayerActivity = ({
                                 </span>
                               ) : null}
                             </div>
-                            <span className={`${isCompleted ? 'text-slate-400 bg-slate-800/30' : 'text-yellow-300 bg-yellow-900/30'} font-mono text-xs font-bold px-2 py-1 rounded`}>
-                              {isCompleted ? 'Complete' : formatTimeRemaining(match.timeRemaining)}
-                            </span>
+                            {isCompleted ? (() => {
+                              const outcome = getCompletedMatchOutcome(match, account);
+                              return outcome ? (
+                                <span className={`${outcome.color} font-mono text-xs font-bold px-2 py-1 rounded`}>
+                                  {linkifyReasonText(outcome.label, { keyPrefix: `player-activity-${matchKey}`, linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white' })}
+                                </span>
+                              ) : null;
+                            })() : (
+                              <span className="text-yellow-300 bg-yellow-900/30 font-mono text-xs font-bold px-2 py-1 rounded">
+                                {formatTimeRemaining(match.timeRemaining)}
+                              </span>
+                            )}
                           </div>
                           <div className="text-slate-300 text-xs mb-3">
                             vs {shortenAddress(match.opponent)}
@@ -667,7 +687,7 @@ const PlayerActivity = ({
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-2">
                               <span className="text-white font-semibold text-sm">
-                                Tier {match.tierId + 1} Instance {match.instanceId + 1}
+                                {getTournamentLabel(match.tierId, match.instanceId)}
                               </span>
                               <span className="bg-orange-500/60 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase">
                                 Terminated
@@ -708,7 +728,7 @@ const PlayerActivity = ({
                       >
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-white font-semibold text-sm">
-                            Tier {tournament.tierId + 1} Instance {tournament.instanceId + 1}
+                            {getTournamentLabel(tournament.tierId, tournament.instanceId)}
                           </span>
                         </div>
                         <div className={`text-slate-400 text-xs ${tournament.playerRound !== null ? 'mb-1' : 'mb-3'}`}>
@@ -751,7 +771,7 @@ const PlayerActivity = ({
                       >
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-white font-semibold text-sm">
-                            Tier {tournament.tierId + 1} Instance {tournament.instanceId + 1}
+                            {getTournamentLabel(tournament.tierId, tournament.instanceId)}
                           </span>
                         </div>
                         <div className="text-slate-400 text-xs mb-3">

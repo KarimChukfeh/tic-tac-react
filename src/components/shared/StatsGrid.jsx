@@ -5,12 +5,25 @@
  * Used in tournament bracket headers.
  */
 
+import { useEffect, useState } from 'react';
+import { CompletionReason } from '../../utils/completionReasons';
+
 /**
  * Get status display text and styling from status code
- * @param {number} status - 0: Enrolling, 1: In Progress, 2: Completed
+ * @param {number} status - 0: Enrolling, 1: In Progress, 2: Completed, 3: Cancelled
+ * @param {number|null} resolutionReason - Tournament completion reason
  * @returns {Object} { text, color, bgColor, borderColor }
  */
-const getStatusDisplay = (status) => {
+const getStatusDisplay = (status, resolutionReason = null) => {
+  if (status >= 2 && Number(resolutionReason) === CompletionReason.SOLO_ENROLL_CANCELLED) {
+    return {
+      text: 'Cancelled',
+      color: 'text-slate-300',
+      bgColor: 'bg-slate-500/20',
+      borderColor: 'border-slate-400',
+      dotColor: 'bg-slate-400'
+    };
+  }
   switch (status) {
     case 0:
       return {
@@ -31,10 +44,18 @@ const getStatusDisplay = (status) => {
     case 2:
       return {
         text: 'Completed',
-        color: 'text-gray-300',
-        bgColor: 'bg-gray-500/20',
-        borderColor: 'border-gray-400',
-        dotColor: 'bg-gray-400'
+        color: 'text-green-300',
+        bgColor: 'bg-green-500/20',
+        borderColor: 'border-green-400',
+        dotColor: 'bg-green-400'
+      };
+    case 3:
+      return {
+        text: 'Cancelled',
+        color: 'text-slate-300',
+        bgColor: 'bg-slate-500/20',
+        borderColor: 'border-slate-400',
+        dotColor: 'bg-slate-400'
       };
     default:
       return {
@@ -51,17 +72,48 @@ const getStatusDisplay = (status) => {
  * @param {Object} props
  * @param {number} props.enrolledCount - Number of enrolled players
  * @param {number} props.playerCount - Max players in tournament
- * @param {number} props.status - Tournament status (0: Enrolling, 1: In Progress, 2: Completed)
+ * @param {number} props.status - Tournament status (0: Enrolling, 1: In Progress, 2: Completed, 3: Cancelled)
  * @param {number} props.currentRound - Current round (0-indexed)
  * @param {number} props.totalRounds - Total number of rounds
  * @param {Object} props.colors - Color theme object with 'text' property
  * @param {number} props.syncDots - Number of dots for syncing indicator (1-3)
+ * @param {number|null} props.resolutionReason - Tournament completion reason
+ * @param {number|null} props.statusTimerTarget - Unix timestamp when the status timer expires
  */
-const StatsGrid = ({ enrolledCount, playerCount, status, currentRound, totalRounds, colors, syncDots = 1 }) => {
-  const statusDisplay = getStatusDisplay(status);
+const StatsGrid = ({
+  enrolledCount,
+  playerCount,
+  status,
+  currentRound,
+  totalRounds,
+  colors,
+  syncDots = 1,
+  resolutionReason = null,
+  statusTimerTarget = null,
+}) => {
+  const statusDisplay = getStatusDisplay(status, resolutionReason);
+  const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
 
   // Don't show status message if tournament is enrolling with 0 players
   const showStatus = !(status === 0 && enrolledCount === 0);
+  const showStatusTimer = status === 0 && enrolledCount > 0 && Number(statusTimerTarget) > 0;
+  const timeRemaining = showStatusTimer ? Math.max(0, Number(statusTimerTarget) - now) : 0;
+
+  useEffect(() => {
+    if (!showStatusTimer) return undefined;
+
+    const tick = () => setNow(Math.floor(Date.now() / 1000));
+    tick();
+
+    const interval = window.setInterval(tick, 1000);
+    return () => window.clearInterval(interval);
+  }, [showStatusTimer, statusTimerTarget]);
+
+  const formatStatusTimer = (seconds) => {
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${minutes}m ${secs}s`;
+  };
 
   return (
     <div className="grid grid-cols-3 gap-2 md:gap-4">
@@ -77,6 +129,11 @@ const StatsGrid = ({ enrolledCount, playerCount, status, currentRound, totalRoun
               <div className={`w-1.5 md:w-2 h-1.5 md:h-2 ${statusDisplay.dotColor} rounded-full ${status < 2 ? 'animate-pulse' : ''}`}></div>
               <span className="truncate">{statusDisplay.text}</span>
             </div>
+            {showStatusTimer && (
+              <div className="text-orange-300 text-[11px] md:text-sm font-semibold">
+                {timeRemaining > 0 ? `Window closes in ${formatStatusTimer(timeRemaining)}` : 'Enrolment window elapsed'}
+              </div>
+            )}
             {status < 2 && (
               <div className="hidden md:flex items-center gap-1.5 mt-1">
                 <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse"></div>

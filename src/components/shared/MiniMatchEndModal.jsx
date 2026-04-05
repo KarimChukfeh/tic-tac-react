@@ -7,6 +7,8 @@
 import { Trophy, Frown, Equal, X, AlertCircle } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
 import { ethers } from 'ethers';
+import UserManualAnchorLink from './UserManualAnchorLink';
+import { getUserManualHrefForReasonCode } from '../../utils/userManualLinks';
 
 const MiniMatchEndModal = ({
   result,
@@ -86,13 +88,13 @@ const MiniMatchEndModal = ({
         if (isFinalRound) {
           return (
             <span>
-              Opponent timed out via <a href="#ml1" onClick={onClose} className="underline decoration-dotted hover:text-white">ML1</a>. Champion!{formattedPrizePool ? ` +${formattedPrizePool} ETH` : ''}
+              Opponent timed out via <UserManualAnchorLink href={getUserManualHrefForReasonCode('ML1')} onClick={onClose} className="underline decoration-dotted hover:text-white">ML1</UserManualAnchorLink>. Champion!{formattedPrizePool ? ` +${formattedPrizePool} ETH` : ''}
             </span>
           );
         }
         return (
           <span>
-            Opponent timed out via <a href="#ml1" onClick={onClose} className="underline decoration-dotted hover:text-white">ML1</a>. Advance to {getNextRoundName()}
+            Opponent timed out via <UserManualAnchorLink href={getUserManualHrefForReasonCode('ML1')} onClick={onClose} className="underline decoration-dotted hover:text-white">ML1</UserManualAnchorLink>. Advance to {getNextRoundName()}
           </span>
         );
       } else if (result === 'forfeit_lose') {
@@ -102,14 +104,14 @@ const MiniMatchEndModal = ({
       // ML2: Force Elimination
       return (
         <span>
-          Match eliminated via <a href="#ml2" onClick={onClose} className="underline decoration-dotted hover:text-white">ML2</a>
+          Match eliminated via <UserManualAnchorLink href={getUserManualHrefForReasonCode('ML2')} onClick={onClose} className="underline decoration-dotted hover:text-white">ML2</UserManualAnchorLink>
         </span>
       );
     } else if (completionReason === 4) {
       // ML3: Abandoned Match
       return (
         <span>
-          Match eliminated via <a href="#ml3" onClick={onClose} className="underline decoration-dotted hover:text-white">ML3</a>
+          Match eliminated via <UserManualAnchorLink href={getUserManualHrefForReasonCode('ML3')} onClick={onClose} className="underline decoration-dotted hover:text-white">ML3</UserManualAnchorLink>
         </span>
       );
     }

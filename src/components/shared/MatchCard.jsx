@@ -14,8 +14,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { Play, Award, Clock, HelpCircle, Zap, Users, Eye } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
+import { getMatchCompletionReasonValue } from '../../utils/completionReasons';
+import CompletedMatchOutcomeBadge from './CompletedMatchOutcomeBadge';
 import { getMatchStatusText, getMatchStatusColor } from '../../utils/matchStatus';
 import { calculatePlayerTimes } from '../../utils/timeCalculations';
+import UserManualAnchorLink, { linkifyReasonText } from './UserManualAnchorLink';
+import { getUserManualHrefForReasonCode } from '../../utils/userManualLinks';
 
 /**
  * Format seconds into MM:SS display
@@ -87,16 +91,61 @@ const MatchCard = ({
   showThisIsYou = false,
   colors = {},
   gameName,
+  isTournamentCompleted = false,
+  reasonLabelMode = 'default',
 }) => {
+  // Handle both matchStatus and status field names (V1 vs V2)
+  const matchStatus = match.matchStatus ?? match.status;
+
   const isUserMatch =
     match.player1?.toLowerCase() === account?.toLowerCase() ||
     match.player2?.toLowerCase() === account?.toLowerCase();
 
   const isPlayer1 = match.player1?.toLowerCase() === account?.toLowerCase();
   const isPlayer2 = match.player2?.toLowerCase() === account?.toLowerCase();
+  const completionReason = getMatchCompletionReasonValue(match);
+
+  useEffect(() => {
+    if (matchStatus !== 2) return;
+
+    console.debug('[MatchCard] Completed bracket match', {
+      roundIdx,
+      matchIdx,
+      matchStatus,
+      account,
+      player1: match.player1,
+      player2: match.player2,
+      winner: match.winner,
+      reason: match.reason ?? null,
+      completionReason: match.completionReason ?? null,
+      resolvedCompletionReason: completionReason,
+      isUserMatch,
+      isPlayer1,
+      isPlayer2,
+    });
+  }, [
+    account,
+    completionReason,
+    isPlayer1,
+    isPlayer2,
+    isUserMatch,
+    match.completionReason,
+    match.player1,
+    match.player2,
+    match.reason,
+    match.winner,
+    matchIdx,
+    matchStatus,
+    roundIdx,
+  ]);
 
   // ===== ESCALATION DATA =====
-  const isStalled = match.timeoutState?.timeoutActive || false;
+  const player1Clock = Number(match.player1TimeRemaining ?? Number.POSITIVE_INFINITY);
+  const player2Clock = Number(match.player2TimeRemaining ?? Number.POSITIVE_INFINITY);
+  const contractEscL2Available = Boolean(match.escL2Available);
+  const contractEscL3Available = Boolean(match.escL3Available);
+  const hasClientDetectedTimeout = matchStatus === 1 && (player1Clock <= 0 || player2Clock <= 0);
+  const isStalled = match.timeoutState?.timeoutActive || contractEscL2Available || contractEscL3Available || hasClientDetectedTimeout;
   const isUserAdvanced = match.isUserAdvancedForRound || false;
 
   // Calculate time-based escalation availability
@@ -106,14 +155,17 @@ const MatchCard = ({
 
   // Time-based availability (contract functions may not work until explicitly triggered)
   // ML2 available when: stalled AND now >= esc1Start
-  const escL2Available = isStalled && esc1Start > 0 && now >= esc1Start;
+  const escL2Available = contractEscL2Available || (isStalled && esc1Start > 0 && now >= esc1Start);
   // ML3 available when: stalled AND now >= esc2Start
-  const escL3Available = isStalled && esc2Start > 0 && now >= esc2Start;
+  const escL3Available = contractEscL3Available || (isStalled && esc2Start > 0 && now >= esc2Start);
 
   // ML2 countdown (time until escL2 becomes available)
   const timeToML2 = (isStalled && esc1Start > 0 && now < esc1Start) ? esc1Start - now : null;
   // ML3 countdown (time until escL3 becomes available)
   const timeToML3 = (isStalled && esc2Start > 0 && now < esc2Start) ? esc2Start - now : null;
+  // Dev-only display: once a timeout has occurred, ML1 is immediately available
+  const timeToML1 = isStalled ? 0 : null;
+  const hasDevEscalationTiming = isStalled && (esc1Start > 0 || esc2Start > 0 || escL2Available || escL3Available);
 
   // Derived display conditions
   // ML2 Timer: Stalled, ML2 not yet available, user is advanced
@@ -128,8 +180,8 @@ const MatchCard = ({
   // Player time display
   const times = calculatePlayerTimes(match, account, match.matchTimePerPlayer);
   const isPlayer1Turn = match.currentTurn?.toLowerCase() === match.player1?.toLowerCase();
-  const player1TimeRemaining = match.matchStatus === 1 ? times.player1.remaining : null;
-  const player2TimeRemaining = match.matchStatus === 1 ? times.player2.remaining : null;
+  const player1TimeRemaining = matchStatus === 1 ? times.player1.remaining : null;
+  const player2TimeRemaining = matchStatus === 1 ? times.player2.remaining : null;
 
   // Client-side countdown ticking for smoother UI - separate for each player
   const [tickingPlayer1Time, setTickingPlayer1Time] = useState(player1TimeRemaining);
@@ -157,7 +209,7 @@ const MatchCard = ({
 
   // Tick down the countdown every second for the active player
   useEffect(() => {
-    if (match.matchStatus !== 1 || !showEscalation) {
+    if (matchStatus !== 1 || !showEscalation) {
       return;
     }
 
@@ -175,7 +227,7 @@ const MatchCard = ({
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [match.matchStatus, showEscalation, isPlayer1Turn]);
+  }, [matchStatus, showEscalation, isPlayer1Turn]);
 
   const displayPlayer1Time = tickingPlayer1Time !== null ? tickingPlayer1Time : player1TimeRemaining;
   const displayPlayer2Time = tickingPlayer2Time !== null ? tickingPlayer2Time : player2TimeRemaining;
@@ -200,13 +252,15 @@ const MatchCard = ({
   }
 
   // Debug logging for escalation issues - always log for active matches we're not in
-  if (showEscalation && match.matchStatus === 1 && !isUserMatch) {
+  if (showEscalation && matchStatus === 1 && !isUserMatch) {
     console.log(`[MatchCard R${roundIdx}M${matchIdx}] Escalation Debug:`, {
       // Raw contract data
       'match.timeoutState': match.timeoutState,
       'match.escL2Available': match.escL2Available,
       'match.escL3Available': match.escL3Available,
       'match.isUserAdvancedForRound': match.isUserAdvancedForRound,
+      player1Clock,
+      player2Clock,
       // Derived state
       isStalled,
       escL2Available,
@@ -226,8 +280,10 @@ const MatchCard = ({
     });
   }
 
-  // Get border class
-  const borderClass = showEscalation
+  // Get border class — when tournament is completed, all user matches show purple (not green)
+  const borderClass = isTournamentCompleted
+    ? (isUserMatch ? 'border-purple-400/70 bg-purple-900/20' : colors.defaultBorder || 'border-purple-400/30 hover:border-purple-400/50')
+    : showEscalation
     ? getBorderClass(isUserMatch, isStalled, escL2Available, escL3Available, isUserAdvanced, colors.defaultBorder)
     : isUserMatch
     ? 'border-green-400/70 bg-green-900/20'
@@ -266,13 +322,59 @@ const MatchCard = ({
           Match {matchIdx + 1}
         </span>
         {/* Status */}
-        <span className={`text-xs font-bold ${getMatchStatusColor(match.matchStatus, match.winner, match.completionReason, matchStatusOptions)}`}>
-          {getMatchStatusText(match.matchStatus, match.winner, match.completionReason, matchStatusOptions)}
-        </span>
+        {(() => {
+          // For completed matches, show a viewer-relative outcome pill.
+          if (matchStatus === 2) {
+            const userWon = match.winner?.toLowerCase() === account?.toLowerCase();
+            const viewerRelation = isUserMatch
+              ? (userWon ? 'winner' : 'loser')
+              : 'observer';
+            if (isUserMatch) {
+              return (
+                <CompletedMatchOutcomeBadge
+                  reason={completionReason}
+                  isWinner={userWon}
+                  gameName={gameName}
+                  reasonLabelMode={reasonLabelMode}
+                  variant="bracket"
+                  viewerRelation={viewerRelation}
+                />
+              );
+            }
+            return (
+              <CompletedMatchOutcomeBadge
+                reason={completionReason}
+                isWinner={false}
+                gameName={gameName}
+                reasonLabelMode={reasonLabelMode}
+                variant="bracket"
+                viewerRelation={viewerRelation}
+                winnerAddress={match.winner}
+              />
+            );
+          }
+          // For non-completed matches, show standard status
+          return (
+            <span className={`text-xs font-bold ${getMatchStatusColor(matchStatus, match.winner, completionReason, matchStatusOptions)}`}>
+              {getMatchStatusText(matchStatus, match.winner, completionReason, matchStatusOptions)}
+            </span>
+          );
+        })()}
       </div>
 
+      {/* Dev-only escalation timers for bracket cards - only after ML1 is active */}
+      {showEscalation && matchStatus === 1 && hasDevEscalationTiming && (
+          <div className="mb-3 rounded-lg border border-cyan-400/30 bg-cyan-500/10 p-3">
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-mono text-cyan-200">
+            <span>{linkifyReasonText(`ML1 in ${formatEscalationTime(timeToML1)}`, { keyPrefix: `match-card-ml1-dev-${tierId}-${instanceId}-${roundIdx}-${matchIdx}`, linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white' })}</span>
+            <span>{linkifyReasonText(`ML2 in ${formatEscalationTime(Math.max(0, timeToML2 ?? 0))}`, { keyPrefix: `match-card-ml2-dev-${tierId}-${instanceId}-${roundIdx}-${matchIdx}`, linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white' })}</span>
+            <span>{linkifyReasonText(`ML3 in ${formatEscalationTime(Math.max(0, timeToML3 ?? 0))}`, { keyPrefix: `match-card-ml3-dev-${tierId}-${instanceId}-${roundIdx}-${matchIdx}`, linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white' })}</span>
+            </div>
+          </div>
+        )}
+
       {/* Escalation countdown timers - show only the next pending timer */}
-      {showEscalation && match.matchStatus === 1 && isStalled && !isUserMatch && (
+      {showEscalation && matchStatus === 1 && isStalled && !isUserMatch && (
         <div className="mb-3">
           {/* ML2 Timer: Stalled but ML2 not yet available - Advanced Players Only */}
           {showML2Timer && (
@@ -281,17 +383,17 @@ const MatchCard = ({
                 <div className="flex items-center gap-2">
                   <Clock className="text-yellow-400" size={16} />
                   <span className="text-yellow-300 text-xs font-semibold">
-                    ML2: Force Eliminate in {formatEscalationTime(timeToML2)}
+                    {linkifyReasonText(`ML2: Force Eliminate in ${formatEscalationTime(timeToML2)}`, { keyPrefix: `match-card-ml2-timer-${tierId}-${instanceId}-${roundIdx}-${matchIdx}`, linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white' })}
                   </span>
                 </div>
               </div>
-              <a
-                href="#ml2"
+              <UserManualAnchorLink
+                href={getUserManualHrefForReasonCode('ML2')}
                 className="absolute top-3 right-3 text-yellow-400 hover:text-yellow-300 transition-colors"
                 title="Learn more about force elimination"
               >
                 <HelpCircle size={16} />
-              </a>
+              </UserManualAnchorLink>
             </div>
           )}
           {/* ML3 Timer: ML2 available but ML3 not yet - Non-Advanced Players Only */}
@@ -301,17 +403,17 @@ const MatchCard = ({
                 <div className="flex items-center gap-2">
                   <Clock className="text-red-400" size={16} />
                   <span className="text-red-300 text-xs font-semibold">
-                    ML3: Replace Players in {formatEscalationTime(timeToML3)}
+                    {linkifyReasonText(`ML3: Replace Players in ${formatEscalationTime(timeToML3)}`, { keyPrefix: `match-card-ml3-timer-${tierId}-${instanceId}-${roundIdx}-${matchIdx}`, linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white' })}
                   </span>
                 </div>
               </div>
-              <a
-                href="#ml3"
+              <UserManualAnchorLink
+                href={getUserManualHrefForReasonCode('ML3')}
                 className="absolute top-3 right-3 text-red-400 hover:text-red-300 transition-colors"
                 title="Learn more about replacing players"
               >
                 <HelpCircle size={16} />
-              </a>
+              </UserManualAnchorLink>
             </div>
           )}
         </div>
@@ -359,7 +461,7 @@ const MatchCard = ({
           </div>
           <div className="flex items-center gap-2">
             {/* Player 1 timer - always visible when match is active */}
-            {showEscalation && displayPlayer1Time !== null && match.matchStatus === 1 && (
+            {showEscalation && displayPlayer1Time !== null && matchStatus === 1 && (
               <span className={`text-xs font-bold px-2 py-0.5 rounded font-mono ${
                 isPlayer1Turn ? (
                   displayPlayer1Time === 0 ? 'bg-red-500/30 text-red-300 animate-pulse' :
@@ -420,7 +522,7 @@ const MatchCard = ({
           </div>
           <div className="flex items-center gap-2">
             {/* Player 2 timer - always visible when match is active */}
-            {showEscalation && displayPlayer2Time !== null && match.matchStatus === 1 && (
+            {showEscalation && displayPlayer2Time !== null && matchStatus === 1 && (
               <span className={`text-xs font-bold px-2 py-0.5 rounded font-mono ${
                 !isPlayer1Turn ? (
                   displayPlayer2Time === 0 ? 'bg-red-500/30 text-red-300 animate-pulse' :
@@ -438,15 +540,24 @@ const MatchCard = ({
           </div>
         </div>
 
-        {/* Enter Match Button for user's matches */}
-        {isUserMatch && match.matchStatus !== 2 && (
+        {/* Match CTA for user's matches */}
+        {isUserMatch && (isTournamentCompleted || matchStatus !== 2) && (
           <button
             onClick={() => onEnterMatch(tierId, instanceId, roundIdx, matchIdx)}
-            disabled={loading || match.matchStatus === 0}
-            className="w-full mt-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 disabled:from-gray-500 disabled:to-gray-600 text-white font-bold py-2 px-4 rounded-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
+            disabled={loading || (!isTournamentCompleted && matchStatus === 0)}
+            className={`w-full mt-2 bg-gradient-to-r ${isTournamentCompleted ? 'from-purple-500 to-violet-500 hover:from-purple-600 hover:to-violet-600' : 'from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600'} disabled:from-gray-500 disabled:to-gray-600 text-white font-bold py-2 px-4 rounded-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2`}
           >
-            <Play size={16} />
-            {match.matchStatus === 0 ? 'Waiting to Start' : 'Enter Match'}
+            {isTournamentCompleted ? (
+              <>
+                <Eye size={16} />
+                View Match
+              </>
+            ) : (
+              <>
+                <Play size={16} />
+                {matchStatus === 0 ? 'Waiting to Start' : 'Enter Match'}
+              </>
+            )}
           </button>
         )}
 
@@ -463,7 +574,7 @@ const MatchCard = ({
         )} */}
 
         {/* Escalation CTAs for outsiders */}
-        {showEscalation && !isUserMatch && match.matchStatus === 1 && (
+        {showEscalation && !isUserMatch && matchStatus === 1 && (
           <>
             {/* ML2: Force Eliminate (Advanced Players Only) */}
             {showML2CTA && onForceEliminate && (
@@ -479,14 +590,14 @@ const MatchCard = ({
                   className="w-full bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 flex items-center justify-center gap-2 text-xs"
                 >
                   <Zap size={14} />
-                  {loading ? 'Eliminating...' : 'ML2: Force Eliminate Both'}
+                  {loading ? 'Eliminating...' : 'Force Eliminate Both'}
                 </button>
-                <a
-                  href="#ml2"
+                <UserManualAnchorLink
+                  href={getUserManualHrefForReasonCode('ML2')}
                   className="block w-full text-center text-yellow-300 hover:text-yellow-200 hover:bg-yellow-500/10 text-xs mt-2 py-2 px-4 rounded-lg border border-yellow-400/30 hover:border-yellow-400/50 transition-all"
                 >
-                  Learn more about ML2 (Force Eliminate)
-                </a>
+                  {linkifyReasonText('Learn more about ML2 (Force Eliminate)', { keyPrefix: `match-card-ml2-learn-${tierId}-${instanceId}-${roundIdx}-${matchIdx}` })}
+                </UserManualAnchorLink>
               </div>
             )}
 
@@ -504,14 +615,14 @@ const MatchCard = ({
                   className="w-full bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 flex items-center justify-center gap-2 text-xs"
                 >
                   <Users size={14} />
-                  {loading ? 'Claiming...' : 'ML3: Replace & Claim Match'}
+                  {loading ? 'Claiming...' : 'Replace & Claim Match'}
                 </button>
-                <a
-                  href="#ml3"
+                <UserManualAnchorLink
+                  href={getUserManualHrefForReasonCode('ML3')}
                   className="block w-full text-center text-red-300 hover:text-red-200 hover:bg-red-500/10 text-xs mt-2 py-2 px-4 rounded-lg border border-red-400/30 hover:border-red-400/50 transition-all"
                 >
-                  Learn more about ML3 (Replace Players)
-                </a>
+                  {linkifyReasonText('Learn more about ML3 (Replace Players)', { keyPrefix: `match-card-ml3-learn-${tierId}-${instanceId}-${roundIdx}-${matchIdx}` })}
+                </UserManualAnchorLink>
               </div>
             )}
           </>

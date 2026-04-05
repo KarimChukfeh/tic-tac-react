@@ -334,11 +334,9 @@ const UserManual = ({
         </div>
       </div>
        
-      <br/>
-
-      <hr className={`${colors.borderDark} mb-8`} />
-
-      <br/>
+      <div className="my-8 md:my-10">
+        <hr className={colors.borderDark} />
+      </div>
 
       {/* Timeout Events Section */}
       <div className="space-y-8">

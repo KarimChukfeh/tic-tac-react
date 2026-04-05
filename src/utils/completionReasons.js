@@ -5,6 +5,8 @@
  * user-friendly messages for match endings.
  */
 
+import { getUserManualHrefForReasonCode } from './userManualLinks';
+
 // CompletionReason enum values (matches ETour_Storage.CompletionReason)
 export const CompletionReason = {
   NORMAL_WIN: 0,                    // Normal gameplay win (checkmate, connect 4, etc.)
@@ -13,9 +15,92 @@ export const CompletionReason = {
   FORCE_ELIMINATION: 3,             // ML2 - Advanced players force eliminated both players
   REPLACEMENT: 4,                   // ML3 - External player replaced stalled players
   ALL_DRAW_SCENARIO: 5,             // All matches in a round resulted in draws (tournament only)
-  SOLO_ENROLL_FORCE_START: 6,       // Solo enroller force started tournament (EL1)
-  ABANDONED_TOURNAMENT_CLAIMED: 7   // Abandoned tournament claimed by external player (EL2)
+  SOLO_ENROLL_CANCELLED: 6,         // Solo enroller cancelled tournament (EL0)
+  ABANDONED_TOURNAMENT_CLAIMED: 7,  // Abandoned tournament claimed by external player (EL2)
+  UNCONTESTED_FINALS_WIN: 8         // Tournament resolved with one uncontested finalist
 };
+
+const toReasonNumber = (value, fallback = 0) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+export const getMatchCompletionReasonValue = (record) => toReasonNumber(
+  record?.matchCompletionReason
+  ?? record?.reason
+  ?? record?.completionReason
+  ?? record?.matchReason
+  ?? 0
+);
+
+export const getMatchCompletionCategoryValue = (record) => toReasonNumber(
+  record?.matchCompletionCategory
+  ?? record?.completionCategory
+  ?? record?.matchCategory
+  ?? record?.category
+  ?? 0
+);
+
+export const getTournamentResolutionReasonValue = (record) => toReasonNumber(
+  record?.tournamentResolutionReason
+  ?? record?.resolutionReason
+  ?? record?.completionReason
+  ?? 0
+);
+
+export const getTournamentResolutionCategoryValue = (record) => toReasonNumber(
+  record?.tournamentResolutionCategory
+  ?? record?.resolutionCategory
+  ?? record?.completionCategory
+  ?? 0
+);
+
+export const getTournamentCompletionText = (reason) => {
+  switch (reason) {
+    case CompletionReason.NORMAL_WIN:
+      return { text: 'Normal Victory', link: getUserManualHrefForReasonCode('R0'), summary: 'normal victory' };
+    case CompletionReason.TIMEOUT:
+      return { text: 'ML1 Timeout Elimination', link: getUserManualHrefForReasonCode('ML1'), summary: 'timeout (ML1)' };
+    case CompletionReason.DRAW:
+      return { text: 'Draw Resolution', link: getUserManualHrefForReasonCode('R1'), summary: 'draw resolution' };
+    case CompletionReason.FORCE_ELIMINATION:
+      return { text: 'ML2 Advanced Player Elimination', link: getUserManualHrefForReasonCode('ML2'), summary: 'ML2 elimination' };
+    case CompletionReason.REPLACEMENT:
+      return { text: 'ML3 External Player Replacement', link: getUserManualHrefForReasonCode('ML3'), summary: 'ML3 replacement' };
+    case CompletionReason.ALL_DRAW_SCENARIO:
+      return { text: 'All-Draw Scenario Resolution', link: getUserManualHrefForReasonCode('R1'), summary: 'all-draw resolution' };
+    case CompletionReason.SOLO_ENROLL_CANCELLED:
+      return { text: 'EL0 Cancellation', link: getUserManualHrefForReasonCode('EL0'), summary: 'EL0 cancellation' };
+    case CompletionReason.ABANDONED_TOURNAMENT_CLAIMED:
+      return { text: 'EL2 Abandoned Pool Claim', link: getUserManualHrefForReasonCode('EL2'), summary: 'abandoned pool claim (EL2)' };
+    case CompletionReason.UNCONTESTED_FINALS_WIN:
+      return { text: 'Uncontested Finalist Resolution', link: getUserManualHrefForReasonCode('R2'), summary: 'uncontested finalist resolution' };
+    default:
+      return { text: 'Tournament Completion', link: null, summary: 'tournament completion' };
+  }
+};
+
+export const getPlayerMatchOutcomeReasonValue = (record) => toReasonNumber(
+  record?.playerOutcomeReason
+  ?? record?.outcomeReason
+  ?? record?.reason
+  ?? record?.playerMatchOutcomeReason
+  ?? record?.matchOutcomeReason
+  ?? record?.matchCompletionReason
+  ?? record?.completionReason
+  ?? 0
+);
+
+export const getPlayerMatchOutcomeCategoryValue = (record) => toReasonNumber(
+  record?.playerOutcomeCategory
+  ?? record?.outcomeCategory
+  ?? record?.playerMatchOutcomeCategory
+  ?? record?.matchOutcomeCategory
+  ?? record?.matchCompletionCategory
+  ?? record?.completionCategory
+  ?? record?.category
+  ?? 0
+);
 
 /**
  * Get completion reason text for display
@@ -38,7 +123,7 @@ export const getCompletionReasonText = (reason, userWon, gameType = 'tictactoe')
         if (gameType === 'connect4') return 'Connect Four!';
         return 'You Won!';
       } else {
-        return 'Defeated';
+        return 'Defeat';
       }
 
     case CompletionReason.TIMEOUT:
@@ -57,14 +142,92 @@ export const getCompletionReasonText = (reason, userWon, gameType = 'tictactoe')
     case CompletionReason.ALL_DRAW_SCENARIO:
       return "Tournament Draw";
 
-    case CompletionReason.SOLO_ENROLL_FORCE_START:
-      return 'Solo Force Start';
+    case CompletionReason.SOLO_ENROLL_CANCELLED:
+      return 'Tournament Cancelled';
 
     case CompletionReason.ABANDONED_TOURNAMENT_CLAIMED:
       return 'Abandoned Pool Claimed';
 
+    case CompletionReason.UNCONTESTED_FINALS_WIN:
+      return 'Uncontested Finalist Resolution';
+
     default:
-      return userWon ? 'Victory!' : 'Defeated';
+      return userWon ? 'Victory!' : 'Defeat';
+  }
+};
+
+/**
+ * Get the user-facing outcome label for history/bracket completed matches.
+ * This intentionally uses unified labels instead of game-specific win text.
+ * @param {number} reason - CompletionReason enum value
+ * @param {boolean} userWon - Whether the current user won
+ * @param {string} gameType - 'tictactoe', 'chess', or 'connect4'
+ * @returns {string} Unified outcome label
+ */
+export const getCompletedMatchOutcomeLabel = (reason, userWon, gameType = 'tictactoe') => {
+  if (reason === CompletionReason.DRAW || reason === CompletionReason.ALL_DRAW_SCENARIO) {
+    return 'Draw';
+  }
+
+  if (userWon) {
+    if (reason === CompletionReason.TIMEOUT) return 'Victory by Timeout (ML1)';
+    if (reason === CompletionReason.FORCE_ELIMINATION) return 'Victory via ML2';
+    if (reason === CompletionReason.REPLACEMENT) return 'Victory via ML3';
+    return 'Victory';
+  }
+
+  if (reason === CompletionReason.TIMEOUT) return 'Defeat by Timeout (ML1)';
+  if (reason === CompletionReason.FORCE_ELIMINATION) return 'Defeat via ML2';
+  if (reason === CompletionReason.REPLACEMENT) return 'Defeat via ML3';
+  return 'Defeat';
+};
+
+/**
+ * Get the user manual anchor href for a completion reason, if applicable.
+ * @param {number} reason - CompletionReason enum value
+ * @returns {string|null} Anchor href
+ */
+export const getCompletionReasonHref = (reason) => {
+  switch (reason) {
+    case CompletionReason.TIMEOUT:
+      return getUserManualHrefForReasonCode('ML1');
+    case CompletionReason.DRAW:
+    case CompletionReason.ALL_DRAW_SCENARIO:
+      return getUserManualHrefForReasonCode('R1');
+    case CompletionReason.FORCE_ELIMINATION:
+      return getUserManualHrefForReasonCode('ML2');
+    case CompletionReason.REPLACEMENT:
+      return getUserManualHrefForReasonCode('ML3');
+    case CompletionReason.SOLO_ENROLL_CANCELLED:
+      return getUserManualHrefForReasonCode('EL0');
+    case CompletionReason.ABANDONED_TOURNAMENT_CLAIMED:
+      return getUserManualHrefForReasonCode('EL2');
+    case CompletionReason.UNCONTESTED_FINALS_WIN:
+      return getUserManualHrefForReasonCode('R2');
+    default:
+      return null;
+  }
+};
+
+/**
+ * Get the user manual section label for a completion reason.
+ * @param {number} reason - CompletionReason enum value
+ * @returns {string} Manual section label
+ */
+export const getCompletionReasonManualLabel = (reason) => {
+  switch (reason) {
+    case CompletionReason.TIMEOUT:
+      return 'ML1';
+    case CompletionReason.DRAW:
+      return 'Draws';
+    case CompletionReason.FORCE_ELIMINATION:
+      return 'ML2';
+    case CompletionReason.REPLACEMENT:
+      return 'ML3';
+    case CompletionReason.ALL_DRAW_SCENARIO:
+      return 'All-Draw Resolution';
+    default:
+      return '';
   }
 };
 
@@ -100,11 +263,14 @@ export const getCompletionReasonDescription = (reason, userWon) => {
     case CompletionReason.ALL_DRAW_SCENARIO:
       return 'All matches in the round resulted in draws';
 
-    case CompletionReason.SOLO_ENROLL_FORCE_START:
-      return 'Solo enrolled player force started the tournament (EL1)';
+    case CompletionReason.SOLO_ENROLL_CANCELLED:
+      return 'Solo enrolled player cancelled the tournament (EL0)';
 
     case CompletionReason.ABANDONED_TOURNAMENT_CLAIMED:
       return 'External player claimed the abandoned tournament pool (EL2)';
+
+    case CompletionReason.UNCONTESTED_FINALS_WIN:
+      return 'The tournament resolved because only one finalist remained';
 
     default:
       return userWon ? 'You won!' : 'You lost';
@@ -135,11 +301,14 @@ export const getCompletionReasonIcon = (reason, userWon) => {
     case CompletionReason.ALL_DRAW_SCENARIO:
       return 'Equal';
 
-    case CompletionReason.SOLO_ENROLL_FORCE_START:
-      return 'Zap';
+    case CompletionReason.SOLO_ENROLL_CANCELLED:
+      return 'RotateCcw';
 
     case CompletionReason.ABANDONED_TOURNAMENT_CLAIMED:
       return 'DollarSign';
+
+    case CompletionReason.UNCONTESTED_FINALS_WIN:
+      return 'Trophy';
 
     default:
       return userWon ? 'Trophy' : 'Frown';

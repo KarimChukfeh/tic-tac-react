@@ -8,9 +8,11 @@ import { useEffect, useState, useRef } from 'react';
 import { ethers } from 'ethers';
 import { Clock, Trophy, Award, Users } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
-import { CompletionReason } from '../../utils/completionReasons';
+import { getTournamentCompletionText, getTournamentResolutionReasonValue } from '../../utils/completionReasons';
+import { getV2TournamentResolutionText } from '../../v2/lib/reasonLabels';
+import UserManualAnchorLink from './UserManualAnchorLink';
 
-const RecentInstanceCard = ({ tierId, instanceId, contract, tierName = 'Tournament', walletAddress }) => {
+const RecentInstanceCard = ({ tierId, instanceId, contract, tierName = 'Tournament', walletAddress, reasonLabelMode = 'default' }) => {
   const [recentData, setRecentData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showTooltip, setShowTooltip] = useState(false);
@@ -37,6 +39,9 @@ const RecentInstanceCard = ({ tierId, instanceId, contract, tierName = 'Tourname
             prizePool: data.prizePool,
             winner: data.winner,
             completionReason: Number(data.completionReason),
+            completionCategory: Number(data.completionCategory ?? 0),
+            resolutionReason: Number(data.resolutionReason ?? data.completionReason ?? 0),
+            resolutionCategory: Number(data.resolutionCategory ?? data.completionCategory ?? 0),
             players: data.players || []
           });
         }
@@ -105,31 +110,10 @@ const RecentInstanceCard = ({ tierId, instanceId, contract, tierName = 'Tourname
     );
   }
 
-  // Get tournament-specific completion reason text
-  const getTournamentCompletionText = (reason) => {
-    switch (reason) {
-      case CompletionReason.NORMAL_WIN:
-        return { text: 'Normal Victory', link: null };
-      case CompletionReason.TIMEOUT:
-        return { text: 'ML1 Timeout Elimination', link: '#ml1' };
-      case CompletionReason.DRAW:
-        return { text: 'Draw Resolution', link: '#draws' };
-      case CompletionReason.FORCE_ELIMINATION:
-        return { text: 'ML2 Advanced Player Elimination', link: '#ml2' };
-      case CompletionReason.REPLACEMENT:
-        return { text: 'ML3 External Player Replacement', link: '#ml3' };
-      case CompletionReason.ALL_DRAW_SCENARIO:
-        return { text: 'All-Draw Scenario Resolution', link: '#draws' };
-      case CompletionReason.SOLO_ENROLL_FORCE_START:
-        return { text: 'EL1 Solo Force Start', link: '#el1' };
-      case CompletionReason.ABANDONED_TOURNAMENT_CLAIMED:
-        return { text: 'EL2 Abandoned Pool Claim', link: '#el2' };
-      default:
-        return { text: 'Tournament Completion', link: null };
-    }
-  };
-
-  const reasonData = getTournamentCompletionText(recentData.completionReason);
+  const resolutionReason = getTournamentResolutionReasonValue(recentData);
+  const reasonData = reasonLabelMode === 'v2'
+    ? getV2TournamentResolutionText(resolutionReason)
+    : getTournamentCompletionText(resolutionReason);
 
   return (
     <div className="py-4">
@@ -158,12 +142,12 @@ const RecentInstanceCard = ({ tierId, instanceId, contract, tierName = 'Tourname
         <p className="text-sm text-purple-300 ml-10">
           Resolved via{' '}
           {reasonData.link ? (
-            <a
+            <UserManualAnchorLink
               href={reasonData.link}
               className="font-semibold text-white hover:text-cyan-300 underline transition-colors"
             >
               {reasonData.text}
-            </a>
+            </UserManualAnchorLink>
           ) : (
             <span className="font-semibold text-white">{reasonData.text}</span>
           )}

@@ -3,6 +3,9 @@ import { Trophy, Frown, Equal, X, AlertCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { ethers } from 'ethers';
 import { shortenAddress } from '../../utils/formatters';
+import { getV2NeutralMatchReasonLabel } from '../../v2/lib/reasonLabels';
+import UserManualAnchorLink, { linkifyReasonText } from './UserManualAnchorLink';
+import { getUserManualHrefForReasonCode } from '../../utils/userManualLinks';
 
 /**
  * MatchEndModal - Shared component for displaying match end feedback
@@ -35,8 +38,12 @@ const MatchEndModal = ({
   totalRounds,
   prizePool,
   completionReason,
-  tournamentWinner
+  tournamentWinner,
+  reasonLabelMode = 'default',
 }) => {
+  const useV2ReasonLabels = reasonLabelMode === 'v2';
+  const v2NeutralReasonLabel = useV2ReasonLabels ? getV2NeutralMatchReasonLabel(completionReason) : '';
+
   // Debug logging for modal visibility
   useEffect(() => {
     if (isVisible) {
@@ -289,7 +296,7 @@ const MatchEndModal = ({
       icon: Trophy,
       title: isFinalRound ? 'Tournament Champion!' : 'You Win!',
       subtitle: completionReason === 1
-        ? 'Victory via ML1'
+        ? (useV2ReasonLabels ? 'ML1 Victory by Timeout' : 'Victory via ML1')
         : completionReason === 3 || completionReason === 4
         ? `Victory via ${completionReason === 3 ? 'ML2' : 'ML3'}`
         : 'Victory by Forfeit!',
@@ -313,12 +320,12 @@ const MatchEndModal = ({
           )}
           <p className="text-white/90">
             Your opponent timed out via{' '}
-            <a
-              href="#ml1"
+            <UserManualAnchorLink
+              href={getUserManualHrefForReasonCode('ML1')}
               className="text-orange-400 underline decoration-dotted hover:text-orange-300 font-semibold"
             >
               ML1
-            </a>
+            </UserManualAnchorLink>
             {' '}timeout escalation.
           </p>
           {isFinalRound ? (
@@ -356,12 +363,12 @@ const MatchEndModal = ({
           )}
           <p className="text-white/90">
             Your opponent was eliminated via{' '}
-            <a
-              href={completionReason === 3 ? '#ml2' : '#ml3'}
+            <UserManualAnchorLink
+              href={completionReason === 3 ? getUserManualHrefForReasonCode('ML2') : getUserManualHrefForReasonCode('ML3')}
               className="text-orange-400 underline decoration-dotted hover:text-orange-300 font-semibold"
             >
               {completionReason === 3 ? 'ML2' : 'ML3'}
-            </a>
+            </UserManualAnchorLink>
             {' '}match escalation.
           </p>
           {isFinalRound ? (
@@ -422,18 +429,22 @@ const MatchEndModal = ({
     },
     lose: {
       icon: completionReason === 3 || completionReason === 4 ? AlertCircle : Frown,
-      title: completionReason === 3 || completionReason === 4 ? 'Match Eliminated' : getDefeatText(),
-      subtitle: completionReason === 3 || completionReason === 4 ? 'Tournament Escalation' : 'Better luck next time!',
+      title: completionReason === 3 || completionReason === 4
+        ? (useV2ReasonLabels ? v2NeutralReasonLabel : 'Match Eliminated')
+        : getDefeatText(),
+      subtitle: completionReason === 3 || completionReason === 4
+        ? (useV2ReasonLabels ? 'Tournament Resolution' : 'Tournament Escalation')
+        : 'Better luck next time!',
       description: completionReason === 3 || completionReason === 4 ? (
         <div className="space-y-2">
           <p className="text-white/90">
             Your match was eliminated via{' '}
-            <a
-              href={completionReason === 3 ? '#ml2' : '#ml3'}
+            <UserManualAnchorLink
+              href={completionReason === 3 ? getUserManualHrefForReasonCode('ML2') : getUserManualHrefForReasonCode('ML3')}
               className="text-orange-400 underline decoration-dotted hover:text-orange-300 font-semibold"
             >
               {completionReason === 3 ? 'ML2' : 'ML3'}
-            </a>
+            </UserManualAnchorLink>
             {' '}due to match escalation.
           </p>
         </div>
@@ -462,7 +473,7 @@ const MatchEndModal = ({
     },
     forfeit_lose: {
       icon: Frown,
-      title: 'Timeout!',
+      title: useV2ReasonLabels ? 'ML1 Timeout!' : 'Timeout!',
       subtitle: 'You ran out of time',
       description: winnerAddress && loserAddress ? (
         <div className="space-y-2">
@@ -492,7 +503,7 @@ const MatchEndModal = ({
     },
     draw: {
       icon: Equal,
-      title: "It's a Draw!",
+      title: useV2ReasonLabels ? v2NeutralReasonLabel : "It's a Draw!",
       subtitle: 'Evenly matched',
       description: 'Neither player could secure a victory.',
       bgGradient: 'from-blue-500/20 via-cyan-500/20 to-teal-500/20',
@@ -594,12 +605,16 @@ const MatchEndModal = ({
 
         {/* Title */}
         <h2 className={`text-4xl font-bold text-center mb-2 ${currentConfig.titleColor}`}>
-          {currentConfig.title}
+          {typeof currentConfig.title === 'string'
+            ? linkifyReasonText(currentConfig.title, { keyPrefix: `match-end-title-${result}`, linkClassName: 'underline decoration-dotted underline-offset-4 hover:text-white' })
+            : currentConfig.title}
         </h2>
 
         {/* Subtitle */}
         <p className="text-xl text-center text-white/90 mb-4">
-          {currentConfig.subtitle}
+          {typeof currentConfig.subtitle === 'string'
+            ? linkifyReasonText(currentConfig.subtitle, { keyPrefix: `match-end-subtitle-${result}`, linkClassName: 'underline decoration-dotted underline-offset-4 hover:text-white' })
+            : currentConfig.subtitle}
         </p>
 
         {/* Description */}

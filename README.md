@@ -31,7 +31,7 @@ A decentralized gaming platform built on Arbitrum. Play classic games with real 
 
 - Node.js v18+
 - MetaMask or compatible Web3 wallet
-- ETH on Arbitrum One (for production) or local testnet
+- ETH on Arbitrum One for the current v2 deployment
 
 ### Installation
 
@@ -60,23 +60,24 @@ Create a `.env` file based on `.env.example`:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `VITE_NETWORK` | Target network (`localhost` or `arbitrumOne`) | `localhost` |
-| `VITE_RPC_URL` | Custom RPC endpoint (optional) | Network default |
-| `VITE_TICTACCHAIN_ADDRESS` | TicTacChain contract address | Local default |
-| `VITE_CHESS_ADDRESS` | Chess contract address | Local default |
-| `VITE_CONNECTFOUR_ADDRESS` | ConnectFour contract address | Local default |
+| `VITE_NETWORK` | Target v2 network (`arbitrumOne` or `localhost`) | ABI manifest default |
+| `VITE_V2_RPC_URL` | Custom v2 RPC endpoint (preferred) | Network default |
+| `VITE_RPC_URL` | Legacy RPC override fallback | Unset |
 
 ### Network Configuration
 
-**Local Development:**
-```env
-VITE_NETWORK=localhost
-VITE_RPC_URL=http://127.0.0.1:8545
-```
+The v2 app now derives its default network from the checked-in ABI manifests under `src/v2/ABIs`. With the current ABI set, the default target is Arbitrum One mainnet.
 
-**Arbitrum One (Production):**
+**Arbitrum One (current default):**
 ```env
 VITE_NETWORK=arbitrumOne
+VITE_V2_RPC_URL=https://arb-mainnet.g.alchemy.com/v2/yoftG-myZ5Iur7UklgbJR
+```
+
+**Local override (only if you intentionally want local v2 testing):**
+```env
+VITE_NETWORK=localhost
+VITE_V2_RPC_URL=http://127.0.0.1:8545
 ```
 
 ### MetaMask Setup
@@ -84,7 +85,7 @@ VITE_NETWORK=arbitrumOne
 | Network | Chain ID | RPC URL |
 |---------|----------|---------|
 | Localhost | 412346 | `http://127.0.0.1:8545` |
-| Arbitrum One | 42161 | `https://arb1.arbitrum.io/rpc` |
+| Arbitrum One | 42161 | `https://arb-mainnet.g.alchemy.com/v2/yoftG-myZ5Iur7UklgbJR` |
 
 ## Development
 
@@ -114,7 +115,7 @@ npm run test:run -- --coverage
 
 ### Local Blockchain Setup
 
-For local development, you'll need a running blockchain node with deployed contracts. See the [e-tour](https://github.com/your-org/e-tour) repository for contract deployment instructions.
+For local v2 testing, you'll need a running blockchain node with contracts deployed using a localhost ABI set. See the [e-tour](https://github.com/your-org/e-tour) repository for contract deployment instructions.
 
 ## Deployment
 

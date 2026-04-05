@@ -7,6 +7,8 @@
 
 import { Clock, HelpCircle } from 'lucide-react';
 import { formatTime } from '../../utils/formatters';
+import UserManualAnchorLink, { linkifyReasonText } from './UserManualAnchorLink';
+import { getUserManualHrefForReasonCode } from '../../utils/userManualLinks';
 
 /**
  * @param {Object} props
@@ -33,17 +35,20 @@ const EscalationTimer = ({ escalationState, enrollmentTimeout, isEnrolled }) => 
             <div className="flex items-center gap-2">
               <Clock className="text-orange-400" size={16} />
               <span className="text-orange-300 text-xs font-semibold">
-                EL1: Force Start in {formatTime(escalationState.timeToEscalation1)}
+                {linkifyReasonText(`EL1: Force Start in ${formatTime(escalationState.timeToEscalation1)}`, {
+                  keyPrefix: 'escalation-timer-el1',
+                  linkClassName: 'underline decoration-dotted underline-offset-[2px] hover:text-orange-200',
+                })}
               </span>
             </div>
           </div>
-          <a
-            href="#el1"
+          <UserManualAnchorLink
+            href={getUserManualHrefForReasonCode('EL1')}
             className="absolute top-3 right-3 text-orange-400 hover:text-orange-300 transition-colors"
             title="Learn more about force-starting tournaments"
           >
             <HelpCircle size={16} />
-          </a>
+          </UserManualAnchorLink>
         </div>
       </div>
     );
@@ -59,17 +64,20 @@ const EscalationTimer = ({ escalationState, enrollmentTimeout, isEnrolled }) => 
             <div className="flex items-center gap-2">
               <Clock className="text-red-400" size={16} />
               <span className="text-red-300 text-xs font-semibold">
-                EL2: Claim Abandoned Pool in {formatTime(escalationState.timeToEscalation2)}
+                {linkifyReasonText(`EL2: Claim Abandoned Pool in ${formatTime(escalationState.timeToEscalation2)}`, {
+                  keyPrefix: 'escalation-timer-el2',
+                  linkClassName: 'underline decoration-dotted underline-offset-[2px] hover:text-red-200',
+                })}
               </span>
             </div>
           </div>
-          <a
-            href="#el2"
+          <UserManualAnchorLink
+            href={getUserManualHrefForReasonCode('EL2')}
             className="absolute top-3 right-3 text-red-400 hover:text-red-300 transition-colors"
             title="Learn more about claiming abandoned pools"
           >
             <HelpCircle size={16} />
-          </a>
+          </UserManualAnchorLink>
         </div>
       </div>
     );

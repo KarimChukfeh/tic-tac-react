@@ -5,11 +5,24 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { X, RefreshCw, History, ChevronDown, ChevronUp, Eye, ChevronLeft, ChevronRight, ArrowUpRight, TrendingUp, ExternalLink, ArrowUp } from 'lucide-react';
+import { X, RefreshCw, History, ChevronDown, ChevronUp, Eye, ChevronLeft, ChevronRight, ArrowUpRight, TrendingUp, ExternalLink, ArrowUp, Trophy } from 'lucide-react';
 import { shortenAddress, getCellPositionName } from '../../utils/formatters';
-import { isDraw } from '../../utils/completionReasons';
+import {
+  CompletionReason,
+  getCompletedMatchOutcomeLabel,
+  getMatchCompletionReasonValue,
+  getTournamentResolutionReasonValue,
+  isDraw,
+} from '../../utils/completionReasons';
+import {
+  getV2CompletedMatchOutcomeLabel,
+  getV2TournamentResolutionText,
+  isV2TournamentCancelledReason,
+} from '../../v2/lib/reasonLabels';
 import CapturedPieces from './CapturedPieces';
+import CompletedMatchOutcomeBadge from './CompletedMatchOutcomeBadge';
 import { ethers } from 'ethers';
+import { linkifyReasonText } from './UserManualAnchorLink';
 
 const RecentMatchesCard = ({
   contract,
@@ -28,11 +41,21 @@ const RecentMatchesCard = ({
   onShowTooltip, // Callback to show this component's tooltip
   onHideTooltip, // Callback to hide this component's tooltip
   onNavigateToTournament, // Callback to navigate to tournament bracket view
+  onRefresh = null, // External refresh for pre-fetched data sources
   leaderboard = [], // Leaderboard data to find player earnings
   onMatchesLoad, // Callback(matches) fired after matches are fetched
   onScrollToMatch, // Callback(fn) receives the scrollToMatch function for external callers
+  playerProfile = null, // { stats, enrollments } from usePlayerProfile
+  onViewTournament = null, // Callback(instanceAddress) to navigate to a tournament bracket
+  getTournamentTypeLabel = null, // Function(playerCount) => string
+  v2Matches = null, // Pre-fetched matches array (bypasses internal contract fetch)
+  v2MatchesLoading = false, // Loading state for v2Matches
+  showTournamentRaffles = true,
+  connectCtaClassName = 'bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl shadow-2xl border-2 border-purple-400/60 hover:scale-105',
+  reasonLabelMode = 'default',
 }) => {
   const [internalIsExpanded, setInternalIsExpanded] = useState(false);
+  const [historyTab, setHistoryTab] = useState('matches'); // 'matches' | 'tournaments'
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
   const [recentMatches, setRecentMatches] = useState([]);
   const [loadingRecentMatches, setLoadingRecentMatches] = useState(false);
@@ -49,12 +72,37 @@ const RecentMatchesCard = ({
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [totalEarnings, setTotalEarnings] = useState(0n);
   const [isScrolled, setIsScrolled] = useState(false); // Track if user has scrolled
+  const [displayTournamentStats, setDisplayTournamentStats] = useState(null);
+  const [displayTournamentEnrollments, setDisplayTournamentEnrollments] = useState([]);
+  const panelShellRef = useRef(null);
   const expandedPanelRef = useRef(null);
   const prevExpandedRef = useRef(false);
+  const prevAccountRef = useRef(account);
   const matchCardRefs = useRef({});
+  const tournamentItemRefs = useRef({});
+  const useV2ReasonLabels = reasonLabelMode === 'v2';
+  const isRefreshing = syncing || v2MatchesLoading;
+  const hasRenderedMatches = recentMatches.length > 0;
+  const showMatchesLoadingState = (loadingRecentMatches || v2MatchesLoading) && !hasRenderedMatches;
+  const hasTournamentData = Boolean(displayTournamentStats) || displayTournamentEnrollments.length > 0;
+  const showTournamentLoadingState = Boolean(playerProfile?.loading) && !hasTournamentData;
 
   // Use external state if provided, otherwise use internal state
   const isExpanded = externalIsExpanded !== undefined ? externalIsExpanded : internalIsExpanded;
+
+  // Switch to Tournaments tab and scroll to a specific instance
+  const goToTournamentInstance = (instanceAddress) => {
+    setHistoryTab('tournaments');
+    setTimeout(() => {
+      const el = tournamentItemRefs.current[instanceAddress?.toLowerCase()];
+      if (el && expandedPanelRef.current) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.style.transition = 'box-shadow 0.3s';
+        el.style.boxShadow = '0 0 16px rgba(168,85,247,0.6)';
+        setTimeout(() => { el.style.boxShadow = ''; }, 1500);
+      }
+    }, 50);
+  };
 
   // Helper to handle expansion changes
   const handleSetExpanded = (value) => {
@@ -93,8 +141,68 @@ const RecentMatchesCard = ({
     }
   }, [account, leaderboard]);
 
+  useEffect(() => {
+    if (prevAccountRef.current !== account) {
+      prevAccountRef.current = account;
+      setDisplayTournamentStats(null);
+      setDisplayTournamentEnrollments([]);
+    }
+  }, [account]);
+
+  useEffect(() => {
+    if (!account) {
+      setDisplayTournamentStats(null);
+      setDisplayTournamentEnrollments([]);
+      return;
+    }
+
+    const nextStats = playerProfile?.stats ?? null;
+    const nextEnrollments = Array.isArray(playerProfile?.enrollments) ? playerProfile.enrollments : [];
+    const hasFreshTournamentData = Boolean(nextStats) || nextEnrollments.length > 0;
+
+    if (hasFreshTournamentData || !playerProfile?.loading) {
+      setDisplayTournamentStats(nextStats);
+      setDisplayTournamentEnrollments(nextEnrollments);
+    }
+  }, [account, playerProfile]);
+
+  // When v2Matches is provided externally, sync it into recentMatches state
+  useEffect(() => {
+    if (v2Matches !== null) {
+      setRecentMatches(v2Matches);
+      if (onMatchesLoad) onMatchesLoad(v2Matches);
+    }
+  }, [v2Matches]);
+
+  useEffect(() => {
+    if (historyTab !== 'matches') return;
+
+    console.groupCollapsed(`[RecentMatchesCard] Matches tab history (${recentMatches.length})`);
+    console.table(recentMatches.map((match, index) => ({
+      index,
+      matchId: match.matchId,
+      tierId: match.tierId,
+      instanceId: match.instanceId,
+      instanceAddress: match.instanceAddress ?? null,
+      roundNumber: match.roundNumber,
+      matchNumber: match.matchNumber,
+      player1: match.player1,
+      player2: match.player2,
+      winner: match.winner,
+      reason: match.reason ?? null,
+      completionReason: match.completionReason ?? null,
+      matchCompletionReason: match.matchCompletionReason ?? null,
+      playerOutcomeReason: match.playerOutcomeReason ?? null,
+      resolvedReason: getMatchCompletionReasonValue(match),
+      startTime: match.startTime,
+      endTime: match.endTime,
+    })));
+    console.groupEnd();
+  }, [historyTab, recentMatches]);
+
   // Pre-fetch matches silently when wallet connects so ConnectedWalletCard stats are ready
   useEffect(() => {
+    if (v2Matches !== null) return; // skip internal fetch when externally supplied
     if (account && contract) {
       fetchRecentMatches();
     }
@@ -105,11 +213,16 @@ const RecentMatchesCard = ({
     if (isExpanded && !prevExpandedRef.current) {
       setCurrentPage(1); // Reset to first page when opening
       setIsScrolled(false); // Reset scroll state when opening
-      fetchRecentMatches();
-      fetchTransactionHistory();
+      if (onRefresh) {
+        onRefresh();
+      }
+      if (v2Matches === null) {
+        fetchRecentMatches();
+        fetchTransactionHistory();
+      }
     }
     prevExpandedRef.current = isExpanded;
-  }, [isExpanded]);
+  }, [isExpanded, onRefresh, v2Matches]);
 
   // Handle scroll events to show/hide header styling and scroll-to-top button
   useEffect(() => {
@@ -135,7 +248,7 @@ const RecentMatchesCard = ({
 
   // Measure and report height whenever content changes
   useEffect(() => {
-    if (isExpanded && expandedPanelRef.current && onHeightChange) {
+    if (isExpanded && panelShellRef.current && onHeightChange) {
       const observer = new ResizeObserver((entries) => {
         for (const entry of entries) {
           const height = entry.target.offsetHeight;
@@ -143,10 +256,10 @@ const RecentMatchesCard = ({
         }
       });
 
-      observer.observe(expandedPanelRef.current);
+      observer.observe(panelShellRef.current);
 
       // Report initial height immediately
-      onHeightChange(expandedPanelRef.current.offsetHeight);
+      onHeightChange(panelShellRef.current.offsetHeight);
 
       return () => observer.disconnect();
     } else if (!isExpanded && onHeightChange) {
@@ -286,6 +399,8 @@ const RecentMatchesCard = ({
           firstPlayer: match.firstPlayer,
           winner: match.winner,
           reason: Number(match.completionReason),
+          completionReason: Number(match.completionReason),
+          isDraw: Boolean(match.isDraw),
           board: match.packedBoard,
           startTime: Number(match.startTime),
           endTime: Number(match.endTime),
@@ -306,9 +421,13 @@ const RecentMatchesCard = ({
   };
 
   const handleRefresh = () => {
-    setRecentMatches([]);
     setCurrentPage(1); // Reset to first page on refresh
-    fetchRecentMatches();
+    if (onRefresh) {
+      onRefresh();
+    }
+    if (v2Matches === null) {
+      fetchRecentMatches();
+    }
     // Also refresh transaction history if it's visible
     if (showTransactionHistory) {
       fetchTransactionHistory();
@@ -530,18 +649,27 @@ const RecentMatchesCard = ({
     if (matchIndex === -1) return 'Unknown';
 
     const match = recentMatches[matchIndex];
+    const reason = getMatchReason(match);
     const accountLower = account?.toLowerCase() || '';
     const winnerLower = match.winner?.toLowerCase() || '';
-    const isDraw = winnerLower === ethers.ZeroAddress.toLowerCase();
+    const matchIsDraw = isDraw(reason);
 
     // Get tier type prefix
     const tierLabel = getTierLabel(match.tierId);
     const tierPrefix = tierLabel === 'Duel' ? 'Duel' : 'Tournament';
 
-    if (isDraw) return `${tierPrefix} Draw`;
+    if (matchIsDraw) {
+      const outcome = useV2ReasonLabels
+        ? getV2CompletedMatchOutcomeLabel(reason, false, gameName)
+        : 'Draw';
+      return `${tierPrefix} ${outcome}`;
+    }
 
     const isWinner = winnerLower === accountLower;
-    return isWinner ? `${tierPrefix} Victory` : `${tierPrefix} Defeat`;
+    const outcome = useV2ReasonLabels
+      ? getV2CompletedMatchOutcomeLabel(reason, isWinner, gameName)
+      : getCompletedMatchOutcomeLabel(reason, isWinner, gameName);
+    return `${tierPrefix} ${outcome}`;
   };
 
   // Find match number by matchId and timestamp
@@ -629,37 +757,100 @@ const RecentMatchesCard = ({
     return `${Math.floor(diff / 2592000)}mo ago`;
   };
 
-  const getRoundLabel = (tierId, roundNumber) => {
-    if (!tierConfig || !tierConfig[tierId]) return `Round ${roundNumber + 1}`;
-    const playerCount = tierConfig[tierId].playerCount;
-    const totalRounds = Math.ceil(Math.log2(playerCount));
+  const getRoundLabel = (tierId, roundNumber, explicitTotalRounds) => {
+    const playerCount = tierConfig?.[tierId]?.playerCount;
+    const totalRounds = explicitTotalRounds ?? (
+      playerCount ? Math.ceil(Math.log2(playerCount)) : null
+    );
 
-    if (playerCount === 2) return 'Finals';
+    if (!Number.isFinite(totalRounds) || totalRounds <= 1) return null;
+    if (playerCount === 2) return null;
     if (roundNumber === totalRounds - 1) return 'Finals';
-    if (roundNumber === totalRounds - 2) return 'Semi-Finals';
-    if (roundNumber === totalRounds - 3) return 'Quarter-Finals';
-    return `Round ${roundNumber + 1}`;
+    if (roundNumber === totalRounds - 2) return 'Semifinals';
+    if (roundNumber === totalRounds - 3) return 'Quarterfinals';
+    return `Round ${roundNumber + 1}/${totalRounds}`;
   };
 
-  const getOutcomeLabel = (isWinner, reason) => {
-    const reasons = {
-      0: 'Normal',
-      1: 'Timeout (ML1)',
-      2: 'Draw',
-      3: 'Force Elimination (ML2)',
-      4: 'Abandoned Match (ML3)',
-      5: 'All Draw'
-    };
+  // History badges are rendered from the match completion reason.
+  // PlayerProfile `outcome` is a different enum and must not be fed into these helpers.
+  const getMatchReason = (match) => getMatchCompletionReasonValue(match);
 
-    if (isDraw(reason)) return 'Draw';
+  const getRecordPrizePool = (record) => record?.prizePool ?? record?.prize ?? 0n;
+  const getRecordPayout = (record) => record?.payout ?? 0n;
+  const isCancelledTournamentRecord = (record) => Number(record?.instanceStatus ?? -1) === 3;
+  const isDrawTournamentRecord = (record) => (
+    useV2ReasonLabels &&
+    getTournamentResolutionReasonValue(record) === 2 &&
+    getRecordPayout(record) > 0n
+  );
+  const hasCancelledTournamentReason = (record) => (
+    useV2ReasonLabels
+      ? isV2TournamentCancelledReason(getTournamentResolutionReasonValue(record))
+      : getTournamentResolutionReasonValue(record) === CompletionReason.SOLO_ENROLL_CANCELLED
+  );
 
-    const reasonText = reasons[reason] || `Unknown (${reason})`;
+  const formatEthAmount = (value, digits = 4) => {
+    const parsed = Number(ethers.formatEther(value ?? 0n));
+    return Number.isFinite(parsed) ? parsed.toFixed(digits) : '0';
+  };
 
-    if (isWinner) {
-      return reason === 0 ? 'Victory' : `Victory by ${reasonText}`;
-    } else {
-      return reason === 0 ? 'Defeat' : `Defeat by ${reasonText}`;
+  const getTournamentResolutionText = (record) => {
+    if (useV2ReasonLabels) {
+      if (hasCancelledTournamentReason(record) || isCancelledTournamentRecord(record)) {
+        return getV2TournamentResolutionText(5).text;
+      }
+      if (!record?.won && getRecordPayout(record) > 0n && record?.entryFee != null && getRecordPayout(record) === record.entryFee) {
+        return getV2TournamentResolutionText(5).text;
+      }
+      return getV2TournamentResolutionText(getTournamentResolutionReasonValue(record)).text;
     }
+
+    if (hasCancelledTournamentReason(record) || isCancelledTournamentRecord(record)) {
+      return getRecordPayout(record) > 0n ? 'EL0 cancellation' : 'Tournament cancelled';
+    }
+    if (!record?.won && getRecordPayout(record) > 0n && record?.entryFee != null && getRecordPayout(record) === record.entryFee) {
+      return 'EL0 cancellation';
+    }
+    const reason = getTournamentResolutionReasonValue(record);
+    switch (reason) {
+      case CompletionReason.NORMAL_WIN:
+        return 'Normal victory';
+      case CompletionReason.TIMEOUT:
+        return 'ML1 timeout';
+      case CompletionReason.DRAW:
+        return 'Draw resolution';
+      case CompletionReason.FORCE_ELIMINATION:
+        return 'ML2 force elimination';
+      case CompletionReason.REPLACEMENT:
+        return 'ML3 replacement';
+      case CompletionReason.ALL_DRAW_SCENARIO:
+        return 'All-draw resolution';
+      case CompletionReason.SOLO_ENROLL_CANCELLED:
+        return 'EL0 cancellation';
+      case CompletionReason.ABANDONED_TOURNAMENT_CLAIMED:
+        return 'EL2 abandoned pool claim';
+      case CompletionReason.UNCONTESTED_FINALS_WIN:
+        return 'Uncontested Finalist Resolution';
+      default:
+        return 'Tournament completed';
+    }
+  };
+
+  const formatTimeAgo = (timestamp) => {
+    if (!timestamp) return '';
+    const seconds = Math.floor(Date.now() / 1000) - timestamp;
+    if (seconds < 60) return `${seconds}s ago`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days}d ago`;
+    const weeks = Math.floor(days / 7);
+    if (weeks < 5) return `${weeks}w ago`;
+    const months = Math.floor(days / 30);
+    if (months < 12) return `${months}mo ago`;
+    return `${Math.floor(months / 12)}y ago`;
   };
 
   const formatTimestamp = (timestamp, label = 'Started') => {
@@ -920,7 +1111,7 @@ const RecentMatchesCard = ({
           {disabled ? (
             <a
               href="#connect-wallet-cta"
-              className="max-md:hidden absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all shadow-2xl border-2 border-purple-400/60 hover:scale-105"
+              className={`max-md:hidden absolute left-full ml-3 top-1/2 -translate-y-1/2 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all ${connectCtaClassName}`}
             >
               Connect Wallet to View Your Match History
             </a>
@@ -943,7 +1134,7 @@ const RecentMatchesCard = ({
               e.stopPropagation(); // Allow navigation but prevent document click
               if (onHideTooltip) onHideTooltip();
             }}
-            className="md:hidden fixed bottom-20 left-4 right-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-6 py-3 rounded-xl z-[100] animate-fade-in shadow-2xl border-2 border-purple-400/60 hover:scale-105 transition-transform text-center"
+            className={`md:hidden fixed bottom-20 left-4 right-4 px-6 py-3 z-[100] animate-fade-in transition-transform text-center ${connectCtaClassName}`}
           >
             Connect Wallet to View Your Match History
           </a>
@@ -953,6 +1144,7 @@ const RecentMatchesCard = ({
       {/* Expanded State */}
       {isExpanded && (
         <div
+          ref={panelShellRef}
           className="max-md:fixed max-md:bottom-20 max-md:left-4 max-md:right-4 max-md:w-auto md:mt-3 bg-gradient-to-br from-teal-900/95 to-cyan-900/95 backdrop-blur-lg rounded-2xl border-2 border-teal-400/40 shadow-2xl md:w-[464px] overflow-hidden flex flex-col"
           style={{
             maxHeight: isDesktop ? `calc(100vh - ${topPositionDesktop}px - 6rem)` : 'min(80vh, calc(100vh - 7rem))'
@@ -988,12 +1180,12 @@ const RecentMatchesCard = ({
                 {/* Refresh Button */}
                 <button
                   onClick={handleRefresh}
-                  disabled={syncing}
+                  disabled={isRefreshing}
                   className="text-slate-400 hover:text-white transition-colors p-1 hover:bg-slate-700/50 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                   aria-label="Refresh"
                   title="Refresh recent matches"
                 >
-                  <RefreshCw size={18} className={syncing ? 'animate-spin' : ''} />
+                  <RefreshCw size={18} className={isRefreshing ? 'animate-spin' : ''} />
                 </button>
                 {/* Close Button */}
                 <button
@@ -1008,102 +1200,144 @@ const RecentMatchesCard = ({
           </div>
           <hr className="border-purple-100/10" />
 
+          {/* Tab Bar */}
+          <div className="flex border-b border-teal-400/20 px-4 md:px-6">
+            <button
+              onClick={() => setHistoryTab('tournaments')}
+              className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors ${historyTab === 'tournaments' ? 'border-teal-400 text-teal-300' : 'border-transparent text-slate-400 hover:text-slate-200'}`}
+            >
+              Tournaments
+            </button>
+            <button
+              onClick={() => setHistoryTab('matches')}
+              className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors ${historyTab === 'matches' ? 'border-teal-400 text-teal-300' : 'border-transparent text-slate-400 hover:text-slate-200'}`}
+            >
+              Matches
+            </button>
+          </div>
+
           {/* Scrollable Content */}
           <div
             ref={expandedPanelRef}
             className="p-4 md:p-6 pb-8 overflow-y-auto overflow-x-hidden flex-1 min-h-0 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-teal-950/40 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-teal-500/70 [&::-webkit-scrollbar-thumb]:to-cyan-500/70 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border [&::-webkit-scrollbar-thumb]:border-teal-400/30 hover:[&::-webkit-scrollbar-thumb]:from-teal-400 hover:[&::-webkit-scrollbar-thumb]:to-cyan-400 [scrollbar-width:thin] [scrollbar-color:rgb(20_184_166_/_0.7)_rgb(4_47_46_/_0.4)]"
           >
 
-          {/* You earned section */}
-          <div className="mb-4 space-y-2">
-            <h3 className="text-white font-semibold text-lg md:text-md">Payout History</h3>
-            <div className="flex items-center gap-1.5 text-sm md:text-xs">
-              <span className="text-green-400">You earned:</span>
-              <TrendingUp className={`${totalEarnings >= 0n ? 'text-green-400' : 'text-red-400'}`} size={16} />
-              <span className={`font-semibold font-mono ${totalEarnings >= 0n ? 'text-green-400' : 'text-red-400'}`}>
-                {totalEarnings >= 0n ? '+' : ''}{ethers.formatEther(totalEarnings)} ETH
-              </span>
-              <button
-                onClick={toggleTransactionHistory}
-                className="ml-1 text-slate-400 hover:text-white transition-colors p-0.5"
-                title={showTransactionHistory ? "Hide transaction history" : "Show transaction history"}
-              >
-                {showTransactionHistory ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-              </button>
-            </div>
-
-            {/* Transaction History */}
-            {showTransactionHistory && (
-              <div className="bg-black/30 border border-green-400/20 rounded-lg p-3 mt-2">
-                <div className="flex items-start gap-2 mb-2">
-                  <p className="text-yellow-300/80 text-[10px]">
-                    Your recent ETH payouts
-                  </p>
+          {/* Tournaments Tab */}
+          {historyTab === 'tournaments' && (
+            <>
+              {showTournamentLoadingState ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-teal-400 mx-auto"></div>
+                  <p className="text-slate-400 mt-2 text-xs">Loading tournament history...</p>
                 </div>
-
-                {loadingHistory ? (
-                  <div className="text-center py-4">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-400 mx-auto"></div>
-                    <p className="text-slate-400 mt-1 text-[10px]">Loading history...</p>
-                  </div>
-                ) : transactionHistory.length === 0 ? (
-                  <p className="text-slate-400 text-[10px] text-center py-2">No prize awards found</p>
-                ) : (
-                  <div className="space-y-1.5 max-h-48 overflow-y-auto [&::-webkit-scrollbar]:w-0.5 [&::-webkit-scrollbar-track]:bg-green-950/40 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-green-500/70 [&::-webkit-scrollbar-thumb]:to-emerald-500/70 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:from-green-400 hover:[&::-webkit-scrollbar-thumb]:to-emerald-400 [scrollbar-width:thin] [scrollbar-color:rgb(34_197_94_/_0.7)_rgb(5_46_22_/_0.4)]">
-                    {transactionHistory.map((tx, index) => (
-                      <div
-                        key={`${tx.txHash}-${index}`}
-                        className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-400/20 rounded p-2 hover:border-green-400/40 transition-all"
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5 mb-0.5">
-                              <TrendingUp className="text-green-400 flex-shrink-0" size={12} />
-                              <span className="text-green-400 font-mono font-semibold text-xs">
-                                +{ethers.formatEther(tx.value)} ETH
-                              </span>
-                            </div>
-                            <p className="text-slate-300 text-[10px] flex items-center gap-1">
-                              <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${
-                                getMatchResolution(tx.matchId, tx.timestamp).includes('Victory')
-                                  ? 'bg-green-500/20 text-green-400'
-                                  : getMatchResolution(tx.matchId, tx.timestamp).includes('Draw')
-                                  ? 'bg-yellow-500/20 text-yellow-400'
-                                  : 'bg-red-500/20 text-red-400'
-                              }`}>
-                                {getMatchResolution(tx.matchId, tx.timestamp)}
-                              </span>
-                              <span>•</span>
-                              <button
-                                onClick={() => scrollToMatch(tx.matchId, tx.timestamp)}
-                                className="text-blue-400 hover:text-blue-300 underline"
-                              >
-                                Match #{getMatchNumber(tx.matchId, tx.timestamp)}
-                              </button>
-                              <span>• {getTimeAgo(tx.timestamp)}</span>
-                            </p>
-                          </div>
-                          <a
-                            href={`https://arbiscan.io/tx/${tx.txHash}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-400 hover:text-blue-300 transition-colors flex-shrink-0"
-                            title="View on Arbiscan"
-                          >
-                            <ExternalLink size={12} />
-                          </a>
-                        </div>
+              ) : displayTournamentStats ? (
+                <>
+                  {playerProfile?.loading && (
+                    <div className="flex items-center gap-2 text-[11px] text-teal-300 mb-3">
+                      <RefreshCw size={12} className="animate-spin" />
+                      <span>Syncing latest tournaments...</span>
+                    </div>
+                  )}
+                  {/* Summary metrics */}
+                  <div className="grid grid-cols-3 gap-3 mb-5">
+                    <div className="bg-blue-500/15 border border-blue-400/30 rounded-xl p-3 text-center">
+                      <div className="text-xs font-semibold text-blue-300 mb-1">Played</div>
+                      <div className="text-xl font-bold text-white">{displayTournamentStats.totalPlayed}</div>
+                    </div>
+                    <div className="bg-green-500/15 border border-green-400/30 rounded-xl p-3 text-center">
+                      <div className="text-xs font-semibold text-green-300 mb-1">Wins</div>
+                      <div className="text-xl font-bold text-white">{displayTournamentStats.totalWins}</div>
+                    </div>
+                    <div className="bg-green-500/15 border border-green-400/30 rounded-xl p-3 text-center">
+                      <div className="text-xs font-semibold mb-1 text-green-300">Payouts (ETH)</div>
+                      <div className="text-sm font-bold text-white leading-tight">
+                        {formatEthAmount(displayTournamentEnrollments.reduce((sum, r) => sum + getRecordPayout(r), 0n))}
                       </div>
-                    ))}
+                    </div>
                   </div>
-                )}
-              </div>
-            )}
-          </div>
+
+                  {/* Tournament list */}
+                  {displayTournamentEnrollments.length > 0 ? (
+                    <div className="space-y-2">
+                      {displayTournamentEnrollments.map((rec, idx) => (
+                        <div key={idx} ref={(el) => { if (el && rec.instance) tournamentItemRefs.current[rec.instance.toLowerCase()] = el; }} className="bg-slate-900/60 border border-purple-400/15 rounded-xl px-3 py-2.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 min-w-0">
+                              {rec.concluded ? (
+                                hasCancelledTournamentReason(rec) || isCancelledTournamentRecord(rec)
+                                  ? <span className="text-slate-400 font-semibold text-xs">Cancelled</span>
+                                  : isDrawTournamentRecord(rec)
+                                  ? <span className="text-yellow-300 font-semibold text-xs">Draw</span>
+                                  : rec.won
+                                  ? <span className="text-green-300 font-semibold text-xs">Won</span>
+                                  : <span className="text-red-300 font-semibold text-xs">Lost</span>
+                              ) : (
+                                <span className="text-yellow-300 font-semibold text-xs">Active</span>
+                              )}
+                              {rec.enrolledAt > 0 && (
+                                <span className="text-slate-400 text-[10px]">{formatTimeAgo(rec.enrolledAt)}</span>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => onViewTournament && onViewTournament(rec.instance)}
+                              className="text-purple-300 hover:text-purple-200 transition-colors shrink-0"
+                              title="View tournament"
+                            >
+                              <ExternalLink size={16} />
+                            </button>
+                          </div>
+                          <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-1">
+                            {hasCancelledTournamentReason(rec) || isCancelledTournamentRecord(rec) ? (
+                              <span className="text-slate-400 text-[10px]">(No Players)</span>
+                            ) : rec.playerCount != null && (
+                              <span className="text-slate-400 text-[10px]">({rec.playerCount} Players)</span>
+                            )}
+                            <span className="text-slate-400 text-[10px]">{ethers.formatEther(rec.entryFee)} ETH entry</span>
+                            {rec.concluded && (
+                              (hasCancelledTournamentReason(rec) || isCancelledTournamentRecord(rec)) && getRecordPayout(rec) > 0n
+                                ? <span className="text-green-400 text-[10px]">+{ethers.formatEther(getRecordPayout(rec))} ETH refunded</span>
+                                : getRecordPayout(rec) > 0n
+                                ? <span className="text-green-400 text-[10px]">+{ethers.formatEther(getRecordPayout(rec))} ETH payout</span>
+                                : !rec.won && getRecordPrizePool(rec) > 0n
+                                  ? <span className="text-slate-500 text-[10px]">{ethers.formatEther(getRecordPrizePool(rec))} ETH prize pool</span>
+                                  : null
+                            )}
+                            {showTournamentRaffles && rec.concluded && rec.wonRaffle && (rec.rafflePool ?? 0n) > 0n && (
+                              <span className="text-cyan-300 text-[10px]">+{ethers.formatEther(rec.rafflePool)} ETH raffle</span>
+                            )}
+                          </div>
+                          {rec.concluded && (
+                            <div className="mt-1 text-[10px] text-slate-400">
+                              Resolved via <span className="text-slate-200">{linkifyReasonText(getTournamentResolutionText(rec), { keyPrefix: `recent-matches-resolution-${rec.id ?? rec.instanceId ?? 'record'}`, linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white' })}</span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6">
+                      <Trophy className="text-slate-500 mx-auto mb-2" size={28} />
+                      <p className="text-slate-400 text-xs">No tournament history yet</p>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-center py-6">
+                  <Trophy className="text-slate-500 mx-auto mb-2" size={28} />
+                  <p className="text-slate-400 text-xs">No tournament data available</p>
+                  <p className="text-slate-500 text-xs mt-1">Connect your wallet and join a tournament!</p>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Matches Tab */}
+          {historyTab === 'matches' && <>
 
           {/* Content */}
           <h3 className="text-white font-semibold text-lg md:text-md mb-3">Match History</h3>
-          {loadingRecentMatches ? (
+          {showMatchesLoadingState ? (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-teal-400 mx-auto"></div>
               <p className="text-slate-400 mt-2 text-xs">Loading recent matches...</p>
@@ -1116,6 +1350,12 @@ const RecentMatchesCard = ({
             </div>
           ) : (
             <div className="space-y-6">
+              {isRefreshing && (
+                <div className="flex items-center gap-2 text-[11px] text-teal-300 -mb-3">
+                  <RefreshCw size={12} className="animate-spin" />
+                  <span>Syncing latest history...</span>
+                </div>
+              )}
               {/* Pagination calculations */}
               {(() => {
                 const totalPages = Math.ceil(recentMatches.length / itemsPerPage);
@@ -1130,7 +1370,8 @@ const RecentMatchesCard = ({
                 const player1Lower = match.player1?.toLowerCase() || '';
                 const player2Lower = match.player2?.toLowerCase() || '';
 
-                const matchIsDraw = isDraw(match.reason);
+                const reason = getMatchReason(match);
+                const matchIsDraw = isDraw(reason);
                 const isWinner = !matchIsDraw && winnerLower === accountLower && winnerLower !== '0x0000000000000000000000000000000000000000';
 
                 // Check if account is actually one of the players
@@ -1180,9 +1421,17 @@ const RecentMatchesCard = ({
                     {/* Match Number and Details */}
                     <div className="mb-2.5">
                       <div className="flex items-center gap-2 flex-wrap relative">
-                        <span className="text-slate-400 text-[10px] font-semibold">
-                          Match #{recentMatches.length - index}
-                        </span>
+                        {match.instanceAddress ? (
+                          <button
+                            onClick={() => goToTournamentInstance(match.instanceAddress)}
+                            className="bg-purple-500/20 text-purple-300 text-[10px] font-semibold px-2 py-0.5 rounded border border-purple-400/30 hover:bg-purple-500/30 transition-colors cursor-pointer underline decoration-dotted"
+                            title="View tournament"
+                          >
+                            {getTournamentTypeLabel ? getTournamentTypeLabel(match.playerCount) : (match.playerCount === 2 ? 'Duel' : `${match.playerCount} Players`)}
+                          </button>
+                        ) : (
+                          <span className="text-slate-400 text-[10px] font-semibold">Match #{recentMatches.length - index}</span>
+                        )}
                         {/* Expand to Modal Button - Chess only, Desktop only */}
                         {gameName === 'chess' && isDesktop && (
                           <button
@@ -1211,49 +1460,18 @@ const RecentMatchesCard = ({
                             {getTierLabel(match.tierId)}
                           </button>
                         )}
-                        {tierConfig && tierConfig[match.tierId] && tierConfig[match.tierId].playerCount > 2 && (
+                        {getRoundLabel(match.tierId, match.roundNumber, match.totalRounds) && (
                           <span className="bg-blue-500/20 text-blue-300 text-[10px] font-semibold px-2 py-0.5 rounded border border-blue-400/30">
-                            {getRoundLabel(match.tierId, match.roundNumber)}
+                            {getRoundLabel(match.tierId, match.roundNumber, match.totalRounds)}
                           </span>
                         )}
-                        {(match.reason === 1 || match.reason === 2 || match.reason === 3 || match.reason === 4 || match.reason === 5) ? (
-                          <a
-                            href={
-                              match.reason === 1 ? '#ml1' :
-                              match.reason === 2 ? '#draws' :
-                              match.reason === 3 ? '#ml2' :
-                              match.reason === 4 ? '#ml3' :
-                              '#draws'
-                            }
-                            onClick={() => handleSetExpanded(false)}
-                            className={`text-[10px] px-2 py-0.5 rounded font-bold ${
-                              matchIsDraw
-                                ? 'bg-yellow-500/60 text-white'
-                                : isWinner
-                                ? 'bg-green-500/60 text-white'
-                                : 'bg-red-500/60 text-white'
-                            } hover:opacity-80 transition-colors underline decoration-dotted cursor-pointer`}
-                            title={`Learn more about ${
-                              match.reason === 1 ? 'ML1' :
-                              match.reason === 2 ? 'Draws' :
-                              match.reason === 3 ? 'ML2' :
-                              match.reason === 4 ? 'ML3' :
-                              match.reason === 5 ? 'All-Draw Resolution' : ''
-                            } in the User Manual`}
-                          >
-                            {getOutcomeLabel(isWinner, match.reason)}
-                          </a>
-                        ) : (
-                          <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${
-                            matchIsDraw
-                              ? 'bg-yellow-500/60 text-white'
-                              : isWinner
-                              ? 'bg-green-500/60 text-white'
-                              : 'bg-red-500/60 text-white'
-                          }`}>
-                            {getOutcomeLabel(isWinner, match.reason)}
-                          </span>
-                        )}
+                        <CompletedMatchOutcomeBadge
+                          reason={reason}
+                          isWinner={isWinner}
+                          gameName={gameName}
+                          reasonLabelMode={reasonLabelMode}
+                          onClick={() => handleSetExpanded(false)}
+                        />
                       </div>
                     </div>
 
@@ -1430,8 +1648,8 @@ const RecentMatchesCard = ({
 
                     {/* Winner Info - Only show for ML3 wins or no winner cases */}
                     {(() => {
-                      const noWinner = matchIsDraw || match.reason === 3;
-                      const isML3Win = match.reason === 4;
+                      const noWinner = matchIsDraw || reason === CompletionReason.FORCE_ELIMINATION;
+                      const isML3Win = reason === CompletionReason.REPLACEMENT;
                       const hasNoWinnerAddress = !match.winner || match.winner === '0x0000000000000000000000000000000000000000';
 
                       // Only show this section if: no winner, ML3 win, or no winner address
@@ -1451,7 +1669,9 @@ const RecentMatchesCard = ({
                               <span className={`font-mono ${isWinner ? 'text-green-400 font-semibold' : 'text-red-400'}`}>
                                 {shortenAddress(match.winner)}
                               </span>
-                              <span className="text-slate-400"> (ML3)</span>
+                              <span className="text-slate-400">
+                                {' '}({linkifyReasonText('ML3', { keyPrefix: `recent-matches-ml3-${matchKey}`, linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white' })})
+                              </span>
                             </div>
                           ) : null}
                         </div>
@@ -1819,6 +2039,7 @@ const RecentMatchesCard = ({
               })()}
             </div>
           )}
+          </>}
           </div>
         </div>
       )}
@@ -1831,7 +2052,8 @@ const RecentMatchesCard = ({
         const player1Lower = match.player1?.toLowerCase() || '';
         const player2Lower = match.player2?.toLowerCase() || '';
 
-        const matchIsDraw = isDraw(match.reason);
+        const reason = getMatchReason(match);
+        const matchIsDraw = isDraw(reason);
         const isWinner = !matchIsDraw && winnerLower === accountLower && winnerLower !== '0x0000000000000000000000000000000000000000';
 
         const isAccountPlayer1 = player1Lower === accountLower;
@@ -1870,7 +2092,12 @@ const RecentMatchesCard = ({
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-white flex items-center gap-3">
                   <History size={28} className="text-teal-400" />
-                  Match #{recentMatches.length - index}
+                  {match.instanceAddress
+                    ? (getTournamentTypeLabel ? getTournamentTypeLabel(match.playerCount) : (match.playerCount === 2 ? 'Duel' : `${match.playerCount} Players`))
+                    : `Match #${recentMatches.length - index}`}
+                  {match.instanceAddress && getRoundLabel(match.tierId, match.roundNumber, match.totalRounds) && (
+                    <span className="text-slate-400 text-lg font-normal">· {getRoundLabel(match.tierId, match.roundNumber, match.totalRounds)}</span>
+                  )}
                 </h2>
                 <button
                   onClick={() => setExpandedModalMatch(null)}
@@ -1906,15 +2133,13 @@ const RecentMatchesCard = ({
 
                     {/* Outcome */}
                     <div className="mb-3">
-                      <span className={`text-xs px-2 py-1 rounded font-bold block text-center ${
-                        matchIsDraw
-                          ? 'bg-yellow-500/60 text-white'
-                          : isWinner
-                          ? 'bg-green-500/60 text-white'
-                          : 'bg-red-500/60 text-white'
-                      }`}>
-                        {getOutcomeLabel(isWinner, match.reason)}
-                      </span>
+                      <CompletedMatchOutcomeBadge
+                        reason={reason}
+                        isWinner={isWinner}
+                        gameName={gameName}
+                        reasonLabelMode={reasonLabelMode}
+                        className="text-xs px-2 py-1 block text-center"
+                      />
                     </div>
 
                     {/* Started */}

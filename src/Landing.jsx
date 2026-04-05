@@ -4,10 +4,8 @@ import { Shield, Lock, Eye, CheckCircle, ChevronDown, ChevronUp, HelpCircle } fr
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
-import tttABI from './TTTABI-modular.json';
-import chessABI from './ChessOnChain-ABI-modular.json';
-import connectFourABI from './ConnectFourABI-modular.json';
 import TotalEarningsCard from './components/shared/TotalEarningsCard';
+import V2ContractsTable from './components/shared/V2ContractsTable';
 
 // Floating Game Particles - each hovers around its initial position
 function FloatingParticles() {
@@ -127,17 +125,11 @@ function GameCard({ icon, title, stakes, tagline, features, href, accentColor })
         {icon}
       </div>
       
-      {/* Title & Stakes */}
-      <h3 className="text-2xl font-bold text-white mb-2">{title}</h3>
-      <div 
-        className="text-sm font-semibold mb-4 tracking-wide"
-        style={{ color: accentColor }}
-      >
-        {stakes}
-      </div>
-      
+      {/* Title */}
+      <h3 className="text-2xl font-bold text-white mb-4">{title}</h3>
+
       {/* Tagline */}
-      <p className="text-slate-400 text-lg mb-6 leading-relaxed">{tagline}</p>
+      <p className="text-slate-400 text-lg mb-3 leading-relaxed">{tagline}</p>
       
       {/* Features */}
       <ul className="space-y-2 mb-8">
@@ -296,20 +288,39 @@ function WhitepaperSection() {
 
 
 const HERO_PHRASES = ["Challenge Your Crew", "Pick Your Stakes", "Settle The Score"];
+const HERO_VISIBLE_MS = 2200;
+const HERO_FADE_MS = 450;
 
 function useHeroCycle() {
   const [index, setIndex] = useState(0);
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setVisible(false);
-      setTimeout(() => {
-        setIndex((i) => (i + 1) % HERO_PHRASES.length);
-        setVisible(true);
-      }, 600);
-    }, 2800);
-    return () => clearInterval(interval);
+    let visibleTimeoutId;
+    let fadeTimeoutId;
+    let cancelled = false;
+
+    const scheduleNext = () => {
+      visibleTimeoutId = window.setTimeout(() => {
+        if (cancelled) return;
+        setVisible(false);
+
+        fadeTimeoutId = window.setTimeout(() => {
+          if (cancelled) return;
+          setIndex((i) => (i + 1) % HERO_PHRASES.length);
+          setVisible(true);
+          scheduleNext();
+        }, HERO_FADE_MS);
+      }, HERO_VISIBLE_MS);
+    };
+
+    scheduleNext();
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(visibleTimeoutId);
+      window.clearTimeout(fadeTimeoutId);
+    };
   }, []);
 
   return { phrase: HERO_PHRASES[index], visible };
@@ -414,12 +425,14 @@ export default function Landing() {
           </div>
 
           {/* Main Headline */}
-          <h1 className="text-5xl md:text-7xl lg:text-8xl font-black text-center leading-[1.1] mb-8 py-2 mt-4">
-            <span
-              className="block text-white pb-1"
-              style={{ transition: 'opacity 0.6s ease', opacity: visible ? 1 : 0 }}
-            >
+          <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-black text-center leading-[1.05] mb-8 py-2 mt-4">
+            <span className="hero-phrase-slot block text-white pb-1">
+              <span
+                className={`hero-phrase ${visible ? 'hero-phrase-visible' : 'hero-phrase-hidden'}`}
+                aria-live="polite"
+              >
               {phrase}
+              </span>
             </span>
             <span
               className="block bg-clip-text text-transparent py-1 text-3xl md:text-5xl lg:text-6xl"
@@ -494,45 +507,36 @@ export default function Landing() {
             <GameCard
               icon="✖️"
               title="Tic-Tac-Toe"
-              stakes="0.0003 - 0.0013 ETH (~$1 - $4)"
-              tagline="The game everyone knows. Now with real stakes and zero mercy."
               features={[
-                "Each player gets 2 minutes",
+                "The game everyone knows",
                 "Perfect for your first match",
                 "Quick games, instant results",
-                "Classic rules, pure strategy"
               ]}
-              href="/tictactoe"
+              href="/v2/tictactoe"
               accentColor="#06b6d4"
             />
 
             <GameCard
               icon="🔴"
               title="Connect Four"
-              stakes="0.001 – 0.004 ETH"
-              tagline="Drop. Connect. Collect. The vertical battle for supremacy."
               features={[
-                "Each player gets 5 minutes",
+                "Drop. Connect. Collect.",
                 "Deceptively deep strategy",
-                "Fast-paced tactical play",
                 "First to four wins it all"
               ]}
-              href="/connect4"
+              href="/v2/connect4"
               accentColor="#ef4444"
             />
 
             <GameCard
               icon="♔"
               title="Chess"
-              stakes="0.003 – 0.15 ETH"
-              tagline="Full chess. Every rule. ETH and glory on the line."
               features={[
-                "Each player gets 10 minutes",
-                "Castling, en passant, promotion",
-                "Higher stakes for elite players",
-                "Prove your rating means something"
+                "Full chess. Every rule.",
+                "Castling. En-Passant. Promotions. Etc..",
+                "Now with real stakes",
               ]}
-              href="/chess"
+              href="/v2/chess"
               accentColor="#fbbf24"
             />
 
@@ -541,47 +545,8 @@ export default function Landing() {
 
         </section>
 
-        {/* ============ HOW IT WORKS ============ */}
-        <section className="px-6 py-24">
-          <div className="max-w-4xl mx-auto">
-            
-            <div className="text-center mb-16">
-              <h2 className="text-4xl font-bold text-white mb-4">Dead Simple</h2>
-              <p className="text-slate-400 text-lg">No accounts. No downloads. No nonsense.</p>
-            </div>
-            
-            <div className="grid md:grid-cols-3 gap-12">
-              
-              <div className="text-center">
-                <div className="w-16 h-16 rounded-full bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-2xl font-bold text-cyan-400 mx-auto mb-6">
-                  1
-                </div>
-                <h3 className="text-xl font-bold text-white mb-3">Connect Wallet</h3>
-                <p className="text-slate-500">MetaMask, Brave, whatever. If it holds ETH, it works.</p>
-              </div>
-              
-              <div className="text-center">
-                <div className="w-16 h-16 rounded-full bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-2xl font-bold text-purple-400 mx-auto mb-6">
-                  2
-                </div>
-                <h3 className="text-xl font-bold text-white mb-3">Pick Your Stakes</h3>
-                <p className="text-slate-500">From micro stakes to serious money. You choose the tier that fits.</p>
-              </div>
-              
-              <div className="text-center">
-                <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-2xl font-bold text-emerald-400 mx-auto mb-6">
-                  3
-                </div>
-                <h3 className="text-xl font-bold text-white mb-3">Win & Withdraw</h3>
-                <p className="text-slate-500">Win and the ETH hits your wallet. Instant, reliable, with minimal fees.</p>
-              </div>
-              
-            </div>
-          </div>
-        </section>
-        
         {/* ============ WHY TRUST THIS ============ */}
-        <section className="px-6 py-24 border-t border-slate-800/50">
+        <section className="px-6 py-24">
           <div className="max-w-5xl mx-auto">
             
             <div className="text-center mb-16">
@@ -666,7 +631,6 @@ export default function Landing() {
             Ready to Prove Yourself?
           </h2>
           <p className="text-xl text-slate-400 mb-12 max-w-xl mx-auto">
-            Put real ETH on the line and see where you stand.
           </p>
           <div className="flex flex-col items-center gap-4">
             <button
@@ -680,17 +644,26 @@ export default function Landing() {
               Start Playing
             </button>
             <span className="text-slate-500 text-lg font-medium">or</span>
-            <Link
-              id="read-the-whitepaper"
-              to="/whitepaper"
-              className="font-bold text-xl text-cyan-400 transition-all duration-300 hover:text-cyan-300"
-              style={whitepaperGlow ? {
-                textShadow: '0 0 8px #22d3ee, 0 0 20px #22d3ee, 0 0 40px #06b6d4',
-                animation: 'whitepaperPulse 2s ease-out forwards',
-              } : {}}
-            >
-              Read The Whitepaper
-            </Link>
+            <div className="grid items-center gap-x-3 gap-y-2 text-xl font-bold sm:grid-cols-[1fr_auto_1fr]">
+              <Link
+                id="read-the-whitepaper"
+                to="/whitepaper"
+                className="text-cyan-400 transition-all duration-300 hover:text-cyan-300 sm:justify-self-end"
+                style={whitepaperGlow ? {
+                  textShadow: '0 0 8px #22d3ee, 0 0 20px #22d3ee, 0 0 40px #06b6d4',
+                  animation: 'whitepaperPulse 2s ease-out forwards',
+                } : {}}
+              >
+                Read The Whitepaper
+              </Link>
+              <span className="text-center text-slate-500">or</span>
+              <Link
+                to="/manual"
+                className="text-cyan-400 transition-colors duration-300 hover:text-cyan-300 sm:justify-self-start"
+              >
+                Browse The Manual
+              </Link>
+            </div>
           </div>
         </section>
         
@@ -737,108 +710,7 @@ export default function Landing() {
 
             </div>
 
-            {/* Expandable Contracts Table */}
-            {contractsExpanded && (
-              <div className="mb-8 overflow-x-auto">
-                <table className="w-full border-collapse bg-slate-900/60 rounded-lg">
-                  <thead>
-                    <tr className="border-b border-slate-700/50">
-                      <th className="text-left p-4 text-cyan-300 font-semibold">ETour Modules</th>
-                      <th className="text-left p-4 text-cyan-300 font-semibold">Game Contracts</th>
-                      <th className="text-left p-4 text-cyan-300 font-semibold">Game Modules</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td className="p-4 align-top">
-                        <div className="space-y-2">
-                          <a
-                            href={`https://arbiscan.io/address/${tttABI.modules.core}#code`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="block text-slate-400 hover:text-cyan-400 transition-colors text-sm"
-                          >
-                            ETour_Core.sol
-                          </a>
-                          <a
-                            href={`https://arbiscan.io/address/${tttABI.modules.matches}#code`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="block text-slate-400 hover:text-cyan-400 transition-colors text-sm"
-                          >
-                            ETour_Matches.sol
-                          </a>
-                          <a
-                            href={`https://arbiscan.io/address/${tttABI.modules.prizes}#code`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="block text-slate-400 hover:text-cyan-400 transition-colors text-sm"
-                          >
-                            ETour_Prizes.sol
-                          </a>
-                          <a
-                            href={`https://arbiscan.io/address/${tttABI.modules.raffle}#code`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="block text-slate-400 hover:text-cyan-400 transition-colors text-sm"
-                          >
-                            ETour_Raffle.sol
-                          </a>
-                          <a
-                            href={`https://arbiscan.io/address/${tttABI.modules.escalation}#code`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="block text-slate-400 hover:text-cyan-400 transition-colors text-sm"
-                          >
-                            ETour_Escalation.sol
-                          </a>
-                        </div>
-                      </td>
-                      <td className="p-4 align-top">
-                        <div className="space-y-2">
-                          <a
-                            href={`https://arbiscan.io/address/${tttABI.address}#code`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="block text-slate-400 hover:text-cyan-400 transition-colors text-sm"
-                          >
-                            TicTacChain.sol
-                          </a>
-                          <a
-                            href={`https://arbiscan.io/address/${chessABI.address}#code`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="block text-slate-400 hover:text-cyan-400 transition-colors text-sm"
-                          >
-                            ChessOnChain.sol
-                          </a>
-                          <a
-                            href={`https://arbiscan.io/address/${connectFourABI.address}#code`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="block text-slate-400 hover:text-cyan-400 transition-colors text-sm"
-                          >
-                            ConnectFourOnChain.sol
-                          </a>
-                        </div>
-                      </td>
-                      <td className="p-4 align-top">
-                        <div className="space-y-2">
-                          <a
-                            href={`https://arbiscan.io/address/${chessABI.modules.chessRules}#code`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="block text-slate-400 hover:text-cyan-400 transition-colors text-sm"
-                          >
-                            ChessRules.sol
-                          </a>
-                        </div>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            )}
+            {contractsExpanded && <V2ContractsTable scope="landing" />}
 
             {/* Bottom Line */}
             <div className="text-center pt-8 border-t border-slate-800/30">
@@ -854,6 +726,39 @@ export default function Landing() {
       
       {/* Keyframe Animations */}
       <style>{`
+        .hero-phrase-slot {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 2.35em;
+        }
+
+        .hero-phrase {
+          display: block;
+          width: 100%;
+          text-align: center;
+          padding: 0 0.12em;
+          will-change: opacity, transform;
+          transition: opacity ${HERO_FADE_MS}ms ease, transform ${HERO_FADE_MS}ms ease;
+          backface-visibility: hidden;
+        }
+
+        .hero-phrase-visible {
+          opacity: 1;
+          transform: translateY(0);
+        }
+
+        .hero-phrase-hidden {
+          opacity: 0;
+          transform: translateY(-14%);
+        }
+
+        @media (min-width: 640px) {
+          .hero-phrase-slot {
+            min-height: 1.3em;
+          }
+        }
+
         @keyframes particle-hover {
           0%   { transform: translate(0px, 0px) rotate(0deg); opacity: 0.25; }
           20%  { transform: translate(12px, -15px) rotate(36deg); opacity: 0.18; }

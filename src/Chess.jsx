@@ -39,10 +39,10 @@ import { fetchTierTimeoutConfig } from './utils/timeCalculations';
 import { getCompletionReasonText, getCompletionReasonDescription, isDraw } from './utils/completionReasons';
 import { batchFetchTournaments, batchFetchIsEnrolled } from './utils/multicall';
 import { validateMoveWithReason } from './utils/chessValidator';
+import { didMatchStateAdvance, waitForTxOrStateSync } from './utils/txSync';
 import ParticleBackground from './components/shared/ParticleBackground';
 import MatchCard from './components/shared/MatchCard';
 import TournamentCard from './components/shared/TournamentCard';
-import WinnersLeaderboard from './components/shared/WinnersLeaderboard';
 import UserManual from './components/shared/UserManual';
 import MatchEndModal from './components/shared/MatchEndModal';
 import ActiveMatchAlertModal from './components/shared/ActiveMatchAlertModal';
@@ -198,7 +198,7 @@ const getPieceSvg = (piece) => {
 
 // Tournament Bracket Component
 const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, /* onSpectateMatch, */ onForceEliminate, onClaimReplacement, onManualStart, onClaimAbandonedPool, onResetEnrollmentWindow, onEnroll, account, loading, syncDots, isEnrolled, entryFee, isFull, contract, isEnrolledInElite }) => {
-  const { tierId, instanceId, status, currentRound, enrolledCount, prizePool, rounds, playerCount, enrolledPlayers, firstEnrollmentTime, countdownActive, enrollmentTimeout } = tournamentData;
+  const { tierId, instanceId, status, currentRound, enrolledCount, prizePool, rounds, playerCount, enrolledPlayers, firstEnrollmentTime, countdownActive, enrollmentTimeout, winner, completionReason } = tournamentData;
 
   // Calculate total rounds based on player count
   const totalRounds = Math.ceil(Math.log2(playerCount));
@@ -330,6 +330,8 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, /* onSpectate
         enrolledCount={enrolledCount}
         prizePool={prizePool}
         enrolledPlayers={enrolledPlayers}
+        winner={winner}
+        completionReason={completionReason}
         syncDots={syncDots}
         account={account}
         onBack={onBack}
@@ -2688,11 +2690,15 @@ export default function Chess() {
       let firstEnrollmentTime = 0;
       let countdownActive = false;
       let enrollmentTimeout = null;
+      let winner = ethers.ZeroAddress;
+      let completionReason = 0;
       try {
         const tournamentData = await contractInstance.tournaments(tierId, instanceId);
         firstEnrollmentTime = Number(tournamentData.firstEnrollmentTime);
         countdownActive = tournamentData.countdownActive;
         enrollmentTimeout = tournamentData.enrollmentTimeout;
+        winner = tournamentData.winner ?? ethers.ZeroAddress;
+        completionReason = Number(tournamentData.completionReason ?? 0);
       } catch (err) {
         console.log('Could not fetch countdown data:', err);
       }
@@ -2915,6 +2921,8 @@ export default function Chess() {
         firstEnrollmentTime,
         countdownActive,
         enrollmentTimeout,
+        winner,
+        completionReason,
         timeoutConfig // Add tier timeout configuration
       };
     } catch (error) {
@@ -3470,18 +3478,6 @@ export default function Chess() {
     }
   }, [escalationInterval]);
 
-  // Races tx.wait() against a wall-clock timeout.
-  // Rejects with Error('TX_TIMEOUT') if timeoutMs elapses first.
-  // The underlying tx.wait() continues in the background — if it eventually confirms,
-  // the 1.5-second polling loop will detect the board change via refreshMatchData.
-  const waitWithTimeout = (tx, timeoutMs) =>
-    Promise.race([
-      tx.wait(),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('TX_TIMEOUT')), timeoutMs)
-      ),
-    ]);
-
   // Handle making a chess move (called from ChessBoard component)
   const handleMakeMove = async (fromSquare, toSquare, promotion = 0) => {
     if (!currentMatch || !contract || !account) return;
@@ -3524,27 +3520,44 @@ export default function Chess() {
         promotion
       );
 
-      await waitWithTimeout(tx, 90_000); // 90 s — Arbitrum is sub-second normally; stuck = network issue
+      const syncResult = await waitForTxOrStateSync({
+        tx,
+        timeoutMs: 90_000,
+        sync: async () => {
+          const latestMatch = currentMatchRef.current || currentMatch;
+          if (!latestMatch) return null;
+          return refreshMatchData(contract, account, latestMatch, matchTimePerPlayer);
+        },
+        isSynced: (updatedMatch) => didMatchStateAdvance(currentMatchRef.current || currentMatch, updatedMatch),
+      });
 
-      // Refresh match data
-      const updated = await refreshMatchData(contract, account, currentMatch, matchTimePerPlayer);
+      const latestMatch = currentMatchRef.current || currentMatch;
+      const updated = syncResult.updated || (latestMatch
+        ? await refreshMatchData(contract, account, latestMatch, matchTimePerPlayer)
+        : null);
       if (updated) {
         setCurrentMatch(updated);
         previousBoardRef.current = [...updated.board];
-
-        // Refresh move history
-        const history = await fetchMoveHistory(
-          contract,
-          currentMatch.tierId,
-          currentMatch.instanceId,
-          currentMatch.roundNumber,
-          currentMatch.matchNumber
-        );
-        setMoveHistory(history);
       }
 
-      moveTxInProgressRef.current = false; // Release lock
+      moveTxInProgressRef.current = false; // Release lock as soon as the board is in sync
       setMatchLoading(false);
+
+      if (updated) {
+        // Refresh move history after the board is already interactive again
+        try {
+          const history = await fetchMoveHistory(
+            contract,
+            currentMatch.tierId,
+            currentMatch.instanceId,
+            currentMatch.roundNumber,
+            currentMatch.matchNumber
+          );
+          setMoveHistory(history);
+        } catch (historyError) {
+          console.error('Error refreshing move history after move:', historyError);
+        }
+      }
     } catch (error) {
       console.error('Error making chess move:', error);
       // Always unlock first so board re-enables and polling resumes before React processes anything else
@@ -3738,8 +3751,12 @@ export default function Chess() {
         setCurrentMatch(updated);
         // Initialize board ref for move detection
         previousBoardRef.current = [...updated.board];
-        // Reset modal shown ref for new match
-        matchEndModalShownRef.current = false;
+        setMatchEndResult(null);
+        setMatchEndWinner(null);
+        setMatchEndLoser(null);
+        setMatchEndWinnerLabel('');
+        // Completed matches opened in replay mode should not retrigger end-of-match UX
+        matchEndModalShownRef.current = updated.matchStatus === 2;
         // Fetch move history from blockchain events
         const history = await fetchMoveHistory(contract, tierId, instanceId, roundNumber, matchNumber);
         setMoveHistory(history);
@@ -4117,6 +4134,11 @@ export default function Chess() {
             if (updated) {
               setCurrentMatch(updated);
               previousBoardRef.current = [...updated.board];
+              setMatchEndResult(null);
+              setMatchEndWinner(null);
+              setMatchEndLoser(null);
+              setMatchEndWinnerLabel('');
+              matchEndModalShownRef.current = updated.matchStatus === 2;
               const history = await fetchMoveHistory(contract, state.tierId, state.instanceId, state.roundNumber, state.matchNumber);
               setMoveHistory(history);
             }
@@ -5048,7 +5070,7 @@ export default function Chess() {
                 className={`w-full flex items-center justify-center gap-3 bg-gradient-to-r ${currentTheme.buttonGradient} ${currentTheme.buttonHover} px-10 py-5 rounded-2xl font-bold text-2xl shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed scroll-mt-6`}
               >
                 <Wallet size={28} />
-                {loading ? 'Connecting...' : 'Connect Wallet to Enter'}
+                {loading ? 'Connecting...' : 'Connect Wallet'}
               </button>
             </div>
           ) : (
@@ -5856,18 +5878,6 @@ export default function Chess() {
             )}
           </>
         )}
-      </div>
-
-      {/* Winners Leaderboard Section */}
-      <div className="max-w-7xl mx-auto px-6 pb-12" style={{ position: 'relative', zIndex: 10 }}>
-        <WinnersLeaderboard
-          leaderboard={leaderboard}
-          loading={leaderboardLoading}
-          error={leaderboardError}
-          currentAccount={account}
-          onRetry={() => fetchLeaderboard()}
-          onRefresh={() => fetchLeaderboard()}
-        />
       </div>
 
       {/* User Manual Section */}
