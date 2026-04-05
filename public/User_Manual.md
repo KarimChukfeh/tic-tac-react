@@ -69,7 +69,7 @@ No accounts, no admins, no intermediaries.
 
 You decide who competes and what's at stake:
 
-1) You create a lobby by configuring its **player count** and **entry fee**. 
+1) Create a lobby by configuring its **player count** and **entry fee**. 
 
 2) Then share its link with your friends, community, or whoever you want to challenge. 
 
