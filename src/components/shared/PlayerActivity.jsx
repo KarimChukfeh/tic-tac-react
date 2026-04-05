@@ -368,7 +368,7 @@ const PlayerActivity = ({
           {disabled ? (
             <a
               href="#connect-wallet-cta"
-              className={`max-md:hidden absolute left-full ml-3 top-1/2 -translate-y-1/2 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all ${connectCtaClassName}`}
+              className={`max-md:hidden absolute left-full ml-3 top-1/2 inline-flex -translate-y-1/2 items-center justify-center whitespace-nowrap px-5 py-2.5 text-sm font-semibold opacity-0 group-hover:opacity-100 transition-all ${connectCtaClassName}`}
             >
               Connect Wallet to View Your Activity
             </a>
@@ -391,7 +391,7 @@ const PlayerActivity = ({
             e.stopPropagation(); // Allow navigation but prevent document click
             if (onHideTooltip) onHideTooltip();
           }}
-          className={`md:hidden fixed bottom-20 left-4 right-4 px-6 py-3 z-[100] animate-fade-in transition-transform text-center ${connectCtaClassName}`}
+          className={`md:hidden fixed bottom-20 left-4 right-4 flex items-center justify-center px-6 py-3 text-sm font-semibold z-[100] animate-fade-in transition-transform text-center ${connectCtaClassName}`}
         >
           Connect Wallet to View Your Activity
         </a>

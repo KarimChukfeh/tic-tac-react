@@ -206,7 +206,7 @@ const EliteMatchesCard = ({
           {disabled ? (
             <a
               href="#connect-wallet-cta"
-              className="max-md:hidden absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all shadow-2xl border-2 border-purple-400/60 hover:scale-105"
+              className="max-md:hidden absolute left-full ml-3 top-1/2 inline-flex -translate-y-1/2 items-center justify-center bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all shadow-2xl border-2 border-purple-400/60 hover:scale-105"
             >
               Connect Wallet to View Elite Matches
             </a>
@@ -224,7 +224,7 @@ const EliteMatchesCard = ({
                 e.stopPropagation(); // Allow navigation but prevent document click
                 if (onHideTooltip) onHideTooltip();
               }}
-              className="md:hidden fixed bottom-20 left-4 right-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-6 py-3 rounded-xl z-[100] animate-fade-in shadow-2xl border-2 border-purple-400/60 hover:scale-105 transition-transform text-center"
+              className="md:hidden fixed bottom-20 left-4 right-4 flex items-center justify-center bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-6 py-3 rounded-xl z-[100] animate-fade-in shadow-2xl border-2 border-purple-400/60 hover:scale-105 transition-transform text-center"
             >
               Connect Wallet to View Elite Matches
             </a>

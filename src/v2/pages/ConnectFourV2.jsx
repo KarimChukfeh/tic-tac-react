@@ -2626,7 +2626,7 @@ export default function ConnectFourV2() {
                   <form onSubmit={createInstance}>
                     <div className="bg-slate-900/50 border border-purple-400/20 rounded-2xl p-4 md:p-5">
                       <div className="mb-4">
-                        <h2 className="text-xl font-semibold text-white">New Lobby</h2>
+                        <h2 className="text-xl font-semibold text-white">Configure Your Lobby</h2>
                       </div>
                       <div className="grid gap-4 md:grid-cols-[minmax(0,0.2fr)_minmax(0,0.8fr)] md:items-stretch">
                         <div className={`rounded-2xl border p-4 md:p-5 ${createLoading ? 'border-slate-800 bg-slate-900/50' : 'border-cyan-400/20 bg-slate-950/60 shadow-[0_0_30px_rgba(56,189,248,0.08)]'}`}>

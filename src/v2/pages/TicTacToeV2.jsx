@@ -2428,7 +2428,7 @@ export default function TicTacToeV2() {
                   <form onSubmit={createInstance}>
                     <div className="bg-slate-900/50 border border-purple-400/20 rounded-2xl p-4 md:p-5">
                     <div className="mb-4">
-                      <h2 className="text-xl font-semibold text-white">New Lobby</h2>
+                      <h2 className="text-xl font-semibold text-white">Configure Your Lobby</h2>
                     </div>
                     <div className="grid gap-4 md:grid-cols-[minmax(0,0.2fr)_minmax(0,0.8fr)] md:items-stretch">
                       {/* Player Count */}
