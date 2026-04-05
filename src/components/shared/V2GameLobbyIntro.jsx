@@ -37,7 +37,7 @@ export default function V2GameLobbyIntro({
             Connected as <span className="font-mono">{shortenAddress(account)}</span>
           </div>
         ) : onConnectWallet ? (
-          <div className="relative inline-flex items-center justify-center gap-2" ref={tooltipRef}>
+          <div className="relative mt-3 mb-4 inline-flex items-center justify-center gap-2 md:mt-0 md:mb-0" ref={tooltipRef}>
             <button
               type="button"
               onClick={onConnectWallet}
