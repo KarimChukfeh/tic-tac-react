@@ -34,6 +34,7 @@ import RecentMatchesCard from '../../components/shared/RecentMatchesCard';
 import GamesCard from '../../components/shared/GamesCard';
 import BracketScrollHint from '../../components/shared/BracketScrollHint';
 import RecentInstanceCard from '../../components/shared/RecentInstanceCard';
+import UserManualAnchorIcon from '../../components/shared/UserManualAnchorIcon';
 import V2GameLobbyIntro from '../../components/shared/V2GameLobbyIntro';
 import V2ContractsTable from '../../components/shared/V2ContractsTable';
 import WalletBrowserPrompt from '../../components/WalletBrowserPrompt';
@@ -2625,8 +2626,13 @@ export default function ConnectFourV2() {
                 <div id="live-instances">
                   <form onSubmit={createInstance}>
                     <div className="bg-slate-900/50 border border-purple-400/20 rounded-2xl p-4 md:p-5">
-                      <div className="mb-4">
+                      <div className="mb-4 flex items-center gap-2">
                         <h2 className="text-xl font-semibold text-white">Configure Your Lobby</h2>
+                        <UserManualAnchorIcon
+                          href="#21-creating-a-lobby"
+                          title="Open User Manual section 2.1: Creating a Lobby"
+                          className="text-cyan-200/75 hover:text-white"
+                        />
                       </div>
                       <div className="grid gap-4 md:grid-cols-[minmax(0,0.2fr)_minmax(0,0.8fr)] md:items-stretch">
                         <div className={`rounded-2xl border p-4 md:p-5 ${createLoading ? 'border-slate-800 bg-slate-900/50' : 'border-cyan-400/20 bg-slate-950/60 shadow-[0_0_30px_rgba(56,189,248,0.08)]'}`}>
