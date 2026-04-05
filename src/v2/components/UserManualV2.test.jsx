@@ -202,6 +202,54 @@ describe('UserManualV2', () => {
     });
   });
 
+  it('does not snap back to the selected heading when scroll tracking changes sections in full document mode', async () => {
+    render(<UserManualV2 defaultExpanded collapsible={false} showAllSections />);
+
+    await screen.findByRole('heading', { name: '1.1: What is ETour?' });
+
+    fireEvent.click(screen.getByRole('link', { name: '3.2: Draws' }));
+
+    await waitFor(() => {
+      expect(window.location.hash).toBe('#32-draws');
+    });
+
+    vi.mocked(window.HTMLElement.prototype.scrollIntoView).mockClear();
+
+    const firstSection = document.getElementById('1-getting-started');
+    const thirdSection = document.getElementById('3-matches--play');
+    const fourthSection = document.getElementById('4-resolution');
+    const fifthSection = document.getElementById('5-anti-griefing');
+    const sixthSection = document.getElementById('6-edge-cases--faq');
+    const seventhSection = document.getElementById('7-glossary');
+
+    const createRect = (top) => ({
+      top,
+      bottom: top + 100,
+      left: 0,
+      right: 0,
+      width: 0,
+      height: 100,
+      x: 0,
+      y: top,
+      toJSON: () => ({}),
+    });
+
+    firstSection.getBoundingClientRect = vi.fn(() => createRect(-900));
+    thirdSection.getBoundingClientRect = vi.fn(() => createRect(-500));
+    fourthSection.getBoundingClientRect = vi.fn(() => createRect(120));
+    fifthSection.getBoundingClientRect = vi.fn(() => createRect(540));
+    sixthSection.getBoundingClientRect = vi.fn(() => createRect(920));
+    seventhSection.getBoundingClientRect = vi.fn(() => createRect(1260));
+
+    fireEvent.scroll(window);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '4. Resolution' })).toHaveAttribute('aria-expanded', 'true');
+    });
+
+    expect(window.HTMLElement.prototype.scrollIntoView).not.toHaveBeenCalled();
+  });
+
   it('keeps nested anti-griefing subsections collapsed until expanded', async () => {
     render(<UserManualV2 />);
 

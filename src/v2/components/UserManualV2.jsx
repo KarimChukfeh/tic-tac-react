@@ -882,7 +882,7 @@ const UserManualV2 = ({
     return () => {
       window.cancelAnimationFrame(timer);
     };
-  }, [activeHash, expandedSectionId, displayedSectionId]);
+  }, [activeHash, displayedSectionId]);
 
   const expandedSection = manualData?.sections.find((section) => section.id === expandedSectionId) ?? null;
   const hasExpandedSection = Boolean(expandedSection);
