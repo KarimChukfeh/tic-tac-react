@@ -89,6 +89,7 @@ describe('Docs', () => {
       expect(screen.getByRole('heading', { name: '2. Deployment Model' })).toBeInTheDocument();
     });
 
+    fireEvent.click(screen.getByRole('button', { name: '2. Deployment Model' }));
     expect(screen.getByRole('button', { name: '2.1 Factory -> Implementation -> Clone' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Previous tab' })).toHaveTextContent('1.2 Game Layer');
     expect(screen.getByRole('button', { name: 'Next tab' })).toBeDisabled();
