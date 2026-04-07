@@ -9,7 +9,7 @@ This is a technical document that explains how ETour delivers on:
 
 If you are looking to validate ETour's claims, question its assumptions, or just understand how it really works under the hood, then you're in the right place.
 
-If you are a developer who simply wants to build on ETour rather than study its internal design, then you can safely skip ahead to the [Builder's Guide](#concrete-game-implementations).
+If you are a developer who simply wants to build on ETour rather than study its internal design, then you can safely skip ahead to the [Builder's Guide](#building-games-on-etour).
 
 ## What to Expect
 
@@ -867,196 +867,389 @@ That is why chess can maintain `_positionCounts` and `_gameNonce` without forcin
 
 ## Building Games on ETour
 
-This section supersedes and expands the shorter builder guide in [`BuildingGames.md`](./BuildingGames.md).
+This guide walks you through the A-Z of deploying a game with ETour integration
 
-### Recommended Inheritance Path
+## What You Need
 
-New games should inherit [`ETourGame.sol`](../contracts/ETourGame.sol):
+At the authoring level, building on ETour is intentionally narrow. You mainly write two contracts:
 
 ```solidity
-import "../contracts/ETourGame.sol";
+import "./ETourGame.sol";
 
 contract MyGame is ETourGame {
-    // game hooks + makeMove(...)
+    function _playerAssignmentMode()
+        internal
+        pure
+        override
+        returns (PlayerAssignmentMode)
+    {
+        return PlayerAssignmentMode.RandomizePlayerOrder;
+    }
+
+    function _initializeGameState(bytes32 matchId, bool isReplay)
+        internal
+        override
+    {
+        matchId;
+        isReplay;
+        // initialize game-owned state here
+    }
+
+    function makeMove(...) external nonReentrant notConcluded {
+        // derive matchId
+        // validate active match + caller turn
+        // validate game-specific move
+        // _consumeTurnClock(m)
+        // mutate game state
+        // _clearMatchEscalation(matchId)
+        // _completeMatchInternal(...) or _switchTurn(m)
+    }
 }
 ```
 
-Do not inherit `ETourTournamentBase` directly unless you are intentionally bypassing the standard game template and are prepared to own more lifecycle code.
-
-### What `ETourGame` Already Gives You
-
-`ETourGame` already implements:
-
-- shared match creation,
-- replay/reset lifecycle,
-- starter/order randomization,
-- Fischer clock consumption,
-- escalation-state clearing,
-- common match reset behavior,
-- the narrow hook model concrete games are expected to fill in.
-
-### Required Hooks
+and:
 
 ```solidity
-function _playerAssignmentMode()
-    internal
-    pure
-    override
-    returns (PlayerAssignmentMode);
+import "./ETourFactory.sol";
+import "./MyGame.sol";
 
-function _initializeGameState(bytes32 matchId, bool isReplay)
-    internal
-    override;
-```
+contract MyGameFactory is ETourFactory {
+    constructor(
+        address moduleCore,
+        address moduleMatches,
+        address modulePrizes,
+        address moduleEscalation,
+        address playerRegistry
+    ) ETourFactory(
+        address(new MyGame()),
+        moduleCore,
+        moduleMatches,
+        modulePrizes,
+        moduleEscalation,
+        playerRegistry
+    ) { }
 
-### Optional Hooks
-
-```solidity
-function _resetGameState(bytes32 matchId) internal override;
-
-function _getGameStateHash(bytes32 matchId)
-    internal
-    view
-    override
-    returns (bytes32);
-```
-
-Override `_resetGameState(...)` if you have auxiliary mappings keyed by `matchId`.
-
-Override `_getGameStateHash(...)` if your live game state is not fully captured by `packedBoard`, `packedState`, and `moves`.
-
-### `makeMove(...)` Contract
-
-Every game defines its own move signature, but the expected structure is:
-
-1. derive `matchId`,
-2. verify `MatchStatus.InProgress`,
-3. verify participant and turn ownership,
-4. validate game-specific move inputs,
-5. call `_consumeTurnClock(m)`,
-6. mutate game state,
-7. append move transcript if relevant,
-8. call `_clearMatchEscalation(matchId)`,
-9. call `_completeMatchInternal(...)` if terminal, otherwise `_switchTurn(m)`.
-
-### Example Shape
-
-```solidity
-function makeMove(...) external nonReentrant notConcluded {
-    bytes32 matchId = _getMatchId(roundNumber, matchNumber);
-    Match storage m = matches[matchId];
-
-    require(m.status == MatchStatus.InProgress, "MA");
-    require(msg.sender == m.currentTurn, "NT");
-
-    _consumeTurnClock(m);
-
-    // game-specific state updates
-
-    _clearMatchEscalation(matchId);
-
-    if (terminalWin) {
-        _completeMatchInternal(roundNumber, matchNumber, msg.sender, false, MatchCompletionReason.NormalWin);
-        return;
+    function _gameType() internal pure override returns (uint8) {
+        return 0;
     }
-
-    if (terminalDraw) {
-        _completeMatchInternal(roundNumber, matchNumber, address(0), true, MatchCompletionReason.Draw);
-        return;
-    }
-
-    _switchTurn(m);
 }
 ```
 
-### Player Assignment Policy
+For `MyGame is ETourGame`, the required implementation surface is:
 
-Choose one:
+- `_playerAssignmentMode()`
+- `_initializeGameState(bytes32 matchId, bool isReplay)`
+- your public `makeMove(...)`
 
-- `RandomizeStarterOnly`
-- `RandomizePlayerOrder`
+Optional hooks are:
 
-Use `RandomizeStarterOnly` when seat order matters to the game representation but first move should still be randomized.
+- `_resetGameState(bytes32 matchId)` if you store extra mappings keyed by `matchId`
+- `_getGameStateHash(bytes32 matchId)` if your live state is not fully captured by `packedBoard`, `packedState`, and `moves`
 
-Use `RandomizePlayerOrder` when the game naturally models white/black, player1/player2, or first/second mover roles as seat identity.
+The core move-flow pattern is always the same:
 
-### Factory Customization
+1. derive `matchId`
+2. fetch `Match storage m = matches[matchId]`
+3. require `m.status == MatchStatus.InProgress`
+4. require the caller is a participant
+5. require the caller owns `m.currentTurn`
+6. validate your game-specific move inputs
+7. call `_consumeTurnClock(m)`
+8. mutate game-owned state
+9. record move transcript if useful
+10. call `_clearMatchEscalation(matchId)`
+11. call `_completeMatchInternal(...)` if terminal, otherwise `_switchTurn(m)`
 
-If your game needs one-time initialization after `initialize(...)`, override:
+That is all you are supposed to own. ETour continues to own:
 
-- `_initializeInstance(...)`
-- `_postInitializeInstance(...)`
+- clone deployment
+- enrollment
+- bracket progression
+- time banking
+- escalations
+- payouts
+- permanent tournament record storage
 
-Prefer `_postInitializeInstance(...)` when the extra setup depends on instance state already existing.
+## Dependencies
 
-Chess is the model for this pattern.
+### Requirements
 
-### State Model Guidance
+These are the **must-have** Solidity dependencies.
 
-Use the `Match` struct when the game fits naturally into:
+If `MyGame is ETourGame`, then your project must include:
 
-- one packed board,
-- one packed state word,
-- one transcript string.
+- [`ETourGame.sol`](../contracts/ETourGame.sol)
+- [`ETourInstance.sol`](../contracts/ETourInstance.sol)
+- [`ETourTournamentBase.sol`](../contracts/ETourTournamentBase.sol)
 
-Use auxiliary mappings when needed:
+If `MyGameFactory is ETourFactory`, then your project must include:
 
-```solidity
-mapping(bytes32 => mapping(bytes32 => uint8)) private _positionCounts;
-mapping(bytes32 => uint256) private _gameNonce;
+- [`ETourFactory.sol`](../contracts/ETourFactory.sol)
+
+If you want profile-aware enrollment and results, which the ETour factory path expects, then your project must also include:
+
+- [`PlayerRegistry.sol`](../contracts/PlayerRegistry.sol)
+- [`PlayerProfile.sol`](../contracts/PlayerProfile.sol)
+
+And because the ETour instance/factory architecture delegates lifecycle logic into shared modules, your project also needs the ETour module contracts:
+
+- [`ETourInstance_Core.sol`](../contracts/modules/ETourInstance_Core.sol)
+- [`ETourInstance_Matches.sol`](../contracts/modules/ETourInstance_Matches.sol)
+- [`ETourInstance_MatchesResolution.sol`](../contracts/modules/ETourInstance_MatchesResolution.sol)
+- [`ETourInstance_Prizes.sol`](../contracts/modules/ETourInstance_Prizes.sol)
+- [`ETourInstance_Escalation.sol`](../contracts/modules/ETourInstance_Escalation.sol)
+
+Those contracts are not optional. They are the actual protocol inheritance and execution surface.
+
+### Helpers
+
+These are **not** part of the ETour protocol itself. They are just a practical way to compile, deploy, test, and integrate.
+
+Typical examples are:
+
+- `package.json`
+- `hardhat.config.js`
+- `.env`
+- deployment scripts
+- ABI sync scripts
+- tests
+- deployment manifests
+
+You do **not** need to use the exact same helper scripts or config files as this repo. You can replace those with your own preferred tooling. Hardhat is just the practical reference path used here.
+
+The distinction is important:
+
+- the protocol contracts are mandatory
+- the surrounding JS/config/devops layer is replaceable
+
+## Project Structure
+
+### Minimal
+
+Conceptually, the smallest contract-only project is:
+
+```text
+contracts/
+├── ETourGame.sol
+├── ETourFactory.sol
+├── PlayerRegistry.sol
+├── PlayerProfile.sol
+├── MyGame.sol
+└── MyGameFactory.sol
 ```
 
-That is the intended pattern, not a workaround.
+That is the smallest **conceptual** tree, because those are the top-level contracts you directly think about.
 
-### What Not To Do
+In practice, if you are copying files manually, the ETour inheritance/import chain means you also need:
 
-Do not:
+- `ETourInstance.sol`
+- `ETourTournamentBase.sol`
+- `contracts/modules/*`
+- any referenced interfaces
 
-- treat public `module*` functions as your primary extension surface,
-- write game logic into the shared modules,
-- reorder base storage,
-- duplicate bracket or payout logic inside the game contract,
-- bypass `_completeMatchInternal(...)` for ordinary match conclusion.
+So the minimal compileable tree is larger than the six filenames above. The six-contract view is useful for understanding responsibility, not for pretending the transitive imports do not exist.
 
-### Reference Games
+### Practical
 
-Use these as the canonical ETour examples:
+A realistic project usually looks more like this:
 
-- [`TicTacToe.sol`](../contracts/TicTacToe.sol)
-- [`ConnectFour.sol`](../contracts/ConnectFour.sol)
-- [`Chess.sol`](../contracts/Chess.sol)
+```text
+my-etour-game/
+├── .env
+├── package.json
+├── package-lock.json
+├── hardhat.config.js
+├── contracts/
+│   ├── ETourFactory.sol
+│   ├── ETourGame.sol
+│   ├── ETourInstance.sol
+│   ├── ETourTournamentBase.sol
+│   ├── PlayerRegistry.sol
+│   ├── PlayerProfile.sol
+│   ├── MyGame.sol
+│   ├── MyGameFactory.sol
+│   ├── interfaces/
+│   ├── modules/
+│   └── test-helpers/
+├── deployments/
+├── scripts/
+└── test/
+```
 
-## Worked Example: Checkers on ETour
+That practical tree is what most teams will actually want:
 
-The best way to verify that the extension surface is coherent is to map a new game onto it.
+- Node-based dependency management
+- Hardhat config
+- deployment scripts
+- deployment outputs
+- tests
+- helper contracts
 
-Checkers is a good example because it needs more than a toy board game, but less custom machinery than chess:
+## Example: Checkers
 
-- directional movement,
-- captures and forced captures,
-- king promotion,
-- possible multi-jump continuation,
-- side-wide legal-move checks.
+The checkers reference below is the concrete end-to-end example of the ETour pattern.
 
-The important architectural point is that none of this requires rewriting tournament infrastructure.
+### Dependencies
 
-The game contract only needs to own:
+If you want a practical local setup from a fresh machine, the easiest path is to start from this repo or a future starter kit.
 
-- board representation,
-- move validation,
-- game-specific win logic,
-- any auxiliary per-match state beyond the base `Match` struct.
+Placeholder starter download slot:
 
-### Example `Checkers.sol`
+- [ETour V2 Checkers Starter Kit (placeholder)](https://example.com/etour-v2-checkers-starter.zip)
 
-The contract below is written in the ETour style. It shows how a real checkers implementation would plug into `ETourGame`.
+If you are setting up manually, the sequence is:
 
-It uses:
+1. Create a local repo and project folder:
 
-- `packedBoard` for the 8x8 board,
-- `packedState` for compact remaining-piece counts,
-- `_forcedCaptureSquare[matchId]` for multi-jump continuation state,
-- the shared ETour lifecycle for bracket progression, time control, escalations, and settlement.
+```bash
+mkdir my-etour-checkers
+cd my-etour-checkers
+```
+
+2. Create a root `package.json`.
+
+Minimal example:
+
+```json
+{
+  "name": "my-etour-checkers",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "compile": "hardhat compile --config hardhat.config.js",
+    "test": "hardhat test --config hardhat.config.js",
+    "deploy:modules": "hardhat run scripts/deploy-instance-modules.js --config hardhat.config.js --network localhost",
+    "deploy:checkers": "hardhat run scripts/deploy-checkers-factory.js --config hardhat.config.js --network localhost"
+  }
+}
+```
+
+Why this file is needed:
+
+- it defines your Node project
+- it gives you reproducible dependency installs
+- it gives you stable script entrypoints for compile, test, and deploy
+
+This file should live at project root:
+
+```text
+my-etour-checkers/
+└── package.json
+```
+
+3. Install the packages:
+
+```bash
+npm install --save-dev hardhat @nomicfoundation/hardhat-toolbox
+npm install @openzeppelin/contracts dotenv
+```
+
+4. Create your Hardhat config at `hardhat.config.js`.
+
+Minimal example:
+
+```js
+import "@nomicfoundation/hardhat-toolbox";
+import dotenv from "dotenv";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+dotenv.config({ path: join(__dirname, "..", ".env") });
+
+export default {
+  solidity: {
+    version: "0.8.20",
+    settings: {
+      optimizer: { enabled: true, runs: 1 },
+      viaIR: true
+    }
+  },
+  paths: {
+    sources: "./contracts",
+    tests: "./test",
+    cache: "./cache",
+    artifacts: "./artifacts"
+  },
+  networks: {
+    hardhat: {
+      chainId: 412346,
+      accounts: {
+        count: 250,
+        accountsBalance: "10000000000000000000000"
+      },
+      allowUnlimitedContractSize: true,
+      blockGasLimit: 300000000
+    },
+    localhost: {
+      url: "http://127.0.0.1:8545",
+      chainId: 412346
+    },
+    arbitrum: {
+      url: process.env.ARBITRUM_RPC_URL || "https://arb1.arbitrum.io/rpc",
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      chainId: 42161
+    }
+  },
+  etherscan: {
+    apiKey: process.env.ARBISCAN_API_KEY || ""
+  }
+};
+```
+
+Why this file is needed:
+
+- it tells Hardhat where contracts, tests, and artifacts live
+- it defines the Solidity compiler settings ETour V2 expects
+- it defines local and Arbitrum deployment targets
+
+This file should live here:
+
+```text
+my-etour-checkers/
+└── hardhat.config.js
+```
+
+5. Create a root `.env` file:
+
+```bash
+ARBITRUM_RPC_URL=https://arb1.arbitrum.io/rpc
+PRIVATE_KEY=0x...
+ARBISCAN_API_KEY=...
+```
+
+This file belongs at project root:
+
+```text
+my-etour-checkers/
+├── .env
+└── hardhat.config.js
+```
+
+6. Add the required ETour contract dependencies into `contracts/`.
+
+At minimum, copy in:
+
+- [`ETourGame.sol`](../contracts/ETourGame.sol)
+- [`ETourFactory.sol`](../contracts/ETourFactory.sol)
+- [`ETourInstance.sol`](../contracts/ETourInstance.sol)
+- [`ETourTournamentBase.sol`](../contracts/ETourTournamentBase.sol)
+- [`PlayerRegistry.sol`](../contracts/PlayerRegistry.sol)
+- [`PlayerProfile.sol`](../contracts/PlayerProfile.sol)
+- [`contracts/interfaces`](../contracts/interfaces)
+- [`contracts/modules`](../contracts/modules)
+
+Those are the required contract dependencies. The rest of the checkers example will sit on top of them.
+
+### Checkers.sol
+
+The checked-in source file remains the source of truth:
+
+- [`Checkers.sol`](../contracts/Checkers.sol)
+
+Full example:
 
 ```solidity
 // SPDX-License-Identifier: MIT
@@ -1064,23 +1257,61 @@ pragma solidity ^0.8.20;
 
 import "./ETourGame.sol";
 
+/**
+ * @title Checkers
+ * @dev Reference American-checkers implementation for the ETour V2 game surface.
+ *
+ * Board model:
+ * - 32 playable dark squares only (4 bits per square in packedBoard)
+ * - 0 = empty
+ * - 1 = player1 man
+ * - 2 = player1 king
+ * - 3 = player2 man
+ * - 4 = player2 king
+ *
+ * packedState model:
+ * - bit 0: capture continuation active
+ * - bits 1-5: source square that must continue capturing
+ *
+ * Design notes:
+ * - The contract stores only the 32 playable dark squares, not all 64 board
+ *   coordinates. That keeps the board compact while still giving deterministic
+ *   square indices for frontends and offchain tooling.
+ * - ETour owns tournament lifecycle, brackets, clocks, escalations, and prize
+ *   settlement. This contract owns only rules, board state, and move flow.
+ * - Multi-jump continuation is encoded in packedState so the whole live game
+ *   state remains inside the base Match struct.
+ */
 contract Checkers is ETourGame {
-    uint8 private constant EMPTY = 0;
-    uint8 private constant WHITE_MAN = 1;
-    uint8 private constant WHITE_KING = 2;
-    uint8 private constant BLACK_MAN = 3;
-    uint8 private constant BLACK_KING = 4;
-    uint8 private constant NO_SQUARE = type(uint8).max;
 
-    // matchId -> square index that must continue capturing, or NO_SQUARE
-    mapping(bytes32 => uint8) private _forcedCaptureSquare;
+    error InvalidSquare();
+    error MatchNotActive();
+    error NotParticipant();
+    error NotYourTurn();
+    error NoPieceOwned();
+    error DestinationOccupied();
+    error MandatoryCaptureAvailable();
+    error CaptureContinuationRequired();
+    error InvalidMove();
+
+    uint8 private constant BOARD_SQUARES = 32;
+
+    uint8 private constant EMPTY = 0;
+    uint8 private constant PLAYER1_MAN = 1;
+    uint8 private constant PLAYER1_KING = 2;
+    uint8 private constant PLAYER2_MAN = 3;
+    uint8 private constant PLAYER2_KING = 4;
+
+    uint256 private constant PENDING_CAPTURE_FLAG = 1;
+    uint256 private constant PENDING_CAPTURE_SOURCE_SHIFT = 1;
 
     event MoveMade(
         bytes32 indexed matchId,
         address indexed player,
         uint8 from,
         uint8 to,
-        bool wasCapture
+        bool capture,
+        bool crowned
     );
 
     function _playerAssignmentMode() internal pure override returns (PlayerAssignmentMode) {
@@ -1089,25 +1320,10 @@ contract Checkers is ETourGame {
 
     function _initializeGameState(bytes32 matchId, bool) internal override {
         Match storage m = matches[matchId];
+        // Fresh matches always begin from the canonical opening position and
+        // with no forced-capture continuation pending.
         m.packedBoard = _initialBoard();
-        m.packedState = _encodePieceCounts(12, 12);
-        _forcedCaptureSquare[matchId] = NO_SQUARE;
-    }
-
-    function _resetGameState(bytes32 matchId) internal override {
-        _forcedCaptureSquare[matchId] = NO_SQUARE;
-    }
-
-    function _getGameStateHash(bytes32 matchId) internal view override returns (bytes32) {
-        Match storage m = matches[matchId];
-        return keccak256(
-            abi.encodePacked(
-                m.packedBoard,
-                m.packedState,
-                _forcedCaptureSquare[matchId],
-                m.moves
-            )
-        );
+        m.packedState = 0;
     }
 
     function makeMove(
@@ -1116,93 +1332,94 @@ contract Checkers is ETourGame {
         uint8 from,
         uint8 to
     ) external nonReentrant notConcluded {
-        require(from < 64 && to < 64 && from != to, "IS");
-        require(_isDarkSquare(from) && _isDarkSquare(to), "SP");
+        if (from >= BOARD_SQUARES || to >= BOARD_SQUARES || from == to) revert InvalidSquare();
 
         bytes32 matchId = _getMatchId(roundNumber, matchNumber);
         Match storage m = matches[matchId];
 
-        require(m.status == MatchStatus.InProgress, "MA");
-        require(msg.sender == m.player1 || msg.sender == m.player2, "NP");
-        require(msg.sender == m.currentTurn, "NT");
+        if (m.status != MatchStatus.InProgress) revert MatchNotActive();
+        if (msg.sender != m.player1 && msg.sender != m.player2) revert NotParticipant();
+        if (msg.sender != m.currentTurn) revert NotYourTurn();
 
-        bool isWhiteTurn = msg.sender == m.player1;
-        uint8 piece = _getPiece(m.packedBoard, from);
+        bool isPlayer1 = msg.sender == m.player1;
+        uint256 board = m.packedBoard;
+        uint8 piece = _getSquare(board, from);
 
-        require(_pieceBelongsToSide(piece, isWhiteTurn), "NYP");
-        require(_getPiece(m.packedBoard, to) == EMPTY, "OCC");
+        if (!_isOwnPiece(piece, isPlayer1)) revert NoPieceOwned();
+        if (_getSquare(board, to) != EMPTY) revert DestinationOccupied();
 
-        uint8 lockedSquare = _forcedCaptureSquare[matchId];
-        if (lockedSquare != NO_SQUARE) {
-            require(from == lockedSquare, "MC");
+        bool pendingCapture = _pendingCaptureActive(m.packedState);
+        if (pendingCapture && from != _pendingCaptureSource(m.packedState)) {
+            revert CaptureContinuationRequired();
         }
 
+        // Convert from the compact 0-31 playable-square index into real board
+        // row/column coordinates so diagonal movement math is straightforward.
+        (uint8 fromRow, uint8 fromCol) = _indexToCoords(from);
+        (uint8 toRow, uint8 toCol) = _indexToCoords(to);
+
+        int8 rowDiff = int8(toRow) - int8(fromRow);
+        int8 colDiff = int8(toCol) - int8(fromCol);
+
+        bool isCapture;
+        uint8 capturedIndex;
+
+        if (_isSimpleStep(rowDiff, colDiff, piece, isPlayer1)) {
+            if (pendingCapture || _playerHasAnyCapture(board, isPlayer1)) {
+                revert MandatoryCaptureAvailable();
+            }
+        } else if (_isCaptureStep(rowDiff, colDiff, piece, isPlayer1)) {
+            isCapture = true;
+            capturedIndex = _capturedIndex(fromRow, fromCol, toRow, toCol);
+            if (!_isOpponentPiece(_getSquare(board, capturedIndex), isPlayer1)) {
+                revert InvalidMove();
+            }
+        } else {
+            revert InvalidMove();
+        }
+
+        // Once the move is known to be structurally valid we charge the active
+        // player's clock before mutating game state.
         _consumeTurnClock(m);
 
-        bool wasCapture;
-        uint8 capturedSquare;
-
-        if (_isLegalCapture(m.packedBoard, from, to, piece, isWhiteTurn)) {
-            wasCapture = true;
-            capturedSquare = _midSquare(from, to);
-        } else {
-            require(lockedSquare == NO_SQUARE, "MC");
-            require(!_sideHasAnyCapture(m.packedBoard, isWhiteTurn), "FC");
-            require(_isLegalStep(from, to, piece, isWhiteTurn), "IM");
+        // Clear the source square first, then optionally remove the captured
+        // piece, then place the moved piece at the destination.
+        board = _setSquare(board, from, EMPTY);
+        if (isCapture) {
+            board = _setSquare(board, capturedIndex, EMPTY);
         }
 
-        uint256 newBoard = _setPiece(m.packedBoard, from, EMPTY);
-
-        if (wasCapture) {
-            uint8 capturedPiece = _getPiece(newBoard, capturedSquare);
-            require(capturedPiece != EMPTY, "NC");
-
-            newBoard = _setPiece(newBoard, capturedSquare, EMPTY);
-            m.packedState = _decrementCapturedCount(m.packedState, capturedPiece);
+        bool crowned;
+        uint8 movedPiece = piece;
+        if (!_isKing(piece) && _isPromotionRow(isPlayer1, toRow)) {
+            // In American checkers the move ends immediately when a man reaches
+            // the back rank and becomes a king, so we track that explicitly.
+            movedPiece = isPlayer1 ? PLAYER1_KING : PLAYER2_KING;
+            crowned = true;
         }
 
-        uint8 movedPiece = _maybePromote(piece, to);
-        newBoard = _setPiece(newBoard, to, movedPiece);
-        m.packedBoard = newBoard;
-        m.moves = _appendMove(m.moves, from, to, wasCapture);
+        board = _setSquare(board, to, movedPiece);
+
+        m.packedBoard = board;
+        m.moves = _appendMoveNotation(m.moves, from, to, isCapture, crowned);
 
         _clearMatchEscalation(matchId);
-        emit MoveMade(matchId, msg.sender, from, to, wasCapture);
 
-        uint8 whiteCount = _whiteCount(m.packedState);
-        uint8 blackCount = _blackCount(m.packedState);
+        emit MoveMade(matchId, msg.sender, from, to, isCapture, crowned);
 
-        if (wasCapture && _pieceHasCapture(newBoard, to, movedPiece, isWhiteTurn)) {
-            if ((isWhiteTurn && blackCount == 0) || (!isWhiteTurn && whiteCount == 0)) {
-                _forcedCaptureSquare[matchId] = NO_SQUARE;
-                _completeMatchInternal(
-                    roundNumber,
-                    matchNumber,
-                    msg.sender,
-                    false,
-                    MatchCompletionReason.NormalWin
-                );
-                return;
-            }
-
-            _forcedCaptureSquare[matchId] = to;
+        // A capture that can legally continue must keep the same player on move.
+        // Promotion intentionally stops continuation in this reference version.
+        if (isCapture && !crowned && _pieceHasCapture(board, to, movedPiece, isPlayer1)) {
+            m.packedState = _encodePendingCapture(to);
             return;
         }
 
-        _forcedCaptureSquare[matchId] = NO_SQUARE;
+        m.packedState = 0;
 
-        if ((isWhiteTurn && blackCount == 0) || (!isWhiteTurn && whiteCount == 0)) {
-            _completeMatchInternal(
-                roundNumber,
-                matchNumber,
-                msg.sender,
-                false,
-                MatchCompletionReason.NormalWin
-            );
-            return;
-        }
-
-        if (!_sideHasAnyLegalMove(newBoard, !isWhiteTurn)) {
+        // ETour only needs to know the terminal result. The game contract is
+        // responsible for deciding when a side has no remaining pieces or no
+        // legal moves left and then routing through _completeMatchInternal(...).
+        if (_countPiecesForPlayer(board, !isPlayer1) == 0 || !_playerHasAnyLegalMove(board, !isPlayer1)) {
             _completeMatchInternal(
                 roundNumber,
                 matchNumber,
@@ -1219,252 +1436,306 @@ contract Checkers is ETourGame {
     function getBoard(uint8 roundNumber, uint8 matchNumber)
         external
         view
-        returns (uint8[64] memory board)
+        returns (uint8[32] memory board)
     {
-        bytes32 matchId = _getMatchId(roundNumber, matchNumber);
-        uint256 packed = matches[matchId].packedBoard;
-
-        for (uint8 i = 0; i < 64; i++) {
-            board[i] = _getPiece(packed, i);
+        // Expose the compact playable-square representation directly. Frontends
+        // can map each 0-31 index to an 8x8 board with the same helper math
+        // used inside _indexToCoords(...).
+        uint256 packed = matches[_getMatchId(roundNumber, matchNumber)].packedBoard;
+        for (uint8 i = 0; i < BOARD_SQUARES; i++) {
+            board[i] = _getSquare(packed, i);
         }
     }
 
-    function getForcedCaptureSquare(uint8 roundNumber, uint8 matchNumber)
+    function getPendingCapture(uint8 roundNumber, uint8 matchNumber)
         external
         view
-        returns (uint8)
+        returns (bool active, uint8 source)
     {
-        return _forcedCaptureSquare[_getMatchId(roundNumber, matchNumber)];
+        uint256 state = matches[_getMatchId(roundNumber, matchNumber)].packedState;
+        active = _pendingCaptureActive(state);
+        source = active ? _pendingCaptureSource(state) : 0;
     }
 
     function _initialBoard() private pure returns (uint256 board) {
-        for (uint8 square = 0; square < 64; square++) {
-            if (!_isDarkSquare(square)) continue;
-
-            uint8 row = square / 8;
-            if (row <= 2) {
-                board = _setPiece(board, square, BLACK_MAN);
-            } else if (row >= 5) {
-                board = _setPiece(board, square, WHITE_MAN);
-            }
+        // Playable-square indexing runs top-to-bottom, left-to-right over only
+        // the dark squares. Indices 0-11 are player2's opening men and 20-31
+        // are player1's opening men.
+        for (uint8 i = 0; i < 12; i++) {
+            board = _setSquare(board, i, PLAYER2_MAN);
+        }
+        for (uint8 i = 20; i < BOARD_SQUARES; i++) {
+            board = _setSquare(board, i, PLAYER1_MAN);
         }
     }
 
-    function _encodePieceCounts(uint8 whiteCount, uint8 blackCount) private pure returns (uint256) {
-        return uint256(whiteCount) | (uint256(blackCount) << 8);
+    function _getSquare(uint256 board, uint8 index) private pure returns (uint8) {
+        return uint8((board >> (index * 4)) & 0xF);
     }
 
-    function _whiteCount(uint256 state) private pure returns (uint8) {
-        return uint8(state & 0xFF);
+    function _setSquare(uint256 board, uint8 index, uint8 value) private pure returns (uint256) {
+        uint256 mask = ~(uint256(0xF) << (index * 4));
+        return (board & mask) | (uint256(value) << (index * 4));
     }
 
-    function _blackCount(uint256 state) private pure returns (uint8) {
-        return uint8((state >> 8) & 0xFF);
+    function _indexToCoords(uint8 index) private pure returns (uint8 row, uint8 col) {
+        // Even rows use dark squares in columns 1,3,5,7.
+        // Odd rows use dark squares in columns 0,2,4,6.
+        row = index / 4;
+        col = uint8((index % 4) * 2 + ((row + 1) % 2));
     }
 
-    function _decrementCapturedCount(uint256 state, uint8 capturedPiece) private pure returns (uint256) {
-        uint8 whiteCount = _whiteCount(state);
-        uint8 blackCount = _blackCount(state);
+    function _coordsToIndex(uint8 row, uint8 col) private pure returns (uint8) {
+        return row * 4 + (col / 2);
+    }
 
-        if (capturedPiece == WHITE_MAN || capturedPiece == WHITE_KING) {
-            whiteCount--;
-        } else {
-            blackCount--;
+    function _validCoords(int8 row, int8 col) private pure returns (bool) {
+        return row >= 0 && row < 8 && col >= 0 && col < 8;
+    }
+
+    function _isOwnPiece(uint8 piece, bool isPlayer1) private pure returns (bool) {
+        if (isPlayer1) {
+            return piece == PLAYER1_MAN || piece == PLAYER1_KING;
         }
-
-        return _encodePieceCounts(whiteCount, blackCount);
+        return piece == PLAYER2_MAN || piece == PLAYER2_KING;
     }
 
-    function _getPiece(uint256 board, uint8 square) private pure returns (uint8) {
-        return uint8((board >> (square * 4)) & 0xF);
-    }
-
-    function _setPiece(uint256 board, uint8 square, uint8 piece) private pure returns (uint256) {
-        uint256 mask = ~(uint256(0xF) << (square * 4));
-        return (board & mask) | (uint256(piece) << (square * 4));
-    }
-
-    function _isDarkSquare(uint8 square) private pure returns (bool) {
-        uint8 row = square / 8;
-        uint8 col = square % 8;
-        return ((row + col) & 1) == 1;
-    }
-
-    function _pieceBelongsToSide(uint8 piece, bool isWhite) private pure returns (bool) {
-        if (isWhite) return piece == WHITE_MAN || piece == WHITE_KING;
-        return piece == BLACK_MAN || piece == BLACK_KING;
+    function _isOpponentPiece(uint8 piece, bool isPlayer1) private pure returns (bool) {
+        if (piece == EMPTY) return false;
+        return !_isOwnPiece(piece, isPlayer1);
     }
 
     function _isKing(uint8 piece) private pure returns (bool) {
-        return piece == WHITE_KING || piece == BLACK_KING;
+        return piece == PLAYER1_KING || piece == PLAYER2_KING;
     }
 
-    function _maybePromote(uint8 piece, uint8 to) private pure returns (uint8) {
-        uint8 row = to / 8;
-        if (piece == WHITE_MAN && row == 0) return WHITE_KING;
-        if (piece == BLACK_MAN && row == 7) return BLACK_KING;
-        return piece;
+    function _isPromotionRow(bool isPlayer1, uint8 row) private pure returns (bool) {
+        return isPlayer1 ? row == 0 : row == 7;
     }
 
-    function _isLegalStep(uint8 from, uint8 to, uint8 piece, bool isWhite) private pure returns (bool) {
-        int256 rowDelta = int256(uint256(to / 8)) - int256(uint256(from / 8));
-        int256 colDelta = int256(uint256(to % 8)) - int256(uint256(from % 8));
-
-        if (_abs(rowDelta) != 1 || _abs(colDelta) != 1) return false;
-        if (_isKing(piece)) return true;
-
-        return isWhite ? rowDelta == -1 : rowDelta == 1;
+    function _isSimpleStep(int8 rowDiff, int8 colDiff, uint8 piece, bool isPlayer1)
+        private
+        pure
+        returns (bool)
+    {
+        if (!_isOne(colDiff)) return false;
+        if (_isKing(piece)) return rowDiff == -1 || rowDiff == 1;
+        return isPlayer1 ? rowDiff == -1 : rowDiff == 1;
     }
 
-    function _isLegalCapture(
-        uint256 board,
-        uint8 from,
-        uint8 to,
-        uint8 piece,
-        bool isWhite
-    ) private pure returns (bool) {
-        int256 rowDelta = int256(uint256(to / 8)) - int256(uint256(from / 8));
-        int256 colDelta = int256(uint256(to % 8)) - int256(uint256(from % 8));
-
-        if (_abs(rowDelta) != 2 || _abs(colDelta) != 2) return false;
-        if (!_isKing(piece) && (isWhite ? rowDelta != -2 : rowDelta != 2)) return false;
-
-        uint8 jumpedSquare = _midSquare(from, to);
-        uint8 jumpedPiece = _getPiece(board, jumpedSquare);
-        return jumpedPiece != EMPTY && !_pieceBelongsToSide(jumpedPiece, isWhite);
+    function _isCaptureStep(int8 rowDiff, int8 colDiff, uint8 piece, bool isPlayer1)
+        private
+        pure
+        returns (bool)
+    {
+        if (!_isTwo(colDiff)) return false;
+        if (_isKing(piece)) return rowDiff == -2 || rowDiff == 2;
+        return isPlayer1 ? rowDiff == -2 : rowDiff == 2;
     }
 
-    function _pieceHasCapture(
-        uint256 board,
-        uint8 from,
-        uint8 piece,
-        bool isWhite
-    ) private pure returns (bool) {
-        return _canCaptureTo(board, from, piece, isWhite, -2, -2) ||
-               _canCaptureTo(board, from, piece, isWhite, -2,  2) ||
-               _canCaptureTo(board, from, piece, isWhite,  2, -2) ||
-               _canCaptureTo(board, from, piece, isWhite,  2,  2);
+    function _capturedIndex(
+        uint8 fromRow,
+        uint8 fromCol,
+        uint8 toRow,
+        uint8 toCol
+    ) private pure returns (uint8) {
+        return _coordsToIndex((fromRow + toRow) / 2, (fromCol + toCol) / 2);
     }
 
-    function _pieceHasStep(
-        uint256 board,
-        uint8 from,
-        uint8 piece,
-        bool isWhite
-    ) private pure returns (bool) {
-        return _canStepTo(board, from, piece, isWhite, -1, -1) ||
-               _canStepTo(board, from, piece, isWhite, -1,  1) ||
-               _canStepTo(board, from, piece, isWhite,  1, -1) ||
-               _canStepTo(board, from, piece, isWhite,  1,  1);
-    }
-
-    function _sideHasAnyCapture(uint256 board, bool isWhite) private pure returns (bool) {
-        for (uint8 square = 0; square < 64; square++) {
-            uint8 piece = _getPiece(board, square);
-            if (_pieceBelongsToSide(piece, isWhite) && _pieceHasCapture(board, square, piece, isWhite)) {
+    function _playerHasAnyCapture(uint256 board, bool isPlayer1) private pure returns (bool) {
+        // Forced capture is a side-wide rule, so we must scan every piece for
+        // at least one available jump before allowing any non-capturing move.
+        for (uint8 i = 0; i < BOARD_SQUARES; i++) {
+            uint8 piece = _getSquare(board, i);
+            if (_isOwnPiece(piece, isPlayer1) && _pieceHasCapture(board, i, piece, isPlayer1)) {
                 return true;
             }
         }
         return false;
     }
 
-    function _sideHasAnyLegalMove(uint256 board, bool isWhite) private pure returns (bool) {
-        for (uint8 square = 0; square < 64; square++) {
-            uint8 piece = _getPiece(board, square);
-            if (!_pieceBelongsToSide(piece, isWhite)) continue;
+    function _playerHasAnyLegalMove(uint256 board, bool isPlayer1) private pure returns (bool) {
+        // Used for terminal detection after a move resolves. If the opponent
+        // has pieces but no legal move, the current player wins immediately.
+        for (uint8 i = 0; i < BOARD_SQUARES; i++) {
+            uint8 piece = _getSquare(board, i);
+            if (!_isOwnPiece(piece, isPlayer1)) continue;
 
-            if (_pieceHasCapture(board, square, piece, isWhite)) return true;
-            if (_pieceHasStep(board, square, piece, isWhite)) return true;
+            if (_pieceHasCapture(board, i, piece, isPlayer1)) return true;
+            if (_pieceHasSimpleMove(board, i, piece, isPlayer1)) return true;
         }
         return false;
     }
 
-    function _canStepTo(
+    function _pieceHasCapture(uint256 board, uint8 from, uint8 piece, bool isPlayer1)
+        private
+        pure
+        returns (bool)
+    {
+        (uint8 row, uint8 col) = _indexToCoords(from);
+
+        if (_isKing(piece) || isPlayer1) {
+            if (_hasCaptureInDirection(board, row, col, -1, -1, isPlayer1)) return true;
+            if (_hasCaptureInDirection(board, row, col, -1, 1, isPlayer1)) return true;
+        }
+
+        if (_isKing(piece) || !isPlayer1) {
+            if (_hasCaptureInDirection(board, row, col, 1, -1, isPlayer1)) return true;
+            if (_hasCaptureInDirection(board, row, col, 1, 1, isPlayer1)) return true;
+        }
+
+        return false;
+    }
+
+    function _pieceHasSimpleMove(uint256 board, uint8 from, uint8 piece, bool isPlayer1)
+        private
+        pure
+        returns (bool)
+    {
+        (uint8 row, uint8 col) = _indexToCoords(from);
+
+        if (_isKing(piece) || isPlayer1) {
+            if (_hasSimpleMoveInDirection(board, row, col, -1, -1)) return true;
+            if (_hasSimpleMoveInDirection(board, row, col, -1, 1)) return true;
+        }
+
+        if (_isKing(piece) || !isPlayer1) {
+            if (_hasSimpleMoveInDirection(board, row, col, 1, -1)) return true;
+            if (_hasSimpleMoveInDirection(board, row, col, 1, 1)) return true;
+        }
+
+        return false;
+    }
+
+    function _hasCaptureInDirection(
         uint256 board,
-        uint8 from,
-        uint8 piece,
-        bool isWhite,
-        int256 rowOffset,
-        int256 colOffset
+        uint8 row,
+        uint8 col,
+        int8 rowStep,
+        int8 colStep,
+        bool isPlayer1
     ) private pure returns (bool) {
-        if (!_isKing(piece) && (isWhite ? rowOffset != -1 : rowOffset != 1)) return false;
+        // Check the adjacent diagonal square for an opponent piece and the
+        // landing square beyond it for emptiness.
+        int8 middleRow = int8(row) + rowStep;
+        int8 middleCol = int8(col) + colStep;
+        int8 landingRow = int8(row) + (rowStep * 2);
+        int8 landingCol = int8(col) + (colStep * 2);
 
-        int256 row = int256(uint256(from / 8)) + rowOffset;
-        int256 col = int256(uint256(from % 8)) + colOffset;
-        if (row < 0 || row >= 8 || col < 0 || col >= 8) return false;
+        if (!_validCoords(middleRow, middleCol) || !_validCoords(landingRow, landingCol)) {
+            return false;
+        }
 
-        uint8 to = uint8(uint256(row * 8 + col));
-        return _isDarkSquare(to) && _getPiece(board, to) == EMPTY;
+        uint8 middleIndex = _coordsToIndex(uint8(middleRow), uint8(middleCol));
+        uint8 landingIndex = _coordsToIndex(uint8(landingRow), uint8(landingCol));
+
+        return _isOpponentPiece(_getSquare(board, middleIndex), isPlayer1)
+            && _getSquare(board, landingIndex) == EMPTY;
     }
 
-    function _canCaptureTo(
+    function _hasSimpleMoveInDirection(
         uint256 board,
-        uint8 from,
-        uint8 piece,
-        bool isWhite,
-        int256 rowOffset,
-        int256 colOffset
+        uint8 row,
+        uint8 col,
+        int8 rowStep,
+        int8 colStep
     ) private pure returns (bool) {
-        if (!_isKing(piece) && (isWhite ? rowOffset != -2 : rowOffset != 2)) return false;
+        int8 landingRow = int8(row) + rowStep;
+        int8 landingCol = int8(col) + colStep;
 
-        int256 row = int256(uint256(from / 8)) + rowOffset;
-        int256 col = int256(uint256(from % 8)) + colOffset;
-        if (row < 0 || row >= 8 || col < 0 || col >= 8) return false;
+        if (!_validCoords(landingRow, landingCol)) return false;
 
-        uint8 to = uint8(uint256(row * 8 + col));
-        if (!_isDarkSquare(to) || _getPiece(board, to) != EMPTY) return false;
-
-        uint8 jumpedPiece = _getPiece(board, _midSquare(from, to));
-        return jumpedPiece != EMPTY && !_pieceBelongsToSide(jumpedPiece, isWhite);
+        uint8 landingIndex = _coordsToIndex(uint8(landingRow), uint8(landingCol));
+        return _getSquare(board, landingIndex) == EMPTY;
     }
 
-    function _midSquare(uint8 from, uint8 to) private pure returns (uint8) {
-        return uint8((uint16(from) + uint16(to)) / 2);
+    function _countPiecesForPlayer(uint256 board, bool isPlayer1) private pure returns (uint8 count) {
+        for (uint8 i = 0; i < BOARD_SQUARES; i++) {
+            if (_isOwnPiece(_getSquare(board, i), isPlayer1)) {
+                unchecked {
+                    ++count;
+                }
+            }
+        }
     }
 
-    function _appendMove(
+    function _pendingCaptureActive(uint256 state) private pure returns (bool) {
+        return (state & PENDING_CAPTURE_FLAG) != 0;
+    }
+
+    function _pendingCaptureSource(uint256 state) private pure returns (uint8) {
+        return uint8((state >> PENDING_CAPTURE_SOURCE_SHIFT) & 0x1F);
+    }
+
+    function _encodePendingCapture(uint8 source) private pure returns (uint256) {
+        return PENDING_CAPTURE_FLAG | (uint256(source) << PENDING_CAPTURE_SOURCE_SHIFT);
+    }
+
+    function _appendMoveNotation(
         string memory existing,
         uint8 from,
         uint8 to,
-        bool wasCapture
+        bool isCapture,
+        bool crowned
     ) private pure returns (string memory) {
-        string memory sep = wasCapture ? "x" : "-";
-        string memory moveText = string(
-            abi.encodePacked(_uintToString(from), sep, _uintToString(to))
+        // Transcript format is intentionally human-readable for the docs:
+        // "20-16" for a normal move, "16x9" for a capture, and a trailing "K"
+        // when the move crowns a king.
+        string memory separator = isCapture ? "x" : "-";
+        bytes memory moveText = abi.encodePacked(
+            _uint8ToString(from),
+            separator,
+            _uint8ToString(to),
+            crowned ? "K" : ""
         );
 
-        if (bytes(existing).length == 0) return moveText;
+        if (bytes(existing).length == 0) {
+            return string(moveText);
+        }
+
         return string(abi.encodePacked(existing, ",", moveText));
     }
 
-    function _uintToString(uint8 value) private pure returns (string memory) {
+    function _uint8ToString(uint8 value) private pure returns (string memory) {
         if (value == 0) return "0";
 
         uint8 tmp = value;
         uint8 digits = 0;
         while (tmp != 0) {
-            digits++;
+            unchecked {
+                ++digits;
+            }
             tmp /= 10;
         }
 
         bytes memory out = new bytes(digits);
         while (value != 0) {
-            digits--;
+            unchecked {
+                --digits;
+            }
             out[digits] = bytes1(uint8(48 + (value % 10)));
             value /= 10;
         }
         return string(out);
     }
 
-    function _abs(int256 value) private pure returns (int256) {
-        return value >= 0 ? value : -value;
+    function _isOne(int8 value) private pure returns (bool) {
+        return value == -1 || value == 1;
+    }
+
+    function _isTwo(int8 value) private pure returns (bool) {
+        return value == -2 || value == 2;
     }
 }
 ```
 
-### Matching `CheckersFactory.sol`
+### CheckersFactory.sol
 
-The factory follows the normal ETour pattern:
+The checked-in source file remains the source of truth:
+
+- [`CheckersFactory.sol`](../contracts/CheckersFactory.sol)
+
+Full example:
 
 ```solidity
 // SPDX-License-Identifier: MIT
@@ -1473,7 +1744,12 @@ pragma solidity ^0.8.20;
 import "./ETourFactory.sol";
 import "./Checkers.sol";
 
+/**
+ * @title CheckersFactory
+ * @dev Reference ETour factory for the Checkers game implementation.
+ */
 contract CheckersFactory is ETourFactory {
+
     constructor(
         address moduleCore,
         address moduleMatches,
@@ -1495,28 +1771,169 @@ contract CheckersFactory is ETourFactory {
 }
 ```
 
-### Why This Example Fits ETour Cleanly
+### Project Structure
 
-This checkers example maps directly onto the guide:
+After adding the game-specific contracts, a practical checkers project should look roughly like this:
 
-- It inherits `ETourGame`, not `ETourTournamentBase`.
-- It uses the required hooks and only the necessary optional ones.
-- It keeps tournament logic, payouts, and escalations out of the game contract.
-- It stores one extra piece of game-owned state in `_forcedCaptureSquare`.
-- It uses `_getGameStateHash(...)` so infra does not need to understand that extra state directly.
-- It concludes matches through `_completeMatchInternal(...)`, which keeps bracket and settlement behavior consistent with every other ETour game.
+```text
+my-etour-checkers/
+├── .env
+├── package.json
+├── hardhat.config.js
+├── contracts/
+│   ├── ETourFactory.sol
+│   ├── ETourGame.sol
+│   ├── ETourInstance.sol
+│   ├── ETourTournamentBase.sol
+│   ├── PlayerRegistry.sol
+│   ├── PlayerProfile.sol
+│   ├── Checkers.sol
+│   ├── CheckersFactory.sol
+│   ├── interfaces/
+│   ├── modules/
+│   └── test-helpers/
+├── deployments/
+├── scripts/
+│   ├── deploy-instance-modules.js
+│   └── deploy-checkers-factory.js
+└── test/
+    └── factory/
+        └── Checkers.reference.test.js
+```
 
-### Production Notes for a Full Checkers Release
+### Deployment
 
-A production-grade checkers game would likely add:
+At this point deployment is straightforward:
 
-- explicit draw rules such as repetition or move-count draws,
-- richer move transcript encoding than CSV text,
-- dedicated board-decoding view helpers for frontends,
-- more compact packed-state flags for forced-capture continuation,
-- stronger tests around multi-jump king promotion edge cases.
+- deploy or resolve the shared ETour modules
+- deploy `PlayerProfile`
+- deploy `PlayerRegistry`
+- deploy `CheckersFactory`
+- read the `Checkers` implementation address from the factory
+- save deployment metadata and ABI output for your UI and scripts
 
-None of those require changing the ETour infrastructure. They are purely game-layer refinements, which is exactly the separation ETour is designed to enforce.
+The reference utility script is:
+
+- [`deploy-checkers-factory.js`](../scripts/deploy-checkers-factory.js)
+
+That script now does two things in one run:
+
+1. deploys the checkers reference stack
+2. generates a combined ABI bundle in `deployments/CheckersFactory-ABI.json`
+
+#### Local
+
+1. Start a local chain:
+
+```bash
+npx hardhat node --config hardhat.config.js
+```
+
+2. In a second terminal, deploy the shared ETour modules:
+
+```bash
+npx hardhat run scripts/deploy-instance-modules.js --config hardhat.config.js --network localhost
+```
+
+3. Deploy the checkers stack:
+
+```bash
+npx hardhat run scripts/deploy-checkers-factory.js --config hardhat.config.js --network localhost
+```
+
+Outputs you should expect:
+
+- `deployments/localhost-checkers-factory.json`
+- `deployments/CheckersFactory-ABI.json`
+
+#### Arbitrum
+
+For Arbitrum, fund the wallet in `.env` with ETH on Arbitrum One and then run:
+
+```bash
+npx hardhat run scripts/deploy-checkers-factory.js --config hardhat.config.js --network arbitrum
+```
+
+By default, that script reuses the live ETour module addresses from [`arbitrum-factory.json`](../deployments/arbitrum-factory.json). If you want to override them manually, set:
+
+```bash
+MODULE_CORE=0x...
+MODULE_MATCHES=0x...
+MODULE_PRIZES=0x...
+MODULE_ESCALATION=0x...
+```
+
+The script writes:
+
+- `deployments/arbitrum-checkers-factory.json`
+- `deployments/CheckersFactory-ABI.json`
+
+The ABI bundle contains:
+
+- factory ABI
+- implementation ABI
+- player registry ABI
+- player profile ABI
+- module addresses used for deployment
+
+That is usually enough for the frontend to treat the ABI bundle as the source of truth.
+
+### Integration
+
+Once deployment is done and you have the ABI bundle, you are mostly finished with the protocol side.
+
+What comes next is building a UI that:
+
+- reads the factory ABI
+- reads the game instance ABI
+- creates tournaments through the factory
+- reads tournaments and matches from clone instances
+- sends `makeMove(...)` calls against the game ABI
+
+At that point, the ABI bundle and deployment manifest should be treated as your source of truth. A UI integration guide is coming separately.
+
+### Testing
+
+The reference test file is:
+
+- [`Checkers.reference.test.js`](../test/factory/Checkers.reference.test.js)
+
+Run it locally with:
+
+```bash
+npx hardhat test --config hardhat.config.js test/factory/Checkers.reference.test.js
+```
+
+That test currently proves:
+
+- real factory deployment
+- real clone creation
+- mandatory capture enforcement
+- multi-jump continuation
+- promotion behavior
+
+A broader testing guide is still to come, but the current reference test is already the right starting point for local validation.
+
+## Live Examples
+
+The live V2 examples on Arbitrum One are:
+
+- [TicTacToeFactory](https://arbiscan.io/address/0x9b370782C5BE175CA3DC57606E32c56b9653A62a)
+- [ConnectFourFactory](https://arbiscan.io/address/0x35e7b5eFadcc752a3b55c43BFe430c04Aec31b4d)
+- [ChessFactory](https://arbiscan.io/address/0x0C48382605fd65f15518782F5b69E936c4461313)
+
+And the corresponding implementation contracts are:
+
+- [TicTacToe](https://arbiscan.io/address/0x8C7272980dE407CA791b7C718394a6e215d44dd4)
+- [ConnectFour](https://arbiscan.io/address/0x567A20A586073d9ADc1832074Ffc0c8b127b464c)
+- [Chess](https://arbiscan.io/address/0xe7957e1663f4959689f495a73A45D4dC2cf0bD83)
+
+Architecturally, those are nothing more exotic than:
+
+- `GameA is ETourGame`
+- `GameAFactory is ETourFactory`
+
+That is the point. The live deployments prove the pattern is the real pattern, not a documentation abstraction.
 
 ## Practical Reading Order
 

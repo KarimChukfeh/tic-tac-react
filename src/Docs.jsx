@@ -50,16 +50,26 @@ const SECTION_GROUPS = [
       'Time Control and Escalations',
       'Fee Model and Settlement',
       'Player Profiles',
+      'Concrete Game Implementations',
+      'Why the `Match` Struct Is Intentionally Flexible',
     ],
   },
   {
     id: 'builders',
     label: 'Guide',
     titles: [
-      'Concrete Game Implementations',
-      'Why the `Match` Struct Is Intentionally Flexible',
       'Building Games on ETour',
-      'Worked Example: Checkers on ETour',
+      'What You Need',
+      'Dependencies',
+      'Project Structure',
+      'Example: Checkers',
+      'Live Examples',
+    ],
+  },
+  {
+    id: 'appendix',
+    label: 'Appendix',
+    titles: [
       'Practical Reading Order',
     ],
   },
@@ -80,7 +90,7 @@ const resolveDocsHref = (href = '') => {
 
   if (href.startsWith('./')) {
     if (href === './BuildingGames.md') {
-      return '#building-games-on-etour-v2';
+      return '#building-games-on-etour';
     }
 
     return `${DOCS_REPO_BLOB_BASE}/public/${href.slice(2)}`;
@@ -203,7 +213,7 @@ const parseDocsStructure = (markdown = '') => {
       h4Count = 0;
       h5Count = 0;
 
-      const groupMeta = GROUP_TITLE_MAP.get(heading) || { id: 'more', label: 'More' };
+      const groupMeta = GROUP_TITLE_MAP.get(heading) || { id: 'appendix', label: 'Appendix' };
 
       currentSection = {
         id: slugifyHeading(heading),
@@ -299,8 +309,8 @@ const groupSections = (sections = []) => {
   return [
     ...groups.filter((group) => group.sections.length > 0),
     ...(extras.length ? [{
-      id: 'more',
-      label: 'More',
+      id: 'appendix',
+      label: 'Appendix',
       sections: extras,
     }] : []),
   ];
@@ -935,16 +945,16 @@ const Docs = () => {
   };
 
   const renderSubsectionLinks = (items, sectionId, depth = 0) => (
-    <div className={`${depth > 0 ? 'ml-4 border-l border-pink-300/10 pl-4' : 'mt-3'} space-y-2`}>
+    <div className={`${depth > 0 ? 'ml-6 border-l border-pink-300/10 pl-5' : 'mt-3 ml-5 border-l border-pink-300/10 pl-4'} space-y-2`}>
       {items.map((item) => (
         <div key={item.id}>
           {depth === 0 ? (
             <button
               type="button"
-              className={`block w-full rounded-lg px-2 py-1.5 text-left transition-colors hover:text-white ${
+              className={`block w-full rounded-lg px-2 py-1.5 text-left text-xs transition-colors hover:text-white ${
                 selectedTab?.id === item.id
                   ? 'bg-pink-400/12 text-white'
-                  : 'text-sm font-medium text-pink-100'
+                  : 'font-medium text-pink-100'
               }`}
               onClick={() => handleSelectTab(sectionId, item.id)}
             >
@@ -955,8 +965,8 @@ const Docs = () => {
               href={`#${item.id}`}
               className={`block transition-colors hover:text-white ${
                 depth === 1
-                  ? 'text-sm text-pink-200/90'
-                  : 'text-sm text-pink-100/75'
+                  ? 'pl-1 text-xs text-pink-200/90'
+                  : 'pl-2 text-[11px] text-pink-100/75'
               }`}
               onClick={(event) => {
                 event.preventDefault();

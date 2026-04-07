@@ -95,7 +95,7 @@ describe('Docs', () => {
     expect(screen.getByRole('button', { name: 'Next tab' })).toBeDisabled();
     expect(screen.getByRole('link', { name: 'BuildingGames.md' })).toHaveAttribute(
       'href',
-      '#building-games-on-etour-v2',
+      '#building-games-on-etour',
     );
     expect(screen.getByText('solidity')).toBeInTheDocument();
     expect(fetch).toHaveBeenCalledWith('/Docs.md');
