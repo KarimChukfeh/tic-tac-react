@@ -60,6 +60,17 @@ The resulting system is a hybrid of:
 
 ## Contracts
 
+At a high level, the ETour contract stack looks like this:
+
+```text
+ETourFactory
+   ├─ deploys once → Game Implementation (ETourGame + your code)
+   └─ clones many  → Tournament Clone / Instance
+                       ├─ stores tournament, round, and match state
+                       ├─ executes implementation code
+                       └─ delegatecalls → ETour Modules (shared logic)
+```
+
 ### Game Contracts
 
 Game contracts are the developer-facing entrypoint into ETour.
@@ -375,6 +386,23 @@ ETour explicitly treats those game-owned fields as opaque. Infra should rely on 
 
 There are three important execution styles in ETour.
 
+At a glance, the execution boundary looks like this:
+
+```text
+EOA / frontend
+       ↓ direct call
+┌──────────────────────────────────┐
+│ Tournament Clone / Instance      │  ← indexers read state here
+│ - tournament / round / match data│
+├──────────────────────────────────┤
+│ ETour Modules                    │  ← shared logic via delegatecall
+├──────────────────────────────────┤
+│ Game Implementation              │  ← your rules + makeMove(...)
+└──────────────────────────────────┘
+```
+
+The important correction is that ETour does **not** deploy one contract per match. Match data lives inside the tournament clone's storage.
+
 ### 1. Direct Calls Into the Clone
 
 Example:
@@ -420,6 +448,14 @@ Why this shape exists:
 This is why the real game extension surface is not those public `module*` functions. It is the internal hook surface in [`ETourGame.sol`](../contracts/ETourGame.sol).
 
 ## Tournament Lifecycle
+
+The full lifecycle is easiest to reason about as a single flow:
+
+```text
+Clone created → Players enroll → Tournament starts → Matches initialized
+→ Moves submitted → Timeout / escalation if needed → Winners advance
+→ Tournament concludes → Payouts + profile updates
+```
 
 ### 1. Initialization
 

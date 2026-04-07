@@ -1072,15 +1072,15 @@ const Docs = () => {
 
         <div className={`rounded-3xl border ${colors.border} bg-gradient-to-br ${colors.bg} p-6 backdrop-blur-lg md:p-8`}>
           {!isLoading && selectedSection ? (
-            <div className="sticky top-3 z-40 mb-4 flex lg:hidden">
+            <div className="fixed bottom-4 left-4 z-40 flex lg:hidden">
               <button
                 type="button"
                 aria-label={isMobileNavOpen ? 'Close docs navigation' : 'Open docs navigation'}
                 aria-expanded={isMobileNavOpen}
                 onClick={() => setIsMobileNavOpen((current) => !current)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-pink-300/25 bg-[#240635]/90 text-pink-100 shadow-[0_8px_24px_rgba(0,0,0,0.24)] backdrop-blur"
+                className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-pink-200/45 bg-[#2c0a42]/95 text-white shadow-[0_14px_32px_rgba(0,0,0,0.34)] ring-1 ring-pink-200/20 backdrop-blur transition-colors hover:bg-[#3a0e57]"
               >
-                {isMobileNavOpen ? <X size={16} /> : <Menu size={16} />}
+                {isMobileNavOpen ? <X size={20} /> : <Menu size={20} />}
               </button>
             </div>
           ) : null}
@@ -1093,7 +1093,7 @@ const Docs = () => {
                 onClick={() => setIsMobileNavOpen(false)}
                 className="absolute inset-0 bg-black/45 backdrop-blur-[1px]"
               />
-              <div className="absolute left-4 right-4 top-16 max-h-[70vh] overflow-hidden rounded-2xl border border-pink-300/20 bg-[#220530]/95 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.42)]">
+              <div className="absolute bottom-20 left-4 right-4 max-h-[70vh] overflow-hidden rounded-2xl border border-pink-300/20 bg-[#220530]/95 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.42)]">
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <ListTree className={colors.primary} size={18} />
