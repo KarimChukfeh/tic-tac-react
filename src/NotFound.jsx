@@ -43,7 +43,7 @@ const NotFound = () => {
             Page not found
           </p>
           <p className="text-gray-400 text-sm">
-            The page you're looking for doesn't exist in this tournament.
+            The page you're looking for doesn't exist.
           </p>
         </div>
         

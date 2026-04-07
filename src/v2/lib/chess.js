@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import ChessFactoryABIData from '../ABIs/ChessOnChainFactory-ABI.json';
+import ChessFactoryABIData from '../ABIs/ChessFactory-ABI.json';
 import LocalhostFactoryData from '../ABIs/localhost-chess-factory.json';
 import HardhatFactoryData from '../ABIs/hardhat-factory.json';
 import ETourFactoryABIs from '../ABIs/ETour-Factory-ABIs.json';
@@ -19,7 +19,7 @@ import {
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 export const PLAYER_PROFILE_ABI = getPlayerProfileAbi(ChessFactoryABIData, PlayerProfileABIData);
 export const PLAYER_REGISTRY_ABI = getPlayerRegistryAbi(ChessFactoryABIData, PlayerRegistryABIData);
-export const PLAYER_REGISTRY_ADDRESS = getPlayerRegistryAddress(ChessFactoryABIData, PlayerRegistryABIData, 'ChessOnChainFactory');
+export const PLAYER_REGISTRY_ADDRESS = getPlayerRegistryAddress(ChessFactoryABIData, PlayerRegistryABIData, 'ChessFactory');
 
 export const CHESS_V2_FACTORY_ADDRESS = getFactoryAddress(ChessFactoryABIData);
 export const CHESS_V2_FACTORY_ABI = getFactoryAbi(ChessFactoryABIData);
@@ -30,7 +30,7 @@ export const CHESS_V2_FACTORY_ADDRESS_CANDIDATES = getFactoryAddressCandidates({
   localhostFactoryData: LocalhostFactoryData,
   hardhatFactoryData: HardhatFactoryData,
   etourFactoryAbis: ETourFactoryABIs,
-  factoryName: 'ChessOnChainFactory',
+  factoryName: 'ChessFactory',
 });
 
 export const PLAYER_COUNT_OPTIONS = [2, 4, 8, 16, 32];

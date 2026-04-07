@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import TicTacChainFactoryABIData from '../ABIs/TicTacChainFactory-ABI.json';
+import TicTacToeFactoryABIData from '../ABIs/TicTacToeFactory-ABI.json';
 import LocalhostFactoryData from '../ABIs/localhost-tictac-factory.json';
 import HardhatFactoryData from '../ABIs/hardhat-factory.json';
 import ETourFactoryABIs from '../ABIs/ETour-Factory-ABIs.json';
@@ -17,20 +17,20 @@ import {
 } from './abiContracts';
 
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
-export const PLAYER_PROFILE_ABI = getPlayerProfileAbi(TicTacChainFactoryABIData, PlayerProfileABIData);
-export const PLAYER_REGISTRY_ABI = getPlayerRegistryAbi(TicTacChainFactoryABIData, PlayerRegistryABIData);
-export const PLAYER_REGISTRY_ADDRESS = getPlayerRegistryAddress(TicTacChainFactoryABIData, PlayerRegistryABIData, 'TicTacChainFactory');
+export const PLAYER_PROFILE_ABI = getPlayerProfileAbi(TicTacToeFactoryABIData, PlayerProfileABIData);
+export const PLAYER_REGISTRY_ABI = getPlayerRegistryAbi(TicTacToeFactoryABIData, PlayerRegistryABIData);
+export const PLAYER_REGISTRY_ADDRESS = getPlayerRegistryAddress(TicTacToeFactoryABIData, PlayerRegistryABIData, 'TicTacToeFactory');
 
-export const TICTACTOE_V2_FACTORY_ADDRESS = getFactoryAddress(TicTacChainFactoryABIData);
-export const TICTACTOE_V2_FACTORY_ABI = getFactoryAbi(TicTacChainFactoryABIData);
-export const TICTACTOE_V2_INSTANCE_ABI = getInstanceAbi(TicTacChainFactoryABIData);
-export const TICTACTOE_V2_IMPLEMENTATION_ADDRESS = getImplementationAddress(TicTacChainFactoryABIData);
+export const TICTACTOE_V2_FACTORY_ADDRESS = getFactoryAddress(TicTacToeFactoryABIData);
+export const TICTACTOE_V2_FACTORY_ABI = getFactoryAbi(TicTacToeFactoryABIData);
+export const TICTACTOE_V2_INSTANCE_ABI = getInstanceAbi(TicTacToeFactoryABIData);
+export const TICTACTOE_V2_IMPLEMENTATION_ADDRESS = getImplementationAddress(TicTacToeFactoryABIData);
 export const TICTACTOE_V2_FACTORY_ADDRESS_CANDIDATES = getFactoryAddressCandidates({
-  gameAbiData: TicTacChainFactoryABIData,
+  gameAbiData: TicTacToeFactoryABIData,
   localhostFactoryData: LocalhostFactoryData,
   hardhatFactoryData: HardhatFactoryData,
   etourFactoryAbis: ETourFactoryABIs,
-  factoryName: 'TicTacChainFactory',
+  factoryName: 'TicTacToeFactory',
 });
 
 export const PLAYER_COUNT_OPTIONS = [2, 4, 8, 16, 32];

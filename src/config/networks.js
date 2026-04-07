@@ -1,4 +1,4 @@
-import TicTacToeV2FactoryData from '../v2/ABIs/TicTacChainFactory-ABI.json';
+import TicTacToeV2FactoryData from '../v2/ABIs/TicTacToeFactory-ABI.json';
 
 // Network configuration for ETour gaming platform
 // Switch networks via VITE_NETWORK environment variable

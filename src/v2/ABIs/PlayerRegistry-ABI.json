@@ -1,7 +1,9 @@
 {
-  "network": "arbitrum",
-  "generatedAt": "2026-04-05T15:30:41.205Z",
+  "network": "localhost",
+  "chainId": "412346",
+  "deployedAt": "2026-04-07T03:41:28.087Z",
   "contract": {
+    "address": "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853",
     "abi": [
       {
         "inputs": [
@@ -439,10 +441,5 @@
         "type": "function"
       }
     ]
-  },
-  "addressesByGame": {
-    "TicTacChainFactory": "0x0DfACcA93A63d6C2392c325b5323B01FAc600796",
-    "ConnectFourFactory": "0xF4Aaa91aFB1A41a92a7A82A704D739C54197a5a2",
-    "ChessOnChainFactory": "0xcb7983f1c7190dfcBa160C4e50728004271a8dd3"
   }
 }

@@ -10,6 +10,7 @@ import ConnectFourV2 from './v2/pages/ConnectFourV2.jsx'
 import ChessV2 from './v2/pages/ChessV2.jsx'
 import Whitepaper from './Whitepaper.jsx'
 import Manual from './Manual.jsx'
+import Docs from './Docs.jsx'
 import NotFound from './NotFound.jsx'
 import WalletBrowserPrompt from './components/WalletBrowserPrompt.jsx'
 import './index.css'
@@ -129,6 +130,7 @@ function AppRoutes() {
           <Route path="/v2/chess" element={<ChessV2 />} />
           <Route path="/whitepaper" element={<Whitepaper />} />
           <Route path="/manual" element={<Manual />} />
+          <Route path="/docs" element={<Docs />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </div>
