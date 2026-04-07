@@ -10,6 +10,11 @@ import { useEffect, useState } from 'react';
 import { CompletionReason } from '../../utils/completionReasons';
 import { shortenAddress } from '../../utils/formatters';
 
+const getCompactMobileAddress = (address) => {
+  if (!address || address === '0x0000000000000000000000000000000000000000') return 'TBD';
+  return `${address.slice(0, 5)}..`;
+};
+
 /**
  * Get status display text and styling from status code
  * @param {number} status - 0: Enrolling, 1: In Progress, 2: Completed, 3: Cancelled
@@ -213,7 +218,8 @@ const StatsGrid = ({
                       : 'border-purple-400/20 bg-purple-500/10 text-purple-200'
                   }`}
                 >
-                  {shortenAddress(address)}
+                  <span className="md:hidden">{getCompactMobileAddress(address)}</span>
+                  <span className="hidden md:inline">{shortenAddress(address)}</span>
                   {isCurrentUser && <span className="ml-2 text-[10px] font-sans uppercase tracking-wide text-yellow-300">You</span>}
                 </div>
               );

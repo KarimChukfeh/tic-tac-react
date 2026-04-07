@@ -65,7 +65,7 @@ describe('TournamentHeader', () => {
 
     expect(screen.getByRole('heading', { name: 'TicTacToe Tournament' })).toBeInTheDocument();
     expect(screen.queryByText('TicTacToe Tournament T1-I1')).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: instanceAddress })).toHaveAttribute('href', `https://arbiscan.io/address/${instanceAddress}`);
+    expect(screen.getByRole('link', { name: 'Unique Instance 0x8478...2740' })).toHaveAttribute('href', `https://arbiscan.io/address/${instanceAddress}`);
     expect(screen.queryByText('Round 1/2')).not.toBeInTheDocument();
   });
 

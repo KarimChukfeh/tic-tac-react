@@ -404,9 +404,9 @@ const TournamentHeader = ({
                 href={instanceExplorerUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`${colors.text} ${colors.textHover} transition-colors text-xs md:text-sm break-all`}
+                className={`${colors.text} ${colors.textHover} transition-colors inline-flex items-center gap-1 text-[11px] md:text-xs font-semibold underline decoration-dotted underline-offset-[2px]`}
               >
-                {instanceAddress}
+                <span>Unique Instance {shortenAddress(instanceAddress)}</span>
               </a>
             )}
             {!instanceAddress && (

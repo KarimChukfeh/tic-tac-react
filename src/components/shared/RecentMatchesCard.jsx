@@ -55,7 +55,7 @@ const RecentMatchesCard = ({
   reasonLabelMode = 'default',
 }) => {
   const [internalIsExpanded, setInternalIsExpanded] = useState(false);
-  const [historyTab, setHistoryTab] = useState('matches'); // 'matches' | 'tournaments'
+  const [historyTab, setHistoryTab] = useState('tournaments'); // 'matches' | 'tournaments'
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
   const [recentMatches, setRecentMatches] = useState([]);
   const [loadingRecentMatches, setLoadingRecentMatches] = useState(false);
@@ -1280,7 +1280,11 @@ const RecentMatchesCard = ({
                             </div>
                             <button
                               type="button"
-                              onClick={() => onViewTournament && onViewTournament(rec.instance)}
+                              onClick={() => {
+                                if (!onViewTournament) return;
+                                handleSetExpanded(false);
+                                onViewTournament(rec.instance);
+                              }}
                               className="text-purple-300 hover:text-purple-200 transition-colors shrink-0"
                               title="View tournament"
                             >
