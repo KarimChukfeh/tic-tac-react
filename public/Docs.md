@@ -60,41 +60,63 @@ The resulting system is a hybrid of:
 
 ## Contracts
 
-### Instance Layer
-
-The instance layer is the executable tournament layer.
-
-These contracts define the logic that tournament clones run. One implementation contract is deployed per game, and many cheap clones point to it. The clone stores the actual tournament data, while the implementation provides the code.
-
-- [`ETourTournamentBase.sol`](../contracts/ETourTournamentBase.sol): canonical storage layout and shared lifecycle.
-- [`ETourInstance.sol`](../contracts/ETourInstance.sol): instance-level delegating entrypoints.
-- [`ETourGame.sol`](../contracts/ETourGame.sol): shared game template for concrete games.
-
-### ETour Modules
-
-The shared module layer is the reusable infrastructure layer.
-
-Modules are not user-facing tournament contracts. They are helper contracts that hold shared logic for enrollment, bracket progression, payouts, and escalations. The clone executes them through `delegatecall`, so they operate directly on clone storage.
-
-- [`ETourInstance_Core.sol`](../contracts/modules/ETourInstance_Core.sol): enrollment and tournament start logic.
-- [`ETourInstance_Matches.sol`](../contracts/modules/ETourInstance_Matches.sol): round initialization and match completion entry logic.
-- [`ETourInstance_MatchesResolution.sol`](../contracts/modules/ETourInstance_MatchesResolution.sol): heavy bracket-advancement and round-resolution logic.
-- [`ETourInstance_Prizes.sol`](../contracts/modules/ETourInstance_Prizes.sol): prize distribution and redistribution.
-- [`ETourInstance_Escalation.sol`](../contracts/modules/ETourInstance_Escalation.sol): timeout-based escalation logic.
-
 ### Game Contracts
 
-Game contracts are the narrow game-specific layer developers extend.
+Game contracts are the developer-facing entrypoint into ETour V2.
 
-They do not reimplement the whole tournament protocol. Their job is to define game state, validate moves, update the board or position, and decide when a match ends. Everything else is meant to be inherited or delegated to shared infrastructure.
+If you are building a new game on ETour, this is the contract you actually write: `YourGame.sol`.
+
+In practice, the defining step looks like `contract YourGame is ETourGame`.
+
+That inheritance line is what turns your rules engine into an ETour tournament game. Your contract does not reimplement the whole tournament protocol. It is responsible only for the narrow game-specific surface:
+
+- defining game-owned match state,
+- validating moves,
+- updating the board or position,
+- deciding when a match ends,
+- exposing the game's `makeMove(...)` flow.
+
+Everything else is meant to come from ETour's shared infrastructure: enrollment, bracket progression, payouts, timeout flows, escalation flows, and player-profile integration.
 
 - [`TicTacToe.sol`](../contracts/TicTacToe.sol)
 - [`ConnectFour.sol`](../contracts/ConnectFour.sol)
 - [`Chess.sol`](../contracts/Chess.sol)
 
+### ETour Modules
+
+Once a game inherits `ETourGame`, it gains access to ETour's shared tournament machinery through modules.
+
+These are not user-facing game contracts. They are shared infrastructure contracts that hold reusable logic for tournament lifecycle management. The tournament clone executes them through `delegatecall`, which means they run against the clone's storage directly.
+
+This is how a custom game gets protocol features without copying protocol code.
+
+- [`ETourInstance_Core.sol`](../contracts/modules/ETourInstance_Core.sol): enrollment and tournament start logic.
+- [`ETourInstance_Matches.sol`](../contracts/modules/ETourInstance_Matches.sol): round initialization and match completion entry logic.
+- [`ETourInstance_MatchesResolution.sol`](../contracts/modules/ETourInstance_MatchesResolution.sol): heavy bracket advancement and round resolution logic.
+- [`ETourInstance_Prizes.sol`](../contracts/modules/ETourInstance_Prizes.sol): prize distribution and redistribution.
+- [`ETourInstance_Escalation.sol`](../contracts/modules/ETourInstance_Escalation.sol): timeout-based escalation logic.
+
+In other words, when you write `contract YourGame is ETourGame`, you are not just inheriting a base class. You are plugging your game into this shared module-backed tournament system.
+
+### Instance Layer
+
+The instance layer is the executable contract stack that sits underneath `YourGame`.
+
+These contracts define the logic that each tournament clone runs. One implementation contract is deployed per game, and many cheap clones point to it. The clone stores the actual tournament data, while the implementation provides the code.
+
+The inheritance chain is:
+
+- [`ETourTournamentBase.sol`](../contracts/ETourTournamentBase.sol): canonical storage layout and shared lifecycle invariants.
+- [`ETourInstance.sol`](../contracts/ETourInstance.sol): instance-level entrypoints that bridge into modules.
+- [`ETourGame.sol`](../contracts/ETourGame.sol): shared game template that concrete games extend.
+
+This is the core contract stack behind `contract YourGame is ETourGame`.
+
 ### Factory Layer
 
 The factory layer is the deployment and orchestration layer for a game family.
+
+After the game contract exists, the factory is what turns it into many tournament instances.
 
 A factory contract does not hold match state for individual tournaments. Instead, it:
 
@@ -113,7 +135,7 @@ A factory contract does not hold match state for individual tournaments. Instead
 
 Supporting contracts are adjacent services the core tournament system depends on.
 
-They are not part of the bracket lifecycle itself, but they provide important protocol capabilities such as player profiles and chess rules validation.
+They are not the core tournament execution path, but they provide important protocol capabilities such as player profiles and chess-specific rule validation.
 
 - [`PlayerRegistry.sol`](../contracts/PlayerRegistry.sol)
 - [`PlayerProfile.sol`](../contracts/PlayerProfile.sol)
