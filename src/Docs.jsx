@@ -58,8 +58,8 @@ const SECTION_GROUPS = [
     titles: [
       'Concrete Game Implementations',
       'Why the `Match` Struct Is Intentionally Flexible',
-      'Building Games on ETour V2',
-      'Worked Example: Checkers on ETour V2',
+      'Building Games on ETour',
+      'Worked Example: Checkers on ETour',
       'Practical Reading Order',
     ],
   },
@@ -614,7 +614,13 @@ const Docs = () => {
   };
 
   const handleSelectSection = (sectionId) => {
+    const section = sectionsById.get(sectionId);
     selectSection(sectionId);
+
+    if (!section?.items.length) {
+      return;
+    }
+
     setExpandedSections((current) => {
       const next = new Set(current);
 
@@ -991,6 +997,7 @@ const Docs = () => {
                 {group.sections.map((section) => {
                   const isActive = section.id === selectedSection.id;
                   const isExpandedSection = expandedSections.has(section.id);
+                  const hasSubsections = section.items.length > 0;
 
                   return (
                     <div key={section.id} className="rounded-xl">
@@ -1004,12 +1011,14 @@ const Docs = () => {
                         }`}
                       >
                         <span>{parseInlineMarkdown(section.label)}</span>
-                        <ChevronRight
-                          size={15}
-                          className={`shrink-0 transition-transform ${isExpandedSection ? 'rotate-90' : ''}`}
-                        />
+                        {hasSubsections ? (
+                          <ChevronRight
+                            size={15}
+                            className={`shrink-0 transition-transform ${isExpandedSection ? 'rotate-90' : ''}`}
+                          />
+                        ) : null}
                       </button>
-                      {isExpandedSection && section.items.length ? (
+                      {isExpandedSection && hasSubsections ? (
                         <div className="px-3 pb-2">
                           {renderSubsectionLinks(section.items, section.id)}
                         </div>

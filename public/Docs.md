@@ -9,7 +9,7 @@ This is a technical document that explains how ETour delivers on:
 
 If you are looking to validate ETour's claims, question its assumptions, or just understand how it really works under the hood, then you're in the right place.
 
-If you are a developer who simply wants to build on ETour rather than study its internal design, then you can safely skip ahead to the final section.
+If you are a developer who simply wants to build on ETour rather than study its internal design, then you can safely skip ahead to the [Builder's Guide](#concrete-game-implementations).
 
 ## What to Expect
 
@@ -24,7 +24,7 @@ In this document we'll go over:
 
 ## Key Terms
 
-Before going deeper, it helps to define the terms ETour V2 uses repeatedly.
+Before going deeper, it helps to define the terms ETour uses repeatedly.
 
 - Game Contract: the concrete implementation for a specific game such as Tic-Tac-Toe, Connect Four, or Chess.
 - Module: a shared infrastructure contract that the clone executes through `delegatecall` so it can reuse logic without copying code.
@@ -32,7 +32,7 @@ Before going deeper, it helps to define the terms ETour V2 uses repeatedly.
 - Factory: a contract that creates new tournament instances for one game type and tracks them over time.
 - Implementation: the deployed logic contract that clone instances point to.
 - Clone: a minimal proxy for one specific tournament; this is where the tournament's permanent state lives.
-- Instance: in V2, this usually means the tournament clone itself, not the implementation contract.
+- Instance: here, this usually means the tournament clone itself, not the implementation contract.
 
 ## Core Principles
 
@@ -62,7 +62,7 @@ The resulting system is a hybrid of:
 
 ### Game Contracts
 
-Game contracts are the developer-facing entrypoint into ETour V2.
+Game contracts are the developer-facing entrypoint into ETour.
 
 If you are building a new game on ETour, this is the contract you actually write: `YourGame.sol`.
 
@@ -126,7 +126,7 @@ A factory contract does not hold match state for individual tournaments. Instead
 - stores tier metadata,
 - connects tournaments to the shared player-profile system.
 
-- [`ETourFactory.sol`](../contracts/ETourFactory.sol): common factory behavior for all V2 games.
+- [`ETourFactory.sol`](../contracts/ETourFactory.sol): common factory behavior for all ETour games.
 - [`TicTacToeFactory.sol`](../contracts/TicTacToeFactory.sol): Tic-Tac-Toe factory.
 - [`ConnectFourFactory.sol`](../contracts/ConnectFourFactory.sol): Connect Four factory.
 - [`ChessFactory.sol`](../contracts/ChessFactory.sol): Chess factory with post-init chess rules wiring.
@@ -197,7 +197,7 @@ The base contract explicitly warns about this:
  * NEVER reorder or insert variables between existing ones.
 ```
 
-This is the single most important architectural constraint in V2.
+This is the single most important architectural constraint in ETour.
 
 ## Factory Architecture
 
@@ -215,7 +215,7 @@ Its responsibilities are:
 
 ### Tiering
 
-V2 uses demand-driven tiers rather than pre-registered tiers.
+ETour uses demand-driven tiers rather than pre-registered tiers.
 
 A tier is effectively:
 
@@ -369,11 +369,11 @@ Game-owned fields:
 - `packedState`
 - `moves`
 
-V2 explicitly treats those game-owned fields as opaque. Infra should rely on `_getGameStateHash(matchId)` when it needs a generic state fingerprint.
+ETour explicitly treats those game-owned fields as opaque. Infra should rely on `_getGameStateHash(matchId)` when it needs a generic state fingerprint.
 
 ## Execution Boundaries
 
-There are three important execution styles in V2.
+There are three important execution styles in ETour.
 
 ### 1. Direct Calls Into the Clone
 
@@ -463,7 +463,7 @@ Each flow:
 
 The core module computes `actualTotalRounds` from the actual enrolled count, not just the nominal tier maximum.
 
-This is why V2 can support:
+This is why ETour can support:
 
 - full power-of-two brackets,
 - odd participant flows after force-start,
@@ -546,7 +546,7 @@ It handles:
 - match-completion counting,
 - delegation into the heavy resolution module.
 
-The key reason it is thin is contract-size pressure. V2 requires every deployable module to remain under 24 KB.
+The key reason it is thin is contract-size pressure. ETour requires every deployable module to remain under 24 KB.
 
 ### `ETourInstance_MatchesResolution`
 
@@ -579,7 +579,7 @@ It covers:
 - escalation completion metadata,
 - some escalation-specific round-completion logic.
 
-This module is where V2 enforces the idea that tournaments should keep progressing even when a match stalls.
+This module is where ETour enforces the idea that tournaments should keep progressing even when a match stalls.
 
 ### `ETourInstance_Prizes`
 
@@ -636,11 +636,11 @@ Used today as follows:
 - Connect Four: randomize full player order
 - Chess: randomize full player order
 
-This is a good example of V2's extension philosophy: common behavior is shared, but the game chooses the policy.
+This is a good example of ETour's extension philosophy: common behavior is shared, but the game chooses the policy.
 
 ## Entropy and Randomness
 
-V2 uses a lightweight internal entropy accumulator rather than pretending to provide strong adversarial randomness.
+ETour uses a lightweight internal entropy accumulator rather than pretending to provide strong adversarial randomness.
 
 The accumulator mixes:
 
@@ -724,7 +724,7 @@ These provide tournament liveness beyond ordinary timeout claims:
 
 ## Fee Model and Settlement
 
-V2 uses deferred fee accounting.
+ETour uses deferred fee accounting.
 
 For every enrollment:
 
@@ -755,7 +755,7 @@ The factory then:
 
 ## Player Profiles
 
-ETour V2 integrates profiles through the factory and registry rather than hard-coding profile behavior into each game.
+ETour integrates profiles through the factory and registry rather than hard-coding profile behavior into each game.
 
 ### Enrollment-Time Registration
 
@@ -822,7 +822,7 @@ function _initializeGameState(bytes32 matchId, bool) internal override {
 }
 ```
 
-This is the clearest example of the intended ETour V2 game-author experience.
+This is the clearest example of the intended ETour game-author experience.
 
 ### Chess
 
@@ -836,11 +836,11 @@ It demonstrates:
 - replay-safe custom state invalidation,
 - custom `_getGameStateHash(...)`.
 
-The important lesson from chess is that the `Match` struct does not need to carry every possible game-state shape. Additional mappings keyed by `matchId` are a first-class pattern in V2.
+The important lesson from chess is that the `Match` struct does not need to carry every possible game-state shape. Additional mappings keyed by `matchId` are a first-class pattern in ETour.
 
 ## Why the `Match` Struct Is Intentionally Flexible
 
-V2 deliberately stops short of forcing every game into the same exact board/state model.
+ETour deliberately stops short of forcing every game into the same exact board/state model.
 
 The protocol owns:
 
@@ -865,7 +865,7 @@ The generic state contract is:
 
 That is why chess can maintain `_positionCounts` and `_gameNonce` without forcing those concepts into every other game.
 
-## Building Games on ETour V2
+## Building Games on ETour
 
 This section supersedes and expands the shorter builder guide in [`BuildingGames.md`](./BuildingGames.md).
 
@@ -1020,13 +1020,13 @@ Do not:
 
 ### Reference Games
 
-Use these as the canonical V2 examples:
+Use these as the canonical ETour examples:
 
 - [`TicTacToe.sol`](../contracts/TicTacToe.sol)
 - [`ConnectFour.sol`](../contracts/ConnectFour.sol)
 - [`Chess.sol`](../contracts/Chess.sol)
 
-## Worked Example: Checkers on ETour V2
+## Worked Example: Checkers on ETour
 
 The best way to verify that the extension surface is coherent is to map a new game onto it.
 
@@ -1049,7 +1049,7 @@ The game contract only needs to own:
 
 ### Example `Checkers.sol`
 
-The contract below is written in the ETour V2 style. It shows how a real checkers implementation would plug into `ETourGame`.
+The contract below is written in the ETour style. It shows how a real checkers implementation would plug into `ETourGame`.
 
 It uses:
 
@@ -1464,7 +1464,7 @@ contract Checkers is ETourGame {
 
 ### Matching `CheckersFactory.sol`
 
-The factory follows the normal V2 pattern:
+The factory follows the normal ETour pattern:
 
 ```solidity
 // SPDX-License-Identifier: MIT
@@ -1495,7 +1495,7 @@ contract CheckersFactory is ETourFactory {
 }
 ```
 
-### Why This Example Fits ETour V2 Cleanly
+### Why This Example Fits ETour Cleanly
 
 This checkers example maps directly onto the guide:
 
@@ -1504,7 +1504,7 @@ This checkers example maps directly onto the guide:
 - It keeps tournament logic, payouts, and escalations out of the game contract.
 - It stores one extra piece of game-owned state in `_forcedCaptureSquare`.
 - It uses `_getGameStateHash(...)` so infra does not need to understand that extra state directly.
-- It concludes matches through `_completeMatchInternal(...)`, which keeps bracket and settlement behavior consistent with every other ETour V2 game.
+- It concludes matches through `_completeMatchInternal(...)`, which keeps bracket and settlement behavior consistent with every other ETour game.
 
 ### Production Notes for a Full Checkers Release
 
@@ -1516,11 +1516,11 @@ A production-grade checkers game would likely add:
 - more compact packed-state flags for forced-capture continuation,
 - stronger tests around multi-jump king promotion edge cases.
 
-None of those require changing the ETour V2 infrastructure. They are purely game-layer refinements, which is exactly the separation V2 is designed to enforce.
+None of those require changing the ETour infrastructure. They are purely game-layer refinements, which is exactly the separation ETour is designed to enforce.
 
 ## Practical Reading Order
 
-For a new ETour V2 contributor, the best reading order is:
+For a new ETour contributor, the best reading order is:
 
 1. [`ETourFactory.sol`](../contracts/ETourFactory.sol)
 2. [`ETourTournamentBase.sol`](../contracts/ETourTournamentBase.sol)
