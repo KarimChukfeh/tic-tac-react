@@ -121,7 +121,7 @@ describe('TournamentHeader', () => {
       />
     );
 
-    expect(screen.getByText(/wins by r2 uncontested finals resolution/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /via r2 uncontested finals resolution/i })).toBeInTheDocument();
   });
 
   it('shows a connect-to-enrol CTA when the wallet is not connected', () => {
@@ -218,5 +218,78 @@ describe('TournamentHeader', () => {
 
     expect(screen.getByText('Window closes in 1m 30s')).toBeInTheDocument();
     expect(screen.queryByText('Enrollment Time Remaining')).not.toBeInTheDocument();
+  });
+
+  it('uses the v2 enrolment header copy and hides the round card', () => {
+    render(
+      <TournamentHeader
+        {...baseProps}
+        reasonLabelMode="v2"
+        status={0}
+      />
+    );
+
+    expect(screen.getByText('Current Pot')).toBeInTheDocument();
+    expect(screen.queryByText('Prize Pool')).not.toBeInTheDocument();
+    expect(screen.queryByText('Round')).not.toBeInTheDocument();
+    expect(screen.queryByText('1/2')).not.toBeInTheDocument();
+  });
+
+  it('shows completed v2 cards and expands enrolled players on demand', () => {
+    render(
+      <TournamentHeader
+        {...baseProps}
+        status={2}
+        reasonLabelMode="v2"
+        completionReason={1}
+        payoutEntries={[
+          {
+            recipient: '0x1234567890abcdef1234567890abcdef12345678',
+            amount: 500000000000000000n,
+          },
+          {
+            recipient: '0xabcdefabcdefabcdefabcdefabcdefabcdefabcd',
+            amount: 500000000000000000n,
+          },
+        ]}
+      />
+    );
+
+    expect(screen.getByText('Payout')).toBeInTheDocument();
+    expect(screen.queryByText('Payouts')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Enrolled Players/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /via ml1 timeout/i })).toBeInTheDocument();
+    expect(screen.getAllByText(/Transferred/i)).toHaveLength(2);
+    expect(screen.queryByText('0x1111111111111111111111111111111111111111')).not.toBeInTheDocument();
+    expect(screen.getByText('0x1234...5678')).toBeInTheDocument();
+    expect(screen.getByText('0xabcd...abcd')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /show/i }));
+
+    expect(screen.getByText('0x1111...1111')).toBeInTheDocument();
+    expect(screen.getByText('0x2222...2222')).toBeInTheDocument();
+  });
+
+  it('uses the same resolved layout for cancelled v2 tournaments', () => {
+    render(
+      <TournamentHeader
+        {...baseProps}
+        status={3}
+        reasonLabelMode="v2"
+        completionReason={5}
+        payoutEntries={[
+          {
+            recipient: '0x1234567890abcdef1234567890abcdef12345678',
+            amount: 1000000000000000000n,
+          },
+        ]}
+      />
+    );
+
+    expect(screen.getByText('Payout')).toBeInTheDocument();
+    expect(screen.queryByText('Payouts')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Enrolled Players/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /via el0 tournament canceled/i })).toBeInTheDocument();
+    expect(screen.getByText('Cancelled')).toBeInTheDocument();
   });
 });

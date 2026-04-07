@@ -15,6 +15,8 @@ import EnrolledPlayersList from './EnrolledPlayersList';
 import { formatTime, getTournamentTypeLabel, shortenAddress } from '../../utils/formatters';
 import { CompletionReason, getTournamentCompletionText, getTournamentResolutionReasonValue } from '../../utils/completionReasons';
 import {
+  getV2CompletionReasonHref,
+  getV2ReasonCode,
   getV2StatsResolutionReason,
   getV2TournamentResolutionText,
   isV2TournamentCancelledReason,
@@ -123,6 +125,7 @@ const TournamentHeader = ({
   totalEntryFeesAccrued,
   prizeAwarded,
   prizeRecipient,
+  payoutEntries,
 
   // Optional: Custom colors override
   colors: customColors,
@@ -140,7 +143,10 @@ const TournamentHeader = ({
   const config = GAME_CONFIGS[gameType] || GAME_CONFIGS.tictactoe;
   const colors = customColors || config.colors;
   const totalRounds = Math.ceil(Math.log2(playerCount));
+  const isV2Header = reasonLabelMode === 'v2';
   const isInProgress = status === 1;
+  const isV2EnrollmentState = isV2Header && status === 0;
+  const isV2ResolvedState = isV2Header && status >= 2;
   const tournamentTypeLabel = getTournamentTypeLabel(playerCount);
   const formattedEntryFee = formatEnrollmentFee(entryFee);
   const showEnrollmentCta = status === 0 && !isEnrolled && !isFull && (account ? !!onEnroll : !!onConnectWallet);
@@ -186,6 +192,21 @@ const TournamentHeader = ({
   const formatRecipient = (address) => (
     address && address !== ethers.ZeroAddress ? shortenAddress(address) : 'None'
   );
+  const v2CompletionReasonCode = getV2ReasonCode(tournamentResolutionReason);
+  const v2CompletionReasonHref = getV2CompletionReasonHref(tournamentResolutionReason);
+  const shouldShowV2CompletedReason = isV2ResolvedState && v2CompletionReasonCode && v2CompletionReasonCode !== 'R0';
+  const resolvedPayoutEntries = Array.isArray(payoutEntries) && payoutEntries.length > 0
+    ? payoutEntries.filter(({ recipient, amount }) => (
+      recipient &&
+      recipient !== ethers.ZeroAddress &&
+      typeof amount === 'bigint' &&
+      amount > 0n
+    ))
+    : (
+      resolvedPrizeRecipient && resolvedPrizeRecipient !== ethers.ZeroAddress && resolvedPrizeAwarded > 0n
+        ? [{ recipient: resolvedPrizeRecipient, amount: resolvedPrizeAwarded }]
+        : []
+    );
   const isSoloEnrollmentState = status === 0 && enrolledCount === 1;
   const isSoloEnrolled = isSoloEnrollmentState && isEnrolled;
 
@@ -319,6 +340,39 @@ const TournamentHeader = ({
     }
   };
 
+  const completedStatusDetail = shouldShowV2CompletedReason
+    ? (
+      v2CompletionReasonHref ? (
+        <UserManualAnchorLink
+          href={v2CompletionReasonHref}
+          className="text-cyan-300 hover:text-cyan-200 font-semibold underline decoration-dotted underline-offset-[2px]"
+          title={`Open User Manual entry for ${v2CompletionReasonCode}`}
+        >
+          via {resolutionText.text}
+        </UserManualAnchorLink>
+      ) : (
+        <span className="text-cyan-300 font-semibold">via {resolutionText.text}</span>
+      )
+    )
+    : null;
+
+  const completedPayoutCardContent = resolvedPayoutEntries.length > 0
+    ? (
+      <div className="space-y-2">
+        {resolvedPayoutEntries.map(({ recipient, amount }, index) => (
+          <div key={`${recipient}-${index}`} className="text-white text-[11px] md:text-sm leading-relaxed break-words">
+            <span className="text-purple-300">Transferred </span>
+            <span className="font-semibold text-yellow-400">{formatResolutionEth(amount)} ETH</span>
+            <span className="text-purple-300"> to </span>
+            <span className="font-mono">{shortenAddress(recipient)}</span>
+          </div>
+        ))}
+      </div>
+    )
+    : (
+      <div className="text-white/50 font-bold text-xs md:text-base">No payouts recorded</div>
+    );
+
   return (
     <div ref={headerRef} className={`bg-gradient-to-r ${colors.headerBg} backdrop-blur-lg rounded-2xl p-4 md:p-8 border ${colors.headerBorder} mb-8`}>
       {/* Back Button */}
@@ -362,7 +416,7 @@ const TournamentHeader = ({
         </div>
 
         <div className="flex items-center gap-2 md:block md:text-right bg-black/20 md:bg-transparent rounded-lg p-3 md:p-0">
-          <div className={`${colors.text} text-sm`}>Prize Pool</div>
+          <div className={`${colors.text} text-sm`}>{isV2EnrollmentState ? 'Current Pot' : 'Prize Pool'}</div>
           <div className="text-xl md:text-3xl font-bold text-yellow-400 whitespace-nowrap">
             {ethers.formatEther(prizePool)} ETH
           </div>
@@ -377,6 +431,12 @@ const TournamentHeader = ({
         resolutionReason={statsResolutionReason}
         currentRound={currentRound}
         totalRounds={totalRounds}
+        hideRoundCard={isV2EnrollmentState || isV2ResolvedState}
+        statusDetail={isV2ResolvedState ? completedStatusDetail : null}
+        playersDetails={isV2ResolvedState ? enrolledPlayers : null}
+        account={account}
+        thirdCardLabel={isV2ResolvedState ? 'Payout' : null}
+        thirdCardContent={isV2ResolvedState ? completedPayoutCardContent : null}
         colors={colors}
         syncDots={syncDots}
         statusTimerTarget={statusTimerTarget}
@@ -600,7 +660,7 @@ const TournamentHeader = ({
         </>
       )}
 
-      {isCompleted && (
+      {isCompleted && !isV2ResolvedState && (
         <div className="mt-4 bg-black/20 rounded-lg p-4 border border-purple-400/30">
           <div className="text-purple-300 text-sm mb-1">{detailedResolutionAvailable ? 'Payouts' : 'Resolution'}</div>
           {!detailedResolutionAvailable ? (
@@ -653,11 +713,13 @@ const TournamentHeader = ({
       )}
 
       {/* Enrolled Players */}
-      <EnrolledPlayersList
-        enrolledPlayers={enrolledPlayers}
-        account={account}
-        colors={colors}
-      />
+      {!isV2ResolvedState && (
+        <EnrolledPlayersList
+          enrolledPlayers={enrolledPlayers}
+          account={account}
+          colors={colors}
+        />
+      )}
 
       {/* Shareable URL Section */}
       {!isInProgress && (

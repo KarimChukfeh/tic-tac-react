@@ -78,6 +78,7 @@ import {
   normalizeMatch,
   resolveCreatedInstanceAddress,
 } from '../lib/tictactoe';
+import { normalizePrizeDistribution } from '../lib/prizeDistribution';
 import { resolveFlatBoard } from '../lib/matchBoardState';
 
 const TICTACTOE_SYMBOLS = ['✕', '○'];
@@ -248,6 +249,7 @@ const TournamentBracket = ({
         totalEntryFeesAccrued={tournamentData.totalEntryFeesAccrued}
         prizeAwarded={tournamentData.prizeAwarded}
         prizeRecipient={tournamentData.prizeRecipient}
+        payoutEntries={tournamentData.payoutEntries}
         syncDots={syncDots}
         account={account}
         onBack={onBack}
@@ -780,7 +782,7 @@ export default function TicTacToeV2() {
     const runner = getReadRunner();
     const instance = instanceCont || getInstanceContract(address, runner);
 
-    const [info, tournament, players, , bracket, enrolled] = await Promise.all([
+    const [info, tournament, players, prizeDistribution, bracket, enrolled] = await Promise.all([
       instance.getInstanceInfo(),
       instance.tournament(),
       instance.getPlayers(),
@@ -819,6 +821,7 @@ export default function TicTacToeV2() {
 
     return {
       ...snapshot,
+      payoutEntries: normalizePrizeDistribution(prizeDistribution),
       rounds,
       // Match the shape TournamentHeader / bracket expects
       tierId: VIRTUAL_TIER_ID,

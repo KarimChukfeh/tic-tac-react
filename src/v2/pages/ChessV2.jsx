@@ -67,6 +67,7 @@ import {
   resolveCreatedInstanceAddress,
   unpackBoard,
 } from '../lib/chess';
+import { normalizePrizeDistribution } from '../lib/prizeDistribution';
 import { resolveChessBoardState } from '../lib/matchBoardState';
 
 const CHESS_PIECES = ['♔', '♕', '♖', '♗', '♘', '♙', '♚', '♛', '♜', '♝', '♞', '♟'];
@@ -373,6 +374,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
         totalEntryFeesAccrued={tournamentData.totalEntryFeesAccrued}
         prizeAwarded={tournamentData.prizeAwarded}
         prizeRecipient={tournamentData.prizeRecipient}
+        payoutEntries={tournamentData.payoutEntries}
         syncDots={syncDots}
         account={account}
         onBack={onBack}
@@ -873,7 +875,7 @@ export default function ChessV2() {
   const buildBracketData = async (address, instanceCont = null) => {
     const runner = getReadRunner();
     const instance = instanceCont || getInstanceContract(address, runner);
-    const [info, tournament, players, , bracket, enrolled] = await Promise.all([
+    const [info, tournament, players, prizeDistribution, bracket, enrolled] = await Promise.all([
       instance.getInstanceInfo(),
       instance.tournament(),
       instance.getPlayers(),
@@ -898,7 +900,13 @@ export default function ChessV2() {
       return { roundIndex, matchCount, completedCount: Number(bracket.completedCounts[roundIndex] || 0), label: getRoundLabel(roundIndex, totalRounds), matches };
     }));
     const snapshot = normalizeInstanceSnapshot(address, info, tournament, players, enrolled);
-    return { ...snapshot, rounds, tierId: VIRTUAL_TIER_ID, instanceId: VIRTUAL_INSTANCE_ID };
+    return {
+      ...snapshot,
+      payoutEntries: normalizePrizeDistribution(prizeDistribution),
+      rounds,
+      tierId: VIRTUAL_TIER_ID,
+      instanceId: VIRTUAL_INSTANCE_ID,
+    };
   };
 
   const refreshTournamentBracket = useCallback(async (address) => {
