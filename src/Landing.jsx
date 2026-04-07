@@ -581,38 +581,49 @@ export default function Landing() {
           <p className="text-xl text-slate-400 mb-12 max-w-xl mx-auto">
           </p>
           <div className="flex flex-col items-center gap-4">
-            <button
-              onClick={() => document.getElementById('games')?.scrollIntoView({ behavior: 'smooth' })}
-              className="px-16 py-6 rounded-2xl font-bold text-xl text-white transition-all duration-300 hover:-translate-y-1 cursor-pointer"
-              style={{
-                background: 'linear-gradient(135deg, #06b6d4, #3b82f6)',
-                boxShadow: '0 8px 40px rgba(6, 182, 212, 0.4)'
-              }}
-            >
-              Start Playing
-            </button>
-            <span className="text-slate-500 text-lg font-medium">or</span>
+            <div className="flex w-full max-w-4xl flex-col items-center justify-center gap-4 sm:flex-row sm:gap-5">
+              <button
+                onClick={() => document.getElementById('games')?.scrollIntoView({ behavior: 'smooth' })}
+                className="w-full max-w-[260px] px-8 py-4 rounded-2xl font-bold text-xl text-white transition-all duration-300 hover:-translate-y-1 cursor-pointer"
+                style={{
+                  background: 'linear-gradient(135deg, #06b6d4, #3b82f6)',
+                  boxShadow: '0 8px 40px rgba(6, 182, 212, 0.4)'
+                }}
+              >
+                Start Playing
+              </button>
+              <span className="text-slate-500 text-lg font-medium">or</span>
+              <Link
+                to="/docs"
+                className="w-full max-w-[260px] px-8 py-4 rounded-2xl font-bold text-xl text-white transition-all duration-300 hover:-translate-y-1"
+                style={{
+                  background: 'linear-gradient(135deg, #ec4899, #8b5cf6)',
+                  boxShadow: '0 8px 40px rgba(192, 38, 211, 0.35)'
+                }}
+              >
+                Start Building
+              </Link>
+            </div>
             <div
               id="learn-more-links"
-              className="grid items-center gap-x-3 gap-y-2 text-xl font-bold sm:grid-cols-[1fr_auto_1fr]"
+              className="mt-2 flex flex-col items-center gap-3 text-xl font-bold"
             >
+              <Link
+                to="/manual"
+                className="mt-6 text-cyan-400 transition-colors duration-300 hover:text-cyan-300"
+              >
+                Browse The Manual
+              </Link>
               <Link
                 id="read-the-whitepaper"
                 to="/whitepaper"
-                className="text-cyan-400 transition-all duration-300 hover:text-cyan-300 sm:justify-self-end"
+                className="text-cyan-400 transition-all duration-300 hover:text-cyan-300"
                 style={whitepaperGlow ? {
                   textShadow: '0 0 8px #22d3ee, 0 0 20px #22d3ee, 0 0 40px #06b6d4',
                   animation: 'whitepaperPulse 2s ease-out forwards',
                 } : {}}
               >
                 Read The Whitepaper
-              </Link>
-              <span className="text-center text-slate-500">or</span>
-              <Link
-                to="/manual"
-                className="text-cyan-400 transition-colors duration-300 hover:text-cyan-300 sm:justify-self-start"
-              >
-                Browse The Manual
               </Link>
             </div>
           </div>
