@@ -55,15 +55,23 @@ describe('Docs', () => {
     expect(await screen.findByText('ETour Protocol')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Browse Docs' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Collapse Overview' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Expand Protocol Design' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Expand Design' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '1. Core Principles' })).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: '1.1 Factory Layer' })).toHaveLength(2);
-    expect(screen.getAllByRole('button', { name: '1.2 Game Layer' })).toHaveLength(2);
+    expect(screen.getByRole('button', { name: '1.1 Factory Layer' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '1.2 Game Layer' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '1.1 Factory Layer' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: '1.2 Game Layer' })).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: '2. Deployment Model' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Previous tab' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Next tab' })).toHaveTextContent('1.2 Game Layer');
+
+    fireEvent.click(screen.getByRole('button', { name: '1. Core Principles' }));
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: '1.1 Factory Layer' })).not.toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '1. Core Principles' }));
+    expect(screen.getByRole('button', { name: '1.1 Factory Layer' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Next tab' }));
 
@@ -81,7 +89,7 @@ describe('Docs', () => {
       expect(screen.getByRole('heading', { name: '2. Deployment Model' })).toBeInTheDocument();
     });
 
-    expect(screen.getAllByRole('button', { name: '2.1 Factory -> Implementation -> Clone' })).toHaveLength(2);
+    expect(screen.getByRole('button', { name: '2.1 Factory -> Implementation -> Clone' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Previous tab' })).toHaveTextContent('1.2 Game Layer');
     expect(screen.getByRole('button', { name: 'Next tab' })).toBeDisabled();
     expect(screen.getByRole('link', { name: 'BuildingGames.md' })).toHaveAttribute(

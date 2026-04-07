@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, BookOpen, ChevronLeft, ChevronRight, ListTree } from 'lucide-react';
+import { ArrowLeft, BookOpen, ChevronLeft, ChevronRight, ListTree, Menu, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const DOCS_REPO_BLOB_BASE = 'https://github.com/KarimChukfeh/tic-tac-react/blob/main';
@@ -36,7 +36,7 @@ const SECTION_GROUPS = [
   },
   {
     id: 'protocol',
-    label: 'Protocol Design',
+    label: 'Design',
     titles: [
       'Contracts',
       'Deployment Model',
@@ -54,7 +54,7 @@ const SECTION_GROUPS = [
   },
   {
     id: 'builders',
-    label: 'Builder Guide',
+    label: 'Guide',
     titles: [
       'Concrete Game Implementations',
       'Why the `Match` Struct Is Intentionally Flexible',
@@ -400,6 +400,8 @@ const Docs = () => {
   const [selectedSectionId, setSelectedSectionId] = useState('');
   const [selectedTabId, setSelectedTabId] = useState('');
   const [expandedGroups, setExpandedGroups] = useState(new Set());
+  const [expandedSections, setExpandedSections] = useState(new Set());
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [pendingAnchor, setPendingAnchor] = useState('');
 
   const colors = {
@@ -527,6 +529,7 @@ const Docs = () => {
     setSelectedSectionId(initialSectionId);
     setSelectedTabId(initialTarget.tabId);
     setExpandedGroups(new Set(initialSection ? [initialSection.groupId] : []));
+    setExpandedSections(new Set([initialSectionId]));
 
     if (hash && anchorLookup.has(hash)) {
       setPendingAnchor(hash);
@@ -602,10 +605,27 @@ const Docs = () => {
       hashTarget: anchorId,
       highlight: true,
     });
+    setExpandedSections((current) => {
+      const next = new Set(current);
+      next.add(target.sectionId);
+      return next;
+    });
+    setIsMobileNavOpen(false);
   };
 
   const handleSelectSection = (sectionId) => {
     selectSection(sectionId);
+    setExpandedSections((current) => {
+      const next = new Set(current);
+
+      if (next.has(sectionId)) {
+        next.delete(sectionId);
+      } else {
+        next.add(sectionId);
+      }
+
+      return next;
+    });
   };
 
   const handleSelectTab = (sectionId, tabId) => {
@@ -614,6 +634,12 @@ const Docs = () => {
       hashTarget: tabId,
       highlight: false,
     });
+    setExpandedSections((current) => {
+      const next = new Set(current);
+      next.add(sectionId);
+      return next;
+    });
+    setIsMobileNavOpen(false);
   };
 
   const toggleGroup = (groupId) => {
@@ -940,6 +966,65 @@ const Docs = () => {
     </div>
   );
 
+  const renderSectionGroups = (isMobile = false) => (
+    <div className="space-y-4 overflow-y-auto pr-1 lg:h-[calc(68vh-4rem)]">
+      {groupedSections.map((group) => {
+        const isExpanded = expandedGroups.has(group.id);
+
+        return (
+          <section key={group.id} className="rounded-2xl border border-pink-300/10 bg-white/[0.03]">
+            <button
+              type="button"
+              className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+              aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${group.label}`}
+              aria-expanded={isExpanded}
+              onClick={() => toggleGroup(group.id)}
+            >
+              <div className="text-sm font-semibold text-pink-50">{group.label}</div>
+              <ChevronRight
+                size={16}
+                className={`text-pink-200 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+              />
+            </button>
+            {isExpanded ? (
+              <div className="space-y-2 border-t border-pink-300/10 px-3 py-3">
+                {group.sections.map((section) => {
+                  const isActive = section.id === selectedSection.id;
+                  const isExpandedSection = expandedSections.has(section.id);
+
+                  return (
+                    <div key={section.id} className="rounded-xl">
+                      <button
+                        type="button"
+                        onClick={() => handleSelectSection(section.id)}
+                        className={`flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left text-sm transition-colors ${
+                          isActive
+                            ? 'bg-pink-400/15 text-white'
+                            : 'text-pink-100/85 hover:bg-white/[0.04] hover:text-white'
+                        }`}
+                      >
+                        <span>{parseInlineMarkdown(section.label)}</span>
+                        <ChevronRight
+                          size={15}
+                          className={`shrink-0 transition-transform ${isExpandedSection ? 'rotate-90' : ''}`}
+                        />
+                      </button>
+                      {isExpandedSection && section.items.length ? (
+                        <div className="px-3 pb-2">
+                          {renderSubsectionLinks(section.items, section.id)}
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
+          </section>
+        );
+      })}
+    </div>
+  );
+
   return (
     <div
       className="min-h-screen p-4"
@@ -967,14 +1052,54 @@ const Docs = () => {
         </div>
 
         <div className={`rounded-3xl border ${colors.border} bg-gradient-to-br ${colors.bg} p-6 backdrop-blur-lg md:p-8`}>
+          {!isLoading && selectedSection ? (
+            <div className="sticky top-3 z-40 mb-4 flex lg:hidden">
+              <button
+                type="button"
+                aria-label={isMobileNavOpen ? 'Close docs navigation' : 'Open docs navigation'}
+                aria-expanded={isMobileNavOpen}
+                onClick={() => setIsMobileNavOpen((current) => !current)}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-pink-300/25 bg-[#240635]/90 text-pink-100 shadow-[0_8px_24px_rgba(0,0,0,0.24)] backdrop-blur"
+              >
+                {isMobileNavOpen ? <X size={16} /> : <Menu size={16} />}
+              </button>
+            </div>
+          ) : null}
+
+          {isMobileNavOpen && !isLoading && selectedSection ? (
+            <div className="fixed inset-0 z-50 lg:hidden">
+              <button
+                type="button"
+                aria-label="Close docs navigation"
+                onClick={() => setIsMobileNavOpen(false)}
+                className="absolute inset-0 bg-black/45 backdrop-blur-[1px]"
+              />
+              <div className="absolute left-4 right-4 top-16 max-h-[70vh] overflow-hidden rounded-2xl border border-pink-300/20 bg-[#220530]/95 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.42)]">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <ListTree className={colors.primary} size={18} />
+                    <h2 className={`text-lg font-semibold ${colors.secondary}`}>Browse Docs</h2>
+                  </div>
+                  <button
+                    type="button"
+                    aria-label="Close docs navigation"
+                    onClick={() => setIsMobileNavOpen(false)}
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-pink-300/15 text-pink-100 transition-colors hover:bg-white/[0.04] hover:text-white"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+                <div className="max-h-[calc(70vh-4.5rem)] overflow-y-auto">
+                  {renderSectionGroups(true)}
+                </div>
+              </div>
+            </div>
+          ) : null}
+
           <div className="mb-8 flex items-start gap-3">
             <BookOpen className={`${colors.primary} mt-1`} size={28} />
             <div>
               <h1 className={`text-3xl font-bold ${colors.secondary}`}>{title}</h1>
-              <p className="mt-2 max-w-3xl text-sm text-pink-100/70">
-                Protocol architecture, lifecycle rules, and game-builder notes, split into focused sections instead
-                of one long document.
-              </p>
             </div>
             {isLoading ? (
               <span className="ml-auto text-sm text-gray-400">(Loading...)</span>
@@ -992,63 +1117,13 @@ const Docs = () => {
           {!isLoading && selectedSection ? (
             <div className="grid gap-6 lg:grid-cols-[320px,minmax(0,1fr)]">
               <aside
-                className={`rounded-2xl border ${colors.borderDark} bg-black/15 p-4 lg:sticky lg:top-4 lg:h-[68vh] lg:overflow-hidden`}
+                className={`hidden rounded-2xl border ${colors.borderDark} bg-black/15 p-4 lg:sticky lg:top-4 lg:block lg:h-[68vh] lg:overflow-hidden`}
               >
                 <div className="mb-4 flex items-center gap-2">
                   <ListTree className={colors.primary} size={18} />
                   <h2 className={`text-lg font-semibold ${colors.secondary}`}>Browse Docs</h2>
                 </div>
-                <div className="space-y-4 overflow-y-auto pr-1 lg:h-[calc(68vh-4rem)]">
-                  {groupedSections.map((group) => {
-                    const isExpanded = expandedGroups.has(group.id);
-
-                    return (
-                      <section key={group.id} className="rounded-2xl border border-pink-300/10 bg-white/[0.03]">
-                        <button
-                          type="button"
-                          className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
-                          aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${group.label}`}
-                          aria-expanded={isExpanded}
-                          onClick={() => toggleGroup(group.id)}
-                        >
-                          <div className="text-sm font-semibold text-pink-50">{group.label}</div>
-                          <ChevronRight
-                            size={16}
-                            className={`text-pink-200 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
-                          />
-                        </button>
-                        {isExpanded ? (
-                          <div className="space-y-2 border-t border-pink-300/10 px-3 py-3">
-                            {group.sections.map((section) => {
-                              const isActive = section.id === selectedSection.id;
-
-                              return (
-                                <div key={section.id} className="rounded-xl">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleSelectSection(section.id)}
-                                    className={`w-full rounded-xl px-3 py-2 text-left text-sm transition-colors ${
-                                      isActive
-                                        ? 'bg-pink-400/15 text-white'
-                                        : 'text-pink-100/85 hover:bg-white/[0.04] hover:text-white'
-                                    }`}
-                                  >
-                                    {parseInlineMarkdown(section.label)}
-                                  </button>
-                                  {isActive && section.items.length ? (
-                                    <div className="px-3 pb-2">
-                                      {renderSubsectionLinks(section.items, section.id)}
-                                    </div>
-                                  ) : null}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ) : null}
-                      </section>
-                    );
-                  })}
-                </div>
+                {renderSectionGroups(false)}
               </aside>
 
               <section
@@ -1062,28 +1137,6 @@ const Docs = () => {
                     <h2 id={selectedSection.id} className={`mt-2 text-2xl font-bold ${colors.secondary}`}>
                       {parseInlineMarkdown(selectedSection.label)}
                     </h2>
-                    {selectedSection.tabs.length ? (
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        {selectedSection.tabs.map((tab) => {
-                          const isActiveTab = tab.id === selectedTab?.id;
-
-                          return (
-                            <button
-                              key={tab.id}
-                              type="button"
-                              onClick={() => handleSelectTab(selectedSection.id, tab.id)}
-                              className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
-                                isActiveTab
-                                  ? 'border-pink-300/35 bg-pink-400/16 text-white'
-                                  : 'border-pink-300/15 text-pink-100/80 hover:bg-white/[0.04] hover:text-white'
-                              }`}
-                            >
-                              {parseInlineMarkdown(tab.label)}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    ) : null}
                   </div>
                   <div
                     ref={contentPaneRef}
