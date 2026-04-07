@@ -264,7 +264,7 @@ describe('TournamentHeader', () => {
     expect(screen.getByText('0x1234...5678')).toBeInTheDocument();
     expect(screen.getByText('0xabcd...abcd')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /show/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Expand players' }));
 
     expect(screen.getByText('0x1111...1111')).toBeInTheDocument();
     expect(screen.getByText('0x2222...2222')).toBeInTheDocument();
@@ -291,5 +291,8 @@ describe('TournamentHeader', () => {
     expect(screen.queryByText(/Enrolled Players/i)).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: /via el0 tournament canceled/i })).toBeInTheDocument();
     expect(screen.getByText('Cancelled')).toBeInTheDocument();
+    expect(screen.queryByText('Prize Pool')).not.toBeInTheDocument();
+    expect(screen.getByText(/Refunded/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Transferred/i)).not.toBeInTheDocument();
   });
 });

@@ -182,8 +182,8 @@ const StatsGrid = ({
               onClick={() => setPlayersExpanded((expanded) => !expanded)}
               className={`${colors.text} ${colors.textHover ?? ''} shrink-0 inline-flex items-center gap-1 text-[11px] md:text-xs font-semibold transition-colors`}
               aria-expanded={playersExpanded}
+              aria-label={playersExpanded ? 'Collapse players' : 'Expand players'}
             >
-              {playersExpanded ? 'Hide' : 'Show'}
               <ChevronDown
                 size={14}
                 className={`transition-transform ${playersExpanded ? 'rotate-180' : ''}`}

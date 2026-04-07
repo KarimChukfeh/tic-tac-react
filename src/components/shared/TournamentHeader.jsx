@@ -163,6 +163,7 @@ const TournamentHeader = ({
       ? isV2TournamentCancelledReason(tournamentResolutionReason)
       : tournamentResolutionReason === CompletionReason.SOLO_ENROLL_CANCELLED
   );
+  const isV2El0CancelledState = isV2ResolvedState && tournamentResolutionReason === V2TournamentResolutionReason.SOLO_ENROLL_CANCELLED;
   const isCompleted = status >= 2;
   const resolutionText = useV2ReasonLabels
     ? getV2TournamentResolutionText(tournamentResolutionReason)
@@ -361,7 +362,7 @@ const TournamentHeader = ({
       <div className="space-y-2">
         {resolvedPayoutEntries.map(({ recipient, amount }, index) => (
           <div key={`${recipient}-${index}`} className="text-white text-[11px] md:text-sm leading-relaxed break-words">
-            <span className="text-purple-300">Transferred </span>
+            <span className="text-purple-300">{isV2El0CancelledState ? 'Refunded ' : 'Transferred '}</span>
             <span className="font-semibold text-yellow-400">{formatResolutionEth(amount)} ETH</span>
             <span className="text-purple-300"> to </span>
             <span className="font-mono">{shortenAddress(recipient)}</span>
@@ -415,12 +416,14 @@ const TournamentHeader = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 md:block md:text-right bg-black/20 md:bg-transparent rounded-lg p-3 md:p-0">
-          <div className={`${colors.text} text-sm`}>{isV2EnrollmentState ? 'Current Pot' : 'Prize Pool'}</div>
-          <div className="text-xl md:text-3xl font-bold text-yellow-400 whitespace-nowrap">
-            {ethers.formatEther(prizePool)} ETH
+        {!isV2El0CancelledState && (
+          <div className="flex items-center gap-2 md:block md:text-right bg-black/20 md:bg-transparent rounded-lg p-3 md:p-0">
+            <div className={`${colors.text} text-sm`}>{isV2EnrollmentState ? 'Current Pot' : 'Prize Pool'}</div>
+            <div className="text-xl md:text-3xl font-bold text-yellow-400 whitespace-nowrap">
+              {ethers.formatEther(prizePool)} ETH
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Stats Grid */}
