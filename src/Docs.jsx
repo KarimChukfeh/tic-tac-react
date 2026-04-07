@@ -28,10 +28,10 @@ const SECTION_GROUPS = [
     id: 'overview',
     label: 'Overview',
     titles: [
-      'In This Document',
-      'Core Principles',
-      'High-Level Architecture',
+      'Introduction',
+      'What to Expect',
       'Key Terms',
+      'Core Principles',
     ],
   },
   {

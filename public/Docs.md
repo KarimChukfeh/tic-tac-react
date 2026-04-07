@@ -1,11 +1,26 @@
-## In This Document
+## Introduction
 
-- how each ETour V2 module works and what it does,
-- how factories, instance implementations, and modules fit together,
-- how tournament state is stored and mutated,
-- how match progression, escalations, and payouts work,
-- why the contracts are split the way they are,
-- how to build new games using ETour protocol.
+This is a technical document that explains how ETour delivers on: 
+
+- Fully on-chain tournament infrastructure
+- ETH-only with no special tokens
+- Self-sustaining without need for VCs
+- Grief-proof with garunteed fair resolution
+
+If you are looking to validate ETour's claims, question its assumptions, or just understand how it really works under the hood, then you're in the right place.
+
+If you are a developer who simply wants to build on ETour rather than study its internal design, then you can safely skip ahead to the final section.
+
+## What to Expect
+
+In this document we'll go over:
+
+- How ETour modules work and what they do,
+- How factories, instance implementations, and modules fit together,
+- How tournament state is stored and mutated,
+- How match progression, escalations, and payouts work,
+- Why the contracts are split the way they are,
+- How to build new games using ETour protocol.
 
 ## Key Terms
 
