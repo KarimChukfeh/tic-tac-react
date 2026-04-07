@@ -301,4 +301,26 @@ describe('TournamentHeader', () => {
     expect(screen.getByText(/Refunded/i)).toBeInTheDocument();
     expect(screen.queryByText(/Transferred/i)).not.toBeInTheDocument();
   });
+
+  it('shows abandoned status styling for EL2 tournaments', () => {
+    render(
+      <TournamentHeader
+        {...baseProps}
+        status={3}
+        reasonLabelMode="v2"
+        completionReason={6}
+        payoutEntries={[
+          {
+            recipient: '0x1234567890abcdef1234567890abcdef12345678',
+            amount: 1000000000000000000n,
+          },
+        ]}
+      />
+    );
+
+    const abandonedLabel = screen.getByText('Abandoned');
+    expect(abandonedLabel).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /via el2 abandoned pool claimed/i })).toBeInTheDocument();
+    expect(abandonedLabel.closest('div')).toHaveClass('text-red-300');
+  });
 });

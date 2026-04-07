@@ -79,6 +79,8 @@ export const isV2TournamentCancelledReason = (reason) => (
 export const getV2StatsResolutionReason = (reason) => (
   isV2TournamentCancelledReason(reason)
     ? CompletionReason.SOLO_ENROLL_CANCELLED
+    : toReasonNumber(reason, -1) === V2TournamentResolutionReason.ABANDONED_TOURNAMENT_CLAIMED
+      ? CompletionReason.ABANDONED_TOURNAMENT_CLAIMED
     : toReasonNumber(reason, 0)
 );
 

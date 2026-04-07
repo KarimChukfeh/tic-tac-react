@@ -17,6 +17,15 @@ import { shortenAddress } from '../../utils/formatters';
  * @returns {Object} { text, color, bgColor, borderColor }
  */
 const getStatusDisplay = (status, resolutionReason = null) => {
+  if (status >= 2 && Number(resolutionReason) === CompletionReason.ABANDONED_TOURNAMENT_CLAIMED) {
+    return {
+      text: 'Abandoned',
+      color: 'text-red-300',
+      bgColor: 'bg-red-500/20',
+      borderColor: 'border-red-400',
+      dotColor: 'bg-red-400'
+    };
+  }
   if (status >= 2 && Number(resolutionReason) === CompletionReason.SOLO_ENROLL_CANCELLED) {
     return {
       text: 'Cancelled',
