@@ -233,6 +233,12 @@ describe('TournamentHeader', () => {
     expect(screen.queryByText('Prize Pool')).not.toBeInTheDocument();
     expect(screen.queryByText('Round')).not.toBeInTheDocument();
     expect(screen.queryByText('1/2')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Enrolled Players/i)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Expand players' }));
+
+    expect(screen.getByText('0x1111...1111')).toBeInTheDocument();
+    expect(screen.getByText('0x2222...2222')).toBeInTheDocument();
   });
 
   it('shows completed v2 cards and expands enrolled players on demand', () => {

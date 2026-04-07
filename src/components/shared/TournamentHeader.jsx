@@ -147,6 +147,7 @@ const TournamentHeader = ({
   const isInProgress = status === 1;
   const isV2EnrollmentState = isV2Header && status === 0;
   const isV2ResolvedState = isV2Header && status >= 2;
+  const useV2InlinePlayersCard = isV2EnrollmentState || isV2ResolvedState;
   const tournamentTypeLabel = getTournamentTypeLabel(playerCount);
   const formattedEntryFee = formatEnrollmentFee(entryFee);
   const showEnrollmentCta = status === 0 && !isEnrolled && !isFull && (account ? !!onEnroll : !!onConnectWallet);
@@ -436,7 +437,7 @@ const TournamentHeader = ({
         totalRounds={totalRounds}
         hideRoundCard={isV2EnrollmentState || isV2ResolvedState}
         statusDetail={isV2ResolvedState ? completedStatusDetail : null}
-        playersDetails={isV2ResolvedState ? enrolledPlayers : null}
+        playersDetails={useV2InlinePlayersCard ? enrolledPlayers : null}
         account={account}
         thirdCardLabel={isV2ResolvedState ? 'Payout' : null}
         thirdCardContent={isV2ResolvedState ? completedPayoutCardContent : null}
@@ -716,7 +717,7 @@ const TournamentHeader = ({
       )}
 
       {/* Enrolled Players */}
-      {!isV2ResolvedState && (
+      {!useV2InlinePlayersCard && (
         <EnrolledPlayersList
           enrolledPlayers={enrolledPlayers}
           account={account}
