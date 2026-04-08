@@ -730,6 +730,10 @@ export default function ChessV2() {
   const [expandedPanel, setExpandedPanel] = useState(null);
   const [activeTooltip, setActiveTooltip] = useState(null);
   const [isTabActive, setIsTabActive] = useState(typeof document === 'undefined' ? true : !document.hidden);
+  const isPlayerActivityContextActive = Boolean(activeInstanceContract || viewingTournament || currentMatch);
+  const shouldPollPlayerActivity = Boolean(account) && isTabActive;
+  const shouldScanFactoryForPlayerActivity = Boolean(account) && isTabActive && (expandedPanel === 'playerActivity' || isPlayerActivityContextActive);
+  const shouldPollPlayerProfile = Boolean(account) && isTabActive && expandedPanel === 'recentMatches';
   const [showMatchAlert, setShowMatchAlert] = useState(false);
   const [alertMatch, setAlertMatch] = useState(null);
   const [gamesCardHeight, setGamesCardHeight] = useState(0);
@@ -738,10 +742,17 @@ export default function ChessV2() {
 
   const { showPrompt, handleWalletChoice, handleContinueChoice, triggerWalletPrompt } = useWalletBrowserPrompt();
 
-  const playerActivity = useChessV2PlayerActivity(activeInstanceContract, account, resolvedFactoryContract, rpcProvider);
-  const playerProfile = useChessPlayerProfile(resolvedFactoryContract, rpcProvider, account);
+  const playerActivity = useChessV2PlayerActivity(activeInstanceContract, account, resolvedFactoryContract, rpcProvider, {
+    enabled: shouldPollPlayerActivity,
+    pollIntervalMs: shouldScanFactoryForPlayerActivity ? 5000 : 30000,
+    scanFactoryFallback: shouldScanFactoryForPlayerActivity,
+  });
+  const playerProfile = useChessPlayerProfile(resolvedFactoryContract, rpcProvider, account, {
+    enabled: shouldPollPlayerProfile,
+    pollIntervalMs: 8000,
+  });
   const v2MatchHistory = useChessV2MatchHistory(resolvedFactoryContract, rpcProvider, account, {
-    enabled: expandedPanel === 'recentMatches',
+    enabled: shouldPollPlayerProfile,
     pollIntervalMs: 8000,
   });
   const refreshHistoryPanel = useCallback(() => {

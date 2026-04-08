@@ -622,13 +622,24 @@ export default function TicTacToeV2() {
   const [expandedPanel, setExpandedPanel] = useState(null);
   const [activeTooltip, setActiveTooltip] = useState(null);
   const [isTabActive, setIsTabActive] = useState(typeof document === 'undefined' ? true : !document.hidden);
+  const isPlayerActivityContextActive = Boolean(activeInstanceContract || viewingTournament || currentMatch);
+  const shouldPollPlayerActivity = Boolean(account) && isTabActive;
+  const shouldScanFactoryForPlayerActivity = Boolean(account) && isTabActive && (expandedPanel === 'playerActivity' || isPlayerActivityContextActive);
+  const shouldPollPlayerProfile = Boolean(account) && isTabActive && expandedPanel === 'recentMatches';
 
   // --- Player activity (profile-sourced + instance-scoped) ---
-  const v2PlayerActivity = useV2PlayerActivity(activeInstanceContract, account, resolvedFactoryContract, rpcProvider);
+  const v2PlayerActivity = useV2PlayerActivity(activeInstanceContract, account, resolvedFactoryContract, rpcProvider, {
+    enabled: shouldPollPlayerActivity,
+    pollIntervalMs: shouldScanFactoryForPlayerActivity ? 5000 : 30000,
+    scanFactoryFallback: shouldScanFactoryForPlayerActivity,
+  });
 
-  const playerProfile = usePlayerProfile(resolvedFactoryContract, rpcProvider, account);
+  const playerProfile = usePlayerProfile(resolvedFactoryContract, rpcProvider, account, {
+    enabled: shouldPollPlayerProfile,
+    pollIntervalMs: 8000,
+  });
   const v2MatchHistory = useV2MatchHistory(resolvedFactoryContract, rpcProvider, account, {
-    enabled: expandedPanel === 'recentMatches',
+    enabled: shouldPollPlayerProfile,
     pollIntervalMs: 8000,
   });
   const refreshHistoryPanel = useCallback(() => {

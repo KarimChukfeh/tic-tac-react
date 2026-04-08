@@ -97,7 +97,12 @@ function buildInstanceActivity(instance, account, dismissedMatches, matchResults
   return { activeMatches, inProgressTournaments, unfilledTournaments: [], terminatedMatches };
 }
 
-export const useConnectFourV2PlayerActivity = (instanceContract, account, factoryContract, runner) => {
+export const useConnectFourV2PlayerActivity = (instanceContract, account, factoryContract, runner, options = {}) => {
+  const {
+    enabled = true,
+    pollIntervalMs = 5000,
+    scanFactoryFallback = true,
+  } = options;
   const [data, setData] = useState(EMPTY_DATA);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -107,6 +112,12 @@ export const useConnectFourV2PlayerActivity = (instanceContract, account, factor
   const alertedMatchKeysRef = useRef(new Set());
 
   const fetchActivity = useCallback(async (isInitialLoad = false) => {
+    if (!enabled) {
+      setLoading(false);
+      setSyncing(false);
+      return;
+    }
+
     if (!account) {
       setLoading(false);
       setSyncing(false);
@@ -154,7 +165,7 @@ export const useConnectFourV2PlayerActivity = (instanceContract, account, factor
           console.warn('[ConnectFourV2PlayerActivity] Profile lookup failed:', profileErr.message);
         }
 
-        if (instanceMap.size === 0 || instanceContract == null) {
+        if (scanFactoryFallback && instanceMap.size === 0) {
           try {
             const activeCount = Number(await factoryContract.getActiveTournamentCount().catch(() => 0n));
             if (activeCount > 0) {
@@ -324,17 +335,22 @@ export const useConnectFourV2PlayerActivity = (instanceContract, account, factor
       setLoading(false);
       setSyncing(false);
     }
-  }, [account, instanceContract, factoryContract, runner, dismissedMatches]);
+  }, [account, enabled, instanceContract, factoryContract, runner, dismissedMatches, scanFactoryFallback]);
 
   useEffect(() => {
+    if (!enabled) {
+      setLoading(false);
+      setSyncing(false);
+      return;
+    }
     fetchActivity(true);
-  }, [fetchActivity]);
+  }, [enabled, fetchActivity]);
 
   useEffect(() => {
-    if (!account) return;
-    const id = setInterval(() => fetchActivity(false), 5000);
+    if (!enabled || !account) return;
+    const id = setInterval(() => fetchActivity(false), pollIntervalMs);
     return () => clearInterval(id);
-  }, [account, fetchActivity]);
+  }, [account, enabled, fetchActivity, pollIntervalMs]);
 
   useEffect(() => {
     alertedMatchKeysRef.current = new Set();

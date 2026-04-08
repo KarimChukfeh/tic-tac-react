@@ -124,7 +124,12 @@ function buildInstanceActivity(instance, account, dismissedMatches, matchResults
  * @param {Object|null}  factoryContract   - Factory contract (read-only) for profile lookup
  * @param {Object|null}  runner            - ethers provider for constructing extra contracts
  */
-export const useV2PlayerActivity = (instanceContract, account, factoryContract, runner) => {
+export const useV2PlayerActivity = (instanceContract, account, factoryContract, runner, options = {}) => {
+  const {
+    enabled = true,
+    pollIntervalMs = 5000,
+    scanFactoryFallback = true,
+  } = options;
   const [data, setData] = useState(EMPTY_DATA);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -134,6 +139,12 @@ export const useV2PlayerActivity = (instanceContract, account, factoryContract, 
   const alertedMatchKeysRef = useRef(new Set());
 
   const fetchActivity = useCallback(async (isInitialLoad = false) => {
+    if (!enabled) {
+      setLoading(false);
+      setSyncing(false);
+      return;
+    }
+
     if (!account) {
       setLoading(false);
       setSyncing(false);
@@ -186,7 +197,7 @@ export const useV2PlayerActivity = (instanceContract, account, factoryContract, 
 
         // Fallback: scan activeTournaments from the factory directly.
         // Covers cases where the PlayerProfile mapping isn't populated yet.
-        if (instanceMap.size === 0 || (instanceContract == null)) {
+        if (scanFactoryFallback && instanceMap.size === 0) {
           try {
             const activeCount = Number(await factoryContract.getActiveTournamentCount().catch(() => 0n));
             if (activeCount > 0) {
@@ -373,19 +384,24 @@ export const useV2PlayerActivity = (instanceContract, account, factoryContract, 
       setLoading(false);
       setSyncing(false);
     }
-  }, [instanceContract, account, factoryContract, runner, dismissedMatches]);
+  }, [enabled, instanceContract, account, factoryContract, runner, dismissedMatches, scanFactoryFallback]);
 
   // Re-fetch on account/contract change
   useEffect(() => {
+    if (!enabled) {
+      setLoading(false);
+      setSyncing(false);
+      return;
+    }
     fetchActivity(true);
-  }, [instanceContract, account, factoryContract, fetchActivity]);
+  }, [enabled, instanceContract, account, factoryContract, fetchActivity]);
 
-  // Poll every 5 seconds
+  // Poll at the configured interval
   useEffect(() => {
-    if (!account) return;
-    const interval = setInterval(() => fetchActivity(false), 5000);
+    if (!enabled || !account) return;
+    const interval = setInterval(() => fetchActivity(false), pollIntervalMs);
     return () => clearInterval(interval);
-  }, [account, fetchActivity]);
+  }, [account, enabled, fetchActivity, pollIntervalMs]);
 
   useEffect(() => {
     alertedMatchKeysRef.current = new Set();

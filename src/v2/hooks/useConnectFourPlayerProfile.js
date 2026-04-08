@@ -5,7 +5,11 @@ import { adjustProfileWinTotal, isProfileEnrollmentWin } from '../lib/playerProf
 const HISTORY_LIMIT = 20;
 const POLL_INTERVAL_MS = 8000;
 
-export function useConnectFourPlayerProfile(factoryContract, runner, account) {
+export function useConnectFourPlayerProfile(factoryContract, runner, account, options = {}) {
+  const {
+    enabled = true,
+    pollIntervalMs = POLL_INTERVAL_MS,
+  } = options;
   const [profileAddress, setProfileAddress] = useState(null);
   const [stats, setStats] = useState(null);
   const [enrollments, setEnrollments] = useState([]);
@@ -126,14 +130,18 @@ export function useConnectFourPlayerProfile(factoryContract, runner, account) {
   }, [factoryContract, runner, account]);
 
   useEffect(() => {
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
     fetch();
-  }, [fetch]);
+  }, [enabled, fetch]);
 
   useEffect(() => {
-    if (!factoryContract || !runner || !account) return;
-    const id = setInterval(() => fetch(), POLL_INTERVAL_MS);
+    if (!enabled || !factoryContract || !runner || !account) return;
+    const id = setInterval(() => fetch(), pollIntervalMs);
     return () => clearInterval(id);
-  }, [account, factoryContract, fetch, runner]);
+  }, [account, enabled, factoryContract, fetch, pollIntervalMs, runner]);
 
   return { profileAddress, stats, enrollments, loading, error, refetch: fetch };
 }
