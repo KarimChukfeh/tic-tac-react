@@ -71,6 +71,21 @@ const GAME_CONFIGS = {
       buttonGradient: 'from-blue-500 to-cyan-500',
       buttonHover: 'hover:from-blue-600 hover:to-cyan-600'
     }
+  },
+  checkers: {
+    gameName: 'Checkers',
+    icon: '⚪',
+    usesTrophyIcon: false,
+    colors: {
+      headerBg: 'from-amber-600/20 to-red-700/20',
+      headerBorder: 'border-amber-400/30',
+      text: 'text-amber-200',
+      textHover: 'hover:text-amber-100',
+      textMuted: 'text-amber-200/70',
+      icon: 'text-amber-300',
+      buttonGradient: 'from-amber-500 to-red-600',
+      buttonHover: 'hover:from-amber-600 hover:to-red-700'
+    }
   }
 };
 

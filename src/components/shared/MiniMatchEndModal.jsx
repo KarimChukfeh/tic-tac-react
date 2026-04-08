@@ -57,6 +57,8 @@ const MiniMatchEndModal = ({
         return 'Checkmate!';
       case 'connectfour':
         return 'Four connected!';
+      case 'checkers':
+        return 'Pieces cleared!';
       default:
         return 'Victory!';
     }
@@ -71,6 +73,8 @@ const MiniMatchEndModal = ({
         return "You've been checkmated";
       case 'connectfour':
         return 'Opponent connected four';
+      case 'checkers':
+        return 'No moves left';
       default:
         return 'Defeated';
     }

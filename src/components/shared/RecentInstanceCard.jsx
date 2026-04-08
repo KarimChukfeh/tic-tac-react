@@ -12,7 +12,7 @@ import { getTournamentCompletionText, getTournamentResolutionReasonValue } from 
 import { getV2TournamentResolutionText } from '../../v2/lib/reasonLabels';
 import UserManualAnchorLink from './UserManualAnchorLink';
 
-const RecentInstanceCard = ({ tierId, instanceId, contract, tierName = 'Tournament', walletAddress, reasonLabelMode = 'default' }) => {
+const RecentInstanceCard = ({ tierId, instanceId, contract, tierName = 'Tournament', walletAddress, reasonLabelMode = 'default', theme = 'default' }) => {
   const [recentData, setRecentData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showTooltip, setShowTooltip] = useState(false);
@@ -83,12 +83,14 @@ const RecentInstanceCard = ({ tierId, instanceId, contract, tierName = 'Tourname
     }
   };
 
+  const isGoldTheme = theme === 'gold';
+
   // Loading state
   if (loading) {
     return (
       <div className="py-8">
-        <div className="flex items-center justify-center gap-3 text-purple-300">
-          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-400"></div>
+        <div className={`flex items-center justify-center gap-3 ${isGoldTheme ? 'text-[#d4b866]' : 'text-purple-300'}`}>
+          <div className={`animate-spin rounded-full h-5 w-5 border-b-2 ${isGoldTheme ? 'border-[#fbbf24]' : 'border-purple-400'}`}></div>
           <p>Loading history...</p>
         </div>
       </div>
@@ -100,9 +102,9 @@ const RecentInstanceCard = ({ tierId, instanceId, contract, tierName = 'Tourname
     return (
       <div className="py-8">
         <div className="text-center">
-          <Clock className="mx-auto mb-3 text-purple-400/50" size={48} />
-          <h3 className="text-xl font-bold text-purple-300 mb-2">No History Yet</h3>
-          <p className="text-purple-400/70">
+          <Clock className={`mx-auto mb-3 ${isGoldTheme ? 'text-[#d4a012]/50' : 'text-purple-400/50'}`} size={48} />
+          <h3 className={`text-xl font-bold mb-2 ${isGoldTheme ? 'text-[#f5e6c8]' : 'text-purple-300'}`}>No History Yet</h3>
+          <p className={isGoldTheme ? 'text-[#d4b866]/70' : 'text-purple-400/70'}>
             This {tierName} instance hasn't been completed yet.
           </p>
         </div>
@@ -122,29 +124,29 @@ const RecentInstanceCard = ({ tierId, instanceId, contract, tierName = 'Tourname
           <Trophy className="text-yellow-400" size={28} />
           <h3 className="text-2xl font-bold text-white">
             Last Instance{' '}
-            <span className="relative text-lg font-normal text-purple-300">
+            <span className={`relative text-lg font-normal ${isGoldTheme ? 'text-[#d4b866]' : 'text-purple-300'}`}>
               <span
                 ref={tooltipRef}
                 onMouseEnter={() => setShowTooltip(true)}
                 onMouseLeave={() => setShowTooltip(false)}
-                className="cursor-help border-b border-dotted border-purple-400/50"
+                className={`cursor-help border-b border-dotted ${isGoldTheme ? 'border-[#d4a012]/50' : 'border-purple-400/50'}`}
               >
                 {formatRelativeTime(recentData.endTime)}
               </span>
               {showTooltip && (
-                <div className="absolute left-0 bottom-full mb-1 z-10 bg-slate-800 border border-purple-500/50 rounded-lg px-3 py-2 shadow-lg whitespace-nowrap">
-                  <p className="text-sm text-purple-200">{formatDate(recentData.endTime)}</p>
+                <div className={`absolute left-0 bottom-full mb-1 z-10 rounded-lg px-3 py-2 shadow-lg whitespace-nowrap ${isGoldTheme ? 'bg-[#120b00] border border-[#d4a012]/40' : 'bg-slate-800 border border-purple-500/50'}`}>
+                  <p className={`text-sm ${isGoldTheme ? 'text-[#f5e6c8]' : 'text-purple-200'}`}>{formatDate(recentData.endTime)}</p>
                 </div>
               )}
             </span>
           </h3>
         </div>
-        <p className="text-sm text-purple-300 ml-10">
+        <p className={`text-sm ml-10 ${isGoldTheme ? 'text-[#d4b866]' : 'text-purple-300'}`}>
           Resolved via{' '}
           {reasonData.link ? (
             <UserManualAnchorLink
               href={reasonData.link}
-              className="font-semibold text-white hover:text-cyan-300 underline transition-colors"
+              className={`font-semibold text-white underline transition-colors ${isGoldTheme ? 'hover:text-[#fbbf24]' : 'hover:text-cyan-300'}`}
             >
               {reasonData.text}
             </UserManualAnchorLink>
@@ -162,7 +164,7 @@ const RecentInstanceCard = ({ tierId, instanceId, contract, tierName = 'Tourname
           <div className="flex items-start gap-3">
             <Award className="text-green-400 mt-1 flex-shrink-0" size={20} />
             <div className="min-w-0">
-              <p className="text-sm text-purple-300 font-semibold whitespace-nowrap">Prize Pool</p>
+              <p className={`text-sm font-semibold whitespace-nowrap ${isGoldTheme ? 'text-[#d4b866]' : 'text-purple-300'}`}>Prize Pool</p>
               <p className="text-white font-mono text-lg whitespace-nowrap">
                 {ethers.formatEther(recentData.prizePool)} ETH
               </p>
@@ -173,7 +175,7 @@ const RecentInstanceCard = ({ tierId, instanceId, contract, tierName = 'Tourname
           <div className="flex items-start gap-3">
             <Trophy className="text-yellow-400 mt-1 flex-shrink-0" size={20} />
             <div className="min-w-0">
-              <p className="text-sm text-purple-300 font-semibold whitespace-nowrap">Winner</p>
+              <p className={`text-sm font-semibold whitespace-nowrap ${isGoldTheme ? 'text-[#d4b866]' : 'text-purple-300'}`}>Winner</p>
               <p className={`font-mono whitespace-nowrap ${
                 recentData.winner === '0x0000000000000000000000000000000000000000'
                   ? 'text-white'
@@ -199,9 +201,9 @@ const RecentInstanceCard = ({ tierId, instanceId, contract, tierName = 'Tourname
         {/* Players */}
         {recentData.players && recentData.players.length > 0 && (
           <div className="flex items-start gap-3">
-            <Users className="text-cyan-400 mt-1" size={20} />
+            <Users className={`mt-1 ${isGoldTheme ? 'text-[#fbbf24]' : 'text-cyan-400'}`} size={20} />
             <div className="flex-1">
-              <p className="text-sm text-purple-300 font-semibold mb-2">Players</p>
+              <p className={`text-sm font-semibold mb-2 ${isGoldTheme ? 'text-[#d4b866]' : 'text-purple-300'}`}>Players</p>
               <div className="flex flex-wrap gap-2">
                 {recentData.players.map((player, index) => {
                   const isConnectedWallet = walletAddress && player.toLowerCase() === walletAddress.toLowerCase();
@@ -211,7 +213,9 @@ const RecentInstanceCard = ({ tierId, instanceId, contract, tierName = 'Tourname
                       className={`rounded-lg px-3 py-1 font-mono text-sm inline-flex items-center gap-2 ${
                         isConnectedWallet
                           ? 'bg-yellow-400/20 border-2 border-yellow-400 text-yellow-400 font-bold'
-                          : 'bg-slate-700/50 border border-cyan-500/30 text-white'
+                          : isGoldTheme
+                            ? 'bg-[#1f1400] border border-[#d4a012]/30 text-white'
+                            : 'bg-slate-700/50 border border-cyan-500/30 text-white'
                       }`}
                     >
                       {shortenAddress(player)}

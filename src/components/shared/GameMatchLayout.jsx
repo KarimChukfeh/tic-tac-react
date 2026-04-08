@@ -62,6 +62,17 @@ const GAME_THEMES = {
     player2Color: 'neonblue',
     moveTimeout: 60, // Legacy: Now uses total match time (300s per player)
     completeText: 'Match Complete!'
+  },
+  checkers: {
+    title: 'Checkers Match',
+    icon: null,
+    headerBg: 'from-amber-600/20 to-red-700/20',
+    headerBorder: 'border-amber-400/30',
+    textMuted: 'text-amber-200',
+    player1Color: 'white',
+    player2Color: 'black',
+    moveTimeout: 60,
+    completeText: 'Match Complete!'
   }
 };
 

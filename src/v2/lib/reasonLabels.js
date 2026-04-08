@@ -135,6 +135,7 @@ export const getV2CompletionReasonText = (reason, userWon, gameType = 'tictactoe
       if (userWon) {
         if (gameType === 'chess') return 'Checkmate!';
         if (gameType === 'connect4') return 'Connect Four!';
+        if (gameType === 'checkers') return 'You Won!';
         return 'You Won!';
       }
       return 'Defeat';

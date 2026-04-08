@@ -182,7 +182,8 @@ const PlayerActivity = ({
     const titles = {
       'tictactoe': 'TicTacToe',
       'chess': 'Chess',
-      'connect4': 'Connect Four'
+      'connect4': 'Connect Four',
+      'checkers': 'Checkers',
     };
     return titles[name] || name;
   };
@@ -310,6 +311,9 @@ const PlayerActivity = ({
   const topPositionDesktop = gamesCardHeight > 0
     ? BASE_TOP_DESKTOP + gamesCardHeight + EXPANDED_BOTTOM_MARGIN
     : BASE_TOP_DESKTOP + COLLAPSED_BUTTON_HEIGHT_DESKTOP + SPACING_DESKTOP;
+  const shellClass = isElite
+    ? 'bg-gradient-to-br from-[#120b00]/95 via-[#1f1400]/95 to-[#2d1a00]/95 border-[#d4a012]/30 [&::-webkit-scrollbar-track]:bg-[#120b00]/50 [&::-webkit-scrollbar-thumb]:from-[#fbbf24]/70 [&::-webkit-scrollbar-thumb]:to-[#d97706]/70 [&::-webkit-scrollbar-thumb]:border-[#d4a012]/30 hover:[&::-webkit-scrollbar-thumb]:from-[#fbbf24] hover:[&::-webkit-scrollbar-thumb]:to-[#f59e0b] [scrollbar-color:rgb(251_191_36_/_0.7)_rgb(18_11_0_/_0.5)]'
+    : 'bg-gradient-to-br from-slate-900/95 to-slate-800/95 border-purple-400/40 [&::-webkit-scrollbar-track]:bg-purple-950/40 [&::-webkit-scrollbar-thumb]:from-purple-500/70 [&::-webkit-scrollbar-thumb]:to-blue-500/70 [&::-webkit-scrollbar-thumb]:border-purple-400/30 hover:[&::-webkit-scrollbar-thumb]:from-purple-400 hover:[&::-webkit-scrollbar-thumb]:to-blue-400 [scrollbar-color:rgb(168_85_247_/_0.7)_rgb(24_24_27_/_0.4)]';
 
   return (
     <div
@@ -349,7 +353,7 @@ const PlayerActivity = ({
 
           {/* Sync Circle Animation */}
           {syncing && (
-            <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-cyan-400 animate-spin"></div>
+            <div className={`absolute inset-0 rounded-full border-2 border-transparent animate-spin ${isElite ? 'border-t-[#fbbf24]' : 'border-t-cyan-400'}`}></div>
           )}
 
           {/* Activity Badges */}
@@ -402,7 +406,7 @@ const PlayerActivity = ({
       {isExpanded && (
         <div
           ref={expandedPanelRef}
-          className="max-md:fixed max-md:bottom-20 max-md:left-4 max-md:right-4 max-md:w-auto md:mt-3 bg-gradient-to-br from-slate-900/95 to-slate-800/95 backdrop-blur-lg rounded-2xl p-4 md:p-6 pb-8 border-2 border-purple-400/40 shadow-2xl md:w-[464px] overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-purple-950/40 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-purple-500/70 [&::-webkit-scrollbar-thumb]:to-blue-500/70 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border [&::-webkit-scrollbar-thumb]:border-purple-400/30 hover:[&::-webkit-scrollbar-thumb]:from-purple-400 hover:[&::-webkit-scrollbar-thumb]:to-blue-400 [scrollbar-width:thin] [scrollbar-color:rgb(168_85_247_/_0.7)_rgb(24_24_27_/_0.4)]"
+          className={`max-md:fixed max-md:bottom-20 max-md:left-4 max-md:right-4 max-md:w-auto md:mt-3 backdrop-blur-lg rounded-2xl p-4 md:p-6 pb-8 border-2 shadow-2xl md:w-[464px] overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border [scrollbar-width:thin] ${shellClass}`}
           style={{
             maxHeight: isDesktop ? `calc(100vh - ${topPositionDesktop}px - 6rem)` : 'calc(100vh - 7rem)'
           }}
@@ -420,6 +424,8 @@ const PlayerActivity = ({
                     </span>
                   ) : gameName === 'connect4' ? (
                     <span className="w-5 h-5 rounded-full inline-block bg-red-500"></span>
+                  ) : gameName === 'checkers' ? (
+                    <span className="w-5 h-5 rounded-full inline-block bg-stone-100 border border-stone-300"></span>
                   ) : (
                     <span className="text-2xl">♔</span>
                   )}
@@ -452,7 +458,7 @@ const PlayerActivity = ({
             <div className="space-y-1">
               <div className="text-xs">
                 <span className={isElite ? 'text-[#fbbf24]' : 'text-blue-400'}>You are: </span>
-                <span className={`font-mono font-bold ${isElite ? 'text-[#fbbf24]' : 'text-blue-400'}`}>{shortenAddress(account)}</span>
+                <span className={`font-mono font-bold ${isElite ? 'text-[#f5e6c8]' : 'text-blue-400'}`}>{shortenAddress(account)}</span>
               </div>
             </div>
           </div>
@@ -566,7 +572,11 @@ const PlayerActivity = ({
                               /* Dismiss button for completed matches */
                               <button
                                 onClick={() => handleDismissMatch(match.tierId, match.instanceId, match.roundIdx, match.matchIdx)}
-                                className="flex-1 bg-blue-600/20 hover:bg-blue-600/40 text-blue-300 rounded-lg transition-all flex items-center justify-center gap-2 py-2 px-4 font-semibold text-sm"
+                                className={`flex-1 rounded-lg transition-all flex items-center justify-center gap-2 py-2 px-4 font-semibold text-sm ${
+                                  isElite
+                                    ? 'bg-[#fbbf24]/15 hover:bg-[#fbbf24]/25 text-[#f5e6c8] border border-[#d4a012]/30'
+                                    : 'bg-blue-600/20 hover:bg-blue-600/40 text-blue-300'
+                                }`}
                                 title="Remove this match from the list"
                               >
                                 <X size={16} />
@@ -717,14 +727,18 @@ const PlayerActivity = ({
               {activity.inProgressTournaments && activity.inProgressTournaments.length > 0 && (
                 <div className="mb-6">
                   <h4 className={`font-semibold text-sm mb-3 flex items-center gap-2 uppercase ${isElite ? 'text-[#fff8e7]' : 'text-purple-300'}`}>
-                    <Trophy size={16} className="text-cyan-400" />
+                    <Trophy size={16} className={isElite ? 'text-[#fbbf24]' : 'text-cyan-400'} />
                     Tournaments In Progress ({activity.inProgressTournaments.length})
                   </h4>
                   <div className="space-y-2">
                     {activity.inProgressTournaments.map((tournament) => (
                       <div
                         key={`${tournament.tierId}-${tournament.instanceId}`}
-                        className="bg-black/30 border border-cyan-400/30 rounded-lg p-3 hover:border-cyan-400/60 transition-all"
+                        className={`bg-black/30 rounded-lg p-3 transition-all ${
+                          isElite
+                            ? 'border border-[#d4a012]/30 hover:border-[#fbbf24]/50'
+                            : 'border border-cyan-400/30 hover:border-cyan-400/60'
+                        }`}
                       >
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-white font-semibold text-sm">
@@ -735,7 +749,7 @@ const PlayerActivity = ({
                           Round {tournament.currentRound + 1} in progress
                         </div>
                         {tournament.playerRound !== null && (
-                          <div className="text-cyan-400 text-xs mb-3 font-semibold">
+                          <div className={`text-xs mb-3 font-semibold ${isElite ? 'text-[#d4b866]' : 'text-cyan-400'}`}>
                             You are in Round {tournament.playerRound + 1}
                           </div>
                         )}

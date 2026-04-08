@@ -86,6 +86,15 @@ const RecentMatchesCard = ({
   const showMatchesLoadingState = (loadingRecentMatches || v2MatchesLoading) && !hasRenderedMatches;
   const hasTournamentData = Boolean(displayTournamentStats) || displayTournamentEnrollments.length > 0;
   const showTournamentLoadingState = Boolean(playerProfile?.loading) && !hasTournamentData;
+  const shellClass = isElite
+    ? 'bg-gradient-to-br from-[#120b00]/95 via-[#1f1400]/95 to-[#2d1a00]/95 border-[#d4a012]/30'
+    : 'bg-gradient-to-br from-teal-900/95 to-cyan-900/95 border-teal-400/40';
+  const headerScrolledClass = isElite
+    ? 'bg-gradient-to-br from-[#120b00]/95 via-[#1f1400]/95 to-[#2d1a00]/95 backdrop-blur-lg border-b border-[#d4a012]/20 shadow-lg'
+    : 'bg-gradient-to-br from-teal-900/95 to-cyan-900/95 backdrop-blur-lg border-b border-teal-400/20 shadow-lg';
+  const scrollClass = isElite
+    ? '[&::-webkit-scrollbar-track]:bg-[#120b00]/50 [&::-webkit-scrollbar-thumb]:from-[#fbbf24]/70 [&::-webkit-scrollbar-thumb]:to-[#d97706]/70 [&::-webkit-scrollbar-thumb]:border-[#d4a012]/30 hover:[&::-webkit-scrollbar-thumb]:from-[#fbbf24] hover:[&::-webkit-scrollbar-thumb]:to-[#f59e0b] [scrollbar-color:rgb(251_191_36_/_0.7)_rgb(18_11_0_/_0.5)]'
+    : '[&::-webkit-scrollbar-track]:bg-teal-950/40 [&::-webkit-scrollbar-thumb]:from-teal-500/70 [&::-webkit-scrollbar-thumb]:to-cyan-500/70 [&::-webkit-scrollbar-thumb]:border-teal-400/30 hover:[&::-webkit-scrollbar-thumb]:from-teal-400 hover:[&::-webkit-scrollbar-thumb]:to-cyan-400 [scrollbar-color:rgb(20_184_166_/_0.7)_rgb(4_47_46_/_0.4)]';
 
   // Use external state if provided, otherwise use internal state
   const isExpanded = externalIsExpanded !== undefined ? externalIsExpanded : internalIsExpanded;
@@ -382,6 +391,24 @@ const RecentMatchesCard = ({
                   });
                 }
               }
+            } else if (gameName === 'checkers') {
+              moveHistory = movesString
+                .split(',')
+                .map((entry) => entry.trim())
+                .filter(Boolean)
+                .map((entry, moveIndex) => {
+                  const match = entry.match(/^(\d{1,2})([-x])(\d{1,2})(K?)$/i);
+                  if (!match) return null;
+                  return {
+                    player: moveIndex % 2 === 0 ? 'Light' : 'Dark',
+                    move: entry,
+                    from: Number.parseInt(match[1], 10),
+                    to: Number.parseInt(match[3], 10),
+                    isCapture: match[2] === 'x',
+                    crowned: Boolean(match[4]),
+                  };
+                })
+                .filter(Boolean);
             }
           } catch (err) {
             console.warn('[RecentMatches] Error parsing moves for match:', err);
@@ -914,8 +941,79 @@ const RecentMatchesCard = ({
         p = p >> 2n;
       }
       return board;
+    } else if (gameType === 'checkers') {
+      const board = [];
+      let p = BigInt(packedBoard);
+      for (let i = 0; i < 32; i++) {
+        board.push(Number(p & 0xFn));
+        p = p >> 4n;
+      }
+      return board;
     }
     return [];
+  };
+
+  const renderRoleMarker = (symbol, type = gameName) => {
+    if (type === 'chess') {
+      return (
+        <img
+          src={symbol === 'White' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
+          alt={symbol}
+          className="w-3.5 h-3.5 inline-block"
+          draggable="false"
+        />
+      );
+    }
+
+    if (type === 'tictactoe') {
+      return symbol === 'X' ? (
+        <span className="w-3 h-3 inline-block relative">
+          <span className="absolute inset-0 bg-blue-500 transform rotate-45" style={{width: '2px', height: '100%', left: '50%', marginLeft: '-1px'}}></span>
+          <span className="absolute inset-0 bg-blue-500 transform -rotate-45" style={{width: '2px', height: '100%', left: '50%', marginLeft: '-1px'}}></span>
+        </span>
+      ) : (
+        <span className="w-3 h-3 rounded-full inline-block border-2 border-red-500"></span>
+      );
+    }
+
+    if (type === 'connect4') {
+      return <span className={`w-3 h-3 rounded-full inline-block ${symbol === 'Red' ? 'bg-red-500' : 'bg-blue-500'}`}></span>;
+    }
+
+    if (type === 'checkers') {
+      return <span className={`w-3 h-3 rounded-full inline-block border ${symbol === 'Light' ? 'bg-stone-100 border-stone-300' : 'bg-stone-900 border-stone-700'}`}></span>;
+    }
+
+    return <span>({symbol})</span>;
+  };
+
+  const renderExpandedMovePlayer = (move) => {
+    if (gameName === 'chess') {
+      return (
+        <img
+          src={move.player === '♚' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
+          alt={move.player === '♚' ? 'White' : 'Black'}
+          className="w-5 h-5"
+          draggable="false"
+        />
+      );
+    }
+
+    if (gameName === 'checkers') {
+      return <span className={`w-4 h-4 rounded-full inline-block border ${move.player === 'Light' ? 'bg-stone-100 border-stone-300' : 'bg-stone-900 border-stone-700'}`}></span>;
+    }
+
+    return <span className="font-bold text-center">{move.player}</span>;
+  };
+
+  const toCheckersBoardCells = (compactBoard) => {
+    const board = Array(64).fill(null);
+    for (let index = 0; index < compactBoard.length; index++) {
+      const row = Math.floor(index / 4);
+      const col = (index % 4) * 2 + ((row + 1) % 2);
+      board[(row * 8) + col] = compactBoard[index];
+    }
+    return board;
   };
 
   // Calculate captured pieces for chess by comparing current board to starting position
@@ -1093,9 +1191,13 @@ const RecentMatchesCard = ({
           className={`max-md:mx-auto bg-gradient-to-br backdrop-blur-lg rounded-full p-2 md:p-4 transition-all md:shadow-xl relative group ${
             disabled
               ? 'opacity-100 cursor-not-allowed from-gray-600/90 to-gray-700/90 border-2 border-gray-500/40'
-              : 'from-teal-600/90 to-cyan-600/90 ' + (isExpanded
-              ? 'border-2 border-teal-300 md:shadow-[0_0_20px_rgba(94,234,212,0.6)] scale-105'
-              : 'md:border-2 md:border-teal-400/40 md:hover:border-teal-400/70 hover:scale-110')
+              : (isElite ? 'from-[#fbbf24]/90 to-[#d97706]/90 ' : 'from-teal-600/90 to-cyan-600/90 ') + (isExpanded
+              ? isElite
+                ? 'border-2 border-[#f5e6c8] md:shadow-[0_0_20px_rgba(251,191,36,0.45)] scale-105'
+                : 'border-2 border-teal-300 md:shadow-[0_0_20px_rgba(94,234,212,0.6)] scale-105'
+              : isElite
+                ? 'md:border-2 md:border-[#d4a012]/40 md:hover:border-[#fbbf24]/70 hover:scale-110'
+                : 'md:border-2 md:border-teal-400/40 md:hover:border-teal-400/70 hover:scale-110')
           }`}
           aria-label={disabled ? "Connect wallet to access recent matches" : isExpanded ? "Close recent matches" : "Open recent matches"}
           title={disabled ? "Connect Wallet to View Your Match History" : ""}
@@ -1104,7 +1206,7 @@ const RecentMatchesCard = ({
 
           {/* Sync Circle Animation */}
           {syncing && (
-            <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-cyan-400 animate-spin"></div>
+            <div className={`absolute inset-0 rounded-full border-2 border-transparent animate-spin ${isElite ? 'border-t-[#fbbf24]' : 'border-t-cyan-400'}`}></div>
           )}
 
           {/* Tooltip - Desktop only */}
@@ -1145,7 +1247,7 @@ const RecentMatchesCard = ({
       {isExpanded && (
         <div
           ref={panelShellRef}
-          className="max-md:fixed max-md:bottom-20 max-md:left-4 max-md:right-4 max-md:w-auto md:mt-3 bg-gradient-to-br from-teal-900/95 to-cyan-900/95 backdrop-blur-lg rounded-2xl border-2 border-teal-400/40 shadow-2xl md:w-[464px] overflow-hidden flex flex-col"
+          className={`max-md:fixed max-md:bottom-20 max-md:left-4 max-md:right-4 max-md:w-auto md:mt-3 backdrop-blur-lg rounded-2xl border-2 shadow-2xl md:w-[464px] overflow-hidden flex flex-col ${shellClass}`}
           style={{
             maxHeight: isDesktop ? `calc(100vh - ${topPositionDesktop}px - 6rem)` : 'min(80vh, calc(100vh - 7rem))'
           }}
@@ -1153,12 +1255,12 @@ const RecentMatchesCard = ({
           {/* Sticky Header */}
           <div className={`sticky top-0 z-10 px-4 md:px-6 pt-4 md:pt-5 pb-2 transition-all duration-300 ${
             isScrolled
-              ? 'bg-gradient-to-br from-teal-900/95 to-cyan-900/95 backdrop-blur-lg border-b border-teal-400/20 shadow-lg'
+              ? headerScrolledClass
               : ''
           }`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <History size={24} className="text-teal-400" />
+                <History size={24} className={isElite ? 'text-[#fbbf24]' : 'text-teal-400'} />
                 <h3 className="text-white font-bold text-lg">History</h3>
               </div>
               <div className="flex items-center gap-1">
@@ -1198,19 +1300,19 @@ const RecentMatchesCard = ({
               </div>
             </div>
           </div>
-          <hr className="border-purple-100/10" />
+          <hr className={isElite ? 'border-[#d4a012]/10' : 'border-purple-100/10'} />
 
           {/* Tab Bar */}
-          <div className="flex border-b border-teal-400/20 px-4 md:px-6">
+          <div className={`flex px-4 md:px-6 ${isElite ? 'border-b border-[#d4a012]/20' : 'border-b border-teal-400/20'}`}>
             <button
               onClick={() => setHistoryTab('tournaments')}
-              className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors ${historyTab === 'tournaments' ? 'border-teal-400 text-teal-300' : 'border-transparent text-slate-400 hover:text-slate-200'}`}
+              className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors ${historyTab === 'tournaments' ? (isElite ? 'border-[#fbbf24] text-[#f5e6c8]' : 'border-teal-400 text-teal-300') : 'border-transparent text-slate-400 hover:text-slate-200'}`}
             >
               Tournaments
             </button>
             <button
               onClick={() => setHistoryTab('matches')}
-              className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors ${historyTab === 'matches' ? 'border-teal-400 text-teal-300' : 'border-transparent text-slate-400 hover:text-slate-200'}`}
+              className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors ${historyTab === 'matches' ? (isElite ? 'border-[#fbbf24] text-[#f5e6c8]' : 'border-teal-400 text-teal-300') : 'border-transparent text-slate-400 hover:text-slate-200'}`}
             >
               Matches
             </button>
@@ -1219,7 +1321,7 @@ const RecentMatchesCard = ({
           {/* Scrollable Content */}
           <div
             ref={expandedPanelRef}
-            className="p-4 md:p-6 pb-8 overflow-y-auto overflow-x-hidden flex-1 min-h-0 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-teal-950/40 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-teal-500/70 [&::-webkit-scrollbar-thumb]:to-cyan-500/70 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border [&::-webkit-scrollbar-thumb]:border-teal-400/30 hover:[&::-webkit-scrollbar-thumb]:from-teal-400 hover:[&::-webkit-scrollbar-thumb]:to-cyan-400 [scrollbar-width:thin] [scrollbar-color:rgb(20_184_166_/_0.7)_rgb(4_47_46_/_0.4)]"
+            className={`p-4 md:p-6 pb-8 overflow-y-auto overflow-x-hidden flex-1 min-h-0 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border [scrollbar-width:thin] ${scrollClass}`}
           >
 
           {/* Tournaments Tab */}
@@ -1227,29 +1329,29 @@ const RecentMatchesCard = ({
             <>
               {showTournamentLoadingState ? (
                 <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-teal-400 mx-auto"></div>
+                  <div className={`animate-spin rounded-full h-6 w-6 border-b-2 mx-auto ${isElite ? 'border-[#fbbf24]' : 'border-teal-400'}`}></div>
                   <p className="text-slate-400 mt-2 text-xs">Loading tournament history...</p>
                 </div>
               ) : displayTournamentStats ? (
                 <>
                   {playerProfile?.loading && (
-                    <div className="flex items-center gap-2 text-[11px] text-teal-300 mb-3">
+                    <div className={`flex items-center gap-2 text-[11px] mb-3 ${isElite ? 'text-[#d4b866]' : 'text-teal-300'}`}>
                       <RefreshCw size={12} className="animate-spin" />
                       <span>Syncing latest tournaments...</span>
                     </div>
                   )}
                   {/* Summary metrics */}
                   <div className="grid grid-cols-3 gap-3 mb-5">
-                    <div className="bg-blue-500/15 border border-blue-400/30 rounded-xl p-3 text-center">
-                      <div className="text-xs font-semibold text-blue-300 mb-1">Played</div>
+                    <div className={`rounded-xl p-3 text-center ${isElite ? 'bg-[#fbbf24]/10 border border-[#d4a012]/30' : 'bg-blue-500/15 border border-blue-400/30'}`}>
+                      <div className={`text-xs font-semibold mb-1 ${isElite ? 'text-[#d4b866]' : 'text-blue-300'}`}>Played</div>
                       <div className="text-xl font-bold text-white">{displayTournamentStats.totalPlayed}</div>
                     </div>
                     <div className="bg-green-500/15 border border-green-400/30 rounded-xl p-3 text-center">
                       <div className="text-xs font-semibold text-green-300 mb-1">Wins</div>
                       <div className="text-xl font-bold text-white">{displayTournamentStats.totalWins}</div>
                     </div>
-                    <div className="bg-green-500/15 border border-green-400/30 rounded-xl p-3 text-center">
-                      <div className="text-xs font-semibold mb-1 text-green-300">Payouts (ETH)</div>
+                    <div className={`rounded-xl p-3 text-center ${isElite ? 'bg-[#f59e0b]/10 border border-[#d4a012]/30' : 'bg-green-500/15 border border-green-400/30'}`}>
+                      <div className={`text-xs font-semibold mb-1 ${isElite ? 'text-[#fbbf24]' : 'text-green-300'}`}>Payouts (ETH)</div>
                       <div className="text-sm font-bold text-white leading-tight">
                         {formatEthAmount(displayTournamentEnrollments.reduce((sum, r) => sum + getRecordPayout(r), 0n))}
                       </div>
@@ -1260,7 +1362,7 @@ const RecentMatchesCard = ({
                   {displayTournamentEnrollments.length > 0 ? (
                     <div className="space-y-2">
                       {displayTournamentEnrollments.map((rec, idx) => (
-                        <div key={idx} ref={(el) => { if (el && rec.instance) tournamentItemRefs.current[rec.instance.toLowerCase()] = el; }} className="bg-slate-900/60 border border-purple-400/15 rounded-xl px-3 py-2.5">
+                        <div key={idx} ref={(el) => { if (el && rec.instance) tournamentItemRefs.current[rec.instance.toLowerCase()] = el; }} className={`rounded-xl px-3 py-2.5 ${isElite ? 'bg-[#120b00]/70 border border-[#d4a012]/20' : 'bg-slate-900/60 border border-purple-400/15'}`}>
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 min-w-0">
                               {rec.concluded ? (
@@ -1285,7 +1387,7 @@ const RecentMatchesCard = ({
                                 handleSetExpanded(false);
                                 onViewTournament(rec.instance);
                               }}
-                              className="text-purple-300 hover:text-purple-200 transition-colors shrink-0"
+                              className={`transition-colors shrink-0 ${isElite ? 'text-[#d4b866] hover:text-[#f5e6c8]' : 'text-purple-300 hover:text-purple-200'}`}
                               title="View tournament"
                             >
                               <ExternalLink size={16} />
@@ -1308,7 +1410,7 @@ const RecentMatchesCard = ({
                                   : null
                             )}
                             {showTournamentRaffles && rec.concluded && rec.wonRaffle && (rec.rafflePool ?? 0n) > 0n && (
-                              <span className="text-cyan-300 text-[10px]">+{ethers.formatEther(rec.rafflePool)} ETH raffle</span>
+                              <span className={`text-[10px] ${isElite ? 'text-[#fbbf24]' : 'text-cyan-300'}`}>+{ethers.formatEther(rec.rafflePool)} ETH raffle</span>
                             )}
                           </div>
                           {rec.concluded && (
@@ -1403,6 +1505,9 @@ const RecentMatchesCard = ({
                 } else if (gameName === 'chess') {
                   player1Symbol = isPlayer1First ? 'White' : 'Black';
                   player2Symbol = isPlayer1First ? 'Black' : 'White';
+                } else if (gameName === 'checkers') {
+                  player1Symbol = 'Light';
+                  player2Symbol = 'Dark';
                 }
 
                 // For account/opponent display when account is a player
@@ -1501,27 +1606,7 @@ const RecentMatchesCard = ({
                             </div>
                             <div className="flex items-center gap-1">
                               <span className="font-normal text-[9px]">as</span>
-                              {gameName === 'chess' ? (
-                                <img
-                                  src={accountSymbol === 'White' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
-                                  alt={accountSymbol}
-                                  className="w-3.5 h-3.5 inline-block"
-                                  draggable="false"
-                                />
-                              ) : gameName === 'tictactoe' ? (
-                                accountSymbol === 'X' ? (
-                                  <span className="w-3 h-3 inline-block relative">
-                                    <span className="absolute inset-0 bg-blue-500 transform rotate-45" style={{width: '2px', height: '100%', left: '50%', marginLeft: '-1px'}}></span>
-                                    <span className="absolute inset-0 bg-blue-500 transform -rotate-45" style={{width: '2px', height: '100%', left: '50%', marginLeft: '-1px'}}></span>
-                                  </span>
-                                ) : (
-                                  <span className="w-3 h-3 rounded-full inline-block border-2 border-red-500"></span>
-                                )
-                              ) : gameName === 'connect4' ? (
-                                <span className={`w-3 h-3 rounded-full inline-block ${accountSymbol === 'Red' ? 'bg-red-500' : 'bg-blue-500'}`}></span>
-                              ) : (
-                                <span>({accountSymbol})</span>
-                              )}
+                              {renderRoleMarker(accountSymbol)}
                             </div>
                           </span>
 
@@ -1532,27 +1617,7 @@ const RecentMatchesCard = ({
                             </div>
                             <div className="flex items-center gap-1">
                               <span className="font-normal text-[9px]">as</span>
-                              {gameName === 'chess' ? (
-                                <img
-                                  src={opponentSymbol === 'White' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
-                                  alt={opponentSymbol}
-                                  className="w-3.5 h-3.5 inline-block"
-                                  draggable="false"
-                                />
-                              ) : gameName === 'tictactoe' ? (
-                                opponentSymbol === 'X' ? (
-                                  <span className="w-3 h-3 inline-block relative">
-                                    <span className="absolute inset-0 bg-blue-500 transform rotate-45" style={{width: '2px', height: '100%', left: '50%', marginLeft: '-1px'}}></span>
-                                    <span className="absolute inset-0 bg-blue-500 transform -rotate-45" style={{width: '2px', height: '100%', left: '50%', marginLeft: '-1px'}}></span>
-                                  </span>
-                                ) : (
-                                  <span className="w-3 h-3 rounded-full inline-block border-2 border-red-500"></span>
-                                )
-                              ) : gameName === 'connect4' ? (
-                                <span className={`w-3 h-3 rounded-full inline-block ${opponentSymbol === 'Red' ? 'bg-red-500' : 'bg-blue-500'}`}></span>
-                              ) : (
-                                <span>({opponentSymbol})</span>
-                              )}
+                              {renderRoleMarker(opponentSymbol)}
                             </div>
                           </span>
                         </>
@@ -1565,27 +1630,7 @@ const RecentMatchesCard = ({
                             </div>
                             <div className="flex items-center gap-1">
                               <span className="font-normal text-[9px]">as</span>
-                              {gameName === 'chess' ? (
-                                <img
-                                  src={player1Symbol === 'White' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
-                                  alt={player1Symbol}
-                                  className="w-3.5 h-3.5 inline-block"
-                                  draggable="false"
-                                />
-                              ) : gameName === 'tictactoe' ? (
-                                player1Symbol === 'X' ? (
-                                  <span className="w-3 h-3 inline-block relative">
-                                    <span className="absolute inset-0 bg-blue-500 transform rotate-45" style={{width: '2px', height: '100%', left: '50%', marginLeft: '-1px'}}></span>
-                                    <span className="absolute inset-0 bg-blue-500 transform -rotate-45" style={{width: '2px', height: '100%', left: '50%', marginLeft: '-1px'}}></span>
-                                  </span>
-                                ) : (
-                                  <span className="w-3 h-3 rounded-full inline-block border-2 border-red-500"></span>
-                                )
-                              ) : gameName === 'connect4' ? (
-                                <span className={`w-3 h-3 rounded-full inline-block ${player1Symbol === 'Red' ? 'bg-red-500' : 'bg-blue-500'}`}></span>
-                              ) : (
-                                <span>({player1Symbol})</span>
-                              )}
+                              {renderRoleMarker(player1Symbol)}
                             </div>
                           </span>
 
@@ -1596,27 +1641,7 @@ const RecentMatchesCard = ({
                             </div>
                             <div className="flex items-center gap-1">
                               <span className="font-normal text-[9px]">as</span>
-                              {gameName === 'chess' ? (
-                                <img
-                                  src={player2Symbol === 'White' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
-                                  alt={player2Symbol}
-                                  className="w-3.5 h-3.5 inline-block"
-                                  draggable="false"
-                                />
-                              ) : gameName === 'tictactoe' ? (
-                                player2Symbol === 'X' ? (
-                                  <span className="w-3 h-3 inline-block relative">
-                                    <span className="absolute inset-0 bg-blue-500 transform rotate-45" style={{width: '2px', height: '100%', left: '50%', marginLeft: '-1px'}}></span>
-                                    <span className="absolute inset-0 bg-blue-500 transform -rotate-45" style={{width: '2px', height: '100%', left: '50%', marginLeft: '-1px'}}></span>
-                                  </span>
-                                ) : (
-                                  <span className="w-3 h-3 rounded-full inline-block border-2 border-red-500"></span>
-                                )
-                              ) : gameName === 'connect4' ? (
-                                <span className={`w-3 h-3 rounded-full inline-block ${player2Symbol === 'Red' ? 'bg-red-500' : 'bg-blue-500'}`}></span>
-                              ) : (
-                                <span>({player2Symbol})</span>
-                              )}
+                              {renderRoleMarker(player2Symbol)}
                             </div>
                           </span>
                         </>
@@ -1920,6 +1945,50 @@ const RecentMatchesCard = ({
                           );
                         })()}
 
+                        {gameName === 'checkers' && (() => {
+                          const compactBoard = unpackBoard(match.board, 'checkers');
+                          const board = toCheckersBoardCells(compactBoard);
+                          const currentMoveIndex = moveIndices[matchKey] ?? match.moveHistory.length - 1;
+                          const currentMove = currentMoveIndex >= 0 && currentMoveIndex < match.moveHistory.length
+                            ? match.moveHistory[currentMoveIndex]
+                            : null;
+
+                          return (
+                            <div className="flex justify-center">
+                              <div className="grid grid-cols-8 gap-0 rounded-lg overflow-hidden border border-amber-500/30">
+                                {board.map((piece, idx) => {
+                                  const row = Math.floor(idx / 8);
+                                  const col = idx % 8;
+                                  const isDark = (row + col) % 2 === 1;
+                                  const compactIndex = isDark ? (row * 4) + Math.floor(col / 2) : null;
+                                  const isCurrentMoveFrom = compactIndex !== null && currentMove?.from === compactIndex;
+                                  const isCurrentMoveTo = compactIndex !== null && currentMove?.to === compactIndex;
+                                  const highlightClass = isCurrentMoveFrom
+                                    ? 'ring-2 ring-yellow-400 ring-inset'
+                                    : isCurrentMoveTo
+                                      ? 'ring-2 ring-cyan-400 ring-inset'
+                                      : '';
+                                  const isLightPiece = piece === 1 || piece === 2;
+                                  const isKing = piece === 2 || piece === 4;
+
+                                  return (
+                                    <div
+                                      key={idx}
+                                      className={`w-8 h-8 flex items-center justify-center ${isDark ? 'bg-amber-950/70' : 'bg-amber-100/10'} ${highlightClass}`}
+                                    >
+                                      {piece ? (
+                                        <div className={`w-6 h-6 rounded-full border flex items-center justify-center text-[10px] font-bold ${isLightPiece ? 'bg-stone-100 border-stone-300 text-stone-800' : 'bg-stone-900 border-stone-700 text-stone-100'}`}>
+                                          {isKing ? 'K' : ''}
+                                        </div>
+                                      ) : null}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })()}
+
                         {/* Move History Section */}
                         {match.moveHistory && match.moveHistory.length > 0 && (
                           <div className="mt-4 pt-4 border-t border-slate-600/30">
@@ -1968,21 +2037,13 @@ const RecentMatchesCard = ({
                                   >
                                     <span className={`font-mono w-6 ${isCurrentMove ? 'text-teal-300 font-bold' : 'text-slate-500'}`}>{idx + 1}.</span>
                                   <div className="w-6 h-6 flex items-center justify-center">
-                                    {gameName === 'chess' ? (
-                                      <img
-                                        src={move.player === '♚' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
-                                        alt={move.player === '♚' ? 'White' : 'Black'}
-                                        className="w-5 h-5"
-                                        draggable="false"
-                                      />
-                                    ) : (
-                                      <span className="font-bold text-center">{move.player}</span>
-                                    )}
+                                    {renderExpandedMovePlayer(move)}
                                   </div>
                                   <span className="text-slate-300 flex-1">
                                     {gameName === 'chess' && move.move}
                                     {gameName === 'tictactoe' && `→ ${getCellPositionName(move.cell)}`}
                                     {gameName === 'connect4' && `Column ${move.column}`}
+                                    {gameName === 'checkers' && move.move}
                                   </span>
                                 </div>
                               );

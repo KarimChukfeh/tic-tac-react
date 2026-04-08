@@ -87,7 +87,8 @@ const ActiveMatchAlertModal = ({
   const tierNames = {
     0: 'Tic-Tac-Toe',
     1: 'Chess',
-    2: 'Connect Four'
+    2: 'Connect Four',
+    3: 'Checkers',
   };
 
   // Determine if it's a duel or tournament

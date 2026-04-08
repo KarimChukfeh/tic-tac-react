@@ -71,7 +71,7 @@ const getBorderClass = (isUserMatch, isStalled, escL2Available, escL3Available, 
  * @param {boolean} [props.showEscalation=true] - Whether to show escalation features
  * @param {boolean} [props.showThisIsYou=false] - Whether to show "THIS IS YOU" label
  * @param {Object} [props.colors] - Color theme overrides
- * @param {string} [props.gameName] - Game name ('tictactoe', 'chess', 'connect4')
+ * @param {string} [props.gameName] - Game name ('tictactoe', 'chess', 'connect4', 'checkers')
  */
 const MatchCard = ({
   match,
@@ -248,6 +248,9 @@ const MatchCard = ({
     } else if (gameName === 'chess') {
       player1Symbol = isPlayer1First ? 'White' : 'Black';
       player2Symbol = isPlayer1First ? 'Black' : 'White';
+    } else if (gameName === 'checkers') {
+      player1Symbol = 'Light';
+      player2Symbol = 'Dark';
     }
   }
 
@@ -449,6 +452,8 @@ const MatchCard = ({
                     )
                   ) : gameName === 'connect4' ? (
                     <span className={`w-3 h-3 rounded-full inline-block ${player1Symbol === 'Red' ? 'bg-red-500' : 'bg-blue-500'}`}></span>
+                  ) : gameName === 'checkers' ? (
+                    <span className={`w-3 h-3 rounded-full inline-block border ${player1Symbol === 'Light' ? 'bg-stone-100 border-stone-300' : 'bg-stone-900 border-stone-700'}`}></span>
                   ) : (
                     <span className="text-gray-300 text-xs">({player1Symbol})</span>
                   )}
@@ -510,6 +515,8 @@ const MatchCard = ({
                     )
                   ) : gameName === 'connect4' ? (
                     <span className={`w-3 h-3 rounded-full inline-block ${player2Symbol === 'Red' ? 'bg-red-500' : 'bg-blue-500'}`}></span>
+                  ) : gameName === 'checkers' ? (
+                    <span className={`w-3 h-3 rounded-full inline-block border ${player2Symbol === 'Light' ? 'bg-stone-100 border-stone-300' : 'bg-stone-900 border-stone-700'}`}></span>
                   ) : (
                     <span className="text-gray-300 text-xs">({player2Symbol})</span>
                   )}

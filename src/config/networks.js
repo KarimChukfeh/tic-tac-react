@@ -19,7 +19,7 @@ export const NETWORKS = {
   arbitrumOne: {
     chainId: 42161,
     name: 'Arbitrum One',
-    rpcUrl: 'https://arb-mainnet.g.alchemy.com/v2/yoftG-myZ5Iur7UklgbJR',
+    rpcUrl: 'https://lb.drpc.live/bsc/ArHDedsmp0sni6V8bSQJvtWFptHyMvoR8aK-Grar0DFx',
     explorerUrl: 'https://arbiscan.io',
     explorerName: 'Arbiscan',
     nativeCurrency: {

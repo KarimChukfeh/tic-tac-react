@@ -8,6 +8,7 @@ import ConnectFour from './ConnectFour.jsx'
 import TicTacToeV2 from './v2/pages/TicTacToeV2.jsx'
 import ConnectFourV2 from './v2/pages/ConnectFourV2.jsx'
 import ChessV2 from './v2/pages/ChessV2.jsx'
+import CheckersV2 from './v2/pages/CheckersV2.jsx'
 import Whitepaper from './Whitepaper.jsx'
 import Manual from './Manual.jsx'
 import Docs from './Docs.jsx'
@@ -128,6 +129,7 @@ function AppRoutes() {
           <Route path="/v2/connec4" element={<ConnectFourV2 />} />
           <Route path="/v2/connect4" element={<ConnectFourV2 />} />
           <Route path="/v2/chess" element={<ChessV2 />} />
+          <Route path="/v2/checkers" element={<CheckersV2 />} />
           <Route path="/whitepaper" element={<Whitepaper />} />
           <Route path="/manual" element={<Manual />} />
           <Route path="/docs" element={<Docs />} />

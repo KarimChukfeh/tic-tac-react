@@ -1,6 +1,7 @@
 import TicTacToeV2Deployment from '../../v2/ABIs/TicTacToeFactory-ABI.json';
 import ChessV2Deployment from '../../v2/ABIs/ChessFactory-ABI.json';
 import ConnectFourV2Deployment from '../../v2/ABIs/ConnectFourFactory-ABI.json';
+import CheckersV2Deployment from '../../v2/ABIs/CheckersFactory-ABI.json';
 
 const ARBISCAN_BASE_URL = 'https://arbiscan.io/address';
 
@@ -43,6 +44,15 @@ const GAME_DEPLOYMENTS = {
         { label: 'Player Registry', address: ConnectFourV2Deployment.playerProfile.PlayerRegistry.address },
         { label: 'ConnectFour Factory', address: ConnectFourV2Deployment.factory.address },
         { label: 'ConnectFour', address: ConnectFourV2Deployment.instance.address },
+      ],
+    },
+    {
+      title: 'Checkers v2',
+      entries: [
+        { label: 'Player Profile', address: CheckersV2Deployment.playerProfile.PlayerProfileImpl.address },
+        { label: 'Player Registry', address: CheckersV2Deployment.playerProfile.PlayerRegistry.address },
+        { label: 'Checkers Factory', address: CheckersV2Deployment.factory.CheckersFactory.address },
+        { label: 'Checkers', address: CheckersV2Deployment.instance.Checkers.address },
       ],
     },
   ],
@@ -107,6 +117,26 @@ const GAME_DEPLOYMENTS = {
       ],
     },
   ],
+  checkers: [
+    {
+      title: 'ETour Modules',
+      entries: SHARED_MODULES,
+    },
+    {
+      title: 'Player Contracts',
+      entries: [
+        { label: 'Player Profile', address: CheckersV2Deployment.playerProfile.PlayerProfileImpl.address },
+        { label: 'Player Registry', address: CheckersV2Deployment.playerProfile.PlayerRegistry.address },
+      ],
+    },
+    {
+      title: 'Game Contracts',
+      entries: [
+        { label: 'Checkers Factory', address: CheckersV2Deployment.factory.CheckersFactory.address },
+        { label: 'Checkers', address: CheckersV2Deployment.instance.Checkers.address },
+      ],
+    },
+  ],
 };
 
 function getContractUrl(address) {
@@ -144,7 +174,7 @@ export default function V2ContractsTable({ scope = 'landing' }) {
         <p className="text-sm text-slate-300">All listed v2 deployments link to verified source on Arbiscan.</p>
         <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Arbitrum One</p>
       </div>
-      <div className={`grid gap-4 ${scope === 'landing' ? 'xl:grid-cols-4 md:grid-cols-2' : 'lg:grid-cols-3'}`}>
+      <div className={`grid gap-4 ${scope === 'landing' ? 'xl:grid-cols-5 md:grid-cols-2' : 'lg:grid-cols-3'}`}>
         {groups.map((group) => (
           <ContractGroup key={group.title} title={group.title} entries={group.entries} />
         ))}

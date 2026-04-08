@@ -265,7 +265,7 @@ const ActiveLobbiesCard = ({
           <Rocket size={16} className="text-white md:w-6 md:h-6" />
 
           {syncing && (
-            <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-cyan-300 animate-spin"></div>
+            <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-yellow-200 animate-spin"></div>
           )}
 
           {lobbies.some((lobby) => (lobby.featuredEscalationAvailableCount || 0) > 0) && (
@@ -341,7 +341,7 @@ const ActiveLobbiesCard = ({
                   onChange={(event) => setHideMine(event.target.checked)}
                   className="sr-only peer"
                 />
-                <span className="inline-flex h-5 w-5 items-center justify-center rounded border border-purple-300/25 bg-slate-900/70 text-transparent transition-colors duration-200 peer-checked:border-yellow-300/50 peer-checked:bg-yellow-500/20 peer-checked:text-yellow-200">
+                <span className="inline-flex h-5 w-5 items-center justify-center rounded border border-yellow-300/25 bg-slate-900/70 text-transparent transition-colors duration-200 peer-checked:border-yellow-300/50 peer-checked:bg-yellow-500/20 peer-checked:text-yellow-200">
                   <Check size={13} strokeWidth={3} />
                 </span>
                 <span className="font-medium tracking-[0.04em]">Hide mine</span>
@@ -427,7 +427,7 @@ const ActiveLobbiesCard = ({
                           <span className={`text-[11px] uppercase tracking-[0.16em] px-2 py-1 rounded-full border ${
                             lobby.status === 0
                               ? 'border-emerald-300/30 bg-emerald-400/10 text-emerald-100'
-                              : 'border-cyan-300/30 bg-cyan-400/10 text-cyan-100'
+                              : 'border-amber-300/30 bg-amber-400/10 text-amber-100'
                           }`}>
                             {lobby.statusLabel}
                           </span>

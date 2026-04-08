@@ -17,7 +17,7 @@ import { getUserManualHrefForReasonCode } from '../../utils/userManualLinks';
  * @param {string} props.winnerAddress - Winner's wallet address
  * @param {string} props.loserAddress - Loser's wallet address
  * @param {string} props.currentAccount - Current user's wallet address
- * @param {string} props.gameType - The game type for customized messages (e.g., "chess", "tictactoe", "connectfour")
+ * @param {string} props.gameType - The game type for customized messages (e.g., "chess", "tictactoe", "connectfour", "checkers")
  * @param {boolean} props.isVisible - Whether the modal is visible
  * @param {number} props.roundNumber - Current round number (0-indexed)
  * @param {number} props.totalRounds - Total number of rounds in tournament
@@ -227,6 +227,8 @@ const MatchEndModal = ({
         return 'Checkmate!';
       case 'connectfour':
         return 'Four Connected!';
+      case 'checkers':
+        return 'Pieces Cleared!';
       default:
         return 'You Win!';
     }
@@ -241,6 +243,8 @@ const MatchEndModal = ({
         return "You've Been Checkmated";
       case 'connectfour':
         return 'Opponent Connected Four';
+      case 'checkers':
+        return 'No Legal Moves Left';
       default:
         return 'Defeated';
     }

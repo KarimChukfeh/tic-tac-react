@@ -68,15 +68,16 @@ function getSparkleCount(progress) {
   return 1;
 }
 
-function buildEntryFeeOptions(minEntryFeeWei, feeIncrementWei) {
+function buildEntryFeeOptions(minEntryFeeWei, feeIncrementWei, maxEntryFeeWei = DEFAULT_MAX_ENTRY_FEE_WEI) {
   const minWei = minEntryFeeWei > 0n ? minEntryFeeWei : ethers.parseEther(DEFAULT_MIN_ENTRY_FEE);
   const incrementWei = feeIncrementWei > 0n ? feeIncrementWei : minWei;
   const values = [minWei];
   let current = minWei;
+  const effectiveMaxWei = maxEntryFeeWei > 0n ? maxEntryFeeWei : DEFAULT_MAX_ENTRY_FEE_WEI;
 
   for (const segment of SLIDER_SEGMENTS) {
     const segmentEndWei = ethers.parseEther(segment.endEth);
-    const cappedEndWei = segmentEndWei > DEFAULT_MAX_ENTRY_FEE_WEI ? DEFAULT_MAX_ENTRY_FEE_WEI : segmentEndWei;
+    const cappedEndWei = segmentEndWei > effectiveMaxWei ? effectiveMaxWei : segmentEndWei;
     const stepWei = incrementWei * segment.stepMultiplier;
 
     while (current + stepWei < cappedEndWei) {
@@ -89,7 +90,7 @@ function buildEntryFeeOptions(minEntryFeeWei, feeIncrementWei) {
       values.push(current);
     }
 
-    if (current >= DEFAULT_MAX_ENTRY_FEE_WEI) break;
+    if (current >= effectiveMaxWei) break;
   }
 
   return Array.from(new Set(values.map(value => value.toString()))).map(value => BigInt(value));
@@ -125,10 +126,17 @@ export default function EntryFeeSlider({
   playerCount,
   disabled,
   onChange,
+  maxEntryFeeEth = DEFAULT_MAX_ENTRY_FEE,
 }) {
   const minEntryFeeWei = factoryRules?.minEntryFee ?? ethers.parseEther(DEFAULT_MIN_ENTRY_FEE);
   const feeIncrementWei = factoryRules?.feeIncrement ?? minEntryFeeWei;
-  const feeOptions = buildEntryFeeOptions(minEntryFeeWei, feeIncrementWei);
+  let maxEntryFeeWei = DEFAULT_MAX_ENTRY_FEE_WEI;
+  try {
+    maxEntryFeeWei = ethers.parseEther(maxEntryFeeEth || DEFAULT_MAX_ENTRY_FEE);
+  } catch {
+    maxEntryFeeWei = DEFAULT_MAX_ENTRY_FEE_WEI;
+  }
+  const feeOptions = buildEntryFeeOptions(minEntryFeeWei, feeIncrementWei, maxEntryFeeWei);
   const selectedIndex = findClosestValueIndex(feeOptions, entryFee);
   const selectedWei = feeOptions[selectedIndex] ?? minEntryFeeWei;
   const selectedEth = formatEthString(selectedWei);
@@ -139,6 +147,10 @@ export default function EntryFeeSlider({
   const winnerPayoutEthDisplay = winnerPayoutEth.toFixed(4).replace(/\.?0+$/, '');
   const progressRatio = feeOptions.length > 1 ? selectedIndex / (feeOptions.length - 1) : 0;
   const progress = progressRatio * 100;
+  const maxEntryFeeLabel = formatEthString(maxEntryFeeWei);
+  const firstMilestone = maxEntryFeeWei <= ethers.parseEther('0.01') ? maxEntryFeeLabel : '0.01';
+  const secondMilestone = maxEntryFeeWei <= ethers.parseEther('0.05') ? maxEntryFeeLabel : '0.05';
+  const thirdMilestone = maxEntryFeeWei <= ethers.parseEther('0.5') ? maxEntryFeeLabel : '0.5';
   const sliderBackground = {
     background: `linear-gradient(90deg, rgba(34,211,238,0.95) 0%, rgba(168,85,247,0.95) ${progress}%, rgba(51,65,85,0.75) ${progress}%, rgba(51,65,85,0.35) 100%)`,
   };
@@ -195,10 +207,10 @@ export default function EntryFeeSlider({
 
           <div className="mt-3 flex justify-between text-[11px] uppercase tracking-[0.18em] text-slate-500">
             <span>{formatEthString(minEntryFeeWei)} ETH</span>
-            <span>0.01</span>
-            <span>0.05</span>
-            <span>0.5</span>
-            <span>1 ETH</span>
+            <span>{firstMilestone}</span>
+            <span>{secondMilestone}</span>
+            <span>{thirdMilestone}</span>
+            <span>{maxEntryFeeLabel} ETH</span>
           </div>
 
           <div className="mt-3 text-[10px] text-slate-500">*Assuming 1 ETH = ~$2000</div>
