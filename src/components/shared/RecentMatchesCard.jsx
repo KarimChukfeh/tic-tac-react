@@ -17,6 +17,7 @@ import {
 import {
   getV2CompletedMatchOutcomeLabel,
   getV2TournamentResolutionText,
+  V2TournamentResolutionReason,
   isV2TournamentCancelledReason,
 } from '../../v2/lib/reasonLabels';
 import CapturedPieces from './CapturedPieces';
@@ -788,6 +789,25 @@ const RecentMatchesCard = ({
       ? isV2TournamentCancelledReason(getTournamentResolutionReasonValue(record))
       : getTournamentResolutionReasonValue(record) === CompletionReason.SOLO_ENROLL_CANCELLED
   );
+  const isV2El2TournamentRecord = (record) => (
+    useV2ReasonLabels &&
+    getTournamentResolutionReasonValue(record) === V2TournamentResolutionReason.ABANDONED_TOURNAMENT_CLAIMED
+  );
+  const getTournamentOutcomeLabel = (record) => {
+    if (!record?.concluded) return <span className="text-yellow-300 font-semibold text-xs">Active</span>;
+    if (hasCancelledTournamentReason(record) || isCancelledTournamentRecord(record)) {
+      return <span className="text-slate-400 font-semibold text-xs">Cancelled</span>;
+    }
+    if (isDrawTournamentRecord(record)) return <span className="text-yellow-300 font-semibold text-xs">Draw</span>;
+    if (isV2El2TournamentRecord(record)) {
+      return getRecordPayout(record) > 0n
+        ? <span className="text-green-300 font-semibold text-xs">Won</span>
+        : <span className="text-red-300 font-semibold text-xs">Lost</span>;
+    }
+    return record.won
+      ? <span className="text-green-300 font-semibold text-xs">Won</span>
+      : <span className="text-red-300 font-semibold text-xs">Lost</span>;
+  };
 
   const formatEthAmount = (value, digits = 4) => {
     const parsed = Number(ethers.formatEther(value ?? 0n));
@@ -1263,17 +1283,7 @@ const RecentMatchesCard = ({
                         <div key={idx} ref={(el) => { if (el && rec.instance) tournamentItemRefs.current[rec.instance.toLowerCase()] = el; }} className="bg-slate-900/60 border border-purple-400/15 rounded-xl px-3 py-2.5">
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 min-w-0">
-                              {rec.concluded ? (
-                                hasCancelledTournamentReason(rec) || isCancelledTournamentRecord(rec)
-                                  ? <span className="text-slate-400 font-semibold text-xs">Cancelled</span>
-                                  : isDrawTournamentRecord(rec)
-                                  ? <span className="text-yellow-300 font-semibold text-xs">Draw</span>
-                                  : rec.won
-                                  ? <span className="text-green-300 font-semibold text-xs">Won</span>
-                                  : <span className="text-red-300 font-semibold text-xs">Lost</span>
-                              ) : (
-                                <span className="text-yellow-300 font-semibold text-xs">Active</span>
-                              )}
+                              {getTournamentOutcomeLabel(rec)}
                               {rec.enrolledAt > 0 && (
                                 <span className="text-slate-400 text-[10px]">{formatTimeAgo(rec.enrolledAt)}</span>
                               )}
