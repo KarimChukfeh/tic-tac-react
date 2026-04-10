@@ -5,7 +5,7 @@ This is a technical document that explains how ETour delivers on:
 - Fully on-chain tournament infrastructure
 - ETH-only with no special tokens
 - Self-sustaining without need for VCs
-- Grief-proof with garunteed fair resolution
+- Grief-proof with guaranteed fair resolution
 
 If you are looking to validate ETour's claims, question its assumptions, or just understand how it really works under the hood, then you're in the right place.
 
