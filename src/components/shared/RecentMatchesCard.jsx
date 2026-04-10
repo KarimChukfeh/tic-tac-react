@@ -24,6 +24,7 @@ import CapturedPieces from './CapturedPieces';
 import CompletedMatchOutcomeBadge from './CompletedMatchOutcomeBadge';
 import { ethers } from 'ethers';
 import { linkifyReasonText } from './UserManualAnchorLink';
+import { getAddressUrl } from '../../config/networks';
 
 const RecentMatchesCard = ({
   contract,
@@ -92,6 +93,10 @@ const RecentMatchesCard = ({
   const PanelIcon = isStatsPanel ? TrendingUp : History;
   const panelTitle = isStatsPanel ? 'Your Stats' : 'History';
   const connectWalletPanelTitle = panelTitle.startsWith('Your ') ? panelTitle : `Your ${panelTitle}`;
+  const profileAddress = playerProfile?.profileAddress || null;
+  const profileExplorerUrl = profileAddress
+    ? `${getAddressUrl(profileAddress) || `https://arbiscan.io/address/${profileAddress}`}#events`
+    : null;
 
   // Use external state if provided, otherwise use internal state
   const isExpanded = externalIsExpanded !== undefined ? externalIsExpanded : internalIsExpanded;
@@ -1182,9 +1187,23 @@ const RecentMatchesCard = ({
               : ''
           }`}>
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <PanelIcon size={24} className="text-teal-400" />
-                <h3 className="text-white font-bold text-lg">{panelTitle}</h3>
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <PanelIcon size={24} className="text-teal-400" />
+                  <h3 className="text-white font-bold text-lg">{panelTitle}</h3>
+                </div>
+                {isStatsPanel && profileExplorerUrl && (
+                  <a
+                    href={profileExplorerUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-teal-200 hover:text-white transition-colors"
+                  >
+                    <span>Profile contract</span>
+                    <span className="font-mono">{shortenAddress(profileAddress)}</span>
+                    <ExternalLink size={12} />
+                  </a>
+                )}
               </div>
               <div className="flex items-center gap-1">
                 {/* Scroll to Top Button - only show when scrolled */}
