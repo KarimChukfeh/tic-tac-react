@@ -746,6 +746,8 @@ export default function ChessV2() {
     enabled: shouldPollPlayerActivity,
     pollIntervalMs: shouldScanFactoryForPlayerActivity ? 5000 : 30000,
     scanFactoryFallback: shouldScanFactoryForPlayerActivity,
+    hasActiveContext: isPlayerActivityContextActive,
+    pollWhenEmpty: false,
   });
   const playerProfile = useChessPlayerProfile(resolvedFactoryContract, rpcProvider, account, {
     enabled: shouldPollPlayerProfile,
@@ -798,7 +800,11 @@ export default function ChessV2() {
   };
 
   useEffect(() => {
-    const provider = new ethers.JsonRpcProvider(CURRENT_NETWORK.rpcUrl);
+    const provider = new ethers.JsonRpcProvider(
+      CURRENT_NETWORK.rpcUrl,
+      CURRENT_NETWORK.chainId,
+      { staticNetwork: true }
+    );
     rpcProviderRef.current = provider;
     setRpcProvider(provider);
     setResolvedFactoryContract(getFactoryContract(provider, factoryAddress));
@@ -1418,12 +1424,34 @@ export default function ChessV2() {
     try {
       const { roundNumber, matchNumber } = matchInfo;
       const matchKey = ethers.solidityPackedKeccak256(['uint8', 'uint8'], [roundNumber, matchNumber]);
-      const [matchData, fullMatch, boardResult, tierConfig] = await Promise.all([
-        instanceCont.getMatch(roundNumber, matchNumber),
-        instanceCont.matches(matchKey),
-        instanceCont.getBoard(roundNumber, matchNumber).catch(() => null),
-        instanceCont.tierConfig(),
-      ]);
+      const runner = getReadRunner();
+      const callSpecs = [
+        { contract: instanceCont, functionName: 'getMatch', params: [roundNumber, matchNumber] },
+        { contract: instanceCont, functionName: 'matches', params: [matchKey] },
+        { contract: instanceCont, functionName: 'getBoard', params: [roundNumber, matchNumber] },
+        { contract: instanceCont, functionName: 'tierConfig' },
+        { contract: instanceCont, functionName: 'matchTimeouts', params: [matchKey] },
+        { contract: instanceCont, functionName: 'isMatchEscL2Available', params: [roundNumber, matchNumber] },
+        { contract: instanceCont, functionName: 'isMatchEscL3Available', params: [roundNumber, matchNumber] },
+      ];
+      if (userAccount) {
+        callSpecs.push({
+          contract: instanceCont,
+          functionName: 'isPlayerInAdvancedRound',
+          params: [roundNumber, userAccount],
+        });
+      }
+      const results = runner ? await multicallContracts(callSpecs, runner) : [];
+      const matchData = results[0]?.success ? results[0].result : await instanceCont.getMatch(roundNumber, matchNumber);
+      const fullMatch = results[1]?.success ? results[1].result : await instanceCont.matches(matchKey);
+      const boardResult = results[2]?.success ? results[2].result : await instanceCont.getBoard(roundNumber, matchNumber).catch(() => null);
+      const tierConfig = results[3]?.success ? results[3].result : await instanceCont.tierConfig();
+      const timeoutData = results[4]?.success ? results[4].result : await instanceCont.matchTimeouts(matchKey).catch(() => null);
+      const escL2Available = results[5]?.success ? Boolean(results[5].result) : Boolean(await instanceCont.isMatchEscL2Available(roundNumber, matchNumber).catch(() => false));
+      const escL3Available = results[6]?.success ? Boolean(results[6].result) : Boolean(await instanceCont.isMatchEscL3Available(roundNumber, matchNumber).catch(() => false));
+      const isUserAdvancedForRound = userAccount
+        ? (results[7]?.success ? Boolean(results[7].result) : Boolean(await instanceCont.isPlayerInAdvancedRound(roundNumber, userAccount).catch(() => false)))
+        : false;
       const { packedBoard, packedState } = resolveChessBoardState(boardResult, matchInfo);
       const board = unpackBoard(packedBoard);
       const tierMatchTime = Number(tierConfig.timeouts?.matchTimePerPlayer ?? tierConfig.matchTimePerPlayer ?? 600);
@@ -1450,14 +1478,13 @@ export default function ChessV2() {
         if (isP1Turn) p1Time = Math.max(0, p1Time - elapsed); else p2Time = Math.max(0, p2Time - elapsed);
       }
       let timeoutState = null;
-      try {
-        const timeoutData = await instanceCont.matchTimeouts(matchKey);
+      if (timeoutData) {
         const esc1Start = Number(timeoutData.escalation1Start);
         const esc2Start = Number(timeoutData.escalation2Start);
         if (esc1Start > 0 || esc2Start > 0 || timeoutData.isStalled) {
           timeoutState = { escalation1Start: esc1Start, escalation2Start: esc2Start, activeEscalation: Number(timeoutData.activeEscalation), timeoutActive: timeoutData.isStalled, forfeitAmount: 0 };
         }
-      } catch {}
+      }
 
       if (matchStatus === 1 && currentTurn && lastMoveTime > 0) {
         const activePlayerTimeAtLastMove = isP1Turn ? p1TimeRaw : p2TimeRaw;
@@ -1474,16 +1501,6 @@ export default function ChessV2() {
             forfeitAmount: timeoutState?.forfeitAmount ?? 0,
           };
         }
-      }
-      let escL2Available = false;
-      let escL3Available = false;
-      let isUserAdvancedForRound = false;
-      try {
-        escL2Available = await instanceCont.isMatchEscL2Available(roundNumber, matchNumber);
-        escL3Available = await instanceCont.isMatchEscL3Available(roundNumber, matchNumber);
-      } catch {}
-      if (userAccount) {
-        try { isUserAdvancedForRound = await instanceCont.isPlayerInAdvancedRound(roundNumber, userAccount); } catch {}
       }
       const packedStateBig = BigInt(packedState || 0);
       const whiteInCheck = ((packedStateBig >> 12n) & 1n) === 1n;
@@ -1820,11 +1837,13 @@ export default function ChessV2() {
 
   useEffect(() => {
     if (!viewingTournament || !activeInstanceContractRef.current) return;
+    if (currentMatch) return;
     if (!isTabActive) return;
     if (![0, 1].includes(Number(viewingTournament.status))) return;
     const doSync = async () => {
       const tournament = tournamentRef.current;
       if (!tournament || !activeInstanceContractRef.current) return;
+      if (currentMatchRef.current) return;
       if (![0, 1].includes(Number(tournament.status))) return;
       const updated = await refreshTournamentBracket(tournament.address);
       if (updated) setViewingTournament(updated);
@@ -1832,7 +1851,7 @@ export default function ChessV2() {
     };
     const pollInterval = setInterval(doSync, 5000);
     return () => clearInterval(pollInterval);
-  }, [viewingTournament?.address, viewingTournament?.status, isTabActive, refreshTournamentBracket]);
+  }, [viewingTournament?.address, viewingTournament?.status, currentMatch?.instanceAddress, isTabActive, refreshTournamentBracket]);
 
   useEffect(() => {
     if (!currentMatch || !activeInstanceContractRef.current || !account) return;
@@ -1889,7 +1908,7 @@ export default function ChessV2() {
       setSyncDots(1);
     };
     doMatchSyncRef.current = doMatchSync;
-    const id = setInterval(doMatchSync, 1500);
+    const id = setInterval(doMatchSync, 5000);
     return () => clearInterval(id);
   }, [currentMatch?.instanceAddress, currentMatch?.roundNumber, currentMatch?.matchNumber, account, refreshMatchData, buildMoveHistory, checkForNextActiveMatch]);
 
@@ -1997,13 +2016,13 @@ export default function ChessV2() {
       <div className="fixed bottom-0 left-0 right-0 z-50 md:static md:z-auto">
         <div className="md:hidden bg-gradient-to-b from-slate-800 to-slate-900 border-t border-purple-400/30 px-4 py-2.5 flex items-center justify-between">
           <GamesCard currentGame="chess" onHeightChange={setGamesCardHeight} isExpanded={expandedPanel === 'games'} onToggleExpand={() => setExpandedPanel(expandedPanel === 'games' ? null : 'games')} />
-          <PlayerActivity activity={playerActivity.data} loading={playerActivity.loading} syncing={playerActivity.syncing} contract={activeInstanceContract} account={account} onEnterMatch={handlePlayMatch} onEnterTournament={handleEnterTournamentFromActivity} onRefresh={playerActivity.refetch} onDismissMatch={playerActivity.dismissMatch} gameName="chess" gameEmoji="♟️" connectCtaClassName={currentTheme.connectCtaClassName} gamesCardHeight={gamesCardHeight} onHeightChange={setPlayerActivityHeight} onCollapse={(fn) => { collapseActivityPanelRef.current = fn; }} isExpanded={expandedPanel === 'playerActivity'} onToggleExpand={() => setExpandedPanel(expandedPanel === 'playerActivity' ? null : 'playerActivity')} tierConfig={{}} disabled={!account} showTooltip={activeTooltip === 'playerActivity'} onShowTooltip={() => setActiveTooltip('playerActivity')} onHideTooltip={() => setActiveTooltip(null)} reasonLabelMode="v2" />
+          <PlayerActivity activity={playerActivity.data} loading={playerActivity.loading} syncing={playerActivity.syncing} contract={activeInstanceContract} account={account} onEnterMatch={handlePlayMatch} onEnterTournament={handleEnterTournamentFromActivity} onRefresh={playerActivity.refetch} onDismissMatch={playerActivity.dismissMatch} gameName="chess" gameEmoji="♟️" connectCtaClassName={currentTheme.connectCtaClassName} gamesCardHeight={gamesCardHeight} onHeightChange={setPlayerActivityHeight} onCollapse={(fn) => { collapseActivityPanelRef.current = fn; }} isExpanded={expandedPanel === 'playerActivity'} onToggleExpand={() => setExpandedPanel(expandedPanel === 'playerActivity' ? null : 'playerActivity')} tierConfig={{}} disabled={!account} showTooltip={activeTooltip === 'playerActivity'} onShowTooltip={() => setActiveTooltip('playerActivity')} onHideTooltip={() => setActiveTooltip(null)} reasonLabelMode="v2" refreshOnExpand={false} />
           <RecentMatchesCard contract={null} account={account} gameName="chess" gameEmoji="♟️" gamesCardHeight={gamesCardHeight} playerActivityHeight={playerActivityHeight} onHeightChange={setRecentMatchesCardHeight} isExpanded={expandedPanel === 'recentMatches'} onToggleExpand={() => setExpandedPanel(expandedPanel === 'recentMatches' ? null : 'recentMatches')} tierConfig={{}} disabled={!account} showTooltip={activeTooltip === 'recentMatches'} onShowTooltip={() => setActiveTooltip('recentMatches')} onHideTooltip={() => setActiveTooltip(null)} connectCtaClassName={currentTheme.connectCtaClassName} onNavigateToTournament={() => {}} leaderboard={leaderboard} playerProfile={playerProfile} onRefresh={refreshHistoryPanel} showTournamentRaffles={false} onViewTournament={enterInstanceBracket} getTournamentTypeLabel={getTournamentTypeLabel} v2Matches={v2MatchHistory.matches} v2MatchesLoading={v2MatchHistory.loading} reasonLabelMode="v2" />
           <ActiveLobbiesCard lobbies={activeLobbies.lobbies} loading={activeLobbies.loading} syncing={activeLobbies.syncing} error={activeLobbies.error} gamesCardHeight={gamesCardHeight} playerActivityHeight={playerActivityHeight} recentMatchesCardHeight={recentMatchesCardHeight} onRefresh={activeLobbies.refetch} isExpanded={expandedPanel === 'activeLobbies'} onToggleExpand={() => setExpandedPanel(expandedPanel === 'activeLobbies' ? null : 'activeLobbies')} onViewTournament={enterInstanceBracket} getTournamentTypeLabel={getTournamentTypeLabel} disabled={!account} showTooltip={activeTooltip === 'activeLobbies'} onShowTooltip={() => setActiveTooltip('activeLobbies')} onHideTooltip={() => setActiveTooltip(null)} connectCtaClassName={currentTheme.connectCtaClassName} />
         </div>
         <div className="hidden md:block">
           <GamesCard currentGame="chess" onHeightChange={setGamesCardHeight} isExpanded={expandedPanel === 'games'} onToggleExpand={() => setExpandedPanel(expandedPanel === 'games' ? null : 'games')} />
-          <PlayerActivity activity={playerActivity.data} loading={playerActivity.loading} syncing={playerActivity.syncing} contract={activeInstanceContract} account={account} onEnterMatch={handlePlayMatch} onEnterTournament={handleEnterTournamentFromActivity} onRefresh={playerActivity.refetch} onDismissMatch={playerActivity.dismissMatch} gameName="chess" gameEmoji="♟️" connectCtaClassName={currentTheme.connectCtaClassName} gamesCardHeight={gamesCardHeight} onHeightChange={setPlayerActivityHeight} onCollapse={(fn) => { collapseActivityPanelRef.current = fn; }} isExpanded={expandedPanel === 'playerActivity'} onToggleExpand={() => setExpandedPanel(expandedPanel === 'playerActivity' ? null : 'playerActivity')} tierConfig={{}} disabled={!account} showTooltip={activeTooltip === 'playerActivity'} onShowTooltip={() => setActiveTooltip('playerActivity')} onHideTooltip={() => setActiveTooltip(null)} reasonLabelMode="v2" />
+          <PlayerActivity activity={playerActivity.data} loading={playerActivity.loading} syncing={playerActivity.syncing} contract={activeInstanceContract} account={account} onEnterMatch={handlePlayMatch} onEnterTournament={handleEnterTournamentFromActivity} onRefresh={playerActivity.refetch} onDismissMatch={playerActivity.dismissMatch} gameName="chess" gameEmoji="♟️" connectCtaClassName={currentTheme.connectCtaClassName} gamesCardHeight={gamesCardHeight} onHeightChange={setPlayerActivityHeight} onCollapse={(fn) => { collapseActivityPanelRef.current = fn; }} isExpanded={expandedPanel === 'playerActivity'} onToggleExpand={() => setExpandedPanel(expandedPanel === 'playerActivity' ? null : 'playerActivity')} tierConfig={{}} disabled={!account} showTooltip={activeTooltip === 'playerActivity'} onShowTooltip={() => setActiveTooltip('playerActivity')} onHideTooltip={() => setActiveTooltip(null)} reasonLabelMode="v2" refreshOnExpand={false} />
           <RecentMatchesCard contract={null} account={account} gameName="chess" gameEmoji="♟️" gamesCardHeight={gamesCardHeight} playerActivityHeight={playerActivityHeight} onHeightChange={setRecentMatchesCardHeight} isExpanded={expandedPanel === 'recentMatches'} onToggleExpand={() => setExpandedPanel(expandedPanel === 'recentMatches' ? null : 'recentMatches')} tierConfig={{}} disabled={!account} showTooltip={activeTooltip === 'recentMatches'} onShowTooltip={() => setActiveTooltip('recentMatches')} onHideTooltip={() => setActiveTooltip(null)} connectCtaClassName={currentTheme.connectCtaClassName} onNavigateToTournament={() => {}} leaderboard={leaderboard} playerProfile={playerProfile} onRefresh={refreshHistoryPanel} showTournamentRaffles={false} onViewTournament={enterInstanceBracket} getTournamentTypeLabel={getTournamentTypeLabel} v2Matches={v2MatchHistory.matches} v2MatchesLoading={v2MatchHistory.loading} reasonLabelMode="v2" />
           <ActiveLobbiesCard lobbies={activeLobbies.lobbies} loading={activeLobbies.loading} syncing={activeLobbies.syncing} error={activeLobbies.error} gamesCardHeight={gamesCardHeight} playerActivityHeight={playerActivityHeight} recentMatchesCardHeight={recentMatchesCardHeight} onRefresh={activeLobbies.refetch} isExpanded={expandedPanel === 'activeLobbies'} onToggleExpand={() => setExpandedPanel(expandedPanel === 'activeLobbies' ? null : 'activeLobbies')} onViewTournament={enterInstanceBracket} getTournamentTypeLabel={getTournamentTypeLabel} disabled={!account} showTooltip={activeTooltip === 'activeLobbies'} onShowTooltip={() => setActiveTooltip('activeLobbies')} onHideTooltip={() => setActiveTooltip(null)} connectCtaClassName={currentTheme.connectCtaClassName} />
         </div>

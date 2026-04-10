@@ -72,6 +72,26 @@ export const DEFAULT_TIMEOUTS_BY_PLAYER_COUNT = {
   },
 };
 
+const contractCodeAvailabilityCache = new WeakMap();
+
+async function hasContractCode(runner, address) {
+  if (!runner || typeof runner !== 'object' || !address) return false;
+
+  let addressCache = contractCodeAvailabilityCache.get(runner);
+  if (!addressCache) {
+    addressCache = new Map();
+    contractCodeAvailabilityCache.set(runner, addressCache);
+  }
+
+  if (!addressCache.has(address)) {
+    addressCache.set(address, runner.getCode(address)
+      .then((code) => code && code !== '0x' && code !== '0x0')
+      .catch(() => false));
+  }
+
+  return await addressCache.get(address);
+}
+
 const TOURNAMENT_STATUS_LABELS = {
   0: 'Enrolling',
   1: 'In Progress',
@@ -115,8 +135,7 @@ export async function resolvePlayerProfileAddress(factoryContract, runner, accou
 
   if (registryAddress) {
     try {
-      const code = await runner.getCode(registryAddress);
-      if (code && code !== '0x') {
+      if (await hasContractCode(runner, registryAddress)) {
         const registry = getPlayerRegistryContract(runner, registryAddress);
         const gameType = Number(await factoryContract.gameType().catch(() => NaN));
         if (Number.isFinite(gameType)) {

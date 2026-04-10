@@ -28,6 +28,13 @@ const EMPTY_DATA = {
   totalEarnings: 0n,
 };
 
+const isEmptyActivityData = (value) => (
+  (value?.activeMatches?.length || 0) === 0 &&
+  (value?.inProgressTournaments?.length || 0) === 0 &&
+  (value?.unfilledTournaments?.length || 0) === 0 &&
+  (value?.terminatedMatches?.length || 0) === 0
+);
+
 function buildInstanceActivity(instance, account, dismissedMatches, matchResults) {
   const { instanceId, status, currentRound, enrolledCount, playerCount, matchTimePerPlayer } = instance;
 
@@ -129,6 +136,8 @@ export const useV2PlayerActivity = (instanceContract, account, factoryContract, 
     enabled = true,
     pollIntervalMs = 5000,
     scanFactoryFallback = true,
+    hasActiveContext = false,
+    pollWhenEmpty = true,
   } = options;
   const [data, setData] = useState(EMPTY_DATA);
   const [loading, setLoading] = useState(true);
@@ -137,8 +146,17 @@ export const useV2PlayerActivity = (instanceContract, account, factoryContract, 
   const [dismissedMatches, setDismissedMatches] = useState(new Set());
   const [matchAlert, setMatchAlert] = useState(null);
   const alertedMatchKeysRef = useRef(new Set());
+  const latestDataRef = useRef(EMPTY_DATA);
 
-  const fetchActivity = useCallback(async (isInitialLoad = false) => {
+  useEffect(() => {
+    latestDataRef.current = data;
+  }, [data]);
+
+  const fetchActivity = useCallback(async ({
+    isInitialLoad = false,
+    isBackgroundPoll = false,
+    forceScan = false,
+  } = {}) => {
     if (!enabled) {
       setLoading(false);
       setSyncing(false);
@@ -149,6 +167,11 @@ export const useV2PlayerActivity = (instanceContract, account, factoryContract, 
       setLoading(false);
       setSyncing(false);
       setData(EMPTY_DATA);
+      return;
+    }
+
+    if (isBackgroundPoll && !hasActiveContext && !pollWhenEmpty && isEmptyActivityData(latestDataRef.current)) {
+      setSyncing(false);
       return;
     }
 
@@ -197,7 +220,7 @@ export const useV2PlayerActivity = (instanceContract, account, factoryContract, 
 
         // Fallback: scan activeTournaments from the factory directly.
         // Covers cases where the PlayerProfile mapping isn't populated yet.
-        if (scanFactoryFallback && instanceMap.size === 0) {
+        if ((scanFactoryFallback || forceScan) && instanceMap.size === 0) {
           try {
             const activeCount = Number(await factoryContract.getActiveTournamentCount().catch(() => 0n));
             if (activeCount > 0) {
@@ -384,7 +407,7 @@ export const useV2PlayerActivity = (instanceContract, account, factoryContract, 
       setLoading(false);
       setSyncing(false);
     }
-  }, [enabled, instanceContract, account, factoryContract, runner, dismissedMatches, scanFactoryFallback]);
+  }, [enabled, instanceContract, account, factoryContract, runner, dismissedMatches, scanFactoryFallback, hasActiveContext, pollWhenEmpty]);
 
   // Re-fetch on account/contract change
   useEffect(() => {
@@ -393,13 +416,13 @@ export const useV2PlayerActivity = (instanceContract, account, factoryContract, 
       setSyncing(false);
       return;
     }
-    fetchActivity(true);
+    fetchActivity({ isInitialLoad: true });
   }, [enabled, instanceContract, account, factoryContract, fetchActivity]);
 
   // Poll at the configured interval
   useEffect(() => {
     if (!enabled || !account) return;
-    const interval = setInterval(() => fetchActivity(false), pollIntervalMs);
+    const interval = setInterval(() => fetchActivity({ isBackgroundPoll: true }), pollIntervalMs);
     return () => clearInterval(interval);
   }, [account, enabled, fetchActivity, pollIntervalMs]);
 
@@ -407,7 +430,7 @@ export const useV2PlayerActivity = (instanceContract, account, factoryContract, 
     alertedMatchKeysRef.current = new Set();
   }, [account]);
 
-  const refetch = useCallback(() => fetchActivity(false), [fetchActivity]);
+  const refetch = useCallback(() => fetchActivity({ forceScan: true }), [fetchActivity]);
 
   const dismissMatch = useCallback((tierId, instanceId, roundIdx, matchIdx) => {
     const key = `${tierId}-${instanceId}-${roundIdx}-${matchIdx}`;

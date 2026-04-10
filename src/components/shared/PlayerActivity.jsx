@@ -41,6 +41,7 @@ const PlayerActivity = ({
   onHideTooltip, // Callback to hide this component's tooltip
   connectCtaClassName = 'bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl shadow-2xl border-2 border-purple-400/60 hover:scale-105',
   reasonLabelMode = 'default',
+  refreshOnExpand = true,
 }) => {
   const [internalIsExpanded, setInternalIsExpanded] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
@@ -146,12 +147,12 @@ const PlayerActivity = ({
   // Fetch fresh data when panel transitions from collapsed to expanded
   useEffect(() => {
     // Only trigger refresh when expanding (false → true transition)
-    if (isExpanded && !prevExpandedRef.current && onRefresh) {
+    if (refreshOnExpand && isExpanded && !prevExpandedRef.current && onRefresh) {
       onRefresh();
     }
     // Update previous state
     prevExpandedRef.current = isExpanded;
-  }, [isExpanded, onRefresh]);
+  }, [isExpanded, onRefresh, refreshOnExpand]);
 
   // Measure and report height whenever content changes
   useEffect(() => {

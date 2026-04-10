@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ethers } from 'ethers';
 import { getInstanceContract, getPlayerProfileContract, ZERO_ADDRESS, resolvePlayerProfileAddress } from '../lib/chess';
+import { multicallContracts } from '../../utils/multicall';
 
 const HISTORY_LIMIT = 30;
 const POLL_INTERVAL_MS = 8000;
@@ -35,24 +36,65 @@ export function useChessV2MatchHistory(factoryContract, runner, account, options
       const records = await profile.getMatchRecords(offset, limit).catch(() => []);
       const acc = account.toLowerCase();
 
-      const allMatches = (await Promise.all(records.map(async (record) => {
+      const instanceMap = new Map();
+      for (const record of records) {
+        const instanceAddress = record.instance;
+        if (!instanceAddress || instanceAddress === ZERO_ADDRESS) continue;
+        const lower = instanceAddress.toLowerCase();
+        if (!instanceMap.has(lower)) {
+          instanceMap.set(lower, {
+            address: instanceAddress,
+            contract: getInstanceContract(instanceAddress, runner),
+          });
+        }
+      }
+
+      const tierEntries = [...instanceMap.values()];
+      const tierResults = tierEntries.length > 0
+        ? await multicallContracts(
+          tierEntries.map(({ contract }) => ({ contract, functionName: 'tierConfig' })),
+          runner
+        )
+        : [];
+      const tierConfigByInstance = new Map();
+      tierEntries.forEach((entry, index) => {
+        tierConfigByInstance.set(entry.address.toLowerCase(), tierResults[index]?.success ? tierResults[index].result : null);
+      });
+
+      const descriptors = [];
+      const callSpecs = [];
+      for (const record of records) {
+        const instanceAddress = record.instance;
+        if (!instanceAddress || instanceAddress === ZERO_ADDRESS) continue;
+        const roundNumber = Number(record.roundNumber);
+        const matchNumber = Number(record.matchNumber);
+        const instance = instanceMap.get(instanceAddress.toLowerCase())?.contract;
+        if (!instance) continue;
+        const matchKey = ethers.solidityPackedKeccak256(['uint8', 'uint8'], [roundNumber, matchNumber]);
+        descriptors.push({ record, instanceAddress, roundNumber, matchNumber });
+        callSpecs.push(
+          { contract: instance, functionName: 'getMatch', params: [roundNumber, matchNumber] },
+          { contract: instance, functionName: 'matches', params: [matchKey] },
+          { contract: instance, functionName: 'getBoard', params: [roundNumber, matchNumber] },
+        );
+      }
+
+      const hydratedResults = callSpecs.length > 0 ? await multicallContracts(callSpecs, runner) : [];
+      const allMatches = [];
+      let cursor = 0;
+      for (const { record, instanceAddress, roundNumber, matchNumber } of descriptors) {
+        const matchResult = hydratedResults[cursor++];
+        const fullResult = hydratedResults[cursor++];
+        const boardResultCall = hydratedResults[cursor++];
+        if (!matchResult?.success) continue;
+
         try {
-          const instanceAddress = record.instance;
-          if (!instanceAddress || instanceAddress === ZERO_ADDRESS) return null;
+          const m = matchResult.result;
+          if (Number(m.status) !== 2) continue;
 
-          const roundNumber = Number(record.roundNumber);
-          const matchNumber = Number(record.matchNumber);
-          const instance = getInstanceContract(instanceAddress, runner);
-          const matchKey = ethers.solidityPackedKeccak256(['uint8', 'uint8'], [roundNumber, matchNumber]);
-
-          const [m, full, boardResult, tc] = await Promise.all([
-            instance.getMatch(roundNumber, matchNumber),
-            instance.matches(matchKey).catch(() => null),
-            instance.getBoard(roundNumber, matchNumber).catch(() => [0n, 0n]),
-            instance.tierConfig().catch(() => null),
-          ]);
-
-          if (Number(m.status) !== 2) return null;
+          const full = fullResult?.success ? fullResult.result : null;
+          const boardResult = boardResultCall?.success ? boardResultCall.result : [0n, 0n];
+          const tc = tierConfigByInstance.get(instanceAddress.toLowerCase());
 
           const moves = m.moves || '';
           const moveHistory = [];
@@ -89,7 +131,7 @@ export function useChessV2MatchHistory(factoryContract, runner, account, options
           const endTime = Number(m.lastMoveTime || record.recordedAt || m.startTime || 0);
           const playerCount = Number(tc?.playerCount || 2);
 
-          return {
+          allMatches.push({
             matchId: `0-${instanceAddress}-${roundNumber}-${matchNumber}`,
             tierId: 0,
             instanceId: instanceAddress,
@@ -117,11 +159,11 @@ export function useChessV2MatchHistory(factoryContract, runner, account, options
             endTime,
             timestamp: endTime,
             moveHistory,
-          };
+          });
         } catch {
-          return null;
+          continue;
         }
-      }))).filter(Boolean);
+      }
 
       allMatches.sort((a, b) => b.endTime - a.endTime);
       console.groupCollapsed(`[useChessV2MatchHistory] Loaded ${allMatches.length} completed matches for ${account}`);

@@ -856,6 +856,8 @@ export default function ConnectFourV2() {
     enabled: shouldPollPlayerActivity,
     pollIntervalMs: shouldScanFactoryForPlayerActivity ? 5000 : 30000,
     scanFactoryFallback: shouldScanFactoryForPlayerActivity,
+    hasActiveContext: isPlayerActivityContextActive,
+    pollWhenEmpty: false,
   });
   const playerProfile = useConnectFourPlayerProfile(resolvedFactoryContract, rpcProvider, account, {
     enabled: shouldPollPlayerProfile,
@@ -908,7 +910,11 @@ export default function ConnectFourV2() {
   };
 
   useEffect(() => {
-    const provider = new ethers.JsonRpcProvider(CURRENT_NETWORK.rpcUrl);
+    const provider = new ethers.JsonRpcProvider(
+      CURRENT_NETWORK.rpcUrl,
+      CURRENT_NETWORK.chainId,
+      { staticNetwork: true }
+    );
     rpcProviderRef.current = provider;
     setRpcProvider(provider);
     setResolvedFactoryContract(getFactoryContract(provider, factoryAddress));
@@ -1623,12 +1629,34 @@ export default function ConnectFourV2() {
     try {
       const { roundNumber, matchNumber } = matchInfo;
       const matchKey = ethers.keccak256(ethers.solidityPacked(['uint8', 'uint8'], [roundNumber, matchNumber]));
-      const [matchData, fullMatch, boardRaw, tierConfig] = await Promise.all([
-        instanceCont.getMatch(roundNumber, matchNumber),
-        instanceCont.matches(matchKey),
-        instanceCont.getBoard(roundNumber, matchNumber).catch(() => null),
-        instanceCont.tierConfig(),
-      ]);
+      const runner = getReadRunner();
+      const callSpecs = [
+        { contract: instanceCont, functionName: 'getMatch', params: [roundNumber, matchNumber] },
+        { contract: instanceCont, functionName: 'matches', params: [matchKey] },
+        { contract: instanceCont, functionName: 'getBoard', params: [roundNumber, matchNumber] },
+        { contract: instanceCont, functionName: 'tierConfig' },
+        { contract: instanceCont, functionName: 'matchTimeouts', params: [matchKey] },
+        { contract: instanceCont, functionName: 'isMatchEscL2Available', params: [roundNumber, matchNumber] },
+        { contract: instanceCont, functionName: 'isMatchEscL3Available', params: [roundNumber, matchNumber] },
+      ];
+      if (userAccount) {
+        callSpecs.push({
+          contract: instanceCont,
+          functionName: 'isPlayerInAdvancedRound',
+          params: [roundNumber, userAccount],
+        });
+      }
+      const results = runner ? await multicallContracts(callSpecs, runner) : [];
+      const matchData = results[0]?.success ? results[0].result : await instanceCont.getMatch(roundNumber, matchNumber);
+      const fullMatch = results[1]?.success ? results[1].result : await instanceCont.matches(matchKey);
+      const boardRaw = results[2]?.success ? results[2].result : await instanceCont.getBoard(roundNumber, matchNumber).catch(() => null);
+      const tierConfig = results[3]?.success ? results[3].result : await instanceCont.tierConfig();
+      const timeoutData = results[4]?.success ? results[4].result : await instanceCont.matchTimeouts(matchKey).catch(() => null);
+      const escL2Available = results[5]?.success ? Boolean(results[5].result) : Boolean(await instanceCont.isMatchEscL2Available(roundNumber, matchNumber).catch(() => false));
+      const escL3Available = results[6]?.success ? Boolean(results[6].result) : Boolean(await instanceCont.isMatchEscL3Available(roundNumber, matchNumber).catch(() => false));
+      const isUserAdvancedForRound = userAccount
+        ? (results[7]?.success ? Boolean(results[7].result) : Boolean(await instanceCont.isPlayerInAdvancedRound(roundNumber, userAccount).catch(() => false)))
+        : false;
 
       const tierMatchTime = Number(tierConfig.timeouts?.matchTimePerPlayer ?? tierConfig.matchTimePerPlayer ?? 300);
       const player1 = matchData.player1 || matchInfo.player1;
@@ -1662,8 +1690,7 @@ export default function ConnectFourV2() {
       }
 
       let timeoutState = null;
-      try {
-        const timeoutData = await instanceCont.matchTimeouts(matchKey);
+      if (timeoutData) {
         const esc1Start = Number(timeoutData.escalation1Start);
         const esc2Start = Number(timeoutData.escalation2Start);
         if (esc1Start > 0 || esc2Start > 0 || timeoutData.isStalled) {
@@ -1675,7 +1702,7 @@ export default function ConnectFourV2() {
             forfeitAmount: 0,
           };
         }
-      } catch {}
+      }
 
       if (matchStatus === 1 && currentTurn && lastMoveTime > 0) {
         const activePlayerTimeAtLastMove = isP1Turn ? p1TimeRaw : p2TimeRaw;
@@ -1692,19 +1719,6 @@ export default function ConnectFourV2() {
             forfeitAmount: timeoutState?.forfeitAmount ?? 0,
           };
         }
-      }
-
-      let escL2Available = false;
-      let escL3Available = false;
-      let isUserAdvancedForRound = false;
-      try {
-        escL2Available = await instanceCont.isMatchEscL2Available(roundNumber, matchNumber);
-        escL3Available = await instanceCont.isMatchEscL3Available(roundNumber, matchNumber);
-      } catch {}
-      if (userAccount) {
-        try {
-          isUserAdvancedForRound = await instanceCont.isPlayerInAdvancedRound(roundNumber, userAccount);
-        } catch {}
       }
 
       const isPlayer1 = player1.toLowerCase() === userAccount?.toLowerCase();
@@ -2089,12 +2103,14 @@ export default function ConnectFourV2() {
 
   useEffect(() => {
     if (!viewingTournament || !activeInstanceContractRef.current) return;
+    if (currentMatch) return;
     if (!isTabActive) return;
     if (![0, 1].includes(Number(viewingTournament.status))) return;
     const doSync = async () => {
       const tournament = tournamentRef.current;
       const instanceCont = activeInstanceContractRef.current;
       if (!tournament || !instanceCont) return;
+      if (currentMatchRef.current) return;
       if (![0, 1].includes(Number(tournament.status))) return;
       const updated = await refreshTournamentBracket(tournament.address);
       if (updated) setViewingTournament(updated);
@@ -2102,7 +2118,7 @@ export default function ConnectFourV2() {
     };
     const pollInterval = setInterval(doSync, 5000);
     return () => clearInterval(pollInterval);
-  }, [viewingTournament?.address, viewingTournament?.status, isTabActive, refreshTournamentBracket]);
+  }, [viewingTournament?.address, viewingTournament?.status, currentMatch?.instanceAddress, isTabActive, refreshTournamentBracket]);
 
   useEffect(() => {
     if (!currentMatch || !activeInstanceContractRef.current || !account) return;
@@ -2191,7 +2207,7 @@ export default function ConnectFourV2() {
     };
 
     doMatchSyncRef.current = doMatchSync;
-    const interval = setInterval(doMatchSync, 1500);
+    const interval = setInterval(doMatchSync, 5000);
     return () => clearInterval(interval);
   }, [currentMatch?.instanceAddress, currentMatch?.roundNumber, currentMatch?.matchNumber, account, refreshMatchData, buildMoveHistory, checkForNextActiveMatch]);
 
@@ -2414,6 +2430,7 @@ export default function ConnectFourV2() {
             onHideTooltip={() => setActiveTooltip(null)}
             connectCtaClassName={currentTheme.connectCtaClassName}
             reasonLabelMode="v2"
+            refreshOnExpand={false}
           />
           <RecentMatchesCard
             contract={null}
@@ -2494,6 +2511,7 @@ export default function ConnectFourV2() {
             onHideTooltip={() => setActiveTooltip(null)}
             connectCtaClassName={currentTheme.connectCtaClassName}
             reasonLabelMode="v2"
+            refreshOnExpand={false}
           />
           <RecentMatchesCard
             contract={null}

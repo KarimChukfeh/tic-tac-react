@@ -12,6 +12,13 @@ const EMPTY_DATA = {
   totalEarnings: 0n,
 };
 
+const isEmptyActivityData = (value) => (
+  (value?.activeMatches?.length || 0) === 0 &&
+  (value?.inProgressTournaments?.length || 0) === 0 &&
+  (value?.unfilledTournaments?.length || 0) === 0 &&
+  (value?.terminatedMatches?.length || 0) === 0
+);
+
 function buildInstanceActivity(instance, account, dismissedMatches, matchResults) {
   const { instanceId, status, currentRound, enrolledCount, playerCount, matchTimePerPlayer } = instance;
 
@@ -102,6 +109,8 @@ export const useConnectFourV2PlayerActivity = (instanceContract, account, factor
     enabled = true,
     pollIntervalMs = 5000,
     scanFactoryFallback = true,
+    hasActiveContext = false,
+    pollWhenEmpty = true,
   } = options;
   const [data, setData] = useState(EMPTY_DATA);
   const [loading, setLoading] = useState(true);
@@ -110,8 +119,17 @@ export const useConnectFourV2PlayerActivity = (instanceContract, account, factor
   const [dismissedMatches, setDismissedMatches] = useState(new Set());
   const [matchAlert, setMatchAlert] = useState(null);
   const alertedMatchKeysRef = useRef(new Set());
+  const latestDataRef = useRef(EMPTY_DATA);
 
-  const fetchActivity = useCallback(async (isInitialLoad = false) => {
+  useEffect(() => {
+    latestDataRef.current = data;
+  }, [data]);
+
+  const fetchActivity = useCallback(async ({
+    isInitialLoad = false,
+    isBackgroundPoll = false,
+    forceScan = false,
+  } = {}) => {
     if (!enabled) {
       setLoading(false);
       setSyncing(false);
@@ -122,6 +140,11 @@ export const useConnectFourV2PlayerActivity = (instanceContract, account, factor
       setLoading(false);
       setSyncing(false);
       setData(EMPTY_DATA);
+      return;
+    }
+
+    if (isBackgroundPoll && !hasActiveContext && !pollWhenEmpty && isEmptyActivityData(latestDataRef.current)) {
+      setSyncing(false);
       return;
     }
 
@@ -165,7 +188,7 @@ export const useConnectFourV2PlayerActivity = (instanceContract, account, factor
           console.warn('[ConnectFourV2PlayerActivity] Profile lookup failed:', profileErr.message);
         }
 
-        if (scanFactoryFallback && instanceMap.size === 0) {
+        if ((scanFactoryFallback || forceScan) && instanceMap.size === 0) {
           try {
             const activeCount = Number(await factoryContract.getActiveTournamentCount().catch(() => 0n));
             if (activeCount > 0) {
@@ -335,7 +358,7 @@ export const useConnectFourV2PlayerActivity = (instanceContract, account, factor
       setLoading(false);
       setSyncing(false);
     }
-  }, [account, enabled, instanceContract, factoryContract, runner, dismissedMatches, scanFactoryFallback]);
+  }, [account, enabled, instanceContract, factoryContract, runner, dismissedMatches, scanFactoryFallback, hasActiveContext, pollWhenEmpty]);
 
   useEffect(() => {
     if (!enabled) {
@@ -343,12 +366,12 @@ export const useConnectFourV2PlayerActivity = (instanceContract, account, factor
       setSyncing(false);
       return;
     }
-    fetchActivity(true);
+    fetchActivity({ isInitialLoad: true });
   }, [enabled, fetchActivity]);
 
   useEffect(() => {
     if (!enabled || !account) return;
-    const id = setInterval(() => fetchActivity(false), pollIntervalMs);
+    const id = setInterval(() => fetchActivity({ isBackgroundPoll: true }), pollIntervalMs);
     return () => clearInterval(id);
   }, [account, enabled, fetchActivity, pollIntervalMs]);
 
@@ -356,7 +379,7 @@ export const useConnectFourV2PlayerActivity = (instanceContract, account, factor
     alertedMatchKeysRef.current = new Set();
   }, [account]);
 
-  const refetch = useCallback(() => fetchActivity(false), [fetchActivity]);
+  const refetch = useCallback(() => fetchActivity({ forceScan: true }), [fetchActivity]);
 
   const dismissMatch = useCallback((tierId, instanceId, roundIdx, matchIdx) => {
     const key = `${tierId}-${instanceId}-${roundIdx}-${matchIdx}`;
