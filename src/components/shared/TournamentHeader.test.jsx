@@ -173,11 +173,22 @@ describe('TournamentHeader', () => {
       />
     );
 
-    expect(await screen.findByRole('button', { name: 'Cancel Tournament' })).toBeInTheDocument();
-    expect(await screen.findByRole('button', { name: 'Reset Enrollment Window' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Reset' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Force Start/i })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel Tournament' }));
+    const statusCard = screen.getByText('You are the sole enroller').closest('.border');
+    const actionGrid = screen.getByRole('button', { name: 'Cancel' }).closest('.grid');
+    expect(document.body.textContent.indexOf('Invite a Friend')).toBeLessThan(document.body.textContent.indexOf('You are the sole enroller'));
+    expect(statusCard).toContainElement(actionGrid);
+    expect(actionGrid).toHaveClass('grid-cols-2');
+    expect(actionGrid).toContainElement(screen.getByRole('link', { name: 'Learn about Cancellations' }));
+    expect(actionGrid).toContainElement(screen.getByRole('link', { name: 'Learn about Resetting Enrollment' }));
+    expect(actionGrid.textContent.indexOf('Learn about Cancellations')).toBeLessThan(actionGrid.textContent.lastIndexOf('Cancel'));
+    expect(actionGrid.textContent.indexOf('Learn about Resetting Enrollment')).toBeLessThan(actionGrid.textContent.lastIndexOf('Reset'));
+    expect(actionGrid.textContent.indexOf('Learn about Resetting Enrollment')).toBeLessThan(actionGrid.textContent.indexOf('Learn about Cancellations'));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(onCancelTournament).toHaveBeenCalledWith(0, 0);
   });
 
@@ -199,8 +210,8 @@ describe('TournamentHeader', () => {
       />
     );
 
-    expect(await screen.findByRole('button', { name: 'Cancel Tournament' })).toBeInTheDocument();
-    expect(await screen.findByRole('button', { name: 'Reset Enrollment Window' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Reset' })).toBeInTheDocument();
   });
 
   it('shows the enrolment window timer inside the status card when a deadline is provided', () => {
