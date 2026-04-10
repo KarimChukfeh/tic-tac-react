@@ -580,8 +580,20 @@ export default function Landing() {
           </h2>
           <p className="text-xl text-slate-400 mb-12 max-w-xl mx-auto">
           </p>
-          <div className="flex flex-col items-center gap-4">
-            <div className="flex w-full max-w-4xl flex-col items-center justify-center gap-4 sm:flex-row sm:gap-5">
+          <div
+            id="learn-more-links"
+            className="mx-auto grid w-full max-w-3xl grid-cols-1 items-center gap-6 sm:grid-cols-[1fr_auto_1fr] sm:gap-x-8"
+          >
+            <div className="flex flex-col items-center gap-5">
+              <span className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
+                As a Player
+              </span>
+              <Link
+                to="/manual"
+                className="text-xl font-bold text-cyan-400 transition-colors duration-300 hover:text-cyan-300"
+              >
+                Read The Manual
+              </Link>
               <button
                 onClick={() => document.getElementById('games')?.scrollIntoView({ behavior: 'smooth' })}
                 className="w-full max-w-[260px] px-8 py-4 rounded-2xl font-bold text-xl text-white transition-all duration-300 hover:-translate-y-1 cursor-pointer"
@@ -592,7 +604,23 @@ export default function Landing() {
               >
                 Start Playing
               </button>
-              <span className="text-slate-500 text-lg font-medium">or</span>
+            </div>
+            <div className="h-px w-full bg-slate-700/60 sm:h-28 sm:w-px" aria-hidden="true" />
+            <div className="flex flex-col items-center gap-5">
+              <span className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
+                As a Builder
+              </span>
+              <Link
+                id="read-the-whitepaper"
+                to="/whitepaper"
+                className="text-xl font-bold text-cyan-400 transition-all duration-300 hover:text-cyan-300"
+                style={whitepaperGlow ? {
+                  textShadow: '0 0 8px #22d3ee, 0 0 20px #22d3ee, 0 0 40px #06b6d4',
+                  animation: 'whitepaperPulse 2s ease-out forwards',
+                } : {}}
+              >
+                Read The Whitepaper
+              </Link>
               <Link
                 to="/docs"
                 className="w-full max-w-[260px] px-8 py-4 rounded-2xl font-bold text-xl text-white transition-all duration-300 hover:-translate-y-1"
@@ -602,28 +630,6 @@ export default function Landing() {
                 }}
               >
                 Start Building
-              </Link>
-            </div>
-            <div
-              id="learn-more-links"
-              className="mt-2 flex flex-col items-center gap-3 text-xl font-bold"
-            >
-              <Link
-                to="/manual"
-                className="mt-6 text-cyan-400 transition-colors duration-300 hover:text-cyan-300"
-              >
-                Browse The Manual
-              </Link>
-              <Link
-                id="read-the-whitepaper"
-                to="/whitepaper"
-                className="text-cyan-400 transition-all duration-300 hover:text-cyan-300"
-                style={whitepaperGlow ? {
-                  textShadow: '0 0 8px #22d3ee, 0 0 20px #22d3ee, 0 0 40px #06b6d4',
-                  animation: 'whitepaperPulse 2s ease-out forwards',
-                } : {}}
-              >
-                Read The Whitepaper
               </Link>
             </div>
           </div>
