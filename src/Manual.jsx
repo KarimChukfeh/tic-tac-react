@@ -18,12 +18,6 @@ const Manual = () => {
             <span>Back to Home</span>
           </button>
 
-          <a
-            href="/User_Manual.md"
-            className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-400 transition-colors hover:text-cyan-300"
-          >
-            Agent Version
-          </a>
         </div>
 
         <div id="user-manual">

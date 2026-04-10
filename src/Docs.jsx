@@ -136,10 +136,10 @@ const renderCodeBlock = (code = '', language = '', key) => {
   return (
     <div
       key={key}
-      className="my-5 overflow-hidden rounded-2xl border border-slate-700/70 bg-slate-950/90 shadow-[0_18px_50px_rgba(15,23,42,0.35)]"
+      className="my-5 max-w-full overflow-hidden rounded-lg border border-slate-700/70 bg-slate-950/90 shadow-[0_18px_50px_rgba(15,23,42,0.35)]"
     >
-      <div className="flex items-center justify-between border-b border-slate-700/70 bg-slate-900/95 px-4 py-2.5">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+      <div className="flex items-center justify-between border-b border-slate-700/70 bg-slate-900/95 px-3 py-2.5 sm:px-4">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 sm:tracking-[0.24em]">
           {label}
         </span>
         <div className="flex items-center gap-1.5">
@@ -148,17 +148,17 @@ const renderCodeBlock = (code = '', language = '', key) => {
           <span className="h-2.5 w-2.5 rounded-full bg-slate-700/80" />
         </div>
       </div>
-      <pre className="overflow-x-hidden px-0 py-0">
-        <code className="block w-full font-mono text-sm leading-6">
+      <pre className="max-w-full overflow-x-auto px-0 py-0">
+        <code className="block min-w-full font-mono text-[13px] leading-6 sm:text-sm">
           {lines.map((line, index) => (
             <div
               key={`${key}-line-${index}`}
-              className="grid grid-cols-[auto,minmax(0,1fr)] gap-4 px-4 py-[3px] even:bg-white/[0.02]"
+              className="grid min-w-0 grid-cols-[auto,minmax(0,1fr)] gap-2 px-3 py-[3px] even:bg-white/[0.02] sm:gap-4 sm:px-4"
             >
-              <span className="select-none text-right text-xs text-slate-500">
+              <span className="select-none text-right text-[11px] text-slate-500 sm:text-xs">
                 {index + 1}
               </span>
-              <span className="whitespace-pre-wrap break-words">
+              <span className="min-w-0 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
                 {isSolidity ? tokenizeSolidityLine(line) : (
                   <span className="text-slate-100">{line || ' '}</span>
                 )}
@@ -626,6 +626,7 @@ const Docs = () => {
   const handleSelectSection = (sectionId) => {
     const section = sectionsById.get(sectionId);
     selectSection(sectionId);
+    setIsMobileNavOpen(false);
 
     if (!section?.items.length) {
       return;
@@ -1062,17 +1063,11 @@ const Docs = () => {
             <span>Back to Home</span>
           </button>
 
-          <a
-            href="/Docs.md"
-            className="text-sm font-semibold uppercase tracking-[0.18em] text-pink-300 transition-colors hover:text-white"
-          >
-            Agent Version
-          </a>
         </div>
 
         <div className={`rounded-3xl border ${colors.border} bg-gradient-to-br ${colors.bg} p-6 backdrop-blur-lg md:p-8`}>
           {!isLoading && selectedSection ? (
-            <div className="fixed bottom-4 left-4 z-40 flex lg:hidden">
+            <div className="fixed right-4 top-4 z-[60] flex lg:hidden">
               <button
                 type="button"
                 aria-label={isMobileNavOpen ? 'Close docs navigation' : 'Open docs navigation'}
@@ -1085,15 +1080,22 @@ const Docs = () => {
             </div>
           ) : null}
 
-          {isMobileNavOpen && !isLoading && selectedSection ? (
-            <div className="fixed inset-0 z-50 lg:hidden">
+          {!isLoading && selectedSection ? (
+            <div
+              aria-hidden={!isMobileNavOpen}
+              className={`fixed inset-0 z-50 transition-opacity duration-200 ease-out lg:hidden ${
+              isMobileNavOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
+            }`}
+            >
               <button
                 type="button"
                 aria-label="Close docs navigation"
                 onClick={() => setIsMobileNavOpen(false)}
-                className="absolute inset-0 bg-black/45 backdrop-blur-[1px]"
+                className="absolute inset-0 bg-black/45 backdrop-blur-[1px] transition-opacity duration-200 ease-out"
               />
-              <div className="absolute bottom-20 left-4 right-4 max-h-[70vh] overflow-hidden rounded-2xl border border-pink-300/20 bg-[#220530]/95 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.42)]">
+              <div className={`absolute left-4 right-4 top-20 max-h-[70vh] origin-top overflow-hidden rounded-2xl border border-pink-300/20 bg-[#220530] p-4 shadow-[0_24px_80px_rgba(0,0,0,0.42)] transition-all duration-200 ease-out ${
+                isMobileNavOpen ? 'translate-y-0 scale-100 opacity-100' : '-translate-y-4 scale-[0.98] opacity-0'
+              }`}>
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <ListTree className={colors.primary} size={18} />
