@@ -36,7 +36,7 @@ const SECTION_GROUPS = [
   },
   {
     id: 'protocol',
-    label: 'Design',
+    label: 'Architecture',
     titles: [
       'Contracts',
       'Deployment Model',
@@ -56,7 +56,7 @@ const SECTION_GROUPS = [
   },
   {
     id: 'builders',
-    label: 'Guide',
+    label: "Builder's Guide",
     titles: [
       'Building Games on ETour',
       'What You Need',

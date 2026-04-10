@@ -55,7 +55,7 @@ describe('Docs', () => {
     expect(await screen.findByText('ETour Protocol')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Browse Docs' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Collapse Overview' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Expand Design' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Expand Architecture' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '1. Core Principles' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '1.1 Factory Layer' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '1.2 Game Layer' })).toBeInTheDocument();
