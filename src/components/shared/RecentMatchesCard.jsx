@@ -1283,7 +1283,7 @@ const RecentMatchesCard = ({
                       <div className="text-xl font-bold text-white">{displayTournamentStats.totalPlayed}</div>
                     </div>
                     <div className="bg-green-500/15 border border-green-400/30 rounded-xl p-3 text-center">
-                      <div className="text-xs font-semibold mb-1 text-green-300">Paid</div>
+                      <div className="text-xs font-semibold mb-1 text-green-300">Total Payouts</div>
                       <div className="text-sm font-bold text-white leading-tight">
                         {formatEthAmount(displayTournamentEnrollments.reduce((sum, r) => sum + getRecordPayout(r), 0n))} ETH
                       </div>
