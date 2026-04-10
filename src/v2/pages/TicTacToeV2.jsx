@@ -2232,6 +2232,7 @@ export default function TicTacToeV2() {
             v2Matches={v2MatchHistory.matches}
             v2MatchesLoading={v2MatchHistory.loading}
             reasonLabelMode="v2"
+            panelVariant="stats"
           />
           <ActiveLobbiesCard
             lobbies={activeLobbies.lobbies}
@@ -2313,6 +2314,7 @@ export default function TicTacToeV2() {
             v2Matches={v2MatchHistory.matches}
             v2MatchesLoading={v2MatchHistory.loading}
             reasonLabelMode="v2"
+            panelVariant="stats"
           />
           <ActiveLobbiesCard
             lobbies={activeLobbies.lobbies}

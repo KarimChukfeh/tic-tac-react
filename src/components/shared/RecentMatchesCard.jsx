@@ -54,6 +54,7 @@ const RecentMatchesCard = ({
   showTournamentRaffles = true,
   connectCtaClassName = 'bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl shadow-2xl border-2 border-purple-400/60 hover:scale-105',
   reasonLabelMode = 'default',
+  panelVariant = 'history',
 }) => {
   const [internalIsExpanded, setInternalIsExpanded] = useState(false);
   const [historyTab, setHistoryTab] = useState('tournaments'); // 'matches' | 'tournaments'
@@ -87,6 +88,9 @@ const RecentMatchesCard = ({
   const showMatchesLoadingState = (loadingRecentMatches || v2MatchesLoading) && !hasRenderedMatches;
   const hasTournamentData = Boolean(displayTournamentStats) || displayTournamentEnrollments.length > 0;
   const showTournamentLoadingState = Boolean(playerProfile?.loading) && !hasTournamentData;
+  const isStatsPanel = panelVariant === 'stats';
+  const PanelIcon = isStatsPanel ? TrendingUp : History;
+  const panelTitle = isStatsPanel ? 'Stats' : 'History';
 
   // Use external state if provided, otherwise use internal state
   const isExpanded = externalIsExpanded !== undefined ? externalIsExpanded : internalIsExpanded;
@@ -1117,10 +1121,10 @@ const RecentMatchesCard = ({
               ? 'border-2 border-teal-300 md:shadow-[0_0_20px_rgba(94,234,212,0.6)] scale-105'
               : 'md:border-2 md:border-teal-400/40 md:hover:border-teal-400/70 hover:scale-110')
           }`}
-          aria-label={disabled ? "Connect wallet to access recent matches" : isExpanded ? "Close recent matches" : "Open recent matches"}
-          title={disabled ? "Connect Wallet to View Your Match History" : ""}
+          aria-label={disabled ? `Connect wallet to access ${panelTitle.toLowerCase()}` : isExpanded ? `Close ${panelTitle.toLowerCase()}` : `Open ${panelTitle.toLowerCase()}`}
+          title={disabled ? `Connect Wallet to View Your ${panelTitle}` : ""}
         >
-          <History size={16} className="text-white md:w-6 md:h-6" />
+          <PanelIcon size={16} className="text-white md:w-6 md:h-6" />
 
           {/* Sync Circle Animation */}
           {syncing && (
@@ -1133,18 +1137,18 @@ const RecentMatchesCard = ({
               href="#connect-wallet-cta"
               className={`max-md:hidden absolute left-full ml-3 top-1/2 inline-flex -translate-y-1/2 items-center justify-center whitespace-nowrap px-5 py-2.5 text-sm font-semibold opacity-0 group-hover:opacity-100 transition-all ${connectCtaClassName}`}
             >
-              Connect Wallet to View Your Match History
+              Connect Wallet to View Your {panelTitle}
             </a>
           ) : (
             <div className="max-md:hidden absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-              Match History
+              {panelTitle}
             </div>
           )}
 
         </button>
 
         {/* Label - Mobile only */}
-        <span className="md:hidden text-[10px] text-white/80 font-medium">History</span>
+        <span className="md:hidden text-[10px] text-white/80 font-medium">{panelTitle}</span>
 
         {/* Tooltip - Mobile only */}
         {showTooltip && disabled && (
@@ -1156,7 +1160,7 @@ const RecentMatchesCard = ({
             }}
             className={`md:hidden fixed bottom-20 left-4 right-4 flex items-center justify-center px-6 py-3 text-sm font-semibold z-[100] animate-fade-in transition-transform text-center ${connectCtaClassName}`}
           >
-            Connect Wallet to View Your Match History
+            Connect Wallet to View Your {panelTitle}
           </a>
         )}
       </div>
@@ -1178,8 +1182,8 @@ const RecentMatchesCard = ({
           }`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <History size={24} className="text-teal-400" />
-                <h3 className="text-white font-bold text-lg">History</h3>
+                <PanelIcon size={24} className="text-teal-400" />
+                <h3 className="text-white font-bold text-lg">{panelTitle}</h3>
               </div>
               <div className="flex items-center gap-1">
                 {/* Scroll to Top Button - only show when scrolled */}

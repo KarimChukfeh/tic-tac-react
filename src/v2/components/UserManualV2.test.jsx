@@ -163,6 +163,27 @@ describe('UserManualV2', () => {
     });
   });
 
+  it('opens the full manual navigation in a mobile drawer', async () => {
+    render(<UserManualV2 defaultExpanded collapsible={false} showAllSections />);
+
+    expect(await screen.findByRole('heading', { name: '1.1: What is ETour?' })).toBeInTheDocument();
+
+    const toggle = screen.getByRole('button', { name: 'Open manual navigation' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.click(toggle);
+
+    expect(screen.getByRole('button', { name: 'Close manual navigation', expanded: true })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Browse The Manual' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByRole('link', { name: '3.2: Draws' }).at(-1));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Open manual navigation' })).toHaveAttribute('aria-expanded', 'false');
+      expect(window.location.hash).toBe('#32-draws');
+    });
+  });
+
   it('auto-expands the section currently in view in full document mode', async () => {
     render(<UserManualV2 defaultExpanded collapsible={false} showAllSections />);
 

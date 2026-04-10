@@ -8,6 +8,8 @@ import {
   ChevronRight,
   ChevronUp,
   LayoutList,
+  Menu,
+  X,
 } from 'lucide-react';
 
 const HEADING_ALIASES = {
@@ -435,6 +437,7 @@ const AntiGriefingOverviewBody = ({
 const TocNavItem = ({
   item,
   activeHash,
+  onNavigate,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const isActive = item.href === `#${activeHash}`;
@@ -454,6 +457,7 @@ const TocNavItem = ({
       >
         <a
           href={item.href}
+          onClick={onNavigate}
           className={`min-w-0 flex-1 rounded-xl py-2 text-sm transition-all duration-300 ease-out ${
             item.depth ? 'pl-0 pr-2 text-slate-400' : 'pl-4 pr-2'
           }`}
@@ -493,6 +497,7 @@ const TocNavItem = ({
                   <a
                     key={child.href}
                     href={child.href}
+                    onClick={onNavigate}
                     className={`block rounded-xl py-2 pl-4 pr-3 text-sm transition-all duration-300 ease-out ${
                       isChildActive
                         ? 'bg-sky-500/20 text-white ring-1 ring-sky-400/40 shadow-[0_10px_24px_rgba(14,165,233,0.15)]'
@@ -516,12 +521,16 @@ const TocNav = ({
   activeHash,
   expandedSectionId,
   onToggleSection,
+  onNavigate,
+  showTitle = true,
 }) => (
   <nav className="rounded-2xl border border-slate-700/60 bg-slate-950/60 p-4 backdrop-blur-sm">
-    <div className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
-      <LayoutList size={15} />
-      <span>Browse The Manual</span>
-    </div>
+    {showTitle ? (
+      <div className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
+        <LayoutList size={15} />
+        <span>Browse The Manual</span>
+      </div>
+    ) : null}
     <div className="space-y-5">
       {groups.map((group) => (
         <div key={group.label}>
@@ -555,6 +564,7 @@ const TocNav = ({
                     key={`${group.label}-${item.href}`}
                     item={item}
                     activeHash={activeHash}
+                    onNavigate={onNavigate}
                   />
                 ))}
               </div>
@@ -760,6 +770,7 @@ const UserManualV2 = ({
   const [expandedSectionId, setExpandedSectionId] = useState('1-getting-started');
   const [displayedSectionId, setDisplayedSectionId] = useState('1-getting-started');
   const [contentVisible, setContentVisible] = useState(true);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
   const colors = isElite ? {
     primary: 'text-[#fbbf24]',
@@ -888,6 +899,7 @@ const UserManualV2 = ({
   const hasExpandedSection = Boolean(expandedSection);
   const displayedSection = manualData?.sections.find((section) => section.id === displayedSectionId) ?? null;
   const hasDisplayedSection = Boolean(displayedSection);
+  const showDocumentNav = showAllSections && manualData && isExpanded && !isLoading && !errorMessage;
 
   const handleToggleSection = (group) => {
     if (!group) return;
@@ -922,6 +934,14 @@ const UserManualV2 = ({
     if (firstTargetId) {
       window.history.replaceState(null, '', `#${firstTargetId}`);
     }
+  };
+
+  const handleMobileToggleSection = (group) => {
+    handleToggleSection(group);
+  };
+
+  const handleNavLinkClick = () => {
+    setIsMobileNavOpen(false);
   };
 
   useEffect(() => {
@@ -1085,6 +1105,66 @@ const UserManualV2 = ({
 
   return (
     <div className={`bg-gradient-to-br ${colors.bg} border ${colors.border} rounded-2xl p-3 md:p-6`}>
+      {showDocumentNav ? (
+        <div className="fixed right-4 top-4 z-[60] flex lg:hidden">
+          <button
+            type="button"
+            aria-label={isMobileNavOpen ? 'Close manual navigation' : 'Open manual navigation'}
+            aria-expanded={isMobileNavOpen}
+            onClick={() => setIsMobileNavOpen((current) => !current)}
+            className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-sky-300/45 bg-slate-950/95 text-white shadow-[0_14px_32px_rgba(0,0,0,0.34)] ring-1 ring-sky-300/20 backdrop-blur transition-colors hover:bg-slate-900"
+          >
+            {isMobileNavOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
+      ) : null}
+
+      {showDocumentNav ? (
+        <div
+          aria-hidden={!isMobileNavOpen}
+          className={`fixed inset-0 z-50 transition-opacity duration-200 ease-out lg:hidden ${
+            isMobileNavOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
+          }`}
+        >
+          <button
+            type="button"
+            aria-label="Close manual navigation"
+            onClick={() => setIsMobileNavOpen(false)}
+            className="absolute inset-0 bg-black/45 backdrop-blur-[1px] transition-opacity duration-200 ease-out"
+          />
+          <div className={`absolute left-4 right-4 top-20 max-h-[70vh] origin-top overflow-hidden rounded-2xl border border-slate-700/60 bg-slate-950 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.42)] transition-all duration-200 ease-out ${
+            isMobileNavOpen ? 'translate-y-0 scale-100 opacity-100' : '-translate-y-4 scale-[0.98] opacity-0'
+          }`}>
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <LayoutList className="text-sky-300" size={18} />
+                <h2 className="text-lg font-semibold text-sky-100">Browse The Manual</h2>
+              </div>
+              <button
+                type="button"
+                aria-label="Close manual navigation"
+                onClick={() => setIsMobileNavOpen(false)}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-sky-300/20 text-sky-100 transition-colors hover:bg-white/[0.04] hover:text-white"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            {isMobileNavOpen ? (
+              <div className="max-h-[calc(70vh-4.5rem)] overflow-y-auto">
+                <TocNav
+                  groups={manualData.tocGroups}
+                  activeHash={activeHash}
+                  expandedSectionId={expandedSectionId}
+                  onToggleSection={handleMobileToggleSection}
+                  onNavigate={handleNavLinkClick}
+                  showTitle={false}
+                />
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
       {collapsible ? (
         <button
           type="button"
@@ -1125,24 +1205,25 @@ const UserManualV2 = ({
               </div>
             </div>
           ) : manualData ? (
-            <div className="flex flex-col gap-6 xl:flex-row xl:items-start">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
               <aside
                 className={`space-y-4 transition-[max-width,transform,opacity] duration-500 ease-out ${
                   showAllSections
-                    ? 'xl:sticky xl:top-24 xl:w-[320px] xl:min-w-[320px] xl:max-w-[320px]'
+                    ? 'hidden lg:sticky lg:top-24 lg:block lg:w-[320px] lg:min-w-[320px] lg:max-w-[320px]'
                     : hasExpandedSection
-                    ? 'xl:sticky xl:top-24 xl:w-[320px] xl:min-w-[320px] xl:max-w-[320px]'
-                    : 'xl:flex-1 xl:w-full xl:max-w-none'
+                    ? 'lg:sticky lg:top-24 lg:w-[320px] lg:min-w-[320px] lg:max-w-[320px]'
+                    : 'lg:flex-1 lg:w-full lg:max-w-none'
                 }`}
               >
                 <div
-                  className="w-full transition-[transform,width,max-width] duration-500 ease-out xl:translate-x-0"
+                  className="w-full transition-[transform,width,max-width] duration-500 ease-out lg:translate-x-0"
                 >
                   <TocNav
                     groups={manualData.tocGroups}
                     activeHash={activeHash}
                     expandedSectionId={expandedSectionId}
                     onToggleSection={handleToggleSection}
+                    onNavigate={handleNavLinkClick}
                   />
                 </div>
               </aside>
@@ -1150,10 +1231,10 @@ const UserManualV2 = ({
               <div
                 className={`min-w-0 overflow-hidden transition-[max-width,opacity,transform,margin] duration-500 ease-out ${
                   showAllSections
-                    ? 'xl:flex-1 xl:max-w-none xl:translate-x-0 xl:opacity-100'
+                    ? 'lg:flex-1 lg:max-w-none lg:translate-x-0 lg:opacity-100'
                     : hasExpandedSection
-                    ? 'xl:flex-1 xl:max-w-none xl:translate-x-0 xl:opacity-100'
-                    : 'xl:max-w-0 xl:translate-x-10 xl:opacity-0 xl:pointer-events-none'
+                    ? 'lg:flex-1 lg:max-w-none lg:translate-x-0 lg:opacity-100'
+                    : 'lg:max-w-0 lg:translate-x-10 lg:opacity-0 lg:pointer-events-none'
                 }`}
                 aria-hidden={showAllSections ? false : !hasExpandedSection}
               >
