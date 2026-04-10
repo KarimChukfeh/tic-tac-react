@@ -5,25 +5,29 @@ import Docs from './Docs.jsx';
 
 const docsMarkdown = `# ETour Protocol
 
+# Overview
+
 This is the protocol overview.
 
-## Core Principles
+## 1. Core Principles
 
 The protocol is modular.
 
-### Factory Layer
+### 1.1 Factory Layer
 
 Factories coordinate deployments.
 
-### Game Layer
+### 1.2 Game Layer
 
 Games validate moves.
 
-## Deployment Model
+# Architecture
+
+## 2. Deployment Model
 
 This supersedes [BuildingGames.md](./BuildingGames.md).
 
-### Factory -> Implementation -> Clone
+### 2.1 Factory -> Implementation -> Clone
 
 Deployments stay deterministic.
 

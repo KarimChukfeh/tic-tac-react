@@ -23,61 +23,24 @@ const SOLIDITY_TYPES = new Set([
   'uint128', 'uint136', 'uint144', 'uint152', 'uint160', 'uint168', 'uint176', 'uint184', 'uint192',
   'uint200', 'uint208', 'uint216', 'uint224', 'uint232', 'uint240', 'uint248', 'uint256',
 ]);
-const SECTION_GROUPS = [
-  {
-    id: 'overview',
-    label: 'Overview',
-    titles: [
-      'Introduction',
-      'What to Expect',
-      'Key Terms',
-      'Core Principles',
-    ],
-  },
-  {
-    id: 'protocol',
-    label: 'Architecture',
-    titles: [
-      'Contracts',
-      'Deployment Model',
-      'Factory Architecture',
-      'Instance Storage Model',
-      'Execution Boundaries',
-      'Tournament Lifecycle',
-      'Module Responsibilities',
-      'Match Architecture',
-      'Entropy and Randomness',
-      'Time Control and Escalations',
-      'Fee Model and Settlement',
-      'Player Profiles',
-      'Concrete Game Implementations',
-      'Why the `Match` Struct Is Intentionally Flexible',
-    ],
-  },
-  {
-    id: 'builders',
-    label: "Builder's Guide",
-    titles: [
-      'Building Games on ETour',
-      'What You Need',
-      'Dependencies',
-      'Project Structure',
-      'Example: Checkers',
-      'Live Examples',
-    ],
-  },
-  {
-    id: 'appendix',
-    label: 'Appendix',
-    titles: [
-      'Practical Reading Order',
-    ],
-  },
-];
 const slugifyHeading = (value = '') => value.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
-const GROUP_TITLE_MAP = new Map(
-  SECTION_GROUPS.flatMap((group) => group.titles.map((title) => [title, { id: group.id, label: group.label }])),
-);
+const DEFAULT_DOCS_GROUP = { id: 'docs', label: 'Docs' };
+
+const parseNumberedHeading = (heading = '') => {
+  const match = heading.match(/^(\d+(?:\.\d+)*)(?:\.)?\s+(.+)$/);
+
+  if (!match) {
+    return {
+      label: heading,
+      title: heading,
+    };
+  }
+
+  return {
+    label: heading,
+    title: match[2].trim(),
+  };
+};
 
 const resolveDocsHref = (href = '') => {
   if (!href || href.startsWith('#') || /^(https?:|mailto:|tel:)/.test(href)) {
@@ -178,10 +141,7 @@ const parseDocsStructure = (markdown = '') => {
   let title = 'ETour Docs';
   let titleCaptured = false;
   let inCodeBlock = false;
-  let h2Count = 0;
-  let h3Count = 0;
-  let h4Count = 0;
-  let h5Count = 0;
+  let activeGroup = DEFAULT_DOCS_GROUP;
   let currentSection = null;
   let currentSubsection = null;
   let currentNested = null;
@@ -192,6 +152,15 @@ const parseDocsStructure = (markdown = '') => {
     if (!currentSection && !inCodeBlock && line.startsWith('# ') && !titleCaptured) {
       title = line.substring(2).trim();
       titleCaptured = true;
+      return;
+    }
+
+    if (!inCodeBlock && line.startsWith('# ')) {
+      const label = line.substring(2).trim();
+      activeGroup = {
+        id: slugifyHeading(label) || DEFAULT_DOCS_GROUP.id,
+        label,
+      };
       return;
     }
 
@@ -207,21 +176,14 @@ const parseDocsStructure = (markdown = '') => {
     }
 
     if (!inCodeBlock && line.startsWith('## ')) {
-      const heading = line.substring(3).trim();
-      h2Count += 1;
-      h3Count = 0;
-      h4Count = 0;
-      h5Count = 0;
-
-      const groupMeta = GROUP_TITLE_MAP.get(heading) || { id: 'appendix', label: 'Appendix' };
+      const heading = parseNumberedHeading(line.substring(3).trim());
 
       currentSection = {
-        id: slugifyHeading(heading),
-        title: heading,
-        label: `${h2Count}. ${heading}`,
-        number: h2Count,
-        groupId: groupMeta.id,
-        groupLabel: groupMeta.label,
+        id: slugifyHeading(heading.title),
+        title: heading.title,
+        label: heading.label,
+        groupId: activeGroup.id,
+        groupLabel: activeGroup.label,
         lines: [line],
         items: [],
       };
@@ -243,13 +205,10 @@ const parseDocsStructure = (markdown = '') => {
     }
 
     if (line.startsWith('### ')) {
-      const heading = line.substring(4).trim();
-      h3Count += 1;
-      h4Count = 0;
-      h5Count = 0;
+      const heading = parseNumberedHeading(line.substring(4).trim());
       currentSubsection = {
-        id: slugifyHeading(heading),
-        label: `${h2Count}.${h3Count} ${heading}`,
+        id: slugifyHeading(heading.title),
+        label: heading.label,
         items: [],
       };
       currentNested = null;
@@ -258,12 +217,10 @@ const parseDocsStructure = (markdown = '') => {
     }
 
     if (line.startsWith('#### ') && currentSubsection) {
-      const heading = line.substring(5).trim();
-      h4Count += 1;
-      h5Count = 0;
+      const heading = parseNumberedHeading(line.substring(5).trim());
       currentNested = {
-        id: slugifyHeading(heading),
-        label: `${h2Count}.${h3Count}.${h4Count} ${heading}`,
+        id: slugifyHeading(heading.title),
+        label: heading.label,
         items: [],
       };
       currentSubsection.items.push(currentNested);
@@ -271,11 +228,10 @@ const parseDocsStructure = (markdown = '') => {
     }
 
     if (line.startsWith('##### ') && currentNested) {
-      const heading = line.substring(6).trim();
-      h5Count += 1;
+      const heading = parseNumberedHeading(line.substring(6).trim());
       currentNested.items.push({
-        id: slugifyHeading(heading),
-        label: `${h2Count}.${h3Count}.${h4Count}.${h5Count} ${heading}`,
+        id: slugifyHeading(heading.title),
+        label: heading.label,
       });
     }
   });
@@ -288,32 +244,21 @@ const parseDocsStructure = (markdown = '') => {
 };
 
 const groupSections = (sections = []) => {
-  const groups = SECTION_GROUPS.map((group) => ({
-    id: group.id,
-    label: group.label,
-    sections: [],
-  }));
-  const extras = [];
+  const groups = new Map();
 
   sections.forEach((section) => {
-    const group = groups.find((entry) => entry.id === section.groupId);
-
-    if (group) {
-      group.sections.push(section);
-      return;
+    if (!groups.has(section.groupId)) {
+      groups.set(section.groupId, {
+        id: section.groupId,
+        label: section.groupLabel,
+        sections: [],
+      });
     }
 
-    extras.push(section);
+    groups.get(section.groupId).sections.push(section);
   });
 
-  return [
-    ...groups.filter((group) => group.sections.length > 0),
-    ...(extras.length ? [{
-      id: 'appendix',
-      label: 'Appendix',
-      sections: extras,
-    }] : []),
-  ];
+  return Array.from(groups.values());
 };
 
 const buildTabsForSection = (section) => {
@@ -339,12 +284,12 @@ const buildTabsForSection = (section) => {
     }
 
     if (!inCodeBlock && line.startsWith('### ')) {
-      const title = line.substring(4).trim();
-      const id = slugifyHeading(title);
+      const heading = parseNumberedHeading(line.substring(4).trim());
+      const id = slugifyHeading(heading.title);
       currentTab = {
         id,
-        title,
-        label: labelById.get(id) || `${section.number}.${tabs.length + 1} ${title}`,
+        title: heading.title,
+        label: labelById.get(id) || heading.label,
         order: tabs.length + 1,
         lines: [line],
       };
@@ -740,7 +685,7 @@ const Docs = () => {
     return parts.length > 0 ? parts : text;
   };
 
-  const parseMarkdown = (markdown, startingH2 = 0, startingH3 = 0) => {
+  const parseMarkdown = (markdown) => {
     if (!markdown) {
       return null;
     }
@@ -752,10 +697,6 @@ const Docs = () => {
     let inCodeBlock = false;
     let codeContent = [];
     let codeLanguage = '';
-    let h2Count = startingH2;
-    let h3Count = startingH3;
-    let h4Count = 0;
-    let h5Count = 0;
 
     for (let i = 0; i < lines.length; i += 1) {
       const line = lines[i];
@@ -835,44 +776,38 @@ const Docs = () => {
         );
       } else if (line.startsWith('## ')) {
         const headerText = line.substring(3).trim();
-        const id = slugifyHeading(headerText);
-        h2Count += 1;
-        h3Count = 0;
-        h4Count = 0;
-        h5Count = 0;
+        const heading = parseNumberedHeading(headerText);
+        const id = slugifyHeading(heading.title);
         elements.push(
           <h2 key={i} id={id} className={`mb-4 mt-8 scroll-mt-24 text-2xl font-bold ${colors.secondary}`}>
-            {parseInlineMarkdown(`${h2Count}. ${headerText}`)}
+            {parseInlineMarkdown(heading.label)}
           </h2>,
         );
       } else if (line.startsWith('### ')) {
         const headerText = line.substring(4).trim();
-        const id = slugifyHeading(headerText);
-        h3Count += 1;
-        h4Count = 0;
-        h5Count = 0;
+        const heading = parseNumberedHeading(headerText);
+        const id = slugifyHeading(heading.title);
         elements.push(
           <h3 key={i} id={id} className={`mb-3 mt-6 text-xl font-bold ${colors.muted}`}>
-            {parseInlineMarkdown(`${h2Count}.${h3Count} ${headerText}`)}
+            {parseInlineMarkdown(heading.label)}
           </h3>,
         );
       } else if (line.startsWith('#### ')) {
         const headerText = line.substring(5).trim();
-        const id = slugifyHeading(headerText);
-        h4Count += 1;
-        h5Count = 0;
+        const heading = parseNumberedHeading(headerText);
+        const id = slugifyHeading(heading.title);
         elements.push(
           <h4 key={i} id={id} className={`mb-2 mt-4 scroll-mt-24 text-lg font-semibold ${colors.highlightText}`}>
-            {parseInlineMarkdown(`${h2Count}.${h3Count}.${h4Count} ${headerText}`)}
+            {parseInlineMarkdown(heading.label)}
           </h4>,
         );
       } else if (line.startsWith('##### ')) {
         const headerText = line.substring(6).trim();
-        const id = slugifyHeading(headerText);
-        h5Count += 1;
+        const heading = parseNumberedHeading(headerText);
+        const id = slugifyHeading(heading.title);
         elements.push(
           <h5 key={i} id={id} className={`mb-2 mt-3 text-base font-semibold ${colors.secondary}`}>
-            {parseInlineMarkdown(`${h2Count}.${h3Count}.${h4Count}.${h5Count} ${headerText}`)}
+            {parseInlineMarkdown(heading.label)}
           </h5>,
         );
       } else if (line.match(/^-{3,}$/)) {
@@ -1165,11 +1100,7 @@ const Docs = () => {
                   >
                     <div className="space-y-4 break-words">
                       {selectedTab
-                        ? parseMarkdown(
-                            selectedTab.lines.join('\n'),
-                            selectedSection.number,
-                            Math.max(0, (selectedTab.order || 1) - 1),
-                          )
+                        ? parseMarkdown(selectedTab.lines.join('\n'))
                         : null}
                     </div>
                   </div>
