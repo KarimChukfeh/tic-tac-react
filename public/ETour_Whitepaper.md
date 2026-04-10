@@ -137,7 +137,7 @@ Instead, ETour operates under the assumption that bad actors exist and builds th
 
 What ETour does prevent is the *platform* exploiting players. There is no hidden rake. There is no algorithm optimizing for the house's profit. There is no governance vote that changes the rules in favor of token holders.
 
-The fee structure is hardcoded and transparent: 90% to the winner, 7.5% to the creator, 2.5% to sustain the protocol. These percentages cannot be changed. No governance, no voting, no discretion.
+The fee structure is hardcoded and transparent: 95% to the winner, 5% to the game's creator. These percentages cannot be changed. No governance, no voting, no discretion.
 
 The prize pool can only go to the winner. It cannot be forfeited. It cannot be delayed. It cannot be taken back.
 
@@ -147,7 +147,7 @@ This is fairness by design: the code enforces equity more reliably than any huma
 
 ETour doesn't need token sales, venture funding, or financial engineering to survive.
 
-As long as people want to compete, ETour generates enough revenue to run itself. The 7.5% creator fee and 2.5% protocol fee fund development and infrastructure. The economics are simple enough for anyone to verify: prize pool size multiplied by entry fee equals total revenue. Subtract the fees, and you see exactly how much reaches the winner.
+As long as people want to compete, ETour generates enough revenue to run itself. The 5% creator fee funds development and infrastructure. The economics are simple enough for anyone to verify: prize pool size multiplied by entry fee equals total revenue. Subtract the fee, and you see exactly how much reaches the winner.
 
 This simplicity is intentional. A self-sustaining business model is the most radical form of trustlessness — the company can't fail and take the platform with it because the platform doesn't depend on the company. It depends only on Arbitrum's continued existence.
 
