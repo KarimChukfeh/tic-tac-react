@@ -90,7 +90,8 @@ const RecentMatchesCard = ({
   const showTournamentLoadingState = Boolean(playerProfile?.loading) && !hasTournamentData;
   const isStatsPanel = panelVariant === 'stats';
   const PanelIcon = isStatsPanel ? TrendingUp : History;
-  const panelTitle = isStatsPanel ? 'Stats' : 'History';
+  const panelTitle = isStatsPanel ? 'Your Stats' : 'History';
+  const connectWalletPanelTitle = panelTitle.startsWith('Your ') ? panelTitle : `Your ${panelTitle}`;
 
   // Use external state if provided, otherwise use internal state
   const isExpanded = externalIsExpanded !== undefined ? externalIsExpanded : internalIsExpanded;
@@ -1122,7 +1123,7 @@ const RecentMatchesCard = ({
               : 'md:border-2 md:border-teal-400/40 md:hover:border-teal-400/70 hover:scale-110')
           }`}
           aria-label={disabled ? `Connect wallet to access ${panelTitle.toLowerCase()}` : isExpanded ? `Close ${panelTitle.toLowerCase()}` : `Open ${panelTitle.toLowerCase()}`}
-          title={disabled ? `Connect Wallet to View Your ${panelTitle}` : ""}
+          title={disabled ? `Connect Wallet to View ${connectWalletPanelTitle}` : ""}
         >
           <PanelIcon size={16} className="text-white md:w-6 md:h-6" />
 
@@ -1137,7 +1138,7 @@ const RecentMatchesCard = ({
               href="#connect-wallet-cta"
               className={`max-md:hidden absolute left-full ml-3 top-1/2 inline-flex -translate-y-1/2 items-center justify-center whitespace-nowrap px-5 py-2.5 text-sm font-semibold opacity-0 group-hover:opacity-100 transition-all ${connectCtaClassName}`}
             >
-              Connect Wallet to View Your {panelTitle}
+              Connect Wallet to View {connectWalletPanelTitle}
             </a>
           ) : (
             <div className="max-md:hidden absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
@@ -1160,7 +1161,7 @@ const RecentMatchesCard = ({
             }}
             className={`md:hidden fixed bottom-20 left-4 right-4 flex items-center justify-center px-6 py-3 text-sm font-semibold z-[100] animate-fade-in transition-transform text-center ${connectCtaClassName}`}
           >
-            Connect Wallet to View Your {panelTitle}
+            Connect Wallet to View {connectWalletPanelTitle}
           </a>
         )}
       </div>
@@ -1256,26 +1257,16 @@ const RecentMatchesCard = ({
                 </div>
               ) : displayTournamentStats ? (
                 <>
-                  {playerProfile?.loading && (
-                    <div className="flex items-center gap-2 text-[11px] text-teal-300 mb-3">
-                      <RefreshCw size={12} className="animate-spin" />
-                      <span>Syncing latest tournaments...</span>
-                    </div>
-                  )}
                   {/* Summary metrics */}
-                  <div className="grid grid-cols-3 gap-3 mb-5">
+                  <div className="grid grid-cols-2 gap-3 mb-5">
                     <div className="bg-blue-500/15 border border-blue-400/30 rounded-xl p-3 text-center">
                       <div className="text-xs font-semibold text-blue-300 mb-1">Played</div>
                       <div className="text-xl font-bold text-white">{displayTournamentStats.totalPlayed}</div>
                     </div>
                     <div className="bg-green-500/15 border border-green-400/30 rounded-xl p-3 text-center">
-                      <div className="text-xs font-semibold text-green-300 mb-1">Wins</div>
-                      <div className="text-xl font-bold text-white">{displayTournamentStats.totalWins}</div>
-                    </div>
-                    <div className="bg-green-500/15 border border-green-400/30 rounded-xl p-3 text-center">
-                      <div className="text-xs font-semibold mb-1 text-green-300">Payouts (ETH)</div>
+                      <div className="text-xs font-semibold mb-1 text-green-300">Paid</div>
                       <div className="text-sm font-bold text-white leading-tight">
-                        {formatEthAmount(displayTournamentEnrollments.reduce((sum, r) => sum + getRecordPayout(r), 0n))}
+                        {formatEthAmount(displayTournamentEnrollments.reduce((sum, r) => sum + getRecordPayout(r), 0n))} ETH
                       </div>
                     </div>
                   </div>
@@ -1368,12 +1359,6 @@ const RecentMatchesCard = ({
             </div>
           ) : (
             <div className="space-y-6">
-              {isRefreshing && (
-                <div className="flex items-center gap-2 text-[11px] text-teal-300 -mb-3">
-                  <RefreshCw size={12} className="animate-spin" />
-                  <span>Syncing latest history...</span>
-                </div>
-              )}
               {/* Pagination calculations */}
               {(() => {
                 const totalPages = Math.ceil(recentMatches.length / itemsPerPage);

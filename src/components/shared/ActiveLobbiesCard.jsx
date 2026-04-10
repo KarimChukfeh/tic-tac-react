@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { AlertTriangle, Check, Clock3, RefreshCw, Rocket, TimerReset, X, Zap } from 'lucide-react';
+import { AlertTriangle, Check, Clock3, RefreshCw, TimerReset, X, Zap } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
 import { linkifyReasonText } from './UserManualAnchorLink';
 
@@ -219,6 +219,7 @@ const ActiveLobbiesCard = ({
 
   const totalWaiting = visibleLobbies.filter((lobby) => lobby.status === 0).length;
   const totalEscalations = visibleLobbies.filter((lobby) => hasFeaturedEscalation(lobby)).length;
+  const hasLobbies = lobbies.length > 0;
 
   const BASE_TOP_DESKTOP = 80;
   const COLLAPSED_BUTTON_HEIGHT_DESKTOP = 64;
@@ -262,7 +263,7 @@ const ActiveLobbiesCard = ({
           aria-label={disabled ? 'Connect wallet to access discover lobbies' : isExpanded ? 'Close discover lobbies' : 'Open discover lobbies'}
           title={disabled ? 'Connect Wallet to View Discover Lobbies' : ''}
         >
-          <Rocket size={16} className="text-white md:w-6 md:h-6" />
+          <Zap size={16} className="text-white md:w-6 md:h-6" />
 
           {syncing && (
             <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-cyan-300 animate-spin"></div>
@@ -334,18 +335,20 @@ const ActiveLobbiesCard = ({
                 <Zap size={18} className="text-yellow-200" />
                 <span>Discover Lobbies</span>
               </div>
-              <label className="mt-3 inline-flex items-center gap-3 text-sm text-slate-200/90 select-none cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={hideMine}
-                  onChange={(event) => setHideMine(event.target.checked)}
-                  className="sr-only peer"
-                />
-                <span className="inline-flex h-5 w-5 items-center justify-center rounded border border-purple-300/25 bg-slate-900/70 text-transparent transition-colors duration-200 peer-checked:border-yellow-300/50 peer-checked:bg-yellow-500/20 peer-checked:text-yellow-200">
-                  <Check size={13} strokeWidth={3} />
-                </span>
-                <span className="font-medium tracking-[0.04em]">Hide mine</span>
-              </label>
+              {hasLobbies && (
+                <label className="mt-3 inline-flex items-center gap-3 text-sm text-slate-200/90 select-none cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={hideMine}
+                    onChange={(event) => setHideMine(event.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <span className="inline-flex h-5 w-5 items-center justify-center rounded border border-purple-300/25 bg-slate-900/70 text-transparent transition-colors duration-200 peer-checked:border-yellow-300/50 peer-checked:bg-yellow-500/20 peer-checked:text-yellow-200">
+                    <Check size={13} strokeWidth={3} />
+                  </span>
+                  <span className="font-medium tracking-[0.04em]">Hide mine</span>
+                </label>
+              )}
             </div>
             <div className="flex items-center gap-1">
               <button
@@ -367,25 +370,27 @@ const ActiveLobbiesCard = ({
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2 mb-4">
-            {FILTERS.map((option) => (
-              <button
-                key={option.id}
-                onClick={() => setFilter(option.id)}
-                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                  filter === option.id
-                    ? 'bg-yellow-200 text-amber-950'
-                    : 'bg-white/10 text-yellow-50 hover:bg-white/15'
-                }`}
-                >
-                {option.label} ({option.id === 'all'
-                  ? visibleLobbies.length
-                  : option.id === 'waiting'
-                  ? totalWaiting
-                  : totalEscalations})
-              </button>
-            ))}
-          </div>
+          {hasLobbies && (
+            <div className="flex flex-wrap gap-2 mb-4">
+              {FILTERS.map((option) => (
+                <button
+                  key={option.id}
+                  onClick={() => setFilter(option.id)}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                    filter === option.id
+                      ? 'bg-yellow-200 text-amber-950'
+                      : 'bg-white/10 text-yellow-50 hover:bg-white/15'
+                  }`}
+                  >
+                  {option.label} ({option.id === 'all'
+                    ? visibleLobbies.length
+                    : option.id === 'waiting'
+                    ? totalWaiting
+                    : totalEscalations})
+                </button>
+              ))}
+            </div>
+          )}
 
           {loading ? (
             <div className="rounded-xl border border-yellow-200/20 bg-black/15 p-6 text-center text-yellow-50">
@@ -402,7 +407,7 @@ const ActiveLobbiesCard = ({
             </div>
           ) : filteredLobbies.length === 0 ? (
             <div className="rounded-xl border border-yellow-200/20 bg-black/15 p-6 text-center text-yellow-50">
-              <Rocket size={18} className="mx-auto mb-3 text-yellow-200" />
+              <Zap size={18} className="mx-auto mb-3 text-yellow-200" />
               {filter === 'all' && 'No available lobbies right now.'}
               {filter === 'waiting' && 'No open lobbies are currently waiting for players.'}
               {filter === 'escalations' && 'No live escalation windows are available right now.'}
