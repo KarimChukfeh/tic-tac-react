@@ -322,6 +322,76 @@ function validateKingMove(board, state, isWhite, from, fileDiff, rankDiff) {
   return 'Kings move one square at a time (or two squares to castle)';
 }
 
+function getValidationPromotion(pieceType, isWhite, toRank) {
+  if (pieceType !== PIECE_PAWN) return 0;
+  const reachesBackRank = (isWhite && toRank === 7) || (!isWhite && toRank === 0);
+  return reachesBackRank ? PIECE_QUEEN : 0;
+}
+
+function validateMoveOnResolvedState(board, state, from, to, isWhite, promotion = 0) {
+  if (from < 0 || from > 63 || to < 0 || to > 63 || from === to) {
+    return 'Invalid square';
+  }
+
+  const piece = getPiece(board, from);
+  const pieceType = getPieceType(piece);
+  const targetPiece = getPiece(board, to);
+
+  // Cannot capture own piece
+  if (isOwnPiece(targetPiece, isWhite)) {
+    return 'Cannot capture your own piece';
+  }
+
+  const fromFile = from % 8;
+  const fromRank = Math.floor(from / 8);
+  const toFile   = to % 8;
+  const toRank   = Math.floor(to / 8);
+  const fileDiff = toFile - fromFile;
+  const rankDiff = toRank - fromRank;
+
+  // Validate piece movement pattern
+  let movementError = null;
+  if (pieceType === PIECE_PAWN) {
+    movementError = validatePawnMove(board, state, from, to, isWhite, fileDiff, rankDiff);
+  } else if (pieceType === PIECE_KNIGHT) {
+    movementError = validateKnightMove(fileDiff, rankDiff);
+  } else if (pieceType === PIECE_BISHOP) {
+    movementError = validateBishopMove(board, from, to, fileDiff, rankDiff);
+  } else if (pieceType === PIECE_ROOK) {
+    movementError = validateRookMove(board, from, to, fileDiff, rankDiff);
+  } else if (pieceType === PIECE_QUEEN) {
+    movementError = validateQueenMove(board, from, to, fileDiff, rankDiff);
+  } else if (pieceType === PIECE_KING) {
+    movementError = validateKingMove(board, state, isWhite, from, fileDiff, rankDiff);
+  } else {
+    return 'No piece on the selected square';
+  }
+
+  if (movementError) return movementError;
+
+  // Check if the move would leave own king in check
+  const currentlyInCheck = isKingInCheck(board, isWhite);
+  if (wouldLeaveKingInCheck(board, state, from, to, isWhite)) {
+    if (currentlyInCheck) {
+      return 'You are in check — you must move out of check';
+    }
+    return 'That move would leave your King in check';
+  }
+
+  // Validate promotion
+  if (pieceType === PIECE_PAWN) {
+    const isPromotion = (isWhite && toRank === 7) || (!isWhite && toRank === 0);
+    if (isPromotion && (promotion < PIECE_KNIGHT || promotion > PIECE_QUEEN)) {
+      return 'Invalid promotion piece';
+    }
+    if (!isPromotion && promotion !== 0) {
+      return 'Promotion is only valid when a pawn reaches the last rank';
+    }
+  }
+
+  return null;
+}
+
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 /**
@@ -339,72 +409,35 @@ export function validateMoveWithReason(packedBoard, packedState, from, to, isWhi
   try {
     const board = BigInt(packedBoard);
     const state = BigInt(packedState);
-
-    if (from < 0 || from > 63 || to < 0 || to > 63 || from === to) {
-      return 'Invalid square';
-    }
-
-    const piece = getPiece(board, from);
-    const pieceType = getPieceType(piece);
-    const targetPiece = getPiece(board, to);
-
-    // Cannot capture own piece
-    if (isOwnPiece(targetPiece, isWhite)) {
-      return 'Cannot capture your own piece';
-    }
-
-    const fromFile = from % 8;
-    const fromRank = Math.floor(from / 8);
-    const toFile   = to % 8;
-    const toRank   = Math.floor(to / 8);
-    const fileDiff = toFile - fromFile;
-    const rankDiff = toRank - fromRank;
-
-    // Validate piece movement pattern
-    let movementError = null;
-    if (pieceType === PIECE_PAWN) {
-      movementError = validatePawnMove(board, state, from, to, isWhite, fileDiff, rankDiff);
-    } else if (pieceType === PIECE_KNIGHT) {
-      movementError = validateKnightMove(fileDiff, rankDiff);
-    } else if (pieceType === PIECE_BISHOP) {
-      movementError = validateBishopMove(board, from, to, fileDiff, rankDiff);
-    } else if (pieceType === PIECE_ROOK) {
-      movementError = validateRookMove(board, from, to, fileDiff, rankDiff);
-    } else if (pieceType === PIECE_QUEEN) {
-      movementError = validateQueenMove(board, from, to, fileDiff, rankDiff);
-    } else if (pieceType === PIECE_KING) {
-      movementError = validateKingMove(board, state, isWhite, from, fileDiff, rankDiff);
-    } else {
-      return 'No piece on the selected square';
-    }
-
-    if (movementError) return movementError;
-
-    // Check if the move would leave own king in check
-    const currentlyInCheck = isKingInCheck(board, isWhite);
-    if (wouldLeaveKingInCheck(board, state, from, to, isWhite)) {
-      if (currentlyInCheck) {
-        return 'You are in check — you must move out of check';
-      }
-      return 'That move would leave your King in check';
-    }
-
-    // Validate promotion
-    if (pieceType === PIECE_PAWN) {
-      const isPromotion = (isWhite && toRank === 7) || (!isWhite && toRank === 0);
-      if (isPromotion && (promotion < PIECE_KNIGHT || promotion > PIECE_QUEEN)) {
-        return 'Invalid promotion piece';
-      }
-      if (!isPromotion && promotion !== 0) {
-        return 'Promotion is only valid when a pawn reaches the last rank';
-      }
-    }
-
-    return null; // valid
+    return validateMoveOnResolvedState(board, state, from, to, isWhite, promotion);
   } catch {
     // If the validator itself throws (e.g. malformed board data), fail open
     // so the tx still goes to the contract rather than blocking the user.
     return null;
+  }
+}
+
+export function getLegalMovesForSquare(packedBoard, packedState, from, isWhite) {
+  try {
+    const board = BigInt(packedBoard);
+    const state = BigInt(packedState);
+    const piece = getPiece(board, from);
+    const pieceType = getPieceType(piece);
+
+    if (!pieceType || !isOwnPiece(piece, isWhite)) return [];
+
+    const legalMoves = [];
+    for (let to = 0; to < 64; to++) {
+      if (to === from) continue;
+      const promotion = getValidationPromotion(pieceType, isWhite, Math.floor(to / 8));
+      if (validateMoveOnResolvedState(board, state, from, to, isWhite, promotion) === null) {
+        legalMoves.push(to);
+      }
+    }
+
+    return legalMoves;
+  } catch {
+    return [];
   }
 }
 

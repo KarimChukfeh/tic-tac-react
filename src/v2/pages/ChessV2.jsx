@@ -20,7 +20,7 @@ import { shortenAddress } from '../../utils/formatters';
 import { generateV2TournamentUrl, parseV2ContractParam } from '../../utils/urlHelpers';
 import { shouldResetOnInitialDocumentLoad } from '../../utils/navigation';
 import { isDraw } from '../../utils/completionReasons';
-import { validateMoveWithReason } from '../../utils/chessValidator';
+import { getLegalMovesForSquare, validateMoveWithReason } from '../../utils/chessValidator';
 import { didMatchStateAdvance, waitForTxOrStateSync } from '../../utils/txSync';
 import { multicallContracts } from '../../utils/multicall';
 import ParticleBackground from '../../components/shared/ParticleBackground';
@@ -262,7 +262,7 @@ function ActionMessage({ type = 'info', message }) {
   );
 }
 
-const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, firstPlayer, matchStatus, loading, whiteInCheck, blackInCheck, lastMoveTime, startTime, lastMove, maxSize = 520, ghostMove }) => {
+const ChessBoard = ({ board, packedBoard, packedState, onMove, currentTurn, account, player1, player2, firstPlayer, matchStatus, loading, whiteInCheck, blackInCheck, lastMoveTime, startTime, lastMove, maxSize = 520, ghostMove }) => {
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [promotionSquare, setPromotionSquare] = useState(null);
   const [pendingMove, setPendingMove] = useState(null);
@@ -285,6 +285,20 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
     return () => window.removeEventListener('resize', updateSize);
   }, [maxSize]);
 
+  useEffect(() => {
+    setSelectedSquare(null);
+    setPromotionSquare(null);
+    setPendingMove(null);
+  }, [packedBoard, packedState]);
+
+  useEffect(() => {
+    if (matchStatus !== 1 || !isMyTurn) {
+      setSelectedSquare(null);
+      setPromotionSquare(null);
+      setPendingMove(null);
+    }
+  }, [isMyTurn, matchStatus]);
+
   const getActualIndex = (displayIdx) => {
     const displayRow = Math.floor(displayIdx / 8);
     const displayCol = displayIdx % 8;
@@ -306,10 +320,19 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
     return isWhite ? pieceColor === 1 : pieceColor === 2;
   };
 
+  const hasPackedPosition = packedBoard != null && packedState != null;
+  const legalTargets = selectedSquare !== null && hasPackedPosition
+    ? new Set(getLegalMovesForSquare(packedBoard, packedState, getActualIndex(selectedSquare), isWhite))
+    : null;
+
   const handleSquareClick = (displayIdx) => {
     if (matchStatus !== 1 || !isMyTurn || loading || !onMove) return;
     const actualIdx = getActualIndex(displayIdx);
     const piece = board[actualIdx];
+    if (selectedSquare === displayIdx) {
+      setSelectedSquare(null);
+      return;
+    }
     if (selectedSquare === null) {
       if (isMyPiece(piece)) setSelectedSquare(displayIdx);
       return;
@@ -320,6 +343,7 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
       setSelectedSquare(displayIdx);
       return;
     }
+    if (legalTargets && !legalTargets.has(actualIdx)) return;
     const toRow = Math.floor(actualIdx / 8);
     const isPawn = fromPiece && Number(fromPiece.pieceType) === 1;
     const isPromotionRank = toRow === 0 || toRow === 7;
@@ -356,6 +380,8 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
       const isKingInCheck = pieceType === 6 && ((pieceColor === 1 && whiteInCheck) || (pieceColor === 2 && blackInCheck));
       const isGhostFrom = ghostMove && ghostMove.from === actualIdx;
       const isGhostTo = ghostMove && ghostMove.to === actualIdx;
+      const isLegalTarget = Boolean(legalTargets?.has(actualIdx));
+      const isCaptureTarget = isLegalTarget && pieceType !== 0 && !isMyPiece(piece);
       const ghostPiece = ghostMove && board[ghostMove.from] ? board[ghostMove.from] : null;
       const displayRow = Math.floor(displayIdx / 8);
       const displayCol = displayIdx % 8;
@@ -374,11 +400,13 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
         if (isSelected) return '0 0 20px rgba(6, 182, 212, 0.3)';
         if (isLastMoveTo && !isKingInCheck) return isMyMove ? 'inset 0 0 25px rgba(59, 130, 246, 0.6), 0 0 15px rgba(59, 130, 246, 0.4)' : 'inset 0 0 25px rgba(239, 68, 68, 0.6), 0 0 15px rgba(239, 68, 68, 0.4)';
         if (isLastMoveFrom && !isKingInCheck) return isMyMove ? 'inset 0 0 20px rgba(168, 85, 247, 0.5), 0 0 12px rgba(168, 85, 247, 0.3)' : 'inset 0 0 20px rgba(234, 179, 8, 0.5), 0 0 12px rgba(234, 179, 8, 0.3)';
+        if (isCaptureTarget) return 'inset 0 0 0 2px rgba(34, 211, 238, 0.9), inset 0 0 20px rgba(34, 211, 238, 0.25)';
         return 'none';
       };
       const getPieceGlow = () => !isLastMoveTo || pieceType === 0 ? undefined : (isMyMove ? 'drop-shadow(0 0 10px rgba(59, 130, 246, 0.8))' : 'drop-shadow(0 0 10px rgba(239, 68, 68, 0.8))');
-      const isPotentialTarget = selectedSquare !== null && !isSelected && !isMyPiece(piece);
-      const squareBg = isSelected ? undefined : (isKingInCheck ? undefined : (getLastMoveFromBg() || getLastMoveToBg()));
+      const squareBg = isSelected
+        ? undefined
+        : (isKingInCheck ? undefined : (isCaptureTarget ? 'rgba(34, 211, 238, 0.15)' : (getLastMoveFromBg() || getLastMoveToBg())));
       const ghostFromClass = isGhostFrom ? ' ring-2 ring-orange-400/60 ring-inset' : '';
       const ghostToClass = isGhostTo ? ' ring-2 ring-orange-400 ring-inset' : '';
 
@@ -386,11 +414,12 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
         <div
           key={displayIdx}
           onClick={() => handleSquareClick(displayIdx)}
-          className={`relative flex items-center justify-center cursor-pointer transition-all duration-200 ${isLight ? 'bg-stone-300' : 'bg-stone-700'}${isSelected ? ' ring-2 ring-emerald-400 ring-inset bg-emerald-500/50' : ''}${isKingInCheck ? ' bg-red-500/50 ring-2 ring-red-400 ring-inset' : ''} ${getLastMoveFromClass()} ${getLastMoveToClass()}${ghostFromClass}${ghostToClass}${isMyTurn && isMyPiece(piece) && !isSelected ? ' hover:bg-emerald-500/30' : ''}${isMyTurn && isPotentialTarget ? ' hover:bg-yellow-400/40' : ''}`}
+          className={`relative flex items-center justify-center cursor-pointer transition-all duration-200 ${isLight ? 'bg-stone-300' : 'bg-stone-700'}${isSelected ? ' ring-2 ring-emerald-400 ring-inset bg-emerald-500/50' : ''}${isKingInCheck ? ' bg-red-500/50 ring-2 ring-red-400 ring-inset' : ''}${isLegalTarget && !isCaptureTarget ? ' bg-cyan-400/10' : ''} ${getLastMoveFromClass()} ${getLastMoveToClass()}${ghostFromClass}${ghostToClass}${isMyTurn && isMyPiece(piece) && !isSelected ? ' hover:bg-emerald-500/30' : ''}${isMyTurn && isLegalTarget ? ' hover:bg-cyan-400/20' : ''}`}
           style={{ boxShadow: isSelected ? 'inset 0 0 20px rgba(16, 185, 129, 0.5)' : getLastMoveShadow(), background: isGhostTo ? 'rgba(251, 146, 60, 0.25)' : squareBg }}
         >
           {getPieceSvg(piece) && <img src={getPieceSvg(piece)} alt="" className={`w-3/4 h-3/4 select-none transition-all duration-300 ${isSelected ? 'scale-110' : ''}${isGhostFrom ? ' opacity-30' : ''}`} style={{ filter: getPieceGlow() }} draggable="false" />}
           {isGhostTo && ghostPiece && getPieceSvg(ghostPiece) && <img src={getPieceSvg(ghostPiece)} alt="" className="w-3/4 h-3/4 select-none absolute animate-pulse" style={{ opacity: 0.4 }} draggable="false" />}
+          {isLegalTarget && !isCaptureTarget && <div className="absolute w-3.5 h-3.5 rounded-full bg-cyan-300/80 shadow-[0_0_12px_rgba(103,232,249,0.65)] pointer-events-none" />}
           {showRankLabel && <span className={`absolute left-1 top-0.5 text-[10px] font-medium ${isLight ? 'text-slate-500' : 'text-slate-600'}`}>{rankLabel}</span>}
           {showFileLabel && <span className={`absolute right-1 bottom-0.5 text-[10px] font-medium ${isLight ? 'text-slate-500' : 'text-slate-600'}`}>{fileLabel}</span>}
         </div>
@@ -2140,7 +2169,7 @@ export default function ChessV2() {
                 </>
               ) : undefined}
             >
-              <ChessBoard board={currentMatch.board} onMove={isSpectator ? null : handleMakeMove} currentTurn={currentMatch.currentTurn} account={isSpectator ? null : account} player1={currentMatch.player1} player2={currentMatch.player2} firstPlayer={currentMatch.firstPlayer} matchStatus={currentMatch.matchStatus} loading={matchLoading} whiteInCheck={currentMatch.whiteInCheck} blackInCheck={currentMatch.blackInCheck} lastMoveTime={currentMatch.lastMoveTime} startTime={currentMatch.startTime} lastMove={currentMatch.lastMove} maxSize={820} ghostMove={ghostMove} />
+              <ChessBoard board={currentMatch.board} packedBoard={currentMatch.packedBoard} packedState={currentMatch.packedState} onMove={isSpectator ? null : handleMakeMove} currentTurn={currentMatch.currentTurn} account={isSpectator ? null : account} player1={currentMatch.player1} player2={currentMatch.player2} firstPlayer={currentMatch.firstPlayer} matchStatus={currentMatch.matchStatus} loading={matchLoading} whiteInCheck={currentMatch.whiteInCheck} blackInCheck={currentMatch.blackInCheck} lastMoveTime={currentMatch.lastMoveTime} startTime={currentMatch.startTime} lastMove={currentMatch.lastMove} maxSize={820} ghostMove={ghostMove} />
             </GameMatchLayout>
 
             {moveTxTimeout && (
