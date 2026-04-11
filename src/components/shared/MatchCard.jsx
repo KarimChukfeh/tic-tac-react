@@ -104,6 +104,9 @@ const MatchCard = ({
   const isPlayer1 = match.player1?.toLowerCase() === account?.toLowerCase();
   const isPlayer2 = match.player2?.toLowerCase() === account?.toLowerCase();
   const completionReason = getMatchCompletionReasonValue(match);
+  const canViewCompletedMatch = Boolean(account) && isTournamentCompleted && matchStatus === 2;
+  const canAccessActiveMatch = Boolean(account) && isUserMatch && matchStatus !== 2;
+  const shouldShowMatchCta = canViewCompletedMatch || canAccessActiveMatch;
 
   useEffect(() => {
     if (matchStatus !== 2) return;
@@ -541,7 +544,7 @@ const MatchCard = ({
         </div>
 
         {/* Match CTA for user's matches */}
-        {isUserMatch && (isTournamentCompleted || matchStatus !== 2) && (
+        {shouldShowMatchCta && (
           <button
             onClick={() => onEnterMatch(tierId, instanceId, roundIdx, matchIdx)}
             disabled={loading || (!isTournamentCompleted && matchStatus === 0)}

@@ -1572,6 +1572,7 @@ export default function TicTacToeV2() {
       });
 
       if (updated) {
+        setIsSpectator(!(updated.player1?.toLowerCase() === account.toLowerCase() || updated.player2?.toLowerCase() === account.toLowerCase()));
         setCurrentMatch(updated);
         previousBoardRef.current = [...updated.board];
         setMatchEndResult(null);
@@ -2109,6 +2110,7 @@ export default function TicTacToeV2() {
               instanceAddress: state.instanceAddress,
             });
             if (updated) {
+              setIsSpectator(!(updated.player1?.toLowerCase() === account.toLowerCase() || updated.player2?.toLowerCase() === account.toLowerCase()));
               setCurrentMatch(updated);
               previousBoardRef.current = [...updated.board];
               setMatchEndResult(null);
