@@ -1266,6 +1266,7 @@ const GameMatchLayout = ({
         gameType={gameType}
         title={theme.title}
         icon={theme.icon}
+        account={account}
         matchStatus={matchStatus}
         completionReason={completionReason}
         reasonLabelMode={reasonLabelMode}
@@ -1278,6 +1279,10 @@ const GameMatchLayout = ({
           playerCount: playerCount ?? match.playerCount ?? null,
           player1: match.player1,
           player2: match.player2,
+          player1Icon: playerConfig?.player1?.icon ?? null,
+          player2Icon: playerConfig?.player2?.icon ?? null,
+          player1Symbol: playerConfig?.player1?.label?.match(/\(([^)]+)\)/)?.[1] ?? playerConfig?.player1?.label ?? null,
+          player2Symbol: playerConfig?.player2?.label?.match(/\(([^)]+)\)/)?.[1] ?? playerConfig?.player2?.label ?? null,
           winner: match.winner,
           loser: match.loser,
         }}

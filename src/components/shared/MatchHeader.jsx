@@ -17,6 +17,7 @@ const MatchHeader = ({
   gameType: _gameType,
   title,
   icon,
+  account,
   matchStatus,
   completionReason,
   onClose,
@@ -62,6 +63,9 @@ const MatchHeader = ({
 
   const status = getStatusBadge();
   const isV2MatchHeader = reasonLabelMode === 'v2';
+  const shouldHidePrimaryResolvedBadge = isV2MatchHeader
+    && matchStatus === 2
+    && [0, 1, 2, 3, 4].includes(Number(completionReason ?? 0));
 
   // Determine tournament type label (Duel vs Tournament) if playerCount is available
   const tournamentTypeLabel = tournamentInfo?.playerCount
@@ -71,18 +75,63 @@ const MatchHeader = ({
   const player1Label = shortenAddress(tournamentInfo?.player1);
   const player2Label = shortenAddress(tournamentInfo?.player2);
   const winnerLabel = shortenAddress(tournamentInfo?.winner);
-  const renderAddressPill = (label, tone = 'cyan') => {
+  const connectedAccount = account?.toLowerCase?.() || null;
+  const renderYouBadge = () => (
+    <span className="absolute -right-1 -top-3 rounded-full border border-yellow-300/50 bg-yellow-400/90 px-1 py-[1px] text-[7px] font-black uppercase tracking-[0.16em] text-yellow-950 shadow-[0_0_10px_rgba(250,204,21,0.45)] animate-bounce">
+      YOU
+    </span>
+  );
+  const renderAddressPill = (label, tone = 'cyan', symbol = null, address = null, options = {}) => {
     const tones = {
       cyan: 'border-cyan-300/35 bg-cyan-400/12 text-cyan-100',
       pink: 'border-pink-300/35 bg-pink-400/12 text-pink-100',
       emerald: 'border-emerald-300/35 bg-emerald-400/12 text-emerald-100',
       amber: 'border-amber-300/35 bg-amber-400/12 text-amber-100',
     };
+    const isConnectedWallet = connectedAccount && address?.toLowerCase?.() === connectedAccount;
+    const { symbolPosition = 'after', symbolSize = 'default' } = options;
     return (
-      <span className={`inline-flex rounded-full border px-2 py-0.5 font-mono text-[11px] shadow-[0_0_16px_rgba(255,255,255,0.06)] md:px-2.5 md:text-xs ${tones[tone] || tones.cyan}`}>
-        {label}
+      <span className={`relative inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] shadow-[0_0_16px_rgba(255,255,255,0.06)] md:px-2.5 md:text-xs ${tones[tone] || tones.cyan}`}>
+        {symbol && symbolPosition === 'before' ? renderMatchHistorySymbol(symbol, symbolSize) : null}
+        <span className="font-mono">{label}</span>
+        {symbol && symbolPosition !== 'before' ? renderMatchHistorySymbol(symbol, symbolSize) : null}
+        {isConnectedWallet ? renderYouBadge() : null}
       </span>
     );
+  };
+  const renderMatchHistorySymbol = (symbol, size = 'default') => {
+    if (!symbol) return null;
+    const isSmall = size === 'small';
+
+    if (symbol === 'White' || symbol === 'Black') {
+      return (
+        <img
+          src={symbol === 'White' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
+          alt={symbol}
+          className={`${isSmall ? 'h-4 w-4' : 'h-6 w-6'} shrink-0 inline-block`}
+          draggable="false"
+        />
+      );
+    }
+
+    if (symbol === 'X') {
+      return (
+        <span className={`relative inline-block ${isSmall ? 'h-4 w-4' : 'h-6 w-6'} shrink-0`} aria-hidden="true">
+          <span className={`absolute inset-0 left-1/2 h-full ${isSmall ? 'w-[2px]' : 'w-[3px]'} -translate-x-1/2 rotate-45 bg-blue-500`} />
+          <span className={`absolute inset-0 left-1/2 h-full ${isSmall ? 'w-[2px]' : 'w-[3px]'} -translate-x-1/2 -rotate-45 bg-blue-500`} />
+        </span>
+      );
+    }
+
+    if (symbol === 'O') {
+      return <span className={`inline-block ${isSmall ? 'h-4 w-4 border-2' : 'h-6 w-6 border-[3px]'} shrink-0 rounded-full border-red-500`} aria-hidden="true" />;
+    }
+
+    if (symbol === 'Red' || symbol === 'Blue') {
+      return <span className={`inline-block ${isSmall ? 'h-4 w-4' : 'h-6 w-6'} shrink-0 rounded-full ${symbol === 'Red' ? 'bg-red-500' : 'bg-blue-500'}`} aria-hidden="true" />;
+    }
+
+    return <span className="font-semibold text-white">{symbol}</span>;
   };
   const headerTitle = isV2MatchHeader
     ? (isDuel
@@ -94,6 +143,7 @@ const MatchHeader = ({
     : (tournamentInfo
       ? `T${tournamentInfo.tierId + 1}-I${tournamentInfo.instanceId + 1} • Round ${tournamentInfo.roundNumber + 1} • Match ${tournamentInfo.matchNumber + 1}`
       : null);
+  const statusSectionLabel = isV2MatchHeader && matchStatus === 2 ? 'Resolution' : 'Status';
   const completedMatchExplanation = (() => {
     if (!isV2MatchHeader || matchStatus !== 2) return null;
 
@@ -106,15 +156,15 @@ const MatchHeader = ({
     const winnerPlayerLabel = winnerIsPlayer1 ? player1Label : winnerIsPlayer2 ? player2Label : winnerLabel;
     const loserPlayerLabel = winnerIsPlayer1 ? player2Label : winnerIsPlayer2 ? player1Label : player2Label;
     const winnerPlayerPill = winnerIsPlayer1
-      ? renderAddressPill(player1Label, 'cyan')
+      ? renderAddressPill(player1Label, 'cyan', tournamentInfo?.player1Symbol, tournamentInfo?.player1, { symbolPosition: 'before', symbolSize: 'small' })
       : winnerIsPlayer2
-        ? renderAddressPill(player2Label, 'pink')
-        : renderAddressPill(winnerLabel, 'emerald');
+        ? renderAddressPill(player2Label, 'pink', tournamentInfo?.player2Symbol, tournamentInfo?.player2, { symbolPosition: 'before', symbolSize: 'small' })
+        : renderAddressPill(winnerLabel, 'emerald', null, tournamentInfo?.winner);
     const loserPlayerPill = winnerIsPlayer1
-      ? renderAddressPill(player2Label, 'pink')
+      ? renderAddressPill(player2Label, 'pink', tournamentInfo?.player2Symbol, tournamentInfo?.player2, { symbolPosition: 'before', symbolSize: 'small' })
       : winnerIsPlayer2
-        ? renderAddressPill(player1Label, 'cyan')
-        : renderAddressPill(player2Label, 'pink');
+        ? renderAddressPill(player1Label, 'cyan', tournamentInfo?.player1Symbol, tournamentInfo?.player1, { symbolPosition: 'before', symbolSize: 'small' })
+        : renderAddressPill(player2Label, 'pink', tournamentInfo?.player2Symbol, tournamentInfo?.player2, { symbolPosition: 'before', symbolSize: 'small' });
 
     if (reason === 0) {
       if (_gameType === 'chess') {
@@ -127,7 +177,7 @@ const MatchHeader = ({
     }
 
     if (reason === 2) {
-      return <>Both players {renderAddressPill(player1Label, 'cyan')} <span>and</span> {renderAddressPill(player2Label, 'pink')} <span>played until a draw</span></>;
+      return <>Both players {renderAddressPill(player1Label, 'cyan', tournamentInfo?.player1Symbol, tournamentInfo?.player1, { symbolPosition: 'before', symbolSize: 'small' })} <span>and</span> {renderAddressPill(player2Label, 'pink', tournamentInfo?.player2Symbol, tournamentInfo?.player2, { symbolPosition: 'before', symbolSize: 'small' })} <span>played until a draw</span></>;
     }
 
     if (reason === 1) {
@@ -135,11 +185,97 @@ const MatchHeader = ({
     }
 
     if (reason === 3) {
-      return <>Both players {renderAddressPill(player1Label, 'cyan')} <span>and</span> {renderAddressPill(player2Label, 'pink')} <span>stalled and were eliminated by</span> {renderAddressPill(winnerLabel, 'amber')}</>;
+      return <>Both players {renderAddressPill(player1Label, 'cyan', tournamentInfo?.player1Symbol, tournamentInfo?.player1, { symbolPosition: 'before', symbolSize: 'small' })} <span>and</span> {renderAddressPill(player2Label, 'pink', tournamentInfo?.player2Symbol, tournamentInfo?.player2, { symbolPosition: 'before', symbolSize: 'small' })} <span>stalled and were eliminated by</span> {renderAddressPill(winnerLabel, 'amber', null, tournamentInfo?.winner)}</>;
     }
 
     if (reason === 4) {
-      return <>Both players {renderAddressPill(player1Label, 'cyan')} <span>and</span> {renderAddressPill(player2Label, 'pink')} <span>stalled and were replaced by</span> {renderAddressPill(winnerLabel, 'amber')}</>;
+      return <>Both players {renderAddressPill(player1Label, 'cyan', tournamentInfo?.player1Symbol, tournamentInfo?.player1, { symbolPosition: 'before', symbolSize: 'small' })} <span>and</span> {renderAddressPill(player2Label, 'pink', tournamentInfo?.player2Symbol, tournamentInfo?.player2, { symbolPosition: 'before', symbolSize: 'small' })} <span>stalled and were replaced by</span> {renderAddressPill(winnerLabel, 'amber', null, tournamentInfo?.winner)}</>;
+    }
+
+    return null;
+  })();
+  const completedMatchOutcomeBadge = (() => {
+    if (!isV2MatchHeader || matchStatus !== 2) return null;
+
+    const reason = Number(completionReason ?? 0);
+    const player1Address = tournamentInfo?.player1?.toLowerCase();
+    const player2Address = tournamentInfo?.player2?.toLowerCase();
+    const winnerAddress = tournamentInfo?.winner?.toLowerCase();
+    const winnerIsPlayer1 = winnerAddress && player1Address && winnerAddress === player1Address;
+    const winnerIsPlayer2 = winnerAddress && player2Address && winnerAddress === player2Address;
+    const winnerPlayerLabel = winnerIsPlayer1 ? player1Label : winnerIsPlayer2 ? player2Label : winnerLabel;
+    const winnerPlayerTone = winnerIsPlayer1 ? 'cyan' : winnerIsPlayer2 ? 'pink' : 'amber';
+    const winnerPlayerSymbol = winnerIsPlayer1
+      ? tournamentInfo?.player1Symbol
+      : winnerIsPlayer2
+        ? tournamentInfo?.player2Symbol
+        : '';
+
+    if (reason === 0 || reason === 1) {
+      const timeoutHref = reason === 1 ? getUserManualHrefForReasonCode('ML1') : null;
+      return (
+        <>
+          {renderMatchHistorySymbol(winnerPlayerSymbol)}
+          {renderAddressPill(winnerPlayerLabel, winnerPlayerTone, null, winnerIsPlayer1 ? tournamentInfo?.player1 : winnerIsPlayer2 ? tournamentInfo?.player2 : tournamentInfo?.winner)}
+          <span>wins</span>
+          {reason === 1 && timeoutHref && (
+            <UserManualAnchorLink
+              href={timeoutHref}
+              className="underline decoration-dotted underline-offset-4 hover:opacity-80 transition-colors"
+              title="Learn more about ML1 in the User Manual"
+            >
+              by timeout (ML1)
+            </UserManualAnchorLink>
+          )}
+        </>
+      );
+    }
+
+    if (reason === 2) {
+      return (
+        <>
+          <span>No Winner.</span>
+          <UserManualAnchorLink
+            href={getUserManualHrefForReasonCode('R1')}
+            className="underline decoration-dotted underline-offset-4 hover:opacity-80 transition-colors"
+            title="Learn more about R1 in the User Manual"
+          >
+            Draw Resolution (R1)
+          </UserManualAnchorLink>
+        </>
+      );
+    }
+
+    if (reason === 3) {
+      return (
+        <>
+          <span>No Winner. Players Eliminated via</span>
+          <UserManualAnchorLink
+            href={getUserManualHrefForReasonCode('ML2')}
+            className="underline decoration-dotted underline-offset-4 hover:opacity-80 transition-colors"
+            title="Learn more about ML2 in the User Manual"
+          >
+            Anti-Stall (ML2)
+          </UserManualAnchorLink>
+        </>
+      );
+    }
+
+    if (reason === 4) {
+      return (
+        <>
+          <span>No Winner. Players Replaced by</span>
+          {renderAddressPill(winnerLabel, 'amber', null, tournamentInfo?.winner)}
+          <span>via</span>
+          <UserManualAnchorLink
+            href={getUserManualHrefForReasonCode('ML3')}
+            className="underline decoration-dotted underline-offset-4 hover:opacity-80 transition-colors"
+            title="Learn more about ML3 in the User Manual"
+          >
+            Anti-Stall (ML3)
+          </UserManualAnchorLink>
+        </>
+      );
     }
 
     return null;
@@ -170,14 +306,24 @@ const MatchHeader = ({
                   Players
                 </div>
                 <div className={`flex flex-wrap items-center gap-2 ${theme.textMuted}`}>
-                  <span className="rounded-full border border-cyan-300/35 bg-cyan-400/12 px-2.5 py-0.5 font-mono text-xs text-cyan-100 shadow-[0_0_20px_rgba(34,211,238,0.12)] md:px-3 md:py-1 md:text-sm">
-                    {player1Label}
+                  <span className="relative inline-flex items-center gap-1.5 rounded-full border border-cyan-300/35 bg-cyan-400/12 px-2.5 py-0.5 text-xs text-cyan-100 shadow-[0_0_20px_rgba(34,211,238,0.12)] md:px-3 md:py-1 md:text-sm">
+                    <span className="font-mono">{player1Label}</span>
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-100/80 md:text-[11px]">
+                      as
+                    </span>
+                    {renderMatchHistorySymbol(tournamentInfo?.player1Symbol)}
+                    {connectedAccount && tournamentInfo?.player1?.toLowerCase?.() === connectedAccount ? renderYouBadge() : null}
                   </span>
                   <span className="text-[10px] font-semibold uppercase tracking-[0.28em] text-purple-200/80 md:text-xs md:tracking-[0.32em]">
                     vs
                   </span>
-                  <span className="rounded-full border border-pink-300/35 bg-pink-400/12 px-2.5 py-0.5 font-mono text-xs text-pink-100 shadow-[0_0_20px_rgba(244,114,182,0.12)] md:px-3 md:py-1 md:text-sm">
-                    {player2Label}
+                  <span className="relative inline-flex items-center gap-1.5 rounded-full border border-pink-300/35 bg-pink-400/12 px-2.5 py-0.5 text-xs text-pink-100 shadow-[0_0_20px_rgba(244,114,182,0.12)] md:px-3 md:py-1 md:text-sm">
+                    <span className="font-mono">{player2Label}</span>
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-pink-100/80 md:text-[11px]">
+                      as
+                    </span>
+                    {renderMatchHistorySymbol(tournamentInfo?.player2Symbol)}
+                    {connectedAccount && tournamentInfo?.player2?.toLowerCase?.() === connectedAccount ? renderYouBadge() : null}
                   </span>
                 </div>
               </div>
@@ -191,21 +337,30 @@ const MatchHeader = ({
             <>
               <div className="mt-4">
                 <div className="mb-2 text-xs font-semibold uppercase tracking-[0.24em] text-purple-200/75">
-                  Status
+                  {statusSectionLabel}
                 </div>
-              {status.href ? (
-                <UserManualAnchorLink
-                    href={status.href}
-                    className={`inline-flex rounded-xl px-3 py-1.5 text-sm font-bold underline decoration-dotted underline-offset-4 hover:opacity-80 transition-colors md:px-4 md:py-2 md:text-base ${status.className}`}
-                    title={`Learn more about ${status.text} in the User Manual`}
-                >
-                  {status.text}
-                </UserManualAnchorLink>
-              ) : (
-                  <div className={`inline-flex rounded-xl px-3 py-1.5 text-sm font-bold md:px-4 md:py-2 md:text-base ${status.className}`}>
-                  {status.text}
+                <div className="flex flex-wrap items-center gap-2">
+                  {!shouldHidePrimaryResolvedBadge && (
+                    status.href ? (
+                      <UserManualAnchorLink
+                        href={status.href}
+                        className={`inline-flex rounded-xl px-3 py-1.5 text-sm font-bold underline decoration-dotted underline-offset-4 hover:opacity-80 transition-colors md:px-4 md:py-2 md:text-base ${status.className}`}
+                        title={`Learn more about ${status.text} in the User Manual`}
+                      >
+                        {status.text}
+                      </UserManualAnchorLink>
+                    ) : (
+                      <div className={`inline-flex rounded-xl px-3 py-1.5 text-sm font-bold md:px-4 md:py-2 md:text-base ${status.className}`}>
+                        {status.text}
+                      </div>
+                    )
+                  )}
+                  {completedMatchOutcomeBadge && (
+                    <div className={`inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-sm font-bold md:px-4 md:py-2 md:text-base ${status.className}`}>
+                      {completedMatchOutcomeBadge}
+                    </div>
+                  )}
                 </div>
-              )}
               </div>
               {completedMatchExplanation && (
                 <div className="mt-4 max-w-3xl">
