@@ -333,7 +333,7 @@ export default function Landing() {
   const { phrase, visible } = useHeroCycle();
   // Set page title
   useEffect(() => {
-    document.title = 'ETour - Pure Competition. No Nonsense.';
+    document.title = 'ETour - Pure Competition';
   }, []);
 
   return (

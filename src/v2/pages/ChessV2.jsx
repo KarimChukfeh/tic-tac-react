@@ -1989,7 +1989,7 @@ export default function ChessV2() {
     return () => { clearTimeout(timer); document.removeEventListener('click', handleClickAway); };
   }, [activeTooltip]);
 
-  useEffect(() => { document.title = 'ETour - Chess V2'; }, []);
+  useEffect(() => { document.title = 'Chess'; }, []);
 
   const isAlertMatchAlreadyOpen = Boolean(
     currentMatch &&

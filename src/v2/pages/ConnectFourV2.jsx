@@ -2331,7 +2331,7 @@ export default function ConnectFourV2() {
   }, [activeTooltip]);
 
   useEffect(() => {
-    document.title = 'ETour - Connect Four V2';
+    document.title = 'Connect Four';
   }, []);
 
   const isAlertMatchAlreadyOpen = Boolean(

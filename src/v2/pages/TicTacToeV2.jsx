@@ -2097,7 +2097,7 @@ export default function TicTacToeV2() {
   }, [activeTooltip]);
 
   // Set page title
-  useEffect(() => { document.title = 'ETour - TicTacToe V2'; }, []);
+  useEffect(() => { document.title = 'TicTacToe'; }, []);
 
   // ─── Render ──────────────────────────────────────────────────────────────────
 
