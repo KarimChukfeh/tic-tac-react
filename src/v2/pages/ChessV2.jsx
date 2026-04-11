@@ -19,7 +19,7 @@ import { CURRENT_NETWORK, TARGET_CHAIN_ID_HEX, getAddressUrl, getWalletAddChainP
 import { shortenAddress } from '../../utils/formatters';
 import { generateV2TournamentUrl, parseV2ContractParam } from '../../utils/urlHelpers';
 import { shouldResetOnInitialDocumentLoad } from '../../utils/navigation';
-import { isDraw } from '../../utils/completionReasons';
+import { CompletionReason, isDraw } from '../../utils/completionReasons';
 import { getLegalMovesForSquare, validateMoveWithReason } from '../../utils/chessValidator';
 import { didMatchStateAdvance, waitForTxOrStateSync } from '../../utils/txSync';
 import { multicallContracts } from '../../utils/multicall';
@@ -2079,6 +2079,32 @@ export default function ChessV2() {
     }
   }, [showMatchAlert, isAlertMatchAlreadyOpen]);
 
+  const renderCheckStatusBadge = useCallback((playerColor) => {
+    if (!currentMatch) return null;
+
+    const isWhite = playerColor === 'white';
+    const playerAddress = isWhite ? currentMatch.player1 : currentMatch.player2;
+    const isCheckmated = currentMatch.matchStatus === 2
+      && currentMatch.completionReason === CompletionReason.NORMAL_WIN
+      && playerAddress
+      && currentMatch.loser
+      && playerAddress.toLowerCase() === currentMatch.loser.toLowerCase();
+    const isInCheck = isWhite ? currentMatch.whiteInCheck : currentMatch.blackInCheck;
+
+    if (!isCheckmated && !isInCheck) return null;
+
+    const badgeClasses = isCheckmated
+      ? 'bg-red-500/20 border border-red-400 text-red-300'
+      : 'bg-orange-500/20 border border-orange-400 text-orange-200';
+    const badgeText = isCheckmated ? 'CHECKMATE' : 'CHECK';
+
+    return (
+      <div className={`${badgeClasses} rounded-lg p-2 text-center mt-2`}>
+        <span className="text-xs font-bold">{badgeText}</span>
+      </div>
+    );
+  }, [currentMatch]);
+
   return (
     <div style={{ minHeight: '100vh', background: currentTheme.gradient, color: '#fff', position: 'relative', overflow: 'clip', transition: 'background 0.8s ease-in-out' }}>
       <ParticleBackground colors={currentTheme.particleColors} symbols={CHESS_PIECES} fontSize="40px" />
@@ -2196,7 +2222,7 @@ export default function ChessV2() {
                 return (
                   <>
                     <CapturedPieces capturedPieces={capturedPieces.black} color="black" collapsible={!!isMobile} />
-                    {currentMatch.whiteInCheck && <div className="bg-red-500/20 border border-red-400 rounded-lg p-2 text-center mt-2"><span className="text-red-300 text-xs font-bold">CHECK</span></div>}
+                    {renderCheckStatusBadge('white')}
                   </>
                 );
               }}
@@ -2205,7 +2231,7 @@ export default function ChessV2() {
                 return (
                   <>
                     <CapturedPieces capturedPieces={capturedPieces.white} color="white" collapsible={!!isMobile} />
-                    {currentMatch.blackInCheck && <div className="bg-red-500/20 border border-red-400 rounded-lg p-2 text-center mt-2"><span className="text-red-300 text-xs font-bold">CHECK</span></div>}
+                    {renderCheckStatusBadge('black')}
                   </>
                 );
               }}
