@@ -76,9 +76,9 @@ const GamesCard = ({
   // Game options
   const games = [
     { name: 'Homepage', path: '/', id: 'home', emoji: '🏠' },
-    { name: 'TicTacToe', path: '/v2/tictactoe', id: 'tictactoe', emoji: '✖️' },
-    { name: 'Connect Four', path: '/v2/connect4', id: 'connect4', emoji: '🔴' },
-    { name: 'Chess', path: '/v2/chess', id: 'chess', emoji: '♟️' },
+    { name: 'TicTacToe', path: '/tictactoe', id: 'tictactoe', emoji: '✖️' },
+    { name: 'Connect Four', path: '/connect4', id: 'connect4', emoji: '🔴' },
+    { name: 'Chess', path: '/chess', id: 'chess', emoji: '♟️' },
   ];
 
   return (

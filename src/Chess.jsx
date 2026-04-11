@@ -2943,7 +2943,7 @@ export default function Chess() {
         setViewingTournament(bracketData);
 
         // Push to browser history for proper back button behavior
-        navigate('/chess', {
+        navigate('/v1/chess', {
           replace: false,
           state: { view: 'bracket', tierId, instanceId, selectedMode, from: location.state?.view || (selectedMode || 'modeSelect') }
         });
@@ -3762,7 +3762,7 @@ export default function Chess() {
         setMoveHistory(history);
 
         // Push to browser history for proper back button behavior
-        navigate('/chess', {
+        navigate('/v1/chess', {
           replace: false,
           state: {
             view: 'match',

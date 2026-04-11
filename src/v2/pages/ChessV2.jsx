@@ -585,7 +585,7 @@ function indexToChessNotation(index) {
 }
 
 export default function ChessV2() {
-  useInitialDocumentScrollTop('/v2/chess');
+  useInitialDocumentScrollTop('/chess');
 
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
@@ -706,7 +706,7 @@ export default function ChessV2() {
   const selectedAddress = searchParams.get('instance');
   const explorerUrl = getAddressUrl(factoryAddress);
   const [hasProcessedInviteParam, setHasProcessedInviteParam] = useState(false);
-  const [allowInitialUrlHydration, setAllowInitialUrlHydration] = useState(() => !shouldResetOnInitialDocumentLoad('/v2/chess', { allowInviteParam: true }));
+  const [allowInitialUrlHydration, setAllowInitialUrlHydration] = useState(() => !shouldResetOnInitialDocumentLoad('/chess', { allowInviteParam: true }));
   const [viewingTournament, setViewingTournament] = useState(null);
   const [bracketSyncDots, setBracketSyncDots] = useState(1);
   const [tournamentsLoading, setTournamentsLoading] = useState(false);
@@ -1085,7 +1085,7 @@ export default function ChessV2() {
         activeInstanceContractRef.current = instance;
         setViewingTournament(bracketData);
         skipNavEffectRef.current = true;
-        navigate('/v2/chess', { replace: false, state: { view: 'bracket', instanceAddress: address, from: location.state?.view || 'landing' } });
+        navigate('/chess', { replace: false, state: { view: 'bracket', instanceAddress: address, from: location.state?.view || 'landing' } });
       }
     } catch (error) {
       console.error('[ChessV2] Error entering bracket:', error);
@@ -1135,12 +1135,12 @@ export default function ChessV2() {
     setViewingTournament(null);
     setCurrentMatch(null);
     setHasProcessedInviteParam(true);
-    navigate('/v2/chess', { replace: true, state: null });
+    navigate('/chess', { replace: true, state: null });
   }, [allowInitialUrlHydration, navigate]);
 
   useEffect(() => {
     if (allowInitialUrlHydration) return;
-    if (location.pathname !== '/v2/chess' || location.search || location.state) return;
+    if (location.pathname !== '/chess' || location.search || location.state) return;
     setAllowInitialUrlHydration(true);
   }, [allowInitialUrlHydration, location.pathname, location.search, location.state]);
 
@@ -1581,7 +1581,7 @@ export default function ChessV2() {
         matchEndModalShownRef.current = updated.matchStatus === 2;
         setMoveHistory(buildMoveHistory(updated.movesString, updated.firstPlayer, updated.player1, updated.player2));
         skipNavEffectRef.current = true;
-        navigate('/v2/chess', { replace: false, state: { view: 'match', instanceAddress, roundNumber, matchNumber, from: location.state?.view || 'bracket' } });
+        navigate('/chess', { replace: false, state: { view: 'match', instanceAddress, roundNumber, matchNumber, from: location.state?.view || 'bracket' } });
         setTimeout(() => {
           matchViewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
           collapseActivityPanelRef.current?.();
@@ -1936,7 +1936,7 @@ export default function ChessV2() {
   useEffect(() => {
     const handleNav = async () => {
       if (skipNavEffectRef.current) { skipNavEffectRef.current = false; return; }
-      if (isInitialNavRef.current) { isInitialNavRef.current = false; navigate('/v2/chess', { replace: true, state: null }); return; }
+      if (isInitialNavRef.current) { isInitialNavRef.current = false; navigate('/chess', { replace: true, state: null }); return; }
       const state = location.state;
       if (!state || !state.view) { if (currentMatch || viewingTournament) { setCurrentMatch(null); setViewingTournament(null); } return; }
       if (state.view === 'bracket' && state.instanceAddress) {

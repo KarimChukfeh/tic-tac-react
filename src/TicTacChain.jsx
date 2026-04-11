@@ -2455,7 +2455,7 @@ export default function TicTacChain() {
         setViewingTournament(bracketData);
 
         // Push to browser history for proper back button behavior
-        navigate('/tictactoe', {
+        navigate('/v1/tictactoe', {
           replace: false,
           state: { view: 'bracket', tierId, instanceId, from: location.state?.view || 'landing' }
         });
@@ -3189,7 +3189,7 @@ export default function TicTacChain() {
         setMoveHistory(history);
 
         // Push to browser history for proper back button behavior
-        navigate('/tictactoe', {
+        navigate('/v1/tictactoe', {
           replace: false,
           state: {
             view: 'match',

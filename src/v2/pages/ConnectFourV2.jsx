@@ -693,7 +693,7 @@ const TournamentBracket = ({
 };
 
 export default function ConnectFourV2() {
-  useInitialDocumentScrollTop('/v2/connect4');
+  useInitialDocumentScrollTop('/connect4');
 
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
@@ -815,7 +815,7 @@ export default function ConnectFourV2() {
   const explorerUrl = getAddressUrl(factoryAddress);
 
   const [hasProcessedInviteParam, setHasProcessedInviteParam] = useState(false);
-  const [allowInitialUrlHydration, setAllowInitialUrlHydration] = useState(() => !shouldResetOnInitialDocumentLoad('/v2/connect4', { allowInviteParam: true }));
+  const [allowInitialUrlHydration, setAllowInitialUrlHydration] = useState(() => !shouldResetOnInitialDocumentLoad('/connect4', { allowInviteParam: true }));
   const [viewingTournament, setViewingTournament] = useState(null);
   const [bracketSyncDots, setBracketSyncDots] = useState(1);
   const [tournamentsLoading, setTournamentsLoading] = useState(false);
@@ -1210,7 +1210,7 @@ export default function ConnectFourV2() {
         activeInstanceContractRef.current = instance;
         setViewingTournament(bracketData);
         skipNavEffectRef.current = true;
-        navigate('/v2/connect4', {
+        navigate('/connect4', {
           replace: false,
           state: { view: 'bracket', instanceAddress: address, from: location.state?.view || 'landing' },
         });
@@ -1267,12 +1267,12 @@ export default function ConnectFourV2() {
     setViewingTournament(null);
     setCurrentMatch(null);
     setHasProcessedInviteParam(true);
-    navigate('/v2/connect4', { replace: true, state: null });
+    navigate('/connect4', { replace: true, state: null });
   }, [allowInitialUrlHydration, navigate]);
 
   useEffect(() => {
     if (allowInitialUrlHydration) return;
-    if (location.pathname !== '/v2/connect4' || location.search || location.state) return;
+    if (location.pathname !== '/connect4' || location.search || location.state) return;
     setAllowInitialUrlHydration(true);
   }, [allowInitialUrlHydration, location.pathname, location.search, location.state]);
 
@@ -1807,7 +1807,7 @@ export default function ConnectFourV2() {
         const history = buildMoveHistory(updated.movesString, updated.firstPlayer, updated.player1, updated.player2);
         setMoveHistory(history);
         skipNavEffectRef.current = true;
-        navigate('/v2/connect4', {
+        navigate('/connect4', {
           replace: false,
           state: { view: 'match', instanceAddress, roundNumber, matchNumber, from: location.state?.view || 'bracket' },
         });
@@ -2252,7 +2252,7 @@ export default function ConnectFourV2() {
       }
       if (isInitialNavRef.current) {
         isInitialNavRef.current = false;
-        navigate('/v2/connect4', { replace: true, state: null });
+        navigate('/connect4', { replace: true, state: null });
         return;
       }
 

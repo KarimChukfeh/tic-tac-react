@@ -489,7 +489,7 @@ export default function Landing() {
                 "Perfect for your first match",
                 "Quick games, instant results",
               ]}
-              href="/v2/tictactoe"
+              href="/tictactoe"
               accentColor="#06b6d4"
             />
 
@@ -501,7 +501,7 @@ export default function Landing() {
                 "Deceptively deep strategy",
                 "First to four wins it all"
               ]}
-              href="/v2/connect4"
+              href="/connect4"
               accentColor="#ef4444"
             />
 
@@ -513,7 +513,7 @@ export default function Landing() {
                 "Castling. En-Passant. Promotions. Etc..",
                 "Now with real stakes",
               ]}
-              href="/v2/chess"
+              href="/chess"
               accentColor="#fbbf24"
             />
 

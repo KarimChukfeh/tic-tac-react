@@ -2594,7 +2594,7 @@ export default function ConnectFour() {
         setViewingTournament(bracketData);
 
         // Push to browser history for proper back button behavior
-        navigate('/connect4', {
+        navigate('/v1/connect4', {
           replace: false,
           state: { view: 'bracket', tierId, instanceId, from: location.state?.view || 'landing' }
         });
@@ -3302,7 +3302,7 @@ export default function ConnectFour() {
         setMoveHistory(history);
 
         // Push to browser history for proper back button behavior
-        navigate('/connect4', {
+        navigate('/v1/connect4', {
           replace: false,
           state: {
             view: 'match',

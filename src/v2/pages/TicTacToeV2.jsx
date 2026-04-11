@@ -454,7 +454,7 @@ const TournamentBracket = ({
 const DEFAULT_MATCH_LOADING_MESSAGE = 'Loading match...';
 
 export default function TicTacToeV2() {
-  useInitialDocumentScrollTop('/v2/tictactoe');
+  useInitialDocumentScrollTop('/tictactoe');
 
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
@@ -582,7 +582,7 @@ export default function TicTacToeV2() {
 
   // --- Invite link: ?c=0x... (V2 contract address) ---
   const [hasProcessedInviteParam, setHasProcessedInviteParam] = useState(false);
-  const [allowInitialUrlHydration, setAllowInitialUrlHydration] = useState(() => !shouldResetOnInitialDocumentLoad('/v2/tictactoe', { allowInviteParam: true }));
+  const [allowInitialUrlHydration, setAllowInitialUrlHydration] = useState(() => !shouldResetOnInitialDocumentLoad('/tictactoe', { allowInviteParam: true }));
 
   // --- Viewing tournament bracket (V1-style) ---
   const [viewingTournament, setViewingTournament] = useState(null); // normalizedInstanceSnapshot + rounds
@@ -1082,7 +1082,7 @@ export default function TicTacToeV2() {
         activeInstanceContractRef.current = instance;
         setViewingTournament(bracketData);
         skipNavEffectRef.current = true;
-        navigate('/v2/tictactoe', {
+        navigate('/tictactoe', {
           replace: false,
           state: { view: 'bracket', instanceAddress: address, from: location.state?.view || 'landing' },
         });
@@ -1143,12 +1143,12 @@ export default function TicTacToeV2() {
     setViewingTournament(null);
     setCurrentMatch(null);
     setHasProcessedInviteParam(true);
-    navigate('/v2/tictactoe', { replace: true, state: null });
+    navigate('/tictactoe', { replace: true, state: null });
   }, [allowInitialUrlHydration, navigate]);
 
   useEffect(() => {
     if (allowInitialUrlHydration) return;
-    if (location.pathname !== '/v2/tictactoe' || location.search || location.state) return;
+    if (location.pathname !== '/tictactoe' || location.search || location.state) return;
     setAllowInitialUrlHydration(true);
   }, [allowInitialUrlHydration, location.pathname, location.search, location.state]);
 
@@ -1579,7 +1579,7 @@ export default function TicTacToeV2() {
         console.log('[V2] handleLoadMatch - Setting moveHistory:', history);
         setMoveHistory(history);
         skipNavEffectRef.current = true;
-        navigate('/v2/tictactoe', {
+        navigate('/tictactoe', {
           replace: false,
           state: { view: 'match', instanceAddress, roundNumber, matchNumber, from: location.state?.view || 'bracket' },
         });
@@ -2032,7 +2032,7 @@ export default function TicTacToeV2() {
       // On initial page load, clear any stale history state and show landing
       if (isInitialNavRef.current) {
         isInitialNavRef.current = false;
-        navigate('/v2/tictactoe', { replace: true, state: null });
+        navigate('/tictactoe', { replace: true, state: null });
         return;
       }
       const state = location.state;
