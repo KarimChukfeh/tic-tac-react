@@ -4,6 +4,7 @@ import { multicallContracts } from '../../utils/multicall';
 
 const EMPTY_DATA = [];
 const ZERO_ADDRESS = ethers.ZeroAddress.toLowerCase();
+const MAX_RESOLVED_LOBBIES = 10;
 
 const TOURNAMENT_STATUS_LABELS = {
   0: 'Enrolling',
@@ -128,12 +129,27 @@ function sortLobbies(a, b) {
   return a.address.localeCompare(b.address);
 }
 
+function sortResolvedLobbies(a, b) {
+  const resolvedAtDiff = toNumber(b.startedAt) - toNumber(a.startedAt);
+  if (resolvedAtDiff !== 0) return resolvedAtDiff;
+
+  const createdDiff = toNumber(b.createdAt) - toNumber(a.createdAt);
+  if (createdDiff !== 0) return createdDiff;
+
+  return a.address.localeCompare(b.address);
+}
+
 export function useActiveLobbies(factoryContract, runner, account, getInstanceContract, options = {}) {
   const { enabled = false, pollIntervalMs = 3000 } = options;
   const [lobbies, setLobbies] = useState(EMPTY_DATA);
+  const [resolvedLobbies, setResolvedLobbies] = useState(EMPTY_DATA);
   const [loading, setLoading] = useState(true);
+  const [resolvedLoading, setResolvedLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [resolvedSyncing, setResolvedSyncing] = useState(false);
   const [error, setError] = useState(null);
+  const [resolvedError, setResolvedError] = useState(null);
+  const [resolvedLoaded, setResolvedLoaded] = useState(false);
 
   const fetchLobbies = useCallback(async (isInitialLoad = false) => {
     if (!factoryContract || !runner || !getInstanceContract) {
@@ -458,6 +474,126 @@ export function useActiveLobbies(factoryContract, runner, account, getInstanceCo
     }
   }, [account, factoryContract, getInstanceContract, runner]);
 
+  const fetchResolvedLobbies = useCallback(async (isInitialLoad = false) => {
+    if (!factoryContract || !runner || !getInstanceContract) {
+      setResolvedLobbies(EMPTY_DATA);
+      setResolvedLoading(false);
+      setResolvedSyncing(false);
+      setResolvedLoaded(false);
+      return;
+    }
+
+    try {
+      if (isInitialLoad) setResolvedLoading(true);
+      else setResolvedSyncing(true);
+      setResolvedError(null);
+
+      const pastTotal = toNumber(await factoryContract.getPastTournamentCount().catch(() => 0n));
+      if (pastTotal === 0) {
+        setResolvedLobbies([]);
+        setResolvedLoaded(true);
+        return;
+      }
+
+      const fetchCount = Math.min(pastTotal, MAX_RESOLVED_LOBBIES);
+      const startIndex = Math.max(0, pastTotal - fetchCount);
+      const addressResults = await multicallContracts(
+        Array.from({ length: fetchCount }, (_, offset) => ({
+          contract: factoryContract,
+          functionName: 'pastTournaments',
+          params: [startIndex + offset],
+        })),
+        runner
+      );
+
+      const pastAddresses = [
+        ...new Set(
+          addressResults
+            .filter((result) => result.success && result.result && result.result !== ethers.ZeroAddress)
+            .map((result) => result.result)
+        ),
+      ];
+
+      if (pastAddresses.length === 0) {
+        setResolvedLobbies([]);
+        setResolvedLoaded(true);
+        return;
+      }
+
+      const instances = pastAddresses.map((address) => ({
+        address,
+        contract: getInstanceContract(address, runner),
+      }));
+
+      const callSpecs = instances.flatMap(({ contract }) => {
+        const specs = [
+          { contract, functionName: 'tournament' },
+          { contract, functionName: 'getInstanceInfo' },
+          { contract, functionName: 'getPlayers' },
+        ];
+
+        if (account) {
+          specs.push({ contract, functionName: 'isEnrolled', params: [account] });
+        }
+
+        return specs;
+      });
+
+      const results = await multicallContracts(callSpecs, runner);
+      const nextResolved = [];
+      let cursor = 0;
+
+      for (const instance of instances) {
+        const tournamentResult = results[cursor++];
+        const infoResult = results[cursor++];
+        const playersResult = results[cursor++];
+        const enrolledResult = account ? results[cursor++] : { success: true, result: false };
+
+        if (!tournamentResult?.success || !infoResult?.success || !playersResult?.success) continue;
+
+        const tournament = tournamentResult.result;
+        const info = infoResult.result;
+        const players = playersResult.result;
+        const status = toNumber(info.status ?? tournament.status, -1);
+
+        if (status < 2) continue;
+
+        const entryFeeWei = info.entryFee || 0n;
+        const prizePoolWei = tournament.prizePool ?? info.prizePool ?? 0n;
+
+        nextResolved.push({
+          address: instance.address,
+          status,
+          statusLabel: statusLabel(status),
+          currentRound: toNumber(tournament.currentRound),
+          actualTotalRounds: toNumber(tournament.actualTotalRounds),
+          enrolledCount: toNumber(info.enrolledCount),
+          playerCount: toNumber(info.playerCount),
+          entryFeeWei,
+          entryFeeEth: ethers.formatEther(entryFeeWei),
+          prizePoolWei,
+          prizePoolEth: ethers.formatEther(prizePoolWei),
+          createdAt: toNumber(info.createdAt),
+          startedAt: toNumber(info.startTime ?? tournament.startTime),
+          winner: info.winner || ethers.ZeroAddress,
+          prizeRecipient: info.prizeRecipient ?? tournament.prizeRecipient ?? ethers.ZeroAddress,
+          completionReason: toNumber(info.completionReason ?? tournament.completionReason),
+          isUserEnrolled: Boolean(enrolledResult?.success ? enrolledResult.result : false),
+          players: Array.isArray(players) ? players : [],
+        });
+      }
+
+      setResolvedLobbies(nextResolved.sort(sortResolvedLobbies));
+      setResolvedLoaded(true);
+    } catch (err) {
+      console.error('[useActiveLobbies] Resolved fetch error:', err);
+      setResolvedError(err.message || 'Failed to load resolved tournaments.');
+    } finally {
+      setResolvedLoading(false);
+      setResolvedSyncing(false);
+    }
+  }, [account, factoryContract, getInstanceContract, runner]);
+
   useEffect(() => {
     if (enabled) {
       fetchLobbies(true);
@@ -470,6 +606,14 @@ export function useActiveLobbies(factoryContract, runner, account, getInstanceCo
   }, [enabled, fetchLobbies]);
 
   useEffect(() => {
+    setResolvedLobbies(EMPTY_DATA);
+    setResolvedLoading(false);
+    setResolvedSyncing(false);
+    setResolvedError(null);
+    setResolvedLoaded(false);
+  }, [account, factoryContract, getInstanceContract, runner]);
+
+  useEffect(() => {
     if (!enabled || !factoryContract || !runner) return undefined;
 
     const id = setInterval(() => {
@@ -480,12 +624,19 @@ export function useActiveLobbies(factoryContract, runner, account, getInstanceCo
   }, [enabled, factoryContract, fetchLobbies, pollIntervalMs, runner]);
 
   const refetch = useCallback(() => fetchLobbies(false), [fetchLobbies]);
+  const refetchResolved = useCallback(() => fetchResolvedLobbies(resolvedLoaded === false), [fetchResolvedLobbies, resolvedLoaded]);
 
   return {
     lobbies,
+    resolvedLobbies,
     loading,
+    resolvedLoading,
     syncing,
+    resolvedSyncing,
     error,
+    resolvedError,
+    resolvedLoaded,
     refetch,
+    refetchResolved,
   };
 }

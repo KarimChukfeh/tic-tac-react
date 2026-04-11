@@ -2282,13 +2282,20 @@ export default function TicTacToeV2() {
           />
           <ActiveLobbiesCard
             lobbies={activeLobbies.lobbies}
+            resolvedLobbies={activeLobbies.resolvedLobbies}
             loading={activeLobbies.loading}
+            resolvedLoading={activeLobbies.resolvedLoading}
             syncing={activeLobbies.syncing}
+            resolvedSyncing={activeLobbies.resolvedSyncing}
             error={activeLobbies.error}
+            resolvedError={activeLobbies.resolvedError}
+            resolvedLoaded={activeLobbies.resolvedLoaded}
             gamesCardHeight={gamesCardHeight}
             playerActivityHeight={playerActivityHeight}
             recentMatchesCardHeight={recentMatchesCardHeight}
             onRefresh={activeLobbies.refetch}
+            onRefreshResolved={activeLobbies.refetchResolved}
+            onLoadResolved={activeLobbies.refetchResolved}
             isExpanded={expandedPanel === 'activeLobbies'}
             onToggleExpand={() => setExpandedPanel(expandedPanel === 'activeLobbies' ? null : 'activeLobbies')}
             onViewTournament={enterInstanceBracket}
@@ -2364,13 +2371,20 @@ export default function TicTacToeV2() {
           />
           <ActiveLobbiesCard
             lobbies={activeLobbies.lobbies}
+            resolvedLobbies={activeLobbies.resolvedLobbies}
             loading={activeLobbies.loading}
+            resolvedLoading={activeLobbies.resolvedLoading}
             syncing={activeLobbies.syncing}
+            resolvedSyncing={activeLobbies.resolvedSyncing}
             error={activeLobbies.error}
+            resolvedError={activeLobbies.resolvedError}
+            resolvedLoaded={activeLobbies.resolvedLoaded}
             gamesCardHeight={gamesCardHeight}
             playerActivityHeight={playerActivityHeight}
             recentMatchesCardHeight={recentMatchesCardHeight}
             onRefresh={activeLobbies.refetch}
+            onRefreshResolved={activeLobbies.refetchResolved}
+            onLoadResolved={activeLobbies.refetchResolved}
             isExpanded={expandedPanel === 'activeLobbies'}
             onToggleExpand={() => setExpandedPanel(expandedPanel === 'activeLobbies' ? null : 'activeLobbies')}
             onViewTournament={enterInstanceBracket}
