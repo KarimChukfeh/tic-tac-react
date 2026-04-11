@@ -57,7 +57,7 @@ const MatchComplete = ({
             onClick={onReturnToBracket}
             className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition-all transform hover:scale-105"
           >
-            Return to tournament brackets
+            Retrun to Brackets
           </button>
         )}
       </div>
@@ -98,7 +98,7 @@ const MatchComplete = ({
             onClick={onReturnToBracket}
             className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition-all transform hover:scale-105"
           >
-            Return to tournament brackets
+            Retrun to Brackets
           </button>
         ) : null}
       </div>
@@ -128,7 +128,7 @@ const MatchComplete = ({
             onClick={onReturnToBracket}
             className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition-all transform hover:scale-105"
           >
-            Return to tournament brackets
+            Retrun to Brackets
           </button>
         )}
       </div>

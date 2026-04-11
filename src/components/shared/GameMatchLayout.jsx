@@ -186,8 +186,8 @@ const GameMatchLayout = ({
 
     const isWinnerAddress = hasWinner && winner?.toLowerCase() === playerAddress.toLowerCase();
     return isWinnerAddress
-      ? { text: 'Wins', className: 'border-emerald-400/35 bg-emerald-400/12 text-emerald-200' }
-      : { text: 'Loses', className: 'border-rose-400/35 bg-rose-400/12 text-rose-200' };
+      ? { text: 'Victory', className: 'border-emerald-400/35 bg-emerald-400/12 text-emerald-200' }
+      : { text: 'Defeat', className: 'border-rose-400/35 bg-rose-400/12 text-rose-200' };
   };
 
   // Client-side timer state for mobile consolidated header
