@@ -36,6 +36,8 @@ describe('MatchHeader', () => {
 
     expect(screen.getByRole('button', { name: /back/i })).toHaveTextContent('Back');
     expect(screen.getByRole('heading', { name: 'Match 1 • Round 1' })).toBeInTheDocument();
+    expect(screen.getByText('Players')).toBeInTheDocument();
+    expect(screen.getByText('Status')).toBeInTheDocument();
     expect(screen.getByText('0x1111...1111')).toBeInTheDocument();
     expect(screen.getByText('vs')).toBeInTheDocument();
     expect(screen.getByText('0x2222...2222')).toBeInTheDocument();
@@ -55,6 +57,8 @@ describe('MatchHeader', () => {
     );
 
     expect(screen.getByRole('heading', { name: 'Duel' })).toBeInTheDocument();
+    expect(screen.getByText('Players')).toBeInTheDocument();
+    expect(screen.getByText('Status')).toBeInTheDocument();
     expect(screen.getByText('0x1111...1111')).toBeInTheDocument();
     expect(screen.getByText('vs')).toBeInTheDocument();
     expect(screen.getByText('0x2222...2222')).toBeInTheDocument();

@@ -79,7 +79,7 @@ const MatchHeader = ({
       amber: 'border-amber-300/35 bg-amber-400/12 text-amber-100',
     };
     return (
-      <span className={`inline-flex rounded-full border px-2.5 py-0.5 font-mono text-xs shadow-[0_0_16px_rgba(255,255,255,0.06)] ${tones[tone] || tones.cyan}`}>
+      <span className={`inline-flex rounded-full border px-2 py-0.5 font-mono text-[11px] shadow-[0_0_16px_rgba(255,255,255,0.06)] md:px-2.5 md:text-xs ${tones[tone] || tones.cyan}`}>
         {label}
       </span>
     );
@@ -165,16 +165,21 @@ const MatchHeader = ({
           </div>
           {headerSubtitle && (
             isV2MatchHeader ? (
-              <div className={`mt-3 flex flex-wrap items-center gap-2 ${theme.textMuted}`}>
-                <span className="rounded-full border border-cyan-300/35 bg-cyan-400/12 px-3 py-1 font-mono text-sm text-cyan-100 shadow-[0_0_20px_rgba(34,211,238,0.12)]">
-                  {player1Label}
-                </span>
-                <span className="text-xs font-semibold uppercase tracking-[0.32em] text-purple-200/80">
-                  vs
-                </span>
-                <span className="rounded-full border border-pink-300/35 bg-pink-400/12 px-3 py-1 font-mono text-sm text-pink-100 shadow-[0_0_20px_rgba(244,114,182,0.12)]">
-                  {player2Label}
-                </span>
+              <div className="mt-4">
+                <div className="mb-2 text-xs font-semibold uppercase tracking-[0.24em] text-purple-200/75">
+                  Players
+                </div>
+                <div className={`flex flex-wrap items-center gap-2 ${theme.textMuted}`}>
+                  <span className="rounded-full border border-cyan-300/35 bg-cyan-400/12 px-2.5 py-0.5 font-mono text-xs text-cyan-100 shadow-[0_0_20px_rgba(34,211,238,0.12)] md:px-3 md:py-1 md:text-sm">
+                    {player1Label}
+                  </span>
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.28em] text-purple-200/80 md:text-xs md:tracking-[0.32em]">
+                    vs
+                  </span>
+                  <span className="rounded-full border border-pink-300/35 bg-pink-400/12 px-2.5 py-0.5 font-mono text-xs text-pink-100 shadow-[0_0_20px_rgba(244,114,182,0.12)] md:px-3 md:py-1 md:text-sm">
+                    {player2Label}
+                  </span>
+                </div>
               </div>
             ) : (
               <p className={`${theme.textMuted} mt-2`}>
@@ -184,25 +189,30 @@ const MatchHeader = ({
           )}
           {isV2MatchHeader && (
             <>
+              <div className="mt-4">
+                <div className="mb-2 text-xs font-semibold uppercase tracking-[0.24em] text-purple-200/75">
+                  Status
+                </div>
               {status.href ? (
                 <UserManualAnchorLink
-                  href={status.href}
-                  className={`mt-4 inline-flex px-4 py-2 rounded-xl font-bold underline decoration-dotted underline-offset-4 hover:opacity-80 transition-colors ${status.className}`}
-                  title={`Learn more about ${status.text} in the User Manual`}
+                    href={status.href}
+                    className={`inline-flex rounded-xl px-3 py-1.5 text-sm font-bold underline decoration-dotted underline-offset-4 hover:opacity-80 transition-colors md:px-4 md:py-2 md:text-base ${status.className}`}
+                    title={`Learn more about ${status.text} in the User Manual`}
                 >
                   {status.text}
                 </UserManualAnchorLink>
               ) : (
-                <div className={`mt-4 inline-flex px-4 py-2 rounded-xl font-bold ${status.className}`}>
+                  <div className={`inline-flex rounded-xl px-3 py-1.5 text-sm font-bold md:px-4 md:py-2 md:text-base ${status.className}`}>
                   {status.text}
                 </div>
               )}
+              </div>
               {completedMatchExplanation && (
                 <div className="mt-4 max-w-3xl">
                   <div className="mb-2 text-xs font-semibold uppercase tracking-[0.24em] text-purple-200/75">
                     Reasoning
                   </div>
-                  <div className="text-sm leading-relaxed text-purple-100/90 flex flex-wrap items-center gap-x-1.5 gap-y-2">
+                  <div className="flex flex-wrap items-center gap-x-1.5 gap-y-2 text-xs leading-relaxed text-purple-100/90 md:text-sm">
                     {completedMatchExplanation}
                   </div>
                 </div>
