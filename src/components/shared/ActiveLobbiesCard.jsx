@@ -111,6 +111,26 @@ function hasFeaturedEscalation(lobby) {
   return (lobby?.featuredEscalationAvailableCount || 0) > 0;
 }
 
+function EthLogo({ size = 12, className = '' }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 256 417"
+      width={size}
+      height={size}
+      className={className}
+      fill="currentColor"
+    >
+      <path d="M127.9 0L124.7 10.9V279.1L127.9 282.3L255.8 210.7z" />
+      <path d="M127.9 0L0 210.7L127.9 282.3V152.2z" opacity="0.8" />
+      <path d="M127.9 306.5L126.1 308.8V416.6L127.9 421.8L255.9 234.9z" />
+      <path d="M127.9 421.8V306.5L0 234.9z" opacity="0.8" />
+      <path d="M127.9 282.3L255.8 210.7L127.9 152.2z" opacity="0.6" />
+      <path d="M0 210.7L127.9 282.3V152.2z" opacity="0.45" />
+    </svg>
+  );
+}
+
 const ActiveLobbiesCard = ({
   lobbies = [],
   resolvedLobbies = [],
@@ -493,7 +513,9 @@ const ActiveLobbiesCard = ({
                       </div>
                       <button
                         onClick={() => handleViewTournament(lobby.address)}
-                        className="shrink-0 rounded-lg bg-yellow-200 text-amber-950 px-3 py-2 text-sm font-semibold hover:bg-yellow-100 transition-colors"
+                        className={`shrink-0 rounded-lg bg-yellow-200 text-amber-950 font-semibold hover:bg-yellow-100 transition-colors ${
+                          isResolvedFilter ? 'px-2.5 py-1.5 text-xs' : 'px-3 py-2 text-sm'
+                        }`}
                       >
                         {isResolvedFilter
                           ? 'View Results'
@@ -506,7 +528,7 @@ const ActiveLobbiesCard = ({
                     <div className="grid grid-cols-2 gap-2 mb-3">
                       <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
                         <div className="flex items-center gap-2 text-yellow-100/70 text-xs uppercase tracking-[0.14em] mb-1">
-                          <Clock3 size={12} />
+                          {isResolvedFilter ? <Check size={12} /> : <Clock3 size={12} />}
                           <span>{isResolvedFilter ? 'Resolution' : 'Status'}</span>
                         </div>
                         <div className="text-sm text-white">
@@ -519,7 +541,7 @@ const ActiveLobbiesCard = ({
                       </div>
                       <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
                         <div className="flex items-center gap-2 text-yellow-100/70 text-xs uppercase tracking-[0.14em] mb-1">
-                          <TimerReset size={12} />
+                          {isResolvedFilter ? <EthLogo size={12} className="text-yellow-100/70" /> : <TimerReset size={12} />}
                           <span>{isResolvedFilter ? 'Prize Pool' : 'Escalations'}</span>
                         </div>
                         <div className="text-sm text-white">
