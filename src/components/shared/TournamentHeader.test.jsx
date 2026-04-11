@@ -124,6 +124,21 @@ describe('TournamentHeader', () => {
     expect(screen.getByRole('link', { name: /via r2 uncontested finals resolution/i })).toBeInTheDocument();
   });
 
+  it('shows completed status styling for V2 R2 resolutions', () => {
+    render(
+      <TournamentHeader
+        {...baseProps}
+        status={2}
+        completionReason={7}
+        reasonLabelMode="v2"
+      />
+    );
+
+    expect(screen.getByText('Completed')).toBeInTheDocument();
+    expect(screen.queryByText('Abandoned')).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /via r2 uncontested finals resolution/i })).toBeInTheDocument();
+  });
+
   it('shows a connect-to-enrol CTA when the wallet is not connected', () => {
     const onConnectWallet = vi.fn();
 

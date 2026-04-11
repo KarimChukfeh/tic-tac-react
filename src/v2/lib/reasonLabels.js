@@ -77,11 +77,20 @@ export const isV2TournamentCancelledReason = (reason) => (
 );
 
 export const getV2StatsResolutionReason = (reason) => (
-  isV2TournamentCancelledReason(reason)
-    ? CompletionReason.SOLO_ENROLL_CANCELLED
-    : toReasonNumber(reason, -1) === V2TournamentResolutionReason.ABANDONED_TOURNAMENT_CLAIMED
-      ? CompletionReason.ABANDONED_TOURNAMENT_CLAIMED
-    : toReasonNumber(reason, 0)
+  (() => {
+    const normalizedReason = toReasonNumber(reason, 0);
+
+    switch (normalizedReason) {
+      case V2TournamentResolutionReason.SOLO_ENROLL_CANCELLED:
+        return CompletionReason.SOLO_ENROLL_CANCELLED;
+      case V2TournamentResolutionReason.ABANDONED_TOURNAMENT_CLAIMED:
+        return CompletionReason.ABANDONED_TOURNAMENT_CLAIMED;
+      case V2TournamentResolutionReason.UNCONTESTED_FINALS_WIN:
+        return CompletionReason.UNCONTESTED_FINALS_WIN;
+      default:
+        return normalizedReason;
+    }
+  })()
 );
 
 export const getV2CompletionReasonHref = (reason) => TOURNAMENT_LINKS[toReasonNumber(reason, -1)] ?? null;
