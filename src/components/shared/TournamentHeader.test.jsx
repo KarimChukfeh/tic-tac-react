@@ -253,7 +253,7 @@ describe('TournamentHeader', () => {
   });
 
   it('shows completed v2 cards and expands enrolled players on demand', () => {
-    render(
+    const { container } = render(
       <TournamentHeader
         {...baseProps}
         status={2}
@@ -272,11 +272,13 @@ describe('TournamentHeader', () => {
       />
     );
 
+    expect(container.querySelector('.grid.grid-cols-2.md\\:grid-cols-3')).toBeInTheDocument();
     expect(screen.getByText('Payout')).toBeInTheDocument();
     expect(screen.queryByText('Payouts')).not.toBeInTheDocument();
     expect(screen.queryByText(/Enrolled Players/i)).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: /via ml1 timeout/i })).toBeInTheDocument();
     expect(screen.getAllByText(/Transferred/i)).toHaveLength(2);
+    expect(container.querySelector('.col-span-2.md\\:col-span-1')).toContainElement(screen.getByText('Payout'));
     expect(screen.queryByText('0x1111111111111111111111111111111111111111')).not.toBeInTheDocument();
     expect(screen.getByText('0x1234...5678')).toBeInTheDocument();
     expect(screen.getByText('0xabcd...abcd')).toBeInTheDocument();

@@ -129,7 +129,9 @@ const StatsGrid = ({
   const timeRemaining = showStatusTimer ? Math.max(0, Number(statusTimerTarget) - now) : 0;
   const hasPlayerDetails = Array.isArray(playersDetails) && playersDetails.length > 0;
   const showReplacementThirdCard = hideRoundCard && (thirdCardLabel || thirdCardContent);
-  const gridColumnCount = showReplacementThirdCard || !hideRoundCard ? 3 : 2;
+  const gridClassName = showReplacementThirdCard
+    ? 'grid-cols-2 md:grid-cols-3'
+    : (!hideRoundCard ? 'grid-cols-3' : 'grid-cols-2');
 
   useEffect(() => {
     if (!showStatusTimer) return undefined;
@@ -152,7 +154,7 @@ const StatsGrid = ({
   };
 
   return (
-    <div className={`grid ${gridColumnCount === 3 ? 'grid-cols-3' : 'grid-cols-2'} gap-2 md:gap-4`}>
+    <div className={`grid ${gridClassName} gap-2 md:gap-4`}>
       <div className={`${showStatus ? `${statusDisplay.bgColor} border ${statusDisplay.borderColor}` : 'bg-black/20'} rounded-lg p-2 md:p-4`}>
         <div className={`${colors.text} text-xs md:text-sm mb-1`}>Status</div>
         {showStatus ? (
@@ -234,7 +236,7 @@ const StatsGrid = ({
         </div>
       )}
       {showReplacementThirdCard && (
-        <div className="bg-black/20 rounded-lg p-2 md:p-4">
+        <div className="col-span-2 md:col-span-1 bg-black/20 rounded-lg p-2 md:p-4">
           <div className={`${colors.text} text-xs md:text-sm mb-1`}>{thirdCardLabel}</div>
           {thirdCardContent}
         </div>
