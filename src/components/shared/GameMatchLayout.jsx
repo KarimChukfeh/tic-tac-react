@@ -1278,6 +1278,8 @@ const GameMatchLayout = ({
           playerCount: playerCount ?? match.playerCount ?? null,
           player1: match.player1,
           player2: match.player2,
+          winner: match.winner,
+          loser: match.loser,
         }}
         theme={theme}
       />
