@@ -331,6 +331,9 @@ export default function Landing() {
   const [whitepaperGlow, setWhitepaperGlow] = useState(false);
   const whitepaperGlowTimer = useRef(null);
   const { phrase, visible } = useHeroCycle();
+  const scrollToReadySection = () => {
+    document.getElementById('ready-to-prove-yourself')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
   // Set page title
   useEffect(() => {
     document.title = 'ETour - Pure Competition';
@@ -385,15 +388,10 @@ export default function Landing() {
 	          <div className="flex items-center gap-4 mb-0">
 	            <div className="h-px w-16 bg-gradient-to-r from-transparent to-cyan-500/50" />
             <a
-              href="#read-the-whitepaper"
+              href="#ready-to-prove-yourself"
               onClick={(e) => {
                 e.preventDefault();
-                document.getElementById('read-the-whitepaper')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                clearTimeout(whitepaperGlowTimer.current);
-                setTimeout(() => {
-                  setWhitepaperGlow(true);
-                  whitepaperGlowTimer.current = setTimeout(() => setWhitepaperGlow(false), 2000);
-                }, 600);
+                scrollToReadySection();
               }}
               className="text-cyan-400 text-base md:text-xl font-semibold tracking-widest uppercase hover:text-cyan-300 transition-colors cursor-pointer"
             >
@@ -423,15 +421,10 @@ export default function Landing() {
           {/* Subheadline */}
           <p className="text-xl md:text-2xl text-slate-400 text-center max-w-2xl mb-12 leading-relaxed">
             <a
-              href="#learn-more-links"
+              href="#ready-to-prove-yourself"
               onClick={(e) => {
                 e.preventDefault();
-                document.getElementById('learn-more-links')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                clearTimeout(whitepaperGlowTimer.current);
-                setTimeout(() => {
-                  setWhitepaperGlow(true);
-                  whitepaperGlowTimer.current = setTimeout(() => setWhitepaperGlow(false), 2000);
-                }, 600);
+                scrollToReadySection();
               }}
               className="inline-flex items-center hover:text-slate-300 transition-colors cursor-pointer underline decoration-dotted decoration-slate-500 underline-offset-4"
             >
@@ -574,7 +567,7 @@ export default function Landing() {
         </section>
 
         {/* ============ FINAL CTA ============ */}
-        <section className="px-6 py-16 text-center">
+        <section id="ready-to-prove-yourself" className="px-6 py-16 text-center scroll-mt-28 md:scroll-mt-36">
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
             Ready to Prove Yourself?
           </h2>
