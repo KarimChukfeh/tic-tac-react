@@ -2136,6 +2136,39 @@ export default function ChessV2() {
           </div>
         ) : null}
 
+        <V2GameLobbyIntro
+          account={account}
+          isConnecting={isConnecting}
+          onConnectWallet={connectWallet}
+          connectCtaClassName={currentTheme.connectCtaClassName}
+        >
+          <div className={`relative flex flex-wrap items-center justify-center gap-2 text-sm md:text-base ${currentTheme.heroSubtext}`}>
+            {heroLinkNoticeVisible ? (
+              <div className="pointer-events-none absolute bottom-full left-1/2 mb-3 -translate-x-1/2 whitespace-nowrap rounded-full border border-cyan-400/40 bg-slate-950/90 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white shadow-lg shadow-cyan-500/20 backdrop-blur-sm animate-pulse">
+                Coming Soon
+              </div>
+            ) : null}
+            {HERO_LINKS.map((link, index) => (
+              <div key={link.label} className="flex items-center gap-2">
+                {index > 0 ? <span aria-hidden="true">•</span> : null}
+                <a
+                  href={link.type === 'manual' ? '#user-manual' : '#'}
+                  onClick={
+                    link.type === 'manual'
+                      ? handleUserManualLinkClick
+                      : link.type === 'quick-guide'
+                        ? handleQuickGuideLinkClick
+                        : handlePlaceholderLinkClick
+                  }
+                  className="underline decoration-dotted underline-offset-4 transition-colors hover:text-white"
+                >
+                  {link.label}
+                </a>
+              </div>
+            ))}
+          </div>
+        </V2GameLobbyIntro>
+
         {currentMatch && (
           <div ref={matchViewRef}>
             <GameMatchLayout
@@ -2210,39 +2243,6 @@ export default function ChessV2() {
             )}
           </div>
         )}
-
-        <V2GameLobbyIntro
-          account={account}
-          isConnecting={isConnecting}
-          onConnectWallet={connectWallet}
-          connectCtaClassName={currentTheme.connectCtaClassName}
-        >
-          <div className={`relative flex flex-wrap items-center justify-center gap-2 text-sm md:text-base ${currentTheme.heroSubtext}`}>
-            {heroLinkNoticeVisible ? (
-              <div className="pointer-events-none absolute bottom-full left-1/2 mb-3 -translate-x-1/2 whitespace-nowrap rounded-full border border-cyan-400/40 bg-slate-950/90 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white shadow-lg shadow-cyan-500/20 backdrop-blur-sm animate-pulse">
-                Coming Soon
-              </div>
-            ) : null}
-            {HERO_LINKS.map((link, index) => (
-              <div key={link.label} className="flex items-center gap-2">
-                {index > 0 ? <span aria-hidden="true">•</span> : null}
-                <a
-                  href={link.type === 'manual' ? '#user-manual' : '#'}
-                  onClick={
-                    link.type === 'manual'
-                      ? handleUserManualLinkClick
-                      : link.type === 'quick-guide'
-                        ? handleQuickGuideLinkClick
-                        : handlePlaceholderLinkClick
-                  }
-                  className="underline decoration-dotted underline-offset-4 transition-colors hover:text-white"
-                >
-                  {link.label}
-                </a>
-              </div>
-            ))}
-          </div>
-        </V2GameLobbyIntro>
 
         {!currentMatch && (
           <>
