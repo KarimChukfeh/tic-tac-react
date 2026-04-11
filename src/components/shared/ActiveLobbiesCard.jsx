@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { AlertTriangle, Check, Clock3, RefreshCw, TimerReset, X, Zap } from 'lucide-react';
-import { shortenAddress } from '../../utils/formatters';
+import { shortenAddress, timeAgo } from '../../utils/formatters';
 import { linkifyReasonText } from './UserManualAnchorLink';
 import { getV2TournamentResolutionText } from '../../v2/lib/reasonLabels';
 
@@ -10,8 +10,6 @@ const FILTERS = [
   { id: 'escalations', label: 'Escalations' },
   { id: 'resolved', label: 'Resolved' },
 ];
-
-const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
 function formatCountdown(targetTs, now) {
   const diff = Math.max(0, Number(targetTs || 0) - Number(now || 0));
@@ -113,17 +111,6 @@ function hasFeaturedEscalation(lobby) {
   return (lobby?.featuredEscalationAvailableCount || 0) > 0;
 }
 
-function getResolvedBadgeClass(status) {
-  if (status === 3) return 'border-red-300/30 bg-red-400/10 text-red-100';
-  return 'border-emerald-300/30 bg-emerald-400/10 text-emerald-100';
-}
-
-function getResolvedOutcomeLabel(lobby) {
-  if (lobby?.winner && lobby.winner !== ZERO_ADDRESS) return shortenAddress(lobby.winner);
-  if (lobby?.prizeRecipient && lobby.prizeRecipient !== ZERO_ADDRESS) return shortenAddress(lobby.prizeRecipient);
-  return 'No winner recorded';
-}
-
 const ActiveLobbiesCard = ({
   lobbies = [],
   resolvedLobbies = [],
@@ -134,12 +121,16 @@ const ActiveLobbiesCard = ({
   error = null,
   resolvedError = null,
   resolvedLoaded = false,
+  resolvedPage = 0,
+  resolvedTotalCount = 0,
+  resolvedPageSize = 10,
   gamesCardHeight = 0,
   playerActivityHeight = 0,
   recentMatchesCardHeight = 0,
   onHeightChange,
   onRefresh,
   onRefreshResolved,
+  onResolvedPageChange,
   isExpanded: externalIsExpanded,
   onToggleExpand,
   onViewTournament,
@@ -257,6 +248,7 @@ const ActiveLobbiesCard = ({
   const currentRefresh = isResolvedFilter
     ? (resolvedLoaded ? onRefreshResolved : onLoadResolved)
     : onRefresh;
+  const resolvedTotalPages = Math.ceil(resolvedTotalCount / resolvedPageSize);
 
   const BASE_TOP_DESKTOP = 80;
   const COLLAPSED_BUTTON_HEIGHT_DESKTOP = 64;
@@ -411,7 +403,7 @@ const ActiveLobbiesCard = ({
               if (option.id === 'all') count = visibleLobbies.length;
               else if (option.id === 'waiting') count = totalWaiting;
               else if (option.id === 'escalations') count = totalEscalations;
-              else if (option.id === 'resolved' && resolvedLoaded) count = visibleResolvedLobbies.length;
+              else if (option.id === 'resolved') count = null;
 
               return (
                 <button
@@ -468,18 +460,18 @@ const ActiveLobbiesCard = ({
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-white font-semibold">{tournamentType}</span>
-                          <span className={`text-[11px] uppercase tracking-[0.16em] px-2 py-1 rounded-full border ${
-                            isResolvedFilter
-                              ? getResolvedBadgeClass(lobby.status)
-                              : lobby.status === 0
+                          {!isResolvedFilter && (
+                            <span className={`text-[11px] uppercase tracking-[0.16em] px-2 py-1 rounded-full border ${
+                              lobby.status === 0
                                 ? 'border-emerald-300/30 bg-emerald-400/10 text-emerald-100'
                                 : 'border-cyan-300/30 bg-cyan-400/10 text-cyan-100'
-                          }`}>
-                            {lobby.statusLabel}
-                          </span>
+                            }`}>
+                              {lobby.statusLabel}
+                            </span>
+                          )}
                           {lobby.isUserEnrolled && (
                             <span className="text-[11px] uppercase tracking-[0.16em] px-2 py-1 rounded-full border border-sky-300/30 bg-sky-400/10 text-sky-100">
-                              Yours
+                              {isResolvedFilter ? 'You Played' : 'Yours'}
                             </span>
                           )}
                           {lobby.isUserEnrolled && lobby.ownRelevantAvailableCount > 0 && (
@@ -494,7 +486,9 @@ const ActiveLobbiesCard = ({
                           )}
                         </div>
                         <div className="text-yellow-100/80 text-sm mt-1">
-                          {shortenAddress(lobby.address)} • {formatEntryFee(lobby.entryFeeEth)} ETH • {lobby.enrolledCount}/{lobby.playerCount} players
+                          {isResolvedFilter
+                            ? `${lobby.enrolledCount}/${lobby.playerCount} players • ${formatEntryFee(lobby.entryFeeEth)} ETH • ${timeAgo(lobby.startedAt || lobby.createdAt || 0)}`
+                            : `${shortenAddress(lobby.address)} • ${formatEntryFee(lobby.entryFeeEth)} ETH • ${lobby.enrolledCount}/${lobby.playerCount} players`}
                         </div>
                       </div>
                       <button
@@ -526,11 +520,11 @@ const ActiveLobbiesCard = ({
                       <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
                         <div className="flex items-center gap-2 text-yellow-100/70 text-xs uppercase tracking-[0.14em] mb-1">
                           <TimerReset size={12} />
-                          <span>{isResolvedFilter ? 'Outcome' : 'Escalations'}</span>
+                          <span>{isResolvedFilter ? 'Prize Pool' : 'Escalations'}</span>
                         </div>
                         <div className="text-sm text-white">
                           {isResolvedFilter
-                            ? getResolvedOutcomeLabel(lobby)
+                            ? `${formatEntryFee(lobby.prizePoolEth || '0')} ETH`
                             : lobby.isUserEnrolled && lobby.ownRelevantAvailableCount > 0
                               ? `${formatCountLabel(lobby.ownRelevantAvailableCount, 'action')} now`
                               : lobby.isUserEnrolled && lobby.ownRelevantSoonCount > 0
@@ -546,21 +540,7 @@ const ActiveLobbiesCard = ({
                       </div>
                     </div>
 
-                    {isResolvedFilter ? (
-                      <div className="flex flex-wrap gap-2 text-xs">
-                        <span className="px-2 py-1 rounded-full bg-white/10 text-yellow-50 border border-white/10">
-                          Prize Pool {formatEntryFee(lobby.prizePoolEth || '0')} ETH
-                        </span>
-                        <span className="px-2 py-1 rounded-full bg-white/10 text-yellow-50 border border-white/10">
-                          {lobby.enrolledCount}/{lobby.playerCount} players
-                        </span>
-                        {lobby.isUserEnrolled && (
-                          <span className="px-2 py-1 rounded-full bg-sky-400/10 text-sky-100 border border-sky-300/30">
-                            You played
-                          </span>
-                        )}
-                      </div>
-                    ) : lobby.status === 1 ? (
+                    {!isResolvedFilter && lobby.status === 1 ? (
                       <div className="flex flex-wrap gap-2 mb-3 text-xs">
                         {lobby.isUserEnrolled && lobby.matchEscalationSummary.ml1RelevantAvailableCount > 0 && (
                           <span className="px-2 py-1 rounded-full bg-yellow-300/15 text-yellow-100 border border-yellow-300/30">
@@ -623,6 +603,30 @@ const ActiveLobbiesCard = ({
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {isResolvedFilter && resolvedTotalPages > 1 && (
+            <div className="mt-4 flex items-center justify-between gap-3 border-t border-yellow-200/15 pt-4">
+              <button
+                type="button"
+                onClick={() => onResolvedPageChange?.(resolvedPage - 1)}
+                disabled={resolvedPage <= 0 || currentSyncing}
+                className="rounded-lg border border-yellow-200/30 bg-white/10 px-3 py-2 text-sm font-medium text-yellow-50 transition-colors enabled:hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Newer
+              </button>
+              <span className="text-sm text-yellow-100/80">
+                Page {resolvedPage + 1} of {resolvedTotalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => onResolvedPageChange?.(resolvedPage + 1)}
+                disabled={resolvedPage >= resolvedTotalPages - 1 || currentSyncing}
+                className="rounded-lg border border-yellow-200/30 bg-white/10 px-3 py-2 text-sm font-medium text-yellow-50 transition-colors enabled:hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Older
+              </button>
             </div>
           )}
 

@@ -12,12 +12,16 @@ const baseProps = {
   error: null,
   resolvedError: null,
   resolvedLoaded: false,
+  resolvedPage: 0,
+  resolvedTotalCount: 0,
+  resolvedPageSize: 10,
   gamesCardHeight: 0,
   playerActivityHeight: 0,
   recentMatchesCardHeight: 0,
   onHeightChange: vi.fn(),
   onRefresh: vi.fn(),
   onRefreshResolved: vi.fn(),
+  onResolvedPageChange: vi.fn(),
   onLoadResolved: vi.fn(),
   onViewTournament: vi.fn(),
   getTournamentTypeLabel: vi.fn(() => 'Tournament'),
@@ -52,5 +56,42 @@ describe('ActiveLobbiesCard', () => {
     fireEvent.click(resolvedFilter);
 
     expect(onLoadResolved).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders the Resolved filter without a count and paginates older results', () => {
+    const onResolvedPageChange = vi.fn();
+
+    render(
+      <ActiveLobbiesCard
+        {...baseProps}
+        resolvedLoaded
+        resolvedLobbies={[
+          {
+            address: '0x1234567890123456789012345678901234567890',
+            status: 2,
+            statusLabel: 'Completed',
+            playerCount: 4,
+            entryFeeEth: '0.1',
+            enrolledCount: 4,
+            prizePoolEth: '0.4',
+            completionReason: 0,
+            winner: '0x9999999999999999999999999999999999999999',
+            isUserEnrolled: false,
+          },
+        ]}
+        resolvedTotalCount={25}
+        onResolvedPageChange={onResolvedPageChange}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /open discover lobbies/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Resolved' }));
+
+    expect(screen.getByRole('button', { name: 'Resolved' })).toBeInTheDocument();
+    expect(screen.getByText('Page 1 of 3')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Older' }));
+
+    expect(onResolvedPageChange).toHaveBeenCalledWith(1);
   });
 });

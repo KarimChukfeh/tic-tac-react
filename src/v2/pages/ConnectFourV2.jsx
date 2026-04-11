@@ -2518,11 +2518,15 @@ export default function ConnectFourV2() {
             error={activeLobbies.error}
             resolvedError={activeLobbies.resolvedError}
             resolvedLoaded={activeLobbies.resolvedLoaded}
+            resolvedPage={activeLobbies.resolvedPage}
+            resolvedTotalCount={activeLobbies.resolvedTotalCount}
+            resolvedPageSize={activeLobbies.resolvedPageSize}
             gamesCardHeight={gamesCardHeight}
             playerActivityHeight={playerActivityHeight}
             recentMatchesCardHeight={recentMatchesCardHeight}
             onRefresh={activeLobbies.refetch}
             onRefreshResolved={activeLobbies.refetchResolved}
+            onResolvedPageChange={activeLobbies.goToResolvedPage}
             onLoadResolved={activeLobbies.refetchResolved}
             isExpanded={expandedPanel === 'activeLobbies'}
             onToggleExpand={() => setExpandedPanel(expandedPanel === 'activeLobbies' ? null : 'activeLobbies')}
@@ -2607,11 +2611,15 @@ export default function ConnectFourV2() {
             error={activeLobbies.error}
             resolvedError={activeLobbies.resolvedError}
             resolvedLoaded={activeLobbies.resolvedLoaded}
+            resolvedPage={activeLobbies.resolvedPage}
+            resolvedTotalCount={activeLobbies.resolvedTotalCount}
+            resolvedPageSize={activeLobbies.resolvedPageSize}
             gamesCardHeight={gamesCardHeight}
             playerActivityHeight={playerActivityHeight}
             recentMatchesCardHeight={recentMatchesCardHeight}
             onRefresh={activeLobbies.refetch}
             onRefreshResolved={activeLobbies.refetchResolved}
+            onResolvedPageChange={activeLobbies.goToResolvedPage}
             onLoadResolved={activeLobbies.refetchResolved}
             isExpanded={expandedPanel === 'activeLobbies'}
             onToggleExpand={() => setExpandedPanel(expandedPanel === 'activeLobbies' ? null : 'activeLobbies')}

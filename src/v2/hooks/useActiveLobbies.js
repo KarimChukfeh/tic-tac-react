@@ -4,7 +4,7 @@ import { multicallContracts } from '../../utils/multicall';
 
 const EMPTY_DATA = [];
 const ZERO_ADDRESS = ethers.ZeroAddress.toLowerCase();
-const MAX_RESOLVED_LOBBIES = 10;
+const RESOLVED_PAGE_SIZE = 10;
 
 const TOURNAMENT_STATUS_LABELS = {
   0: 'Enrolling',
@@ -130,6 +130,9 @@ function sortLobbies(a, b) {
 }
 
 function sortResolvedLobbies(a, b) {
+  const pageOrderDiff = toNumber(b.pastIndex, -1) - toNumber(a.pastIndex, -1);
+  if (pageOrderDiff !== 0) return pageOrderDiff;
+
   const resolvedAtDiff = toNumber(b.startedAt) - toNumber(a.startedAt);
   if (resolvedAtDiff !== 0) return resolvedAtDiff;
 
@@ -150,6 +153,8 @@ export function useActiveLobbies(factoryContract, runner, account, getInstanceCo
   const [error, setError] = useState(null);
   const [resolvedError, setResolvedError] = useState(null);
   const [resolvedLoaded, setResolvedLoaded] = useState(false);
+  const [resolvedPage, setResolvedPage] = useState(0);
+  const [resolvedTotalCount, setResolvedTotalCount] = useState(0);
 
   const fetchLobbies = useCallback(async (isInitialLoad = false) => {
     if (!factoryContract || !runner || !getInstanceContract) {
@@ -474,29 +479,45 @@ export function useActiveLobbies(factoryContract, runner, account, getInstanceCo
     }
   }, [account, factoryContract, getInstanceContract, runner]);
 
-  const fetchResolvedLobbies = useCallback(async (isInitialLoad = false) => {
+  const fetchResolvedLobbies = useCallback(async (pageIndex = 0, isInitialLoad = false) => {
     if (!factoryContract || !runner || !getInstanceContract) {
       setResolvedLobbies(EMPTY_DATA);
       setResolvedLoading(false);
       setResolvedSyncing(false);
       setResolvedLoaded(false);
+      setResolvedPage(0);
+      setResolvedTotalCount(0);
       return;
     }
 
     try {
+      const normalizedPageIndex = Math.max(0, toNumber(pageIndex, 0));
       if (isInitialLoad) setResolvedLoading(true);
       else setResolvedSyncing(true);
       setResolvedError(null);
 
       const pastTotal = toNumber(await factoryContract.getPastTournamentCount().catch(() => 0n));
+      setResolvedTotalCount(pastTotal);
       if (pastTotal === 0) {
+        setResolvedLobbies([]);
+        setResolvedLoaded(true);
+        setResolvedPage(0);
+        return;
+      }
+
+      const maxPageIndex = Math.max(0, Math.ceil(pastTotal / RESOLVED_PAGE_SIZE) - 1);
+      const nextPageIndex = Math.min(normalizedPageIndex, maxPageIndex);
+      const endExclusive = Math.max(0, pastTotal - (nextPageIndex * RESOLVED_PAGE_SIZE));
+      const startIndex = Math.max(0, endExclusive - RESOLVED_PAGE_SIZE);
+      const fetchCount = endExclusive - startIndex;
+      setResolvedPage(nextPageIndex);
+
+      if (fetchCount <= 0) {
         setResolvedLobbies([]);
         setResolvedLoaded(true);
         return;
       }
 
-      const fetchCount = Math.min(pastTotal, MAX_RESOLVED_LOBBIES);
-      const startIndex = Math.max(0, pastTotal - fetchCount);
       const addressResults = await multicallContracts(
         Array.from({ length: fetchCount }, (_, offset) => ({
           contract: factoryContract,
@@ -506,13 +527,13 @@ export function useActiveLobbies(factoryContract, runner, account, getInstanceCo
         runner
       );
 
-      const pastAddresses = [
-        ...new Set(
-          addressResults
-            .filter((result) => result.success && result.result && result.result !== ethers.ZeroAddress)
-            .map((result) => result.result)
-        ),
-      ];
+      const pastAddresses = addressResults
+        .map((result, offset) => (
+          result.success && result.result && result.result !== ethers.ZeroAddress
+            ? { address: result.result, pastIndex: startIndex + offset }
+            : null
+        ))
+        .filter(Boolean);
 
       if (pastAddresses.length === 0) {
         setResolvedLobbies([]);
@@ -520,8 +541,9 @@ export function useActiveLobbies(factoryContract, runner, account, getInstanceCo
         return;
       }
 
-      const instances = pastAddresses.map((address) => ({
+      const instances = pastAddresses.map(({ address, pastIndex }) => ({
         address,
+        pastIndex,
         contract: getInstanceContract(address, runner),
       }));
 
@@ -563,6 +585,7 @@ export function useActiveLobbies(factoryContract, runner, account, getInstanceCo
 
         nextResolved.push({
           address: instance.address,
+          pastIndex: instance.pastIndex,
           status,
           statusLabel: statusLabel(status),
           currentRound: toNumber(tournament.currentRound),
@@ -611,6 +634,8 @@ export function useActiveLobbies(factoryContract, runner, account, getInstanceCo
     setResolvedSyncing(false);
     setResolvedError(null);
     setResolvedLoaded(false);
+    setResolvedPage(0);
+    setResolvedTotalCount(0);
   }, [account, factoryContract, getInstanceContract, runner]);
 
   useEffect(() => {
@@ -624,7 +649,8 @@ export function useActiveLobbies(factoryContract, runner, account, getInstanceCo
   }, [enabled, factoryContract, fetchLobbies, pollIntervalMs, runner]);
 
   const refetch = useCallback(() => fetchLobbies(false), [fetchLobbies]);
-  const refetchResolved = useCallback(() => fetchResolvedLobbies(resolvedLoaded === false), [fetchResolvedLobbies, resolvedLoaded]);
+  const refetchResolved = useCallback(() => fetchResolvedLobbies(resolvedPage, resolvedLoaded === false), [fetchResolvedLobbies, resolvedLoaded, resolvedPage]);
+  const goToResolvedPage = useCallback((pageIndex) => fetchResolvedLobbies(pageIndex, false), [fetchResolvedLobbies]);
 
   return {
     lobbies,
@@ -636,7 +662,11 @@ export function useActiveLobbies(factoryContract, runner, account, getInstanceCo
     error,
     resolvedError,
     resolvedLoaded,
+    resolvedPage,
+    resolvedTotalCount,
+    resolvedPageSize: RESOLVED_PAGE_SIZE,
     refetch,
     refetchResolved,
+    goToResolvedPage,
   };
 }
