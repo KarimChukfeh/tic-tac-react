@@ -1643,6 +1643,28 @@ export default function TicTacToeV2() {
       if (updated) {
         setCurrentMatch(updated);
         previousBoardRef.current = [...updated.board];
+        if (updated.matchStatus === 2 && !matchEndModalShownRef.current) {
+          const reasonNum = updated.completionReason || 0;
+          const isMatchDraw = isDraw(reasonNum);
+          const winnerAddress = updated.winner?.toLowerCase();
+          const loserAddress = updated.loser?.toLowerCase();
+          const zeroAddress = '0x0000000000000000000000000000000000000000';
+
+          if (isMatchDraw || (winnerAddress && loserAddress && winnerAddress !== zeroAddress && loserAddress !== zeroAddress)) {
+            const userIsWinner = !isMatchDraw && winnerAddress === account.toLowerCase();
+            let resultType = 'lose';
+            if (isMatchDraw) resultType = 'draw';
+            else if (userIsWinner) resultType = (reasonNum === 1 || reasonNum === 3 || reasonNum === 4) ? 'forfeit_win' : 'win';
+            else resultType = (reasonNum === 1 || reasonNum === 3 || reasonNum === 4) ? 'forfeit_lose' : 'lose';
+
+            matchEndModalShownRef.current = true;
+            setMatchEndResult({ result: resultType, completionReason: reasonNum });
+            setMatchEndWinner(updated.winner);
+            setMatchEndLoser(updated.loser);
+
+            if (userIsWinner) setTimeout(() => checkForNextActiveMatch(), 500);
+          }
+        }
       }
       setActionState({
         type: syncResult.synced ? 'success' : 'info',
@@ -2002,7 +2024,7 @@ export default function TicTacToeV2() {
     doMatchSyncRef.current = doMatchSync;
     const matchPollInterval = setInterval(doMatchSync, 5000);
     return () => clearInterval(matchPollInterval);
-  }, [currentMatch?.instanceAddress, currentMatch?.roundNumber, currentMatch?.matchNumber, currentMatch?.matchStatus, account, refreshMatchData, buildMoveHistory]);
+  }, [currentMatch?.instanceAddress, currentMatch?.roundNumber, currentMatch?.matchNumber, currentMatch?.matchStatus, account, refreshMatchData, buildMoveHistory, checkForNextActiveMatch]);
 
   // MoveMade event listener (V2 instance emits same event)
   useEffect(() => {
