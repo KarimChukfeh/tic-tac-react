@@ -6,7 +6,7 @@
  */
 
 import { ChevronDown } from 'lucide-react';
-import { getTournamentTypeLabel, shortenAddress } from '../../utils/formatters';
+import { getBracketRoundLabel, getTournamentTypeLabel, shortenAddress } from '../../utils/formatters';
 import { isDraw } from '../../utils/completionReasons';
 import { getV2NeutralMatchReasonLabel, getV2ReasonCode } from '../../v2/lib/reasonLabels';
 import UserManualAnchorLink from './UserManualAnchorLink';
@@ -72,6 +72,7 @@ const MatchHeader = ({
     ? getTournamentTypeLabel(tournamentInfo.playerCount)
     : 'Tournament';
   const isDuel = tournamentInfo?.playerCount === 2;
+  const bracketRoundLabel = getBracketRoundLabel(tournamentInfo?.playerCount, tournamentInfo?.roundNumber);
   const player1Label = shortenAddress(tournamentInfo?.player1);
   const player2Label = shortenAddress(tournamentInfo?.player2);
   const winnerLabel = shortenAddress(tournamentInfo?.winner);
@@ -136,7 +137,9 @@ const MatchHeader = ({
   const headerTitle = isV2MatchHeader
     ? (isDuel
       ? 'Duel'
-      : `Match ${Number(tournamentInfo?.matchNumber ?? 0) + 1} • Round ${Number(tournamentInfo?.roundNumber ?? 0) + 1}`)
+      : (bracketRoundLabel
+        ? `${bracketRoundLabel} Match`
+        : `Match ${Number(tournamentInfo?.matchNumber ?? 0) + 1} • Round ${Number(tournamentInfo?.roundNumber ?? 0) + 1}`))
     : title;
   const headerSubtitle = isV2MatchHeader
     ? `${player1Label} vs ${player2Label}`

@@ -83,7 +83,7 @@ const GameMatchLayout = ({
   onReturnToBracket, // Handler for returning to tournament bracket
 
   // Tournament metadata
-  playerCount = null, // Optional: player count for tournament type label
+  playerCount = null, // Optional fallback when match data does not include player count
   hasNextActiveMatch = false, // Whether player has a next active match
 
   // Player configuration
@@ -1276,7 +1276,7 @@ const GameMatchLayout = ({
           instanceId: match.instanceId,
           roundNumber: match.roundNumber,
           matchNumber: match.matchNumber,
-          playerCount: playerCount ?? match.playerCount ?? null,
+          playerCount: match.playerCount ?? playerCount ?? null,
           player1: match.player1,
           player2: match.player2,
           player1Icon: playerConfig?.player1?.icon ?? null,

@@ -1639,6 +1639,7 @@ export default function ConnectFourV2() {
         { contract: instanceCont, functionName: 'matches', params: [matchKey] },
         { contract: instanceCont, functionName: 'getBoard', params: [roundNumber, matchNumber] },
         { contract: instanceCont, functionName: 'tierConfig' },
+        { contract: instanceCont, functionName: 'getInstanceInfo' },
         { contract: instanceCont, functionName: 'matchTimeouts', params: [matchKey] },
         { contract: instanceCont, functionName: 'isMatchEscL2Available', params: [roundNumber, matchNumber] },
         { contract: instanceCont, functionName: 'isMatchEscL3Available', params: [roundNumber, matchNumber] },
@@ -1655,12 +1656,14 @@ export default function ConnectFourV2() {
       const fullMatch = results[1]?.success ? results[1].result : await instanceCont.matches(matchKey);
       const boardRaw = results[2]?.success ? results[2].result : await instanceCont.getBoard(roundNumber, matchNumber).catch(() => null);
       const tierConfig = results[3]?.success ? results[3].result : await instanceCont.tierConfig();
-      const timeoutData = results[4]?.success ? results[4].result : await instanceCont.matchTimeouts(matchKey).catch(() => null);
-      const escL2Available = results[5]?.success ? Boolean(results[5].result) : Boolean(await instanceCont.isMatchEscL2Available(roundNumber, matchNumber).catch(() => false));
-      const escL3Available = results[6]?.success ? Boolean(results[6].result) : Boolean(await instanceCont.isMatchEscL3Available(roundNumber, matchNumber).catch(() => false));
+      const instanceInfo = results[4]?.success ? results[4].result : await instanceCont.getInstanceInfo().catch(() => null);
+      const timeoutData = results[5]?.success ? results[5].result : await instanceCont.matchTimeouts(matchKey).catch(() => null);
+      const escL2Available = results[6]?.success ? Boolean(results[6].result) : Boolean(await instanceCont.isMatchEscL2Available(roundNumber, matchNumber).catch(() => false));
+      const escL3Available = results[7]?.success ? Boolean(results[7].result) : Boolean(await instanceCont.isMatchEscL3Available(roundNumber, matchNumber).catch(() => false));
       const isUserAdvancedForRound = userAccount
-        ? (results[7]?.success ? Boolean(results[7].result) : Boolean(await instanceCont.isPlayerInAdvancedRound(roundNumber, userAccount).catch(() => false)))
+        ? (results[8]?.success ? Boolean(results[8].result) : Boolean(await instanceCont.isPlayerInAdvancedRound(roundNumber, userAccount).catch(() => false)))
         : false;
+      const playerCount = Number(instanceInfo?.playerCount ?? matchInfo.playerCount ?? 0) || null;
 
       const tierMatchTime = Number(tierConfig.timeouts?.matchTimePerPlayer ?? tierConfig.matchTimePerPlayer ?? 300);
       const player1 = matchData.player1 || matchInfo.player1;
@@ -1734,6 +1737,7 @@ export default function ConnectFourV2() {
 
       return {
         ...matchInfo,
+        playerCount,
         player1,
         player2,
         firstPlayer,
@@ -1794,7 +1798,7 @@ export default function ConnectFourV2() {
         instanceId: VIRTUAL_INSTANCE_ID,
         roundNumber,
         matchNumber,
-        playerCount: viewingTournament?.playerCount || 2,
+        playerCount: viewingTournament?.playerCount ?? null,
         prizePool: viewingTournament?.prizePoolWei || 0n,
         instanceAddress,
       });

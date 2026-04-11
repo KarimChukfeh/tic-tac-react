@@ -40,7 +40,7 @@ describe('MatchHeader', () => {
     );
 
     expect(screen.getByRole('button', { name: /back/i })).toHaveTextContent('Back');
-    expect(screen.getByRole('heading', { name: 'Match 1 • Round 1' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Semi Finals Match' })).toBeInTheDocument();
     expect(screen.getByText('Players')).toBeInTheDocument();
     expect(screen.getByText('Status')).toBeInTheDocument();
     expect(screen.getAllByText('0x1111...1111').length).toBeGreaterThan(0);
@@ -49,6 +49,49 @@ describe('MatchHeader', () => {
     expect(screen.getByText('vs')).toBeInTheDocument();
     expect(screen.getAllByText('0x2222...2222').length).toBeGreaterThan(0);
     expect(screen.queryByText('Tournament Match')).not.toBeInTheDocument();
+  });
+
+  it('renders round-specific V2 tournament titles for larger brackets', () => {
+    const scenarios = [
+      { playerCount: 4, roundNumber: 0, expected: 'Semi Finals Match' },
+      { playerCount: 4, roundNumber: 1, expected: 'Finals Match' },
+      { playerCount: 8, roundNumber: 0, expected: 'Quarter Finals Match' },
+      { playerCount: 8, roundNumber: 1, expected: 'Semi Finals Match' },
+      { playerCount: 8, roundNumber: 2, expected: 'Finals Match' },
+      { playerCount: 16, roundNumber: 0, expected: 'Round of 16 Match' },
+      { playerCount: 16, roundNumber: 1, expected: 'Quarter Finals Match' },
+      { playerCount: 16, roundNumber: 2, expected: 'Semi Finals Match' },
+      { playerCount: 16, roundNumber: 3, expected: 'Finals Match' },
+      { playerCount: 32, roundNumber: 0, expected: 'Round of 32 Match' },
+      { playerCount: 32, roundNumber: 1, expected: 'Round of 16 Match' },
+      { playerCount: 32, roundNumber: 2, expected: 'Quarter Finals Match' },
+      { playerCount: 32, roundNumber: 3, expected: 'Semi Finals Match' },
+      { playerCount: 32, roundNumber: 4, expected: 'Finals Match' },
+    ];
+
+    const { rerender } = render(
+      <MatchHeader
+        {...baseProps}
+        reasonLabelMode="v2"
+      />
+    );
+
+    scenarios.forEach(({ playerCount, roundNumber, expected }) => {
+      rerender(
+        <MatchHeader
+          {...baseProps}
+          reasonLabelMode="v2"
+          tournamentInfo={{
+            ...baseProps.tournamentInfo,
+            playerCount,
+            roundNumber,
+          }}
+        />
+      );
+
+      expect(screen.getByRole('heading', { name: expected })).toBeInTheDocument();
+      expect(screen.queryByText('Match 1 • Round 1')).not.toBeInTheDocument();
+    });
   });
 
   it('renders the V2 duel header copy for 2-player tournaments', () => {
