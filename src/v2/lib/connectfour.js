@@ -67,6 +67,24 @@ export const DEFAULT_TIMEOUTS_BY_PLAYER_COUNT = {
 };
 
 const contractCodeAvailabilityCache = new WeakMap();
+const resolvedPlayerProfileAddressCache = new WeakMap();
+const inFlightPlayerProfileAddressCache = new WeakMap();
+
+function getRunnerScopedCache(cacheStore, runner) {
+  let cache = cacheStore.get(runner);
+  if (!cache) {
+    cache = new Map();
+    cacheStore.set(runner, cache);
+  }
+  return cache;
+}
+
+function buildPlayerProfileCacheKey(factoryContract, account, registryAddress) {
+  const factoryAddress = (factoryContract.target || factoryContract.address || '').toLowerCase();
+  const normalizedAccount = String(account || '').toLowerCase();
+  const normalizedRegistry = String(registryAddress || '').toLowerCase();
+  return `${factoryAddress}:${normalizedRegistry}:${normalizedAccount}`;
+}
 
 async function hasContractCode(runner, address) {
   if (!runner || typeof runner !== 'object' || !address) return false;
@@ -123,36 +141,64 @@ export function getPlayerRegistryContract(runner, address = PLAYER_REGISTRY_ADDR
 export async function resolvePlayerProfileAddress(factoryContract, runner, account, registryAddress = PLAYER_REGISTRY_ADDRESS) {
   if (!factoryContract || !runner || !account) return null;
 
-  if (registryAddress) {
-    try {
-      if (await hasContractCode(runner, registryAddress)) {
-        const registry = getPlayerRegistryContract(runner, registryAddress);
-        const gameType = Number(await factoryContract.gameType().catch(() => NaN));
-        if (Number.isFinite(gameType)) {
-          const profileAddr = await registry.getProfile(account, gameType).catch(() => ZERO_ADDRESS);
-          if (profileAddr && profileAddr !== ZERO_ADDRESS) return profileAddr;
-        }
-      }
-    } catch {
-      // Fall through to factory-based lookup when the registry is unavailable.
-    }
+  const resolvedCache = getRunnerScopedCache(resolvedPlayerProfileAddressCache, runner);
+  const inFlightCache = getRunnerScopedCache(inFlightPlayerProfileAddressCache, runner);
+  const cacheKey = buildPlayerProfileCacheKey(factoryContract, account, registryAddress);
+
+  if (resolvedCache.has(cacheKey)) {
+    return resolvedCache.get(cacheKey);
   }
 
-  let profileAddr = null;
-  try {
-    profileAddr = await factoryContract.players(account);
-  } catch {
-    profileAddr = null;
+  if (inFlightCache.has(cacheKey)) {
+    return await inFlightCache.get(cacheKey);
   }
-  if (!profileAddr || profileAddr === ZERO_ADDRESS) {
+
+  const resolvePromise = (async () => {
+    if (registryAddress) {
+      try {
+        if (await hasContractCode(runner, registryAddress)) {
+          const registry = getPlayerRegistryContract(runner, registryAddress);
+          const gameType = Number(await factoryContract.gameType().catch(() => NaN));
+          if (Number.isFinite(gameType)) {
+            const profileAddr = await registry.getProfile(account, gameType).catch(() => ZERO_ADDRESS);
+            if (profileAddr && profileAddr !== ZERO_ADDRESS) {
+              resolvedCache.set(cacheKey, profileAddr);
+              return profileAddr;
+            }
+          }
+        }
+      } catch {
+        // Fall through to factory-based lookup when the registry is unavailable.
+      }
+    }
+
+    let profileAddr = null;
     try {
-      profileAddr = await factoryContract.getPlayerProfile(account);
+      profileAddr = await factoryContract.players(account);
     } catch {
       profileAddr = null;
     }
-  }
+    if (!profileAddr || profileAddr === ZERO_ADDRESS) {
+      try {
+        profileAddr = await factoryContract.getPlayerProfile(account);
+      } catch {
+        profileAddr = null;
+      }
+    }
 
-  return profileAddr && profileAddr !== ZERO_ADDRESS ? profileAddr : null;
+    const normalized = profileAddr && profileAddr !== ZERO_ADDRESS ? profileAddr : null;
+    if (normalized) {
+      resolvedCache.set(cacheKey, normalized);
+    }
+    return normalized;
+  })();
+
+  inFlightCache.set(cacheKey, resolvePromise);
+  try {
+    return await resolvePromise;
+  } finally {
+    inFlightCache.delete(cacheKey);
+  }
 }
 
 export function getDefaultTimeouts(playerCount) {
