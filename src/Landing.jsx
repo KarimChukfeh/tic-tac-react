@@ -588,6 +588,12 @@ export default function Landing() {
               <span className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
                 As a Player
               </span>
+              <div className="max-w-sm text-center">
+                <h3 className="text-2xl font-bold text-white">Beat Your Foes. Take The Pot.</h3>
+                <p className="mt-2 text-base leading-relaxed text-slate-300">
+                  Learn how ETour works and how it translates winning into immediate profit.
+                </p>
+              </div>
               <Link
                 to="/manual"
                 className="text-xl font-bold text-cyan-400 transition-colors duration-300 hover:text-cyan-300"
@@ -610,6 +616,12 @@ export default function Landing() {
               <span className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
                 As a Builder
               </span>
+              <div className="max-w-sm text-center">
+                <h3 className="text-2xl font-bold text-white">Build Once. Earn Forever.</h3>
+                <p className="mt-2 text-base leading-relaxed text-slate-300">
+                  Learn how building an ETour game earns you 5% of every pot. Forever.
+                </p>
+              </div>
               <Link
                 id="read-the-whitepaper"
                 to="/whitepaper"
