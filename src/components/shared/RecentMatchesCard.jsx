@@ -92,6 +92,7 @@ const RecentMatchesCard = ({
   const isStatsPanel = panelVariant === 'stats';
   const PanelIcon = isStatsPanel ? TrendingUp : History;
   const panelTitle = isStatsPanel ? 'Your Stats' : 'History';
+  const mobilePanelTitle = reasonLabelMode === 'v2' && isStatsPanel ? 'Stats' : panelTitle;
   const connectWalletPanelTitle = panelTitle.startsWith('Your ') ? panelTitle : `Your ${panelTitle}`;
   const profileAddress = playerProfile?.profileAddress || null;
   const profileExplorerUrl = profileAddress
@@ -1154,7 +1155,7 @@ const RecentMatchesCard = ({
         </button>
 
         {/* Label - Mobile only */}
-        <span className="md:hidden text-[10px] text-white/80 font-medium">{panelTitle}</span>
+        <span className="md:hidden text-[10px] text-white/80 font-medium">{mobilePanelTitle}</span>
 
         {/* Tooltip - Mobile only */}
         {showTooltip && disabled && (

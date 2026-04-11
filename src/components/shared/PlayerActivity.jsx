@@ -47,6 +47,7 @@ const PlayerActivity = ({
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
   const expandedPanelRef = useRef(null);
   const prevExpandedRef = useRef(false);
+  const mobileLabel = reasonLabelMode === 'v2' ? 'Activity' : 'Your Activity';
 
   // Helper functions for match labels
   const getTierLabel = (tierId) => {
@@ -382,7 +383,7 @@ const PlayerActivity = ({
       </button>
 
       {/* Label - Mobile only */}
-      <span className="md:hidden text-[10px] text-white/80 font-medium">Your Activity</span>
+      <span className="md:hidden text-[10px] text-white/80 font-medium">{mobileLabel}</span>
 
       {/* Tooltip - Mobile only */}
       {showTooltip && disabled && (
