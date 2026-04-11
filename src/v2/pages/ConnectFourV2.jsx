@@ -1185,7 +1185,7 @@ export default function ConnectFourV2() {
   const clearSelectedInstance = () => {
     const next = new URLSearchParams(searchParams);
     next.delete('instance');
-    setSearchParams(next);
+    setSearchParams(next, { replace: true });
   };
 
   const updateCreateForm = (field, value) => setCreateForm(prev => ({
@@ -1502,18 +1502,19 @@ export default function ConnectFourV2() {
       await tx.wait();
       setActionState({ type: 'success', message: 'Tournament cancelled and refund recorded on-chain.' });
       alert('Tournament cancelled successfully!');
+      skipNavEffectRef.current = true;
       setViewingTournament(null);
       setCurrentMatch(null);
       setActiveInstanceContract(null);
       activeInstanceContractRef.current = null;
-      clearSelectedInstance();
+      navigate('/connect4', { replace: true, state: null });
     } catch (error) {
       console.error('[ConnectFourV2] Cancel tournament error:', error);
       alert(`Error cancelling tournament: ${getReadableError(error, 'Unknown error')}`);
     } finally {
       setTournamentsLoading(false);
     }
-  }, [viewingTournament, activeInstanceContract, account]);
+  }, [viewingTournament, activeInstanceContract, account, navigate]);
 
   const handleResetEnrollmentWindow = useCallback(async () => {
     if (!viewingTournament || !activeInstanceContract || !account) {
@@ -1594,12 +1595,15 @@ export default function ConnectFourV2() {
   }, [viewingTournament, activeInstanceContract, account]);
 
   const handleBackToTournaments = async () => {
+    skipNavEffectRef.current = true;
     setViewingTournament(null);
     setCurrentMatch(null);
     setActiveInstanceContract(null);
     activeInstanceContractRef.current = null;
-    clearSelectedInstance();
-    navigate(-1);
+    navigate('/connect4', { replace: true, state: null });
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
   };
 
   const buildMoveHistory = useCallback((movesString, firstPlayer, player1, player2) => {
@@ -2018,21 +2022,39 @@ export default function ConnectFourV2() {
     }
   };
 
-  const closeMatch = async () => {
+  const closeMatch = useCallback(async () => {
     const address = currentMatch?.instanceAddress || viewingTournament?.address;
     setCurrentMatch(null);
     setMoveHistory([]);
     setIsSpectator(false);
     setMoveTxTimeout(null);
+    setMatchEndResult(null);
+    setMatchEndWinner(null);
+    setMatchEndLoser(null);
+    setMatchEndWinnerLabel('');
     previousBoardRef.current = null;
-    navigate(-1);
-    if (address && activeInstanceContractRef.current) {
-      setTournamentsLoading(true);
-      const bracketData = await refreshTournamentBracket(address);
-      if (bracketData) setViewingTournament(bracketData);
-      setTournamentsLoading(false);
+    if (!address) {
+      skipNavEffectRef.current = true;
+      navigate('/connect4', { replace: true, state: null });
+      window.requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+      return;
     }
-  };
+    pendingScrollAddressRef.current = address;
+    skipNavEffectRef.current = true;
+    navigate('/connect4', {
+      replace: true,
+      state: { view: 'bracket', instanceAddress: address, from: 'match' },
+    });
+    window.requestAnimationFrame(() => {
+      tournamentBracketRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    setTournamentsLoading(true);
+    const bracketData = await refreshTournamentBracket(address);
+    if (bracketData) setViewingTournament(bracketData);
+    setTournamentsLoading(false);
+  }, [currentMatch?.instanceAddress, viewingTournament?.address, refreshTournamentBracket, navigate]);
 
   const handleMatchEndModalClose = () => {
     setMatchEndResult(null);
@@ -2094,7 +2116,7 @@ export default function ConnectFourV2() {
     }
   }, [nextActiveMatch, handlePlayMatch]);
 
-  const handleReturnToBracket = useCallback(() => closeMatch(), []);
+  const handleReturnToBracket = useCallback(() => closeMatch(), [closeMatch]);
 
   useEffect(() => { currentMatchRef.current = currentMatch; }, [currentMatch]);
   useEffect(() => { accountRefForMatch.current = account; }, [account]);

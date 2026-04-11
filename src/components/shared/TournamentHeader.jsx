@@ -385,7 +385,7 @@ const TournamentHeader = ({
         className={`mb-4 flex items-center gap-2 ${colors.text} ${colors.textHover} transition-colors`}
       >
         <ChevronDown className="rotate-90" size={20} />
-        Back to {tournamentTypeLabel}s
+        Back
       </button>
 
       {/* Title Row - stacks on mobile */}

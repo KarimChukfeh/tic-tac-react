@@ -984,7 +984,7 @@ export default function TicTacToeV2() {
   const clearSelectedInstance = () => {
     const next = new URLSearchParams(searchParams);
     next.delete('instance');
-    setSearchParams(next);
+    setSearchParams(next, { replace: true });
   };
 
   const updateCreateForm = (field, value) => setCreateForm(prev => ({
@@ -1294,18 +1294,19 @@ export default function TicTacToeV2() {
       await tx.wait();
       setActionState({ type: 'success', message: 'Tournament cancelled and refund recorded on-chain.' });
       alert('Tournament cancelled successfully!');
+      skipNavEffectRef.current = true;
       setViewingTournament(null);
       setCurrentMatch(null);
       setActiveInstanceContract(null);
       activeInstanceContractRef.current = null;
-      clearSelectedInstance();
+      navigate('/tictactoe', { replace: true, state: null });
       setTournamentsLoading(false);
     } catch (error) {
       console.error('[V2] Cancel tournament error:', error);
       alert(`Error cancelling tournament: ${getReadableError(error, 'Unknown error')}`);
       setTournamentsLoading(false);
     }
-  }, [viewingTournament, activeInstanceContract, account]);
+  }, [viewingTournament, activeInstanceContract, account, navigate]);
 
   const handleResetEnrollmentWindow = useCallback(async () => {
     if (!viewingTournament || !activeInstanceContract || !account) { alert('Please connect your wallet first.'); return; }
@@ -1368,12 +1369,15 @@ export default function TicTacToeV2() {
   }, [viewingTournament, activeInstanceContract, account]);
 
   const handleBackToTournaments = async () => {
+    skipNavEffectRef.current = true;
     setViewingTournament(null);
     setCurrentMatch(null);
     setActiveInstanceContract(null);
     activeInstanceContractRef.current = null;
-    clearSelectedInstance();
-    navigate(-1);
+    navigate('/tictactoe', { replace: true, state: null });
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
   };
 
   // ─── Match data helpers ──────────────────────────────────────────────────────
@@ -1794,21 +1798,39 @@ export default function TicTacToeV2() {
     }
   };
 
-  const closeMatch = async () => {
+  const closeMatch = useCallback(async () => {
     const address = currentMatch?.instanceAddress || viewingTournament?.address;
     setCurrentMatch(null);
     setMoveHistory([]);
     setIsSpectator(false);
     setMoveTxTimeout(null);
+    setMatchEndResult(null);
+    setMatchEndWinner(null);
+    setMatchEndLoser(null);
+    setMatchEndWinnerLabel('');
     previousBoardRef.current = null;
-    navigate(-1);
-    if (address && activeInstanceContractRef.current) {
-      setTournamentsLoading(true);
-      const bracketData = await refreshTournamentBracket(address);
-      if (bracketData) setViewingTournament(bracketData);
-      setTournamentsLoading(false);
+    if (!address) {
+      skipNavEffectRef.current = true;
+      navigate('/tictactoe', { replace: true, state: null });
+      window.requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+      return;
     }
-  };
+    pendingScrollAddressRef.current = address;
+    skipNavEffectRef.current = true;
+    navigate('/tictactoe', {
+      replace: true,
+      state: { view: 'bracket', instanceAddress: address, from: 'match' },
+    });
+    window.requestAnimationFrame(() => {
+      tournamentBracketRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    setTournamentsLoading(true);
+    const bracketData = await refreshTournamentBracket(address);
+    if (bracketData) setViewingTournament(bracketData);
+    setTournamentsLoading(false);
+  }, [currentMatch?.instanceAddress, viewingTournament?.address, refreshTournamentBracket, navigate]);
 
   const handleMatchEndModalClose = () => {
     setMatchEndResult(null);
