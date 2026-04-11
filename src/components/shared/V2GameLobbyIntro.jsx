@@ -30,8 +30,14 @@ export default function V2GameLobbyIntro({
   }, [isTooltipOpen]);
 
   return (
-    <div className="max-w-lg mx-auto space-y-5 md:space-y-6">
-      <div className="flex flex-wrap items-center justify-center gap-3 text-center">
+    <div className="max-w-lg mx-auto mb-8 md:mb-10 space-y-5 md:space-y-6">
+      {children ? (
+        <div className="flex justify-center text-center">
+          {children}
+        </div>
+      ) : null}
+
+      <div className="pt-2 flex flex-wrap items-center justify-center gap-3 text-center">
         {account ? (
           <div className="text-sm md:text-base font-semibold text-green-300">
             Connected as <span className="font-mono">{shortenAddress(account)}</span>
@@ -78,12 +84,6 @@ export default function V2GameLobbyIntro({
           </div>
         ) : null}
       </div>
-
-      {children ? (
-        <div className="flex justify-center text-center">
-          {children}
-        </div>
-      ) : null}
     </div>
   );
 }
