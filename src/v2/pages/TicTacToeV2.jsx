@@ -1918,7 +1918,7 @@ export default function TicTacToeV2() {
 
   // Match polling - every 1.5 seconds
   useEffect(() => {
-    if (!currentMatch || !activeInstanceContractRef.current || !account) return;
+    if (!currentMatch || currentMatch.matchStatus === 2 || !activeInstanceContractRef.current || !account) return;
 
     const doMatchSync = async () => {
       const match = currentMatchRef.current;
@@ -2002,7 +2002,7 @@ export default function TicTacToeV2() {
     doMatchSyncRef.current = doMatchSync;
     const matchPollInterval = setInterval(doMatchSync, 5000);
     return () => clearInterval(matchPollInterval);
-  }, [currentMatch?.instanceAddress, currentMatch?.roundNumber, currentMatch?.matchNumber, account, refreshMatchData, buildMoveHistory]);
+  }, [currentMatch?.instanceAddress, currentMatch?.roundNumber, currentMatch?.matchNumber, currentMatch?.matchStatus, account, refreshMatchData, buildMoveHistory]);
 
   // MoveMade event listener (V2 instance emits same event)
   useEffect(() => {

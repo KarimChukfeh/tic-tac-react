@@ -2143,7 +2143,7 @@ export default function ConnectFourV2() {
   }, [viewingTournament?.address, viewingTournament?.status, currentMatch?.instanceAddress, isTabActive, refreshTournamentBracket]);
 
   useEffect(() => {
-    if (!currentMatch || !activeInstanceContractRef.current || !account) return;
+    if (!currentMatch || currentMatch.matchStatus === 2 || !activeInstanceContractRef.current || !account) return;
 
     const doMatchSync = async () => {
       const match = currentMatchRef.current;
@@ -2231,7 +2231,7 @@ export default function ConnectFourV2() {
     doMatchSyncRef.current = doMatchSync;
     const interval = setInterval(doMatchSync, 5000);
     return () => clearInterval(interval);
-  }, [currentMatch?.instanceAddress, currentMatch?.roundNumber, currentMatch?.matchNumber, account, refreshMatchData, buildMoveHistory, checkForNextActiveMatch]);
+  }, [currentMatch?.instanceAddress, currentMatch?.roundNumber, currentMatch?.matchNumber, currentMatch?.matchStatus, account, refreshMatchData, buildMoveHistory, checkForNextActiveMatch]);
 
   useEffect(() => {
     if (!currentMatch || !activeInstanceContract || !account) return;
