@@ -52,7 +52,7 @@ ETour is built around five core principles:
 
 **The key design choice is**
 
-- The instance owns all tournament state and st orage,
+- The instance owns all tournament state and storage,
 - The modules don't own any state or storage,
 - The modules execute against instance storage through `delegatecall`,
 - The game contract supplies only the game-specific hooks and `makeMove(...)`.
