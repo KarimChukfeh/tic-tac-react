@@ -42,7 +42,7 @@ Before going deeper, it helps to define the terms ETour uses repeatedly.
 
 ## 5. Core Principles
 
-ETour is built around five core Principles:
+ETour is built around five core principles:
 
 1. Each tournament instance should be a permanent onchain record.
 2. New games should reuse bracket, payout, timeout, and profile infrastructure instead of reimplementing it.
@@ -52,8 +52,8 @@ ETour is built around five core Principles:
 
 **The key design choice is**
 
-- The instance owns all tournament state and storage,
-- The modules don't own any state or storage no state,
+- The instance owns all tournament state and st orage,
+- The modules don't own any state or storage,
 - The modules execute against instance storage through `delegatecall`,
 - The game contract supplies only the game-specific hooks and `makeMove(...)`.
 
