@@ -139,7 +139,7 @@ What ETour does prevent is the *platform* exploiting players. There is no hidden
 
 The fee structure is hardcoded and transparent: 95% to the winner, 5% to the game's creator. These percentages cannot be changed. No governance, no voting, no discretion.
 
-The prize pool can only go to the winner. It cannot be forfeited. It cannot be delayed. It cannot be taken back.
+The prize pool is always awarded to the deserving player. It cannot be stopped or delayed. It cannot be taken back.
 
 This is fairness by design: the code enforces equity more reliably than any human audit ever could.
 
@@ -147,7 +147,7 @@ This is fairness by design: the code enforces equity more reliably than any huma
 
 ETour doesn't need token sales, venture funding, or financial engineering to survive.
 
-ETour runs itself as long as players want to compete. The economics are simple enough for anyone to verify: prize pool is entry fee * number of players * 0.95.
+ETour runs itself as long as players want to compete. The economics are simple enough for anyone to verify.
 
 A self-sustaining business model is the most radical form of trustlessness. A company can't fail and take the platform with it because the platform doesn't depend on the company. It only depends on player engagement.
 
