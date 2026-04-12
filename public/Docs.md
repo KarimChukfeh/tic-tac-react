@@ -12,7 +12,7 @@ If you're a developer who just wants to build on ETour rather than study its int
 
 ## 2. Why This is Important
 
-This document exits to serve two crucial purposes
+This document exists to serve two crucial purposes
 
 **Auditing:** Open source software is only as strong as the community around it. By studying ETour's internals you become part of the group that can audit the protocol itself and help improve it for everyone.
 
@@ -33,13 +33,12 @@ In this document we'll go over:
 
 Before going deeper, it helps to define the terms ETour uses repeatedly.
 
-- Game Contract: the concrete implementation for a specific game such as Tic-Tac-Toe, Connect Four, or Chess.
-- Module: a shared infrastructure contract that the clone executes through `delegatecall` so it can reuse logic without copying code.
-- Tier: a reusable configuration bucket defined by player count, entry fee, and timeout settings.
-- Factory: a contract that creates new tournament instances for one game type and tracks them over time.
-- Implementation: the deployed logic contract that clone instances point to.
-- Clone: a minimal proxy for one specific tournament; this is where the tournament's permanent state lives.
-- Instance: here, this usually means the tournament clone itself, not the implementation contract.
+- **Game Contract:** The concrete implementation for a specific game such as `TicTacToe.sol`, `ConnectFour.sol`, `Chess.sol`, etc.
+- **Implementation:** The deployed game contract.
+- **Module:** The shared protocol logic that holds reusable tournament infrastructure (enrollment, payouts, timeouts).
+- **Instance:** The per-tournament proxy contract. This is where the tournament's permanent state and data lives.
+- **Tier:** Reusable lobby configuration defined by player count, entry fee, and timeout settings.
+- **Factory:** A contract that creates new tournament instances for one game and tier configuration.
 
 ## 5. Core Principles
 
