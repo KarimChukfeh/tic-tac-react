@@ -605,9 +605,9 @@ If you are a finalist and both you and your opponent have stalled, be aware that
 
 ### 6.6: What if I run out of time on my clock?
 
-If your Fischer timer hits zero, your opponent can claim victory over you via 5.3.1 (ML1) at any moment. You cannot make any more moves once your clock hits zero.
+If your timer hits zero, your opponent can claim victory over you via 5.3.1 (ML1) at any moment.
 
-There is no appeal, no extension, and no grace period. Time management is your responsibility. If your clock hits zero, you have lost the match. Your opponent simply needs to claim it.
+Time management is your responsibility. If your clock hits zero, your opponent can claim the match.
 
 **Prevention:** Manage your time bank carefully. The Fischer timer gives you a small increment after each move you make, so staying active keeps your clock healthier than going silent for long periods.
 
