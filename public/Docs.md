@@ -52,9 +52,9 @@ ETour is optimized around five constraints:
 
 The important design choice is this:
 
-- the clone owns all tournament state,
+- the instance owns all tournament state,
 - the modules own almost no state,
-- the modules execute against clone storage through `delegatecall`,
+- the modules execute against instance storage through `delegatecall`,
 - the game contract supplies only the game-specific hooks and `makeMove(...)`.
 
 The resulting system is a hybrid of:
@@ -73,7 +73,7 @@ At a high level, the ETour contract stack looks like this:
 ```text
 ETourFactory
    ├─ deploys once → Game Implementation (ETourGame + your code)
-   └─ clones many  → Tournament Clone / Instance
+   └─ creates many → Tournament Instance
                        ├─ stores tournament, round, and match state
                        ├─ executes implementation code
                        └─ delegatecalls → ETour Modules (shared logic)
@@ -105,7 +105,7 @@ Everything else is meant to come from ETour's shared infrastructure: enrollment,
 
 Once a game inherits `ETourGame`, it gains access to ETour's shared tournament machinery through modules.
 
-These are not user-facing game contracts. They are shared infrastructure contracts that hold reusable logic for tournament lifecycle management. The tournament clone executes them through `delegatecall`, which means they run against the clone's storage directly.
+These are not user-facing game contracts. They are shared infrastructure contracts that hold reusable logic for tournament lifecycle management. The tournament instance executes them through `delegatecall`, which means they run against the instance's storage directly.
 
 This is how a custom game gets protocol features without copying protocol code.
 
@@ -121,7 +121,7 @@ In other words, when you write `contract YourGame is ETourGame`, you are not jus
 
 The instance layer is the executable contract stack that sits underneath `YourGame`.
 
-These contracts define the logic that each tournament clone runs. One implementation contract is deployed per game, and many cheap clones point to it. The clone stores the actual tournament data, while the implementation provides the code.
+These contracts define the logic that each tournament instance runs. One implementation contract is deployed per game, and many cheap instances point to it. The instance stores the actual tournament data, while the implementation provides the code.
 
 The inheritance chain is:
 
@@ -139,7 +139,7 @@ After the game contract exists, the factory is what turns it into many tournamen
 
 A factory contract does not hold match state for individual tournaments. Instead, it:
 
-- creates new tournament clones,
+- creates new tournament instances,
 - validates creation parameters,
 - tracks active and past tournaments,
 - stores tier metadata,
@@ -162,13 +162,13 @@ They are not the core tournament execution path, but they provide important prot
 
 ## 7. Deployment Model
 
-### 6.1 Factory -> Implementation -> Clone
+### 6.1 Factory -> Implementation -> Instance
 
 Each game type has:
 
 - one factory,
 - one implementation contract,
-- many tournament clones.
+- many tournament instances.
 
 The factory stores:
 
@@ -177,9 +177,9 @@ The factory stores:
 - the player registry address,
 - tier metadata and instance tracking.
 
-The implementation contract is deployed once. Every new tournament is a minimal proxy clone pointing at that implementation.
+The implementation contract is deployed once. Every new tournament is a minimal proxy instance pointing at that implementation.
 
-The clone then stores its own:
+The instance then stores its own:
 
 - tier config,
 - tournament status,
@@ -190,7 +190,7 @@ The clone then stores its own:
 - prize results,
 - profile-related permanent record data.
 
-This is why the clone is the permanent tournament record, while the implementation is only executable code.
+This is why the instance is the permanent tournament record, while the implementation is only executable code.
 
 ### 6.2 Why Modules Use `delegatecall`
 
@@ -199,12 +199,12 @@ The module layer exists for two reasons:
 1. to reuse infrastructure logic across games,
 2. to keep game implementations smaller and easier to reason about.
 
-The modules are stateless in the practical sense. They rely on `ETourTournamentBase`'s storage layout and run inside the clone context through `delegatecall`.
+The modules are stateless in the practical sense. They rely on `ETourTournamentBase`'s storage layout and run inside the instance context through `delegatecall`.
 
 That means:
 
-- `address(this)` inside a module call is the instance clone,
-- module code reads and writes clone storage directly,
+- `address(this)` inside a module call is the tournament instance,
+- module code reads and writes instance storage directly,
 - all storage layout compatibility rules are anchored in [`ETourTournamentBase.sol`](../contracts/ETourTournamentBase.sol).
 
 The base contract explicitly warns about this:
@@ -226,8 +226,8 @@ Its responsibilities are:
 
 - validating game creation parameters,
 - lazily registering tier configurations,
-- deploying EIP-1167 clones,
-- initializing clones with module addresses,
+- deploying EIP-1167 minimal proxy instances,
+- initializing instances with module addresses,
 - tracking active and past tournaments,
 - mirroring game-specific player profiles,
 - receiving deferred owner share on conclusion.
@@ -263,8 +263,8 @@ ETourTournamentBase(instance).enrollOnBehalf{value: entryFee}(msg.sender);
 
 This sequence is important:
 
-1. clone the implementation,
-2. initialize clone state and module addresses,
+1. create the instance from the implementation,
+2. initialize instance state and module addresses,
 3. run game-specific post-init hook if needed,
 4. track the new tournament in the factory,
 5. auto-enroll the creator.
@@ -316,7 +316,7 @@ struct TierConfig {
 }
 ```
 
-This is immutable for a clone after `initialize(...)`.
+This is immutable for an instance after `initialize(...)`.
 
 #### 8.3.2 `TournamentState`
 
@@ -400,7 +400,7 @@ At a glance, the execution boundary looks like this:
 EOA / frontend
        ↓ direct call
 ┌──────────────────────────────────┐
-│ Tournament Clone / Instance      │  ← indexers read state here
+│ Tournament Instance              │  ← indexers read state here
 │ - tournament / round / match data│
 ├──────────────────────────────────┤
 │ ETour Modules                    │  ← shared logic via delegatecall
@@ -409,9 +409,9 @@ EOA / frontend
 └──────────────────────────────────┘
 ```
 
-The important correction is that ETour does **not** deploy one contract per match. Match data lives inside the tournament clone's storage.
+The important correction is that ETour does **not** deploy one contract per match. Match data lives inside the tournament instance's storage.
 
-### 9.1 Direct Calls Into the Clone
+### 9.1 Direct Calls Into the Instance
 
 Example:
 
@@ -421,7 +421,7 @@ Example:
 
 These are the user-facing entrypoints.
 
-### 9.2 Clone -> Module `delegatecall`
+### 9.2 Instance -> Module `delegatecall`
 
 Example:
 
@@ -431,11 +431,11 @@ Example:
 );
 ```
 
-Used when the clone wants shared infrastructure behavior while preserving clone storage context.
+Used when the instance wants shared infrastructure behavior while preserving instance storage context.
 
-### 9.3 Module -> Clone Self-Calls
+### 9.3 Module -> Instance Self-Calls
 
-Some module operations need to call back into clone-owned hooks such as game-specific match creation/reset/start.
+Some module operations need to call back into instance-owned hooks such as game-specific match creation/reset/start.
 
 Those functions remain public, but are protected with `onlySelfCall`.
 
@@ -460,7 +460,7 @@ This is why the real game extension surface is not those public `module*` functi
 The full lifecycle is easiest to reason about as a single flow:
 
 ```text
-Clone created → Players enroll → Tournament starts → Matches initialized
+Instance created → Players enroll → Tournament starts → Matches initialized
 → Moves submitted → Timeout / escalation if needed → Winners advance
 → Tournament concludes → Payouts + profile updates
 ```
@@ -481,7 +481,7 @@ ETourTournamentBase(instance).initialize(
 );
 ```
 
-The clone stores:
+The instance stores:
 
 - parent factory,
 - creator,
@@ -646,7 +646,7 @@ Every match ID is:
 keccak256(abi.encodePacked(roundNumber, matchNumber))
 ```
 
-There is no tier ID and no instance ID in the key because the clone itself is the tournament namespace.
+There is no tier ID and no instance ID in the key because the instance itself is the tournament namespace.
 
 ### 12.2 Shared Match Lifecycle
 
@@ -839,7 +839,7 @@ That means:
 
 The profile system is therefore a permanent-record sink, not the source of truth for tournament state.
 
-The clone remains the source of truth.
+The instance remains the source of truth.
 
 ## 18. Concrete Game Implementations
 
@@ -1008,7 +1008,7 @@ The core move-flow pattern is always the same:
 
 That is all you are supposed to own. ETour continues to own:
 
-- clone deployment
+- instance deployment
 - enrollment
 - bracket progression
 - time banking
@@ -1933,7 +1933,7 @@ What comes next is building a UI that:
 - reads the factory ABI
 - reads the game instance ABI
 - creates tournaments through the factory
-- reads tournaments and matches from clone instances
+- reads tournaments and matches from instances
 - sends `makeMove(...)` calls against the game ABI
 
 At that point, the ABI bundle and deployment manifest should be treated as your source of truth. A UI integration guide is coming separately.
@@ -1953,7 +1953,7 @@ npx hardhat test --config hardhat.config.js test/factory/Checkers.reference.test
 That test currently proves:
 
 - real factory deployment
-- real clone creation
+- real instance creation
 - mandatory capture enforcement
 - multi-jump continuation
 - promotion behavior
