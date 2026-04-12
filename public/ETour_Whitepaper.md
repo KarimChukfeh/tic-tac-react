@@ -119,7 +119,7 @@ ETour eliminates this dependency. The protocol is code, not discretion. The rule
 
 ## 3. The ETour Approach
 
-### Settlement Integrity
+### Guaranteed Settlement
 
 Every player who enters a tournament receives an ironclad guarantee: the outcome will be settled automatically, permanently, and without human intervention.
 
@@ -129,9 +129,9 @@ This sounds harsh until you realize what it means for competitive integrity. The
 
 Players compete knowing that victory is final and failure is permanent. This is the foundation of trustless competition.
 
-### Fair by Design
+### Honest Design
 
-ETour is not trying to prevent cheating or eliminate bots. That's an endless cat-and-mouse game where billion-dollar companies lose constantly.
+ETour doesn't promise anti-cheat or bot detection. These are endless cat-and-mouse games that even billion-dollar companies lose constantly.
 
 Instead, ETour operates under the assumption that bad actors exist and builds the system to be resilient to them.
 
@@ -147,9 +147,9 @@ This is fairness by design: the code enforces equity more reliably than any huma
 
 ETour doesn't need token sales, venture funding, or financial engineering to survive.
 
-As long as people want to compete, ETour generates enough revenue to run itself. The 5% creator fee funds development and infrastructure. The economics are simple enough for anyone to verify: prize pool size multiplied by entry fee equals total revenue. Subtract the fee, and you see exactly how much reaches the winner.
+ETour runs itself as long as players want to compete. The economics are simple enough for anyone to verify: prize pool is entry fee * number of players * 0.95.
 
-This simplicity is intentional. A self-sustaining business model is the most radical form of trustlessness — the company can't fail and take the platform with it because the platform doesn't depend on the company. It depends only on Arbitrum's continued existence.
+A self-sustaining business model is the most radical form of trustlessness. A company can't fail and take the platform with it because the platform doesn't depend on the company. It only depends on player engagement.
 
 ---
 
