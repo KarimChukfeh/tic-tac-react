@@ -10,7 +10,15 @@ If you're looking to validate ETour's claims, question its assumptions, or just 
 
 If you're a developer who just wants to build on ETour rather than study its internal design, then you can safely skip ahead to the [Builder's Guide](#building-games-on-etour).
 
-## 2. What to Expect
+## 2. Why This is Important
+
+This document exits to serve two crucial purposes
+
+**Auditing:** Open source software is only as strong as the community around it. By studying ETour's internals you become part of the group that can audit the protocol itself and help improve it for everyone.
+
+**Building:** Building a game on ETour is straightforward and rewarding. Game creators receive 5% of every enrollment on their game, and the [Builder's Guide](#building-games-on-etour) includes a step-by-step walkthrough for building and deploying your first one.
+
+## 3. What to Expect
 
 In this document we'll go over:
 
@@ -21,7 +29,7 @@ In this document we'll go over:
 - Why the contracts are split the way they are,
 - How to build new games using ETour protocol.
 
-## 3. Key Terms
+## 4. Key Terms
 
 Before going deeper, it helps to define the terms ETour uses repeatedly.
 
@@ -33,7 +41,7 @@ Before going deeper, it helps to define the terms ETour uses repeatedly.
 - Clone: a minimal proxy for one specific tournament; this is where the tournament's permanent state lives.
 - Instance: here, this usually means the tournament clone itself, not the implementation contract.
 
-## 4. Core Principles
+## 5. Core Principles
 
 ETour is optimized around five constraints:
 
@@ -59,7 +67,7 @@ The resulting system is a hybrid of:
 
 # Architecture
 
-## 5. Contracts
+## 6. Contracts
 
 At a high level, the ETour contract stack looks like this:
 
@@ -153,7 +161,7 @@ They are not the core tournament execution path, but they provide important prot
 - [`PlayerProfile.sol`](../contracts/PlayerProfile.sol)
 - [`ChessRulesModule.sol`](../contracts/modules/ChessRulesModule.sol)
 
-## 6. Deployment Model
+## 7. Deployment Model
 
 ### 6.1 Factory -> Implementation -> Clone
 
@@ -211,7 +219,7 @@ The base contract explicitly warns about this:
 
 This is the single most important architectural constraint in ETour.
 
-## 7. Factory Architecture
+## 8. Factory Architecture
 
 The base factory is [`ETourFactory.sol`](../contracts/ETourFactory.sol).
 
@@ -273,7 +281,7 @@ Chess is the reference case:
 
 That avoids copy-pasting the full factory deployment flow just to wire one extra module.
 
-## 8. Instance Storage Model
+## 9. Instance Storage Model
 
 The canonical storage layout lives in [`ETourTournamentBase.sol`](../contracts/ETourTournamentBase.sol).
 
@@ -383,7 +391,7 @@ Game-owned fields:
 
 ETour explicitly treats those game-owned fields as opaque. Infra should rely on `_getGameStateHash(matchId)` when it needs a generic state fingerprint.
 
-## 9. Execution Boundaries
+## 10. Execution Boundaries
 
 There are three important execution styles in ETour.
 
@@ -448,7 +456,7 @@ Why this shape exists:
 
 This is why the real game extension surface is not those public `module*` functions. It is the internal hook surface in [`ETourGame.sol`](../contracts/ETourGame.sol).
 
-## 10. Tournament Lifecycle
+## 11. Tournament Lifecycle
 
 The full lifecycle is easiest to reason about as a single flow:
 
@@ -549,7 +557,7 @@ This ordering is deliberate.
 
 Profile updates happen before the owner-share callback so ordinary user actions still estimate enough gas to complete permanent-record writes.
 
-## 11. Module Responsibilities
+## 12. Module Responsibilities
 
 ### 11.1 `ETourInstance_Core`
 
@@ -629,7 +637,7 @@ This module is where ETour enforces the idea that tournaments should keep progre
 
 The important design choice here is that failed winner payments do not bounce to the factory. They are redistributed inside the tournament context, preserving tournament-local accounting.
 
-## 12. Match Architecture
+## 13. Match Architecture
 
 ### 12.1 Match Identity
 
@@ -675,7 +683,7 @@ Used today as follows:
 
 This is a good example of ETour's extension philosophy: common behavior is shared, but the game chooses the policy.
 
-## 13. Entropy and Randomness
+## 14. Entropy and Randomness
 
 ETour uses a lightweight internal entropy accumulator rather than pretending to provide strong adversarial randomness.
 
@@ -718,7 +726,7 @@ This entropy is used for:
 
 It is suitable for lightweight protocol decisions inside this design, but it should not be described as cryptographically secure randomness.
 
-## 14. Time Control and Escalations
+## 15. Time Control and Escalations
 
 ### 14.1 Fischer Clock
 
@@ -759,7 +767,7 @@ These provide tournament liveness beyond ordinary timeout claims:
 - ML2 lets an advanced player force-eliminate a stalled earlier match.
 - ML3 lets an outside player replace both stalled players.
 
-## 15. Fee Model and Settlement
+## 16. Fee Model and Settlement
 
 ETour uses deferred fee accounting.
 
@@ -790,7 +798,7 @@ The factory then:
 - otherwise records fallback `ownerBalance`,
 - moves the instance from `activeTournaments` to `pastTournaments`.
 
-## 16. Player Profiles
+## 17. Player Profiles
 
 ETour integrates profiles through the factory and registry rather than hard-coding profile behavior into each game.
 
@@ -834,7 +842,7 @@ The profile system is therefore a permanent-record sink, not the source of truth
 
 The clone remains the source of truth.
 
-## 17. Concrete Game Implementations
+## 18. Concrete Game Implementations
 
 ### 17.1 Tic-Tac-Toe
 
@@ -875,7 +883,7 @@ It demonstrates:
 
 The important lesson from chess is that the `Match` struct does not need to carry every possible game-state shape. Additional mappings keyed by `matchId` are a first-class pattern in ETour.
 
-## 18. Why the `Match` Struct Is Intentionally Flexible
+## 19. Why the `Match` Struct Is Intentionally Flexible
 
 ETour deliberately stops short of forcing every game into the same exact board/state model.
 
@@ -904,11 +912,11 @@ That is why chess can maintain `_positionCounts` and `_gameNonce` without forcin
 
 # Builder's Guide
 
-## 19. Building Games on ETour
+## 20. Building Games on ETour
 
 This guide walks you through the A-Z of deploying a game with ETour integration
 
-## 20. What You Need
+## 21. What You Need
 
 At the authoring level, building on ETour is intentionally narrow. You mainly write two contracts:
 
@@ -1009,7 +1017,7 @@ That is all you are supposed to own. ETour continues to own:
 - payouts
 - permanent tournament record storage
 
-## 21. Dependencies
+## 22. Dependencies
 
 ### 21.1 Requirements
 
@@ -1061,7 +1069,7 @@ The distinction is important:
 - the protocol contracts are mandatory
 - the surrounding JS/config/devops layer is replaceable
 
-## 22. Project Structure
+## 23. Project Structure
 
 ### 22.1 Minimal
 
@@ -1124,7 +1132,7 @@ That practical tree is what most teams will actually want:
 - tests
 - helper contracts
 
-## 23. Example: Checkers
+## 24. Example: Checkers
 
 The checkers reference below is the concrete end-to-end example of the ETour pattern.
 
@@ -1953,7 +1961,7 @@ That test currently proves:
 
 A broader testing guide is still to come, but the current reference test is already the right starting point for local validation.
 
-## 24. Live Examples
+## 25. Live Examples
 
 The live V2 examples on Arbitrum One are:
 
@@ -1976,7 +1984,7 @@ That is the point. The live deployments prove the pattern is the real pattern, n
 
 # Appendix
 
-## 25. Practical Reading Order
+## 26. Practical Reading Order
 
 For a new ETour contributor, the best reading order is:
 
