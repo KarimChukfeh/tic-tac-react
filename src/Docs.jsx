@@ -357,6 +357,10 @@ const Docs = () => {
   const [expandedGroups, setExpandedGroups] = useState(new Set());
   const [expandedSections, setExpandedSections] = useState(new Set());
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+
+  useEffect(() => {
+    document.title = 'ETour - Docs';
+  }, []);
   const [pendingAnchor, setPendingAnchor] = useState('');
 
   const colors = {

@@ -28,6 +28,10 @@ const Whitepaper = () => {
 
   // Fetch and parse the markdown content
   useEffect(() => {
+    document.title = 'ETour - Whitepaper';
+  }, []);
+
+  useEffect(() => {
     const fetchWhitepaper = async () => {
       try {
         const response = await fetch('/ETour_Whitepaper.md');

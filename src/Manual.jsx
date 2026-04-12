@@ -1,9 +1,14 @@
+import { useEffect } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import UserManualV2 from './v2/components/UserManualV2.jsx';
 
 const Manual = () => {
   const navigate = useNavigate();
+
+  useEffect(() => {
+    document.title = 'ETour - User Manual';
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 px-2 py-4 md:p-6">
