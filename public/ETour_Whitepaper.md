@@ -190,5 +190,3 @@ If you're a player: pick a game and compete. Test yourself against others with r
 If you're a developer: build your game on ETour. Inherit our infrastructure and focus on what makes your game special.
 
 If you're a skeptic: read the code. Verify the claims. Find flaws.
-
-ETour will be running on Arbitrum long after this whitepaper is outdated. Code is its forever guarantee.
