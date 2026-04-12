@@ -4,16 +4,11 @@
 
 ## 1. Introduction
 
-This is a technical document that explains how ETour delivers on: 
+This is a technical document that explains how ETour works under the hood.
 
-- Fully on-chain tournament infrastructure
-- ETH-only with no special tokens
-- Self-sustaining without need for VCs
-- Grief-proof with guaranteed fair resolution
+If you're looking to validate ETour's claims, question its assumptions, or just want to understand how it works, then you're in the right place.
 
-If you are looking to validate ETour's claims, question its assumptions, or just understand how it really works under the hood, then you're in the right place.
-
-If you are a developer who simply wants to build on ETour rather than study its internal design, then you can safely skip ahead to the [Builder's Guide](#building-games-on-etour).
+If you're a developer who just wants to build on ETour rather than study its internal design, then you can safely skip ahead to the [Builder's Guide](#building-games-on-etour).
 
 ## 2. What to Expect
 
