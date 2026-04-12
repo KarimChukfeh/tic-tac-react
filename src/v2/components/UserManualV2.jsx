@@ -31,6 +31,7 @@ const ALIAS_TO_HEADING = Object.fromEntries(
   Object.entries(HEADING_ALIASES).flatMap(([headingId, aliases]) => aliases.map((alias) => [alias, headingId])),
 );
 const CONTENT_TRANSITION_MS = 220;
+const MANUAL_SECTION_REFERENCE_PATTERN = /\b\d+(?:\.\d+)+(?:\s+\([A-Z0-9*]+\))?/g;
 
 const trimBlock = (value = '') => value.replace(/^\n+|\n+$/g, '');
 
@@ -224,6 +225,98 @@ const parseGlossary = (markdown) => {
   };
 };
 
+const buildSectionReferenceLookup = (sections = []) => {
+  const references = {};
+
+  const registerTitle = (title = '', id = '') => {
+    const { eyebrow } = splitTitle(title);
+
+    if (!/^\d+(?:\.\d+)+$/.test(eyebrow) || !id) {
+      return;
+    }
+
+    references[eyebrow] = id;
+
+    const code = extractCode(title);
+    if (code) {
+      references[`${eyebrow} (${code})`] = id;
+    }
+  };
+
+  sections.forEach((section) => {
+    registerTitle(section.title, section.id);
+    section.subsections.forEach((subsection) => {
+      registerTitle(subsection.title, subsection.id);
+      subsection.nestedSubsections.forEach((nested) => {
+        registerTitle(nested.title, nested.id);
+      });
+    });
+  });
+
+  return references;
+};
+
+const linkifyManualSectionReferences = (value = '', referenceLookup = {}) => {
+  let hasMatch = false;
+  let lastIndex = 0;
+  const nodes = [];
+
+  value.replace(MANUAL_SECTION_REFERENCE_PATTERN, (match, offset) => {
+    const targetId = referenceLookup[match];
+    if (!targetId) {
+      return match;
+    }
+
+    hasMatch = true;
+
+    if (offset > lastIndex) {
+      nodes.push({ type: 'text', value: value.slice(lastIndex, offset) });
+    }
+
+    nodes.push({
+      type: 'link',
+      url: `#${targetId}`,
+      children: [{ type: 'text', value: match }],
+    });
+
+    lastIndex = offset + match.length;
+    return match;
+  });
+
+  if (!hasMatch) {
+    return [{ type: 'text', value }];
+  }
+
+  if (lastIndex < value.length) {
+    nodes.push({ type: 'text', value: value.slice(lastIndex) });
+  }
+
+  return nodes;
+};
+
+const remarkLinkifyManualReferences = (referenceLookup = {}) => () => (tree) => {
+  const visitNode = (node) => {
+    if (!node?.children?.length) {
+      return;
+    }
+
+    node.children = node.children.flatMap((child) => {
+      if (child.type === 'text') {
+        return linkifyManualSectionReferences(child.value, referenceLookup);
+      }
+
+      if (child.type === 'link' || child.type === 'linkReference' || child.type === 'definition' || child.type === 'code' || child.type === 'inlineCode' || child.type === 'html') {
+        return [child];
+      }
+
+      visitNode(child);
+      return [child];
+    });
+  };
+
+  visitNode(tree);
+};
+
 const parseManual = (rawMarkdown) => {
   const normalized = rawMarkdown.replace(/\r\n/g, '\n').trim();
   const { items: h2Sections } = splitMarkdownByLevel(normalized, 2);
@@ -289,6 +382,7 @@ const parseManual = (rawMarkdown) => {
     headingToSectionId,
     faqIds,
     glossary,
+    sectionReferenceLookup: buildSectionReferenceLookup(contentSections),
   };
 };
 
@@ -329,6 +423,19 @@ const ManualHeading = ({
 
 const MarkdownLink = ({ href = '', children, ...props }) => {
   const isExternal = /^https?:\/\//.test(href);
+  const isInternalAnchor = href.startsWith('#');
+
+  const handleClick = (event) => {
+    props.onClick?.(event);
+
+    if (event.defaultPrevented || !isInternalAnchor) {
+      return;
+    }
+
+    event.preventDefault();
+    window.history.replaceState(null, '', href);
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+  };
 
   return (
     <a
@@ -337,6 +444,7 @@ const MarkdownLink = ({ href = '', children, ...props }) => {
       rel={isExternal ? 'noreferrer' : undefined}
       className="text-sky-300 underline decoration-sky-500/60 underline-offset-4 hover:text-sky-200"
       {...props}
+      onClick={handleClick}
     >
       {children}
     </a>
@@ -367,13 +475,14 @@ const HighlightCallout = ({ children }) => (
 const MarkdownBody = ({
   markdown,
   colors,
+  sectionReferenceLookup,
 }) => {
   if (!markdown) return null;
 
   return (
     <div className="prose prose-invert max-w-none prose-p:leading-7">
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
+        remarkPlugins={[remarkGfm, remarkLinkifyManualReferences(sectionReferenceLookup)]}
         components={{
           p: ({ children }) => <p className="mb-4 text-[0.84rem] text-gray-300 last:mb-0 md:text-base">{children}</p>,
           strong: ({ children }) => <strong className={`font-semibold ${colors.secondary}`}>{children}</strong>,
@@ -404,13 +513,14 @@ const MarkdownBody = ({
 const AntiGriefingOverviewBody = ({
   markdown,
   colors,
+  sectionReferenceLookup,
 }) => {
   if (!markdown) return null;
 
   return (
     <div className="space-y-6">
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
+        remarkPlugins={[remarkGfm, remarkLinkifyManualReferences(sectionReferenceLookup)]}
         components={{
           p: ({ children }) => <p className="text-[0.86rem] leading-6 text-gray-300 md:text-[1.05rem] md:leading-9">{children}</p>,
           strong: ({ children }) => <strong className={`font-semibold ${colors.secondary}`}>{children}</strong>,
@@ -599,6 +709,7 @@ const TopicCard = ({
   markdown,
   nestedSubsections,
   colors,
+  sectionReferenceLookup,
 }) => {
   const code = extractCode(title);
 
@@ -619,9 +730,9 @@ const TopicCard = ({
         ) : null}
       </div>
       {id === '51-whats-griefing' ? (
-        <AntiGriefingOverviewBody markdown={markdown} colors={colors} />
+        <AntiGriefingOverviewBody markdown={markdown} colors={colors} sectionReferenceLookup={sectionReferenceLookup} />
       ) : (
-        <MarkdownBody markdown={markdown} colors={colors} />
+        <MarkdownBody markdown={markdown} colors={colors} sectionReferenceLookup={sectionReferenceLookup} />
       )}
 
       {nestedSubsections.length ? (
@@ -645,7 +756,7 @@ const TopicCard = ({
                     </span>
                   ) : null}
                 </div>
-                <MarkdownBody markdown={nested.markdown} colors={colors} />
+                <MarkdownBody markdown={nested.markdown} colors={colors} sectionReferenceLookup={sectionReferenceLookup} />
               </div>
             );
           })}
@@ -660,6 +771,7 @@ const FaqItem = ({
   colors,
   isOpen,
   onToggle,
+  sectionReferenceLookup,
 }) => (
   <article className="overflow-hidden rounded-2xl border border-slate-700/60 bg-slate-950/45">
     <button
@@ -682,7 +794,7 @@ const FaqItem = ({
 
     {isOpen ? (
       <div className="border-t border-slate-800 px-3.5 pb-3.5 pt-3 md:px-5 md:pb-5 md:pt-4">
-        <MarkdownBody markdown={item.markdown} colors={colors} />
+        <MarkdownBody markdown={item.markdown} colors={colors} sectionReferenceLookup={sectionReferenceLookup} />
       </div>
     ) : null}
   </article>
@@ -691,19 +803,20 @@ const FaqItem = ({
 const GlossaryGrid = ({
   glossary,
   colors,
+  sectionReferenceLookup,
 }) => (
   <div className="space-y-6">
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       {glossary.entries.map((entry) => (
         <article key={entry.term} className="rounded-2xl border border-slate-700/60 bg-slate-950/45 p-3.5 md:p-5">
           <h3 className={`mb-3 text-lg font-semibold ${colors.secondary}`}>{entry.term}</h3>
-          <MarkdownBody markdown={entry.markdown} colors={colors} />
+          <MarkdownBody markdown={entry.markdown} colors={colors} sectionReferenceLookup={sectionReferenceLookup} />
         </article>
       ))}
     </div>
     {glossary.footerMarkdown ? (
       <div className="rounded-2xl border border-slate-700/60 bg-slate-950/60 p-3.5 md:p-5">
-        <MarkdownBody markdown={glossary.footerMarkdown} colors={colors} />
+        <MarkdownBody markdown={glossary.footerMarkdown} colors={colors} sectionReferenceLookup={sectionReferenceLookup} />
       </div>
     ) : null}
   </div>
@@ -715,9 +828,10 @@ const renderSectionBody = ({
   faqOpenId,
   setFaqOpenId,
   glossary,
+  sectionReferenceLookup,
 }) => {
   if (section.id === '7-glossary') {
-    return <GlossaryGrid glossary={glossary} colors={colors} />;
+    return <GlossaryGrid glossary={glossary} colors={colors} sectionReferenceLookup={sectionReferenceLookup} />;
   }
 
   if (section.id === '6-edge-cases--faq') {
@@ -730,6 +844,7 @@ const renderSectionBody = ({
             colors={colors}
             isOpen={faqOpenId === subsection.id}
             onToggle={() => setFaqOpenId((current) => (current === subsection.id ? null : subsection.id))}
+            sectionReferenceLookup={sectionReferenceLookup}
           />
         ))}
       </div>
@@ -748,6 +863,7 @@ const renderSectionBody = ({
           markdown={subsection.markdown}
           nestedSubsections={subsection.nestedSubsections}
           colors={colors}
+          sectionReferenceLookup={sectionReferenceLookup}
         />
       ))}
     </div>
@@ -1086,7 +1202,11 @@ const UserManualV2 = ({
       />
 
       {section.id !== '7-glossary' ? (
-        <MarkdownBody markdown={section.introMarkdown} colors={colors} />
+        <MarkdownBody
+          markdown={section.introMarkdown}
+          colors={colors}
+          sectionReferenceLookup={manualData.sectionReferenceLookup}
+        />
       ) : null}
 
       {section.id !== '7-glossary' && section.introMarkdown && section.subsections.length ? (
@@ -1099,6 +1219,7 @@ const UserManualV2 = ({
         faqOpenId,
         setFaqOpenId,
         glossary: manualData.glossary,
+        sectionReferenceLookup: manualData.sectionReferenceLookup,
       })}
     </section>
   );

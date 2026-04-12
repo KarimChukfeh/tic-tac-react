@@ -237,14 +237,14 @@ Understanding resolution reasons helps you know exactly what happened to your to
 
 | Code | Name | Trigger |
 |---|---|---|
-| R0 | Normal resolution | Full bracket, clear winner, no complications |
-| R1 | Draw resolution | Finals draw, or all matches in a round draw |
-| R2 | Uncontested finalist | Other semifinal ends in a draw |
-| EL0 | Canceled tournament | Solo enrollee cancels before anyone else joins |
-| EL2 | Abandoned tournament | Insufficient enrollment, outsider claims prize pool |
-| ML1 | Match timeout | Player's clock hits zero, opponent claims victory |
-| ML2 | Advanced player wins | Stalled match eliminated by advanced player |
-| ML3 | Outsider replaces both players | Both players stall, outsider claims their spots |
+| R0 | Normal resolution | Clear winner, no complications |
+| R1 | Draw resolution | Match ended in a draw |
+| R2 | Uncontested finalist | Sole finalist wins because of a draw in the other semifinals |
+| EL0 | Canceled tournament | Solo enrollee cancelled the instance |
+| EL2 | Abandoned tournament | Insufficient enrollment, outsider claimed prize pool |
+| ML1 | Match timeout | Player's clock hit zero, opponent claimed victory |
+| ML2 | Advanced player wins | Advanced player eliminated both stalled players |
+| ML3 | Outsider replaces both players | Outsider replaced both stalled players |
 
 ### 4.1: R0 - Normal Resolution
 

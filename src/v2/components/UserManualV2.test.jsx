@@ -64,6 +64,7 @@ Force-start the tournament.
 #### 5.3.1: ML1 — Claim Victory by Opponent Timeout
 
 Trigger ML1 when your opponent times out.
+If your timer hits zero, your opponent can claim victory over you via 5.3.1 (ML1) at any moment.
 
 ## 6. Edge Cases & FAQ
 
@@ -153,13 +154,28 @@ describe('UserManualV2', () => {
 
     expect(await screen.findByRole('heading', { name: '1.1: What is ETour?' })).toBeInTheDocument();
     expect(screen.getByText('Draws eliminate both players.')).toBeInTheDocument();
-    expect(screen.getByText('Trigger ML1 when your opponent times out.')).toBeInTheDocument();
+    expect(screen.getByText(/Trigger ML1 when your opponent times out\./, { selector: 'p' })).toBeInTheDocument();
     expect(screen.getByText('Batch')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '5.3.1 (ML1)' })).toHaveAttribute('href', '#531-ml1--claim-victory-by-opponent-timeout');
 
     fireEvent.click(screen.getByRole('button', { name: '3. Matches & Play' }));
 
     await waitFor(() => {
       expect(window.location.hash).toBe('#3-matches--play');
+    });
+  });
+
+  it('linkifies section references inside markdown body content', async () => {
+    render(<UserManualV2 defaultExpanded collapsible={false} showAllSections />);
+
+    const crossReference = await screen.findByRole('link', { name: '5.3.1 (ML1)' });
+
+    expect(crossReference).toHaveAttribute('href', '#531-ml1--claim-victory-by-opponent-timeout');
+
+    fireEvent.click(crossReference);
+
+    await waitFor(() => {
+      expect(window.location.hash).toBe('#531-ml1--claim-victory-by-opponent-timeout');
     });
   });
 
