@@ -42,22 +42,22 @@ Before going deeper, it helps to define the terms ETour uses repeatedly.
 
 ## 5. Core Principles
 
-ETour is optimized around five constraints:
+ETour is built around five core Principles:
 
-1. Each tournament should be a permanent onchain record.
+1. Each tournament instance should be a permanent onchain record.
 2. New games should reuse bracket, payout, timeout, and profile infrastructure instead of reimplementing it.
 3. Game-specific logic should stay narrow and isolated.
-4. Deployable contracts must remain under the EVM contract-size limit.
+4. Deployable contracts must remain under the EVM contract-size limit (24kB).
 5. The developer-facing extension surface should be explicit and stable.
 
-The important design choice is this:
+**The key design choice is**
 
-- the instance owns all tournament state,
-- the modules own almost no state,
-- the modules execute against instance storage through `delegatecall`,
-- the game contract supplies only the game-specific hooks and `makeMove(...)`.
+- The instance owns all tournament state and storage,
+- The modules don't own any state or storage no state,
+- The modules execute against instance storage through `delegatecall`,
+- The game contract supplies only the game-specific hooks and `makeMove(...)`.
 
-The resulting system is a hybrid of:
+**The resulting system is a hybrid of**
 
 - EIP-1167 minimal proxies for cheap per-tournament deployments,
 - shared delegatecall modules for infra logic reuse,
