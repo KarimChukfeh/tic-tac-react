@@ -194,8 +194,8 @@ Every move you make is a blockchain transaction. This means every move costs a s
 
 Every move is permanent and publicly verifiable. Nobody can alter a move after it's been made. Nobody can reverse an outcome after it's been determined.
 
-**The Fischer Timer**
-Each player has a time bank for their moves. This is a Fischer timer. You start with a base time and receive a small increment added back to your clock after each move you make.
+**Player Timer**
+Each player has a time bank for their moves. You start with a base time and receive a small increment added back to your clock after each move you make.
 
 Time management is part of the game. Run low on time and you must play faster, potentially making mistakes under pressure. Your opponent knows when you're running low and may try to complicate positions to exploit your time trouble.
 
@@ -224,7 +224,7 @@ These are resolution reasons 4.2 (R1) and 4.3 (R2). See Section 4: Resolution fo
 ### 4.0: Taxonomy Overview
 
 **What is a Resolution Reason?**
-Every tournament on ETour ends for a reason. That reason is codified as a resolution code, a short identifier that tells you exactly why and how a tournament concluded.
+Every match and tournament on ETour end for a reason. That reason is codified as a resolution code, a short identifier that tells you exactly why and how a match or tournament concluded.
 
 Resolution reasons exist at two levels:
 
@@ -340,7 +340,7 @@ EL2 is the nuclear option. It exists to ensure tournaments never get permanently
 ML1 occurs when a player's clock hits zero during a match. Their opponent can claim victory by forfeit.
 
 **What triggers it**
-A player's Fischer timer reaches zero during an active match.
+A player's timer reaches zero during an active match.
 
 **What happens**
 The opponent can claim victory immediately. The timed-out player is eliminated. The match resolves as ML1. The winner advances normally.
@@ -494,7 +494,7 @@ Match escalations apply during active gameplay, after the tournament has started
 ML1 is the first and most direct match escalation. When your opponent's clock hits zero, you can claim victory by forfeit.
 
 **When it becomes available**
-Your opponent's Fischer timer reaches zero.
+Your opponent's timer reaches zero.
 
 **Who can trigger it**
 The active opponent in the match, the player whose clock has not hit zero.
@@ -574,7 +574,7 @@ From ETour's perspective, a disconnected opponent is identical to a stalling opp
 
 If your opponent stops making moves:
 
-1. Wait for their Fischer timer to hit zero
+1. Wait for their timer to hit zero
 2. Claim victory via 5.3.1 (ML1). Your opponent is eliminated, and you advance.
 
 Do not wait indefinitely for a disconnected opponent to return. Once their clock hits zero, claim your victory immediately. The option is available to you and it does not expire.
@@ -609,7 +609,7 @@ If your timer hits zero, your opponent can claim victory over you via 5.3.1 (ML1
 
 Time management is your responsibility. If your clock hits zero, your opponent can claim the match.
 
-**Prevention:** Manage your time bank carefully. The Fischer timer gives you a small increment after each move you make, so staying active keeps your clock healthier than going silent for long periods.
+**Prevention:** Manage your time bank carefully. The timer gives you a small increment after each move you make, so staying active keeps your clock healthier than going silent for long periods.
 
 ### 6.7: Can I withdraw after enrolling?
 
@@ -632,38 +632,31 @@ The safest path: if your lobby isn't filling and the enrollment window is expiri
 
 ## 7. Glossary
 
-**Bracket**
-The single elimination structure that pairs players into matches round by round until one player remains.
 
 **Entry fee**
 The amount of ETH each player pays to enroll in a lobby. Set by the lobby creator. All entry fees pool together to form the prize pool.
 
 **Enrollment window**
-The time period during which players can join a lobby after it has been created. Can be reset by the sole enrollee via 5.2.2 (EL1*).
+The time period during which players can join a lobby after it has been created.
+
+**Lobby**
+The pre-tournament space where players gather and enroll. A lobby is configured by its creator with a player count and entry fee. Once the lobby fills, it becomes an active tournament.
+
+**Prize pool**
+The total ETH at stake in a tournament. Equals to 95% of the ETH entry fee multiplied by the number of enrolled players.
+
+**Instance**
+The smart contract deployment that represents a specific tournament. Each lobby creates its own on-chain tournament instance.
+
+**Player timer**
+The timer each player gets to make their moves during match. 
 
 **Escalation level**
 A time-triggered intervention that becomes available when a tournament or match stalls. Each escalation level opens to a wider group of potential triggers over time.
 
-**Fischer timer**
-The time control system used in ETour matches. Each player starts with a base time bank and receives a small time increment added back to their clock after each move they make.
-
-**Instance**
-The smart contract deployment that represents a specific tournament. Each lobby creates its own on-chain instance.
-
-**Lobby**
-The pre-tournament space where players gather and enroll. A lobby is configured by its creator with a player count, entry fee, and public or private visibility. Once the lobby fills, it becomes an active tournament.
-
-**Prize pool**
-The total ETH at stake in a tournament. Equal to the entry fee multiplied by the number of enrolled players. 95% goes to the winner, 5% to ETour.
-
 **Resolution reason**
-The codified explanation for how and why a tournament ended. Every tournament resolves with exactly one resolution reason. See 4.0 for the full taxonomy.
+The codified explanation for how a match or tournament ended. Every match and every tournament resolve with exactly one resolution reason. See 4.0 for the full taxonomy.
 
-**Single elimination**
-The bracket format used by ETour. One loss and you're out. Winners advance until one player remains.
-
-**Tournament**
-An active competition on ETour. A lobby becomes a tournament the moment it starts. Tournaments run autonomously on-chain from start to payout with no admin intervention.
 
 ---
 
