@@ -458,3 +458,18 @@ export function boardArrayToPackedBoard(board) {
   }
   return packed;
 }
+
+export function getCheckStatusFromPackedBoard(packedBoard) {
+  try {
+    const board = BigInt(packedBoard);
+    return {
+      whiteInCheck: isKingInCheck(board, true),
+      blackInCheck: isKingInCheck(board, false),
+    };
+  } catch {
+    return {
+      whiteInCheck: false,
+      blackInCheck: false,
+    };
+  }
+}

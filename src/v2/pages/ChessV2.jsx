@@ -22,7 +22,7 @@ import { shortenAddress } from '../../utils/formatters';
 import { generateV2TournamentUrl, parseV2ContractParam } from '../../utils/urlHelpers';
 import { shouldResetOnInitialDocumentLoad } from '../../utils/navigation';
 import { CompletionReason, isDraw } from '../../utils/completionReasons';
-import { getLegalMovesForSquare, validateMoveWithReason } from '../../utils/chessValidator';
+import { boardArrayToPackedBoard, getCheckStatusFromPackedBoard, getLegalMovesForSquare, validateMoveWithReason } from '../../utils/chessValidator';
 import { didMatchStateAdvance, waitForTxOrStateSync } from '../../utils/txSync';
 import { multicallContracts } from '../../utils/multicall';
 import ParticleBackground from '../../components/shared/ParticleBackground';
@@ -1525,9 +1525,16 @@ export default function ChessV2() {
       ? buildReplayChessBoard(moveHistory, effectiveReplayMoveIndex, currentMatch.board)
       : currentMatch.board)
     : null;
+  const replayCheckStatus = displayedBoard
+    ? getCheckStatusFromPackedBoard(boardArrayToPackedBoard(displayedBoard))
+    : { whiteInCheck: false, blackInCheck: false };
   const displayedLastMove = currentMatch?.matchStatus === 2
     ? (effectiveReplayMoveIndex >= 0 && moveHistory[effectiveReplayMoveIndex]
-      ? { from: moveHistory[effectiveReplayMoveIndex].from, to: moveHistory[effectiveReplayMoveIndex].to }
+      ? {
+          from: moveHistory[effectiveReplayMoveIndex].from,
+          to: moveHistory[effectiveReplayMoveIndex].to,
+          isMyMove: moveHistory[effectiveReplayMoveIndex].address?.toLowerCase() === currentMatch.firstPlayer?.toLowerCase(),
+        }
       : null)
     : currentMatch?.lastMove ?? null;
 
@@ -2166,12 +2173,16 @@ export default function ChessV2() {
 
     const isWhite = playerColor === 'white';
     const playerAddress = isWhite ? currentMatch.player1 : currentMatch.player2;
-    const isCheckmated = currentMatch.matchStatus === 2
+    const isReplayFinalPosition = currentMatch.matchStatus !== 2 || replayMoveIndex === -2 || effectiveReplayMoveIndex === moveHistory.length - 1;
+    const isCheckmated = isReplayFinalPosition
+      && currentMatch.matchStatus === 2
       && currentMatch.completionReason === CompletionReason.NORMAL_WIN
       && playerAddress
       && currentMatch.loser
       && playerAddress.toLowerCase() === currentMatch.loser.toLowerCase();
-    const isInCheck = isWhite ? currentMatch.whiteInCheck : currentMatch.blackInCheck;
+    const isInCheck = currentMatch.matchStatus === 2
+      ? (isWhite ? replayCheckStatus.whiteInCheck : replayCheckStatus.blackInCheck)
+      : (isWhite ? currentMatch.whiteInCheck : currentMatch.blackInCheck);
 
     if (!isCheckmated && !isInCheck) return null;
 
@@ -2181,11 +2192,13 @@ export default function ChessV2() {
     const badgeText = isCheckmated ? 'CHECKMATE' : 'CHECK';
 
     return (
-      <div className={`${badgeClasses} rounded-lg p-2 text-center mt-2`}>
-        <span className="text-xs font-bold">{badgeText}</span>
+      <div className="mt-1.5 text-center md:mt-2">
+        <div className={`${badgeClasses} inline-flex items-center justify-center rounded-md px-1.5 py-1 md:rounded-lg md:px-2 md:py-2`}>
+          <span className="text-[9px] font-semibold leading-none md:text-xs md:font-bold">{badgeText}</span>
+        </div>
       </div>
     );
-  }, [currentMatch]);
+  }, [currentMatch, replayMoveIndex, effectiveReplayMoveIndex, moveHistory.length, replayCheckStatus]);
 
   return (
     <div style={{ minHeight: '100vh', background: currentTheme.gradient, color: '#fff', position: 'relative', overflow: 'clip', transition: 'background 0.8s ease-in-out' }}>
@@ -2380,7 +2393,7 @@ export default function ChessV2() {
                 </>
               ) : undefined}
             >
-              <ChessBoard board={displayedBoard} packedBoard={currentMatch.packedBoard} packedState={currentMatch.packedState} onMove={isSpectator || currentMatch.matchStatus === 2 ? null : handleMakeMove} currentTurn={currentMatch.currentTurn} account={isSpectator ? null : account} player1={currentMatch.player1} player2={currentMatch.player2} firstPlayer={currentMatch.firstPlayer} matchStatus={currentMatch.matchStatus} loading={matchLoading} whiteInCheck={currentMatch.matchStatus === 2 ? false : currentMatch.whiteInCheck} blackInCheck={currentMatch.matchStatus === 2 ? false : currentMatch.blackInCheck} lastMoveTime={currentMatch.lastMoveTime} startTime={currentMatch.startTime} lastMove={displayedLastMove} maxSize={820} ghostMove={currentMatch.matchStatus === 2 ? null : ghostMove} />
+              <ChessBoard board={displayedBoard} packedBoard={currentMatch.packedBoard} packedState={currentMatch.packedState} onMove={isSpectator || currentMatch.matchStatus === 2 ? null : handleMakeMove} currentTurn={currentMatch.currentTurn} account={isSpectator ? null : account} player1={currentMatch.player1} player2={currentMatch.player2} firstPlayer={currentMatch.firstPlayer} matchStatus={currentMatch.matchStatus} loading={matchLoading} whiteInCheck={currentMatch.matchStatus === 2 ? replayCheckStatus.whiteInCheck : currentMatch.whiteInCheck} blackInCheck={currentMatch.matchStatus === 2 ? replayCheckStatus.blackInCheck : currentMatch.blackInCheck} lastMoveTime={currentMatch.lastMoveTime} startTime={currentMatch.startTime} lastMove={displayedLastMove} maxSize={820} ghostMove={currentMatch.matchStatus === 2 ? null : ghostMove} />
             </GameMatchLayout>
 
             {moveTxTimeout && (
