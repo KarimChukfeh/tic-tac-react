@@ -428,17 +428,16 @@ export default function Landing() {
               }}
               className="inline-flex items-center hover:text-slate-300 transition-colors cursor-pointer underline decoration-dotted decoration-slate-500 underline-offset-4"
             >
-              Classic games. ETH stakes. No hidden costs.
+              Classic games. Skill vs Skill. Real ETH on the line.
             </a>
             <br />
-            <span className="text-white font-semibold inline-block mt-4">Skill vs skill. Real ETH on the line.</span>
           </p>
           
           {/* Trust Signals */}
           <div className="flex flex-wrap justify-center gap-6 mb-12">
-            <TrustSignal icon="🔒" text="Every move verified on-chain" />
-            <TrustSignal icon="⚡" text="Instant ETH payouts to your wallet" />
-            <TrustSignal icon="🎯" text="No RNG, pure skill" />
+            <TrustSignal icon="🔒" text="Every Move Verified" />
+            <TrustSignal icon="⚡" text="Instant Payouts" />
+            <TrustSignal icon="🎯" text="Impossibe to Grief" />
           </div>
           
           {/* CTA */}
