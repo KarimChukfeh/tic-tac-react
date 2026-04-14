@@ -51,22 +51,22 @@ export const DEFAULT_TIMEOUTS_BY_PLAYER_COUNT = {
     enrollmentWindow: 120,        // 2 minutes
   },
   4: {
-    matchTimePerPlayer: 300,      // 5 minutes
+    matchTimePerPlayer: 120,      // 2 minutes
     timeIncrementPerMove: 15,     // 15 seconds
     enrollmentWindow: 300,        // 5 minutes
   },
   8: {
-    matchTimePerPlayer: 300,      // 5 minutes
+    matchTimePerPlayer: 120,      // 2 minutes
     timeIncrementPerMove: 15,     // 15 seconds
     enrollmentWindow: 600,        // 10 minutes
   },
   16: {
-    matchTimePerPlayer: 600,      // 10 minutes
+    matchTimePerPlayer: 120,      // 2 minutes
     timeIncrementPerMove: 30,     // 30 seconds
     enrollmentWindow: 600,        // 10 minutes
   },
   32: {
-    matchTimePerPlayer: 600,      // 10 minutes
+    matchTimePerPlayer: 120,      // 2 minutes
     timeIncrementPerMove: 30,     // 30 seconds
     enrollmentWindow: 1800,       // 30 minutes
   },

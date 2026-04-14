@@ -55,12 +55,12 @@ export const DEFAULT_TIMEOUTS_BY_PLAYER_COUNT = {
     enrollmentWindow: 600,
   },
   16: {
-    matchTimePerPlayer: 600,
+    matchTimePerPlayer: 300,
     timeIncrementPerMove: 30,
     enrollmentWindow: 600,
   },
   32: {
-    matchTimePerPlayer: 600,
+    matchTimePerPlayer: 300,
     timeIncrementPerMove: 30,
     enrollmentWindow: 1800,
   },
