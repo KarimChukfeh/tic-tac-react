@@ -157,6 +157,7 @@ const GameMatchLayout = ({
   }
 
   const isGameOver = matchStatus === 2;
+  const shouldRenderMobileResultAfterMoveHistory = compactChessMatchView && isGameOver;
   const zeroAddress = '0x0000000000000000000000000000000000000000';
   const hasWinner = winner && winner !== zeroAddress;
   const userWon = hasWinner && account && winner.toLowerCase() === account.toLowerCase();
@@ -1076,7 +1077,7 @@ const GameMatchLayout = ({
           {/* Other controls */}
           {renderGameControls?.()}
 
-          {isGameOver && (
+          {isGameOver && !shouldRenderMobileResultAfterMoveHistory && (
             <MatchComplete
               completionReason={completionReason}
               winner={winner}
@@ -1095,6 +1096,20 @@ const GameMatchLayout = ({
             <div style={{ marginTop: '24px' }} className="bg-slate-900/50 rounded-xl p-4 border border-purple-500/30">
               {renderMoveHistory()}
             </div>
+          )}
+
+          {isGameOver && shouldRenderMobileResultAfterMoveHistory && (
+            <MatchComplete
+              completionReason={completionReason}
+              winner={winner}
+              loser={loser}
+              currentAccount={account}
+              reasonLabelMode={reasonLabelMode}
+              gameSpecificText={!isMatchDraw ? theme.completeText : undefined}
+              hasNextActiveMatch={hasNextActiveMatch}
+              onEnterNextMatch={onEnterNextMatch}
+              onReturnToBracket={onReturnToBracket}
+            />
           )}
         </div>
 
