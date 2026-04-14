@@ -1035,12 +1035,10 @@ const Docs = () => {
             </div>
           ) : null}
 
-          {!isLoading && selectedSection ? (
+          {!isLoading && selectedSection && isMobileNavOpen ? (
             <div
-              aria-hidden={!isMobileNavOpen}
-              className={`fixed inset-0 z-50 transition-opacity duration-200 ease-out lg:hidden ${
-              isMobileNavOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
-            }`}
+              aria-hidden="false"
+              className="fixed inset-0 z-50 transition-opacity duration-200 ease-out lg:hidden pointer-events-auto opacity-100"
             >
               <button
                 type="button"
@@ -1048,9 +1046,7 @@ const Docs = () => {
                 onClick={() => setIsMobileNavOpen(false)}
                 className="absolute inset-0 bg-black/45 backdrop-blur-[1px] transition-opacity duration-200 ease-out"
               />
-              <div className={`absolute left-4 right-4 top-20 max-h-[70vh] origin-top overflow-hidden rounded-2xl border border-pink-300/20 bg-[#220530] p-4 shadow-[0_24px_80px_rgba(0,0,0,0.42)] transition-all duration-200 ease-out ${
-                isMobileNavOpen ? 'translate-y-0 scale-100 opacity-100' : '-translate-y-4 scale-[0.98] opacity-0'
-              }`}>
+              <div className="absolute left-4 right-4 top-20 max-h-[70vh] origin-top overflow-hidden rounded-2xl border border-pink-300/20 bg-[#220530] p-4 shadow-[0_24px_80px_rgba(0,0,0,0.42)] transition-all duration-200 ease-out translate-y-0 scale-100 opacity-100">
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <ListTree className={colors.primary} size={18} />
