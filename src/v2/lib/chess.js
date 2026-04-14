@@ -1,4 +1,5 @@
 import { ethers } from 'ethers';
+import { collectErrorDetails, pickBestErrorMessage } from './errorDetails';
 import ChessFactoryABIData from '../ABIs/ChessFactory-ABI.json';
 import LocalhostFactoryData from '../ABIs/localhost-chess-factory.json';
 import HardhatFactoryData from '../ABIs/hardhat-factory.json';
@@ -444,21 +445,10 @@ function decodeRevertData(data) {
 }
 
 export function getReadableError(error, fallback = 'Transaction failed.') {
-  const candidates = [
-    error?.data?.data,
-    error?.info?.error?.data,
-    error?.error?.data?.data,
-    error?.error?.data,
-    error?.data,
-  ];
-  for (const candidate of candidates) {
+  const { dataCandidates, messageCandidates } = collectErrorDetails(error);
+  for (const candidate of dataCandidates) {
     const decoded = decodeRevertData(candidate);
     if (decoded) return decoded;
   }
-  const nestedMessage = error?.data?.message
-    || error?.info?.error?.message
-    || error?.error?.data?.message
-    || error?.error?.message;
-  if (nestedMessage) return nestedMessage;
-  return error?.shortMessage || error?.message || fallback;
+  return pickBestErrorMessage(messageCandidates, fallback);
 }
