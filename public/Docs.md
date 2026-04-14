@@ -89,17 +89,13 @@ In practice, the defining step looks like `contract YourGame is ETourGame`.
 
 That inheritance line is what turns your rules engine into an ETour tournament game. Your contract does not reimplement the whole tournament protocol. It is responsible only for the narrow game-specific surface:
 
-- defining game-owned match state,
-- validating moves,
-- updating the board or position,
-- deciding when a match ends,
-- exposing the game's `makeMove(...)` flow.
+- Defining game-owned match state,
+- Validating moves,
+- Updating the board or position,
+- Deciding when a match ends,
+- Exposing the game's `makeMove(...)` flow.
 
-Everything else is meant to come from ETour's shared infrastructure: enrollment, bracket progression, payouts, timeout flows, escalation flows, and player-profile integration.
-
-- [`TicTacToe.sol`](../contracts/TicTacToe.sol)
-- [`ConnectFour.sol`](../contracts/ConnectFour.sol)
-- [`Chess.sol`](../contracts/Chess.sol)
+Everything else comes from ETour's shared infrastructure: enrollment, bracket progression, payouts, timeout flows, escalation flows, and player-profile integration.
 
 ### 6.2 ETour Modules
 
@@ -139,16 +135,11 @@ After the game contract exists, the factory is what turns it into many tournamen
 
 A factory contract does not hold match state for individual tournaments. Instead, it:
 
-- creates new tournament instances,
-- validates creation parameters,
-- tracks active and past tournaments,
-- stores tier metadata,
-- connects tournaments to the shared player-profile system.
-
-- [`ETourFactory.sol`](../contracts/ETourFactory.sol): common factory behavior for all ETour games.
-- [`TicTacToeFactory.sol`](../contracts/TicTacToeFactory.sol): Tic-Tac-Toe factory.
-- [`ConnectFourFactory.sol`](../contracts/ConnectFourFactory.sol): Connect Four factory.
-- [`ChessFactory.sol`](../contracts/ChessFactory.sol): Chess factory with post-init chess rules wiring.
+- Creates new tournament instances,
+- Validates creation parameters,
+- Tracks active and past tournaments,
+- Stores tier metadata,
+- Connects tournaments to the shared player-profile system.
 
 ### 6.5 Supporting Contracts
 
@@ -166,29 +157,29 @@ They are not the core tournament execution path, but they provide important prot
 
 Each game type has:
 
-- one factory,
-- one implementation contract,
-- many tournament instances.
+- One factory,
+- One implementation contract,
+- Many tournament instances.
 
 The factory stores:
 
-- the implementation address,
-- the shared module addresses,
-- the player registry address,
-- tier metadata and instance tracking.
+- The implementation address,
+- The shared module addresses,
+- The player registry address,
+- Tier metadata and instance tracking.
 
 The implementation contract is deployed once. Every new tournament is a minimal proxy instance pointing at that implementation.
 
 The instance then stores its own:
 
-- tier config,
-- tournament status,
-- enrolled players,
-- rounds,
-- matches,
-- timeout/escalation state,
-- prize results,
-- profile-related permanent record data.
+- Tier config,
+- Tournament status,
+- Enrolled players,
+- Rounds,
+- Matches,
+- Timeout/escalation state,
+- Prize results,
+- Profile-related permanent record data.
 
 This is why the instance is the permanent tournament record, while the implementation is only executable code.
 
@@ -224,13 +215,13 @@ The base factory is [`ETourFactory.sol`](../contracts/ETourFactory.sol).
 
 Its responsibilities are:
 
-- validating game creation parameters,
-- lazily registering tier configurations,
-- deploying EIP-1167 minimal proxy instances,
-- initializing instances with module addresses,
-- tracking active and past tournaments,
-- mirroring game-specific player profiles,
-- receiving deferred owner share on conclusion.
+- Validating game creation parameters,
+- Lazily registering tier configurations,
+- Deploying EIP-1167 minimal proxy instances,
+- Initializing instances with module addresses,
+- Tracking active and past tournaments,
+- Mirroring game-specific player profiles,
+- Receiving deferred owner share on conclusion.
 
 ### 8.1 Tiering
 
@@ -240,7 +231,7 @@ A tier is effectively:
 
 - `playerCount`
 - `entryFee`
-- timeout configuration
+- Timeout configuration
 
 The tier key is computed and cached when first used. The factory then groups instance addresses by tier.
 
@@ -263,11 +254,11 @@ ETourTournamentBase(instance).enrollOnBehalf{value: entryFee}(msg.sender);
 
 This sequence is important:
 
-1. create the instance from the implementation,
-2. initialize instance state and module addresses,
-3. run game-specific post-init hook if needed,
-4. track the new tournament in the factory,
-5. auto-enroll the creator.
+1. Create the instance from the implementation,
+2. Initialize instance state and module addresses,
+3. Run game-specific post-init hook if needed,
+4. Track the new tournament in the factory,
+5. Auto-enroll the creator.
 
 ### 8.3 Why `_postInitializeInstance(...)` Exists
 
@@ -292,15 +283,15 @@ If a module touches storage, it is really touching this contract's layout.
 
 The storage is organized around these domains:
 
-- instance identity: `factory`, `creator`, module addresses
-- immutable tier configuration: `tierConfig`
-- tournament state: `tournament`
-- player enrollment: `enrolledPlayers`, `isEnrolled`
-- round state: `rounds`
-- match state: `matches`, `matchTimeouts`
-- prizes and payout metadata: `playerPrizes`, `playerPayoutReasons`
-- draw tracking: `drawParticipants`
-- entropy accumulator: `_entropyState`, `_entropyNonce`
+- Instance identity: `factory`, `creator`, module addresses
+- Immutable tier configuration: `tierConfig`
+- Tournament state: `tournament`
+- Player enrollment: `enrolledPlayers`, `isEnrolled`
+- Round state: `rounds`
+- Match state: `matches`, `matchTimeouts`
+- Prizes and payout metadata: `playerPrizes`, `playerPayoutReasons`
+- Draw tracking: `drawParticipants`
+- Entropy accumulator: `_entropyState`, `_entropyNonce`
 
 ### 9.3 Important Structs
 
@@ -322,14 +313,14 @@ This is immutable for an instance after `initialize(...)`.
 
 This is the tournament's top-level lifecycle record. It tracks:
 
-- status,
-- round position,
-- fee buckets,
-- timing,
-- winner,
-- draw/escalation resolution flags,
-- completion metadata,
-- payout metadata.
+- Status,
+- Round position,
+- Fee buckets,
+- Timing,
+- Winner,
+- Draw/escalation resolution flags,
+- Completion metadata,
+- Payout metadata.
 
 #### 9.3.3 `Round`
 
@@ -375,12 +366,12 @@ This is intentionally mixed:
 
 Infra-owned fields:
 
-- players,
-- current turn,
-- winner,
-- status,
-- timing,
-- completion metadata.
+- Players,
+- Current turn,
+- Winner,
+- Status,
+- Timing,
+- Completion metadata.
 
 Game-owned fields:
 
@@ -483,11 +474,11 @@ ETourTournamentBase(instance).initialize(
 
 The instance stores:
 
-- parent factory,
-- creator,
-- module addresses,
-- immutable tier config,
-- initial `TournamentStatus.Enrolling`.
+- Parent factory,
+- Creator address,
+- Module addresses,
+- Immutable tier config,
+- Initial `TournamentStatus.Enrolling`.
 
 ### 11.2 Enrollment
 
@@ -498,10 +489,10 @@ Public enrollment flows live in [`ETourTournamentBase.sol`](../contracts/ETourTo
 
 Each flow:
 
-1. performs best-effort player registration on the factory,
-2. delegatecalls into `MODULE_CORE`,
-3. mixes enrollment entropy,
-4. auto-starts round 0 if the tournament becomes full.
+1. Performs best-effort player registration on the factory,
+2. Delegatecalls into `MODULE_CORE`,
+3. Mixes enrollment entropy,
+4. Auto-starts round 1 if the tournament becomes full.
 
 ### 11.3 Tournament Start
 
@@ -509,9 +500,9 @@ The core module computes `actualTotalRounds` from the actual enrolled count, not
 
 This is why ETour can support:
 
-- full power-of-two brackets,
-- odd participant flows after force-start,
-- walkovers and odd-round progression.
+- Full power-of-two brackets,
+- Odd participant flows after force-start,
+- Walkovers and odd-round progression.
 
 ### 11.4 Match Play
 
@@ -519,13 +510,13 @@ Concrete game contracts implement `makeMove(...)`.
 
 The shared pattern is:
 
-1. load match,
-2. validate status and turn ownership,
-3. consume Fischer clock,
-4. mutate game state,
-5. record move transcript,
-6. clear escalation state,
-7. either conclude the match or switch turns.
+1. Load match,
+2. Validate status and turn ownership,
+3. Consume Fischer clock,
+4. Mutate game state,
+5. Record move transcript,
+6. Clear escalation state,
+7. Either conclude the match or switch turns.
 
 ### 11.5 Match Completion
 
@@ -533,13 +524,13 @@ All game contracts eventually flow through `_completeMatchInternal(...)`.
 
 That function:
 
-- marks the match completed,
-- clears timeout/escalation state,
-- mixes match-result entropy,
-- delegatecalls into the matches module,
-- records player match outcomes,
-- emits `MatchCompleted`,
-- checks for tournament conclusion.
+- Marks the match completed,
+- Clears timeout/escalation state,
+- Mixes match-result entropy,
+- Delegatecalls into the matches module,
+- Records player match outcomes,
+- Emits `MatchCompleted`,
+- Checks for tournament conclusion.
 
 ### 11.6 Tournament Conclusion
 
@@ -547,10 +538,10 @@ Conclusion is centralized in `_handleTournamentConclusion()`.
 
 The settlement sequence is:
 
-1. distribute winner/draw prizes through `MODULE_PRIZES`,
-2. emit `TournamentConcluded`,
-3. push result data into player profiles,
-4. send deferred owner share to the factory.
+1. Distribute winner/draw prizes through `MODULE_PRIZES`,
+2. Emit `TournamentConcluded`,
+3. Push result data into player profiles,
+4. Send deferred owner share to the factory.
 
 This ordering is deliberate.
 
@@ -571,10 +562,10 @@ Profile updates happen before the owner-share callback so ordinary user actions 
 
 Its concerns are:
 
-- enrollment validation,
-- fee-bucket accounting,
-- enrollment escalation windows,
-- transition from `Enrolling` to `InProgress` or `Concluded`.
+- Enrollment validation,
+- Fee-bucket accounting,
+- Enrollment escalation windows,
+- Transition from `Enrolling` to `InProgress` or `Concluded`.
 
 It does not create matches directly. It only determines when the tournament is ready for round initialization.
 
@@ -584,11 +575,11 @@ It does not create matches directly. It only determines when the tournament is r
 
 It handles:
 
-- round initialization,
-- first-round pairing,
-- first-round walkover handling,
-- match-completion counting,
-- delegation into the heavy resolution module.
+- Round initialization,
+- First-round pairing,
+- First-round walkover handling,
+- Match-completion counting,
+- Delegation into the heavy resolution module.
 
 The key reason it is thin is contract-size pressure. ETour requires every deployable module to remain under 24 KB.
 
@@ -596,13 +587,13 @@ The key reason it is thin is contract-size pressure. ETour requires every deploy
 
 [`ETourInstance_MatchesResolution.sol`](../contracts/modules/ETourInstance_MatchesResolution.sol) now owns the heavier bracket logic:
 
-- advancing winners to the next round,
-- initializing next rounds on demand,
-- consolidating scattered players,
-- detecting finals and uncontested finals,
-- handling all-draw rounds,
-- processing orphaned winners,
-- completing tournaments when only one player remains.
+- Advancing winners to the next round,
+- Initializing next rounds on demand,
+- Consolidating scattered players,
+- Detecting finals and uncontested finals,
+- Handling all-draw rounds,
+- Processing orphaned winners,
+- Completing tournaments when only one player remains.
 
 This split exists because the original single matches module exceeded the EVM size limit.
 
@@ -617,11 +608,11 @@ Architecturally, that split is a good fit:
 
 It covers:
 
-- marking matches stalled,
+- Marking matches stalled,
 - ML2 advanced-player force elimination,
 - ML3 external-player replacement,
-- escalation completion metadata,
-- some escalation-specific round-completion logic.
+- Escalation completion metadata,
+- Other escalation-specific round-completion logic.
 
 This module is where ETour enforces the idea that tournaments should keep progressing even when a match stalls.
 
@@ -629,10 +620,10 @@ This module is where ETour enforces the idea that tournaments should keep progre
 
 [`ETourInstance_Prizes.sol`](../contracts/modules/ETourInstance_Prizes.sol) handles:
 
-- winner-takes-all distribution,
-- equal split distribution for draw resolutions,
-- failed payout redistribution across remaining enrolled players,
-- persistent payout reason tracking.
+- Winner-takes-all distribution,
+- Equal split distribution for draw resolutions,
+- Failed payout redistribution across remaining enrolled players,
+- Persistent payout reason tracking.
 
 The important design choice here is that failed winner payments do not bounce to the factory. They are redistributed inside the tournament context, preserving tournament-local accounting.
 
@@ -688,14 +679,14 @@ ETour uses a lightweight internal entropy accumulator rather than pretending to 
 
 The accumulator mixes:
 
-- prior entropy state,
-- domain-separated salts,
-- nonce,
-- instance address,
-- creator,
+- Prior entropy state,
+- Domain-separated salts,
+- Nonce,
+- Instance address,
+- Creator address,
 - `block.prevrandao`,
-- previous block hash,
-- current tournament state.
+- Previous block hash,
+- Current tournament state.
 
 Example:
 
@@ -718,10 +709,10 @@ mixed = keccak256(abi.encodePacked(
 
 This entropy is used for:
 
-- random starters,
-- randomized seat order,
-- walkover selection,
-- match-result entropy mixing.
+- Random starters,
+- Randomized seat order,
+- Walkover selection,
+- Match-result entropy mixing.
 
 It is suitable for lightweight protocol decisions inside this design, but it should not be described as cryptographically secure randomness.
 
@@ -749,10 +740,10 @@ Normal timeout resolution begins in [`ETourTournamentBase.sol`](../contracts/ETo
 
 That path:
 
-1. confirms the caller is the waiting player,
-2. confirms the active player exceeded their remaining time,
-3. delegatecalls into `MODULE_ESCALATION` to mark the match stalled,
-4. immediately completes the match as `Timeout`.
+1. Confirms the caller is the waiting player,
+2. Confirms the active player exceeded their remaining time,
+3. Delegatecalls into `MODULE_ESCALATION` to mark the match stalled,
+4. Immediately completes the match as `Timeout`.
 
 ### 15.3 ML2 and ML3
 
@@ -780,22 +771,22 @@ Nothing is forwarded to the factory immediately.
 This matters because:
 
 - EL0 and EL2 need full or special-case recovery behavior,
-- instance-local accounting stays coherent until conclusion,
-- conclusion can distribute based on the final tournament outcome.
+- Instance-local accounting stays coherent until conclusion,
+- Conclusion can distribute based on the final tournament outcome.
 
 ### 16.1 Conclusion Settlement
 
 At conclusion, `_handleTournamentConclusion()`:
 
-1. resolves prize distribution locally,
-2. records permanent profile results,
-3. sends owner share to `factory.receiveOwnerShare()`.
+1. Resolves prize distribution locally,
+2. Records permanent profile results,
+3. Sends owner share to `factory.receiveOwnerShare()`.
 
 The factory then:
 
-- forwards owner ETH immediately if possible,
-- otherwise records fallback `ownerBalance`,
-- moves the instance from `activeTournaments` to `pastTournaments`.
+- Forwards owner ETH immediately if possible,
+- Otherwise records fallback `ownerBalance`,
+- Moves the instance from `activeTournaments` to `pastTournaments`.
 
 ## 17. Player Profiles
 
@@ -815,7 +806,7 @@ The factory then forwards that to `PlayerRegistry.recordEnrollment(...)` on a be
 
 There is one important extension to that rule:
 
-- normal enrollees are registered through the factory with their real `entryFee`,
+- Normal enrollees are registered through the factory with their real `entryFee`,
 - EL2 abandoned-pool claimants are explicitly registered with `entryFee = 0` before conclusion,
 - ML3 replacement players are match-level replacements, so they can receive profile match records without automatically receiving a tournament enrollment record.
 
@@ -825,15 +816,15 @@ At tournament conclusion, the instance pushes final result data through `_record
 
 This includes:
 
-- won/lost,
-- prize basis,
-- actual payout,
-- payout reason,
-- tournament completion reason.
+- Won/lost status,
+- Prize data,
+- Actual payout,
+- Payout reason,
+- Tournament completion reason.
 
 That means:
 
-- enrolled players get both match-level and tournament-level profile data,
+- Enrolled players get both match-level and tournament-level profile data,
 - EL2 claimants also get a tournament-level profile record because the contract explicitly registers them before conclusion,
 - ML3 replacement outsiders can still get match records through `recordMatchOutcome(...)`, but if they were never enrolled into the tournament profile path, they do not get a normal enrollment/result record for that instance.
 
@@ -850,9 +841,9 @@ The instance remains the source of truth.
 Its game-specific responsibilities are:
 
 - 2-bit packed board manipulation,
-- win-line checks,
-- draw detection,
-- move transcript as comma-separated cell indices.
+- Win-line checks,
+- Draw detection,
+- Move transcript as comma-separated cell indices.
 
 Its hook surface is minimal:
 
@@ -874,11 +865,11 @@ This is the clearest example of the intended ETour game-author experience.
 
 It demonstrates:
 
-- packed board + packed state separation,
-- external rules-module validation,
-- auxiliary per-match mappings,
-- replay-safe custom state invalidation,
-- custom `_getGameStateHash(...)`.
+- Packed board + packed state separation,
+- External rules-module validation,
+- Auxiliary per-match mappings,
+- Replay-safe custom state invalidation,
+- Custom `_getGameStateHash(...)`.
 
 The important lesson from chess is that the `Match` struct does not need to carry every possible game-state shape. Additional mappings keyed by `matchId` are a first-class pattern in ETour.
 
@@ -888,23 +879,23 @@ ETour deliberately stops short of forcing every game into the same exact board/s
 
 The protocol owns:
 
-- lifecycle,
-- bracket movement,
-- timing,
-- escalations,
-- settlement.
+- Lifecycle,
+- Bracket movement,
+- Timing,
+- Escalations,
+- Settlement.
 
 The game owns:
 
-- how game state is represented,
-- how moves are validated,
-- how much extra storage is required,
-- what constitutes a draw or win.
+- How game state is represented,
+- How moves are validated,
+- How much extra storage is required,
+- What constitutes a draw or win.
 
 The generic state contract is:
 
 - `packedBoard`, `packedState`, and `moves` are convenient default fields,
-- extra mappings are allowed,
+- Extra mappings are allowed,
 - `_getGameStateHash(matchId)` is the abstraction layer infra uses when it needs an opaque state fingerprint.
 
 That is why chess can maintain `_positionCounts` and `_gameNonce` without forcing those concepts into every other game.
@@ -985,7 +976,7 @@ For `MyGame is ETourGame`, the required implementation surface is:
 
 - `_playerAssignmentMode()`
 - `_initializeGameState(bytes32 matchId, bool isReplay)`
-- your public `makeMove(...)`
+- Your public `makeMove(...)`
 
 Optional hooks are:
 
@@ -994,27 +985,27 @@ Optional hooks are:
 
 The core move-flow pattern is always the same:
 
-1. derive `matchId`
-2. fetch `Match storage m = matches[matchId]`
-3. require `m.status == MatchStatus.InProgress`
-4. require the caller is a participant
-5. require the caller owns `m.currentTurn`
-6. validate your game-specific move inputs
-7. call `_consumeTurnClock(m)`
-8. mutate game-owned state
-9. record move transcript if useful
-10. call `_clearMatchEscalation(matchId)`
-11. call `_completeMatchInternal(...)` if terminal, otherwise `_switchTurn(m)`
+1. Derive `matchId`
+2. Fetch `Match storage m = matches[matchId]`
+3. Require `m.status == MatchStatus.InProgress`
+4. Require the caller is a participant
+5. Require the caller owns `m.currentTurn`
+6. Validate your game-specific move inputs
+7. Call `_consumeTurnClock(m)`
+8. Mutate game-owned state
+9. Record move transcript if useful
+10. Call `_clearMatchEscalation(matchId)`
+11. Call `_completeMatchInternal(...)` if terminal, otherwise `_switchTurn(m)`
 
 That is all you are supposed to own. ETour continues to own:
 
-- instance deployment
-- enrollment
-- bracket progression
-- time banking
-- escalations
-- payouts
-- permanent tournament record storage
+- Instance deployment
+- Enrollment
+- Bracket progression
+- Time banking
+- Escalations
+- Payouts
+- Permanent tournament record storage
 
 ## 22. Dependencies
 
@@ -1056,17 +1047,17 @@ Typical examples are:
 - `package.json`
 - `hardhat.config.js`
 - `.env`
-- deployment scripts
+- Deployment scripts
 - ABI sync scripts
-- tests
+- Tests
 - deployment manifests
 
 You do **not** need to use the exact same helper scripts or config files as this repo. You can replace those with your own preferred tooling. Hardhat is just the practical reference path used here.
 
 The distinction is important:
 
-- the protocol contracts are mandatory
-- the surrounding JS/config/devops layer is replaceable
+- The protocol contracts are mandatory
+- The surrounding JS/config/devops layer is replaceable
 
 ## 23. Project Structure
 
@@ -1091,7 +1082,7 @@ In practice, if you are copying files manually, the ETour inheritance/import cha
 - `ETourInstance.sol`
 - `ETourTournamentBase.sol`
 - `contracts/modules/*`
-- any referenced interfaces
+- Any referenced interfaces
 
 So the minimal compileable tree is larger than the six filenames above. The six-contract view is useful for understanding responsibility, not for pretending the transitive imports do not exist.
 
@@ -1126,10 +1117,10 @@ That practical tree is what most teams will actually want:
 
 - Node-based dependency management
 - Hardhat config
-- deployment scripts
-- deployment outputs
-- tests
-- helper contracts
+- Deployment scripts
+- Deployment outputs
+- Tests
+- Helper contracts
 
 ## 24. Example: Checkers
 
@@ -1172,9 +1163,9 @@ Minimal example:
 
 Why this file is needed:
 
-- it defines your Node project
-- it gives you reproducible dependency installs
-- it gives you stable script entrypoints for compile, test, and deploy
+- It defines your Node project
+- It gives you reproducible dependency installs
+- It gives you stable script entrypoints for compile, test, and deploy
 
 This file should live at project root:
 
@@ -1247,9 +1238,9 @@ export default {
 
 Why this file is needed:
 
-- it tells Hardhat where contracts, tests, and artifacts live
-- it defines the Solidity compiler settings ETour V2 expects
-- it defines local and Arbitrum deployment targets
+- It tells Hardhat where contracts, tests, and artifacts live
+- It defines the Solidity compiler settings ETour V2 expects
+- It defines local and Arbitrum deployment targets
 
 This file should live here:
 
@@ -1851,12 +1842,12 @@ my-etour-checkers/
 
 At this point deployment is straightforward:
 
-- deploy or resolve the shared ETour modules
-- deploy `PlayerProfile`
-- deploy `PlayerRegistry`
-- deploy `CheckersFactory`
-- read the `Checkers` implementation address from the factory
-- save deployment metadata and ABI output for your UI and scripts
+- Deploy or resolve the shared ETour modules
+- Deploy `PlayerProfile`
+- Deploy `PlayerRegistry`
+- Deploy `CheckersFactory`
+- Read the `Checkers` implementation address from the factory
+- Save deployment metadata and ABI output for your UI and scripts
 
 The reference utility script is:
 
@@ -1864,8 +1855,8 @@ The reference utility script is:
 
 That script now does two things in one run:
 
-1. deploys the checkers reference stack
-2. generates a combined ABI bundle in `deployments/CheckersFactory-ABI.json`
+1. Deploys the checkers reference stack
+2. Generates a combined ABI bundle in `deployments/CheckersFactory-ABI.json`
 
 #### 24.5.1 Local
 
@@ -1916,11 +1907,11 @@ The script writes:
 
 The ABI bundle contains:
 
-- factory ABI
-- implementation ABI
-- player registry ABI
-- player profile ABI
-- module addresses used for deployment
+- Factory ABI
+- Implementation ABI
+- Player registry ABI
+- Player profile ABI
+- Module addresses used for deployment
 
 That is usually enough for the frontend to treat the ABI bundle as the source of truth.
 
@@ -1930,11 +1921,11 @@ Once deployment is done and you have the ABI bundle, you are mostly finished wit
 
 What comes next is building a UI that:
 
-- reads the factory ABI
-- reads the game instance ABI
-- creates tournaments through the factory
-- reads tournaments and matches from instances
-- sends `makeMove(...)` calls against the game ABI
+- Reads the factory ABI
+- Reads the game instance ABI
+- Creates tournaments through the factory
+- Reads tournaments and matches from instances
+- Sends `makeMove(...)` calls against the game ABI
 
 At that point, the ABI bundle and deployment manifest should be treated as your source of truth. A UI integration guide is coming separately.
 
@@ -1952,11 +1943,11 @@ npx hardhat test --config hardhat.config.js test/factory/Checkers.reference.test
 
 That test currently proves:
 
-- real factory deployment
-- real instance creation
-- mandatory capture enforcement
-- multi-jump continuation
-- promotion behavior
+- Real factory deployment
+- Real instance creation
+- Mandatory capture enforcement
+- Multi-jump continuation
+- Promotion behavior
 
 A broader testing guide is still to come, but the current reference test is already the right starting point for local validation.
 
