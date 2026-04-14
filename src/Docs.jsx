@@ -350,6 +350,7 @@ const buildAnchorLookup = (sections = []) => {
 const Docs = () => {
   const navigate = useNavigate();
   const contentPaneRef = useRef(null);
+  const contentSectionRef = useRef(null);
   const [content, setContent] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [selectedSectionId, setSelectedSectionId] = useState('');
@@ -449,6 +450,20 @@ const Docs = () => {
     contentPaneRef.current.scrollTop = 0;
   };
 
+  const scrollToActiveSectionTop = () => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const isMobileViewport = window.innerWidth < 1024;
+
+    if (!isMobileViewport || !contentSectionRef.current) {
+      return;
+    }
+
+    contentSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   const highlightAnchor = (anchorId) => {
     const element = document.getElementById(anchorId);
     if (!element) {
@@ -523,6 +538,7 @@ const Docs = () => {
   useEffect(() => {
     if (!pendingAnchor || !selectedSectionId || !selectedTabId) {
       resetContentScroll();
+      scrollToActiveSectionTop();
       return;
     }
 
@@ -1087,6 +1103,7 @@ const Docs = () => {
               </aside>
 
               <section
+                ref={contentSectionRef}
                 className={`rounded-2xl border ${colors.borderDark} bg-black/15 lg:h-[68vh] lg:overflow-hidden`}
               >
                 <div className="flex h-full flex-col">
@@ -1109,7 +1126,7 @@ const Docs = () => {
                     </div>
                   </div>
                   <div className="border-t border-pink-300/10 px-6 py-4">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex flex-row items-center justify-between gap-2 sm:gap-3">
                       <button
                         type="button"
                         aria-label="Previous tab"
@@ -1119,14 +1136,14 @@ const Docs = () => {
                           highlight: false,
                         })}
                         disabled={!previousTab}
-                        className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-colors ${
+                        className={`min-w-0 flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border px-2.5 py-2 text-xs font-medium transition-colors sm:flex-none sm:justify-start sm:gap-2 sm:px-4 sm:text-sm ${
                           previousTab
                             ? 'border-pink-300/20 text-pink-100 hover:bg-white/[0.04] hover:text-white'
                             : 'cursor-not-allowed border-pink-300/10 text-pink-100/35'
                         }`}
                       >
-                        <ChevronLeft size={16} />
-                        <span>{previousTab ? previousTab.tabLabel : 'Start of docs'}</span>
+                        <ChevronLeft size={16} className="shrink-0" />
+                        <span className="truncate">{previousTab ? previousTab.tabLabel : 'Start of docs'}</span>
                       </button>
                       <button
                         type="button"
@@ -1137,14 +1154,14 @@ const Docs = () => {
                           highlight: false,
                         })}
                         disabled={!nextTab}
-                        className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-colors ${
+                        className={`min-w-0 flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border px-2.5 py-2 text-xs font-medium transition-colors sm:flex-none sm:justify-start sm:gap-2 sm:px-4 sm:text-sm ${
                           nextTab
                             ? 'border-pink-300/20 text-pink-100 hover:bg-white/[0.04] hover:text-white'
                             : 'cursor-not-allowed border-pink-300/10 text-pink-100/35'
                         }`}
                       >
-                        <span>{nextTab ? nextTab.tabLabel : 'End of docs'}</span>
-                        <ChevronRight size={16} />
+                        <span className="truncate">{nextTab ? nextTab.tabLabel : 'End of docs'}</span>
+                        <ChevronRight size={16} className="shrink-0" />
                       </button>
                     </div>
                   </div>
