@@ -1002,7 +1002,7 @@ const Docs = () => {
 
   return (
     <div
-      className="min-h-screen p-4"
+      className="min-h-screen px-3 py-4 sm:p-4"
       style={{
         background: 'linear-gradient(135deg, #160022 0%, #2a0a46 52%, #18002d 100%)',
       }}
@@ -1020,7 +1020,7 @@ const Docs = () => {
 
         </div>
 
-        <div className={`rounded-3xl border ${colors.border} bg-gradient-to-br ${colors.bg} p-6 backdrop-blur-lg md:p-8`}>
+        <div className={`rounded-3xl border ${colors.border} bg-gradient-to-br ${colors.bg} p-4 backdrop-blur-lg sm:p-5 md:p-8`}>
           {!isLoading && selectedSection ? (
             <div className="fixed right-4 top-4 z-[60] flex lg:hidden">
               <button
@@ -1079,7 +1079,7 @@ const Docs = () => {
           </div>
 
           {introMarkdown ? (
-            <section className={`mb-8 rounded-2xl border ${colors.borderDark} bg-black/10 p-5`}>
+            <section className={`mb-8 rounded-2xl border ${colors.borderDark} bg-black/10 p-4 sm:p-5`}>
               <div className="space-y-4">
                 {parseMarkdown(introMarkdown)}
               </div>
@@ -1103,7 +1103,7 @@ const Docs = () => {
                 className={`rounded-2xl border ${colors.borderDark} bg-black/15 lg:h-[68vh] lg:overflow-hidden`}
               >
                 <div className="flex h-full flex-col">
-                  <div className="border-b border-pink-300/10 px-6 pb-5 pt-6">
+                    <div className="border-b border-pink-300/10 px-4 pb-4 pt-5 sm:px-6 sm:pb-5 sm:pt-6">
                     <div className="text-xs font-semibold uppercase tracking-[0.2em] text-pink-200/60">
                       {selectedSection.groupLabel}
                     </div>
@@ -1113,7 +1113,7 @@ const Docs = () => {
                   </div>
                   <div
                     ref={contentPaneRef}
-                    className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-6 py-5"
+                    className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-6 sm:py-5"
                   >
                     <div className="space-y-4 break-words">
                       {selectedTab
@@ -1121,7 +1121,7 @@ const Docs = () => {
                         : null}
                     </div>
                   </div>
-                  <div className="border-t border-pink-300/10 px-6 py-4">
+                  <div className="border-t border-pink-300/10 px-4 py-3 sm:px-6 sm:py-4">
                     <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:justify-between sm:gap-3">
                       <button
                         type="button"
