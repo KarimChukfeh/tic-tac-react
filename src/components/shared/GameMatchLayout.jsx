@@ -24,7 +24,6 @@ import MatchHeader from './MatchHeader';
 import PlayerPanel from './PlayerPanel';
 import TurnIndicator from './TurnIndicator';
 import TurnTimer from './TurnTimer';
-import MatchTimeoutEscalation from './MatchTimeoutEscalation';
 import MatchComplete from './MatchComplete';
 import LoadingOverlay from './LoadingOverlay';
 
@@ -614,23 +613,6 @@ const GameMatchLayout = ({
 
             {/* Game Controls */}
             <div className="space-y-3 mt-6">
-              {timeoutState && (
-                <MatchTimeoutEscalation
-                  timeoutState={timeoutState}
-                  matchStatus={matchStatus}
-                  isYourTurn={isYourTurn}
-                  onClaimTimeoutWin={onClaimTimeoutWin}
-                  onForceEliminate={onForceEliminate}
-                  onClaimReplacement={onClaimReplacement}
-                  loading={loading}
-                  escL2Available={match.escL2Available}
-                  escL3Available={match.escL3Available}
-                  isUserAdvancedForRound={match.isUserAdvancedForRound}
-                  isUserMatch={isUserMatch}
-                  hideML1OnMobile={true}
-                />
-              )}
-
               {renderGameControls?.()}
 
               {isGameOver && (
@@ -798,25 +780,6 @@ const GameMatchLayout = ({
           <div className="flex-1 flex flex-col items-center min-w-0">
             {children}
 
-            {timeoutState && (
-              <div className="w-full max-w-md mt-4">
-                <MatchTimeoutEscalation
-                  timeoutState={timeoutState}
-                  matchStatus={matchStatus}
-                  isYourTurn={isYourTurn}
-                  onClaimTimeoutWin={onClaimTimeoutWin}
-                  onForceEliminate={onForceEliminate}
-                  onClaimReplacement={onClaimReplacement}
-                  loading={loading}
-                  escL2Available={match.escL2Available}
-                  escL3Available={match.escL3Available}
-                  isUserAdvancedForRound={match.isUserAdvancedForRound}
-                  isUserMatch={isUserMatch}
-                  hideML1OnMobile={true}
-                />
-              </div>
-            )}
-
             {renderGameControls?.()}
 
             {isGameOver && (
@@ -961,26 +924,6 @@ const GameMatchLayout = ({
 
         {/* Board */}
         {children}
-
-        {/* Escalation */}
-        {timeoutState && (
-          <div className="max-w-md mx-auto mt-6 w-full">
-            <MatchTimeoutEscalation
-              timeoutState={timeoutState}
-              matchStatus={matchStatus}
-              isYourTurn={isYourTurn}
-              onClaimTimeoutWin={onClaimTimeoutWin}
-              onForceEliminate={onForceEliminate}
-              onClaimReplacement={onClaimReplacement}
-              loading={loading}
-              escL2Available={match.escL2Available}
-              escL3Available={match.escL3Available}
-              isUserAdvancedForRound={match.isUserAdvancedForRound}
-              isUserMatch={isUserMatch}
-              hideML1OnMobile={true}
-            />
-          </div>
-        )}
 
         {renderGameControls?.()}
       </div>
@@ -1131,23 +1074,6 @@ const GameMatchLayout = ({
           </div>
 
           {/* Other controls */}
-          {timeoutState && (
-            <MatchTimeoutEscalation
-              timeoutState={timeoutState}
-              matchStatus={matchStatus}
-              isYourTurn={isYourTurn}
-              onClaimTimeoutWin={onClaimTimeoutWin}
-              onForceEliminate={onForceEliminate}
-              onClaimReplacement={onClaimReplacement}
-              loading={loading}
-              escL2Available={match.escL2Available}
-              escL3Available={match.escL3Available}
-              isUserAdvancedForRound={match.isUserAdvancedForRound}
-              isUserMatch={isUserMatch}
-              hideML1OnMobile={true}
-            />
-          )}
-
           {renderGameControls?.()}
 
           {isGameOver && (
@@ -1189,25 +1115,6 @@ const GameMatchLayout = ({
               </div>
             )}
             {children}
-
-            {timeoutState && (
-              <div className="w-full max-w-md mt-4">
-                <MatchTimeoutEscalation
-                  timeoutState={timeoutState}
-                  matchStatus={matchStatus}
-                  isYourTurn={isYourTurn}
-                  onClaimTimeoutWin={onClaimTimeoutWin}
-                  onForceEliminate={onForceEliminate}
-                  onClaimReplacement={onClaimReplacement}
-                  loading={loading}
-                  escL2Available={match.escL2Available}
-                  escL3Available={match.escL3Available}
-                  isUserAdvancedForRound={match.isUserAdvancedForRound}
-                  isUserMatch={isUserMatch}
-                  hideML1OnMobile={true}
-                />
-              </div>
-            )}
 
             {renderGameControls?.()}
 
