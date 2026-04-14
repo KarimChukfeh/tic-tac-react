@@ -29,6 +29,7 @@ import ParticleBackground from '../../components/shared/ParticleBackground';
 import MatchCard from '../../components/shared/MatchCard';
 import UserManualV2 from '../components/UserManualV2';
 import QuickGuideModal from '../components/QuickGuideModal';
+import CenteredErrorFlash from '../components/CenteredErrorFlash';
 import MatchEndModal from '../../components/shared/MatchEndModal';
 import ActiveMatchAlertModal from '../../components/shared/ActiveMatchAlertModal';
 import GameMatchLayout from '../../components/shared/GameMatchLayout';
@@ -73,6 +74,7 @@ import {
 } from '../lib/chess';
 import { normalizePrizeDistribution } from '../lib/prizeDistribution';
 import { resolveChessBoardState } from '../lib/matchBoardState';
+import { formatActionErrorMessage } from '../lib/actionErrors';
 
 const CHESS_PIECES = ['♔', '♕', '♖', '♗', '♘', '♙', '♚', '♛', '♜', '♝', '♞', '♟'];
 const VIRTUAL_TIER_ID = 0;
@@ -781,6 +783,17 @@ export default function ChessV2() {
     });
   }, []);
 
+  const dismissActionError = useCallback(() => {
+    setActionState(prev => (prev.type === 'error' ? { type: 'info', message: '' } : prev));
+  }, []);
+
+  const showActionError = useCallback((actionLabel, error, fallback = 'Transaction failed.') => {
+    setActionState({
+      type: 'error',
+      message: formatActionErrorMessage(actionLabel, getReadableError(error, fallback), fallback),
+    });
+  }, []);
+
   const selectedAddress = searchParams.get('instance');
   const explorerUrl = getAddressUrl(factoryAddress);
   const [hasProcessedInviteParam, setHasProcessedInviteParam] = useState(false);
@@ -1115,7 +1128,7 @@ export default function ChessV2() {
       setBrowserProvider(provider);
       setAccount(await signer.getAddress());
     } catch (error) {
-      setActionState({ type: 'error', message: getReadableError(error, 'Wallet connection failed.') });
+      showActionError('connect your wallet', error, 'Wallet connection failed.');
     } finally {
       setIsConnecting(false);
     }
@@ -1271,7 +1284,7 @@ export default function ChessV2() {
       await enterInstanceBracket(address);
     } catch (error) {
       console.error('[ChessV2 createInstance] raw error:', error);
-      setActionState({ type: 'error', message: getReadableError(error, 'Could not create instance.') });
+      showActionError('create this lobby', error, 'Could not create instance.');
     } finally {
       setCreateLoading(false);
     }
@@ -1319,11 +1332,11 @@ export default function ChessV2() {
       });
     } catch (error) {
       console.error('[ChessV2] Enroll error:', error);
-      setActionState({ type: 'error', message: getReadableError(error, 'Enrollment failed.') });
+      showActionError('join this lobby', error, 'Enrollment failed.');
     } finally {
       setTournamentsLoading(false);
     }
-  }, [viewingTournament, activeInstanceContract, account, refreshTournamentBracket]);
+  }, [viewingTournament, activeInstanceContract, account, refreshTournamentBracket, showActionError]);
 
   const handleEnterTournamentFromActivity = useCallback((_tierId, instanceRef) => {
     const instanceAddress = (typeof instanceRef === 'string' && instanceRef.startsWith('0x'))
@@ -1376,11 +1389,11 @@ export default function ChessV2() {
       setActionState({ type: 'success', message: 'Tournament state refreshed after the force-start transaction.' });
     } catch (error) {
       console.error('[ChessV2] Force start error:', error);
-      alert(`Error force-starting: ${getReadableError(error, 'Unknown error')}`);
+      showActionError('force-start this tournament', error, 'Could not force-start this tournament.');
     } finally {
       setTournamentsLoading(false);
     }
-  }, [viewingTournament, activeInstanceContract, account, refreshTournamentBracket]);
+  }, [viewingTournament, activeInstanceContract, account, refreshTournamentBracket, showActionError]);
 
   const handleCancelTournament = useCallback(async () => {
     if (!viewingTournament || !activeInstanceContract || !account) { alert('Please connect your wallet first.'); return; }
@@ -1409,11 +1422,11 @@ export default function ChessV2() {
       navigate('/chess', { replace: true, state: null });
     } catch (error) {
       console.error('[ChessV2] Cancel tournament error:', error);
-      alert(`Error cancelling tournament: ${getReadableError(error, 'Unknown error')}`);
+      showActionError('cancel this tournament', error, 'Could not cancel this tournament.');
     } finally {
       setTournamentsLoading(false);
     }
-  }, [viewingTournament, activeInstanceContract, account, navigate]);
+  }, [viewingTournament, activeInstanceContract, account, navigate, showActionError]);
 
   const handleResetEnrollmentWindow = useCallback(async () => {
     if (!viewingTournament || !activeInstanceContract || !account) { alert('Please connect your wallet first.'); return; }
@@ -1432,11 +1445,11 @@ export default function ChessV2() {
       setActionState({ type: 'success', message: 'Enrollment window reset and tournament state refreshed.' });
     } catch (error) {
       console.error('[ChessV2] Reset enrollment window error:', error);
-      alert(`Failed: ${getReadableError(error, 'Unknown error')}`);
+      showActionError('reset the enrollment window', error, 'Could not reset the enrollment window.');
     } finally {
       setTournamentsLoading(false);
     }
-  }, [viewingTournament, activeInstanceContract, account, refreshTournamentBracket]);
+  }, [viewingTournament, activeInstanceContract, account, refreshTournamentBracket, showActionError]);
 
   const handleClaimAbandonedPool = useCallback(async () => {
     if (!viewingTournament || !activeInstanceContract || !account) { alert('Please connect your wallet first.'); return; }
@@ -1469,11 +1482,11 @@ export default function ChessV2() {
       setActionState({ type: 'success', message: 'Abandoned pool claim confirmed on-chain.' });
     } catch (error) {
       console.error('[ChessV2] Claim abandoned pool error:', error);
-      alert(`Error: ${getReadableError(error, 'Unknown error')}`);
+      showActionError('claim the abandoned pool', error, 'Could not claim the abandoned pool.');
     } finally {
       setTournamentsLoading(false);
     }
-  }, [viewingTournament, activeInstanceContract, account]);
+  }, [viewingTournament, activeInstanceContract, account, showActionError]);
 
   const handleBackToTournaments = async () => {
     skipNavEffectRef.current = true;
@@ -2203,6 +2216,10 @@ export default function ChessV2() {
   return (
     <div style={{ minHeight: '100vh', background: currentTheme.gradient, color: '#fff', position: 'relative', overflow: 'clip', transition: 'background 0.8s ease-in-out' }}>
       <ParticleBackground colors={currentTheme.particleColors} symbols={CHESS_PIECES} fontSize="40px" />
+      <CenteredErrorFlash
+        message={actionState.type === 'error' ? actionState.message : ''}
+        onDismiss={dismissActionError}
+      />
       {showPrompt && <WalletBrowserPrompt onWalletChoice={handleWalletChoice} onContinueChoice={handleContinueChoice} />}
       {matchEndResult && <MatchEndModal result={matchEndResult.result} completionReason={matchEndResult.completionReason} winnerLabel={matchEndWinnerLabel} winnerAddress={matchEndWinner} loserAddress={matchEndLoser} currentAccount={account} hasNextMatch={!!nextActiveMatch} onClose={handleMatchEndModalClose} onEnterNextMatch={handleEnterNextMatch} onReturnToBracket={handleReturnToBracket} gameType="chess" roundNumber={currentMatch?.roundNumber} totalRounds={viewingTournament?.totalRounds} prizePool={viewingTournament?.prizePoolWei} reasonLabelMode="v2" />}
       {showMatchAlert && alertMatch && !isAlertMatchAlreadyOpen && <ActiveMatchAlertModal match={alertMatch} autoDismiss={isAlertMatchAlreadyOpen} onEnterMatch={() => { handleMatchAlertClose(); handlePlayMatch(alertMatch.tierId, alertMatch.instanceId, alertMatch.roundIdx, alertMatch.matchIdx); }} onDismiss={handleMatchAlertClose} />}
@@ -2260,9 +2277,8 @@ export default function ChessV2() {
           </p>
         </div>
 
-        {(actionState.message || dashboardError) ? (
-          <div className="mb-8 space-y-4">
-            <ActionMessage type={actionState.type} message={actionState.message} />
+        {dashboardError ? (
+          <div className="mb-8">
             <ActionMessage type="error" message={dashboardError} />
           </div>
         ) : null}

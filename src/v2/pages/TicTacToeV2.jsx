@@ -37,6 +37,7 @@ import ParticleBackground from '../../components/shared/ParticleBackground';
 import MatchCard from '../../components/shared/MatchCard';
 import UserManualV2 from '../components/UserManualV2';
 import QuickGuideModal from '../components/QuickGuideModal';
+import CenteredErrorFlash from '../components/CenteredErrorFlash';
 import MatchEndModal from '../../components/shared/MatchEndModal';
 import ActiveMatchAlertModal from '../../components/shared/ActiveMatchAlertModal';
 import GameMatchLayout from '../../components/shared/GameMatchLayout';
@@ -82,6 +83,7 @@ import {
 } from '../lib/tictactoe';
 import { normalizePrizeDistribution } from '../lib/prizeDistribution';
 import { resolveFlatBoard } from '../lib/matchBoardState';
+import { formatActionErrorMessage } from '../lib/actionErrors';
 
 const TICTACTOE_SYMBOLS = ['✕', '○'];
 
@@ -581,6 +583,17 @@ export default function TicTacToeV2() {
     });
   }, []);
 
+  const dismissActionError = useCallback(() => {
+    setActionState(prev => (prev.type === 'error' ? { type: 'info', message: '' } : prev));
+  }, []);
+
+  const showActionError = useCallback((actionLabel, error, fallback = 'Transaction failed.') => {
+    setActionState({
+      type: 'error',
+      message: formatActionErrorMessage(actionLabel, getReadableError(error, fallback), fallback),
+    });
+  }, []);
+
   // --- Instance selection (URL param ?instance=0x...) ---
   const selectedAddress = searchParams.get('instance');
   const explorerUrl = getAddressUrl(factoryAddress);
@@ -958,7 +971,7 @@ export default function TicTacToeV2() {
       setBrowserProvider(provider);
       setAccount(await signer.getAddress());
     } catch (error) {
-      setActionState({ type: 'error', message: getReadableError(error, 'Wallet connection failed.') });
+      showActionError('connect your wallet', error, 'Wallet connection failed.');
     } finally {
       setIsConnecting(false);
     }
@@ -1067,7 +1080,7 @@ export default function TicTacToeV2() {
       await enterInstanceBracket(address);
     } catch (error) {
       console.error('[V2 createInstance] raw error:', error);
-      setActionState({ type: 'error', message: getReadableError(error, 'Could not create instance.') });
+      showActionError('create this lobby', error, 'Could not create instance.');
     } finally {
       setCreateLoading(false);
     }
@@ -1211,11 +1224,11 @@ export default function TicTacToeV2() {
       });
     } catch (error) {
       console.error('[V2] Enroll error:', error);
-      setActionState({ type: 'error', message: getReadableError(error, 'Enrollment failed.') });
+      showActionError('join this lobby', error, 'Enrollment failed.');
     } finally {
       setTournamentsLoading(false);
     }
-  }, [viewingTournament, activeInstanceContract, account, refreshTournamentBracket]);
+  }, [viewingTournament, activeInstanceContract, account, refreshTournamentBracket, showActionError]);
 
   const handleEnterTournamentFromActivity = useCallback((_tierId, instanceRef) => {
     const instanceAddress = (typeof instanceRef === 'string' && instanceRef.startsWith('0x'))
@@ -1275,10 +1288,10 @@ export default function TicTacToeV2() {
       setTournamentsLoading(false);
     } catch (error) {
       console.error('[V2] Force start error:', error);
-      alert(`Error force-starting: ${getReadableError(error, 'Unknown error')}`);
+      showActionError('force-start this tournament', error, 'Could not force-start this tournament.');
       setTournamentsLoading(false);
     }
-  }, [viewingTournament, activeInstanceContract, account, refreshTournamentBracket]);
+  }, [viewingTournament, activeInstanceContract, account, refreshTournamentBracket, showActionError]);
 
   const handleCancelTournament = useCallback(async () => {
     if (!viewingTournament || !activeInstanceContract || !account) {
@@ -1318,10 +1331,10 @@ export default function TicTacToeV2() {
       setTournamentsLoading(false);
     } catch (error) {
       console.error('[V2] Cancel tournament error:', error);
-      alert(`Error cancelling tournament: ${getReadableError(error, 'Unknown error')}`);
+      showActionError('cancel this tournament', error, 'Could not cancel this tournament.');
       setTournamentsLoading(false);
     }
-  }, [viewingTournament, activeInstanceContract, account, navigate]);
+  }, [viewingTournament, activeInstanceContract, account, navigate, showActionError]);
 
   const handleResetEnrollmentWindow = useCallback(async () => {
     if (!viewingTournament || !activeInstanceContract || !account) { alert('Please connect your wallet first.'); return; }
@@ -1341,10 +1354,10 @@ export default function TicTacToeV2() {
       setTournamentsLoading(false);
     } catch (error) {
       console.error('[V2] Reset enrollment window error:', error);
-      alert(`Failed: ${getReadableError(error, 'Unknown error')}`);
+      showActionError('reset the enrollment window', error, 'Could not reset the enrollment window.');
       setTournamentsLoading(false);
     }
-  }, [viewingTournament, activeInstanceContract, account, refreshTournamentBracket]);
+  }, [viewingTournament, activeInstanceContract, account, refreshTournamentBracket, showActionError]);
 
   const handleClaimAbandonedPool = useCallback(async () => {
     if (!viewingTournament || !activeInstanceContract || !account) { alert('Please connect your wallet first.'); return; }
@@ -1378,10 +1391,10 @@ export default function TicTacToeV2() {
       setTournamentsLoading(false);
     } catch (error) {
       console.error('[V2] Claim abandoned pool error:', error);
-      alert(`Error: ${getReadableError(error, 'Unknown error')}`);
+      showActionError('claim the abandoned pool', error, 'Could not claim the abandoned pool.');
       setTournamentsLoading(false);
     }
-  }, [viewingTournament, activeInstanceContract, account]);
+  }, [viewingTournament, activeInstanceContract, account, showActionError]);
 
   const handleBackToTournaments = async () => {
     skipNavEffectRef.current = true;
@@ -2193,6 +2206,10 @@ export default function TicTacToeV2() {
       }}
     >
       <ParticleBackground colors={currentTheme.particleColors} symbols={TICTACTOE_SYMBOLS} fontSize="24px" count={38} />
+      <CenteredErrorFlash
+        message={actionState.type === 'error' ? actionState.message : ''}
+        onDismiss={dismissActionError}
+      />
 
       {/* Wallet Browser Prompt */}
       {showPrompt && (
@@ -2474,10 +2491,8 @@ export default function TicTacToeV2() {
           </p>
         </div>
 
-        {/* Action messages */}
-        {(actionState.message || dashboardError) ? (
-          <div className="mb-8 space-y-4">
-            <ActionMessage type={actionState.type} message={actionState.message} />
+        {dashboardError ? (
+          <div className="mb-8">
             <ActionMessage type="error" message={dashboardError} />
           </div>
         ) : null}
