@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import PlayerProfileModal from './PlayerProfileModal';
 
 vi.mock('../../v2/hooks/usePlayerProfile', () => ({
@@ -92,7 +92,7 @@ describe('PlayerProfileModal', () => {
     document.body.innerHTML = '';
   });
 
-  it('keeps the active tab when parent rerenders with a new onClose callback', () => {
+  it('renders only the tournaments tab when parent rerenders with a new onClose callback', () => {
     const baseProps = {
       isOpen: true,
       gameType: 'tictactoe',
@@ -110,8 +110,9 @@ describe('PlayerProfileModal', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Matches' }));
-    expect(screen.getByText('Tournament • Semi Finals')).toBeInTheDocument();
+    expect(screen.getByText('Enrollments')).toBeInTheDocument();
+    expect(screen.queryByText('Matches')).not.toBeInTheDocument();
+    expect(screen.getByText('4 Players')).toBeInTheDocument();
 
     rerender(
       <PlayerProfileModal
@@ -120,6 +121,34 @@ describe('PlayerProfileModal', () => {
       />
     );
 
-    expect(screen.getByText('Tournament • Semi Finals')).toBeInTheDocument();
+    expect(screen.getByText('Enrollments')).toBeInTheDocument();
+    expect(screen.queryByText('Matches')).not.toBeInTheDocument();
+    expect(screen.getByText('4 Players')).toBeInTheDocument();
+  });
+
+  it('renders the wallet pill as the explorer link and shows total payouts inline in the header', () => {
+    render(
+      <PlayerProfileModal
+        isOpen
+        onClose={vi.fn()}
+        gameType="tictactoe"
+        targetAddress="0x1111111111111111111111111111111111111111"
+        factoryContract={{}}
+        runner={{}}
+        onViewTournament={vi.fn()}
+        reasonLabelMode="v2"
+      />
+    );
+
+    const walletLink = screen.getByRole('link', { name: /0x1111\.\.\.1111/i });
+    expect(walletLink).toHaveAttribute('href', 'https://arbiscan.io/address/0x1111111111111111111111111111111111111111');
+    expect(screen.queryByRole('link', { name: 'Wallet' })).not.toBeInTheDocument();
+    expect(screen.getByText('Player:')).toBeInTheDocument();
+    expect(screen.getByText('Wins:')).toBeInTheDocument();
+    expect(screen.getByText('3')).toBeInTheDocument();
+    expect(screen.getByText('Payouts:')).toBeInTheDocument();
+    expect(screen.queryByText(/Profile Contract/i)).not.toBeInTheDocument();
+    expect(screen.getByText('0.0200 ETH')).toBeInTheDocument();
+    expect(screen.queryByText('Total Payouts')).not.toBeInTheDocument();
   });
 });
