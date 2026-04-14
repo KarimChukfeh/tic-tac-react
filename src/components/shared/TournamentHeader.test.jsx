@@ -288,12 +288,11 @@ describe('TournamentHeader', () => {
     );
 
     expect(container.querySelector('.grid.grid-cols-2.md\\:grid-cols-3')).toBeInTheDocument();
-    expect(screen.getByText('Payout')).toBeInTheDocument();
-    expect(screen.queryByText('Payouts')).not.toBeInTheDocument();
+    expect(screen.getByText('Payouts')).toBeInTheDocument();
     expect(screen.queryByText(/Enrolled Players/i)).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: /via ml1 timeout/i })).toBeInTheDocument();
-    expect(screen.getAllByText(/Transferred/i)).toHaveLength(2);
-    expect(container.querySelector('.col-span-2.md\\:col-span-1')).toContainElement(screen.getByText('Payout'));
+    expect(screen.getAllByText(/Awarded/i)).toHaveLength(2);
+    expect(container.querySelector('.col-span-2.md\\:col-span-1')).toContainElement(screen.getByText('Payouts'));
     expect(screen.queryByText('0x1111111111111111111111111111111111111111')).not.toBeInTheDocument();
     expect(screen.getByText('0x1234...5678')).toBeInTheDocument();
     expect(screen.getByText('0xabcd...abcd')).toBeInTheDocument();
@@ -332,6 +331,30 @@ describe('TournamentHeader', () => {
     expect(onPlayerAddressClick).toHaveBeenNthCalledWith(2, '0x1234567890abcdef1234567890abcdef12345678');
   });
 
+  it('shows "to You" when a completed v2 payout recipient is the connected wallet', () => {
+    render(
+      <TournamentHeader
+        {...baseProps}
+        status={2}
+        reasonLabelMode="v2"
+        completionReason={1}
+        payoutEntries={[
+          {
+            recipient: '0x1111111111111111111111111111111111111111',
+            amount: 500000000000000000n,
+          },
+          {
+            recipient: '0x1234567890abcdef1234567890abcdef12345678',
+            amount: 500000000000000000n,
+          },
+        ]}
+      />
+    );
+
+    expect(screen.getByText((_, element) => element?.textContent === 'Awarded 0.50000 ETH to You')).toBeInTheDocument();
+    expect(screen.getByText('0x1234...5678')).toBeInTheDocument();
+  });
+
   it('uses the same resolved layout for cancelled v2 tournaments', () => {
     render(
       <TournamentHeader
@@ -348,14 +371,13 @@ describe('TournamentHeader', () => {
       />
     );
 
-    expect(screen.getByText('Payout')).toBeInTheDocument();
-    expect(screen.queryByText('Payouts')).not.toBeInTheDocument();
+    expect(screen.getByText('Payouts')).toBeInTheDocument();
     expect(screen.queryByText(/Enrolled Players/i)).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: /via el0 tournament canceled/i })).toBeInTheDocument();
     expect(screen.getByText('Cancelled')).toBeInTheDocument();
     expect(screen.queryByText('Prize Pool')).not.toBeInTheDocument();
     expect(screen.getByText(/Refunded/i)).toBeInTheDocument();
-    expect(screen.queryByText(/Transferred/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Awarded/i)).not.toBeInTheDocument();
   });
 
   it('shows abandoned status styling for EL2 tournaments', () => {

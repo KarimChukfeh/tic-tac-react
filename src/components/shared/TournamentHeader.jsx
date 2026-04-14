@@ -362,11 +362,16 @@ const TournamentHeader = ({
 
   const renderPlayerAddress = (address) => {
     const normalized = address?.toLowerCase?.();
+    const isCurrentUser = normalized && normalized === account?.toLowerCase?.();
     const isClickable = typeof onPlayerAddressClick === 'function'
       && normalized
       && normalized !== ethers.ZeroAddress.toLowerCase()
-      && normalized !== account?.toLowerCase?.();
+      && !isCurrentUser;
     const label = shortenAddress(address);
+
+    if (isCurrentUser) {
+      return <span className="font-semibold">You</span>;
+    }
 
     if (!isClickable) {
       return <span className="font-mono">{label}</span>;
