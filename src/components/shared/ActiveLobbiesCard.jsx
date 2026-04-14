@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { AlertTriangle, Check, Clock3, RefreshCw, TimerReset, X, Zap } from 'lucide-react';
-import { shortenAddress, timeAgo } from '../../utils/formatters';
+import { timeAgo } from '../../utils/formatters';
 import { linkifyReasonText } from './UserManualAnchorLink';
 import { getV2TournamentResolutionText } from '../../v2/lib/reasonLabels';
 
@@ -34,77 +34,62 @@ function formatCountLabel(count, singular, plural = `${singular}s`) {
   return `${count} ${count === 1 ? singular : plural}`;
 }
 
-function getLobbyHighlights(lobby, now) {
-  const highlights = [];
-  const canShowEnrollmentEscalations = lobby.status === 0;
+function getLobbyEscalationSummary(lobby, now) {
+  if (lobby.isUserEnrolled && lobby.status === 0 && lobby.enrollmentEscalation?.el1Available) {
+    return 'EL1 available now';
+  }
 
-  if (lobby.isUserEnrolled) {
-    if (canShowEnrollmentEscalations && lobby.enrollmentEscalation?.el1Available) {
-      highlights.push({ key: 'el1-live', label: 'EL1 available now', tone: 'yellow' });
-    }
-  } else if (canShowEnrollmentEscalations && lobby.enrollmentEscalation?.el2Available) {
-    highlights.push({ key: 'el2-live', label: 'EL2 available now', tone: 'yellow' });
-  } else if (canShowEnrollmentEscalations && lobby.enrollmentEscalation?.el2Soon) {
-    highlights.push({
-      key: 'el2-soon',
-      label: `EL2 in ${formatCountdown(lobby.enrollmentEscalation.el2At, now)}`,
-      tone: 'amber',
-    });
+  if (!lobby.isUserEnrolled && lobby.status === 0 && lobby.enrollmentEscalation?.el2Available) {
+    return 'EL2 available now';
+  }
+
+  if (!lobby.isUserEnrolled && lobby.status === 0 && lobby.enrollmentEscalation?.el2Soon) {
+    return `EL2 in ${formatCountdown(lobby.enrollmentEscalation.el2At, now)}`;
   }
 
   for (const match of lobby.matchHighlights || []) {
     if (lobby.isUserEnrolled && match.ml1RelevantAvailable) {
-      highlights.push({
-        key: `ml1-${match.roundNumber}-${match.matchNumber}`,
-        label: `Match ${match.matchNumber + 1}: ML1 available`,
-        tone: 'yellow',
-      });
-      continue;
+      return `Match ${match.matchNumber + 1}: ML1 available`;
     }
 
     if (lobby.isUserEnrolled && match.ml2RelevantAvailable) {
-      highlights.push({
-        key: `ml2-${match.roundNumber}-${match.matchNumber}`,
-        label: `Match ${match.matchNumber + 1}: ML2 available`,
-        tone: 'yellow',
-      });
-      continue;
+      return `Match ${match.matchNumber + 1}: ML2 available`;
     }
 
     if (lobby.isUserEnrolled && match.ml2RelevantSoon && match.ml2At > 0) {
-      highlights.push({
-        key: `ml2-soon-${match.roundNumber}-${match.matchNumber}`,
-        label: `Match ${match.matchNumber + 1}: ML2 in ${formatCountdown(match.ml2At, now)}`,
-        tone: 'amber',
-      });
-      continue;
+      return `Match ${match.matchNumber + 1}: ML2 in ${formatCountdown(match.ml2At, now)}`;
     }
 
     if (!lobby.isUserEnrolled && match.ml3Available) {
-      highlights.push({
-        key: `ml3-${match.roundNumber}-${match.matchNumber}`,
-        label: `Match ${match.matchNumber + 1}: ML3 available`,
-        tone: 'yellow',
-      });
-      continue;
+      return `Match ${match.matchNumber + 1}: ML3 available`;
     }
 
     if (!lobby.isUserEnrolled && match.ml3Soon && match.ml2Available && match.ml3At > 0) {
-      highlights.push({
-        key: `ml3-soon-${match.roundNumber}-${match.matchNumber}`,
-        label: `Match ${match.matchNumber + 1}: ML3 in ${formatCountdown(match.ml3At, now)}`,
-        tone: 'amber',
-      });
+      return `Match ${match.matchNumber + 1}: ML3 in ${formatCountdown(match.ml3At, now)}`;
     }
   }
 
-  return highlights.slice(0, 4);
-}
+  if (lobby.isUserEnrolled && lobby.ownRelevantAvailableCount > 0) {
+    return `${formatCountLabel(lobby.ownRelevantAvailableCount, 'action')} now`;
+  }
 
-function highlightToneClass(tone) {
-  if (tone === 'yellow') return 'border-yellow-300/50 bg-yellow-400/10 text-yellow-100';
-  if (tone === 'amber') return 'border-amber-300/40 bg-amber-400/10 text-amber-100';
-  return 'border-orange-300/40 bg-orange-400/10 text-orange-100';
+  if (lobby.isUserEnrolled && lobby.ownRelevantSoonCount > 0) {
+    return `${formatCountLabel(lobby.ownRelevantSoonCount, 'action')} soon`;
+  }
+
+  if (!lobby.isUserEnrolled && lobby.publicOpportunityCount > 0) {
+    return `${formatCountLabel(lobby.publicOpportunityCount, 'public window')} live`;
+  }
+
+  if (!lobby.isUserEnrolled && lobby.publicOpportunitySoonCount > 0) {
+    return `${formatCountLabel(lobby.publicOpportunitySoonCount, 'public window')} soon`;
+  }
+
+  if (lobby.hasEscalationActivity) {
+    return 'Monitoring timers';
+  }
+
+  return 'Quiet';
 }
 
 function hasFeaturedEscalation(lobby) {
@@ -465,7 +450,6 @@ const ActiveLobbiesCard = ({
           ) : (
             <div className="space-y-3">
               {currentLobbies.map((lobby) => {
-                const highlights = getLobbyHighlights(lobby, now);
                 const tournamentType = getTournamentTypeLabel
                   ? getTournamentTypeLabel(lobby.playerCount)
                   : (lobby.playerCount === 2 ? 'Duel' : 'Tournament');
@@ -494,21 +478,11 @@ const ActiveLobbiesCard = ({
                               {isResolvedFilter ? 'You Played' : 'Yours'}
                             </span>
                           )}
-                          {lobby.isUserEnrolled && lobby.ownRelevantAvailableCount > 0 && (
-                            <span className="text-[11px] uppercase tracking-[0.16em] px-2 py-1 rounded-full border border-yellow-300/40 bg-yellow-300/15 text-yellow-100">
-                              Your Action
-                            </span>
-                          )}
-                          {!lobby.isUserEnrolled && lobby.publicOpportunityCount > 0 && (
-                            <span className="text-[11px] uppercase tracking-[0.16em] px-2 py-1 rounded-full border border-yellow-300/40 bg-yellow-300/15 text-yellow-100">
-                              Public Opportunity
-                            </span>
-                          )}
                         </div>
                         <div className="text-yellow-100/80 text-sm mt-1">
                           {isResolvedFilter
                             ? `${lobby.enrolledCount}/${lobby.playerCount} players • ${formatEntryFee(lobby.entryFeeEth)} ETH • ${timeAgo(lobby.startedAt || lobby.createdAt || 0)}`
-                            : `${shortenAddress(lobby.address)} • ${formatEntryFee(lobby.entryFeeEth)} ETH • ${lobby.enrolledCount}/${lobby.playerCount} players`}
+                            : `Entry fee ${formatEntryFee(lobby.entryFeeEth)} ETH • ${lobby.enrolledCount}/${lobby.playerCount} players`}
                         </div>
                       </div>
                       <button
@@ -547,81 +521,14 @@ const ActiveLobbiesCard = ({
                         <div className="text-sm text-white">
                           {isResolvedFilter
                             ? `${formatEntryFee(lobby.prizePoolEth || '0')} ETH`
-                            : lobby.isUserEnrolled && lobby.ownRelevantAvailableCount > 0
-                              ? `${formatCountLabel(lobby.ownRelevantAvailableCount, 'action')} now`
-                              : lobby.isUserEnrolled && lobby.ownRelevantSoonCount > 0
-                                ? `${formatCountLabel(lobby.ownRelevantSoonCount, 'action')} soon`
-                                : !lobby.isUserEnrolled && lobby.publicOpportunityCount > 0
-                                  ? `${formatCountLabel(lobby.publicOpportunityCount, 'public window')} live`
-                                  : !lobby.isUserEnrolled && lobby.publicOpportunitySoonCount > 0
-                                    ? `${formatCountLabel(lobby.publicOpportunitySoonCount, 'public window')} soon`
-                                    : lobby.hasEscalationActivity
-                                      ? 'Monitoring timers'
-                                      : 'Quiet'}
+                            : linkifyReasonText(getLobbyEscalationSummary(lobby, now), {
+                                keyPrefix: `active-lobbies-escalation-${lobby.address}`,
+                                linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white',
+                              })}
                         </div>
                       </div>
                     </div>
 
-                    {!isResolvedFilter && lobby.status === 1 ? (
-                      <div className="flex flex-wrap gap-2 mb-3 text-xs">
-                        {lobby.isUserEnrolled && lobby.matchEscalationSummary.ml1RelevantAvailableCount > 0 && (
-                          <span className="px-2 py-1 rounded-full bg-yellow-300/15 text-yellow-100 border border-yellow-300/30">
-                            {linkifyReasonText(`ML1 ${lobby.matchEscalationSummary.ml1RelevantAvailableCount}`, {
-                              keyPrefix: `active-lobbies-ml1-${lobby.instanceAddress ?? lobby.instanceId ?? 'unknown'}`,
-                              linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white',
-                            })}
-                          </span>
-                        )}
-                        {lobby.isUserEnrolled && lobby.matchEscalationSummary.ml2RelevantAvailableCount > 0 && (
-                          <span className="px-2 py-1 rounded-full bg-yellow-300/15 text-yellow-100 border border-yellow-300/30">
-                            {linkifyReasonText(`ML2 ${lobby.matchEscalationSummary.ml2RelevantAvailableCount}`, {
-                              keyPrefix: `active-lobbies-ml2-${lobby.instanceAddress ?? lobby.instanceId ?? 'unknown'}`,
-                              linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white',
-                            })}
-                          </span>
-                        )}
-                        {lobby.isUserEnrolled && lobby.matchEscalationSummary.ml2RelevantSoonCount > 0 && (
-                          <span className="px-2 py-1 rounded-full bg-yellow-300/10 text-yellow-50 border border-yellow-300/20">
-                            {linkifyReasonText(`ML2 soon ${lobby.matchEscalationSummary.ml2RelevantSoonCount}`, {
-                              keyPrefix: `active-lobbies-ml2-soon-${lobby.instanceAddress ?? lobby.instanceId ?? 'unknown'}`,
-                              linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white',
-                            })}
-                          </span>
-                        )}
-                        {!lobby.isUserEnrolled && lobby.matchEscalationSummary.ml3AvailableCount > 0 && (
-                          <span className="px-2 py-1 rounded-full bg-yellow-300/15 text-yellow-100 border border-yellow-300/30">
-                            {linkifyReasonText(`ML3 ${lobby.matchEscalationSummary.ml3AvailableCount}`, {
-                              keyPrefix: `active-lobbies-ml3-${lobby.instanceAddress ?? lobby.instanceId ?? 'unknown'}`,
-                              linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white',
-                            })}
-                          </span>
-                        )}
-                        {!lobby.isUserEnrolled && lobby.matchEscalationSummary.ml3SoonCount > 0 && (
-                          <span className="px-2 py-1 rounded-full bg-yellow-300/10 text-yellow-50 border border-yellow-300/20">
-                            {linkifyReasonText(`ML3 soon ${lobby.matchEscalationSummary.ml3SoonCount}`, {
-                              keyPrefix: `active-lobbies-ml3-soon-${lobby.instanceAddress ?? lobby.instanceId ?? 'unknown'}`,
-                              linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white',
-                            })}
-                          </span>
-                        )}
-                      </div>
-                    ) : null}
-
-                    {!isResolvedFilter && highlights.length > 0 && (
-                      <div className="space-y-2">
-                        {highlights.map((highlight) => (
-                          <div
-                            key={highlight.key}
-                            className={`rounded-lg border px-3 py-2 text-sm ${highlightToneClass(highlight.tone)}`}
-                          >
-                            {linkifyReasonText(highlight.label, {
-                              keyPrefix: `active-lobbies-highlight-${highlight.key}`,
-                              linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white',
-                            })}
-                          </div>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 );
               })}
