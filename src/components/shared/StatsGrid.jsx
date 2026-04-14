@@ -9,6 +9,7 @@ import { ChevronDown } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { CompletionReason } from '../../utils/completionReasons';
 import { shortenAddress } from '../../utils/formatters';
+import { INTERACTIVE_ADDRESS_BUTTON_CLASSNAME } from './addressButtonStyles';
 
 const getCompactMobileAddress = (address) => {
   if (!address || address === '0x0000000000000000000000000000000000000000') return 'TBD';
@@ -101,6 +102,7 @@ const getStatusDisplay = (status, resolutionReason = null) => {
  * @param {string|null} props.account - Current user's address
  * @param {string|null} props.thirdCardLabel - Optional replacement label for the third card
  * @param {React.ReactNode|null} props.thirdCardContent - Optional replacement content for the third card
+ * @param {(address: string) => void | null} props.onPlayerAddressClick - Optional click handler for non-current player addresses
  */
 const StatsGrid = ({
   enrolledCount,
@@ -118,6 +120,7 @@ const StatsGrid = ({
   account = null,
   thirdCardLabel = null,
   thirdCardContent = null,
+  onPlayerAddressClick = null,
 }) => {
   const statusDisplay = getStatusDisplay(status, resolutionReason);
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
@@ -211,6 +214,7 @@ const StatsGrid = ({
           <div className="mt-3 space-y-2 max-h-40 overflow-y-auto pr-1 [&::-webkit-scrollbar]:w-0.5 [&::-webkit-scrollbar-track]:bg-purple-950/40 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-purple-500/70 [&::-webkit-scrollbar-thumb]:to-blue-500/70 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:from-purple-400 hover:[&::-webkit-scrollbar-thumb]:to-blue-400 [scrollbar-width:thin] [scrollbar-color:rgb(168_85_247_/_0.7)_rgb(24_24_27_/_0.4)]">
             {playersDetails.map((address, index) => {
               const isCurrentUser = address?.toLowerCase() === account?.toLowerCase();
+              const isClickable = typeof onPlayerAddressClick === 'function' && !isCurrentUser;
               return (
                 <div
                   key={`${address}-${index}`}
@@ -220,8 +224,22 @@ const StatsGrid = ({
                       : 'border-purple-400/20 bg-purple-500/10 text-purple-200'
                   }`}
                 >
-                  <span className="md:hidden">{getCompactMobileAddress(address)}</span>
-                  <span className="hidden md:inline">{shortenAddress(address)}</span>
+                  {isClickable ? (
+                    <button
+                      type="button"
+                      onClick={() => onPlayerAddressClick(address)}
+                      className={INTERACTIVE_ADDRESS_BUTTON_CLASSNAME}
+                      aria-label={`Open stats for ${shortenAddress(address)}`}
+                    >
+                      <span className="md:hidden">{getCompactMobileAddress(address)}</span>
+                      <span className="hidden md:inline">{shortenAddress(address)}</span>
+                    </button>
+                  ) : (
+                    <>
+                      <span className="md:hidden">{getCompactMobileAddress(address)}</span>
+                      <span className="hidden md:inline">{shortenAddress(address)}</span>
+                    </>
+                  )}
                   {isCurrentUser && <span className="ml-2 text-[10px] font-sans uppercase tracking-wide text-yellow-300">You</span>}
                 </div>
               );

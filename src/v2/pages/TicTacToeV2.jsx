@@ -54,6 +54,7 @@ import RecentInstanceCard from '../../components/shared/RecentInstanceCard';
 import UserManualAnchorIcon from '../../components/shared/UserManualAnchorIcon';
 import V2GameLobbyIntro from '../../components/shared/V2GameLobbyIntro';
 import V2ContractsTable from '../../components/shared/V2ContractsTable';
+import PlayerProfileModal from '../../components/shared/PlayerProfileModal';
 import WalletBrowserPrompt from '../../components/WalletBrowserPrompt';
 import EntryFeeSlider, { DEFAULT_SELECTED_ENTRY_FEE } from '../components/EntryFeeSlider';
 import TimeoutSettingSlider, { clampCreateTimeoutValue, isCreateTimeoutField, normalizeCreateTimeouts } from '../components/TimeoutSettingSlider';
@@ -282,6 +283,7 @@ const TournamentBracket = ({
   entryFee,
   isFull,
   instanceContract,
+  onPlayerAddressClick,
 }) => {
   const {
     status,
@@ -372,6 +374,7 @@ const TournamentBracket = ({
         onCancelTournament={onCancelTournament ? () => onCancelTournament(tierId, instanceId) : null}
         forceShowResetEnrollmentWindow={Boolean(status === 0 && enrolledCount === 1 && isEnrolled)}
         contract={instanceContract}
+        onPlayerAddressClick={onPlayerAddressClick}
       />
 
       <div ref={bracketViewRef} className={`bg-gradient-to-br from-slate-900/50 to-purple-900/30 backdrop-blur-lg rounded-2xl p-8 border ${colors.headerBorder}`}>
@@ -621,6 +624,7 @@ export default function TicTacToeV2() {
   // --- Mobile panel coordination ---
   const [expandedPanel, setExpandedPanel] = useState(null);
   const [activeTooltip, setActiveTooltip] = useState(null);
+  const [selectedProfileAddress, setSelectedProfileAddress] = useState(null);
   const [isTabActive, setIsTabActive] = useState(typeof document === 'undefined' ? true : !document.hidden);
   const isPlayerActivityContextActive = Boolean(activeInstanceContract || viewingTournament || currentMatch);
   const shouldPollPlayerActivity = Boolean(account) && isTabActive;
@@ -1072,6 +1076,15 @@ export default function TicTacToeV2() {
   const enterInstanceBracket = useCallback(async (address) => {
     if (!address) return;
     try {
+      setCurrentMatch(null);
+      setMoveHistory([]);
+      setIsSpectator(false);
+      setMoveTxTimeout(null);
+      setMatchEndResult(null);
+      setMatchEndWinner(null);
+      setMatchEndLoser(null);
+      setMatchEndWinnerLabel('');
+      previousBoardRef.current = null;
       setTournamentsLoading(true);
       const bracketData = await refreshTournamentBracket(address);
       if (bracketData) {
@@ -2218,6 +2231,17 @@ export default function TicTacToeV2() {
         />
       )}
 
+      <PlayerProfileModal
+        isOpen={Boolean(selectedProfileAddress)}
+        onClose={() => setSelectedProfileAddress(null)}
+        gameType="tictactoe"
+        targetAddress={selectedProfileAddress}
+        factoryContract={resolvedFactoryContract}
+        runner={rpcProvider}
+        onViewTournament={enterInstanceBracket}
+        reasonLabelMode="v2"
+      />
+
       {/* Bottom Nav Bar (mobile + desktop — mirrors V1) */}
       <div className="fixed bottom-0 left-0 right-0 z-50 md:static md:z-auto">
         {/* Mobile */}
@@ -2507,6 +2531,7 @@ export default function TicTacToeV2() {
               onClaimReplacement={isSpectator ? null : handleClaimMatchSlotByReplacement}
               onEnterNextMatch={handleEnterNextMatch}
               onReturnToBracket={handleReturnToBracket}
+              onPlayerAddressClick={setSelectedProfileAddress}
               hasNextActiveMatch={!!nextActiveMatch}
               playerCount={viewingTournament?.playerCount || null}
               playerConfig={(() => {
@@ -2637,6 +2662,7 @@ export default function TicTacToeV2() {
                   entryFee={viewingTournament?.entryFeeEth ?? '0'}
                   isFull={viewingTournament?.enrolledCount >= viewingTournament?.playerCount}
                   instanceContract={activeInstanceContract}
+                  onPlayerAddressClick={setSelectedProfileAddress}
                 />
               </div>
             ) : (

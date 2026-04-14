@@ -11,6 +11,7 @@ import { isDraw } from '../../utils/completionReasons';
 import { getV2NeutralMatchReasonLabel, getV2ReasonCode } from '../../v2/lib/reasonLabels';
 import UserManualAnchorLink from './UserManualAnchorLink';
 import { getUserManualHrefForReasonCode } from '../../utils/userManualLinks';
+import { INTERACTIVE_ADDRESS_BUTTON_CLASSNAME } from './addressButtonStyles';
 
 const MatchHeader = ({
   // gameType available for future game-specific customization
@@ -24,6 +25,7 @@ const MatchHeader = ({
   tournamentInfo, // { tierId, instanceId, roundNumber, matchNumber, playerCount }
   theme,
   reasonLabelMode = 'default',
+  onPlayerAddressClick = null,
 }) => {
   const getStatusBadge = () => {
     const useV2ReasonLabels = reasonLabelMode === 'v2';
@@ -77,6 +79,13 @@ const MatchHeader = ({
   const player2Label = shortenAddress(tournamentInfo?.player2);
   const winnerLabel = shortenAddress(tournamentInfo?.winner);
   const connectedAccount = account?.toLowerCase?.() || null;
+  const canOpenPlayerProfile = (address) => {
+    const normalized = address?.toLowerCase?.();
+    if (!normalized || normalized === '0x0000000000000000000000000000000000000000') return false;
+    if (matchStatus !== 2 || reasonLabelMode !== 'v2') return false;
+    if (typeof onPlayerAddressClick !== 'function') return false;
+    return normalized !== connectedAccount;
+  };
   const renderYouBadge = () => (
     <span className="absolute -right-1 -top-3 rounded-full border border-yellow-300/50 bg-yellow-400/90 px-1 py-[1px] text-[7px] font-black uppercase tracking-[0.16em] text-yellow-950 shadow-[0_0_10px_rgba(250,204,21,0.45)] animate-bounce">
       YOU
@@ -91,15 +100,30 @@ const MatchHeader = ({
     };
     const isConnectedWallet = connectedAccount && address?.toLowerCase?.() === connectedAccount;
     const { symbolPosition = 'after', symbolSize = 'default' } = options;
+    const Component = canOpenPlayerProfile(address) ? 'button' : 'span';
+    const interactiveProps = canOpenPlayerProfile(address)
+      ? {
+        type: 'button',
+        onClick: () => onPlayerAddressClick(address),
+        className: `${INTERACTIVE_ADDRESS_BUTTON_CLASSNAME} relative inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] shadow-[0_0_16px_rgba(255,255,255,0.06)] md:px-2.5 md:py-1.5 md:text-xs ${tones[tone] || tones.cyan}`,
+        'aria-label': `Open stats for ${label}`,
+      }
+      : {
+        className: `relative inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] shadow-[0_0_16px_rgba(255,255,255,0.06)] md:px-2.5 md:py-1.5 md:text-xs ${tones[tone] || tones.cyan}`,
+      };
+
     return (
-      <span className={`relative inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] shadow-[0_0_16px_rgba(255,255,255,0.06)] md:px-2.5 md:text-xs ${tones[tone] || tones.cyan}`}>
+      <Component {...interactiveProps}>
         {symbol && symbolPosition === 'before' ? renderMatchHistorySymbol(symbol, symbolSize) : null}
         <span className="font-mono">{label}</span>
         {symbol && symbolPosition !== 'before' ? renderMatchHistorySymbol(symbol, symbolSize) : null}
         {isConnectedWallet ? renderYouBadge() : null}
-      </span>
+      </Component>
     );
   };
+  const renderPlayerHeaderPill = (address, label, tone, symbol) => (
+    renderAddressPill(label, tone, symbol, address, { symbolPosition: 'before' })
+  );
   const renderMatchHistorySymbol = (symbol, size = 'default') => {
     if (!symbol) return null;
     const isSmall = size === 'small';
@@ -309,25 +333,11 @@ const MatchHeader = ({
                   Players
                 </div>
                 <div className={`flex flex-wrap items-center gap-2 ${theme.textMuted}`}>
-                  <span className="relative inline-flex items-center gap-1.5 rounded-full border border-cyan-300/35 bg-cyan-400/12 px-2.5 py-0.5 text-xs text-cyan-100 shadow-[0_0_20px_rgba(34,211,238,0.12)] md:px-3 md:py-1 md:text-sm">
-                    <span className="font-mono">{player1Label}</span>
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-100/80 md:text-[11px]">
-                      as
-                    </span>
-                    {renderMatchHistorySymbol(tournamentInfo?.player1Symbol)}
-                    {connectedAccount && tournamentInfo?.player1?.toLowerCase?.() === connectedAccount ? renderYouBadge() : null}
-                  </span>
+                  {renderPlayerHeaderPill(tournamentInfo?.player1, player1Label, 'cyan', tournamentInfo?.player1Symbol)}
                   <span className="text-[10px] font-semibold uppercase tracking-[0.28em] text-purple-200/80 md:text-xs md:tracking-[0.32em]">
                     vs
                   </span>
-                  <span className="relative inline-flex items-center gap-1.5 rounded-full border border-pink-300/35 bg-pink-400/12 px-2.5 py-0.5 text-xs text-pink-100 shadow-[0_0_20px_rgba(244,114,182,0.12)] md:px-3 md:py-1 md:text-sm">
-                    <span className="font-mono">{player2Label}</span>
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-pink-100/80 md:text-[11px]">
-                      as
-                    </span>
-                    {renderMatchHistorySymbol(tournamentInfo?.player2Symbol)}
-                    {connectedAccount && tournamentInfo?.player2?.toLowerCase?.() === connectedAccount ? renderYouBadge() : null}
-                  </span>
+                  {renderPlayerHeaderPill(tournamentInfo?.player2, player2Label, 'pink', tournamentInfo?.player2Symbol)}
                 </div>
               </div>
             ) : (

@@ -201,6 +201,7 @@ export function useConnectFourV2MatchHistory(factoryContract, runner, account, o
 
   useEffect(() => {
     if (!enabled || !factoryContract || !runner || !account) return undefined;
+    if (!Number.isFinite(pollIntervalMs) || pollIntervalMs <= 0) return undefined;
     const id = setInterval(() => fetch(), pollIntervalMs);
     return () => clearInterval(id);
   }, [account, enabled, factoryContract, fetch, pollIntervalMs, runner]);

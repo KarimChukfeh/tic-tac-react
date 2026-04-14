@@ -304,6 +304,34 @@ describe('TournamentHeader', () => {
     expect(screen.getByText('0x2222...2222')).toBeInTheDocument();
   });
 
+  it('opens player stats callbacks for non-connected addresses in completed v2 headers', () => {
+    const onPlayerAddressClick = vi.fn();
+
+    render(
+      <TournamentHeader
+        {...baseProps}
+        status={2}
+        reasonLabelMode="v2"
+        completionReason={1}
+        payoutEntries={[
+          {
+            recipient: '0x1234567890abcdef1234567890abcdef12345678',
+            amount: 500000000000000000n,
+          },
+        ]}
+        onPlayerAddressClick={onPlayerAddressClick}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Expand players' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Open stats for 0x2222...2222' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Open stats for 0x1234...5678' }));
+
+    expect(screen.queryByRole('button', { name: 'Open stats for 0x1111...1111' })).not.toBeInTheDocument();
+    expect(onPlayerAddressClick).toHaveBeenNthCalledWith(1, '0x2222222222222222222222222222222222222222');
+    expect(onPlayerAddressClick).toHaveBeenNthCalledWith(2, '0x1234567890abcdef1234567890abcdef12345678');
+  });
+
   it('uses the same resolved layout for cancelled v2 tournaments', () => {
     render(
       <TournamentHeader

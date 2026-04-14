@@ -44,7 +44,6 @@ describe('MatchHeader', () => {
     expect(screen.getByText('Players')).toBeInTheDocument();
     expect(screen.getByText('Status')).toBeInTheDocument();
     expect(screen.getAllByText('0x1111...1111').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('as').length).toBeGreaterThan(1);
     expect(screen.getByText('YOU')).toBeInTheDocument();
     expect(screen.getByText('vs')).toBeInTheDocument();
     expect(screen.getAllByText('0x2222...2222').length).toBeGreaterThan(0);
@@ -110,7 +109,6 @@ describe('MatchHeader', () => {
     expect(screen.getByText('Players')).toBeInTheDocument();
     expect(screen.getByText('Status')).toBeInTheDocument();
     expect(screen.getAllByText('0x1111...1111').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('as').length).toBeGreaterThan(1);
     expect(screen.getByText('vs')).toBeInTheDocument();
     expect(screen.getAllByText('0x2222...2222').length).toBeGreaterThan(0);
     expect(screen.queryByText('Match 1 • Round 1')).not.toBeInTheDocument();
@@ -233,6 +231,29 @@ describe('MatchHeader', () => {
     expect(screen.getByText('Both players')).toBeInTheDocument();
     expect(screen.getByText('stalled and were replaced by')).toBeInTheDocument();
     expect(screen.getAllByText('0x3333...3333').length).toBeGreaterThan(0);
+  });
+
+  it('opens player stats callbacks for non-connected addresses in completed v2 matches', () => {
+    const onPlayerAddressClick = vi.fn();
+
+    render(
+      <MatchHeader
+        {...baseProps}
+        reasonLabelMode="v2"
+        matchStatus={2}
+        completionReason={1}
+        onPlayerAddressClick={onPlayerAddressClick}
+        tournamentInfo={{
+          ...baseProps.tournamentInfo,
+          winner: baseProps.tournamentInfo.player1,
+        }}
+      />
+    );
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Open stats for 0x2222...2222' })[0]);
+
+    expect(screen.queryByRole('button', { name: 'Open stats for 0x1111...1111' })).not.toBeInTheDocument();
+    expect(onPlayerAddressClick).toHaveBeenCalledWith('0x2222222222222222222222222222222222222222');
   });
 
   it('keeps the legacy back label outside V2 mode', () => {

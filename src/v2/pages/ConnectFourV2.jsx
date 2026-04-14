@@ -37,6 +37,7 @@ import RecentInstanceCard from '../../components/shared/RecentInstanceCard';
 import UserManualAnchorIcon from '../../components/shared/UserManualAnchorIcon';
 import V2GameLobbyIntro from '../../components/shared/V2GameLobbyIntro';
 import V2ContractsTable from '../../components/shared/V2ContractsTable';
+import PlayerProfileModal from '../../components/shared/PlayerProfileModal';
 import WalletBrowserPrompt from '../../components/WalletBrowserPrompt';
 import EntryFeeSlider, { DEFAULT_SELECTED_ENTRY_FEE } from '../components/EntryFeeSlider';
 import TimeoutSettingSlider, { clampCreateTimeoutValue, isCreateTimeoutField, normalizeCreateTimeouts } from '../components/TimeoutSettingSlider';
@@ -537,6 +538,7 @@ const TournamentBracket = ({
   entryFee,
   isFull,
   instanceContract,
+  onPlayerAddressClick,
 }) => {
   const {
     status,
@@ -615,6 +617,7 @@ const TournamentBracket = ({
         onCancelTournament={onCancelTournament ? () => onCancelTournament(VIRTUAL_TIER_ID, VIRTUAL_INSTANCE_ID) : null}
         forceShowResetEnrollmentWindow={Boolean(status === 0 && enrolledCount === 1 && isEnrolled)}
         contract={instanceContract}
+        onPlayerAddressClick={onPlayerAddressClick}
       />
 
       <div ref={bracketViewRef} className="bg-gradient-to-br from-slate-900/50 to-purple-900/30 backdrop-blur-lg rounded-2xl p-8 border border-purple-400/30">
@@ -839,6 +842,7 @@ export default function ConnectFourV2() {
 
   const [expandedPanel, setExpandedPanel] = useState(null);
   const [activeTooltip, setActiveTooltip] = useState(null);
+  const [selectedProfileAddress, setSelectedProfileAddress] = useState(null);
   const [isTabActive, setIsTabActive] = useState(typeof document === 'undefined' ? true : !document.hidden);
   const isPlayerActivityContextActive = Boolean(activeInstanceContract || viewingTournament || currentMatch);
   const shouldPollPlayerActivity = Boolean(account) && isTabActive;
@@ -1201,6 +1205,15 @@ export default function ConnectFourV2() {
   const enterInstanceBracket = useCallback(async (address) => {
     if (!address) return;
     try {
+      setCurrentMatch(null);
+      setMoveHistory([]);
+      setIsSpectator(false);
+      setMoveTxTimeout(null);
+      setMatchEndResult(null);
+      setMatchEndWinner(null);
+      setMatchEndLoser(null);
+      setMatchEndWinnerLabel('');
+      previousBoardRef.current = null;
       setTournamentsLoading(true);
       const bracketData = await refreshTournamentBracket(address);
       if (bracketData) {
@@ -2446,6 +2459,17 @@ export default function ConnectFourV2() {
         />
       )}
 
+      <PlayerProfileModal
+        isOpen={Boolean(selectedProfileAddress)}
+        onClose={() => setSelectedProfileAddress(null)}
+        gameType="connectfour"
+        targetAddress={selectedProfileAddress}
+        factoryContract={resolvedFactoryContract}
+        runner={rpcProvider}
+        onViewTournament={enterInstanceBracket}
+        reasonLabelMode="v2"
+      />
+
       <div className="fixed bottom-0 left-0 right-0 z-50 md:static md:z-auto">
       <div className="md:hidden bg-gradient-to-b from-slate-800 to-slate-900 border-t border-purple-400/30 px-4 py-2.5 flex items-center justify-between">
           <GamesCard
@@ -2729,6 +2753,7 @@ export default function ConnectFourV2() {
               onClaimReplacement={isSpectator ? null : handleClaimMatchSlotByReplacement}
               onEnterNextMatch={handleEnterNextMatch}
               onReturnToBracket={handleReturnToBracket}
+              onPlayerAddressClick={setSelectedProfileAddress}
               hasNextActiveMatch={!!nextActiveMatch}
               playerCount={viewingTournament?.playerCount || null}
               playerConfig={(() => {
@@ -2842,6 +2867,7 @@ export default function ConnectFourV2() {
                   entryFee={viewingTournament?.entryFeeEth ?? '0'}
                   isFull={viewingTournament?.enrolledCount >= viewingTournament?.playerCount}
                   instanceContract={activeInstanceContract}
+                  onPlayerAddressClick={setSelectedProfileAddress}
                 />
               </div>
             ) : (

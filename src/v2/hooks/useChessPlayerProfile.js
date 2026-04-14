@@ -144,6 +144,7 @@ export function useChessPlayerProfile(factoryContract, runner, account, options 
 
   useEffect(() => {
     if (!enabled || !factoryContract || !runner || !account) return;
+    if (!Number.isFinite(pollIntervalMs) || pollIntervalMs <= 0) return;
     const id = setInterval(() => fetch(), pollIntervalMs);
     return () => clearInterval(id);
   }, [account, enabled, factoryContract, fetch, pollIntervalMs, runner]);

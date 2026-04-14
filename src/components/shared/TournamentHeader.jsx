@@ -24,6 +24,7 @@ import {
 } from '../../v2/lib/reasonLabels';
 import UserManualAnchorLink, { linkifyReasonText } from './UserManualAnchorLink';
 import { getUserManualHrefForReasonCode } from '../../utils/userManualLinks';
+import { INTERACTIVE_ADDRESS_BUTTON_CLASSNAME } from './addressButtonStyles';
 
 // Game-specific configurations
 const GAME_CONFIGS = {
@@ -130,6 +131,7 @@ const TournamentHeader = ({
   // Optional: Custom colors override
   colors: customColors,
   reasonLabelMode = 'default',
+  onPlayerAddressClick = null,
 }) => {
   const formatEnrollmentFee = (value) => {
     if (typeof value === 'bigint') return ethers.formatEther(value);
@@ -358,6 +360,30 @@ const TournamentHeader = ({
     )
     : null;
 
+  const renderPlayerAddress = (address) => {
+    const normalized = address?.toLowerCase?.();
+    const isClickable = typeof onPlayerAddressClick === 'function'
+      && normalized
+      && normalized !== ethers.ZeroAddress.toLowerCase()
+      && normalized !== account?.toLowerCase?.();
+    const label = shortenAddress(address);
+
+    if (!isClickable) {
+      return <span className="font-mono">{label}</span>;
+    }
+
+    return (
+      <button
+        type="button"
+        onClick={() => onPlayerAddressClick(address)}
+        className={INTERACTIVE_ADDRESS_BUTTON_CLASSNAME}
+        aria-label={`Open stats for ${label}`}
+      >
+        {label}
+      </button>
+    );
+  };
+
   const completedPayoutCardContent = resolvedPayoutEntries.length > 0
     ? (
       <div className="space-y-2">
@@ -366,7 +392,7 @@ const TournamentHeader = ({
             <span className="text-purple-300">{isV2El0CancelledState ? 'Refunded ' : 'Transferred '}</span>
             <span className="font-semibold text-yellow-400">{formatResolutionEth(amount)} ETH</span>
             <span className="text-purple-300"> to </span>
-            <span className="font-mono">{shortenAddress(recipient)}</span>
+            {renderPlayerAddress(recipient)}
           </div>
         ))}
       </div>
@@ -446,6 +472,7 @@ const TournamentHeader = ({
         colors={colors}
         syncDots={syncDots}
         statusTimerTarget={statusTimerTarget}
+        onPlayerAddressClick={isV2ResolvedState ? onPlayerAddressClick : null}
       />
 
       {/* Enroll Button */}

@@ -109,6 +109,7 @@ const GameMatchLayout = ({
 
   // Optional reason label behavior
   reasonLabelMode = 'default',
+  onPlayerAddressClick = null,
 
   // Children = the game board component
   children
@@ -1287,6 +1288,7 @@ const GameMatchLayout = ({
           loser: match.loser,
         }}
         theme={theme}
+        onPlayerAddressClick={onPlayerAddressClick}
       />
 
       {/* Mobile: Sticky player cards (direct child of root for full-page sticky range) */}

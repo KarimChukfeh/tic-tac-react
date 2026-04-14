@@ -41,6 +41,7 @@ import CapturedPieces from '../../components/shared/CapturedPieces';
 import UserManualAnchorIcon from '../../components/shared/UserManualAnchorIcon';
 import V2GameLobbyIntro from '../../components/shared/V2GameLobbyIntro';
 import V2ContractsTable from '../../components/shared/V2ContractsTable';
+import PlayerProfileModal from '../../components/shared/PlayerProfileModal';
 import WalletBrowserPrompt from '../../components/WalletBrowserPrompt';
 import EntryFeeSlider, { DEFAULT_SELECTED_ENTRY_FEE } from '../components/EntryFeeSlider';
 import TimeoutSettingSlider, { clampCreateTimeoutValue, isCreateTimeoutField, normalizeCreateTimeouts } from '../components/TimeoutSettingSlider';
@@ -480,7 +481,7 @@ function calculateCapturedPieces(board) {
   return { white: whiteCaptured, black: blackCaptured };
 }
 
-const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceEliminate, onClaimReplacement, onManualStart, onClaimAbandonedPool, onResetEnrollmentWindow, onCancelTournament, onEnroll, onConnectWallet, account, loading, connectLoading, syncDots, isEnrolled, entryFee, isFull, instanceContract }) => {
+const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceEliminate, onClaimReplacement, onManualStart, onClaimAbandonedPool, onResetEnrollmentWindow, onCancelTournament, onEnroll, onConnectWallet, account, loading, connectLoading, syncDots, isEnrolled, entryFee, isFull, instanceContract, onPlayerAddressClick }) => {
   const { status, currentRound, enrolledCount, rounds, playerCount, players, enrollmentTimeout } = tournamentData;
   const bracketViewRef = useRef(null);
   const prevStatusRef = useRef(status);
@@ -541,6 +542,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
         onCancelTournament={onCancelTournament ? () => onCancelTournament(VIRTUAL_TIER_ID, VIRTUAL_INSTANCE_ID) : null}
         forceShowResetEnrollmentWindow={Boolean(status === 0 && enrolledCount === 1 && isEnrolled)}
         contract={instanceContract}
+        onPlayerAddressClick={onPlayerAddressClick}
       />
       <div ref={bracketViewRef} className="bg-gradient-to-br from-slate-900/50 to-purple-900/30 backdrop-blur-lg rounded-2xl p-8 border border-purple-400/30">
         <h3 className="text-2xl font-bold text-purple-300 mb-3 flex items-center gap-2"><Grid size={24} />{tournamentTypeLabel} Bracket</h3>
@@ -758,6 +760,7 @@ export default function ChessV2() {
   const [leaderboard] = useState([]);
   const [expandedPanel, setExpandedPanel] = useState(null);
   const [activeTooltip, setActiveTooltip] = useState(null);
+  const [selectedProfileAddress, setSelectedProfileAddress] = useState(null);
   const [isTabActive, setIsTabActive] = useState(typeof document === 'undefined' ? true : !document.hidden);
   const isPlayerActivityContextActive = Boolean(activeInstanceContract || viewingTournament || currentMatch);
   const shouldPollPlayerActivity = Boolean(account) && isTabActive;
@@ -1105,6 +1108,15 @@ export default function ChessV2() {
   const enterInstanceBracket = useCallback(async (address) => {
     if (!address) return;
     try {
+      setCurrentMatch(null);
+      setMoveHistory([]);
+      setIsSpectator(false);
+      setMoveTxTimeout(null);
+      setMatchEndResult(null);
+      setMatchEndWinner(null);
+      setMatchEndLoser(null);
+      setMatchEndWinnerLabel('');
+      previousBoardRef.current = null;
       setTournamentsLoading(true);
       const bracketData = await refreshTournamentBracket(address);
       if (bracketData) {
@@ -2115,6 +2127,16 @@ export default function ChessV2() {
       {showPrompt && <WalletBrowserPrompt onWalletChoice={handleWalletChoice} onContinueChoice={handleContinueChoice} />}
       {matchEndResult && <MatchEndModal result={matchEndResult.result} completionReason={matchEndResult.completionReason} winnerLabel={matchEndWinnerLabel} winnerAddress={matchEndWinner} loserAddress={matchEndLoser} currentAccount={account} hasNextMatch={!!nextActiveMatch} onClose={handleMatchEndModalClose} onEnterNextMatch={handleEnterNextMatch} onReturnToBracket={handleReturnToBracket} gameType="chess" roundNumber={currentMatch?.roundNumber} totalRounds={viewingTournament?.totalRounds} prizePool={viewingTournament?.prizePoolWei} reasonLabelMode="v2" />}
       {showMatchAlert && alertMatch && !isAlertMatchAlreadyOpen && <ActiveMatchAlertModal match={alertMatch} autoDismiss={isAlertMatchAlreadyOpen} onEnterMatch={() => { handleMatchAlertClose(); handlePlayMatch(alertMatch.tierId, alertMatch.instanceId, alertMatch.roundIdx, alertMatch.matchIdx); }} onDismiss={handleMatchAlertClose} />}
+      <PlayerProfileModal
+        isOpen={Boolean(selectedProfileAddress)}
+        onClose={() => setSelectedProfileAddress(null)}
+        gameType="chess"
+        targetAddress={selectedProfileAddress}
+        factoryContract={resolvedFactoryContract}
+        runner={rpcProvider}
+        onViewTournament={enterInstanceBracket}
+        reasonLabelMode="v2"
+      />
 
       <div className="fixed bottom-0 left-0 right-0 z-50 md:static md:z-auto">
         <div className="md:hidden bg-gradient-to-b from-slate-800 to-slate-900 border-t border-purple-400/30 px-4 py-2.5 flex items-center justify-between">
@@ -2216,6 +2238,7 @@ export default function ChessV2() {
               onClaimReplacement={isSpectator ? null : handleClaimMatchSlotByReplacement}
               onEnterNextMatch={handleEnterNextMatch}
               onReturnToBracket={handleReturnToBracket}
+              onPlayerAddressClick={setSelectedProfileAddress}
               hasNextActiveMatch={!!nextActiveMatch}
               playerCount={viewingTournament?.playerCount || null}
               playerConfig={{ player1: { icon: '♚', label: 'White' }, player2: { icon: '♔', label: 'Black' } }}
@@ -2278,7 +2301,7 @@ export default function ChessV2() {
           <>
             {viewingTournament ? (
               <div ref={tournamentBracketRef}>
-                <TournamentBracket tournamentData={viewingTournament} onBack={handleBackToTournaments} onEnterMatch={handlePlayMatch} onForceEliminate={handleForceEliminateStalledMatch} onClaimReplacement={handleClaimMatchSlotByReplacement} onManualStart={handleManualStart} onClaimAbandonedPool={handleClaimAbandonedPool} onResetEnrollmentWindow={handleResetEnrollmentWindow} onCancelTournament={handleCancelTournament} onEnroll={handleEnroll} onConnectWallet={connectWallet} account={account} loading={tournamentsLoading} connectLoading={isConnecting} syncDots={bracketSyncDots} isEnrolled={viewingTournament?.players?.some(addr => addr.toLowerCase() === account?.toLowerCase())} entryFee={viewingTournament?.entryFeeEth ?? '0'} isFull={viewingTournament?.enrolledCount >= viewingTournament?.playerCount} instanceContract={activeInstanceContract} />
+                <TournamentBracket tournamentData={viewingTournament} onBack={handleBackToTournaments} onEnterMatch={handlePlayMatch} onForceEliminate={handleForceEliminateStalledMatch} onClaimReplacement={handleClaimMatchSlotByReplacement} onManualStart={handleManualStart} onClaimAbandonedPool={handleClaimAbandonedPool} onResetEnrollmentWindow={handleResetEnrollmentWindow} onCancelTournament={handleCancelTournament} onEnroll={handleEnroll} onConnectWallet={connectWallet} account={account} loading={tournamentsLoading} connectLoading={isConnecting} syncDots={bracketSyncDots} isEnrolled={viewingTournament?.players?.some(addr => addr.toLowerCase() === account?.toLowerCase())} entryFee={viewingTournament?.entryFeeEth ?? '0'} isFull={viewingTournament?.enrolledCount >= viewingTournament?.playerCount} instanceContract={activeInstanceContract} onPlayerAddressClick={setSelectedProfileAddress} />
               </div>
             ) : (
               <div className="space-y-8 md:space-y-10">
