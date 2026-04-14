@@ -389,7 +389,7 @@ const TournamentHeader = ({
       <div className="space-y-2">
         {resolvedPayoutEntries.map(({ recipient, amount }, index) => (
           <div key={`${recipient}-${index}`} className="text-white text-[11px] md:text-sm leading-relaxed break-words">
-            <span className="text-purple-300">{isV2El0CancelledState ? 'Refunded ' : 'Transferred '}</span>
+            <span className="text-purple-300">{isV2El0CancelledState ? 'Refunded ' : 'Awarded '}</span>
             <span className="font-semibold text-yellow-400">{formatResolutionEth(amount)} ETH</span>
             <span className="text-purple-300"> to </span>
             {renderPlayerAddress(recipient)}
@@ -467,7 +467,7 @@ const TournamentHeader = ({
         statusDetail={isV2ResolvedState ? completedStatusDetail : null}
         playersDetails={useV2InlinePlayersCard ? enrolledPlayers : null}
         account={account}
-        thirdCardLabel={isV2ResolvedState ? 'Payout' : null}
+        thirdCardLabel={isV2ResolvedState ? 'Payouts' : null}
         thirdCardContent={isV2ResolvedState ? completedPayoutCardContent : null}
         colors={colors}
         syncDots={syncDots}
