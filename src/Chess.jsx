@@ -410,6 +410,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, /* onSpectate
                     >
                       <MatchCard
                         match={match}
+                        totalMatchesInRound={round.matches.length}
                         matchIdx={matchIdx}
                         roundIdx={roundIdx}
                         tierId={tierId}

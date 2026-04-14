@@ -561,6 +561,8 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
                       <MatchCard
                         match={match}
                         reasonLabelMode="v2"
+                        tournamentCompletionReason={tournamentData.completionReason}
+                        totalMatchesInRound={round.matches.length}
                         matchIdx={matchIdx}
                         roundIdx={roundIdx}
                         tierId={VIRTUAL_TIER_ID}

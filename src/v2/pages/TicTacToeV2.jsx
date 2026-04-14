@@ -398,6 +398,8 @@ const TournamentBracket = ({
                       <MatchCard
                         match={match}
                         reasonLabelMode="v2"
+                        tournamentCompletionReason={tournamentData.completionReason}
+                        totalMatchesInRound={round.matches.length}
                         matchIdx={matchIdx}
                         roundIdx={roundIdx}
                         tierId={tierId}

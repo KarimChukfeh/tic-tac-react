@@ -54,4 +54,38 @@ describe('MatchCard', () => {
 
     expect(screen.queryByRole('button', { name: /view match/i })).not.toBeInTheDocument();
   });
+
+  it('shows the R2 uncontested finalist state without a TBD opponent row', () => {
+    render(
+      <MatchCard
+        match={{
+          player1: '0x1111111111111111111111111111111111111111',
+          player2: '0x0000000000000000000000000000000000000000',
+          winner: '0x1111111111111111111111111111111111111111',
+          matchStatus: 0,
+        }}
+        matchIdx={0}
+        roundIdx={1}
+        tierId={0}
+        instanceId={0}
+        account="0x3333333333333333333333333333333333333333"
+        loading={false}
+        onEnterMatch={vi.fn()}
+        showEscalation={false}
+        isTournamentCompleted
+        gameName="tictactoe"
+        reasonLabelMode="v2"
+        tournamentCompletionReason={7}
+        totalMatchesInRound={1}
+      />
+    );
+
+    const r2Link = screen.getByRole('link', { name: 'R2 Uncontested Finalist' });
+    expect(r2Link).toHaveAttribute('href', '#43-r2---uncontested-finalist');
+    expect(screen.getByText('0x1111...1111')).toBeInTheDocument();
+    expect(screen.queryByText('TBD')).not.toBeInTheDocument();
+    expect(screen.queryByText('VS')).not.toBeInTheDocument();
+    expect(screen.queryByText('Match 1')).not.toBeInTheDocument();
+    expect(screen.queryByText('Not Started')).not.toBeInTheDocument();
+  });
 });
