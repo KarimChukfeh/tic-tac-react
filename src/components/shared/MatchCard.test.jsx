@@ -55,6 +55,26 @@ describe('MatchCard', () => {
     expect(screen.queryByRole('button', { name: /view match/i })).not.toBeInTheDocument();
   });
 
+  it('shows WINS text for the winner on completed match cards', () => {
+    render(
+      <MatchCard
+        match={completedMatch}
+        matchIdx={1}
+        roundIdx={2}
+        tierId={0}
+        instanceId={0}
+        account="0x3333333333333333333333333333333333333333"
+        loading={false}
+        onEnterMatch={vi.fn()}
+        showEscalation={false}
+        isTournamentCompleted
+        gameName="tictactoe"
+      />
+    );
+
+    expect(screen.getByText('WINS')).toBeInTheDocument();
+  });
+
   it('shows the R2 uncontested finalist state without a TBD opponent row', () => {
     render(
       <MatchCard

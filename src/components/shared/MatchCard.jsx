@@ -129,6 +129,7 @@ const MatchCard = ({
       ? match.player2
       : (winnerNormalized && winnerNormalized !== zeroAddress ? match.winner : null);
   const isSingleMatchRound = Number(totalMatchesInRound) === 1;
+  const isCompletedMatch = matchStatus === 2;
 
   useEffect(() => {
     if (matchStatus !== 2) return;
@@ -529,7 +530,13 @@ const MatchCard = ({
               </span>
             )}
             {match.winner?.toLowerCase() === match.player1?.toLowerCase() && (
-              <Award className="text-green-400" size={16} />
+              isCompletedMatch ? (
+                <span className="text-[11px] font-extrabold tracking-wide text-green-300">
+                  WINS
+                </span>
+              ) : (
+                <Award className="text-green-400" size={16} />
+              )
             )}
           </div>
         </div>
@@ -590,7 +597,13 @@ const MatchCard = ({
               </span>
             )}
             {match.winner?.toLowerCase() === match.player2?.toLowerCase() && (
-              <Award className="text-green-400" size={16} />
+              isCompletedMatch ? (
+                <span className="text-[11px] font-extrabold tracking-wide text-green-300">
+                  WINS
+                </span>
+              ) : (
+                <Award className="text-green-400" size={16} />
+              )
             )}
           </div>
         </div>
