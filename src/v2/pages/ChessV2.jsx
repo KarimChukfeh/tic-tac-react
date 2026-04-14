@@ -1815,6 +1815,13 @@ export default function ChessV2() {
         setMoveTxTimeout({ type: 'congestion', pendingFrom: fromSquare, pendingTo: toSquare, pendingPromotion: promotion });
         return;
       }
+      if (error?.code === 'TX_FAILED_ONCHAIN' || errorString.includes('TX_FAILED_ONCHAIN')) {
+        setActionState({
+          type: 'error',
+          message: 'Your move transaction failed after submission in your wallet provider. Your move was not recorded. If your wallet shows the transaction failed, network gas may still have been spent. Please submit your move again.',
+        });
+        return;
+      }
       let errorMsg = 'Invalid Move';
       if (errorString.includes('user rejected') || errorString.includes('User denied')) errorMsg = 'Transaction cancelled';
       else if (errorString.includes('insufficient funds')) errorMsg = 'Insufficient funds for gas';

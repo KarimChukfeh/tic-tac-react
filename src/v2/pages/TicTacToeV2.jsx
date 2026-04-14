@@ -1722,6 +1722,13 @@ export default function TicTacToeV2() {
         setMoveTxTimeout({ type: 'congestion', pendingCellIndex: cellIndex });
         return;
       }
+      if (error?.code === 'TX_FAILED_ONCHAIN' || errorString.includes('TX_FAILED_ONCHAIN')) {
+        setActionState({
+          type: 'error',
+          message: 'Your move transaction failed after submission in your wallet provider. Your move was not recorded. If your wallet shows the transaction failed, network gas may still have been spent. Please submit your move again.',
+        });
+        return;
+      }
       let msg = 'Invalid Move';
       if (errorString.includes('user rejected') || errorString.includes('User denied')) msg = 'Transaction cancelled';
       else if (errorString.includes('insufficient funds')) msg = 'Insufficient funds for gas';

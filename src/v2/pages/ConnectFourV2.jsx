@@ -1955,6 +1955,13 @@ export default function ConnectFourV2() {
         setMoveTxTimeout({ type: 'congestion', pendingColumnIndex: columnIndex });
         return;
       }
+      if (error?.code === 'TX_FAILED_ONCHAIN' || errorString.includes('TX_FAILED_ONCHAIN')) {
+        setActionState({
+          type: 'error',
+          message: 'Your move transaction failed after submission in your wallet provider. Your move was not recorded. Please submit your move again.',
+        });
+        return;
+      }
       let msg = 'Invalid Move';
       if (errorString.includes('user rejected') || errorString.includes('User denied')) msg = 'Transaction cancelled';
       else if (errorString.includes('insufficient funds')) msg = 'Insufficient funds for gas';

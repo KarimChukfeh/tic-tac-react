@@ -1,5 +1,13 @@
 const normalizeAddress = (value) => (typeof value === 'string' ? value.toLowerCase() : '');
 
+const isReceiptFailureStatus = (status) => {
+  if (status === 0 || status === 0n) return true;
+  if (typeof status === 'string') {
+    return status === '0x0' || status === '0';
+  }
+  return false;
+};
+
 export function didMatchStateAdvance(previousMatch, nextMatch) {
   if (!previousMatch || !nextMatch) return false;
 
@@ -38,6 +46,7 @@ export function waitForTxOrStateSync({
     let finished = false;
     let pollInFlight = false;
     let receiptObserved = false;
+    let receiptCallbackFired = false;
     let lastUpdated = null;
     let postReceiptTimeoutId = null;
 
@@ -77,10 +86,47 @@ export function waitForTxOrStateSync({
       }, Math.max(0, postReceiptSyncMs));
     };
 
+    const fireReceiptCallback = (receipt) => {
+      if (receiptCallbackFired) return;
+      receiptCallbackFired = true;
+      try {
+        onReceipt?.(receipt);
+      } catch {
+        // Ignore UI callback failures and keep syncing.
+      }
+    };
+
     const poll = async () => {
       if (finished || pollInFlight) return;
       pollInFlight = true;
       try {
+        if (tx?.provider?.getTransactionReceipt && tx?.hash) {
+          const receipt = await tx.provider.getTransactionReceipt(tx.hash).catch(() => null);
+          if (receipt) {
+            receiptObserved = true;
+            if (isReceiptFailureStatus(receipt.status)) {
+              const receiptError = new Error('TX_FAILED_ONCHAIN');
+              receiptError.code = 'TX_FAILED_ONCHAIN';
+              receiptError.receipt = receipt;
+              fail(receiptError);
+              return;
+            }
+            fireReceiptCallback(receipt);
+
+            if (lastUpdated && isSynced(lastUpdated)) {
+              finish({
+                source: 'state',
+                updated: lastUpdated,
+                synced: true,
+                receiptObserved: true,
+              });
+              return;
+            }
+
+            schedulePostReceiptFallback();
+          }
+        }
+
         const updated = await sync();
         lastUpdated = updated;
         if (updated && isSynced(updated)) {
@@ -108,13 +154,16 @@ export function waitForTxOrStateSync({
     const intervalId = setInterval(poll, pollIntervalMs);
 
     tx.wait()
-      .then(() => {
+      .then((receipt) => {
         receiptObserved = true;
-        try {
-          onReceipt?.();
-        } catch {
-          // Ignore UI callback failures and keep syncing.
+        if (isReceiptFailureStatus(receipt?.status)) {
+          const receiptError = new Error('TX_FAILED_ONCHAIN');
+          receiptError.code = 'TX_FAILED_ONCHAIN';
+          receiptError.receipt = receipt;
+          fail(receiptError);
+          return;
         }
+        fireReceiptCallback(receipt);
 
         if (lastUpdated && isSynced(lastUpdated)) {
           finish({
