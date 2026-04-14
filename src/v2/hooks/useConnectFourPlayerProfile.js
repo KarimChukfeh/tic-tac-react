@@ -75,7 +75,7 @@ export function useConnectFourPlayerProfile(factoryContract, runner, account, op
 
         enriched = [...recs].map((r) => {
           const info = instanceInfoByAddress.get(r.instance?.toLowerCase()) || null;
-          const playerCount = Number(info?.playerCount ?? info?.enrolledCount ?? 0) || null;
+          const playerCount = Number(info?.enrolledCount ?? info?.playerCount ?? 0) || null;
           const instanceStatus = info ? Number(info.status) : null;
           const instanceResolutionReason = info ? Number(info.completionReason ?? 0) : null;
           const instanceResolutionCategory = info ? Number(info.completionCategory ?? 0) : null;
