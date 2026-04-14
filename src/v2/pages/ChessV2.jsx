@@ -13,6 +13,8 @@ import {
   ChevronDown,
   ChevronUp,
   History,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import { CURRENT_NETWORK, TARGET_CHAIN_ID_HEX, getAddressUrl, getWalletAddChainParams } from '../../config/networks';
@@ -481,6 +483,49 @@ function calculateCapturedPieces(board) {
   return { white: whiteCaptured, black: blackCaptured };
 }
 
+function createInitialChessBoard() {
+  const board = Array.from({ length: 64 }, () => ({ pieceType: 0, color: 0 }));
+
+  for (let i = 8; i < 16; i++) board[i] = { pieceType: 1, color: 1 };
+  board[0] = { pieceType: 4, color: 1 };
+  board[7] = { pieceType: 4, color: 1 };
+  board[1] = { pieceType: 2, color: 1 };
+  board[6] = { pieceType: 2, color: 1 };
+  board[2] = { pieceType: 3, color: 1 };
+  board[5] = { pieceType: 3, color: 1 };
+  board[3] = { pieceType: 5, color: 1 };
+  board[4] = { pieceType: 6, color: 1 };
+
+  for (let i = 48; i < 56; i++) board[i] = { pieceType: 1, color: 2 };
+  board[56] = { pieceType: 4, color: 2 };
+  board[63] = { pieceType: 4, color: 2 };
+  board[57] = { pieceType: 2, color: 2 };
+  board[62] = { pieceType: 2, color: 2 };
+  board[58] = { pieceType: 3, color: 2 };
+  board[61] = { pieceType: 3, color: 2 };
+  board[59] = { pieceType: 5, color: 2 };
+  board[60] = { pieceType: 6, color: 2 };
+
+  return board;
+}
+
+function buildReplayChessBoard(moveHistory, effectiveMoveIndex, fallbackBoard) {
+  if (effectiveMoveIndex >= moveHistory.length - 1) {
+    return fallbackBoard;
+  }
+
+  const board = createInitialChessBoard();
+  for (let i = 0; i <= effectiveMoveIndex && i < moveHistory.length; i++) {
+    const move = moveHistory[i];
+    if (move.from >= 0 && move.from < 64 && move.to >= 0 && move.to < 64) {
+      board[move.to] = board[move.from];
+      board[move.from] = { pieceType: 0, color: 0 };
+    }
+  }
+
+  return board;
+}
+
 const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceEliminate, onClaimReplacement, onManualStart, onClaimAbandonedPool, onResetEnrollmentWindow, onCancelTournament, onEnroll, onConnectWallet, account, loading, connectLoading, syncDots, isEnrolled, entryFee, isFull, instanceContract, onPlayerAddressClick }) => {
   const { status, currentRound, enrolledCount, rounds, playerCount, players, enrollmentTimeout } = tournamentData;
   const bracketViewRef = useRef(null);
@@ -749,6 +794,7 @@ export default function ChessV2() {
   const [matchLoading, setMatchLoading] = useState(false);
   const [matchLoadingMessage, setMatchLoadingMessage] = useState(DEFAULT_MATCH_LOADING_MESSAGE);
   const [moveHistory, setMoveHistory] = useState([]);
+  const [replayMoveIndex, setReplayMoveIndex] = useState(-2); // -2 final, -1 start, 0+ move index
   const [syncDots, setSyncDots] = useState(1);
   const [isSpectator, setIsSpectator] = useState(false);
   const [matchEndResult, setMatchEndResult] = useState(null);
@@ -1466,6 +1512,24 @@ export default function ChessV2() {
       return history;
     });
   }, []);
+
+  useEffect(() => {
+    if (!currentMatch || currentMatch.matchStatus !== 2) {
+      setReplayMoveIndex(-2);
+    }
+  }, [currentMatch?.instanceAddress, currentMatch?.roundNumber, currentMatch?.matchNumber, currentMatch?.matchStatus]);
+
+  const effectiveReplayMoveIndex = replayMoveIndex === -2 ? moveHistory.length - 1 : replayMoveIndex;
+  const displayedBoard = currentMatch
+    ? (currentMatch.matchStatus === 2 && moveHistory.length > 0
+      ? buildReplayChessBoard(moveHistory, effectiveReplayMoveIndex, currentMatch.board)
+      : currentMatch.board)
+    : null;
+  const displayedLastMove = currentMatch?.matchStatus === 2
+    ? (effectiveReplayMoveIndex >= 0 && moveHistory[effectiveReplayMoveIndex]
+      ? { from: moveHistory[effectiveReplayMoveIndex].from, to: moveHistory[effectiveReplayMoveIndex].to }
+      : null)
+    : currentMatch?.lastMove ?? null;
 
   const refreshMatchData = useCallback(async (instanceCont, userAccount, matchInfo) => {
     try {
@@ -2247,7 +2311,7 @@ export default function ChessV2() {
               layout="players-board-history"
               isSpectator={isSpectator}
               renderPlayer1Extra={(isMobile) => {
-                const capturedPieces = calculateCapturedPieces(currentMatch.board);
+                const capturedPieces = calculateCapturedPieces(displayedBoard);
                 return (
                   <>
                     <CapturedPieces capturedPieces={capturedPieces.black} color="black" collapsible={!!isMobile} />
@@ -2256,7 +2320,7 @@ export default function ChessV2() {
                 );
               }}
               renderPlayer2Extra={(isMobile) => {
-                const capturedPieces = calculateCapturedPieces(currentMatch.board);
+                const capturedPieces = calculateCapturedPieces(displayedBoard);
                 return (
                   <>
                     <CapturedPieces capturedPieces={capturedPieces.white} color="white" collapsible={!!isMobile} />
@@ -2266,20 +2330,57 @@ export default function ChessV2() {
               }}
               renderMoveHistory={moveHistory.length > 0 ? () => (
                 <>
-                  <h3 className="text-xl font-bold text-purple-300 mb-4 flex items-center gap-2"><History size={20} />Move History</h3>
+                  <div className="mb-4 flex items-center gap-2">
+                    <h3 className="text-xl font-bold text-purple-300 flex items-center gap-2"><History size={20} />Move History</h3>
+                    {currentMatch.matchStatus === 2 ? (
+                      <div className="ml-auto flex items-center gap-1">
+                        <button
+                          onClick={() => setReplayMoveIndex(prev => Math.max(-1, (prev === -2 ? moveHistory.length - 1 : prev) - 1))}
+                          disabled={(replayMoveIndex === -2 ? moveHistory.length - 1 : replayMoveIndex) <= -1}
+                          className="rounded bg-slate-700/50 p-1.5 transition-colors hover:bg-slate-600/50 disabled:cursor-not-allowed disabled:opacity-30"
+                          title="Previous move"
+                        >
+                          <ChevronLeft size={18} className="text-purple-300" />
+                        </button>
+                        <span className="min-w-[3.5rem] text-center text-xs text-slate-400">
+                          {replayMoveIndex === -1 ? 'Start' : replayMoveIndex === -2 ? 'Final' : `Move ${replayMoveIndex + 1}`}
+                        </span>
+                        <button
+                          onClick={() => setReplayMoveIndex(prev => Math.min(moveHistory.length - 1, (prev === -2 ? moveHistory.length - 1 : prev) + 1))}
+                          disabled={(replayMoveIndex === -2 ? moveHistory.length - 1 : replayMoveIndex) >= moveHistory.length - 1}
+                          className="rounded bg-slate-700/50 p-1.5 transition-colors hover:bg-slate-600/50 disabled:cursor-not-allowed disabled:opacity-30"
+                          title="Next move"
+                        >
+                          <ChevronRight size={18} className="text-purple-300" />
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
                   <div className="space-y-2">
-                    {moveHistory.map((move, idx) => (
-                      <div key={idx} className="flex items-center gap-3 text-sm bg-purple-500/10 p-3 rounded-lg hover:bg-purple-500/20 transition-colors">
+                    {moveHistory.map((move, idx) => {
+                      const isSelected = currentMatch.matchStatus === 2 && idx === effectiveReplayMoveIndex;
+                      return (
+                      <div
+                        key={idx}
+                        onClick={currentMatch.matchStatus === 2 ? () => setReplayMoveIndex(idx) : undefined}
+                        className={`flex items-center gap-3 rounded-lg p-3 text-sm transition-colors ${
+                          isSelected
+                            ? 'cursor-pointer border border-purple-400/50 bg-purple-500/30'
+                            : currentMatch.matchStatus === 2
+                              ? 'cursor-pointer bg-purple-500/10 hover:bg-purple-500/20'
+                              : 'bg-purple-500/10 hover:bg-purple-500/20'
+                        }`}
+                      >
                         <span className="text-purple-300 font-semibold min-w-[2rem]">#{idx + 1}</span>
                         <div className="w-8 h-8 flex items-center justify-center"><img src={move.player === '♔' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'} alt={move.player === '♔' ? 'White' : 'Black'} className="w-7 h-7" draggable="false" /></div>
                         <span className="text-purple-200 font-mono">{move.move}</span>
                       </div>
-                    ))}
+                    );})}
                   </div>
                 </>
               ) : undefined}
             >
-              <ChessBoard board={currentMatch.board} packedBoard={currentMatch.packedBoard} packedState={currentMatch.packedState} onMove={isSpectator ? null : handleMakeMove} currentTurn={currentMatch.currentTurn} account={isSpectator ? null : account} player1={currentMatch.player1} player2={currentMatch.player2} firstPlayer={currentMatch.firstPlayer} matchStatus={currentMatch.matchStatus} loading={matchLoading} whiteInCheck={currentMatch.whiteInCheck} blackInCheck={currentMatch.blackInCheck} lastMoveTime={currentMatch.lastMoveTime} startTime={currentMatch.startTime} lastMove={currentMatch.lastMove} maxSize={820} ghostMove={ghostMove} />
+              <ChessBoard board={displayedBoard} packedBoard={currentMatch.packedBoard} packedState={currentMatch.packedState} onMove={isSpectator || currentMatch.matchStatus === 2 ? null : handleMakeMove} currentTurn={currentMatch.currentTurn} account={isSpectator ? null : account} player1={currentMatch.player1} player2={currentMatch.player2} firstPlayer={currentMatch.firstPlayer} matchStatus={currentMatch.matchStatus} loading={matchLoading} whiteInCheck={currentMatch.matchStatus === 2 ? false : currentMatch.whiteInCheck} blackInCheck={currentMatch.matchStatus === 2 ? false : currentMatch.blackInCheck} lastMoveTime={currentMatch.lastMoveTime} startTime={currentMatch.startTime} lastMove={displayedLastMove} maxSize={820} ghostMove={currentMatch.matchStatus === 2 ? null : ghostMove} />
             </GameMatchLayout>
 
             {moveTxTimeout && (
