@@ -12,9 +12,7 @@ import Whitepaper from './Whitepaper.jsx'
 import Manual from './Manual.jsx'
 import Docs from './Docs.jsx'
 import NotFound from './NotFound.jsx'
-import WalletBrowserPrompt from './components/WalletBrowserPrompt.jsx'
 import './index.css'
-import { useWalletBrowserPrompt } from './hooks/useWalletBrowserPrompt'
 import { useErudaDebugConsole } from './hooks/useErudaDebugConsole'
 
 const PAGE_EXIT_DURATION_MS = 180;
@@ -157,25 +155,11 @@ function AppRoutes() {
   )
 }
 
-// Wrapper component to handle wallet browser deep linking on mobile
 function App() {
-  // Get wallet browser prompt state and handlers
-  const { showPrompt, handleWalletChoice, handleContinueChoice } = useWalletBrowserPrompt();
-
   return (
-    <>
-      {/* Show wallet browser choice prompt on mobile */}
-      {showPrompt && (
-        <WalletBrowserPrompt
-          onWalletChoice={handleWalletChoice}
-          onContinueChoice={handleContinueChoice}
-        />
-      )}
-
-      <BrowserRouter>
-        <AppRoutes />
-      </BrowserRouter>
-    </>
+    <BrowserRouter>
+      <AppRoutes />
+    </BrowserRouter>
   )
 }
 
