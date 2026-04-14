@@ -47,9 +47,7 @@ export function useChessPlayerProfile(factoryContract, runner, account, options 
       let enriched = [];
 
       if (total > 0) {
-        const offset = Math.max(0, total - HISTORY_LIMIT);
-        const limit = Math.min(total, HISTORY_LIMIT);
-        recs = await profile.getEnrollments(offset, limit).catch(() => []);
+        recs = await profile.getEnrollments(0, total).catch(() => []);        
         const instanceMap = new Map();
         for (const rec of recs) {
           const lower = rec.instance?.toLowerCase();
