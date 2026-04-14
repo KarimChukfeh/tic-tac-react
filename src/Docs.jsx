@@ -1126,7 +1126,7 @@ const Docs = () => {
                     </div>
                   </div>
                   <div className="border-t border-pink-300/10 px-6 py-4">
-                    <div className="flex flex-row items-center justify-between gap-2 sm:gap-3">
+                    <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:justify-between sm:gap-3">
                       <button
                         type="button"
                         aria-label="Previous tab"
@@ -1136,14 +1136,17 @@ const Docs = () => {
                           highlight: false,
                         })}
                         disabled={!previousTab}
-                        className={`min-w-0 flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border px-2.5 py-2 text-xs font-medium transition-colors sm:flex-none sm:justify-start sm:gap-2 sm:px-4 sm:text-sm ${
+                        className={`min-w-0 inline-flex items-center justify-center gap-1.5 rounded-xl border px-2.5 py-2 text-xs font-medium transition-colors sm:justify-start sm:gap-2 sm:px-4 sm:text-sm ${
                           previousTab
                             ? 'border-pink-300/20 text-pink-100 hover:bg-white/[0.04] hover:text-white'
                             : 'cursor-not-allowed border-pink-300/10 text-pink-100/35'
                         }`}
                       >
                         <ChevronLeft size={16} className="shrink-0" />
-                        <span className="truncate">{previousTab ? previousTab.tabLabel : 'Start of docs'}</span>
+                        <span className="sm:hidden">Back</span>
+                        <span className="hidden truncate sm:inline">
+                          {previousTab ? previousTab.tabLabel : 'Start of docs'}
+                        </span>
                       </button>
                       <button
                         type="button"
@@ -1154,13 +1157,16 @@ const Docs = () => {
                           highlight: false,
                         })}
                         disabled={!nextTab}
-                        className={`min-w-0 flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border px-2.5 py-2 text-xs font-medium transition-colors sm:flex-none sm:justify-start sm:gap-2 sm:px-4 sm:text-sm ${
+                        className={`min-w-0 inline-flex items-center justify-center gap-1.5 rounded-xl border px-2.5 py-2 text-xs font-medium transition-colors sm:justify-start sm:gap-2 sm:px-4 sm:text-sm ${
                           nextTab
                             ? 'border-pink-300/20 text-pink-100 hover:bg-white/[0.04] hover:text-white'
                             : 'cursor-not-allowed border-pink-300/10 text-pink-100/35'
                         }`}
                       >
-                        <span className="truncate">{nextTab ? nextTab.tabLabel : 'End of docs'}</span>
+                        <span className="sm:hidden">Next</span>
+                        <span className="hidden truncate sm:inline">
+                          {nextTab ? nextTab.tabLabel : 'End of docs'}
+                        </span>
                         <ChevronRight size={16} className="shrink-0" />
                       </button>
                     </div>
