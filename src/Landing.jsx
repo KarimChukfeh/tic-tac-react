@@ -437,7 +437,7 @@ export default function Landing() {
           <div className="flex flex-wrap justify-center gap-6 mb-12">
             <TrustSignal icon="🔒" text="Every Move Verified" />
             <TrustSignal icon="⚡" text="Instant Payouts" />
-            <TrustSignal icon="🎯" text="Impossibe to Grief" />
+            <TrustSignal icon="🎯" text="Impossible to Grief" />
           </div>
           
           {/* CTA */}
