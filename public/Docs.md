@@ -14,9 +14,9 @@ If you're a developer who just wants to build on ETour rather than study its int
 
 This document exists to serve two crucial purposes
 
-**Auditing:** Open source software is only as strong as the community around it. By studying ETour's internals you become part of the group that can audit the protocol itself and help improve it for everyone.
+**Auditing:** Open source software is only as good as the community around it. By auditing ETour's internals you become part of the group that makes it better for everyone.
 
-**Building:** Building a game on ETour is straightforward and rewarding. Game creators receive 5% of every enrollment on their game, and the [Builder's Guide](#building-games-on-etour) includes a step-by-step walkthrough for building and deploying your first one.
+**Building:** Building a game on ETour is straightforward and rewarding. Developers receive 5% of every pot on their game. [The Builder's Guide](#building-games-on-etour) includes a step-by-step walkthrough for building and deploying your first one.
 
 ## 3. What to Expect
 

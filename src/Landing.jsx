@@ -288,8 +288,8 @@ function WhitepaperSection() {
 
 
 const HERO_PHRASES = ["Challenge Your Crew", "Pick Your Stakes", "Settle The Score"];
-const HERO_VISIBLE_MS = 2200;
-const HERO_FADE_MS = 450;
+const HERO_VISIBLE_MS = 2600;
+const HERO_FADE_MS = 550;
 
 function useHeroCycle() {
   const [index, setIndex] = useState(0);
