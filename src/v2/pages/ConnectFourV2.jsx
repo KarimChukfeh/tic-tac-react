@@ -3,8 +3,8 @@ import { Link, useSearchParams, useLocation, useNavigate } from 'react-router-do
 import {
   Grid,
   Shield,
+  Link2,
   Lock,
-  Eye,
   Code,
   ExternalLink,
   CheckCircle,
@@ -2689,8 +2689,8 @@ export default function ConnectFourV2() {
           <div className="relative flex flex-col items-center gap-3 md:min-h-6 md:justify-center text-xs md:text-sm">
             <div className="flex w-full flex-wrap items-center justify-center gap-x-4 gap-y-2 md:gap-6">
               <div className="flex items-center gap-2"><Shield className="text-blue-400" size={16} /><span className="text-blue-100 font-medium">100% On-Chain</span></div>
-              <div className="flex items-center gap-2"><Lock className="text-blue-400" size={16} /><span className="text-blue-100 font-medium">Immutable Rules</span></div>
-              <div className="flex items-center gap-2"><Eye className="text-blue-400" size={16} /><span className="text-blue-100 font-medium">Every Move Verifiable</span></div>
+              <div className="flex items-center gap-2"><Link2 className="text-blue-400" size={16} /><span className="text-blue-100 font-medium">Immutable Rules</span></div>
+              <div className="flex items-center gap-2"><Lock className="text-blue-400" size={16} /><span className="text-blue-100 font-medium">Every Move Verifiable</span></div>
               <div className="flex items-center gap-2"><CheckCircle className="text-blue-400" size={16} /><span className="text-blue-100 font-medium">Zero Cookies</span></div>
             </div>
             {explorerUrl ? (

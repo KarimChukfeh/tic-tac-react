@@ -17,7 +17,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import {
-  Wallet, Grid, Clock, Shield, Lock, Eye, Code, ExternalLink,
+  Wallet, Grid, Clock, Shield, Link2, Lock, Code, ExternalLink,
   Trophy, Zap, Coins, History,
   CheckCircle, AlertCircle, ChevronDown, ChevronUp, ArrowLeft, HelpCircle, Calendar, ChevronLeft, ChevronRight
 } from 'lucide-react';
@@ -4943,16 +4943,16 @@ export default function Chess() {
                 <span className={`font-medium ${isEnrolledInElite ? 'text-[#fff8e7]' : 'text-blue-100'}`}>100% On-Chain</span>
               </div>
               <div className="flex items-center gap-2">
-                <Lock className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-blue-400'} size={16} />
+                <Link2 className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-blue-400'} size={16} />
                 <span className={`font-medium ${isEnrolledInElite ? 'text-[#fff8e7]' : 'text-blue-100'}`}>Immutable Rules</span>
               </div>
               <div className="flex items-center gap-2">
-                <Eye className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-blue-400'} size={16} />
+                <Lock className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-blue-400'} size={16} />
                 <span className={`font-medium ${isEnrolledInElite ? 'text-[#fff8e7]' : 'text-blue-100'}`}>Every Move Verifiable</span>
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle className={isEnrolledInElite ? 'text-[#fbbf24]' : 'text-blue-400'} size={16} />
-                <span className={`font-medium ${isEnrolledInElite ? 'text-[#fff8e7]' : 'text-blue-100'}`}>Zero Trackers</span>
+                <span className={`font-medium ${isEnrolledInElite ? 'text-[#fff8e7]' : 'text-blue-100'}`}>Zero Cookies</span>
               </div>
             </div>
             {EXPLORER_URL && (

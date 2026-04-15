@@ -17,7 +17,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import {
-  Wallet, Grid, Clock, Shield, Lock, Eye, Code, ExternalLink,
+  Wallet, Grid, Clock, Shield, Link2, Lock, Code, ExternalLink,
   Trophy, Coins, Zap, History,
   CheckCircle, AlertCircle, ChevronDown, ChevronUp, ArrowLeft, HelpCircle
 } from 'lucide-react';
@@ -4284,16 +4284,16 @@ export default function TicTacChain() {
                 <span className="text-blue-100 font-medium">100% On-Chain</span>
               </div>
               <div className="flex items-center gap-2">
-                <Lock className="text-blue-400" size={16} />
+                <Link2 className="text-blue-400" size={16} />
                 <span className="text-blue-100 font-medium">Immutable Rules</span>
               </div>
               <div className="flex items-center gap-2">
-                <Eye className="text-blue-400" size={16} />
+                <Lock className="text-blue-400" size={16} />
                 <span className="text-blue-100 font-medium">Every Move Verifiable</span>
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle className="text-blue-400" size={16} />
-                <span className="text-blue-100 font-medium">Zero Trackers</span>
+                <span className="text-blue-100 font-medium">Zero Cookies</span>
               </div>
             </div>
             {EXPLORER_URL && (

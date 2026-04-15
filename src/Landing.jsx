@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Shield, Lock, Eye, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Shield, Link2, Lock, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
@@ -365,11 +365,11 @@ export default function Landing() {
                 <span className="text-blue-100 font-medium">100% On-Chain</span>
               </div>
               <div className="flex items-center gap-2">
-                <Lock className="text-blue-400" size={16} />
+                <Link2 className="text-blue-400" size={16} />
                 <span className="text-blue-100 font-medium">Immutable Rules</span>
               </div>
               <div className="flex items-center gap-2">
-                <Eye className="text-blue-400" size={16} />
+                <Lock className="text-blue-400" size={16} />
                 <span className="text-blue-100 font-medium">Every Move Verifiable</span>
               </div>
               <div className="flex items-center gap-2">
