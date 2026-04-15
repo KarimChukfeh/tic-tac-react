@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Shield, Lock, Eye, CheckCircle, ChevronDown, ChevronUp, HelpCircle } from 'lucide-react';
+import { Shield, Lock, Eye, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
@@ -426,15 +426,9 @@ export default function Landing() {
                 e.preventDefault();
                 scrollToReadySection();
               }}
-              className="relative inline-block pr-6 hover:text-slate-300 transition-colors cursor-pointer underline decoration-dotted decoration-slate-500 underline-offset-4"
+              className="inline-flex items-center hover:text-slate-300 transition-colors cursor-pointer underline decoration-dotted decoration-slate-500 underline-offset-4"
             >
-              Classic games with real ETH on the line
-              <HelpCircle
-                size={16}
-                strokeWidth={2.25}
-                className="absolute -top-1 right-0 text-slate-400/90"
-                aria-hidden="true"
-              />
+              Classic games. Real ETH on the line.
             </a>
             <br />
           </p>
