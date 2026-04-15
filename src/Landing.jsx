@@ -435,9 +435,9 @@ export default function Landing() {
           
           {/* Trust Signals */}
           <div className="flex flex-wrap justify-center gap-6 mb-12">
-            <TrustSignal icon="🔒" text="Every Move Verified" />
-            <TrustSignal icon="⚡" text="Instant Payouts" />
-            <TrustSignal icon="🎯" text="Impossible to Grief" />
+            <TrustSignal icon="🔒" text="Every Move is Verified" />
+            <TrustSignal icon="⚡" text="Every Payout is Instant" />
+            <TrustSignal icon="🎯" text="Every Match is Grief-Proof" />
           </div>
           
           {/* CTA */}
