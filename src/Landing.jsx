@@ -501,8 +501,8 @@ export default function Landing() {
               icon="♔"
               title="Chess"
               features={[
-                "Full chess. Every rule.",
-                "Castling. En-Passant. Promotions. Etc..",
+                "Full chess. Every rule",
+                "Castling. En-Passant. Etc..",
                 "Now with real stakes",
               ]}
               href="/chess"
