@@ -382,7 +382,7 @@ export default function Landing() {
 
 	        {/* ============ HERO SECTION ============ */}
 		        <div className="h-7 md:h-12" aria-hidden="true" />
-		        <section className="min-h-[58vh] md:min-h-[62vh] flex flex-col justify-center items-center px-6 py-16">
+		        <section className="min-h-[58vh] md:min-h-[62vh] flex flex-col justify-center items-center px-6 pt-16 pb-8">
 	          
 	          {/* Eyebrow */}
 	          <div className="flex items-center gap-4 mb-0">
@@ -419,7 +419,7 @@ export default function Landing() {
           </h1>
 
           {/* Subheadline */}
-          <p className="text-xl md:text-2xl text-slate-400 text-center max-w-2xl mb-12 leading-relaxed">
+          <p className="text-xl md:text-2xl text-slate-400 text-center max-w-2xl mb-8 leading-relaxed">
             <a
               href="#ready-to-prove-yourself"
               onClick={(e) => {
@@ -434,7 +434,7 @@ export default function Landing() {
           </p>
           
           {/* Trust Signals */}
-          <div className="flex flex-wrap justify-center gap-6 mb-12">
+          <div className="flex flex-wrap justify-center gap-6 mb-16">
             <TrustSignal icon="🔒" text="Every Move is Verified" />
             <TrustSignal icon="⚡" text="Every Payout is Instant" />
             <TrustSignal icon="🎯" text="Every Match is Grief-Proof" />
@@ -457,10 +457,10 @@ export default function Landing() {
         </section>
         
         {/* ============ GAMES SECTION ============ */}
-        <section id="games" className="px-6 py-0 max-w-7xl mx-auto">
+        <section id="games" className="px-6 py-0 max-w-7xl mx-auto scroll-mt-28 md:scroll-mt-32">
 
           {/* Section Header */}
-          <div className="text-center mb-16">
+          <div className="text-center mb-8">
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
               Pick Your Arena
             </h2>
