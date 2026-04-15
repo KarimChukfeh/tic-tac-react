@@ -145,17 +145,17 @@ If you are the sole enrollee and decide you no longer want to wait, you can canc
 ### 2.3: Prize Pool
 
 **How the Pool is Calculated**
-The prize pool is simple: entry fee multiplied by number of enrolled players.
+The prize pool is simple: entry fee multiplied by the number of enrolled players.
 
-For example, a 4-player lobby with a 0.01 ETH entry fee has a total prize pool of 0.04 ETH.
+For example, a 4-player lobby with a 0.01 ETH entry fee has a pot of 0.04 ETH.
 
 **Fee Breakdown**
-Every entry fee is split two ways at the moment the tournament resolves:
+Every pot is split two ways at the moment the tournament resolves:
 
 | Recipient | Share |
 |---|---|
 | Tournament winner | 95% |
-| ETour creator | 5% |
+| Game developer | 5% |
 
 These percentages are hardcoded in the smart contract and cannot be changed by anyone. No governance, no admin adjustments, no surprises.
 
@@ -163,9 +163,9 @@ These percentages are hardcoded in the smart contract and cannot be changed by a
 
 | Allocation | Amount |
 |---|---|
-| Prize pool (95%) | 0.038 ETH |
-| ETour creator (5%) | 0.002 ETH |
-| Total | 0.040 ETH |
+| Total pot (100%) | 0.040 ETH |
+| Tournament winner (95%) | 0.038 ETH |
+| Game developer (5%) | 0.002 ETH |
 
 **When and How You Get Paid**
 The winner receives their ETH the moment the final match resolves. No withdrawal step, no waiting period, no approval required. The smart contract sends the prize pool directly to the winner's wallet automatically.

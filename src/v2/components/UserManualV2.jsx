@@ -452,7 +452,7 @@ const MarkdownLink = ({ href = '', children, ...props }) => {
 };
 
 const MarkdownTable = ({ children }) => (
-  <div className="overflow-x-auto rounded-xl border border-slate-700/70">
+  <div className="mb-6 overflow-x-auto rounded-xl border border-slate-700/70">
     <table className="w-full text-sm">{children}</table>
   </div>
 );
