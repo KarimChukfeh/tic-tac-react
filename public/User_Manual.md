@@ -79,7 +79,7 @@ You decide who competes and what's at stake:
 
 5) Winners advance. Losers are eliminated. 
 
-6) The champion takes **the entire prize pool** (95% of the all entry fees).
+6) The champion takes **the entire prize pool** (95% of all entry fees).
 
 ### 1.3: What You Need
 

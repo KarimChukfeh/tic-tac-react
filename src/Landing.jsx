@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Shield, Lock, Eye, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Shield, Lock, Eye, CheckCircle, ChevronDown, ChevronUp, HelpCircle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
@@ -426,9 +426,15 @@ export default function Landing() {
                 e.preventDefault();
                 scrollToReadySection();
               }}
-              className="inline-flex items-center hover:text-slate-300 transition-colors cursor-pointer underline decoration-dotted decoration-slate-500 underline-offset-4"
+              className="relative inline-block pr-6 hover:text-slate-300 transition-colors cursor-pointer underline decoration-dotted decoration-slate-500 underline-offset-4"
             >
-              Classic games. Skill vs Skill. Real ETH on the line.
+              Classic games with real ETH on the line
+              <HelpCircle
+                size={16}
+                strokeWidth={2.25}
+                className="absolute -top-1 right-0 text-slate-400/90"
+                aria-hidden="true"
+              />
             </a>
             <br />
           </p>
@@ -518,7 +524,7 @@ export default function Landing() {
         <section className="px-6 py-16">
           <div className="max-w-5xl mx-auto">
             
-            <div className="text-center mb-16">
+            <div className="text-center mb-10">
               <h2 className="text-4xl font-bold text-white mb-4">Trust by Blockchain</h2>
               <p className="text-slate-400 text-lg">Everything runs on Ethereum. Nothing is hidden. Nothing is centralized.</p>
             </div>
