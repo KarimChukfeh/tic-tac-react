@@ -382,7 +382,7 @@ export default function Landing() {
 
 	        {/* ============ HERO SECTION ============ */}
 		        <div className="h-7 md:h-12" aria-hidden="true" />
-		        <section className="min-h-[58vh] md:min-h-[62vh] flex flex-col justify-center items-center px-6 pt-16 pb-8">
+		        <section className="min-h-[58vh] md:min-h-[62vh] flex flex-col justify-center items-center px-6 pt-16 pb-16">
 	          
 	          {/* Eyebrow */}
 	          <div className="flex items-center gap-4 mb-0">
