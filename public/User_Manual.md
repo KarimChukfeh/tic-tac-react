@@ -37,7 +37,7 @@
   - [5.3.2: ML2 — Eliminate Both Players in a Stalled Match](#532-ml2--eliminate-both-players-in-a-stalled-match)
   - [5.3.3: ML3 — Replace Players in an Abandoned Match](#533-ml3--replace-players-in-an-abandoned-match)
 
-**6. Edge Cases & FAQ**
+**6. FAQ**
 - [6.1: What if nobody joins my lobby?](#61-what-if-nobody-joins-my-lobby)
 - [6.2: What if my opponent disconnects?](#62-what-if-my-opponent-disconnects)
 - [6.3: What if all matches in a round draw?](#63-what-if-all-matches-in-a-round-draw)
@@ -47,7 +47,7 @@
 - [6.7: Can I withdraw after enrolling?](#67-can-i-withdraw-after-enrolling)
 - [6.8: What happens to my ETH if the tournament never starts?](#68-what-happens-to-my-eth-if-the-tournament-never-starts)
 
-**[7. Glossary](#7-glossary)**
+**[7. Appendix](#7-appendix)**
 
 ---
 
@@ -554,7 +554,7 @@ The existence of ML3 creates a cascading pressure effect across all three match 
 
 Inaction at every level is punished. Action at every level is rewarded. This is ETour's core anti-griefing guarantee.
 
-## 6. Edge Cases & FAQ
+## 6. FAQ
 
 ### 6.1: What if nobody joins my lobby?
 
@@ -630,7 +630,7 @@ If you are enrolled in a lobby that never fills:
 
 The safest path: if your lobby isn't filling and the enrollment window is expiring, trigger EL1 yourself. Start the tournament with whoever showed up. Don't wait for EL2 to become available to outsiders.
 
-## 7. Glossary
+## 7. Appendix
 
 
 **Entry fee**

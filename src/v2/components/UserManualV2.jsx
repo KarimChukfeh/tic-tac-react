@@ -225,6 +225,16 @@ const parseGlossary = (markdown) => {
   };
 };
 
+const isAppendixSection = (section = {}) => section.id === '7-glossary'
+  || section.id === '7-appendix'
+  || section.title === '7. Glossary'
+  || section.title === '7. Appendix';
+
+const isFaqSection = (section = {}) => section.id === '6-edge-cases--faq'
+  || section.id === '6-faq'
+  || section.title === '6. Edge Cases & FAQ'
+  || section.title === '6. FAQ';
+
 const buildSectionReferenceLookup = (sections = []) => {
   const references = {};
 
@@ -345,7 +355,7 @@ const parseManual = (rawMarkdown) => {
       };
     });
 
-  const glossarySection = contentSections.find((section) => section.id === '7-glossary');
+  const glossarySection = contentSections.find((section) => isAppendixSection(section));
   const glossary = glossarySection ? parseGlossary(glossarySection.introMarkdown) : { entries: [], footerMarkdown: '' };
 
   const headingIds = contentSections.flatMap((section) => [
@@ -364,7 +374,7 @@ const parseManual = (rawMarkdown) => {
     ])),
   ])));
 
-  const faqIds = (contentSections.find((section) => section.id === '6-edge-cases--faq')?.subsections ?? [])
+  const faqIds = (contentSections.find((section) => isFaqSection(section))?.subsections ?? [])
     .map((subsection) => subsection.id);
 
   const tocGroups = (tocSection ? parseTocGroups(tocSection.markdown) : []).map((group) => {
@@ -830,11 +840,11 @@ const renderSectionBody = ({
   glossary,
   sectionReferenceLookup,
 }) => {
-  if (section.id === '7-glossary') {
+  if (isAppendixSection(section)) {
     return <GlossaryGrid glossary={glossary} colors={colors} sectionReferenceLookup={sectionReferenceLookup} />;
   }
 
-  if (section.id === '6-edge-cases--faq') {
+  if (isFaqSection(section)) {
     return (
       <div className="space-y-4">
         {section.subsections.map((subsection) => (
@@ -1194,14 +1204,10 @@ const UserManualV2 = ({
       <SectionHeader
         title={section.title}
         colors={colors}
-        subtitle={section.id === '6-edge-cases--faq'
-          ? 'FAQ items now render as interactive accordions backed by the markdown headings.'
-          : section.id === '7-glossary'
-          ? 'Glossary entries are parsed into discrete cards while still authored in one markdown section.'
-          : null}
+        subtitle={null}
       />
 
-      {section.id !== '7-glossary' ? (
+      {!isAppendixSection(section) ? (
         <MarkdownBody
           markdown={section.introMarkdown}
           colors={colors}
@@ -1209,7 +1215,7 @@ const UserManualV2 = ({
         />
       ) : null}
 
-      {section.id !== '7-glossary' && section.introMarkdown && section.subsections.length ? (
+      {!isAppendixSection(section) && section.introMarkdown && section.subsections.length ? (
         <hr className={`my-6 ${colors.borderDark}`} />
       ) : null}
 
