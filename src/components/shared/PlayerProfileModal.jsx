@@ -6,6 +6,7 @@ import { getAddressUrl } from '../../config/networks';
 import { shortenAddress, getTournamentTypeLabel } from '../../utils/formatters';
 import { getTournamentResolutionReasonValue } from '../../utils/completionReasons';
 import { getV2TournamentResolutionText, isV2TournamentCancelledReason } from '../../v2/lib/reasonLabels';
+import { isTournamentDrawResolution } from '../../v2/lib/playerProfileStats';
 import { usePlayerProfile } from '../../v2/hooks/usePlayerProfile';
 import { useConnectFourPlayerProfile } from '../../v2/hooks/useConnectFourPlayerProfile';
 import { useChessPlayerProfile } from '../../v2/hooks/useChessPlayerProfile';
@@ -49,6 +50,11 @@ function hasCancelledTournamentReason(record) {
   return isV2TournamentCancelledReason(getTournamentResolutionReasonValue(record));
 }
 
+function isDrawTournamentRecord(record) {
+  return isTournamentDrawResolution(getTournamentResolutionReasonValue(record))
+    && getRecordPayout(record) > 0n;
+}
+
 function getTournamentResolutionText(record) {
   if (hasCancelledTournamentReason(record) || isCancelledTournamentRecord(record)) {
     return getV2TournamentResolutionText(5).text;
@@ -62,6 +68,7 @@ function getTournamentResolutionText(record) {
 function getTournamentOutcomeClass(record) {
   if (!record?.concluded) return 'text-yellow-300 border-yellow-400/30 bg-yellow-500/10';
   if (hasCancelledTournamentReason(record) || isCancelledTournamentRecord(record)) return 'text-slate-300 border-slate-400/30 bg-slate-500/10';
+  if (isDrawTournamentRecord(record)) return 'text-yellow-300 border-yellow-400/30 bg-yellow-500/10';
   if (record?.won) return 'text-green-300 border-green-400/30 bg-green-500/10';
   return 'text-red-300 border-red-400/30 bg-red-500/10';
 }
@@ -210,7 +217,11 @@ const PlayerProfileModal = ({
                           <div className="flex flex-wrap items-center gap-2">
                             <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${getTournamentOutcomeClass(record)}`}>
                               {record.concluded
-                                ? (hasCancelledTournamentReason(record) || isCancelledTournamentRecord(record) ? 'Cancelled' : record.won ? 'Won' : 'Lost')
+                                ? (hasCancelledTournamentReason(record) || isCancelledTournamentRecord(record)
+                                  ? 'Cancelled'
+                                  : isDrawTournamentRecord(record)
+                                    ? 'Draw'
+                                    : record.won ? 'Won' : 'Lost')
                                 : 'Active'}
                             </span>
                             <span className="text-sm font-semibold text-white">
