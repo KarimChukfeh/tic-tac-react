@@ -116,9 +116,9 @@ The gas cost of a move in round one of the billionth tournament is identical to 
 
 ### Guaranteed Settlement
 
-Every player who enters a tournament receives an ironclad guarantee: their enrollment will be settled fairly, automatically, permanently, and without human intervention.
+Every player receives an ironclad guarantee: their ETH will be settled automatically, fairly, permanently, and without any human intervention.
 
-Players compete knowing that resolution is guaranteed, is fair, and is permenant.
+Players compete knowing that resolution is guaranteed, is fair, and is permanent.
 
 This is the foundation of trustless competition.
 
@@ -159,20 +159,22 @@ As more games build on the protocol, network effects emerge naturally: shared pl
 
 ### What Becomes Possible
 
-ETour proves that blockchain applications can be simple, useful, and sustainable without tokens or speculation.
+ETour proves that blockchain applications can be useful and sustainable without tokenomics and speculation.
 
-This model (fee-based services with transparent economics) represents blockchain's true potential: not as financial engineering, but as trust(less) infrastructure for human coordination.
+This model (fee-based services with transparent economics) represents Web3's true potential; not as financial engineering, but as trust(less) infrastructure for human coordination.
 
-Competitive gaming is just the beginning. Any system where fairness matters and transparency creates value can be built with the same core principles. 
+Competitive gaming is just the beginning. 
+
+**Any system where fairness and transparency matter can be built on the same core principles.**
 
 ---
 
 ## 5. Conclusion
 
-ETour is built on a simple belief: competitive players don't need tokens, governance votes, or complex economics. They need fair matches, transparent outcomes, and reliable payouts.
+ETour delivers on the simple idea that Web3 gaming doesn't need new tokens or complex economics. Players want fair matches, transparent outcomes, and reliable payouts.
 
-**If you're a player:** pick a game and compete. Test yourself against others with real stakes on the line.
+**If you're a player:** Pick a game and compete. Test yourself against others with real stakes on the line.
 
-**If you're a developer:** build your game on ETour. Inherit its infrastructure and focus on what makes your game special.
+**If you're a developer:** Build your game on ETour. Inherit its infrastructure and focus on what makes your game special.
 
-**If you're a skeptic:** read the code. Verify the claims. Find flaws.
+**If you're a skeptic:** Read the code. Verify the claims. Find flaws.
