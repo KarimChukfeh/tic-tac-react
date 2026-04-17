@@ -886,6 +886,7 @@ const UserManualV2 = ({
   defaultExpanded = false,
   collapsible = true,
   showAllSections = false,
+  useDrawerNavOnMobile = false,
 }) => {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded || !collapsible);
   const [manualData, setManualData] = useState(null);
@@ -895,6 +896,7 @@ const UserManualV2 = ({
   const [faqOpenId, setFaqOpenId] = useState(null);
   const [expandedSectionId, setExpandedSectionId] = useState('1-getting-started');
   const [displayedSectionId, setDisplayedSectionId] = useState('1-getting-started');
+  const [mobileNavExpandedSectionId, setMobileNavExpandedSectionId] = useState('1-getting-started');
   const [contentVisible, setContentVisible] = useState(true);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
@@ -1026,6 +1028,7 @@ const UserManualV2 = ({
   const displayedSection = manualData?.sections.find((section) => section.id === displayedSectionId) ?? null;
   const hasDisplayedSection = Boolean(displayedSection);
   const showDocumentNav = showAllSections && manualData && isExpanded && !isLoading && !errorMessage;
+  const showMobileDrawerNav = (showAllSections || useDrawerNavOnMobile) && manualData && isExpanded && !isLoading && !errorMessage;
 
   const handleToggleSection = (group) => {
     if (!group) return;
@@ -1063,6 +1066,13 @@ const UserManualV2 = ({
   };
 
   const handleMobileToggleSection = (group) => {
+    if (!group) return;
+
+    if (useDrawerNavOnMobile && !showAllSections) {
+      setMobileNavExpandedSectionId((current) => (current === group.id ? null : group.id));
+      return;
+    }
+
     handleToggleSection(group);
   };
 
@@ -1086,6 +1096,14 @@ const UserManualV2 = ({
       window.removeEventListener('open-user-manual', handleOpenManual);
     };
   }, []);
+
+  useEffect(() => {
+    if (!useDrawerNavOnMobile || showAllSections) {
+      return;
+    }
+
+    setMobileNavExpandedSectionId(expandedSectionId);
+  }, [expandedSectionId, showAllSections, useDrawerNavOnMobile]);
 
   useEffect(() => {
     if (showAllSections) {
@@ -1232,7 +1250,7 @@ const UserManualV2 = ({
 
   return (
     <div className={`bg-gradient-to-br ${colors.bg} border ${colors.border} rounded-2xl p-3 md:p-6`}>
-      {showDocumentNav ? (
+      {showMobileDrawerNav ? (
         <div className="fixed right-4 top-4 z-[60] flex lg:hidden">
           <button
             type="button"
@@ -1246,12 +1264,10 @@ const UserManualV2 = ({
         </div>
       ) : null}
 
-      {showDocumentNav ? (
+      {showMobileDrawerNav && isMobileNavOpen ? (
         <div
-          aria-hidden={!isMobileNavOpen}
-          className={`fixed inset-0 z-50 transition-opacity duration-200 ease-out lg:hidden ${
-            isMobileNavOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
-          }`}
+          aria-hidden="false"
+          className="fixed inset-0 z-50 transition-opacity duration-200 ease-out lg:hidden pointer-events-auto opacity-100"
         >
           <button
             type="button"
@@ -1259,9 +1275,7 @@ const UserManualV2 = ({
             onClick={() => setIsMobileNavOpen(false)}
             className="absolute inset-0 bg-black/45 backdrop-blur-[1px] transition-opacity duration-200 ease-out"
           />
-          <div className={`absolute left-4 right-4 top-20 max-h-[70vh] origin-top overflow-hidden rounded-2xl border border-slate-700/60 bg-slate-950 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.42)] transition-all duration-200 ease-out ${
-            isMobileNavOpen ? 'translate-y-0 scale-100 opacity-100' : '-translate-y-4 scale-[0.98] opacity-0'
-          }`}>
+          <div className="absolute left-4 right-4 top-20 max-h-[70vh] origin-top overflow-hidden rounded-2xl border border-slate-700/60 bg-slate-950 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.42)] transition-all duration-200 ease-out translate-y-0 scale-100 opacity-100">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <LayoutList className="text-sky-300" size={18} />
@@ -1276,18 +1290,16 @@ const UserManualV2 = ({
                 <X size={16} />
               </button>
             </div>
-            {isMobileNavOpen ? (
-              <div className="max-h-[calc(70vh-4.5rem)] overflow-y-auto">
-                <TocNav
-                  groups={manualData.tocGroups}
-                  activeHash={activeHash}
-                  expandedSectionId={expandedSectionId}
-                  onToggleSection={handleMobileToggleSection}
-                  onNavigate={handleNavLinkClick}
-                  showTitle={false}
-                />
-              </div>
-            ) : null}
+            <div className="max-h-[calc(70vh-4.5rem)] overflow-y-auto">
+              <TocNav
+                groups={manualData.tocGroups}
+                activeHash={activeHash}
+                expandedSectionId={useDrawerNavOnMobile && !showAllSections ? mobileNavExpandedSectionId : expandedSectionId}
+                onToggleSection={handleMobileToggleSection}
+                onNavigate={handleNavLinkClick}
+                showTitle={false}
+              />
+            </div>
           </div>
         </div>
       ) : null}
@@ -1337,6 +1349,10 @@ const UserManualV2 = ({
                 className={`space-y-4 transition-[max-width,transform,opacity] duration-500 ease-out ${
                   showAllSections
                     ? 'hidden lg:sticky lg:top-24 lg:block lg:w-[320px] lg:min-w-[320px] lg:max-w-[320px]'
+                    : showMobileDrawerNav
+                    ? hasExpandedSection
+                      ? 'hidden lg:sticky lg:top-24 lg:block lg:w-[320px] lg:min-w-[320px] lg:max-w-[320px]'
+                      : 'hidden lg:flex-1 lg:w-full lg:max-w-none lg:block'
                     : hasExpandedSection
                     ? 'lg:sticky lg:top-24 lg:w-[320px] lg:min-w-[320px] lg:max-w-[320px]'
                     : 'lg:flex-1 lg:w-full lg:max-w-none'

@@ -26,7 +26,7 @@ const Manual = () => {
         </div>
 
         <div id="user-manual">
-          <UserManualV2 defaultExpanded collapsible={false} showAllSections />
+          <UserManualV2 defaultExpanded collapsible={false} useDrawerNavOnMobile />
         </div>
       </div>
     </div>
