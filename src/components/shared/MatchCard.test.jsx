@@ -10,6 +10,14 @@ const completedMatch = {
   completionReason: 0,
 };
 
+const activeMatch = {
+  player1: '0x1111111111111111111111111111111111111111',
+  player2: '0x2222222222222222222222222222222222222222',
+  winner: '0x0000000000000000000000000000000000000000',
+  matchStatus: 1,
+  completionReason: 0,
+};
+
 describe('MatchCard', () => {
   it('shows View Match for completed tournaments even when the connected wallet is not in the match', () => {
     const onEnterMatch = vi.fn();
@@ -53,6 +61,70 @@ describe('MatchCard', () => {
     );
 
     expect(screen.queryByRole('button', { name: /view match/i })).not.toBeInTheDocument();
+  });
+
+  it('shows Spectate for an active match when a connected outsider views the card', () => {
+    const onSpectateMatch = vi.fn();
+
+    render(
+      <MatchCard
+        match={activeMatch}
+        matchIdx={1}
+        roundIdx={2}
+        tierId={0}
+        instanceId={0}
+        account="0x3333333333333333333333333333333333333333"
+        loading={false}
+        onEnterMatch={vi.fn()}
+        onSpectateMatch={onSpectateMatch}
+        showEscalation={false}
+        gameName="tictactoe"
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /^spectate$/i }));
+
+    expect(onSpectateMatch).toHaveBeenCalledWith(0, 0, 2, 1);
+  });
+
+  it('does not show Spectate for active matches when the connected wallet is in the match', () => {
+    render(
+      <MatchCard
+        match={activeMatch}
+        matchIdx={1}
+        roundIdx={2}
+        tierId={0}
+        instanceId={0}
+        account="0x1111111111111111111111111111111111111111"
+        loading={false}
+        onEnterMatch={vi.fn()}
+        onSpectateMatch={vi.fn()}
+        showEscalation={false}
+        gameName="tictactoe"
+      />
+    );
+
+    expect(screen.queryByRole('button', { name: /^spectate$/i })).not.toBeInTheDocument();
+  });
+
+  it('does not show Spectate for active matches when no wallet is connected', () => {
+    render(
+      <MatchCard
+        match={activeMatch}
+        matchIdx={1}
+        roundIdx={2}
+        tierId={0}
+        instanceId={0}
+        account={null}
+        loading={false}
+        onEnterMatch={vi.fn()}
+        onSpectateMatch={vi.fn()}
+        showEscalation={false}
+        gameName="tictactoe"
+      />
+    );
+
+    expect(screen.queryByRole('button', { name: /^spectate$/i })).not.toBeInTheDocument();
   });
 
   it('shows WINS text for the winner on completed match cards', () => {

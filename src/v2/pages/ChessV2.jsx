@@ -528,7 +528,7 @@ function buildReplayChessBoard(moveHistory, effectiveMoveIndex, fallbackBoard) {
   return board;
 }
 
-const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceEliminate, onClaimReplacement, onManualStart, onClaimAbandonedPool, onResetEnrollmentWindow, onCancelTournament, onEnroll, onConnectWallet, account, loading, connectLoading, syncDots, isEnrolled, entryFee, isFull, instanceContract, onPlayerAddressClick }) => {
+const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onSpectateMatch, onForceEliminate, onClaimReplacement, onManualStart, onClaimAbandonedPool, onResetEnrollmentWindow, onCancelTournament, onEnroll, onConnectWallet, account, loading, connectLoading, syncDots, isEnrolled, entryFee, isFull, instanceContract, onPlayerAddressClick }) => {
   const { status, currentRound, enrolledCount, rounds, playerCount, players, enrollmentTimeout } = tournamentData;
   const bracketViewRef = useRef(null);
   const prevStatusRef = useRef(status);
@@ -617,6 +617,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
                         account={account}
                         loading={loading}
                         onEnterMatch={onEnterMatch}
+                        onSpectateMatch={onSpectateMatch}
                         onForceEliminate={onForceEliminate}
                         onClaimReplacement={onClaimReplacement}
                         matchStatusOptions={{ doubleForfeitText: 'Eliminated - Double Forfeit' }}
@@ -2099,6 +2100,10 @@ export default function ChessV2() {
     const match = currentMatchRef.current;
     if (!match?.player1 || !match?.player2) return;
     const matchId = ethers.solidityPackedKeccak256(['uint8', 'uint8'], [match.roundNumber, match.matchNumber]);
+    const viewerIsSpectator = ![
+      match.player1.toLowerCase(),
+      match.player2.toLowerCase(),
+    ].includes(account.toLowerCase());
     const opponentAddress = match.player1.toLowerCase() === account.toLowerCase() ? match.player2 : match.player1;
     const handleOpponentMove = (_matchId, _player, from, to) => {
       setGhostMove({ from: Number(from), to: Number(to) });
@@ -2106,11 +2111,13 @@ export default function ChessV2() {
       doMatchSyncRef.current?.().then(() => setGhostMove(null)).catch(() => setGhostMove(null));
     };
     try {
-      const filter = activeInstanceContract.filters.MoveMade(matchId, opponentAddress);
+      const filter = viewerIsSpectator
+        ? activeInstanceContract.filters.MoveMade(matchId, null)
+        : activeInstanceContract.filters.MoveMade(matchId, opponentAddress);
       activeInstanceContract.on(filter, handleOpponentMove);
       return () => activeInstanceContract.off(filter, handleOpponentMove);
     } catch {}
-  }, [currentMatch?.roundNumber, currentMatch?.matchNumber, activeInstanceContract, account]);
+  }, [currentMatch?.roundNumber, currentMatch?.matchNumber, activeInstanceContract, account, isSpectator]);
 
   useEffect(() => { if (!currentMatch) return; const id = setInterval(() => setSyncDots(prev => prev >= 3 ? 3 : prev + 1), 1000); return () => clearInterval(id); }, [currentMatch]);
   useEffect(() => { if (!viewingTournament) return; const id = setInterval(() => setBracketSyncDots(prev => prev >= 3 ? 3 : prev + 1), 1000); return () => clearInterval(id); }, [viewingTournament]);
@@ -2440,7 +2447,7 @@ export default function ChessV2() {
           <>
             {viewingTournament ? (
               <div ref={tournamentBracketRef}>
-                <TournamentBracket tournamentData={viewingTournament} onBack={handleBackToTournaments} onEnterMatch={handlePlayMatch} onForceEliminate={handleForceEliminateStalledMatch} onClaimReplacement={handleClaimMatchSlotByReplacement} onManualStart={handleManualStart} onClaimAbandonedPool={handleClaimAbandonedPool} onResetEnrollmentWindow={handleResetEnrollmentWindow} onCancelTournament={handleCancelTournament} onEnroll={handleEnroll} onConnectWallet={connectWallet} account={account} loading={tournamentsLoading} connectLoading={isConnecting} syncDots={bracketSyncDots} isEnrolled={viewingTournament?.players?.some(addr => addr.toLowerCase() === account?.toLowerCase())} entryFee={viewingTournament?.entryFeeEth ?? '0'} isFull={viewingTournament?.enrolledCount >= viewingTournament?.playerCount} instanceContract={activeInstanceContract} onPlayerAddressClick={setSelectedProfileAddress} />
+                <TournamentBracket tournamentData={viewingTournament} onBack={handleBackToTournaments} onEnterMatch={handlePlayMatch} onSpectateMatch={handlePlayMatch} onForceEliminate={handleForceEliminateStalledMatch} onClaimReplacement={handleClaimMatchSlotByReplacement} onManualStart={handleManualStart} onClaimAbandonedPool={handleClaimAbandonedPool} onResetEnrollmentWindow={handleResetEnrollmentWindow} onCancelTournament={handleCancelTournament} onEnroll={handleEnroll} onConnectWallet={connectWallet} account={account} loading={tournamentsLoading} connectLoading={isConnecting} syncDots={bracketSyncDots} isEnrolled={viewingTournament?.players?.some(addr => addr.toLowerCase() === account?.toLowerCase())} entryFee={viewingTournament?.entryFeeEth ?? '0'} isFull={viewingTournament?.enrolledCount >= viewingTournament?.playerCount} instanceContract={activeInstanceContract} onPlayerAddressClick={setSelectedProfileAddress} />
               </div>
             ) : (
               <div className="space-y-8 md:space-y-10">

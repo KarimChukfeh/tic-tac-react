@@ -109,6 +109,7 @@ const MatchCard = ({
   const completionReason = getMatchCompletionReasonValue(match);
   const canViewCompletedMatch = Boolean(account) && isTournamentCompleted && matchStatus === 2;
   const canAccessActiveMatch = Boolean(account) && isUserMatch && matchStatus !== 2;
+  const canSpectateActiveMatch = Boolean(account) && !isUserMatch && matchStatus === 1 && Boolean(onSpectateMatch);
   const shouldShowMatchCta = canViewCompletedMatch || canAccessActiveMatch;
   const zeroAddress = '0x0000000000000000000000000000000000000000';
   const player1Normalized = match.player1?.toLowerCase?.() || '';
@@ -633,18 +634,6 @@ const MatchCard = ({
           </div>
         )}
 
-        {/* COMMENTED OUT: Spectate Button disabled for now */}
-        {/* {!isUserMatch && match.matchStatus === 1 && onSpectateMatch && (
-          <button
-            onClick={() => onSpectateMatch(tierId, instanceId, roundIdx, matchIdx)}
-            disabled={loading}
-            className="w-full mt-2 bg-gradient-to-r from-blue-500/80 to-purple-500/80 hover:from-blue-600/90 hover:to-purple-600/90 disabled:from-gray-500 disabled:to-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
-          >
-            <Eye size={16} />
-            Spectate Match
-          </button>
-        )} */}
-
         {/* Escalation CTAs for outsiders */}
         {showEscalation && !isUserMatch && matchStatus === 1 && (
           <>
@@ -698,6 +687,19 @@ const MatchCard = ({
               </div>
             )}
           </>
+        )}
+
+        {canSpectateActiveMatch && (
+          <div className="mt-2">
+            <button
+              onClick={() => onSpectateMatch(tierId, instanceId, roundIdx, matchIdx)}
+              disabled={loading}
+              className="w-full bg-gradient-to-r from-blue-500/80 to-purple-500/80 hover:from-blue-600/90 hover:to-purple-600/90 disabled:from-gray-500 disabled:to-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
+            >
+              <Eye size={16} />
+              Spectate
+            </button>
+          </div>
         )}
       </div>
     </div>

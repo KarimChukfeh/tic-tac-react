@@ -269,6 +269,7 @@ const TournamentBracket = ({
   tournamentData,
   onBack,
   onEnterMatch,
+  onSpectateMatch,
   onForceEliminate,
   onClaimReplacement,
   onManualStart,
@@ -409,6 +410,7 @@ const TournamentBracket = ({
                         account={account}
                         loading={loading}
                         onEnterMatch={onEnterMatch}
+                        onSpectateMatch={onSpectateMatch}
                         onForceEliminate={onForceEliminate}
                         onClaimReplacement={onClaimReplacement}
                         matchStatusOptions={matchStatusOptions}
@@ -2076,6 +2078,10 @@ export default function TicTacToeV2() {
       ['uint8', 'uint8'],
       [match.roundNumber, match.matchNumber]
     );
+    const viewerIsSpectator = ![
+      match.player1.toLowerCase(),
+      match.player2.toLowerCase(),
+    ].includes(account.toLowerCase());
     const opponentAddress = match.player1.toLowerCase() === account.toLowerCase() ? match.player2 : match.player1;
 
     const handleOpponentMove = (_matchId, _player, cellIndex) => {
@@ -2085,11 +2091,13 @@ export default function TicTacToeV2() {
     };
 
     try {
-      const filter = activeInstanceContract.filters.MoveMade(matchId, opponentAddress);
+      const filter = viewerIsSpectator
+        ? activeInstanceContract.filters.MoveMade(matchId, null)
+        : activeInstanceContract.filters.MoveMade(matchId, opponentAddress);
       activeInstanceContract.on(filter, handleOpponentMove);
       return () => { activeInstanceContract.off(filter, handleOpponentMove); };
     } catch { /* instance may not support filters yet */ }
-  }, [currentMatch?.roundNumber, currentMatch?.matchNumber, activeInstanceContract, account]);
+  }, [currentMatch?.roundNumber, currentMatch?.matchNumber, activeInstanceContract, account, isSpectator]);
 
   // Sync dots
   useEffect(() => {
@@ -2670,6 +2678,7 @@ export default function TicTacToeV2() {
                   tournamentData={viewingTournament}
                   onBack={handleBackToTournaments}
                   onEnterMatch={handlePlayMatch}
+                  onSpectateMatch={handlePlayMatch}
                   onForceEliminate={handleForceEliminateStalledMatch}
                   onClaimReplacement={handleClaimMatchSlotByReplacement}
                   onManualStart={handleManualStart}

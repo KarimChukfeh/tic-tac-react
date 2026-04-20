@@ -524,6 +524,7 @@ const TournamentBracket = ({
   tournamentData,
   onBack,
   onEnterMatch,
+  onSpectateMatch,
   onForceEliminate,
   onClaimReplacement,
   onManualStart,
@@ -652,6 +653,7 @@ const TournamentBracket = ({
                         account={account}
                         loading={loading}
                         onEnterMatch={onEnterMatch}
+                        onSpectateMatch={onSpectateMatch}
                         onForceEliminate={onForceEliminate}
                         onClaimReplacement={onClaimReplacement}
                         matchStatusOptions={{ doubleForfeitText: 'Eliminated - Double Forfeit' }}
@@ -2300,6 +2302,10 @@ export default function ConnectFourV2() {
     if (!match?.player1 || !match?.player2) return;
 
     const matchId = ethers.solidityPackedKeccak256(['uint8', 'uint8'], [match.roundNumber, match.matchNumber]);
+    const viewerIsSpectator = ![
+      match.player1.toLowerCase(),
+      match.player2.toLowerCase(),
+    ].includes(account.toLowerCase());
     const opponentAddress = match.player1.toLowerCase() === account.toLowerCase() ? match.player2 : match.player1;
 
     const handleOpponentMove = (_matchId, _player, column, row) => {
@@ -2309,11 +2315,13 @@ export default function ConnectFourV2() {
     };
 
     try {
-      const filter = activeInstanceContract.filters.MoveMade(matchId, opponentAddress);
+      const filter = viewerIsSpectator
+        ? activeInstanceContract.filters.MoveMade(matchId, null)
+        : activeInstanceContract.filters.MoveMade(matchId, opponentAddress);
       activeInstanceContract.on(filter, handleOpponentMove);
       return () => { activeInstanceContract.off(filter, handleOpponentMove); };
     } catch {}
-  }, [currentMatch?.roundNumber, currentMatch?.matchNumber, activeInstanceContract, account]);
+  }, [currentMatch?.roundNumber, currentMatch?.matchNumber, activeInstanceContract, account, isSpectator]);
 
   useEffect(() => {
     if (!currentMatch) return;
@@ -2876,6 +2884,7 @@ export default function ConnectFourV2() {
                   tournamentData={viewingTournament}
                   onBack={handleBackToTournaments}
                   onEnterMatch={handlePlayMatch}
+                  onSpectateMatch={handlePlayMatch}
                   onForceEliminate={handleForceEliminateStalledMatch}
                   onClaimReplacement={handleClaimMatchSlotByReplacement}
                   onManualStart={handleManualStart}
