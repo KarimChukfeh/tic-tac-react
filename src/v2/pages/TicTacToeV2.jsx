@@ -224,6 +224,71 @@ function hydrateBracketMatchData(userAccount, matchInfo, {
   };
 }
 
+const AnimatedTicTacToeSymbol = ({ delay = 0, size = 'large' }) => {
+  const [showX, setShowX] = useState(true);
+  const [started, setStarted] = useState(delay === 0);
+
+  useEffect(() => {
+    if (delay > 0) {
+      const timeout = setTimeout(() => setStarted(true), delay);
+      return () => clearTimeout(timeout);
+    }
+  }, [delay]);
+
+  useEffect(() => {
+    if (!started) return;
+    const interval = setInterval(() => {
+      setShowX((prev) => !prev);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [started]);
+
+  const symbolSize = typeof size === 'number' ? size : size === 'large' ? 128 : 32;
+  const xStrokeWidth = Math.max(4, Math.round(symbolSize * 0.08));
+  const oBorderWidth = Math.max(4, Math.round(symbolSize * 0.08));
+
+  return (
+    <span
+      className="relative inline-block animate-float"
+      style={{ width: symbolSize, height: symbolSize }}
+      aria-hidden="true"
+    >
+      <span
+        className="absolute inset-0 flex items-center justify-center select-none"
+        style={{
+          opacity: showX ? 1 : 0,
+          transition: 'opacity 1s ease-in-out',
+          filter: 'drop-shadow(0 0 18px rgba(56, 189, 248, 0.45))',
+        }}
+      >
+        <span className="relative inline-block h-full w-full">
+          <span
+            className="absolute inset-0 left-1/2 h-full -translate-x-1/2 rotate-45 bg-blue-500"
+            style={{ width: xStrokeWidth }}
+          />
+          <span
+            className="absolute inset-0 left-1/2 h-full -translate-x-1/2 -rotate-45 bg-blue-500"
+            style={{ width: xStrokeWidth }}
+          />
+        </span>
+      </span>
+      <span
+        className="absolute inset-0 flex items-center justify-center select-none"
+        style={{
+          opacity: showX ? 0 : 1,
+          transition: 'opacity 1s ease-in-out',
+          filter: 'drop-shadow(0 0 18px rgba(239, 68, 68, 0.35))',
+        }}
+      >
+        <span
+          className="inline-block h-full w-full rounded-full border-red-500"
+          style={{ borderWidth: oBorderWidth }}
+        />
+      </span>
+    </span>
+  );
+};
+
 function ActionMessage({ type = 'info', message }) {
   if (!message) return null;
   const styles = {
@@ -2495,14 +2560,16 @@ export default function TicTacToeV2() {
           <div className="inline-block mb-6">
             <div className="relative flex h-28 w-28 items-center justify-center md:h-32 md:w-32">
               <div className={`absolute inset-0 bg-gradient-to-r ${currentTheme.heroGlow} rounded-full blur-xl opacity-50 animate-pulse`}></div>
-              <Grid className={`relative ${currentTheme.heroIcon} animate-float`} size={88} />
+              <div className="relative">
+                <AnimatedTicTacToeSymbol size={88} />
+              </div>
             </div>
           </div>
           <h1 className={`mb-4 bg-gradient-to-r bg-clip-text text-6xl font-bold leading-none text-transparent md:text-7xl ${currentTheme.heroTitle}`}>
             TicTacToe
           </h1>
           <p className="pt-4 text-2xl text-blue-200 mb-6">
-            Play Tic-Tac-Toe on the blockchain with real ETH on the line
+            Tic-Tac-Toe on the blockchain with real ETH on the line
           </p>
         </div>
 

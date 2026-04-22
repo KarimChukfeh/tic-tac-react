@@ -235,6 +235,59 @@ function hydrateBracketMatchData(userAccount, matchInfo, {
   };
 }
 
+const AnimatedKing = ({ delay = 0, size = 'large' }) => {
+  const [showWhite, setShowWhite] = useState(true);
+  const [started, setStarted] = useState(delay === 0);
+
+  useEffect(() => {
+    if (delay > 0) {
+      const timeout = setTimeout(() => setStarted(true), delay);
+      return () => clearTimeout(timeout);
+    }
+  }, [delay]);
+
+  useEffect(() => {
+    if (!started) return;
+    const interval = setInterval(() => {
+      setShowWhite((prev) => !prev);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [started]);
+
+  const pieceSize = typeof size === 'number' ? size : size === 'large' ? 128 : 32;
+
+  return (
+    <span
+      className="relative inline-block"
+      style={{ width: pieceSize, height: pieceSize }}
+      aria-hidden="true"
+    >
+      <img
+        src="/chess-pieces/king-w.svg"
+        alt=""
+        className="absolute inset-0 h-full w-full select-none object-contain"
+        style={{
+          opacity: showWhite ? 1 : 0,
+          transition: 'opacity 1s ease-in-out',
+          filter: 'drop-shadow(0 0 18px rgba(255, 255, 255, 0.35))',
+        }}
+        draggable="false"
+      />
+      <img
+        src="/chess-pieces/king-b.svg"
+        alt=""
+        className="absolute inset-0 h-full w-full select-none object-contain"
+        style={{
+          opacity: showWhite ? 0 : 1,
+          transition: 'opacity 1s ease-in-out',
+          filter: 'drop-shadow(0 0 18px rgba(34, 211, 238, 0.3))',
+        }}
+        draggable="false"
+      />
+    </span>
+  );
+};
+
 const getPieceSvg = (piece) => {
   if (!piece) return '';
   const pieceType = Number(piece.pieceType);
@@ -2282,14 +2335,16 @@ export default function ChessV2() {
           <div className="inline-block mb-6">
             <div className="relative flex h-28 w-28 items-center justify-center md:h-32 md:w-32">
               <div className={`absolute inset-0 bg-gradient-to-r ${currentTheme.heroGlow} rounded-full blur-xl opacity-50 animate-pulse`} />
-              <span className="relative text-[5rem] leading-none md:text-[5.5rem]">♚</span>
+              <div className="relative">
+                <AnimatedKing size={88} />
+              </div>
             </div>
           </div>
           <h1 className={`mb-4 bg-gradient-to-r bg-clip-text text-6xl font-bold leading-none text-transparent md:text-7xl ${currentTheme.heroTitle}`}>
             Chess
           </h1>
           <p className={`pt-4 text-2xl ${currentTheme.heroText} mb-6`}>
-            Play Chess on the blockchain with real ETH on the line
+            Chess on the blockchain with real ETH on the line
           </p>
         </div>
 
