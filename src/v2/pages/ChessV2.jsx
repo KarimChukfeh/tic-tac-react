@@ -2285,9 +2285,11 @@ export default function ChessV2() {
               <span className="relative text-[5rem] leading-none md:text-[5.5rem]">♚</span>
             </div>
           </div>
-          <h1 className={`text-6xl md:text-7xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r ${currentTheme.heroTitle}`}>ETour Chess</h1>
+          <h1 className={`mb-4 bg-gradient-to-r bg-clip-text text-6xl font-bold leading-none text-transparent md:text-7xl ${currentTheme.heroTitle}`}>
+            Chess
+          </h1>
           <p className={`pt-4 text-2xl ${currentTheme.heroText} mb-6`}>
-            Play Chess on the blockchain with real ETH on the line.
+            Play Chess on the blockchain with real ETH on the line
           </p>
         </div>
 
