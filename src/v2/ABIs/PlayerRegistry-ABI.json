@@ -1,6 +1,6 @@
 {
   "network": "arbitrum",
-  "generatedAt": "2026-04-05T15:30:41.205Z",
+  "generatedAt": "2026-04-07T07:53:18.991Z",
   "contract": {
     "abi": [
       {
@@ -123,6 +123,12 @@
             "indexed": false,
             "internalType": "uint8",
             "name": "category",
+            "type": "uint8"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint8",
+            "name": "resolutionReason",
             "type": "uint8"
           }
         ],
@@ -375,6 +381,11 @@
             "internalType": "uint8",
             "name": "category",
             "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "resolutionReason",
+            "type": "uint8"
           }
         ],
         "name": "recordMatchOutcome",
@@ -441,8 +452,8 @@
     ]
   },
   "addressesByGame": {
-    "TicTacChainFactory": "0x0DfACcA93A63d6C2392c325b5323B01FAc600796",
-    "ConnectFourFactory": "0xF4Aaa91aFB1A41a92a7A82A704D739C54197a5a2",
-    "ChessOnChainFactory": "0xcb7983f1c7190dfcBa160C4e50728004271a8dd3"
+    "TicTacToeFactory": "0xcC84d99f938A434a74Bb74642E34B78a87b975C5",
+    "ConnectFourFactory": "0xcC84d99f938A434a74Bb74642E34B78a87b975C5",
+    "ChessFactory": "0xcC84d99f938A434a74Bb74642E34B78a87b975C5"
   }
 }

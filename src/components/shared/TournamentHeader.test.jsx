@@ -65,7 +65,7 @@ describe('TournamentHeader', () => {
 
     expect(screen.getByRole('heading', { name: 'TicTacToe Tournament' })).toBeInTheDocument();
     expect(screen.queryByText('TicTacToe Tournament T1-I1')).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: instanceAddress })).toHaveAttribute('href', `https://arbiscan.io/address/${instanceAddress}`);
+    expect(screen.getByRole('link', { name: 'Unique Instance 0x8478...2740' })).toHaveAttribute('href', `https://arbiscan.io/address/${instanceAddress}`);
     expect(screen.queryByText('Round 1/2')).not.toBeInTheDocument();
   });
 
@@ -121,7 +121,22 @@ describe('TournamentHeader', () => {
       />
     );
 
-    expect(screen.getByText(/wins by r2 uncontested finals resolution/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /via r2 uncontested finals resolution/i })).toBeInTheDocument();
+  });
+
+  it('shows completed status styling for V2 R2 resolutions', () => {
+    render(
+      <TournamentHeader
+        {...baseProps}
+        status={2}
+        completionReason={7}
+        reasonLabelMode="v2"
+      />
+    );
+
+    expect(screen.getByText('Completed')).toBeInTheDocument();
+    expect(screen.queryByText('Abandoned')).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /via r2 uncontested finals resolution/i })).toBeInTheDocument();
   });
 
   it('shows a connect-to-enrol CTA when the wallet is not connected', () => {
@@ -173,11 +188,22 @@ describe('TournamentHeader', () => {
       />
     );
 
-    expect(await screen.findByRole('button', { name: 'Cancel Tournament' })).toBeInTheDocument();
-    expect(await screen.findByRole('button', { name: 'Reset Enrollment Window' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Reset' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Force Start/i })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel Tournament' }));
+    const statusCard = screen.getByText('You are the sole enroller').closest('.border');
+    const actionGrid = screen.getByRole('button', { name: 'Cancel' }).closest('.grid');
+    expect(document.body.textContent.indexOf('Invite a Friend')).toBeLessThan(document.body.textContent.indexOf('You are the sole enroller'));
+    expect(statusCard).toContainElement(actionGrid);
+    expect(actionGrid).toHaveClass('grid-cols-2');
+    expect(actionGrid).toContainElement(screen.getByRole('link', { name: 'Learn about Cancellations' }));
+    expect(actionGrid).toContainElement(screen.getByRole('link', { name: 'Learn about Resetting Enrollment' }));
+    expect(actionGrid.textContent.indexOf('Learn about Cancellations')).toBeLessThan(actionGrid.textContent.lastIndexOf('Cancel'));
+    expect(actionGrid.textContent.indexOf('Learn about Resetting Enrollment')).toBeLessThan(actionGrid.textContent.lastIndexOf('Reset'));
+    expect(actionGrid.textContent.indexOf('Learn about Resetting Enrollment')).toBeLessThan(actionGrid.textContent.indexOf('Learn about Cancellations'));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(onCancelTournament).toHaveBeenCalledWith(0, 0);
   });
 
@@ -199,8 +225,8 @@ describe('TournamentHeader', () => {
       />
     );
 
-    expect(await screen.findByRole('button', { name: 'Cancel Tournament' })).toBeInTheDocument();
-    expect(await screen.findByRole('button', { name: 'Reset Enrollment Window' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Reset' })).toBeInTheDocument();
   });
 
   it('shows the enrolment window timer inside the status card when a deadline is provided', () => {
@@ -218,5 +244,161 @@ describe('TournamentHeader', () => {
 
     expect(screen.getByText('Window closes in 1m 30s')).toBeInTheDocument();
     expect(screen.queryByText('Enrollment Time Remaining')).not.toBeInTheDocument();
+  });
+
+  it('uses the v2 enrolment header copy and hides the round card', () => {
+    render(
+      <TournamentHeader
+        {...baseProps}
+        reasonLabelMode="v2"
+        status={0}
+      />
+    );
+
+    expect(screen.getByText('Current Pot')).toBeInTheDocument();
+    expect(screen.queryByText('Prize Pool')).not.toBeInTheDocument();
+    expect(screen.queryByText('Round')).not.toBeInTheDocument();
+    expect(screen.queryByText('1/2')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Enrolled Players/i)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Expand players' }));
+
+    expect(screen.getByText('0x1111...1111')).toBeInTheDocument();
+    expect(screen.getByText('0x2222...2222')).toBeInTheDocument();
+  });
+
+  it('shows completed v2 cards and expands enrolled players on demand', () => {
+    const { container } = render(
+      <TournamentHeader
+        {...baseProps}
+        status={2}
+        reasonLabelMode="v2"
+        completionReason={1}
+        payoutEntries={[
+          {
+            recipient: '0x1234567890abcdef1234567890abcdef12345678',
+            amount: 500000000000000000n,
+          },
+          {
+            recipient: '0xabcdefabcdefabcdefabcdefabcdefabcdefabcd',
+            amount: 500000000000000000n,
+          },
+        ]}
+      />
+    );
+
+    expect(container.querySelector('.grid.grid-cols-2.md\\:grid-cols-3')).toBeInTheDocument();
+    expect(screen.getByText('Payouts')).toBeInTheDocument();
+    expect(screen.queryByText(/Enrolled Players/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /via ml1 timeout/i })).toBeInTheDocument();
+    expect(screen.getAllByText(/Awarded/i)).toHaveLength(2);
+    expect(container.querySelector('.col-span-2.md\\:col-span-1')).toContainElement(screen.getByText('Payouts'));
+    expect(screen.queryByText('0x1111111111111111111111111111111111111111')).not.toBeInTheDocument();
+    expect(screen.getByText('0x1234...5678')).toBeInTheDocument();
+    expect(screen.getByText('0xabcd...abcd')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Expand players' }));
+
+    expect(screen.getByText('0x1111...1111')).toBeInTheDocument();
+    expect(screen.getByText('0x2222...2222')).toBeInTheDocument();
+  });
+
+  it('opens player stats callbacks for non-connected addresses in completed v2 headers', () => {
+    const onPlayerAddressClick = vi.fn();
+
+    render(
+      <TournamentHeader
+        {...baseProps}
+        status={2}
+        reasonLabelMode="v2"
+        completionReason={1}
+        payoutEntries={[
+          {
+            recipient: '0x1234567890abcdef1234567890abcdef12345678',
+            amount: 500000000000000000n,
+          },
+        ]}
+        onPlayerAddressClick={onPlayerAddressClick}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Expand players' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Open stats for 0x2222...2222' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Open stats for 0x1234...5678' }));
+
+    expect(screen.queryByRole('button', { name: 'Open stats for 0x1111...1111' })).not.toBeInTheDocument();
+    expect(onPlayerAddressClick).toHaveBeenNthCalledWith(1, '0x2222222222222222222222222222222222222222');
+    expect(onPlayerAddressClick).toHaveBeenNthCalledWith(2, '0x1234567890abcdef1234567890abcdef12345678');
+  });
+
+  it('shows "to You" when a completed v2 payout recipient is the connected wallet', () => {
+    render(
+      <TournamentHeader
+        {...baseProps}
+        status={2}
+        reasonLabelMode="v2"
+        completionReason={1}
+        payoutEntries={[
+          {
+            recipient: '0x1111111111111111111111111111111111111111',
+            amount: 500000000000000000n,
+          },
+          {
+            recipient: '0x1234567890abcdef1234567890abcdef12345678',
+            amount: 500000000000000000n,
+          },
+        ]}
+      />
+    );
+
+    expect(screen.getByText((_, element) => element?.textContent === 'Awarded 0.50000 ETH to You')).toBeInTheDocument();
+    expect(screen.getByText('0x1234...5678')).toBeInTheDocument();
+  });
+
+  it('uses the same resolved layout for cancelled v2 tournaments', () => {
+    render(
+      <TournamentHeader
+        {...baseProps}
+        status={3}
+        reasonLabelMode="v2"
+        completionReason={5}
+        payoutEntries={[
+          {
+            recipient: '0x1234567890abcdef1234567890abcdef12345678',
+            amount: 1000000000000000000n,
+          },
+        ]}
+      />
+    );
+
+    expect(screen.getByText('Payouts')).toBeInTheDocument();
+    expect(screen.queryByText(/Enrolled Players/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /via el0 tournament canceled/i })).toBeInTheDocument();
+    expect(screen.getByText('Cancelled')).toBeInTheDocument();
+    expect(screen.queryByText('Prize Pool')).not.toBeInTheDocument();
+    expect(screen.getByText(/Refunded/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Awarded/i)).not.toBeInTheDocument();
+  });
+
+  it('shows abandoned status styling for EL2 tournaments', () => {
+    render(
+      <TournamentHeader
+        {...baseProps}
+        status={3}
+        reasonLabelMode="v2"
+        completionReason={6}
+        payoutEntries={[
+          {
+            recipient: '0x1234567890abcdef1234567890abcdef12345678',
+            amount: 1000000000000000000n,
+          },
+        ]}
+      />
+    );
+
+    const abandonedLabel = screen.getByText('Abandoned');
+    expect(abandonedLabel).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /via el2 abandoned pool claimed/i })).toBeInTheDocument();
+    expect(abandonedLabel.closest('div')).toHaveClass('text-red-300');
   });
 });

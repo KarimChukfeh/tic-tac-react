@@ -112,6 +112,30 @@ export const getTournamentTypeLabel = (playerCount) => {
 };
 
 /**
+ * Get the bracket round label for a tournament round.
+ * @param {number} playerCount - Total players in the tournament
+ * @param {number} roundNumber - Zero-based round index
+ * @returns {string|null} - e.g. "Finals", "Semi Finals", "Quarter Finals", "Round of 16"
+ */
+export const getBracketRoundLabel = (playerCount, roundNumber) => {
+  const normalizedPlayerCount = Number(playerCount);
+  const normalizedRoundNumber = Number(roundNumber);
+
+  if (!Number.isInteger(normalizedPlayerCount) || normalizedPlayerCount < 2) return null;
+  if (!Number.isInteger(normalizedRoundNumber) || normalizedRoundNumber < 0) return null;
+
+  const totalRounds = Math.ceil(Math.log2(normalizedPlayerCount));
+  if (normalizedRoundNumber >= totalRounds) return null;
+
+  const playersRemaining = 2 ** (totalRounds - normalizedRoundNumber);
+
+  if (playersRemaining === 2) return 'Finals';
+  if (playersRemaining === 4) return 'Semi Finals';
+  if (playersRemaining === 8) return 'Quarter Finals';
+  return `Round of ${playersRemaining}`;
+};
+
+/**
  * Format a Unix timestamp (seconds) as a relative "time ago" string
  * @param {number} unixSeconds - Unix timestamp in seconds
  * @returns {string} - e.g. "3 minutes ago", "2 days ago"

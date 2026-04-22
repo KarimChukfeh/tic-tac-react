@@ -18,7 +18,7 @@ export const generateTournamentUrl = (gameType, tierId, instanceId) => {
 
   const gamePath = gamePathMap[gameType] || gameType;
   // Convert 0-indexed to 1-indexed for user-friendly URLs
-  return `${window.location.origin}/${gamePath}?t=${tierId + 1}&i=${instanceId + 1}`;
+  return `${window.location.origin}/v1/${gamePath}?t=${tierId + 1}&i=${instanceId + 1}`;
 };
 
 /**
@@ -61,7 +61,7 @@ export const generateV2TournamentUrl = (gameType, contractAddress) => {
   };
 
   const gamePath = gamePathMap[gameType] || 'tictactoe';
-  return `${window.location.origin}/v2/${gamePath}?c=${contractAddress}`;
+  return `${window.location.origin}/${gamePath}?c=${contractAddress}`;
 };
 
 /**

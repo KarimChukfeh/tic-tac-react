@@ -1,5 +1,6 @@
 import { ethers } from 'ethers';
-import ChessFactoryABIData from '../ABIs/ChessOnChainFactory-ABI.json';
+import { collectErrorDetails, pickBestErrorMessage } from './errorDetails';
+import ChessFactoryABIData from '../ABIs/ChessFactory-ABI.json';
 import LocalhostFactoryData from '../ABIs/localhost-chess-factory.json';
 import HardhatFactoryData from '../ABIs/hardhat-factory.json';
 import ETourFactoryABIs from '../ABIs/ETour-Factory-ABIs.json';
@@ -19,7 +20,7 @@ import {
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 export const PLAYER_PROFILE_ABI = getPlayerProfileAbi(ChessFactoryABIData, PlayerProfileABIData);
 export const PLAYER_REGISTRY_ABI = getPlayerRegistryAbi(ChessFactoryABIData, PlayerRegistryABIData);
-export const PLAYER_REGISTRY_ADDRESS = getPlayerRegistryAddress(ChessFactoryABIData, PlayerRegistryABIData, 'ChessOnChainFactory');
+export const PLAYER_REGISTRY_ADDRESS = getPlayerRegistryAddress(ChessFactoryABIData, PlayerRegistryABIData, 'ChessFactory');
 
 export const CHESS_V2_FACTORY_ADDRESS = getFactoryAddress(ChessFactoryABIData);
 export const CHESS_V2_FACTORY_ABI = getFactoryAbi(ChessFactoryABIData);
@@ -30,7 +31,7 @@ export const CHESS_V2_FACTORY_ADDRESS_CANDIDATES = getFactoryAddressCandidates({
   localhostFactoryData: LocalhostFactoryData,
   hardhatFactoryData: HardhatFactoryData,
   etourFactoryAbis: ETourFactoryABIs,
-  factoryName: 'ChessOnChainFactory',
+  factoryName: 'ChessFactory',
 });
 
 export const PLAYER_COUNT_OPTIONS = [2, 4, 8, 16, 32];
@@ -55,16 +56,54 @@ export const DEFAULT_TIMEOUTS_BY_PLAYER_COUNT = {
     enrollmentWindow: 1800,
   },
   16: {
-    matchTimePerPlayer: 900,
+    matchTimePerPlayer: 600,
     timeIncrementPerMove: 30,
     enrollmentWindow: 1800,
   },
   32: {
-    matchTimePerPlayer: 1200,
+    matchTimePerPlayer: 600,
     timeIncrementPerMove: 30,
     enrollmentWindow: 1800,
   },
 };
+
+const contractCodeAvailabilityCache = new WeakMap();
+const resolvedPlayerProfileAddressCache = new WeakMap();
+const inFlightPlayerProfileAddressCache = new WeakMap();
+
+function getRunnerScopedCache(cacheStore, runner) {
+  let cache = cacheStore.get(runner);
+  if (!cache) {
+    cache = new Map();
+    cacheStore.set(runner, cache);
+  }
+  return cache;
+}
+
+function buildPlayerProfileCacheKey(factoryContract, account, registryAddress) {
+  const factoryAddress = (factoryContract.target || factoryContract.address || '').toLowerCase();
+  const normalizedAccount = String(account || '').toLowerCase();
+  const normalizedRegistry = String(registryAddress || '').toLowerCase();
+  return `${factoryAddress}:${normalizedRegistry}:${normalizedAccount}`;
+}
+
+async function hasContractCode(runner, address) {
+  if (!runner || typeof runner !== 'object' || !address) return false;
+
+  let addressCache = contractCodeAvailabilityCache.get(runner);
+  if (!addressCache) {
+    addressCache = new Map();
+    contractCodeAvailabilityCache.set(runner, addressCache);
+  }
+
+  if (!addressCache.has(address)) {
+    addressCache.set(address, runner.getCode(address)
+      .then((code) => code && code !== '0x' && code !== '0x0')
+      .catch(() => false));
+  }
+
+  return await addressCache.get(address);
+}
 
 const TOURNAMENT_STATUS_LABELS = {
   0: 'Enrolling',
@@ -101,37 +140,64 @@ export function getPlayerRegistryContract(runner, address = PLAYER_REGISTRY_ADDR
 export async function resolvePlayerProfileAddress(factoryContract, runner, account, registryAddress = PLAYER_REGISTRY_ADDRESS) {
   if (!factoryContract || !runner || !account) return null;
 
-  if (registryAddress) {
-    try {
-      const code = await runner.getCode(registryAddress);
-      if (code && code !== '0x') {
-        const registry = getPlayerRegistryContract(runner, registryAddress);
-        const gameType = Number(await factoryContract.gameType().catch(() => NaN));
-        if (Number.isFinite(gameType)) {
-          const profileAddr = await registry.getProfile(account, gameType).catch(() => ZERO_ADDRESS);
-          if (profileAddr && profileAddr !== ZERO_ADDRESS) return profileAddr;
-        }
-      }
-    } catch {
-      // Fall through to factory-based lookup when the registry is unavailable.
-    }
+  const resolvedCache = getRunnerScopedCache(resolvedPlayerProfileAddressCache, runner);
+  const inFlightCache = getRunnerScopedCache(inFlightPlayerProfileAddressCache, runner);
+  const cacheKey = buildPlayerProfileCacheKey(factoryContract, account, registryAddress);
+
+  if (resolvedCache.has(cacheKey)) {
+    return resolvedCache.get(cacheKey);
   }
 
-  let profileAddr = null;
-  try {
-    profileAddr = await factoryContract.players(account);
-  } catch {
-    profileAddr = null;
+  if (inFlightCache.has(cacheKey)) {
+    return await inFlightCache.get(cacheKey);
   }
-  if (!profileAddr || profileAddr === ZERO_ADDRESS) {
+
+  const resolvePromise = (async () => {
+    if (registryAddress) {
+      try {
+        if (await hasContractCode(runner, registryAddress)) {
+          const registry = getPlayerRegistryContract(runner, registryAddress);
+          const gameType = Number(await factoryContract.gameType().catch(() => NaN));
+          if (Number.isFinite(gameType)) {
+            const profileAddr = await registry.getProfile(account, gameType).catch(() => ZERO_ADDRESS);
+            if (profileAddr && profileAddr !== ZERO_ADDRESS) {
+              resolvedCache.set(cacheKey, profileAddr);
+              return profileAddr;
+            }
+          }
+        }
+      } catch {
+        // Fall through to factory-based lookup when the registry is unavailable.
+      }
+    }
+
+    let profileAddr = null;
     try {
-      profileAddr = await factoryContract.getPlayerProfile(account);
+      profileAddr = await factoryContract.players(account);
     } catch {
       profileAddr = null;
     }
-  }
+    if (!profileAddr || profileAddr === ZERO_ADDRESS) {
+      try {
+        profileAddr = await factoryContract.getPlayerProfile(account);
+      } catch {
+        profileAddr = null;
+      }
+    }
 
-  return profileAddr && profileAddr !== ZERO_ADDRESS ? profileAddr : null;
+    const normalized = profileAddr && profileAddr !== ZERO_ADDRESS ? profileAddr : null;
+    if (normalized) {
+      resolvedCache.set(cacheKey, normalized);
+    }
+    return normalized;
+  })();
+
+  inFlightCache.set(cacheKey, resolvePromise);
+  try {
+    return await resolvePromise;
+  } finally {
+    inFlightCache.delete(cacheKey);
+  }
 }
 
 export function getDefaultTimeouts(playerCount) {
@@ -379,21 +445,10 @@ function decodeRevertData(data) {
 }
 
 export function getReadableError(error, fallback = 'Transaction failed.') {
-  const candidates = [
-    error?.data?.data,
-    error?.info?.error?.data,
-    error?.error?.data?.data,
-    error?.error?.data,
-    error?.data,
-  ];
-  for (const candidate of candidates) {
+  const { dataCandidates, messageCandidates } = collectErrorDetails(error);
+  for (const candidate of dataCandidates) {
     const decoded = decodeRevertData(candidate);
     if (decoded) return decoded;
   }
-  const nestedMessage = error?.data?.message
-    || error?.info?.error?.message
-    || error?.error?.data?.message
-    || error?.error?.message;
-  if (nestedMessage) return nestedMessage;
-  return error?.shortMessage || error?.message || fallback;
+  return pickBestErrorMessage(messageCandidates, fallback);
 }

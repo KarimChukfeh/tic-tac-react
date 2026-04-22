@@ -24,7 +24,6 @@ import MatchHeader from './MatchHeader';
 import PlayerPanel from './PlayerPanel';
 import TurnIndicator from './TurnIndicator';
 import TurnTimer from './TurnTimer';
-import MatchTimeoutEscalation from './MatchTimeoutEscalation';
 import MatchComplete from './MatchComplete';
 import LoadingOverlay from './LoadingOverlay';
 
@@ -83,7 +82,7 @@ const GameMatchLayout = ({
   onReturnToBracket, // Handler for returning to tournament bracket
 
   // Tournament metadata
-  playerCount = null, // Optional: player count for tournament type label
+  playerCount = null, // Optional fallback when match data does not include player count
   hasNextActiveMatch = false, // Whether player has a next active match
 
   // Player configuration
@@ -109,6 +108,7 @@ const GameMatchLayout = ({
 
   // Optional reason label behavior
   reasonLabelMode = 'default',
+  onPlayerAddressClick = null,
 
   // Children = the game board component
   children
@@ -157,6 +157,7 @@ const GameMatchLayout = ({
   }
 
   const isGameOver = matchStatus === 2;
+  const shouldRenderMobileResultAfterMoveHistory = compactChessMatchView && isGameOver;
   const zeroAddress = '0x0000000000000000000000000000000000000000';
   const hasWinner = winner && winner !== zeroAddress;
   const userWon = hasWinner && account && winner.toLowerCase() === account.toLowerCase();
@@ -173,6 +174,22 @@ const GameMatchLayout = ({
   const isPlayer1You = account && player1?.toLowerCase() === account.toLowerCase();
   const isPlayer1Turn = currentTurn?.toLowerCase() === player1?.toLowerCase();
   const isPlayer2Turn = currentTurn?.toLowerCase() === player2?.toLowerCase();
+
+  const getPlayerResultBadge = (playerAddress) => {
+    if (!isGameOver || !playerAddress) return null;
+
+    if (isMatchDraw) {
+      return {
+        text: 'Draw',
+        className: 'border-amber-400/35 bg-amber-400/12 text-amber-200'
+      };
+    }
+
+    const isWinnerAddress = hasWinner && winner?.toLowerCase() === playerAddress.toLowerCase();
+    return isWinnerAddress
+      ? { text: 'Victory', className: 'border-emerald-400/35 bg-emerald-400/12 text-emerald-200' }
+      : { text: 'Defeat', className: 'border-rose-400/35 bg-rose-400/12 text-rose-200' };
+  };
 
   // Client-side timer state for mobile consolidated header
   const [player1TimeLeft, setPlayer1TimeLeft] = useState(match.player1TimeRemaining ?? match.matchTimePerPlayer ?? 300);
@@ -318,6 +335,7 @@ const GameMatchLayout = ({
       const colorScheme = isPlayer1 ? theme.player1Color : theme.player2Color;
       const extraContent = isPlayer1 ? renderPlayer1Extra?.(true) : renderPlayer2Extra?.(true);
       const showCTA = showML1CTA && isTurn;
+      const resultBadge = getPlayerResultBadge(playerAddress);
 
       // Get color config for player
       const COLOR_CONFIGS = {
@@ -373,6 +391,11 @@ const GameMatchLayout = ({
                 <div className={`font-mono truncate text-white ${compactChessMatchView ? 'text-[8px]' : 'text-[11px]'}`}>{playerAddress ? `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : ''}</div>
                 {isYou && <span className={`text-yellow-300 font-bold flex-shrink-0 ${compactChessMatchView ? 'text-[7px]' : 'text-[10px]'}`}>YOU</span>}
               </div>
+              {resultBadge && (
+                <div className={`self-start mt-1 inline-flex rounded-full border font-bold tracking-wide ${resultBadge.className} ${compactChessMatchView ? 'px-1.5 py-0 text-[7px]' : 'px-2 py-0.5 text-[9px]'}`}>
+                  {resultBadge.text}
+                </div>
+              )}
               {showTurnTimer && (
                 <div className={`border rounded mt-0.5 ${compactChessMatchView ? 'p-0.5' : 'p-1'} ${
                   isTurn ? `${colors.border} ${colors.bg}` : 'border-gray-600/30 opacity-60'
@@ -455,6 +478,7 @@ const GameMatchLayout = ({
       const progress = ((totalTime - timeLeft) / totalTime) * 100;
       const icon = isPlayer1 ? playerConfig?.player1?.icon : playerConfig?.player2?.icon;
       const label = isPlayer1 ? (playerConfig?.player1?.label || 'Player 1') : (playerConfig?.player2?.label || 'Player 2');
+      const resultBadge = getPlayerResultBadge(playerAddress);
       const colorScheme = isPlayer1 ? theme.player1Color : theme.player2Color;
       const extraContent = isPlayer1 ? renderPlayer1Extra?.() : renderPlayer2Extra?.();
       const renderStats = isPlayer1 ? renderPlayer1Stats : renderPlayer2Stats;
@@ -526,6 +550,11 @@ const GameMatchLayout = ({
               <p className={`${cardColors.text} font-mono text-xs`}>
                 {playerAddress ? `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : ''}
               </p>
+              {resultBadge && (
+                <div className={`self-start mt-1 inline-flex rounded-full border px-2.5 py-1 text-[10px] font-bold tracking-wide ${resultBadge.className}`}>
+                  {resultBadge.text}
+                </div>
+              )}
             </div>
           </div>
 
@@ -585,23 +614,6 @@ const GameMatchLayout = ({
 
             {/* Game Controls */}
             <div className="space-y-3 mt-6">
-              {timeoutState && (
-                <MatchTimeoutEscalation
-                  timeoutState={timeoutState}
-                  matchStatus={matchStatus}
-                  isYourTurn={isYourTurn}
-                  onClaimTimeoutWin={onClaimTimeoutWin}
-                  onForceEliminate={onForceEliminate}
-                  onClaimReplacement={onClaimReplacement}
-                  loading={loading}
-                  escL2Available={match.escL2Available}
-                  escL3Available={match.escL3Available}
-                  isUserAdvancedForRound={match.isUserAdvancedForRound}
-                  isUserMatch={isUserMatch}
-                  hideML1OnMobile={true}
-                />
-              )}
-
               {renderGameControls?.()}
 
               {isGameOver && (
@@ -644,6 +656,7 @@ const GameMatchLayout = ({
       const label = isPlayer1 ? (playerConfig?.player1?.label || 'Player 1') : (playerConfig?.player2?.label || 'Player 2');
       const colorScheme = isPlayer1 ? theme.player1Color : theme.player2Color;
       const extraContent = isPlayer1 ? renderPlayer1Extra?.() : renderPlayer2Extra?.();
+      const resultBadge = getPlayerResultBadge(playerAddress);
 
       // Get color scheme based on remaining time
       const getTimeColors = (timeLeft) => {
@@ -715,6 +728,11 @@ const GameMatchLayout = ({
               <p className={`${cardColors.text} font-mono ${compactChessMatchView ? 'text-[9px]' : 'text-xs'}`}>
                 {playerAddress ? `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : ''}
               </p>
+              {resultBadge && (
+                <div className={`self-start mt-1 inline-flex rounded-full border font-bold tracking-wide ${resultBadge.className} ${compactChessMatchView ? 'px-1.5 py-0.5 text-[8px]' : 'px-2.5 py-1 text-[10px]'}`}>
+                  {resultBadge.text}
+                </div>
+              )}
             </div>
           </div>
 
@@ -763,25 +781,6 @@ const GameMatchLayout = ({
           <div className="flex-1 flex flex-col items-center min-w-0">
             {children}
 
-            {timeoutState && (
-              <div className="w-full max-w-md mt-4">
-                <MatchTimeoutEscalation
-                  timeoutState={timeoutState}
-                  matchStatus={matchStatus}
-                  isYourTurn={isYourTurn}
-                  onClaimTimeoutWin={onClaimTimeoutWin}
-                  onForceEliminate={onForceEliminate}
-                  onClaimReplacement={onClaimReplacement}
-                  loading={loading}
-                  escL2Available={match.escL2Available}
-                  escL3Available={match.escL3Available}
-                  isUserAdvancedForRound={match.isUserAdvancedForRound}
-                  isUserMatch={isUserMatch}
-                  hideML1OnMobile={true}
-                />
-              </div>
-            )}
-
             {renderGameControls?.()}
 
             {isGameOver && (
@@ -823,6 +822,7 @@ const GameMatchLayout = ({
       const progress = ((totalTime - timeLeft) / totalTime) * 100;
       const icon = isPlayer1 ? playerConfig?.player1?.icon : playerConfig?.player2?.icon;
       const label = isPlayer1 ? (playerConfig?.player1?.label || 'Player 1') : (playerConfig?.player2?.label || 'Player 2');
+      const resultBadge = getPlayerResultBadge(playerAddress);
 
       // Get color scheme based on remaining time
       const getTimeColors = (timeLeft) => {
@@ -878,6 +878,11 @@ const GameMatchLayout = ({
                 <div className="font-mono text-[11px] text-white">{playerAddress ? `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : ''}</div>
                 {isYou && <span className="text-yellow-400 text-[10px] font-bold">YOU</span>}
               </div>
+              {resultBadge && (
+                <div className={`self-start mt-1 inline-flex rounded-full border px-2 py-0.5 text-[9px] font-bold tracking-wide ${resultBadge.className}`}>
+                  {resultBadge.text}
+                </div>
+              )}
               {showTurnTimer && (
                 showML1CTA ? (
                   <button
@@ -921,26 +926,6 @@ const GameMatchLayout = ({
         {/* Board */}
         {children}
 
-        {/* Escalation */}
-        {timeoutState && (
-          <div className="max-w-md mx-auto mt-6 w-full">
-            <MatchTimeoutEscalation
-              timeoutState={timeoutState}
-              matchStatus={matchStatus}
-              isYourTurn={isYourTurn}
-              onClaimTimeoutWin={onClaimTimeoutWin}
-              onForceEliminate={onForceEliminate}
-              onClaimReplacement={onClaimReplacement}
-              loading={loading}
-              escL2Available={match.escL2Available}
-              escL3Available={match.escL3Available}
-              isUserAdvancedForRound={match.isUserAdvancedForRound}
-              isUserMatch={isUserMatch}
-              hideML1OnMobile={true}
-            />
-          </div>
-        )}
-
         {renderGameControls?.()}
       </div>
     );
@@ -961,6 +946,7 @@ const GameMatchLayout = ({
       const label = isPlayer1 ? (playerConfig?.player1?.label || 'Player 1') : (playerConfig?.player2?.label || 'Player 2');
       const colorScheme = isPlayer1 ? theme.player1Color : theme.player2Color;
       const extraContent = isPlayer1 ? renderPlayer1Extra?.() : renderPlayer2Extra?.();
+      const resultBadge = getPlayerResultBadge(playerAddress);
 
       // Get color scheme based on remaining time
       const getTimeColors = (timeLeft) => {
@@ -1032,6 +1018,11 @@ const GameMatchLayout = ({
               <p className={`${cardColors.text} font-mono text-xs`}>
                 {playerAddress ? `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : ''}
               </p>
+              {resultBadge && (
+                <div className={`self-start mt-1 inline-flex rounded-full border px-2.5 py-1 text-[10px] font-bold tracking-wide ${resultBadge.className}`}>
+                  {resultBadge.text}
+                </div>
+              )}
             </div>
           </div>
 
@@ -1084,26 +1075,9 @@ const GameMatchLayout = ({
           </div>
 
           {/* Other controls */}
-          {timeoutState && (
-            <MatchTimeoutEscalation
-              timeoutState={timeoutState}
-              matchStatus={matchStatus}
-              isYourTurn={isYourTurn}
-              onClaimTimeoutWin={onClaimTimeoutWin}
-              onForceEliminate={onForceEliminate}
-              onClaimReplacement={onClaimReplacement}
-              loading={loading}
-              escL2Available={match.escL2Available}
-              escL3Available={match.escL3Available}
-              isUserAdvancedForRound={match.isUserAdvancedForRound}
-              isUserMatch={isUserMatch}
-              hideML1OnMobile={true}
-            />
-          )}
-
           {renderGameControls?.()}
 
-          {isGameOver && (
+          {isGameOver && !shouldRenderMobileResultAfterMoveHistory && (
             <MatchComplete
               completionReason={completionReason}
               winner={winner}
@@ -1122,6 +1096,20 @@ const GameMatchLayout = ({
             <div style={{ marginTop: '24px' }} className="bg-slate-900/50 rounded-xl p-4 border border-purple-500/30">
               {renderMoveHistory()}
             </div>
+          )}
+
+          {isGameOver && shouldRenderMobileResultAfterMoveHistory && (
+            <MatchComplete
+              completionReason={completionReason}
+              winner={winner}
+              loser={loser}
+              currentAccount={account}
+              reasonLabelMode={reasonLabelMode}
+              gameSpecificText={!isMatchDraw ? theme.completeText : undefined}
+              hasNextActiveMatch={hasNextActiveMatch}
+              onEnterNextMatch={onEnterNextMatch}
+              onReturnToBracket={onReturnToBracket}
+            />
           )}
         </div>
 
@@ -1142,25 +1130,6 @@ const GameMatchLayout = ({
               </div>
             )}
             {children}
-
-            {timeoutState && (
-              <div className="w-full max-w-md mt-4">
-                <MatchTimeoutEscalation
-                  timeoutState={timeoutState}
-                  matchStatus={matchStatus}
-                  isYourTurn={isYourTurn}
-                  onClaimTimeoutWin={onClaimTimeoutWin}
-                  onForceEliminate={onForceEliminate}
-                  onClaimReplacement={onClaimReplacement}
-                  loading={loading}
-                  escL2Available={match.escL2Available}
-                  escL3Available={match.escL3Available}
-                  isUserAdvancedForRound={match.isUserAdvancedForRound}
-                  isUserMatch={isUserMatch}
-                  hideML1OnMobile={true}
-                />
-              </div>
-            )}
 
             {renderGameControls?.()}
 
@@ -1220,6 +1189,7 @@ const GameMatchLayout = ({
         gameType={gameType}
         title={theme.title}
         icon={theme.icon}
+        account={account}
         matchStatus={matchStatus}
         completionReason={completionReason}
         reasonLabelMode={reasonLabelMode}
@@ -1229,9 +1199,18 @@ const GameMatchLayout = ({
           instanceId: match.instanceId,
           roundNumber: match.roundNumber,
           matchNumber: match.matchNumber,
-          playerCount: playerCount
+          playerCount: match.playerCount ?? playerCount ?? null,
+          player1: match.player1,
+          player2: match.player2,
+          player1Icon: playerConfig?.player1?.icon ?? null,
+          player2Icon: playerConfig?.player2?.icon ?? null,
+          player1Symbol: playerConfig?.player1?.label?.match(/\(([^)]+)\)/)?.[1] ?? playerConfig?.player1?.label ?? null,
+          player2Symbol: playerConfig?.player2?.label?.match(/\(([^)]+)\)/)?.[1] ?? playerConfig?.player2?.label ?? null,
+          winner: match.winner,
+          loser: match.loser,
         }}
         theme={theme}
+        onPlayerAddressClick={onPlayerAddressClick}
       />
 
       {/* Mobile: Sticky player cards (direct child of root for full-page sticky range) */}

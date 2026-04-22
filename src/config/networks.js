@@ -1,4 +1,4 @@
-import TicTacToeV2FactoryData from '../v2/ABIs/TicTacChainFactory-ABI.json';
+import TicTacToeV2FactoryData from '../v2/ABIs/TicTacToeFactory-ABI.json';
 
 // Network configuration for ETour gaming platform
 // Switch networks via VITE_NETWORK environment variable
@@ -19,7 +19,7 @@ export const NETWORKS = {
   arbitrumOne: {
     chainId: 42161,
     name: 'Arbitrum One',
-    rpcUrl: 'https://arb-mainnet.g.alchemy.com/v2/yoftG-myZ5Iur7UklgbJR',
+    rpcUrl: 'https://arb-mainnet.g.alchemy.com/v2/SqzIja8yhoiiyN1fsMDlV',
     explorerUrl: 'https://arbiscan.io',
     explorerName: 'Arbiscan',
     nativeCurrency: {

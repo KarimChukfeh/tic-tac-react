@@ -1,5 +1,5 @@
-import TicTacToeV2Deployment from '../../v2/ABIs/TicTacChainFactory-ABI.json';
-import ChessV2Deployment from '../../v2/ABIs/ChessOnChainFactory-ABI.json';
+import TicTacToeV2Deployment from '../../v2/ABIs/TicTacToeFactory-ABI.json';
+import ChessV2Deployment from '../../v2/ABIs/ChessFactory-ABI.json';
 import ConnectFourV2Deployment from '../../v2/ABIs/ConnectFourFactory-ABI.json';
 
 const ARBISCAN_BASE_URL = 'https://arbiscan.io/address';
@@ -23,7 +23,7 @@ const GAME_DEPLOYMENTS = {
         { label: 'Player Profile', address: TicTacToeV2Deployment.playerProfile.PlayerProfileImpl.address },
         { label: 'Player Registry', address: TicTacToeV2Deployment.playerProfile.PlayerRegistry.address },
         { label: 'TicTacToe Factory', address: TicTacToeV2Deployment.factory.address },
-        { label: 'TicTacToe Instance', address: TicTacToeV2Deployment.instance.address },
+        { label: 'TicTacToe', address: TicTacToeV2Deployment.instance.address },
       ],
     },
     {
@@ -32,7 +32,7 @@ const GAME_DEPLOYMENTS = {
         { label: 'Player Profile', address: ChessV2Deployment.playerProfile.PlayerProfileImpl.address },
         { label: 'Player Registry', address: ChessV2Deployment.playerProfile.PlayerRegistry.address },
         { label: 'Chess Factory', address: ChessV2Deployment.factory.address },
-        { label: 'Chess Instance', address: ChessV2Deployment.instance.address },
+        { label: 'Chess', address: ChessV2Deployment.instance.address },
         { label: 'Chess Rules Module', address: ChessV2Deployment.modules.ChessRulesModule },
       ],
     },
@@ -42,7 +42,7 @@ const GAME_DEPLOYMENTS = {
         { label: 'Player Profile', address: ConnectFourV2Deployment.playerProfile.PlayerProfileImpl.address },
         { label: 'Player Registry', address: ConnectFourV2Deployment.playerProfile.PlayerRegistry.address },
         { label: 'ConnectFour Factory', address: ConnectFourV2Deployment.factory.address },
-        { label: 'ConnectFour Instance', address: ConnectFourV2Deployment.instance.address },
+        { label: 'ConnectFour', address: ConnectFourV2Deployment.instance.address },
       ],
     },
   ],
@@ -62,7 +62,7 @@ const GAME_DEPLOYMENTS = {
       title: 'Game Contracts',
       entries: [
         { label: 'TicTacToe Factory', address: TicTacToeV2Deployment.factory.address },
-        { label: 'TicTacToe Instance', address: TicTacToeV2Deployment.instance.address },
+        { label: 'TicTacToe', address: TicTacToeV2Deployment.instance.address },
       ],
     },
   ],
@@ -82,7 +82,7 @@ const GAME_DEPLOYMENTS = {
       title: 'Game Contracts',
       entries: [
         { label: 'Chess Factory', address: ChessV2Deployment.factory.address },
-        { label: 'Chess Instance', address: ChessV2Deployment.instance.address },
+        { label: 'Chess', address: ChessV2Deployment.instance.address },
         { label: 'Chess Rules Module', address: ChessV2Deployment.modules.ChessRulesModule },
       ],
     },
@@ -103,7 +103,7 @@ const GAME_DEPLOYMENTS = {
       title: 'Game Contracts',
       entries: [
         { label: 'ConnectFour Factory', address: ConnectFourV2Deployment.factory.address },
-        { label: 'ConnectFour Instance', address: ConnectFourV2Deployment.instance.address },
+        { label: 'ConnectFour', address: ConnectFourV2Deployment.instance.address },
       ],
     },
   ],

@@ -3,8 +3,8 @@ import { Link, useSearchParams, useLocation, useNavigate } from 'react-router-do
 import {
   Grid,
   Shield,
+  Link2,
   Lock,
-  Eye,
   Code,
   ExternalLink,
   CheckCircle,
@@ -13,19 +13,23 @@ import {
   ChevronDown,
   ChevronUp,
   History,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import { CURRENT_NETWORK, TARGET_CHAIN_ID_HEX, getAddressUrl, getWalletAddChainParams } from '../../config/networks';
 import { shortenAddress } from '../../utils/formatters';
 import { generateV2TournamentUrl, parseV2ContractParam } from '../../utils/urlHelpers';
 import { shouldResetOnInitialDocumentLoad } from '../../utils/navigation';
-import { isDraw } from '../../utils/completionReasons';
-import { validateMoveWithReason } from '../../utils/chessValidator';
+import { CompletionReason, isDraw } from '../../utils/completionReasons';
+import { boardArrayToPackedBoard, getCheckStatusFromPackedBoard, getLegalMovesForSquare, validateMoveWithReason } from '../../utils/chessValidator';
 import { didMatchStateAdvance, waitForTxOrStateSync } from '../../utils/txSync';
+import { multicallContracts } from '../../utils/multicall';
 import ParticleBackground from '../../components/shared/ParticleBackground';
 import MatchCard from '../../components/shared/MatchCard';
 import UserManualV2 from '../components/UserManualV2';
 import QuickGuideModal from '../components/QuickGuideModal';
+import CenteredErrorFlash from '../components/CenteredErrorFlash';
 import MatchEndModal from '../../components/shared/MatchEndModal';
 import ActiveMatchAlertModal from '../../components/shared/ActiveMatchAlertModal';
 import GameMatchLayout from '../../components/shared/GameMatchLayout';
@@ -40,6 +44,7 @@ import CapturedPieces from '../../components/shared/CapturedPieces';
 import UserManualAnchorIcon from '../../components/shared/UserManualAnchorIcon';
 import V2GameLobbyIntro from '../../components/shared/V2GameLobbyIntro';
 import V2ContractsTable from '../../components/shared/V2ContractsTable';
+import PlayerProfileModal from '../../components/shared/PlayerProfileModal';
 import WalletBrowserPrompt from '../../components/WalletBrowserPrompt';
 import EntryFeeSlider, { DEFAULT_SELECTED_ENTRY_FEE } from '../components/EntryFeeSlider';
 import TimeoutSettingSlider, { clampCreateTimeoutValue, isCreateTimeoutField, normalizeCreateTimeouts } from '../components/TimeoutSettingSlider';
@@ -67,7 +72,9 @@ import {
   resolveCreatedInstanceAddress,
   unpackBoard,
 } from '../lib/chess';
+import { normalizePrizeDistribution } from '../lib/prizeDistribution';
 import { resolveChessBoardState } from '../lib/matchBoardState';
+import { formatActionErrorMessage } from '../lib/actionErrors';
 
 const CHESS_PIECES = ['♔', '♕', '♖', '♗', '♘', '♙', '♚', '♛', '♜', '♝', '♞', '♟'];
 const VIRTUAL_TIER_ID = 0;
@@ -112,6 +119,122 @@ function isWalletAvailable() {
   return typeof window !== 'undefined' && typeof window.ethereum !== 'undefined';
 }
 
+function buildV2MatchKey(roundNumber, matchNumber) {
+  return ethers.solidityPackedKeccak256(['uint8', 'uint8'], [roundNumber, matchNumber]);
+}
+
+function hydrateBracketMatchData(userAccount, matchInfo, {
+  matchData,
+  fullMatch,
+  boardResult,
+  tierConfig,
+  timeoutData = null,
+  escL2Available = false,
+  escL3Available = false,
+  isUserAdvancedForRound = false,
+}) {
+  const { packedBoard, packedState } = resolveChessBoardState(boardResult, matchInfo);
+  const board = unpackBoard(packedBoard);
+  const tierMatchTime = Number(tierConfig?.timeouts?.matchTimePerPlayer ?? tierConfig?.matchTimePerPlayer ?? 600);
+  const player1 = matchData.player1 || matchInfo.player1;
+  const player2 = matchData.player2 || matchInfo.player2;
+  const matchStatus = Number(matchData.status);
+  const lastMoveTime = Number(matchData.lastMoveTime);
+  const startTime = Number(matchData.startTime);
+  const winner = matchData.matchWinner || matchData.winner;
+  const completionReason = Number(matchData.completionReason ?? 0);
+  const currentTurn = fullMatch?.currentTurn;
+  const firstPlayer = fullMatch?.firstPlayer || player1;
+  const p1TimeRaw = Number(fullMatch?.player1TimeRemaining ?? tierMatchTime);
+  const p2TimeRaw = Number(fullMatch?.player2TimeRemaining ?? tierMatchTime);
+  const zeroAddress = ethers.ZeroAddress;
+
+  let loser = zeroAddress;
+  if (matchStatus === 2 && winner && winner.toLowerCase() !== zeroAddress.toLowerCase()) {
+    loser = winner.toLowerCase() === player1.toLowerCase() ? player2 : player1;
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  const elapsed = lastMoveTime > 0 ? now - lastMoveTime : 0;
+  let player1TimeRemaining = p1TimeRaw;
+  let player2TimeRemaining = p2TimeRaw;
+  const isP1Turn = currentTurn?.toLowerCase() === player1?.toLowerCase();
+  if (matchStatus === 1 && currentTurn && elapsed > 0) {
+    if (isP1Turn) player1TimeRemaining = Math.max(0, player1TimeRemaining - elapsed);
+    else player2TimeRemaining = Math.max(0, player2TimeRemaining - elapsed);
+  }
+
+  let timeoutState = null;
+  if (timeoutData) {
+    const esc1Start = Number(timeoutData.escalation1Start);
+    const esc2Start = Number(timeoutData.escalation2Start);
+    if (esc1Start > 0 || esc2Start > 0 || timeoutData.isStalled) {
+      timeoutState = {
+        escalation1Start: esc1Start,
+        escalation2Start: esc2Start,
+        activeEscalation: Number(timeoutData.activeEscalation),
+        timeoutActive: timeoutData.isStalled,
+        forfeitAmount: 0,
+      };
+    }
+  }
+
+  if (matchStatus === 1 && currentTurn && lastMoveTime > 0) {
+    const activePlayerTimeAtLastMove = isP1Turn ? p1TimeRaw : p2TimeRaw;
+    const timeoutOccurredAt = lastMoveTime + activePlayerTimeAtLastMove;
+    const hasClientDetectedTimeout = elapsed >= activePlayerTimeAtLastMove;
+    if (hasClientDetectedTimeout && (!timeoutState || (timeoutState.timeoutActive && timeoutState.escalation1Start === 0 && timeoutState.escalation2Start === 0))) {
+      const matchLevel2Delay = Number(tierConfig?.timeouts?.matchLevel2Delay ?? tierConfig?.matchLevel2Delay ?? 180);
+      const matchLevel3Delay = Number(tierConfig?.timeouts?.matchLevel3Delay ?? tierConfig?.matchLevel3Delay ?? 360);
+      timeoutState = {
+        escalation1Start: timeoutOccurredAt + matchLevel2Delay,
+        escalation2Start: timeoutOccurredAt + matchLevel3Delay,
+        activeEscalation: timeoutState?.activeEscalation ?? 0,
+        timeoutActive: true,
+        forfeitAmount: timeoutState?.forfeitAmount ?? 0,
+      };
+    }
+  }
+
+  const packedStateBig = BigInt(packedState || 0);
+  const whiteInCheck = ((packedStateBig >> 12n) & 1n) === 1n;
+  const blackInCheck = ((packedStateBig >> 13n) & 1n) === 1n;
+  const moves = movesToPairs(matchData.moves || fullMatch?.moves || '');
+  let lastMove = null;
+  if (moves.length > 0) {
+    const move = moves[moves.length - 1];
+    lastMove = { from: move.from, to: move.to };
+  }
+
+  return {
+    ...matchInfo,
+    player1,
+    player2,
+    firstPlayer,
+    currentTurn,
+    winner,
+    loser,
+    board,
+    packedBoard: BigInt(packedBoard || 0),
+    packedState: BigInt(packedState || 0),
+    matchStatus,
+    status: matchStatus,
+    completionReason,
+    startTime,
+    lastMoveTime,
+    player1TimeRemaining,
+    player2TimeRemaining,
+    matchTimePerPlayer: tierMatchTime,
+    timeoutState,
+    escL2Available,
+    escL3Available,
+    isUserAdvancedForRound,
+    whiteInCheck,
+    blackInCheck,
+    lastMove,
+  };
+}
+
 const getPieceSvg = (piece) => {
   if (!piece) return '';
   const pieceType = Number(piece.pieceType);
@@ -144,7 +267,7 @@ function ActionMessage({ type = 'info', message }) {
   );
 }
 
-const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, firstPlayer, matchStatus, loading, whiteInCheck, blackInCheck, lastMoveTime, startTime, lastMove, maxSize = 520, ghostMove }) => {
+const ChessBoard = ({ board, packedBoard, packedState, onMove, currentTurn, account, player1, player2, firstPlayer, matchStatus, loading, whiteInCheck, blackInCheck, lastMoveTime, startTime, lastMove, maxSize = 520, ghostMove }) => {
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [promotionSquare, setPromotionSquare] = useState(null);
   const [pendingMove, setPendingMove] = useState(null);
@@ -167,6 +290,20 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
     return () => window.removeEventListener('resize', updateSize);
   }, [maxSize]);
 
+  useEffect(() => {
+    setSelectedSquare(null);
+    setPromotionSquare(null);
+    setPendingMove(null);
+  }, [packedBoard, packedState]);
+
+  useEffect(() => {
+    if (matchStatus !== 1 || !isMyTurn) {
+      setSelectedSquare(null);
+      setPromotionSquare(null);
+      setPendingMove(null);
+    }
+  }, [isMyTurn, matchStatus]);
+
   const getActualIndex = (displayIdx) => {
     const displayRow = Math.floor(displayIdx / 8);
     const displayCol = displayIdx % 8;
@@ -188,10 +325,19 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
     return isWhite ? pieceColor === 1 : pieceColor === 2;
   };
 
+  const hasPackedPosition = packedBoard != null && packedState != null;
+  const legalTargets = selectedSquare !== null && hasPackedPosition
+    ? new Set(getLegalMovesForSquare(packedBoard, packedState, getActualIndex(selectedSquare), isWhite))
+    : null;
+
   const handleSquareClick = (displayIdx) => {
     if (matchStatus !== 1 || !isMyTurn || loading || !onMove) return;
     const actualIdx = getActualIndex(displayIdx);
     const piece = board[actualIdx];
+    if (selectedSquare === displayIdx) {
+      setSelectedSquare(null);
+      return;
+    }
     if (selectedSquare === null) {
       if (isMyPiece(piece)) setSelectedSquare(displayIdx);
       return;
@@ -202,6 +348,7 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
       setSelectedSquare(displayIdx);
       return;
     }
+    if (legalTargets && !legalTargets.has(actualIdx)) return;
     const toRow = Math.floor(actualIdx / 8);
     const isPawn = fromPiece && Number(fromPiece.pieceType) === 1;
     const isPromotionRank = toRow === 0 || toRow === 7;
@@ -238,6 +385,8 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
       const isKingInCheck = pieceType === 6 && ((pieceColor === 1 && whiteInCheck) || (pieceColor === 2 && blackInCheck));
       const isGhostFrom = ghostMove && ghostMove.from === actualIdx;
       const isGhostTo = ghostMove && ghostMove.to === actualIdx;
+      const isLegalTarget = Boolean(legalTargets?.has(actualIdx));
+      const isCaptureTarget = isLegalTarget && pieceType !== 0 && !isMyPiece(piece);
       const ghostPiece = ghostMove && board[ghostMove.from] ? board[ghostMove.from] : null;
       const displayRow = Math.floor(displayIdx / 8);
       const displayCol = displayIdx % 8;
@@ -256,11 +405,13 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
         if (isSelected) return '0 0 20px rgba(6, 182, 212, 0.3)';
         if (isLastMoveTo && !isKingInCheck) return isMyMove ? 'inset 0 0 25px rgba(59, 130, 246, 0.6), 0 0 15px rgba(59, 130, 246, 0.4)' : 'inset 0 0 25px rgba(239, 68, 68, 0.6), 0 0 15px rgba(239, 68, 68, 0.4)';
         if (isLastMoveFrom && !isKingInCheck) return isMyMove ? 'inset 0 0 20px rgba(168, 85, 247, 0.5), 0 0 12px rgba(168, 85, 247, 0.3)' : 'inset 0 0 20px rgba(234, 179, 8, 0.5), 0 0 12px rgba(234, 179, 8, 0.3)';
+        if (isCaptureTarget) return 'inset 0 0 0 2px rgba(34, 211, 238, 0.9), inset 0 0 20px rgba(34, 211, 238, 0.25)';
         return 'none';
       };
       const getPieceGlow = () => !isLastMoveTo || pieceType === 0 ? undefined : (isMyMove ? 'drop-shadow(0 0 10px rgba(59, 130, 246, 0.8))' : 'drop-shadow(0 0 10px rgba(239, 68, 68, 0.8))');
-      const isPotentialTarget = selectedSquare !== null && !isSelected && !isMyPiece(piece);
-      const squareBg = isSelected ? undefined : (isKingInCheck ? undefined : (getLastMoveFromBg() || getLastMoveToBg()));
+      const squareBg = isSelected
+        ? undefined
+        : (isKingInCheck ? undefined : (isCaptureTarget ? 'rgba(34, 211, 238, 0.15)' : (getLastMoveFromBg() || getLastMoveToBg())));
       const ghostFromClass = isGhostFrom ? ' ring-2 ring-orange-400/60 ring-inset' : '';
       const ghostToClass = isGhostTo ? ' ring-2 ring-orange-400 ring-inset' : '';
 
@@ -268,11 +419,12 @@ const ChessBoard = ({ board, onMove, currentTurn, account, player1, player2, fir
         <div
           key={displayIdx}
           onClick={() => handleSquareClick(displayIdx)}
-          className={`relative flex items-center justify-center cursor-pointer transition-all duration-200 ${isLight ? 'bg-stone-300' : 'bg-stone-700'}${isSelected ? ' ring-2 ring-emerald-400 ring-inset bg-emerald-500/50' : ''}${isKingInCheck ? ' bg-red-500/50 ring-2 ring-red-400 ring-inset' : ''} ${getLastMoveFromClass()} ${getLastMoveToClass()}${ghostFromClass}${ghostToClass}${isMyTurn && isMyPiece(piece) && !isSelected ? ' hover:bg-emerald-500/30' : ''}${isMyTurn && isPotentialTarget ? ' hover:bg-yellow-400/40' : ''}`}
+          className={`relative flex items-center justify-center cursor-pointer transition-all duration-200 ${isLight ? 'bg-stone-300' : 'bg-stone-700'}${isSelected ? ' ring-2 ring-emerald-400 ring-inset bg-emerald-500/50' : ''}${isKingInCheck ? ' bg-red-500/50 ring-2 ring-red-400 ring-inset' : ''}${isLegalTarget && !isCaptureTarget ? ' bg-cyan-400/10' : ''} ${getLastMoveFromClass()} ${getLastMoveToClass()}${ghostFromClass}${ghostToClass}${isMyTurn && isMyPiece(piece) && !isSelected ? ' hover:bg-emerald-500/30' : ''}${isMyTurn && isLegalTarget ? ' hover:bg-cyan-400/20' : ''}`}
           style={{ boxShadow: isSelected ? 'inset 0 0 20px rgba(16, 185, 129, 0.5)' : getLastMoveShadow(), background: isGhostTo ? 'rgba(251, 146, 60, 0.25)' : squareBg }}
         >
           {getPieceSvg(piece) && <img src={getPieceSvg(piece)} alt="" className={`w-3/4 h-3/4 select-none transition-all duration-300 ${isSelected ? 'scale-110' : ''}${isGhostFrom ? ' opacity-30' : ''}`} style={{ filter: getPieceGlow() }} draggable="false" />}
           {isGhostTo && ghostPiece && getPieceSvg(ghostPiece) && <img src={getPieceSvg(ghostPiece)} alt="" className="w-3/4 h-3/4 select-none absolute animate-pulse" style={{ opacity: 0.4 }} draggable="false" />}
+          {isLegalTarget && !isCaptureTarget && <div className="absolute w-3.5 h-3.5 rounded-full bg-cyan-300/80 shadow-[0_0_12px_rgba(103,232,249,0.65)] pointer-events-none" />}
           {showRankLabel && <span className={`absolute left-1 top-0.5 text-[10px] font-medium ${isLight ? 'text-slate-500' : 'text-slate-600'}`}>{rankLabel}</span>}
           {showFileLabel && <span className={`absolute right-1 bottom-0.5 text-[10px] font-medium ${isLight ? 'text-slate-500' : 'text-slate-600'}`}>{fileLabel}</span>}
         </div>
@@ -333,7 +485,50 @@ function calculateCapturedPieces(board) {
   return { white: whiteCaptured, black: blackCaptured };
 }
 
-const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceEliminate, onClaimReplacement, onManualStart, onClaimAbandonedPool, onResetEnrollmentWindow, onCancelTournament, onEnroll, onConnectWallet, account, loading, connectLoading, syncDots, isEnrolled, entryFee, isFull, instanceContract }) => {
+function createInitialChessBoard() {
+  const board = Array.from({ length: 64 }, () => ({ pieceType: 0, color: 0 }));
+
+  for (let i = 8; i < 16; i++) board[i] = { pieceType: 1, color: 1 };
+  board[0] = { pieceType: 4, color: 1 };
+  board[7] = { pieceType: 4, color: 1 };
+  board[1] = { pieceType: 2, color: 1 };
+  board[6] = { pieceType: 2, color: 1 };
+  board[2] = { pieceType: 3, color: 1 };
+  board[5] = { pieceType: 3, color: 1 };
+  board[3] = { pieceType: 5, color: 1 };
+  board[4] = { pieceType: 6, color: 1 };
+
+  for (let i = 48; i < 56; i++) board[i] = { pieceType: 1, color: 2 };
+  board[56] = { pieceType: 4, color: 2 };
+  board[63] = { pieceType: 4, color: 2 };
+  board[57] = { pieceType: 2, color: 2 };
+  board[62] = { pieceType: 2, color: 2 };
+  board[58] = { pieceType: 3, color: 2 };
+  board[61] = { pieceType: 3, color: 2 };
+  board[59] = { pieceType: 5, color: 2 };
+  board[60] = { pieceType: 6, color: 2 };
+
+  return board;
+}
+
+function buildReplayChessBoard(moveHistory, effectiveMoveIndex, fallbackBoard) {
+  if (effectiveMoveIndex >= moveHistory.length - 1) {
+    return fallbackBoard;
+  }
+
+  const board = createInitialChessBoard();
+  for (let i = 0; i <= effectiveMoveIndex && i < moveHistory.length; i++) {
+    const move = moveHistory[i];
+    if (move.from >= 0 && move.from < 64 && move.to >= 0 && move.to < 64) {
+      board[move.to] = board[move.from];
+      board[move.from] = { pieceType: 0, color: 0 };
+    }
+  }
+
+  return board;
+}
+
+const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onSpectateMatch, onForceEliminate, onClaimReplacement, onManualStart, onClaimAbandonedPool, onResetEnrollmentWindow, onCancelTournament, onEnroll, onConnectWallet, account, loading, connectLoading, syncDots, isEnrolled, entryFee, isFull, instanceContract, onPlayerAddressClick }) => {
   const { status, currentRound, enrolledCount, rounds, playerCount, players, enrollmentTimeout } = tournamentData;
   const bracketViewRef = useRef(null);
   const prevStatusRef = useRef(status);
@@ -373,6 +568,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
         totalEntryFeesAccrued={tournamentData.totalEntryFeesAccrued}
         prizeAwarded={tournamentData.prizeAwarded}
         prizeRecipient={tournamentData.prizeRecipient}
+        payoutEntries={tournamentData.payoutEntries}
         syncDots={syncDots}
         account={account}
         onBack={onBack}
@@ -393,6 +589,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
         onCancelTournament={onCancelTournament ? () => onCancelTournament(VIRTUAL_TIER_ID, VIRTUAL_INSTANCE_ID) : null}
         forceShowResetEnrollmentWindow={Boolean(status === 0 && enrolledCount === 1 && isEnrolled)}
         contract={instanceContract}
+        onPlayerAddressClick={onPlayerAddressClick}
       />
       <div ref={bracketViewRef} className="bg-gradient-to-br from-slate-900/50 to-purple-900/30 backdrop-blur-lg rounded-2xl p-8 border border-purple-400/30">
         <h3 className="text-2xl font-bold text-purple-300 mb-3 flex items-center gap-2"><Grid size={24} />{tournamentTypeLabel} Bracket</h3>
@@ -411,6 +608,8 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
                       <MatchCard
                         match={match}
                         reasonLabelMode="v2"
+                        tournamentCompletionReason={tournamentData.completionReason}
+                        totalMatchesInRound={round.matches.length}
                         matchIdx={matchIdx}
                         roundIdx={roundIdx}
                         tierId={VIRTUAL_TIER_ID}
@@ -418,6 +617,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onForceElimin
                         account={account}
                         loading={loading}
                         onEnterMatch={onEnterMatch}
+                        onSpectateMatch={onSpectateMatch}
                         onForceEliminate={onForceEliminate}
                         onClaimReplacement={onClaimReplacement}
                         matchStatusOptions={{ doubleForfeitText: 'Eliminated - Double Forfeit' }}
@@ -466,7 +666,7 @@ function indexToChessNotation(index) {
 }
 
 export default function ChessV2() {
-  useInitialDocumentScrollTop('/v2/chess');
+  useInitialDocumentScrollTop('/chess');
 
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
@@ -584,10 +784,21 @@ export default function ChessV2() {
     });
   }, []);
 
+  const dismissActionError = useCallback(() => {
+    setActionState(prev => (prev.type === 'error' ? { type: 'info', message: '' } : prev));
+  }, []);
+
+  const showActionError = useCallback((actionLabel, error, fallback = 'Transaction failed.') => {
+    setActionState({
+      type: 'error',
+      message: formatActionErrorMessage(actionLabel, getReadableError(error, fallback), fallback),
+    });
+  }, []);
+
   const selectedAddress = searchParams.get('instance');
   const explorerUrl = getAddressUrl(factoryAddress);
   const [hasProcessedInviteParam, setHasProcessedInviteParam] = useState(false);
-  const [allowInitialUrlHydration, setAllowInitialUrlHydration] = useState(() => !shouldResetOnInitialDocumentLoad('/v2/chess', { allowInviteParam: true }));
+  const [allowInitialUrlHydration, setAllowInitialUrlHydration] = useState(() => !shouldResetOnInitialDocumentLoad('/chess', { allowInviteParam: true }));
   const [viewingTournament, setViewingTournament] = useState(null);
   const [bracketSyncDots, setBracketSyncDots] = useState(1);
   const [tournamentsLoading, setTournamentsLoading] = useState(false);
@@ -597,6 +808,7 @@ export default function ChessV2() {
   const [matchLoading, setMatchLoading] = useState(false);
   const [matchLoadingMessage, setMatchLoadingMessage] = useState(DEFAULT_MATCH_LOADING_MESSAGE);
   const [moveHistory, setMoveHistory] = useState([]);
+  const [replayMoveIndex, setReplayMoveIndex] = useState(-2); // -2 final, -1 start, 0+ move index
   const [syncDots, setSyncDots] = useState(1);
   const [isSpectator, setIsSpectator] = useState(false);
   const [matchEndResult, setMatchEndResult] = useState(null);
@@ -610,6 +822,12 @@ export default function ChessV2() {
   const [leaderboard] = useState([]);
   const [expandedPanel, setExpandedPanel] = useState(null);
   const [activeTooltip, setActiveTooltip] = useState(null);
+  const [selectedProfileAddress, setSelectedProfileAddress] = useState(null);
+  const [isTabActive, setIsTabActive] = useState(typeof document === 'undefined' ? true : !document.hidden);
+  const isPlayerActivityContextActive = Boolean(activeInstanceContract || viewingTournament || currentMatch);
+  const shouldPollPlayerActivity = Boolean(account) && isTabActive;
+  const shouldScanFactoryForPlayerActivity = Boolean(account) && isTabActive && (expandedPanel === 'playerActivity' || isPlayerActivityContextActive);
+  const shouldPollPlayerProfile = Boolean(account) && isTabActive && expandedPanel === 'recentMatches';
   const [showMatchAlert, setShowMatchAlert] = useState(false);
   const [alertMatch, setAlertMatch] = useState(null);
   const [gamesCardHeight, setGamesCardHeight] = useState(0);
@@ -618,10 +836,19 @@ export default function ChessV2() {
 
   const { showPrompt, handleWalletChoice, handleContinueChoice, triggerWalletPrompt } = useWalletBrowserPrompt();
 
-  const playerActivity = useChessV2PlayerActivity(activeInstanceContract, account, resolvedFactoryContract, rpcProvider);
-  const playerProfile = useChessPlayerProfile(resolvedFactoryContract, rpcProvider, account);
+  const playerActivity = useChessV2PlayerActivity(activeInstanceContract, account, resolvedFactoryContract, rpcProvider, {
+    enabled: shouldPollPlayerActivity,
+    pollIntervalMs: shouldScanFactoryForPlayerActivity ? 5000 : 30000,
+    scanFactoryFallback: shouldScanFactoryForPlayerActivity,
+    hasActiveContext: isPlayerActivityContextActive,
+    pollWhenEmpty: false,
+  });
+  const playerProfile = useChessPlayerProfile(resolvedFactoryContract, rpcProvider, account, {
+    enabled: shouldPollPlayerProfile,
+    pollIntervalMs: 8000,
+  });
   const v2MatchHistory = useChessV2MatchHistory(resolvedFactoryContract, rpcProvider, account, {
-    enabled: expandedPanel === 'recentMatches',
+    enabled: shouldPollPlayerProfile,
     pollIntervalMs: 8000,
   });
   const refreshHistoryPanel = useCallback(() => {
@@ -667,7 +894,11 @@ export default function ChessV2() {
   };
 
   useEffect(() => {
-    const provider = new ethers.JsonRpcProvider(CURRENT_NETWORK.rpcUrl);
+    const provider = new ethers.JsonRpcProvider(
+      CURRENT_NETWORK.rpcUrl,
+      CURRENT_NETWORK.chainId,
+      { staticNetwork: true }
+    );
     rpcProviderRef.current = provider;
     setRpcProvider(provider);
     setResolvedFactoryContract(getFactoryContract(provider, factoryAddress));
@@ -696,6 +927,15 @@ export default function ChessV2() {
       setWalletBootDone(true);
     };
     bootWallet().catch(() => setWalletBootDone(true));
+  }, []);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsTabActive(!document.hidden);
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
   const ensureWalletOnCurrentNetwork = async (provider) => {
@@ -743,162 +983,131 @@ export default function ChessV2() {
     return () => { cancelled = true; };
   }, [rpcReady]);
 
-  async function hydrateBracketMatch(instanceCont, userAccount, matchInfo) {
-    const { roundNumber, matchNumber } = matchInfo;
-    const matchKey = ethers.solidityPackedKeccak256(['uint8', 'uint8'], [roundNumber, matchNumber]);
-
-    const [matchData, fullMatch, boardResult, tierConfig] = await Promise.all([
-      instanceCont.getMatch(roundNumber, matchNumber),
-      instanceCont.matches(matchKey),
-      instanceCont.getBoard(roundNumber, matchNumber).catch(() => null),
-      instanceCont.tierConfig(),
-    ]);
-
-    const { packedBoard, packedState } = resolveChessBoardState(boardResult, matchInfo);
-    const board = unpackBoard(packedBoard);
-    const tierMatchTime = Number(tierConfig.timeouts?.matchTimePerPlayer ?? tierConfig.matchTimePerPlayer ?? 600);
-    const player1 = matchData.player1 || matchInfo.player1;
-    const player2 = matchData.player2 || matchInfo.player2;
-    const matchStatus = Number(matchData.status);
-    const lastMoveTime = Number(matchData.lastMoveTime);
-    const startTime = Number(matchData.startTime);
-    const winner = matchData.matchWinner || matchData.winner;
-    const completionReason = Number(matchData.completionReason ?? 0);
-    const currentTurn = fullMatch.currentTurn;
-    const firstPlayer = fullMatch.firstPlayer;
-    const p1TimeRaw = Number(fullMatch.player1TimeRemaining ?? tierMatchTime);
-    const p2TimeRaw = Number(fullMatch.player2TimeRemaining ?? tierMatchTime);
-    const zeroAddress = ethers.ZeroAddress;
-
-    let loser = zeroAddress;
-    if (matchStatus === 2 && winner && winner.toLowerCase() !== zeroAddress.toLowerCase()) {
-      loser = winner.toLowerCase() === player1.toLowerCase() ? player2 : player1;
-    }
-
-    const now = Math.floor(Date.now() / 1000);
-    const elapsed = lastMoveTime > 0 ? now - lastMoveTime : 0;
-    let player1TimeRemaining = p1TimeRaw;
-    let player2TimeRemaining = p2TimeRaw;
-    const isP1Turn = currentTurn?.toLowerCase() === player1?.toLowerCase();
-    if (matchStatus === 1 && currentTurn && elapsed > 0) {
-      if (isP1Turn) player1TimeRemaining = Math.max(0, player1TimeRemaining - elapsed);
-      else player2TimeRemaining = Math.max(0, player2TimeRemaining - elapsed);
-    }
-
-    let timeoutState = null;
-    try {
-      const timeoutData = await instanceCont.matchTimeouts(matchKey);
-      const esc1Start = Number(timeoutData.escalation1Start);
-      const esc2Start = Number(timeoutData.escalation2Start);
-      if (esc1Start > 0 || esc2Start > 0 || timeoutData.isStalled) {
-        timeoutState = {
-          escalation1Start: esc1Start,
-          escalation2Start: esc2Start,
-          activeEscalation: Number(timeoutData.activeEscalation),
-          timeoutActive: timeoutData.isStalled,
-          forfeitAmount: 0,
-        };
-      }
-    } catch {}
-
-    if (matchStatus === 1 && currentTurn && lastMoveTime > 0) {
-      const activePlayerTimeAtLastMove = isP1Turn ? p1TimeRaw : p2TimeRaw;
-      const timeoutOccurredAt = lastMoveTime + activePlayerTimeAtLastMove;
-      const hasClientDetectedTimeout = elapsed >= activePlayerTimeAtLastMove;
-      if (hasClientDetectedTimeout && (!timeoutState || (timeoutState.timeoutActive && timeoutState.escalation1Start === 0 && timeoutState.escalation2Start === 0))) {
-        const matchLevel2Delay = Number(tierConfig.timeouts?.matchLevel2Delay ?? tierConfig.matchLevel2Delay ?? 180);
-        const matchLevel3Delay = Number(tierConfig.timeouts?.matchLevel3Delay ?? tierConfig.matchLevel3Delay ?? 360);
-        timeoutState = {
-          escalation1Start: timeoutOccurredAt + matchLevel2Delay,
-          escalation2Start: timeoutOccurredAt + matchLevel3Delay,
-          activeEscalation: timeoutState?.activeEscalation ?? 0,
-          timeoutActive: true,
-          forfeitAmount: timeoutState?.forfeitAmount ?? 0,
-        };
-      }
-    }
-
-    let escL2Available = false;
-    let escL3Available = false;
-    let isUserAdvancedForRound = false;
-    try {
-      escL2Available = await instanceCont.isMatchEscL2Available(roundNumber, matchNumber);
-      escL3Available = await instanceCont.isMatchEscL3Available(roundNumber, matchNumber);
-    } catch {}
-    if (userAccount) {
-      try {
-        isUserAdvancedForRound = await instanceCont.isPlayerInAdvancedRound(roundNumber, userAccount);
-      } catch {}
-    }
-
-    const packedStateBig = BigInt(packedState || 0);
-    const whiteInCheck = ((packedStateBig >> 12n) & 1n) === 1n;
-    const blackInCheck = ((packedStateBig >> 13n) & 1n) === 1n;
-    const moves = movesToPairs(matchData.moves || fullMatch.moves || '');
-    let lastMove = null;
-    if (moves.length > 0) {
-      const move = moves[moves.length - 1];
-      lastMove = { from: move.from, to: move.to };
-    }
-
-    return {
-      ...matchInfo,
-      player1,
-      player2,
-      firstPlayer,
-      currentTurn,
-      winner,
-      loser,
-      board,
-      packedBoard: BigInt(packedBoard || 0),
-      packedState: BigInt(packedState || 0),
-      matchStatus,
-      status: matchStatus,
-      completionReason,
-      startTime,
-      lastMoveTime,
-      player1TimeRemaining,
-      player2TimeRemaining,
-      matchTimePerPlayer: tierMatchTime,
-      timeoutState,
-      escL2Available,
-      escL3Available,
-      isUserAdvancedForRound,
-      whiteInCheck,
-      blackInCheck,
-      lastMove,
-    };
-  }
-
   const buildBracketData = async (address, instanceCont = null) => {
     const runner = getReadRunner();
     const instance = instanceCont || getInstanceContract(address, runner);
-    const [info, tournament, players, , bracket, enrolled] = await Promise.all([
-      instance.getInstanceInfo(),
-      instance.tournament(),
-      instance.getPlayers(),
-      instance.getPrizeDistribution(),
-      instance.getBracket(),
-      account ? instance.isEnrolled(account) : Promise.resolve(false),
-    ]);
+
+    const baseCallSpecs = [
+      { contract: instance, functionName: 'getInstanceInfo' },
+      { contract: instance, functionName: 'tournament' },
+      { contract: instance, functionName: 'getPlayers' },
+      { contract: instance, functionName: 'getPrizeDistribution' },
+      { contract: instance, functionName: 'getBracket' },
+      { contract: instance, functionName: 'tierConfig' },
+    ];
+    if (account) {
+      baseCallSpecs.push({ contract: instance, functionName: 'isEnrolled', params: [account] });
+    }
+
+    const baseResults = await multicallContracts(baseCallSpecs, runner);
+    const info = baseResults[0]?.success ? baseResults[0].result : await instance.getInstanceInfo();
+    const tournament = baseResults[1]?.success ? baseResults[1].result : await instance.tournament();
+    const players = baseResults[2]?.success ? baseResults[2].result : await instance.getPlayers();
+    const prizeDistribution = baseResults[3]?.success ? baseResults[3].result : await instance.getPrizeDistribution();
+    const bracket = baseResults[4]?.success ? baseResults[4].result : await instance.getBracket();
+    const tierConfig = baseResults[5]?.success ? baseResults[5].result : await instance.tierConfig();
+    const enrolled = account
+      ? (baseResults[6]?.success ? baseResults[6].result : await instance.isEnrolled(account))
+      : false;
+
     const totalRounds = Number(bracket.totalRounds);
-    const rounds = await Promise.all(Array.from({ length: totalRounds }, async (_, roundIndex) => {
-      const matchCount = Number(bracket.matchCounts[roundIndex] || 0);
-      const matches = await Promise.all(Array.from({ length: matchCount }, async (_, matchIndex) => {
-        const [matchData, boardResult] = await Promise.all([
-          instance.getMatch(roundIndex, matchIndex),
-          instance.getBoard(roundIndex, matchIndex),
-        ]);
-        const packedBoard = Array.isArray(boardResult) ? boardResult[0] : boardResult.board;
-        const packedState = Array.isArray(boardResult) ? boardResult[1] : boardResult.state;
-        const normalized = normalizeMatch(roundIndex, matchIndex, matchData, packedBoard, packedState);
-        const hydrated = await hydrateBracketMatch(instance, account, normalized);
-        return { ...hydrated, tierId: VIRTUAL_TIER_ID, instanceId: VIRTUAL_INSTANCE_ID };
-      }));
-      return { roundIndex, matchCount, completedCount: Number(bracket.completedCounts[roundIndex] || 0), label: getRoundLabel(roundIndex, totalRounds), matches };
+    const roundDescriptors = Array.from({ length: totalRounds }, (_, roundIndex) => ({
+      roundIndex,
+      matchCount: Number(bracket.matchCounts[roundIndex] || 0),
+      completedCount: Number(bracket.completedCounts[roundIndex] || 0),
     }));
+
+    const advancedRoundCallSpecs = account
+      ? roundDescriptors
+        .filter(({ matchCount }) => matchCount > 0)
+        .map(({ roundIndex }) => ({
+          contract: instance,
+          functionName: 'isPlayerInAdvancedRound',
+          params: [roundIndex, account],
+        }))
+      : [];
+
+    const matchDescriptors = [];
+    const matchCallSpecs = [];
+    for (const { roundIndex, matchCount } of roundDescriptors) {
+      for (let matchIndex = 0; matchIndex < matchCount; matchIndex++) {
+        const matchKey = buildV2MatchKey(roundIndex, matchIndex);
+        matchDescriptors.push({ roundIndex, matchIndex });
+        matchCallSpecs.push(
+          { contract: instance, functionName: 'getMatch', params: [roundIndex, matchIndex] },
+          { contract: instance, functionName: 'matches', params: [matchKey] },
+          { contract: instance, functionName: 'getBoard', params: [roundIndex, matchIndex] },
+          { contract: instance, functionName: 'matchTimeouts', params: [matchKey] },
+          { contract: instance, functionName: 'isMatchEscL2Available', params: [roundIndex, matchIndex] },
+          { contract: instance, functionName: 'isMatchEscL3Available', params: [roundIndex, matchIndex] },
+        );
+      }
+    }
+
+    const activityCallSpecs = [...advancedRoundCallSpecs, ...matchCallSpecs];
+    const activityResults = activityCallSpecs.length > 0
+      ? await multicallContracts(activityCallSpecs, runner)
+      : [];
+    const advancedRoundResults = activityResults.slice(0, advancedRoundCallSpecs.length);
+    const matchResults = activityResults.slice(advancedRoundCallSpecs.length);
+
+    const advancedByRound = new Map();
+    let advancedCursor = 0;
+    for (const { roundIndex, matchCount } of roundDescriptors) {
+      if (!account || matchCount === 0) continue;
+      const result = advancedRoundResults[advancedCursor++];
+      advancedByRound.set(roundIndex, Boolean(result?.success ? result.result : false));
+    }
+
+    const matchesByRound = new Map();
+    let matchCursor = 0;
+    for (const { roundIndex, matchIndex } of matchDescriptors) {
+      const matchResult = matchResults[matchCursor++];
+      const fullMatchResult = matchResults[matchCursor++];
+      const boardResult = matchResults[matchCursor++];
+      const timeoutResult = matchResults[matchCursor++];
+      const escL2Result = matchResults[matchCursor++];
+      const escL3Result = matchResults[matchCursor++];
+
+      if (!matchResult?.success) continue;
+
+      const matchData = matchResult.result;
+      const rawBoardResult = boardResult?.success ? boardResult.result : null;
+      const packedBoard = Array.isArray(rawBoardResult) ? rawBoardResult[0] : rawBoardResult?.board;
+      const packedState = Array.isArray(rawBoardResult) ? rawBoardResult[1] : rawBoardResult?.state;
+      const normalized = normalizeMatch(roundIndex, matchIndex, matchData, packedBoard, packedState);
+      const hydrated = hydrateBracketMatchData(account, normalized, {
+        matchData,
+        fullMatch: fullMatchResult?.success ? fullMatchResult.result : null,
+        boardResult: rawBoardResult,
+        tierConfig,
+        timeoutData: timeoutResult?.success ? timeoutResult.result : null,
+        escL2Available: Boolean(escL2Result?.success ? escL2Result.result : false),
+        escL3Available: Boolean(escL3Result?.success ? escL3Result.result : false),
+        isUserAdvancedForRound: advancedByRound.get(roundIndex) || false,
+      });
+
+      const roundMatches = matchesByRound.get(roundIndex) || [];
+      roundMatches.push({ ...hydrated, tierId: VIRTUAL_TIER_ID, instanceId: VIRTUAL_INSTANCE_ID });
+      matchesByRound.set(roundIndex, roundMatches);
+    }
+
+    const rounds = roundDescriptors.map(({ roundIndex, matchCount, completedCount }) => ({
+      roundIndex,
+      matchCount,
+      completedCount,
+      label: getRoundLabel(roundIndex, totalRounds),
+      matches: matchesByRound.get(roundIndex) || [],
+    }));
+
     const snapshot = normalizeInstanceSnapshot(address, info, tournament, players, enrolled);
-    return { ...snapshot, rounds, tierId: VIRTUAL_TIER_ID, instanceId: VIRTUAL_INSTANCE_ID };
+    return {
+      ...snapshot,
+      payoutEntries: normalizePrizeDistribution(prizeDistribution),
+      rounds,
+      tierId: VIRTUAL_TIER_ID,
+      instanceId: VIRTUAL_INSTANCE_ID,
+    };
   };
 
   const refreshTournamentBracket = useCallback(async (address) => {
@@ -920,7 +1129,7 @@ export default function ChessV2() {
       setBrowserProvider(provider);
       setAccount(await signer.getAddress());
     } catch (error) {
-      setActionState({ type: 'error', message: getReadableError(error, 'Wallet connection failed.') });
+      showActionError('connect your wallet', error, 'Wallet connection failed.');
     } finally {
       setIsConnecting(false);
     }
@@ -946,7 +1155,7 @@ export default function ChessV2() {
   const clearSelectedInstance = () => {
     const next = new URLSearchParams(searchParams);
     next.delete('instance');
-    setSearchParams(next);
+    setSearchParams(next, { replace: true });
   };
   const updateCreateForm = (field, value) => setCreateForm(prev => ({
     ...prev,
@@ -961,6 +1170,15 @@ export default function ChessV2() {
   const enterInstanceBracket = useCallback(async (address) => {
     if (!address) return;
     try {
+      setCurrentMatch(null);
+      setMoveHistory([]);
+      setIsSpectator(false);
+      setMoveTxTimeout(null);
+      setMatchEndResult(null);
+      setMatchEndWinner(null);
+      setMatchEndLoser(null);
+      setMatchEndWinnerLabel('');
+      previousBoardRef.current = null;
       setTournamentsLoading(true);
       const bracketData = await refreshTournamentBracket(address);
       if (bracketData) {
@@ -970,7 +1188,7 @@ export default function ChessV2() {
         activeInstanceContractRef.current = instance;
         setViewingTournament(bracketData);
         skipNavEffectRef.current = true;
-        navigate('/v2/chess', { replace: false, state: { view: 'bracket', instanceAddress: address, from: location.state?.view || 'landing' } });
+        navigate('/chess', { replace: false, state: { view: 'bracket', instanceAddress: address, from: location.state?.view || 'landing' } });
       }
     } catch (error) {
       console.error('[ChessV2] Error entering bracket:', error);
@@ -1020,12 +1238,12 @@ export default function ChessV2() {
     setViewingTournament(null);
     setCurrentMatch(null);
     setHasProcessedInviteParam(true);
-    navigate('/v2/chess', { replace: true, state: null });
+    navigate('/chess', { replace: true, state: null });
   }, [allowInitialUrlHydration, navigate]);
 
   useEffect(() => {
     if (allowInitialUrlHydration) return;
-    if (location.pathname !== '/v2/chess' || location.search || location.state) return;
+    if (location.pathname !== '/chess' || location.search || location.state) return;
     setAllowInitialUrlHydration(true);
   }, [allowInitialUrlHydration, location.pathname, location.search, location.state]);
 
@@ -1067,7 +1285,7 @@ export default function ChessV2() {
       await enterInstanceBracket(address);
     } catch (error) {
       console.error('[ChessV2 createInstance] raw error:', error);
-      setActionState({ type: 'error', message: getReadableError(error, 'Could not create instance.') });
+      showActionError('create this lobby', error, 'Could not create instance.');
     } finally {
       setCreateLoading(false);
     }
@@ -1115,11 +1333,11 @@ export default function ChessV2() {
       });
     } catch (error) {
       console.error('[ChessV2] Enroll error:', error);
-      setActionState({ type: 'error', message: getReadableError(error, 'Enrollment failed.') });
+      showActionError('join this lobby', error, 'Enrollment failed.');
     } finally {
       setTournamentsLoading(false);
     }
-  }, [viewingTournament, activeInstanceContract, account, refreshTournamentBracket]);
+  }, [viewingTournament, activeInstanceContract, account, refreshTournamentBracket, showActionError]);
 
   const handleEnterTournamentFromActivity = useCallback((_tierId, instanceRef) => {
     const instanceAddress = (typeof instanceRef === 'string' && instanceRef.startsWith('0x'))
@@ -1172,11 +1390,11 @@ export default function ChessV2() {
       setActionState({ type: 'success', message: 'Tournament state refreshed after the force-start transaction.' });
     } catch (error) {
       console.error('[ChessV2] Force start error:', error);
-      alert(`Error force-starting: ${getReadableError(error, 'Unknown error')}`);
+      showActionError('force-start this tournament', error, 'Could not force-start this tournament.');
     } finally {
       setTournamentsLoading(false);
     }
-  }, [viewingTournament, activeInstanceContract, account, refreshTournamentBracket]);
+  }, [viewingTournament, activeInstanceContract, account, refreshTournamentBracket, showActionError]);
 
   const handleCancelTournament = useCallback(async () => {
     if (!viewingTournament || !activeInstanceContract || !account) { alert('Please connect your wallet first.'); return; }
@@ -1197,18 +1415,19 @@ export default function ChessV2() {
       await tx.wait();
       setActionState({ type: 'success', message: 'Tournament cancelled and refund recorded on-chain.' });
       alert('Tournament cancelled successfully!');
+      skipNavEffectRef.current = true;
       setViewingTournament(null);
       setCurrentMatch(null);
       setActiveInstanceContract(null);
       activeInstanceContractRef.current = null;
-      clearSelectedInstance();
+      navigate('/chess', { replace: true, state: null });
     } catch (error) {
       console.error('[ChessV2] Cancel tournament error:', error);
-      alert(`Error cancelling tournament: ${getReadableError(error, 'Unknown error')}`);
+      showActionError('cancel this tournament', error, 'Could not cancel this tournament.');
     } finally {
       setTournamentsLoading(false);
     }
-  }, [viewingTournament, activeInstanceContract, account]);
+  }, [viewingTournament, activeInstanceContract, account, navigate, showActionError]);
 
   const handleResetEnrollmentWindow = useCallback(async () => {
     if (!viewingTournament || !activeInstanceContract || !account) { alert('Please connect your wallet first.'); return; }
@@ -1227,11 +1446,11 @@ export default function ChessV2() {
       setActionState({ type: 'success', message: 'Enrollment window reset and tournament state refreshed.' });
     } catch (error) {
       console.error('[ChessV2] Reset enrollment window error:', error);
-      alert(`Failed: ${getReadableError(error, 'Unknown error')}`);
+      showActionError('reset the enrollment window', error, 'Could not reset the enrollment window.');
     } finally {
       setTournamentsLoading(false);
     }
-  }, [viewingTournament, activeInstanceContract, account, refreshTournamentBracket]);
+  }, [viewingTournament, activeInstanceContract, account, refreshTournamentBracket, showActionError]);
 
   const handleClaimAbandonedPool = useCallback(async () => {
     if (!viewingTournament || !activeInstanceContract || !account) { alert('Please connect your wallet first.'); return; }
@@ -1264,19 +1483,22 @@ export default function ChessV2() {
       setActionState({ type: 'success', message: 'Abandoned pool claim confirmed on-chain.' });
     } catch (error) {
       console.error('[ChessV2] Claim abandoned pool error:', error);
-      alert(`Error: ${getReadableError(error, 'Unknown error')}`);
+      showActionError('claim the abandoned pool', error, 'Could not claim the abandoned pool.');
     } finally {
       setTournamentsLoading(false);
     }
-  }, [viewingTournament, activeInstanceContract, account]);
+  }, [viewingTournament, activeInstanceContract, account, showActionError]);
 
   const handleBackToTournaments = async () => {
+    skipNavEffectRef.current = true;
     setViewingTournament(null);
     setCurrentMatch(null);
     setActiveInstanceContract(null);
     activeInstanceContractRef.current = null;
-    clearSelectedInstance();
-    navigate(-1);
+    navigate('/chess', { replace: true, state: null });
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
   };
 
   const buildMoveHistory = useCallback((movesString, firstPlayer, player1, player2) => {
@@ -1305,16 +1527,66 @@ export default function ChessV2() {
     });
   }, []);
 
+  useEffect(() => {
+    if (!currentMatch || currentMatch.matchStatus !== 2) {
+      setReplayMoveIndex(-2);
+    }
+  }, [currentMatch?.instanceAddress, currentMatch?.roundNumber, currentMatch?.matchNumber, currentMatch?.matchStatus]);
+
+  const effectiveReplayMoveIndex = replayMoveIndex === -2 ? moveHistory.length - 1 : replayMoveIndex;
+  const displayedBoard = currentMatch
+    ? (currentMatch.matchStatus === 2 && moveHistory.length > 0
+      ? buildReplayChessBoard(moveHistory, effectiveReplayMoveIndex, currentMatch.board)
+      : currentMatch.board)
+    : null;
+  const replayCheckStatus = displayedBoard
+    ? getCheckStatusFromPackedBoard(boardArrayToPackedBoard(displayedBoard))
+    : { whiteInCheck: false, blackInCheck: false };
+  const displayedLastMove = currentMatch?.matchStatus === 2
+    ? (effectiveReplayMoveIndex >= 0 && moveHistory[effectiveReplayMoveIndex]
+      ? {
+          from: moveHistory[effectiveReplayMoveIndex].from,
+          to: moveHistory[effectiveReplayMoveIndex].to,
+          isMyMove: moveHistory[effectiveReplayMoveIndex].address?.toLowerCase() === currentMatch.firstPlayer?.toLowerCase(),
+        }
+      : null)
+    : currentMatch?.lastMove ?? null;
+
   const refreshMatchData = useCallback(async (instanceCont, userAccount, matchInfo) => {
     try {
       const { roundNumber, matchNumber } = matchInfo;
       const matchKey = ethers.solidityPackedKeccak256(['uint8', 'uint8'], [roundNumber, matchNumber]);
-      const [matchData, fullMatch, boardResult, tierConfig] = await Promise.all([
-        instanceCont.getMatch(roundNumber, matchNumber),
-        instanceCont.matches(matchKey),
-        instanceCont.getBoard(roundNumber, matchNumber).catch(() => null),
-        instanceCont.tierConfig(),
-      ]);
+      const runner = getReadRunner();
+      const callSpecs = [
+        { contract: instanceCont, functionName: 'getMatch', params: [roundNumber, matchNumber] },
+        { contract: instanceCont, functionName: 'matches', params: [matchKey] },
+        { contract: instanceCont, functionName: 'getBoard', params: [roundNumber, matchNumber] },
+        { contract: instanceCont, functionName: 'tierConfig' },
+        { contract: instanceCont, functionName: 'getInstanceInfo' },
+        { contract: instanceCont, functionName: 'matchTimeouts', params: [matchKey] },
+        { contract: instanceCont, functionName: 'isMatchEscL2Available', params: [roundNumber, matchNumber] },
+        { contract: instanceCont, functionName: 'isMatchEscL3Available', params: [roundNumber, matchNumber] },
+      ];
+      if (userAccount) {
+        callSpecs.push({
+          contract: instanceCont,
+          functionName: 'isPlayerInAdvancedRound',
+          params: [roundNumber, userAccount],
+        });
+      }
+      const results = runner ? await multicallContracts(callSpecs, runner) : [];
+      const matchData = results[0]?.success ? results[0].result : await instanceCont.getMatch(roundNumber, matchNumber);
+      const fullMatch = results[1]?.success ? results[1].result : await instanceCont.matches(matchKey);
+      const boardResult = results[2]?.success ? results[2].result : await instanceCont.getBoard(roundNumber, matchNumber).catch(() => null);
+      const tierConfig = results[3]?.success ? results[3].result : await instanceCont.tierConfig();
+      const instanceInfo = results[4]?.success ? results[4].result : await instanceCont.getInstanceInfo().catch(() => null);
+      const timeoutData = results[5]?.success ? results[5].result : await instanceCont.matchTimeouts(matchKey).catch(() => null);
+      const escL2Available = results[6]?.success ? Boolean(results[6].result) : Boolean(await instanceCont.isMatchEscL2Available(roundNumber, matchNumber).catch(() => false));
+      const escL3Available = results[7]?.success ? Boolean(results[7].result) : Boolean(await instanceCont.isMatchEscL3Available(roundNumber, matchNumber).catch(() => false));
+      const isUserAdvancedForRound = userAccount
+        ? (results[8]?.success ? Boolean(results[8].result) : Boolean(await instanceCont.isPlayerInAdvancedRound(roundNumber, userAccount).catch(() => false)))
+        : false;
+      const playerCount = Number(instanceInfo?.playerCount ?? matchInfo.playerCount ?? 0) || null;
       const { packedBoard, packedState } = resolveChessBoardState(boardResult, matchInfo);
       const board = unpackBoard(packedBoard);
       const tierMatchTime = Number(tierConfig.timeouts?.matchTimePerPlayer ?? tierConfig.matchTimePerPlayer ?? 600);
@@ -1341,14 +1613,13 @@ export default function ChessV2() {
         if (isP1Turn) p1Time = Math.max(0, p1Time - elapsed); else p2Time = Math.max(0, p2Time - elapsed);
       }
       let timeoutState = null;
-      try {
-        const timeoutData = await instanceCont.matchTimeouts(matchKey);
+      if (timeoutData) {
         const esc1Start = Number(timeoutData.escalation1Start);
         const esc2Start = Number(timeoutData.escalation2Start);
         if (esc1Start > 0 || esc2Start > 0 || timeoutData.isStalled) {
           timeoutState = { escalation1Start: esc1Start, escalation2Start: esc2Start, activeEscalation: Number(timeoutData.activeEscalation), timeoutActive: timeoutData.isStalled, forfeitAmount: 0 };
         }
-      } catch {}
+      }
 
       if (matchStatus === 1 && currentTurn && lastMoveTime > 0) {
         const activePlayerTimeAtLastMove = isP1Turn ? p1TimeRaw : p2TimeRaw;
@@ -1366,16 +1637,6 @@ export default function ChessV2() {
           };
         }
       }
-      let escL2Available = false;
-      let escL3Available = false;
-      let isUserAdvancedForRound = false;
-      try {
-        escL2Available = await instanceCont.isMatchEscL2Available(roundNumber, matchNumber);
-        escL3Available = await instanceCont.isMatchEscL3Available(roundNumber, matchNumber);
-      } catch {}
-      if (userAccount) {
-        try { isUserAdvancedForRound = await instanceCont.isPlayerInAdvancedRound(roundNumber, userAccount); } catch {}
-      }
       const packedStateBig = BigInt(packedState || 0);
       const whiteInCheck = ((packedStateBig >> 12n) & 1n) === 1n;
       const blackInCheck = ((packedStateBig >> 13n) & 1n) === 1n;
@@ -1392,6 +1653,7 @@ export default function ChessV2() {
       }
       return {
         ...matchInfo,
+        playerCount,
         player1,
         player2,
         firstPlayer,
@@ -1443,7 +1705,7 @@ export default function ChessV2() {
     try {
       setMatchLoadingMessage(DEFAULT_MATCH_LOADING_MESSAGE);
       setMatchLoading(true);
-      const updated = await refreshMatchData(instanceCont, account, { tierId: VIRTUAL_TIER_ID, instanceId: VIRTUAL_INSTANCE_ID, roundNumber, matchNumber, playerCount: viewingTournament?.playerCount || 2, prizePool: viewingTournament?.prizePoolWei || 0n, instanceAddress });
+      const updated = await refreshMatchData(instanceCont, account, { tierId: VIRTUAL_TIER_ID, instanceId: VIRTUAL_INSTANCE_ID, roundNumber, matchNumber, playerCount: viewingTournament?.playerCount ?? null, prizePool: viewingTournament?.prizePoolWei || 0n, instanceAddress });
       if (updated) {
         setIsSpectator(!(updated.player1?.toLowerCase() === account.toLowerCase() || updated.player2?.toLowerCase() === account.toLowerCase()));
         setCurrentMatch(updated);
@@ -1455,7 +1717,7 @@ export default function ChessV2() {
         matchEndModalShownRef.current = updated.matchStatus === 2;
         setMoveHistory(buildMoveHistory(updated.movesString, updated.firstPlayer, updated.player1, updated.player2));
         skipNavEffectRef.current = true;
-        navigate('/v2/chess', { replace: false, state: { view: 'match', instanceAddress, roundNumber, matchNumber, from: location.state?.view || 'bracket' } });
+        navigate('/chess', { replace: false, state: { view: 'match', instanceAddress, roundNumber, matchNumber, from: location.state?.view || 'bracket' } });
         setTimeout(() => {
           matchViewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
           collapseActivityPanelRef.current?.();
@@ -1510,6 +1772,28 @@ export default function ChessV2() {
       if (updated) {
         setCurrentMatch(updated);
         previousBoardRef.current = JSON.stringify(updated.board);
+        if (updated.matchStatus === 2 && !matchEndModalShownRef.current) {
+          const reasonNum = updated.completionReason || 0;
+          const isMatchDraw = isDraw(reasonNum);
+          const winnerAddress = updated.winner?.toLowerCase();
+          const loserAddress = updated.loser?.toLowerCase();
+          const zeroAddress = ethers.ZeroAddress.toLowerCase();
+
+          if (isMatchDraw || (winnerAddress && loserAddress && winnerAddress !== zeroAddress && loserAddress !== zeroAddress)) {
+            const userIsWinner = !isMatchDraw && winnerAddress === account.toLowerCase();
+            let resultType = 'lose';
+            if (isMatchDraw) resultType = 'draw';
+            else if (userIsWinner) resultType = (reasonNum === 1 || reasonNum === 3 || reasonNum === 4) ? 'forfeit_win' : 'win';
+            else resultType = (reasonNum === 1 || reasonNum === 3 || reasonNum === 4) ? 'forfeit_lose' : 'lose';
+
+            matchEndModalShownRef.current = true;
+            setMatchEndResult({ result: resultType, completionReason: reasonNum });
+            setMatchEndWinner(updated.winner);
+            setMatchEndLoser(updated.loser);
+
+            if (userIsWinner) setTimeout(() => checkForNextActiveMatch(), 500);
+          }
+        }
       }
       setActionState({
         type: syncResult.synced ? 'success' : 'info',
@@ -1530,6 +1814,13 @@ export default function ChessV2() {
       if (errorString.includes('TX_TIMEOUT')) {
         setActionState({ type: 'error', message: 'Move confirmation is taking longer than expected. If it confirms, the board will update automatically.' });
         setMoveTxTimeout({ type: 'congestion', pendingFrom: fromSquare, pendingTo: toSquare, pendingPromotion: promotion });
+        return;
+      }
+      if (error?.code === 'TX_FAILED_ONCHAIN' || errorString.includes('TX_FAILED_ONCHAIN')) {
+        setActionState({
+          type: 'error',
+          message: 'Your move transaction failed after submission in your wallet provider. Your move was not recorded. If your wallet shows the transaction failed, network gas may still have been spent. Please submit your move again.',
+        });
         return;
       }
       let errorMsg = 'Invalid Move';
@@ -1652,21 +1943,39 @@ export default function ChessV2() {
     }
   };
 
-  const closeMatch = async () => {
+  const closeMatch = useCallback(async () => {
     const address = currentMatch?.instanceAddress || viewingTournament?.address;
     setCurrentMatch(null);
     setMoveHistory([]);
     setIsSpectator(false);
     setMoveTxTimeout(null);
+    setMatchEndResult(null);
+    setMatchEndWinner(null);
+    setMatchEndLoser(null);
+    setMatchEndWinnerLabel('');
     previousBoardRef.current = null;
-    navigate(-1);
-    if (address && activeInstanceContractRef.current) {
-      setTournamentsLoading(true);
-      const bracketData = await refreshTournamentBracket(address);
-      if (bracketData) setViewingTournament(bracketData);
-      setTournamentsLoading(false);
+    if (!address) {
+      skipNavEffectRef.current = true;
+      navigate('/chess', { replace: true, state: null });
+      window.requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+      return;
     }
-  };
+    pendingScrollAddressRef.current = address;
+    skipNavEffectRef.current = true;
+    navigate('/chess', {
+      replace: true,
+      state: { view: 'bracket', instanceAddress: address, from: 'match' },
+    });
+    window.requestAnimationFrame(() => {
+      tournamentBracketRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    setTournamentsLoading(true);
+    const bracketData = await refreshTournamentBracket(address);
+    if (bracketData) setViewingTournament(bracketData);
+    setTournamentsLoading(false);
+  }, [currentMatch?.instanceAddress, viewingTournament?.address, refreshTournamentBracket, navigate]);
 
   const handleMatchEndModalClose = () => { setMatchEndResult(null); setMatchEndWinnerLabel(''); };
   const handleMatchAlertClose = () => { setShowMatchAlert(false); setAlertMatch(null); playerActivity.clearMatchAlert(); };
@@ -1702,7 +2011,7 @@ export default function ChessV2() {
   const handleEnterNextMatch = useCallback(() => {
     if (nextActiveMatch) handlePlayMatch(nextActiveMatch.tierId, nextActiveMatch.instanceId, nextActiveMatch.roundNumber, nextActiveMatch.matchNumber);
   }, [nextActiveMatch, handlePlayMatch]);
-  const handleReturnToBracket = useCallback(() => closeMatch(), []);
+  const handleReturnToBracket = useCallback(() => closeMatch(), [closeMatch]);
 
   useEffect(() => { currentMatchRef.current = currentMatch; }, [currentMatch]);
   useEffect(() => { accountRefForMatch.current = account; }, [account]);
@@ -1711,19 +2020,24 @@ export default function ChessV2() {
 
   useEffect(() => {
     if (!viewingTournament || !activeInstanceContractRef.current) return;
+    if (currentMatch) return;
+    if (!isTabActive) return;
+    if (![0, 1].includes(Number(viewingTournament.status))) return;
     const doSync = async () => {
       const tournament = tournamentRef.current;
       if (!tournament || !activeInstanceContractRef.current) return;
+      if (currentMatchRef.current) return;
+      if (![0, 1].includes(Number(tournament.status))) return;
       const updated = await refreshTournamentBracket(tournament.address);
       if (updated) setViewingTournament(updated);
       setBracketSyncDots(1);
     };
-    const pollInterval = setInterval(doSync, 3000);
+    const pollInterval = setInterval(doSync, 5000);
     return () => clearInterval(pollInterval);
-  }, [viewingTournament?.address, refreshTournamentBracket]);
+  }, [viewingTournament?.address, viewingTournament?.status, currentMatch?.instanceAddress, isTabActive, refreshTournamentBracket]);
 
   useEffect(() => {
-    if (!currentMatch || !activeInstanceContractRef.current || !account) return;
+    if (!currentMatch || currentMatch.matchStatus === 2 || !activeInstanceContractRef.current || !account) return;
     const doMatchSync = async () => {
       const match = currentMatchRef.current;
       const instanceCont = activeInstanceContractRef.current;
@@ -1777,15 +2091,19 @@ export default function ChessV2() {
       setSyncDots(1);
     };
     doMatchSyncRef.current = doMatchSync;
-    const id = setInterval(doMatchSync, 1500);
+    const id = setInterval(doMatchSync, 5000);
     return () => clearInterval(id);
-  }, [currentMatch?.instanceAddress, currentMatch?.roundNumber, currentMatch?.matchNumber, account, refreshMatchData, buildMoveHistory, checkForNextActiveMatch]);
+  }, [currentMatch?.instanceAddress, currentMatch?.roundNumber, currentMatch?.matchNumber, currentMatch?.matchStatus, account, refreshMatchData, buildMoveHistory, checkForNextActiveMatch]);
 
   useEffect(() => {
     if (!currentMatch || !activeInstanceContract || !account) return;
     const match = currentMatchRef.current;
     if (!match?.player1 || !match?.player2) return;
     const matchId = ethers.solidityPackedKeccak256(['uint8', 'uint8'], [match.roundNumber, match.matchNumber]);
+    const viewerIsSpectator = ![
+      match.player1.toLowerCase(),
+      match.player2.toLowerCase(),
+    ].includes(account.toLowerCase());
     const opponentAddress = match.player1.toLowerCase() === account.toLowerCase() ? match.player2 : match.player1;
     const handleOpponentMove = (_matchId, _player, from, to) => {
       setGhostMove({ from: Number(from), to: Number(to) });
@@ -1793,11 +2111,13 @@ export default function ChessV2() {
       doMatchSyncRef.current?.().then(() => setGhostMove(null)).catch(() => setGhostMove(null));
     };
     try {
-      const filter = activeInstanceContract.filters.MoveMade(matchId, opponentAddress);
+      const filter = viewerIsSpectator
+        ? activeInstanceContract.filters.MoveMade(matchId, null)
+        : activeInstanceContract.filters.MoveMade(matchId, opponentAddress);
       activeInstanceContract.on(filter, handleOpponentMove);
       return () => activeInstanceContract.off(filter, handleOpponentMove);
     } catch {}
-  }, [currentMatch?.roundNumber, currentMatch?.matchNumber, activeInstanceContract, account]);
+  }, [currentMatch?.roundNumber, currentMatch?.matchNumber, activeInstanceContract, account, isSpectator]);
 
   useEffect(() => { if (!currentMatch) return; const id = setInterval(() => setSyncDots(prev => prev >= 3 ? 3 : prev + 1), 1000); return () => clearInterval(id); }, [currentMatch]);
   useEffect(() => { if (!viewingTournament) return; const id = setInterval(() => setBracketSyncDots(prev => prev >= 3 ? 3 : prev + 1), 1000); return () => clearInterval(id); }, [viewingTournament]);
@@ -1805,7 +2125,7 @@ export default function ChessV2() {
   useEffect(() => {
     const handleNav = async () => {
       if (skipNavEffectRef.current) { skipNavEffectRef.current = false; return; }
-      if (isInitialNavRef.current) { isInitialNavRef.current = false; navigate('/v2/chess', { replace: true, state: null }); return; }
+      if (isInitialNavRef.current) { isInitialNavRef.current = false; navigate('/chess', { replace: true, state: null }); return; }
       const state = location.state;
       if (!state || !state.view) { if (currentMatch || viewingTournament) { setCurrentMatch(null); setViewingTournament(null); } return; }
       if (state.view === 'bracket' && state.instanceAddress) {
@@ -1858,7 +2178,7 @@ export default function ChessV2() {
     return () => { clearTimeout(timer); document.removeEventListener('click', handleClickAway); };
   }, [activeTooltip]);
 
-  useEffect(() => { document.title = 'ETour - Chess V2'; }, []);
+  useEffect(() => { document.title = 'Chess'; }, []);
 
   const isAlertMatchAlreadyOpen = Boolean(
     currentMatch &&
@@ -1875,38 +2195,84 @@ export default function ChessV2() {
     }
   }, [showMatchAlert, isAlertMatchAlreadyOpen]);
 
+  const renderCheckStatusBadge = useCallback((playerColor) => {
+    if (!currentMatch) return null;
+
+    const isWhite = playerColor === 'white';
+    const playerAddress = isWhite ? currentMatch.player1 : currentMatch.player2;
+    const isReplayFinalPosition = currentMatch.matchStatus !== 2 || replayMoveIndex === -2 || effectiveReplayMoveIndex === moveHistory.length - 1;
+    const isCheckmated = isReplayFinalPosition
+      && currentMatch.matchStatus === 2
+      && currentMatch.completionReason === CompletionReason.NORMAL_WIN
+      && playerAddress
+      && currentMatch.loser
+      && playerAddress.toLowerCase() === currentMatch.loser.toLowerCase();
+    const isInCheck = currentMatch.matchStatus === 2
+      ? (isWhite ? replayCheckStatus.whiteInCheck : replayCheckStatus.blackInCheck)
+      : (isWhite ? currentMatch.whiteInCheck : currentMatch.blackInCheck);
+
+    if (!isCheckmated && !isInCheck) return null;
+
+    const badgeClasses = isCheckmated
+      ? 'bg-red-500/20 border border-red-400 text-red-300'
+      : 'bg-orange-500/20 border border-orange-400 text-orange-200';
+    const badgeText = isCheckmated ? 'CHECKMATE' : 'CHECK';
+
+    return (
+      <div className="mt-1.5 text-center md:mt-2">
+        <div className={`${badgeClasses} inline-flex items-center justify-center rounded-md px-1.5 py-1 md:rounded-lg md:px-2 md:py-2`}>
+          <span className="text-[9px] font-semibold leading-none md:text-xs md:font-bold">{badgeText}</span>
+        </div>
+      </div>
+    );
+  }, [currentMatch, replayMoveIndex, effectiveReplayMoveIndex, moveHistory.length, replayCheckStatus]);
+
   return (
     <div style={{ minHeight: '100vh', background: currentTheme.gradient, color: '#fff', position: 'relative', overflow: 'clip', transition: 'background 0.8s ease-in-out' }}>
       <ParticleBackground colors={currentTheme.particleColors} symbols={CHESS_PIECES} fontSize="40px" />
+      <CenteredErrorFlash
+        message={actionState.type === 'error' ? actionState.message : ''}
+        onDismiss={dismissActionError}
+      />
       {showPrompt && <WalletBrowserPrompt onWalletChoice={handleWalletChoice} onContinueChoice={handleContinueChoice} />}
       {matchEndResult && <MatchEndModal result={matchEndResult.result} completionReason={matchEndResult.completionReason} winnerLabel={matchEndWinnerLabel} winnerAddress={matchEndWinner} loserAddress={matchEndLoser} currentAccount={account} hasNextMatch={!!nextActiveMatch} onClose={handleMatchEndModalClose} onEnterNextMatch={handleEnterNextMatch} onReturnToBracket={handleReturnToBracket} gameType="chess" roundNumber={currentMatch?.roundNumber} totalRounds={viewingTournament?.totalRounds} prizePool={viewingTournament?.prizePoolWei} reasonLabelMode="v2" />}
       {showMatchAlert && alertMatch && !isAlertMatchAlreadyOpen && <ActiveMatchAlertModal match={alertMatch} autoDismiss={isAlertMatchAlreadyOpen} onEnterMatch={() => { handleMatchAlertClose(); handlePlayMatch(alertMatch.tierId, alertMatch.instanceId, alertMatch.roundIdx, alertMatch.matchIdx); }} onDismiss={handleMatchAlertClose} />}
+      <PlayerProfileModal
+        isOpen={Boolean(selectedProfileAddress)}
+        onClose={() => setSelectedProfileAddress(null)}
+        gameType="chess"
+        targetAddress={selectedProfileAddress}
+        factoryContract={resolvedFactoryContract}
+        runner={rpcProvider}
+        onViewTournament={enterInstanceBracket}
+        reasonLabelMode="v2"
+      />
 
       <div className="fixed bottom-0 left-0 right-0 z-50 md:static md:z-auto">
         <div className="md:hidden bg-gradient-to-b from-slate-800 to-slate-900 border-t border-purple-400/30 px-4 py-2.5 flex items-center justify-between">
           <GamesCard currentGame="chess" onHeightChange={setGamesCardHeight} isExpanded={expandedPanel === 'games'} onToggleExpand={() => setExpandedPanel(expandedPanel === 'games' ? null : 'games')} />
-          <PlayerActivity activity={playerActivity.data} loading={playerActivity.loading} syncing={playerActivity.syncing} contract={activeInstanceContract} account={account} onEnterMatch={handlePlayMatch} onEnterTournament={handleEnterTournamentFromActivity} onRefresh={playerActivity.refetch} onDismissMatch={playerActivity.dismissMatch} gameName="chess" gameEmoji="♟️" connectCtaClassName={currentTheme.connectCtaClassName} gamesCardHeight={gamesCardHeight} onHeightChange={setPlayerActivityHeight} onCollapse={(fn) => { collapseActivityPanelRef.current = fn; }} isExpanded={expandedPanel === 'playerActivity'} onToggleExpand={() => setExpandedPanel(expandedPanel === 'playerActivity' ? null : 'playerActivity')} tierConfig={{}} disabled={!account} showTooltip={activeTooltip === 'playerActivity'} onShowTooltip={() => setActiveTooltip('playerActivity')} onHideTooltip={() => setActiveTooltip(null)} reasonLabelMode="v2" />
-          <RecentMatchesCard contract={null} account={account} gameName="chess" gameEmoji="♟️" gamesCardHeight={gamesCardHeight} playerActivityHeight={playerActivityHeight} onHeightChange={setRecentMatchesCardHeight} isExpanded={expandedPanel === 'recentMatches'} onToggleExpand={() => setExpandedPanel(expandedPanel === 'recentMatches' ? null : 'recentMatches')} tierConfig={{}} disabled={!account} showTooltip={activeTooltip === 'recentMatches'} onShowTooltip={() => setActiveTooltip('recentMatches')} onHideTooltip={() => setActiveTooltip(null)} connectCtaClassName={currentTheme.connectCtaClassName} onNavigateToTournament={() => {}} leaderboard={leaderboard} playerProfile={playerProfile} onRefresh={refreshHistoryPanel} showTournamentRaffles={false} onViewTournament={enterInstanceBracket} getTournamentTypeLabel={getTournamentTypeLabel} v2Matches={v2MatchHistory.matches} v2MatchesLoading={v2MatchHistory.loading} reasonLabelMode="v2" />
-          <ActiveLobbiesCard lobbies={activeLobbies.lobbies} loading={activeLobbies.loading} syncing={activeLobbies.syncing} error={activeLobbies.error} gamesCardHeight={gamesCardHeight} playerActivityHeight={playerActivityHeight} recentMatchesCardHeight={recentMatchesCardHeight} onRefresh={activeLobbies.refetch} isExpanded={expandedPanel === 'activeLobbies'} onToggleExpand={() => setExpandedPanel(expandedPanel === 'activeLobbies' ? null : 'activeLobbies')} onViewTournament={enterInstanceBracket} getTournamentTypeLabel={getTournamentTypeLabel} disabled={!account} showTooltip={activeTooltip === 'activeLobbies'} onShowTooltip={() => setActiveTooltip('activeLobbies')} onHideTooltip={() => setActiveTooltip(null)} connectCtaClassName={currentTheme.connectCtaClassName} />
+          <PlayerActivity activity={playerActivity.data} loading={playerActivity.loading} syncing={playerActivity.syncing} contract={activeInstanceContract} account={account} onEnterMatch={handlePlayMatch} onEnterTournament={handleEnterTournamentFromActivity} onRefresh={playerActivity.refetch} onDismissMatch={playerActivity.dismissMatch} gameName="chess" gameEmoji="♟️" connectCtaClassName={currentTheme.connectCtaClassName} gamesCardHeight={gamesCardHeight} onHeightChange={setPlayerActivityHeight} onCollapse={(fn) => { collapseActivityPanelRef.current = fn; }} isExpanded={expandedPanel === 'playerActivity'} onToggleExpand={() => setExpandedPanel(expandedPanel === 'playerActivity' ? null : 'playerActivity')} tierConfig={{}} disabled={!account} showTooltip={activeTooltip === 'playerActivity'} onShowTooltip={() => setActiveTooltip('playerActivity')} onHideTooltip={() => setActiveTooltip(null)} reasonLabelMode="v2" refreshOnExpand={false} />
+          <RecentMatchesCard contract={null} account={account} gameName="chess" gameEmoji="♟️" gamesCardHeight={gamesCardHeight} playerActivityHeight={playerActivityHeight} onHeightChange={setRecentMatchesCardHeight} isExpanded={expandedPanel === 'recentMatches'} onToggleExpand={() => setExpandedPanel(expandedPanel === 'recentMatches' ? null : 'recentMatches')} tierConfig={{}} disabled={!account} showTooltip={activeTooltip === 'recentMatches'} onShowTooltip={() => setActiveTooltip('recentMatches')} onHideTooltip={() => setActiveTooltip(null)} connectCtaClassName={currentTheme.connectCtaClassName} onNavigateToTournament={() => {}} leaderboard={leaderboard} playerProfile={playerProfile} onRefresh={refreshHistoryPanel} showTournamentRaffles={false} onViewTournament={enterInstanceBracket} getTournamentTypeLabel={getTournamentTypeLabel} v2Matches={v2MatchHistory.matches} v2MatchesLoading={v2MatchHistory.loading} reasonLabelMode="v2" panelVariant="stats" />
+          <ActiveLobbiesCard lobbies={activeLobbies.lobbies} resolvedLobbies={activeLobbies.resolvedLobbies} loading={activeLobbies.loading} resolvedLoading={activeLobbies.resolvedLoading} syncing={activeLobbies.syncing} resolvedSyncing={activeLobbies.resolvedSyncing} error={activeLobbies.error} resolvedError={activeLobbies.resolvedError} resolvedLoaded={activeLobbies.resolvedLoaded} resolvedPage={activeLobbies.resolvedPage} resolvedTotalCount={activeLobbies.resolvedTotalCount} resolvedPageSize={activeLobbies.resolvedPageSize} gamesCardHeight={gamesCardHeight} playerActivityHeight={playerActivityHeight} recentMatchesCardHeight={recentMatchesCardHeight} onRefresh={activeLobbies.refetch} onRefreshResolved={activeLobbies.refetchResolved} onResolvedPageChange={activeLobbies.goToResolvedPage} onLoadResolved={activeLobbies.refetchResolved} isExpanded={expandedPanel === 'activeLobbies'} onToggleExpand={() => setExpandedPanel(expandedPanel === 'activeLobbies' ? null : 'activeLobbies')} onViewTournament={enterInstanceBracket} getTournamentTypeLabel={getTournamentTypeLabel} disabled={!account} showTooltip={activeTooltip === 'activeLobbies'} onShowTooltip={() => setActiveTooltip('activeLobbies')} onHideTooltip={() => setActiveTooltip(null)} connectCtaClassName={currentTheme.connectCtaClassName} />
         </div>
         <div className="hidden md:block">
           <GamesCard currentGame="chess" onHeightChange={setGamesCardHeight} isExpanded={expandedPanel === 'games'} onToggleExpand={() => setExpandedPanel(expandedPanel === 'games' ? null : 'games')} />
-          <PlayerActivity activity={playerActivity.data} loading={playerActivity.loading} syncing={playerActivity.syncing} contract={activeInstanceContract} account={account} onEnterMatch={handlePlayMatch} onEnterTournament={handleEnterTournamentFromActivity} onRefresh={playerActivity.refetch} onDismissMatch={playerActivity.dismissMatch} gameName="chess" gameEmoji="♟️" connectCtaClassName={currentTheme.connectCtaClassName} gamesCardHeight={gamesCardHeight} onHeightChange={setPlayerActivityHeight} onCollapse={(fn) => { collapseActivityPanelRef.current = fn; }} isExpanded={expandedPanel === 'playerActivity'} onToggleExpand={() => setExpandedPanel(expandedPanel === 'playerActivity' ? null : 'playerActivity')} tierConfig={{}} disabled={!account} showTooltip={activeTooltip === 'playerActivity'} onShowTooltip={() => setActiveTooltip('playerActivity')} onHideTooltip={() => setActiveTooltip(null)} reasonLabelMode="v2" />
-          <RecentMatchesCard contract={null} account={account} gameName="chess" gameEmoji="♟️" gamesCardHeight={gamesCardHeight} playerActivityHeight={playerActivityHeight} onHeightChange={setRecentMatchesCardHeight} isExpanded={expandedPanel === 'recentMatches'} onToggleExpand={() => setExpandedPanel(expandedPanel === 'recentMatches' ? null : 'recentMatches')} tierConfig={{}} disabled={!account} showTooltip={activeTooltip === 'recentMatches'} onShowTooltip={() => setActiveTooltip('recentMatches')} onHideTooltip={() => setActiveTooltip(null)} connectCtaClassName={currentTheme.connectCtaClassName} onNavigateToTournament={() => {}} leaderboard={leaderboard} playerProfile={playerProfile} onRefresh={refreshHistoryPanel} showTournamentRaffles={false} onViewTournament={enterInstanceBracket} getTournamentTypeLabel={getTournamentTypeLabel} v2Matches={v2MatchHistory.matches} v2MatchesLoading={v2MatchHistory.loading} reasonLabelMode="v2" />
-          <ActiveLobbiesCard lobbies={activeLobbies.lobbies} loading={activeLobbies.loading} syncing={activeLobbies.syncing} error={activeLobbies.error} gamesCardHeight={gamesCardHeight} playerActivityHeight={playerActivityHeight} recentMatchesCardHeight={recentMatchesCardHeight} onRefresh={activeLobbies.refetch} isExpanded={expandedPanel === 'activeLobbies'} onToggleExpand={() => setExpandedPanel(expandedPanel === 'activeLobbies' ? null : 'activeLobbies')} onViewTournament={enterInstanceBracket} getTournamentTypeLabel={getTournamentTypeLabel} disabled={!account} showTooltip={activeTooltip === 'activeLobbies'} onShowTooltip={() => setActiveTooltip('activeLobbies')} onHideTooltip={() => setActiveTooltip(null)} connectCtaClassName={currentTheme.connectCtaClassName} />
+          <PlayerActivity activity={playerActivity.data} loading={playerActivity.loading} syncing={playerActivity.syncing} contract={activeInstanceContract} account={account} onEnterMatch={handlePlayMatch} onEnterTournament={handleEnterTournamentFromActivity} onRefresh={playerActivity.refetch} onDismissMatch={playerActivity.dismissMatch} gameName="chess" gameEmoji="♟️" connectCtaClassName={currentTheme.connectCtaClassName} gamesCardHeight={gamesCardHeight} onHeightChange={setPlayerActivityHeight} onCollapse={(fn) => { collapseActivityPanelRef.current = fn; }} isExpanded={expandedPanel === 'playerActivity'} onToggleExpand={() => setExpandedPanel(expandedPanel === 'playerActivity' ? null : 'playerActivity')} tierConfig={{}} disabled={!account} showTooltip={activeTooltip === 'playerActivity'} onShowTooltip={() => setActiveTooltip('playerActivity')} onHideTooltip={() => setActiveTooltip(null)} reasonLabelMode="v2" refreshOnExpand={false} />
+          <RecentMatchesCard contract={null} account={account} gameName="chess" gameEmoji="♟️" gamesCardHeight={gamesCardHeight} playerActivityHeight={playerActivityHeight} onHeightChange={setRecentMatchesCardHeight} isExpanded={expandedPanel === 'recentMatches'} onToggleExpand={() => setExpandedPanel(expandedPanel === 'recentMatches' ? null : 'recentMatches')} tierConfig={{}} disabled={!account} showTooltip={activeTooltip === 'recentMatches'} onShowTooltip={() => setActiveTooltip('recentMatches')} onHideTooltip={() => setActiveTooltip(null)} connectCtaClassName={currentTheme.connectCtaClassName} onNavigateToTournament={() => {}} leaderboard={leaderboard} playerProfile={playerProfile} onRefresh={refreshHistoryPanel} showTournamentRaffles={false} onViewTournament={enterInstanceBracket} getTournamentTypeLabel={getTournamentTypeLabel} v2Matches={v2MatchHistory.matches} v2MatchesLoading={v2MatchHistory.loading} reasonLabelMode="v2" panelVariant="stats" />
+          <ActiveLobbiesCard lobbies={activeLobbies.lobbies} resolvedLobbies={activeLobbies.resolvedLobbies} loading={activeLobbies.loading} resolvedLoading={activeLobbies.resolvedLoading} syncing={activeLobbies.syncing} resolvedSyncing={activeLobbies.resolvedSyncing} error={activeLobbies.error} resolvedError={activeLobbies.resolvedError} resolvedLoaded={activeLobbies.resolvedLoaded} resolvedPage={activeLobbies.resolvedPage} resolvedTotalCount={activeLobbies.resolvedTotalCount} resolvedPageSize={activeLobbies.resolvedPageSize} gamesCardHeight={gamesCardHeight} playerActivityHeight={playerActivityHeight} recentMatchesCardHeight={recentMatchesCardHeight} onRefresh={activeLobbies.refetch} onRefreshResolved={activeLobbies.refetchResolved} onResolvedPageChange={activeLobbies.goToResolvedPage} onLoadResolved={activeLobbies.refetchResolved} isExpanded={expandedPanel === 'activeLobbies'} onToggleExpand={() => setExpandedPanel(expandedPanel === 'activeLobbies' ? null : 'activeLobbies')} onViewTournament={enterInstanceBracket} getTournamentTypeLabel={getTournamentTypeLabel} disabled={!account} showTooltip={activeTooltip === 'activeLobbies'} onShowTooltip={() => setActiveTooltip('activeLobbies')} onHideTooltip={() => setActiveTooltip(null)} connectCtaClassName={currentTheme.connectCtaClassName} />
         </div>
       </div>
 
       <div style={{ background: 'rgba(0, 100, 200, 0.2)', borderBottom: `1px solid ${currentTheme.border}`, backdropFilter: 'blur(10px)', position: 'relative', zIndex: 10 }}>
         <div className="max-w-7xl mx-auto px-6 py-3">
-          <div className={`flex flex-col md:flex-row md:items-center ${explorerUrl ? 'md:justify-between' : 'md:justify-center'} gap-3 md:gap-4 text-xs md:text-sm`}>
-            <div className={`flex flex-wrap items-center gap-x-4 gap-y-2 md:gap-6 justify-center ${explorerUrl ? 'md:justify-start' : ''}`}>
+          <div className="relative flex flex-col items-center gap-3 md:min-h-6 md:justify-center text-xs md:text-sm">
+            <div className="flex w-full flex-wrap items-center justify-center gap-x-4 gap-y-2 md:gap-6">
               <div className="flex items-center gap-2"><Shield className="text-blue-400" size={16} /><span className="text-blue-100 font-medium">100% On-Chain</span></div>
-              <div className="flex items-center gap-2"><Lock className="text-blue-400" size={16} /><span className="text-blue-100 font-medium">Immutable Rules</span></div>
-              <div className="flex items-center gap-2"><Eye className="text-blue-400" size={16} /><span className="text-blue-100 font-medium">Every Move Verifiable</span></div>
-              <div className="flex items-center gap-2"><CheckCircle className="text-blue-400" size={16} /><span className="text-blue-100 font-medium">Zero Trackers</span></div>
+              <div className="flex items-center gap-2"><Link2 className="text-blue-400" size={16} /><span className="text-blue-100 font-medium">Immutable Rules</span></div>
+              <div className="flex items-center gap-2"><Lock className="text-blue-400" size={16} /><span className="text-blue-100 font-medium">Every Move Verifiable</span></div>
+              <div className="flex items-center gap-2"><CheckCircle className="text-blue-400" size={16} /><span className="text-blue-100 font-medium">Zero Cookies</span></div>
             </div>
-            {explorerUrl ? <a href={explorerUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-blue-300 hover:text-blue-200 transition-colors justify-center md:justify-end"><Code size={16} /><span className="font-mono text-xs">{shortenAddress(factoryAddress)}</span><ExternalLink size={14} /></a> : null}
+            {explorerUrl ? <a href={explorerUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 text-blue-300 transition-colors hover:text-blue-200 md:absolute md:right-0 md:top-1/2 md:-translate-y-1/2"><Code size={16} /><span className="font-mono text-xs">{shortenAddress(factoryAddress)}</span><ExternalLink size={14} /></a> : null}
           </div>
         </div>
       </div>
@@ -1920,18 +2286,49 @@ export default function ChessV2() {
             </div>
           </div>
           <h1 className={`text-6xl md:text-7xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r ${currentTheme.heroTitle}`}>ETour Chess</h1>
-          <p className={`text-2xl ${currentTheme.heroText} mb-6`}>Provably Fair • Zero Trust • 100% On-Chain</p>
-          <p className={`text-lg ${currentTheme.heroSubtext} max-w-3xl mx-auto`}>
+          <p className={`pt-4 text-2xl ${currentTheme.heroText} mb-6`}>
             Play Chess on the blockchain with real ETH on the line.
           </p>
         </div>
 
-        {(actionState.message || dashboardError) ? (
-          <div className="mb-8 space-y-4">
-            <ActionMessage type={actionState.type} message={actionState.message} />
+        {dashboardError ? (
+          <div className="mb-8">
             <ActionMessage type="error" message={dashboardError} />
           </div>
         ) : null}
+
+        <V2GameLobbyIntro
+          account={account}
+          isConnecting={isConnecting}
+          onConnectWallet={connectWallet}
+          connectCtaClassName={currentTheme.connectCtaClassName}
+        >
+          <div className={`relative flex flex-wrap items-center justify-center gap-2 text-sm md:text-base ${currentTheme.heroSubtext}`}>
+            {heroLinkNoticeVisible ? (
+              <div className="pointer-events-none absolute bottom-full left-1/2 mb-3 -translate-x-1/2 whitespace-nowrap rounded-full border border-cyan-400/40 bg-slate-950/90 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white shadow-lg shadow-cyan-500/20 backdrop-blur-sm animate-pulse">
+                Coming Soon
+              </div>
+            ) : null}
+            {HERO_LINKS.map((link, index) => (
+              <div key={link.label} className="flex items-center gap-2">
+                {index > 0 ? <span aria-hidden="true">•</span> : null}
+                <a
+                  href={link.type === 'manual' ? '#user-manual' : '#'}
+                  onClick={
+                    link.type === 'manual'
+                      ? handleUserManualLinkClick
+                      : link.type === 'quick-guide'
+                        ? handleQuickGuideLinkClick
+                        : handlePlaceholderLinkClick
+                  }
+                  className="underline decoration-dotted underline-offset-4 transition-colors hover:text-white"
+                >
+                  {link.label}
+                </a>
+              </div>
+            ))}
+          </div>
+        </V2GameLobbyIntro>
 
         {currentMatch && (
           <div ref={matchViewRef}>
@@ -1950,45 +2347,83 @@ export default function ChessV2() {
               onClaimReplacement={isSpectator ? null : handleClaimMatchSlotByReplacement}
               onEnterNextMatch={handleEnterNextMatch}
               onReturnToBracket={handleReturnToBracket}
+              onPlayerAddressClick={setSelectedProfileAddress}
               hasNextActiveMatch={!!nextActiveMatch}
               playerCount={viewingTournament?.playerCount || null}
               playerConfig={{ player1: { icon: '♚', label: 'White' }, player2: { icon: '♔', label: 'Black' } }}
               layout="players-board-history"
               isSpectator={isSpectator}
               renderPlayer1Extra={(isMobile) => {
-                const capturedPieces = calculateCapturedPieces(currentMatch.board);
+                const capturedPieces = calculateCapturedPieces(displayedBoard);
                 return (
                   <>
                     <CapturedPieces capturedPieces={capturedPieces.black} color="black" collapsible={!!isMobile} />
-                    {currentMatch.whiteInCheck && <div className="bg-red-500/20 border border-red-400 rounded-lg p-2 text-center mt-2"><span className="text-red-300 text-xs font-bold">CHECK</span></div>}
+                    {renderCheckStatusBadge('white')}
                   </>
                 );
               }}
               renderPlayer2Extra={(isMobile) => {
-                const capturedPieces = calculateCapturedPieces(currentMatch.board);
+                const capturedPieces = calculateCapturedPieces(displayedBoard);
                 return (
                   <>
                     <CapturedPieces capturedPieces={capturedPieces.white} color="white" collapsible={!!isMobile} />
-                    {currentMatch.blackInCheck && <div className="bg-red-500/20 border border-red-400 rounded-lg p-2 text-center mt-2"><span className="text-red-300 text-xs font-bold">CHECK</span></div>}
+                    {renderCheckStatusBadge('black')}
                   </>
                 );
               }}
               renderMoveHistory={moveHistory.length > 0 ? () => (
                 <>
-                  <h3 className="text-xl font-bold text-purple-300 mb-4 flex items-center gap-2"><History size={20} />Move History</h3>
+                  <div className="mb-4 flex items-center gap-2">
+                    <h3 className="text-xl font-bold text-purple-300 flex items-center gap-2"><History size={20} />Move History</h3>
+                    {currentMatch.matchStatus === 2 ? (
+                      <div className="ml-auto flex items-center gap-1">
+                        <button
+                          onClick={() => setReplayMoveIndex(prev => Math.max(-1, (prev === -2 ? moveHistory.length - 1 : prev) - 1))}
+                          disabled={(replayMoveIndex === -2 ? moveHistory.length - 1 : replayMoveIndex) <= -1}
+                          className="rounded bg-slate-700/50 p-1.5 transition-colors hover:bg-slate-600/50 disabled:cursor-not-allowed disabled:opacity-30"
+                          title="Previous move"
+                        >
+                          <ChevronLeft size={18} className="text-purple-300" />
+                        </button>
+                        <span className="min-w-[3.5rem] text-center text-xs text-slate-400">
+                          {replayMoveIndex === -1 ? 'Start' : replayMoveIndex === -2 ? 'Final' : `Move ${replayMoveIndex + 1}`}
+                        </span>
+                        <button
+                          onClick={() => setReplayMoveIndex(prev => Math.min(moveHistory.length - 1, (prev === -2 ? moveHistory.length - 1 : prev) + 1))}
+                          disabled={(replayMoveIndex === -2 ? moveHistory.length - 1 : replayMoveIndex) >= moveHistory.length - 1}
+                          className="rounded bg-slate-700/50 p-1.5 transition-colors hover:bg-slate-600/50 disabled:cursor-not-allowed disabled:opacity-30"
+                          title="Next move"
+                        >
+                          <ChevronRight size={18} className="text-purple-300" />
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
                   <div className="space-y-2">
-                    {moveHistory.map((move, idx) => (
-                      <div key={idx} className="flex items-center gap-3 text-sm bg-purple-500/10 p-3 rounded-lg hover:bg-purple-500/20 transition-colors">
+                    {moveHistory.map((move, idx) => {
+                      const isSelected = currentMatch.matchStatus === 2 && idx === effectiveReplayMoveIndex;
+                      return (
+                      <div
+                        key={idx}
+                        onClick={currentMatch.matchStatus === 2 ? () => setReplayMoveIndex(idx) : undefined}
+                        className={`flex items-center gap-3 rounded-lg p-3 text-sm transition-colors ${
+                          isSelected
+                            ? 'cursor-pointer border border-purple-400/50 bg-purple-500/30'
+                            : currentMatch.matchStatus === 2
+                              ? 'cursor-pointer bg-purple-500/10 hover:bg-purple-500/20'
+                              : 'bg-purple-500/10 hover:bg-purple-500/20'
+                        }`}
+                      >
                         <span className="text-purple-300 font-semibold min-w-[2rem]">#{idx + 1}</span>
                         <div className="w-8 h-8 flex items-center justify-center"><img src={move.player === '♔' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'} alt={move.player === '♔' ? 'White' : 'Black'} className="w-7 h-7" draggable="false" /></div>
                         <span className="text-purple-200 font-mono">{move.move}</span>
                       </div>
-                    ))}
+                    );})}
                   </div>
                 </>
               ) : undefined}
             >
-              <ChessBoard board={currentMatch.board} onMove={isSpectator ? null : handleMakeMove} currentTurn={currentMatch.currentTurn} account={isSpectator ? null : account} player1={currentMatch.player1} player2={currentMatch.player2} firstPlayer={currentMatch.firstPlayer} matchStatus={currentMatch.matchStatus} loading={matchLoading} whiteInCheck={currentMatch.whiteInCheck} blackInCheck={currentMatch.blackInCheck} lastMoveTime={currentMatch.lastMoveTime} startTime={currentMatch.startTime} lastMove={currentMatch.lastMove} maxSize={820} ghostMove={ghostMove} />
+              <ChessBoard board={displayedBoard} packedBoard={currentMatch.packedBoard} packedState={currentMatch.packedState} onMove={isSpectator || currentMatch.matchStatus === 2 ? null : handleMakeMove} currentTurn={currentMatch.currentTurn} account={isSpectator ? null : account} player1={currentMatch.player1} player2={currentMatch.player2} firstPlayer={currentMatch.firstPlayer} matchStatus={currentMatch.matchStatus} loading={matchLoading} whiteInCheck={currentMatch.matchStatus === 2 ? replayCheckStatus.whiteInCheck : currentMatch.whiteInCheck} blackInCheck={currentMatch.matchStatus === 2 ? replayCheckStatus.blackInCheck : currentMatch.blackInCheck} lastMoveTime={currentMatch.lastMoveTime} startTime={currentMatch.startTime} lastMove={displayedLastMove} maxSize={820} ghostMove={currentMatch.matchStatus === 2 ? null : ghostMove} />
             </GameMatchLayout>
 
             {moveTxTimeout && (
@@ -2012,42 +2447,10 @@ export default function ChessV2() {
           <>
             {viewingTournament ? (
               <div ref={tournamentBracketRef}>
-                <TournamentBracket tournamentData={viewingTournament} onBack={handleBackToTournaments} onEnterMatch={handlePlayMatch} onForceEliminate={handleForceEliminateStalledMatch} onClaimReplacement={handleClaimMatchSlotByReplacement} onManualStart={handleManualStart} onClaimAbandonedPool={handleClaimAbandonedPool} onResetEnrollmentWindow={handleResetEnrollmentWindow} onCancelTournament={handleCancelTournament} onEnroll={handleEnroll} onConnectWallet={connectWallet} account={account} loading={tournamentsLoading} connectLoading={isConnecting} syncDots={bracketSyncDots} isEnrolled={viewingTournament?.players?.some(addr => addr.toLowerCase() === account?.toLowerCase())} entryFee={viewingTournament?.entryFeeEth ?? '0'} isFull={viewingTournament?.enrolledCount >= viewingTournament?.playerCount} instanceContract={activeInstanceContract} />
+                <TournamentBracket tournamentData={viewingTournament} onBack={handleBackToTournaments} onEnterMatch={handlePlayMatch} onSpectateMatch={handlePlayMatch} onForceEliminate={handleForceEliminateStalledMatch} onClaimReplacement={handleClaimMatchSlotByReplacement} onManualStart={handleManualStart} onClaimAbandonedPool={handleClaimAbandonedPool} onResetEnrollmentWindow={handleResetEnrollmentWindow} onCancelTournament={handleCancelTournament} onEnroll={handleEnroll} onConnectWallet={connectWallet} account={account} loading={tournamentsLoading} connectLoading={isConnecting} syncDots={bracketSyncDots} isEnrolled={viewingTournament?.players?.some(addr => addr.toLowerCase() === account?.toLowerCase())} entryFee={viewingTournament?.entryFeeEth ?? '0'} isFull={viewingTournament?.enrolledCount >= viewingTournament?.playerCount} instanceContract={activeInstanceContract} onPlayerAddressClick={setSelectedProfileAddress} />
               </div>
             ) : (
               <div className="space-y-8 md:space-y-10">
-                <V2GameLobbyIntro
-                  account={account}
-                  isConnecting={isConnecting}
-                  onConnectWallet={connectWallet}
-                  connectCtaClassName={currentTheme.connectCtaClassName}
-                >
-                  <div className={`relative flex flex-wrap items-center justify-center gap-2 text-sm md:text-base ${currentTheme.heroSubtext}`}>
-                    {heroLinkNoticeVisible ? (
-                      <div className="pointer-events-none absolute bottom-full left-1/2 mb-3 -translate-x-1/2 whitespace-nowrap rounded-full border border-cyan-400/40 bg-slate-950/90 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white shadow-lg shadow-cyan-500/20 backdrop-blur-sm animate-pulse">
-                        Coming Soon
-                      </div>
-                    ) : null}
-                    {HERO_LINKS.map((link, index) => (
-                      <div key={link.label} className="flex items-center gap-2">
-                        {index > 0 ? <span aria-hidden="true">•</span> : null}
-                        <a
-                          href={link.type === 'manual' ? '#user-manual' : '#'}
-                          onClick={
-                            link.type === 'manual'
-                              ? handleUserManualLinkClick
-                              : link.type === 'quick-guide'
-                                ? handleQuickGuideLinkClick
-                                : handlePlaceholderLinkClick
-                          }
-                          className="underline decoration-dotted underline-offset-4 transition-colors hover:text-white"
-                        >
-                          {link.label}
-                        </a>
-                      </div>
-                    ))}
-                  </div>
-                </V2GameLobbyIntro>
                 <div id="live-instances">
                   <form onSubmit={createInstance}>
                     <div className="bg-slate-900/50 border border-purple-400/20 rounded-2xl p-4 md:p-5">

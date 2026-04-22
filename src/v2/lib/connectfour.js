@@ -1,4 +1,5 @@
 import { ethers } from 'ethers';
+import { collectErrorDetails, pickBestErrorMessage } from './errorDetails';
 import ConnectFourFactoryABIData from '../ABIs/ConnectFourFactory-ABI.json';
 import LocalhostFactoryData from '../ABIs/localhost-connectfour-factory.json';
 import HardhatFactoryData from '../ABIs/hardhat-factory.json';
@@ -55,16 +56,54 @@ export const DEFAULT_TIMEOUTS_BY_PLAYER_COUNT = {
     enrollmentWindow: 600,
   },
   16: {
-    matchTimePerPlayer: 600,
+    matchTimePerPlayer: 300,
     timeIncrementPerMove: 30,
     enrollmentWindow: 600,
   },
   32: {
-    matchTimePerPlayer: 600,
+    matchTimePerPlayer: 300,
     timeIncrementPerMove: 30,
     enrollmentWindow: 1800,
   },
 };
+
+const contractCodeAvailabilityCache = new WeakMap();
+const resolvedPlayerProfileAddressCache = new WeakMap();
+const inFlightPlayerProfileAddressCache = new WeakMap();
+
+function getRunnerScopedCache(cacheStore, runner) {
+  let cache = cacheStore.get(runner);
+  if (!cache) {
+    cache = new Map();
+    cacheStore.set(runner, cache);
+  }
+  return cache;
+}
+
+function buildPlayerProfileCacheKey(factoryContract, account, registryAddress) {
+  const factoryAddress = (factoryContract.target || factoryContract.address || '').toLowerCase();
+  const normalizedAccount = String(account || '').toLowerCase();
+  const normalizedRegistry = String(registryAddress || '').toLowerCase();
+  return `${factoryAddress}:${normalizedRegistry}:${normalizedAccount}`;
+}
+
+async function hasContractCode(runner, address) {
+  if (!runner || typeof runner !== 'object' || !address) return false;
+
+  let addressCache = contractCodeAvailabilityCache.get(runner);
+  if (!addressCache) {
+    addressCache = new Map();
+    contractCodeAvailabilityCache.set(runner, addressCache);
+  }
+
+  if (!addressCache.has(address)) {
+    addressCache.set(address, runner.getCode(address)
+      .then((code) => code && code !== '0x' && code !== '0x0')
+      .catch(() => false));
+  }
+
+  return await addressCache.get(address);
+}
 
 const TOURNAMENT_STATUS_LABELS = {
   0: 'Enrolling',
@@ -103,37 +142,64 @@ export function getPlayerRegistryContract(runner, address = PLAYER_REGISTRY_ADDR
 export async function resolvePlayerProfileAddress(factoryContract, runner, account, registryAddress = PLAYER_REGISTRY_ADDRESS) {
   if (!factoryContract || !runner || !account) return null;
 
-  if (registryAddress) {
-    try {
-      const code = await runner.getCode(registryAddress);
-      if (code && code !== '0x') {
-        const registry = getPlayerRegistryContract(runner, registryAddress);
-        const gameType = Number(await factoryContract.gameType().catch(() => NaN));
-        if (Number.isFinite(gameType)) {
-          const profileAddr = await registry.getProfile(account, gameType).catch(() => ZERO_ADDRESS);
-          if (profileAddr && profileAddr !== ZERO_ADDRESS) return profileAddr;
-        }
-      }
-    } catch {
-      // Fall through to factory-based lookup when the registry is unavailable.
-    }
+  const resolvedCache = getRunnerScopedCache(resolvedPlayerProfileAddressCache, runner);
+  const inFlightCache = getRunnerScopedCache(inFlightPlayerProfileAddressCache, runner);
+  const cacheKey = buildPlayerProfileCacheKey(factoryContract, account, registryAddress);
+
+  if (resolvedCache.has(cacheKey)) {
+    return resolvedCache.get(cacheKey);
   }
 
-  let profileAddr = null;
-  try {
-    profileAddr = await factoryContract.players(account);
-  } catch {
-    profileAddr = null;
+  if (inFlightCache.has(cacheKey)) {
+    return await inFlightCache.get(cacheKey);
   }
-  if (!profileAddr || profileAddr === ZERO_ADDRESS) {
+
+  const resolvePromise = (async () => {
+    if (registryAddress) {
+      try {
+        if (await hasContractCode(runner, registryAddress)) {
+          const registry = getPlayerRegistryContract(runner, registryAddress);
+          const gameType = Number(await factoryContract.gameType().catch(() => NaN));
+          if (Number.isFinite(gameType)) {
+            const profileAddr = await registry.getProfile(account, gameType).catch(() => ZERO_ADDRESS);
+            if (profileAddr && profileAddr !== ZERO_ADDRESS) {
+              resolvedCache.set(cacheKey, profileAddr);
+              return profileAddr;
+            }
+          }
+        }
+      } catch {
+        // Fall through to factory-based lookup when the registry is unavailable.
+      }
+    }
+
+    let profileAddr = null;
     try {
-      profileAddr = await factoryContract.getPlayerProfile(account);
+      profileAddr = await factoryContract.players(account);
     } catch {
       profileAddr = null;
     }
-  }
+    if (!profileAddr || profileAddr === ZERO_ADDRESS) {
+      try {
+        profileAddr = await factoryContract.getPlayerProfile(account);
+      } catch {
+        profileAddr = null;
+      }
+    }
 
-  return profileAddr && profileAddr !== ZERO_ADDRESS ? profileAddr : null;
+    const normalized = profileAddr && profileAddr !== ZERO_ADDRESS ? profileAddr : null;
+    if (normalized) {
+      resolvedCache.set(cacheKey, normalized);
+    }
+    return normalized;
+  })();
+
+  inFlightCache.set(cacheKey, resolvePromise);
+  try {
+    return await resolvePromise;
+  } finally {
+    inFlightCache.delete(cacheKey);
+  }
 }
 
 export function getDefaultTimeouts(playerCount) {
@@ -409,27 +475,12 @@ function decodeRevertData(data) {
 }
 
 export function getReadableError(error, fallback = 'Transaction failed.') {
-  const candidates = [
-    error?.data?.data,
-    error?.info?.error?.data,
-    error?.error?.data?.data,
-    error?.error?.data,
-    error?.data,
-  ];
+  const { dataCandidates, messageCandidates } = collectErrorDetails(error);
 
-  for (const candidate of candidates) {
+  for (const candidate of dataCandidates) {
     const decoded = decodeRevertData(candidate);
     if (decoded) return decoded;
   }
 
-  const nestedMessage = error?.data?.message
-    || error?.info?.error?.message
-    || error?.error?.data?.message
-    || error?.error?.message;
-
-  if (nestedMessage) {
-    return nestedMessage;
-  }
-
-  return error?.shortMessage || error?.message || fallback;
+  return pickBestErrorMessage(messageCandidates, fallback);
 }

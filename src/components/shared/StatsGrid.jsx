@@ -5,8 +5,16 @@
  * Used in tournament bracket headers.
  */
 
+import { ChevronDown } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { CompletionReason } from '../../utils/completionReasons';
+import { shortenAddress } from '../../utils/formatters';
+import { INTERACTIVE_ADDRESS_BUTTON_CLASSNAME } from './addressButtonStyles';
+
+const getCompactMobileAddress = (address) => {
+  if (!address || address === '0x0000000000000000000000000000000000000000') return 'TBD';
+  return `${address.slice(0, 5)}..`;
+};
 
 /**
  * Get status display text and styling from status code
@@ -15,6 +23,15 @@ import { CompletionReason } from '../../utils/completionReasons';
  * @returns {Object} { text, color, bgColor, borderColor }
  */
 const getStatusDisplay = (status, resolutionReason = null) => {
+  if (status >= 2 && Number(resolutionReason) === CompletionReason.ABANDONED_TOURNAMENT_CLAIMED) {
+    return {
+      text: 'Abandoned',
+      color: 'text-red-300',
+      bgColor: 'bg-red-500/20',
+      borderColor: 'border-red-400',
+      dotColor: 'bg-red-400'
+    };
+  }
   if (status >= 2 && Number(resolutionReason) === CompletionReason.SOLO_ENROLL_CANCELLED) {
     return {
       text: 'Cancelled',
@@ -79,6 +96,13 @@ const getStatusDisplay = (status, resolutionReason = null) => {
  * @param {number} props.syncDots - Number of dots for syncing indicator (1-3)
  * @param {number|null} props.resolutionReason - Tournament completion reason
  * @param {number|null} props.statusTimerTarget - Unix timestamp when the status timer expires
+ * @param {boolean} props.hideRoundCard - Whether to omit the round card entirely
+ * @param {React.ReactNode|null} props.statusDetail - Optional secondary line inside the status card
+ * @param {string[]|null} props.playersDetails - Optional expandable list of enrolled player addresses
+ * @param {string|null} props.account - Current user's address
+ * @param {string|null} props.thirdCardLabel - Optional replacement label for the third card
+ * @param {React.ReactNode|null} props.thirdCardContent - Optional replacement content for the third card
+ * @param {(address: string) => void | null} props.onPlayerAddressClick - Optional click handler for non-current player addresses
  */
 const StatsGrid = ({
   enrolledCount,
@@ -90,14 +114,27 @@ const StatsGrid = ({
   syncDots = 1,
   resolutionReason = null,
   statusTimerTarget = null,
+  hideRoundCard = false,
+  statusDetail = null,
+  playersDetails = null,
+  account = null,
+  thirdCardLabel = null,
+  thirdCardContent = null,
+  onPlayerAddressClick = null,
 }) => {
   const statusDisplay = getStatusDisplay(status, resolutionReason);
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
+  const [playersExpanded, setPlayersExpanded] = useState(false);
 
   // Don't show status message if tournament is enrolling with 0 players
   const showStatus = !(status === 0 && enrolledCount === 0);
   const showStatusTimer = status === 0 && enrolledCount > 0 && Number(statusTimerTarget) > 0;
   const timeRemaining = showStatusTimer ? Math.max(0, Number(statusTimerTarget) - now) : 0;
+  const hasPlayerDetails = Array.isArray(playersDetails) && playersDetails.length > 0;
+  const showReplacementThirdCard = hideRoundCard && (thirdCardLabel || thirdCardContent);
+  const gridClassName = showReplacementThirdCard
+    ? 'grid-cols-2 md:grid-cols-3'
+    : (!hideRoundCard ? 'grid-cols-3' : 'grid-cols-2');
 
   useEffect(() => {
     if (!showStatusTimer) return undefined;
@@ -109,6 +146,10 @@ const StatsGrid = ({
     return () => window.clearInterval(interval);
   }, [showStatusTimer, statusTimerTarget]);
 
+  useEffect(() => {
+    setPlayersExpanded(false);
+  }, [status, enrolledCount, playerCount, hasPlayerDetails]);
+
   const formatStatusTimer = (seconds) => {
     const minutes = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -116,11 +157,7 @@ const StatsGrid = ({
   };
 
   return (
-    <div className="grid grid-cols-3 gap-2 md:gap-4">
-      <div className="bg-black/20 rounded-lg p-2 md:p-4">
-        <div className={`${colors.text} text-xs md:text-sm mb-1`}>Players</div>
-        <div className="text-white font-bold text-sm md:text-xl">{enrolledCount} / {playerCount}</div>
-      </div>
+    <div className={`grid ${gridClassName} gap-2 md:gap-4`}>
       <div className={`${showStatus ? `${statusDisplay.bgColor} border ${statusDisplay.borderColor}` : 'bg-black/20'} rounded-lg p-2 md:p-4`}>
         <div className={`${colors.text} text-xs md:text-sm mb-1`}>Status</div>
         {showStatus ? (
@@ -132,6 +169,11 @@ const StatsGrid = ({
             {showStatusTimer && (
               <div className="text-orange-300 text-[11px] md:text-sm font-semibold">
                 {timeRemaining > 0 ? `Window closes in ${formatStatusTimer(timeRemaining)}` : 'Enrolment window elapsed'}
+              </div>
+            )}
+            {statusDetail && (
+              <div className="text-[11px] md:text-sm">
+                {statusDetail}
               </div>
             )}
             {status < 2 && (
@@ -148,9 +190,75 @@ const StatsGrid = ({
         )}
       </div>
       <div className="bg-black/20 rounded-lg p-2 md:p-4">
-        <div className={`${colors.text} text-xs md:text-sm mb-1`}>Round</div>
-        <div className="text-white font-bold text-sm md:text-xl">{currentRound + 1}/{totalRounds}</div>
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <div className={`${colors.text} text-xs md:text-sm mb-1`}>Players</div>
+            <div className="text-white font-bold text-sm md:text-xl">{enrolledCount} / {playerCount}</div>
+          </div>
+          {hasPlayerDetails && (
+            <button
+              type="button"
+              onClick={() => setPlayersExpanded((expanded) => !expanded)}
+              className={`${colors.text} ${colors.textHover ?? ''} shrink-0 inline-flex items-center gap-1 text-[11px] md:text-xs font-semibold transition-colors`}
+              aria-expanded={playersExpanded}
+              aria-label={playersExpanded ? 'Collapse players' : 'Expand players'}
+            >
+              <ChevronDown
+                size={14}
+                className={`transition-transform ${playersExpanded ? 'rotate-180' : ''}`}
+              />
+            </button>
+          )}
+        </div>
+        {hasPlayerDetails && playersExpanded && (
+          <div className="mt-3 space-y-2 max-h-40 overflow-y-auto pr-1 [&::-webkit-scrollbar]:w-0.5 [&::-webkit-scrollbar-track]:bg-purple-950/40 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-purple-500/70 [&::-webkit-scrollbar-thumb]:to-blue-500/70 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:from-purple-400 hover:[&::-webkit-scrollbar-thumb]:to-blue-400 [scrollbar-width:thin] [scrollbar-color:rgb(168_85_247_/_0.7)_rgb(24_24_27_/_0.4)]">
+            {playersDetails.map((address, index) => {
+              const isCurrentUser = address?.toLowerCase() === account?.toLowerCase();
+              const isClickable = typeof onPlayerAddressClick === 'function' && !isCurrentUser;
+              return (
+                <div
+                  key={`${address}-${index}`}
+                  className={`rounded-md border px-2 py-1.5 font-mono text-[11px] leading-relaxed break-all ${
+                    isCurrentUser
+                      ? 'border-yellow-400/50 bg-yellow-500/15 text-yellow-200'
+                      : 'border-purple-400/20 bg-purple-500/10 text-purple-200'
+                  }`}
+                >
+                  {isClickable ? (
+                    <button
+                      type="button"
+                      onClick={() => onPlayerAddressClick(address)}
+                      className={INTERACTIVE_ADDRESS_BUTTON_CLASSNAME}
+                      aria-label={`Open stats for ${shortenAddress(address)}`}
+                    >
+                      <span className="md:hidden">{getCompactMobileAddress(address)}</span>
+                      <span className="hidden md:inline">{shortenAddress(address)}</span>
+                    </button>
+                  ) : (
+                    <>
+                      <span className="md:hidden">{getCompactMobileAddress(address)}</span>
+                      <span className="hidden md:inline">{shortenAddress(address)}</span>
+                    </>
+                  )}
+                  {isCurrentUser && <span className="ml-2 text-[10px] font-sans uppercase tracking-wide text-yellow-300">You</span>}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
+      {!hideRoundCard && (
+        <div className="bg-black/20 rounded-lg p-2 md:p-4">
+          <div className={`${colors.text} text-xs md:text-sm mb-1`}>Round</div>
+          <div className="text-white font-bold text-sm md:text-xl">{currentRound + 1}/{totalRounds}</div>
+        </div>
+      )}
+      {showReplacementThirdCard && (
+        <div className="col-span-2 md:col-span-1 bg-black/20 rounded-lg p-2 md:p-4">
+          <div className={`${colors.text} text-xs md:text-sm mb-1`}>{thirdCardLabel}</div>
+          {thirdCardContent}
+        </div>
+      )}
     </div>
   );
 };

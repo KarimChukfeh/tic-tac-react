@@ -17,12 +17,14 @@ import {
 import {
   getV2CompletedMatchOutcomeLabel,
   getV2TournamentResolutionText,
+  V2TournamentResolutionReason,
   isV2TournamentCancelledReason,
 } from '../../v2/lib/reasonLabels';
 import CapturedPieces from './CapturedPieces';
 import CompletedMatchOutcomeBadge from './CompletedMatchOutcomeBadge';
 import { ethers } from 'ethers';
 import { linkifyReasonText } from './UserManualAnchorLink';
+import { getAddressUrl } from '../../config/networks';
 
 const RecentMatchesCard = ({
   contract,
@@ -53,9 +55,10 @@ const RecentMatchesCard = ({
   showTournamentRaffles = true,
   connectCtaClassName = 'bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl shadow-2xl border-2 border-purple-400/60 hover:scale-105',
   reasonLabelMode = 'default',
+  panelVariant = 'history',
 }) => {
   const [internalIsExpanded, setInternalIsExpanded] = useState(false);
-  const [historyTab, setHistoryTab] = useState('matches'); // 'matches' | 'tournaments'
+  const [historyTab, setHistoryTab] = useState('tournaments'); // 'matches' | 'tournaments'
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
   const [recentMatches, setRecentMatches] = useState([]);
   const [loadingRecentMatches, setLoadingRecentMatches] = useState(false);
@@ -86,6 +89,15 @@ const RecentMatchesCard = ({
   const showMatchesLoadingState = (loadingRecentMatches || v2MatchesLoading) && !hasRenderedMatches;
   const hasTournamentData = Boolean(displayTournamentStats) || displayTournamentEnrollments.length > 0;
   const showTournamentLoadingState = Boolean(playerProfile?.loading) && !hasTournamentData;
+  const isStatsPanel = panelVariant === 'stats';
+  const PanelIcon = isStatsPanel ? TrendingUp : History;
+  const panelTitle = isStatsPanel ? 'Your Stats' : 'History';
+  const mobilePanelTitle = reasonLabelMode === 'v2' && isStatsPanel ? 'Stats' : panelTitle;
+  const connectWalletPanelTitle = panelTitle.startsWith('Your ') ? panelTitle : `Your ${panelTitle}`;
+  const profileAddress = playerProfile?.profileAddress || null;
+  const profileExplorerUrl = profileAddress
+    ? `${getAddressUrl(profileAddress) || `https://arbiscan.io/address/${profileAddress}`}#events`
+    : null;
 
   // Use external state if provided, otherwise use internal state
   const isExpanded = externalIsExpanded !== undefined ? externalIsExpanded : internalIsExpanded;
@@ -788,6 +800,25 @@ const RecentMatchesCard = ({
       ? isV2TournamentCancelledReason(getTournamentResolutionReasonValue(record))
       : getTournamentResolutionReasonValue(record) === CompletionReason.SOLO_ENROLL_CANCELLED
   );
+  const isV2El2TournamentRecord = (record) => (
+    useV2ReasonLabels &&
+    getTournamentResolutionReasonValue(record) === V2TournamentResolutionReason.ABANDONED_TOURNAMENT_CLAIMED
+  );
+  const getTournamentOutcomeLabel = (record) => {
+    if (!record?.concluded) return <span className="text-yellow-300 font-semibold text-xs">Active</span>;
+    if (hasCancelledTournamentReason(record) || isCancelledTournamentRecord(record)) {
+      return <span className="text-slate-400 font-semibold text-xs">Cancelled</span>;
+    }
+    if (isDrawTournamentRecord(record)) return <span className="text-yellow-300 font-semibold text-xs">Draw</span>;
+    if (isV2El2TournamentRecord(record)) {
+      return getRecordPayout(record) > 0n
+        ? <span className="text-green-300 font-semibold text-xs">Won</span>
+        : <span className="text-red-300 font-semibold text-xs">Lost</span>;
+    }
+    return record.won
+      ? <span className="text-green-300 font-semibold text-xs">Won</span>
+      : <span className="text-red-300 font-semibold text-xs">Lost</span>;
+  };
 
   const formatEthAmount = (value, digits = 4) => {
     const parsed = Number(ethers.formatEther(value ?? 0n));
@@ -1097,10 +1128,10 @@ const RecentMatchesCard = ({
               ? 'border-2 border-teal-300 md:shadow-[0_0_20px_rgba(94,234,212,0.6)] scale-105'
               : 'md:border-2 md:border-teal-400/40 md:hover:border-teal-400/70 hover:scale-110')
           }`}
-          aria-label={disabled ? "Connect wallet to access recent matches" : isExpanded ? "Close recent matches" : "Open recent matches"}
-          title={disabled ? "Connect Wallet to View Your Match History" : ""}
+          aria-label={disabled ? `Connect wallet to access ${panelTitle.toLowerCase()}` : isExpanded ? `Close ${panelTitle.toLowerCase()}` : `Open ${panelTitle.toLowerCase()}`}
+          title={disabled ? `Connect Wallet to View ${connectWalletPanelTitle}` : ""}
         >
-          <History size={16} className="text-white md:w-6 md:h-6" />
+          <PanelIcon size={16} className="text-white md:w-6 md:h-6" />
 
           {/* Sync Circle Animation */}
           {syncing && (
@@ -1113,18 +1144,18 @@ const RecentMatchesCard = ({
               href="#connect-wallet-cta"
               className={`max-md:hidden absolute left-full ml-3 top-1/2 inline-flex -translate-y-1/2 items-center justify-center whitespace-nowrap px-5 py-2.5 text-sm font-semibold opacity-0 group-hover:opacity-100 transition-all ${connectCtaClassName}`}
             >
-              Connect Wallet to View Your Match History
+              Connect Wallet to View {connectWalletPanelTitle}
             </a>
           ) : (
             <div className="max-md:hidden absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-              Match History
+              {panelTitle}
             </div>
           )}
 
         </button>
 
         {/* Label - Mobile only */}
-        <span className="md:hidden text-[10px] text-white/80 font-medium">History</span>
+        <span className="md:hidden text-[10px] text-white/80 font-medium">{mobilePanelTitle}</span>
 
         {/* Tooltip - Mobile only */}
         {showTooltip && disabled && (
@@ -1136,7 +1167,7 @@ const RecentMatchesCard = ({
             }}
             className={`md:hidden fixed bottom-20 left-4 right-4 flex items-center justify-center px-6 py-3 text-sm font-semibold z-[100] animate-fade-in transition-transform text-center ${connectCtaClassName}`}
           >
-            Connect Wallet to View Your Match History
+            Connect Wallet to View {connectWalletPanelTitle}
           </a>
         )}
       </div>
@@ -1157,9 +1188,23 @@ const RecentMatchesCard = ({
               : ''
           }`}>
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <History size={24} className="text-teal-400" />
-                <h3 className="text-white font-bold text-lg">History</h3>
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <PanelIcon size={24} className="text-teal-400" />
+                  <h3 className="text-white font-bold text-lg">{panelTitle}</h3>
+                </div>
+                {isStatsPanel && profileExplorerUrl && (
+                  <a
+                    href={profileExplorerUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-teal-200 hover:text-white transition-colors"
+                  >
+                    <span>Profile contract</span>
+                    <span className="font-mono">{shortenAddress(profileAddress)}</span>
+                    <ExternalLink size={12} />
+                  </a>
+                )}
               </div>
               <div className="flex items-center gap-1">
                 {/* Scroll to Top Button - only show when scrolled */}
@@ -1232,26 +1277,16 @@ const RecentMatchesCard = ({
                 </div>
               ) : displayTournamentStats ? (
                 <>
-                  {playerProfile?.loading && (
-                    <div className="flex items-center gap-2 text-[11px] text-teal-300 mb-3">
-                      <RefreshCw size={12} className="animate-spin" />
-                      <span>Syncing latest tournaments...</span>
-                    </div>
-                  )}
                   {/* Summary metrics */}
-                  <div className="grid grid-cols-3 gap-3 mb-5">
+                  <div className="grid grid-cols-2 gap-3 mb-5">
                     <div className="bg-blue-500/15 border border-blue-400/30 rounded-xl p-3 text-center">
                       <div className="text-xs font-semibold text-blue-300 mb-1">Played</div>
                       <div className="text-xl font-bold text-white">{displayTournamentStats.totalPlayed}</div>
                     </div>
                     <div className="bg-green-500/15 border border-green-400/30 rounded-xl p-3 text-center">
-                      <div className="text-xs font-semibold text-green-300 mb-1">Wins</div>
-                      <div className="text-xl font-bold text-white">{displayTournamentStats.totalWins}</div>
-                    </div>
-                    <div className="bg-green-500/15 border border-green-400/30 rounded-xl p-3 text-center">
-                      <div className="text-xs font-semibold mb-1 text-green-300">Payouts (ETH)</div>
+                      <div className="text-xs font-semibold mb-1 text-green-300">Total Payouts</div>
                       <div className="text-sm font-bold text-white leading-tight">
-                        {formatEthAmount(displayTournamentEnrollments.reduce((sum, r) => sum + getRecordPayout(r), 0n))}
+                        {formatEthAmount(displayTournamentEnrollments.reduce((sum, r) => sum + getRecordPayout(r), 0n))} ETH
                       </div>
                     </div>
                   </div>
@@ -1263,24 +1298,18 @@ const RecentMatchesCard = ({
                         <div key={idx} ref={(el) => { if (el && rec.instance) tournamentItemRefs.current[rec.instance.toLowerCase()] = el; }} className="bg-slate-900/60 border border-purple-400/15 rounded-xl px-3 py-2.5">
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 min-w-0">
-                              {rec.concluded ? (
-                                hasCancelledTournamentReason(rec) || isCancelledTournamentRecord(rec)
-                                  ? <span className="text-slate-400 font-semibold text-xs">Cancelled</span>
-                                  : isDrawTournamentRecord(rec)
-                                  ? <span className="text-yellow-300 font-semibold text-xs">Draw</span>
-                                  : rec.won
-                                  ? <span className="text-green-300 font-semibold text-xs">Won</span>
-                                  : <span className="text-red-300 font-semibold text-xs">Lost</span>
-                              ) : (
-                                <span className="text-yellow-300 font-semibold text-xs">Active</span>
-                              )}
+                              {getTournamentOutcomeLabel(rec)}
                               {rec.enrolledAt > 0 && (
                                 <span className="text-slate-400 text-[10px]">{formatTimeAgo(rec.enrolledAt)}</span>
                               )}
                             </div>
                             <button
                               type="button"
-                              onClick={() => onViewTournament && onViewTournament(rec.instance)}
+                              onClick={() => {
+                                if (!onViewTournament) return;
+                                handleSetExpanded(false);
+                                onViewTournament(rec.instance);
+                              }}
                               className="text-purple-300 hover:text-purple-200 transition-colors shrink-0"
                               title="View tournament"
                             >
@@ -1350,12 +1379,6 @@ const RecentMatchesCard = ({
             </div>
           ) : (
             <div className="space-y-6">
-              {isRefreshing && (
-                <div className="flex items-center gap-2 text-[11px] text-teal-300 -mb-3">
-                  <RefreshCw size={12} className="animate-spin" />
-                  <span>Syncing latest history...</span>
-                </div>
-              )}
               {/* Pagination calculations */}
               {(() => {
                 const totalPages = Math.ceil(recentMatches.length / itemsPerPage);

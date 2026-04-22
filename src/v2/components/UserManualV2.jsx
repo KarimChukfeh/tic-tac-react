@@ -8,6 +8,8 @@ import {
   ChevronRight,
   ChevronUp,
   LayoutList,
+  Menu,
+  X,
 } from 'lucide-react';
 
 const HEADING_ALIASES = {
@@ -29,6 +31,7 @@ const ALIAS_TO_HEADING = Object.fromEntries(
   Object.entries(HEADING_ALIASES).flatMap(([headingId, aliases]) => aliases.map((alias) => [alias, headingId])),
 );
 const CONTENT_TRANSITION_MS = 220;
+const MANUAL_SECTION_REFERENCE_PATTERN = /\b\d+(?:\.\d+)+(?:\s+\([A-Z0-9*]+\))?/g;
 
 const trimBlock = (value = '') => value.replace(/^\n+|\n+$/g, '');
 
@@ -222,6 +225,108 @@ const parseGlossary = (markdown) => {
   };
 };
 
+const isAppendixSection = (section = {}) => section.id === '7-glossary'
+  || section.id === '7-appendix'
+  || section.title === '7. Glossary'
+  || section.title === '7. Appendix';
+
+const isFaqSection = (section = {}) => section.id === '6-edge-cases--faq'
+  || section.id === '6-faq'
+  || section.title === '6. Edge Cases & FAQ'
+  || section.title === '6. FAQ';
+
+const buildSectionReferenceLookup = (sections = []) => {
+  const references = {};
+
+  const registerTitle = (title = '', id = '') => {
+    const { eyebrow } = splitTitle(title);
+
+    if (!/^\d+(?:\.\d+)+$/.test(eyebrow) || !id) {
+      return;
+    }
+
+    references[eyebrow] = id;
+
+    const code = extractCode(title);
+    if (code) {
+      references[`${eyebrow} (${code})`] = id;
+    }
+  };
+
+  sections.forEach((section) => {
+    registerTitle(section.title, section.id);
+    section.subsections.forEach((subsection) => {
+      registerTitle(subsection.title, subsection.id);
+      subsection.nestedSubsections.forEach((nested) => {
+        registerTitle(nested.title, nested.id);
+      });
+    });
+  });
+
+  return references;
+};
+
+const linkifyManualSectionReferences = (value = '', referenceLookup = {}) => {
+  let hasMatch = false;
+  let lastIndex = 0;
+  const nodes = [];
+
+  value.replace(MANUAL_SECTION_REFERENCE_PATTERN, (match, offset) => {
+    const targetId = referenceLookup[match];
+    if (!targetId) {
+      return match;
+    }
+
+    hasMatch = true;
+
+    if (offset > lastIndex) {
+      nodes.push({ type: 'text', value: value.slice(lastIndex, offset) });
+    }
+
+    nodes.push({
+      type: 'link',
+      url: `#${targetId}`,
+      children: [{ type: 'text', value: match }],
+    });
+
+    lastIndex = offset + match.length;
+    return match;
+  });
+
+  if (!hasMatch) {
+    return [{ type: 'text', value }];
+  }
+
+  if (lastIndex < value.length) {
+    nodes.push({ type: 'text', value: value.slice(lastIndex) });
+  }
+
+  return nodes;
+};
+
+const remarkLinkifyManualReferences = (referenceLookup = {}) => () => (tree) => {
+  const visitNode = (node) => {
+    if (!node?.children?.length) {
+      return;
+    }
+
+    node.children = node.children.flatMap((child) => {
+      if (child.type === 'text') {
+        return linkifyManualSectionReferences(child.value, referenceLookup);
+      }
+
+      if (child.type === 'link' || child.type === 'linkReference' || child.type === 'definition' || child.type === 'code' || child.type === 'inlineCode' || child.type === 'html') {
+        return [child];
+      }
+
+      visitNode(child);
+      return [child];
+    });
+  };
+
+  visitNode(tree);
+};
+
 const parseManual = (rawMarkdown) => {
   const normalized = rawMarkdown.replace(/\r\n/g, '\n').trim();
   const { items: h2Sections } = splitMarkdownByLevel(normalized, 2);
@@ -250,7 +355,7 @@ const parseManual = (rawMarkdown) => {
       };
     });
 
-  const glossarySection = contentSections.find((section) => section.id === '7-glossary');
+  const glossarySection = contentSections.find((section) => isAppendixSection(section));
   const glossary = glossarySection ? parseGlossary(glossarySection.introMarkdown) : { entries: [], footerMarkdown: '' };
 
   const headingIds = contentSections.flatMap((section) => [
@@ -269,7 +374,7 @@ const parseManual = (rawMarkdown) => {
     ])),
   ])));
 
-  const faqIds = (contentSections.find((section) => section.id === '6-edge-cases--faq')?.subsections ?? [])
+  const faqIds = (contentSections.find((section) => isFaqSection(section))?.subsections ?? [])
     .map((subsection) => subsection.id);
 
   const tocGroups = (tocSection ? parseTocGroups(tocSection.markdown) : []).map((group) => {
@@ -287,6 +392,7 @@ const parseManual = (rawMarkdown) => {
     headingToSectionId,
     faqIds,
     glossary,
+    sectionReferenceLookup: buildSectionReferenceLookup(contentSections),
   };
 };
 
@@ -327,6 +433,19 @@ const ManualHeading = ({
 
 const MarkdownLink = ({ href = '', children, ...props }) => {
   const isExternal = /^https?:\/\//.test(href);
+  const isInternalAnchor = href.startsWith('#');
+
+  const handleClick = (event) => {
+    props.onClick?.(event);
+
+    if (event.defaultPrevented || !isInternalAnchor) {
+      return;
+    }
+
+    event.preventDefault();
+    window.history.replaceState(null, '', href);
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+  };
 
   return (
     <a
@@ -335,6 +454,7 @@ const MarkdownLink = ({ href = '', children, ...props }) => {
       rel={isExternal ? 'noreferrer' : undefined}
       className="text-sky-300 underline decoration-sky-500/60 underline-offset-4 hover:text-sky-200"
       {...props}
+      onClick={handleClick}
     >
       {children}
     </a>
@@ -342,7 +462,7 @@ const MarkdownLink = ({ href = '', children, ...props }) => {
 };
 
 const MarkdownTable = ({ children }) => (
-  <div className="overflow-x-auto rounded-xl border border-slate-700/70">
+  <div className="mb-6 overflow-x-auto rounded-xl border border-slate-700/70">
     <table className="w-full text-sm">{children}</table>
   </div>
 );
@@ -365,13 +485,14 @@ const HighlightCallout = ({ children }) => (
 const MarkdownBody = ({
   markdown,
   colors,
+  sectionReferenceLookup,
 }) => {
   if (!markdown) return null;
 
   return (
     <div className="prose prose-invert max-w-none prose-p:leading-7">
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
+        remarkPlugins={[remarkGfm, remarkLinkifyManualReferences(sectionReferenceLookup)]}
         components={{
           p: ({ children }) => <p className="mb-4 text-[0.84rem] text-gray-300 last:mb-0 md:text-base">{children}</p>,
           strong: ({ children }) => <strong className={`font-semibold ${colors.secondary}`}>{children}</strong>,
@@ -402,13 +523,14 @@ const MarkdownBody = ({
 const AntiGriefingOverviewBody = ({
   markdown,
   colors,
+  sectionReferenceLookup,
 }) => {
   if (!markdown) return null;
 
   return (
     <div className="space-y-6">
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
+        remarkPlugins={[remarkGfm, remarkLinkifyManualReferences(sectionReferenceLookup)]}
         components={{
           p: ({ children }) => <p className="text-[0.86rem] leading-6 text-gray-300 md:text-[1.05rem] md:leading-9">{children}</p>,
           strong: ({ children }) => <strong className={`font-semibold ${colors.secondary}`}>{children}</strong>,
@@ -435,6 +557,7 @@ const AntiGriefingOverviewBody = ({
 const TocNavItem = ({
   item,
   activeHash,
+  onNavigate,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const isActive = item.href === `#${activeHash}`;
@@ -454,6 +577,7 @@ const TocNavItem = ({
       >
         <a
           href={item.href}
+          onClick={onNavigate}
           className={`min-w-0 flex-1 rounded-xl py-2 text-sm transition-all duration-300 ease-out ${
             item.depth ? 'pl-0 pr-2 text-slate-400' : 'pl-4 pr-2'
           }`}
@@ -493,6 +617,7 @@ const TocNavItem = ({
                   <a
                     key={child.href}
                     href={child.href}
+                    onClick={onNavigate}
                     className={`block rounded-xl py-2 pl-4 pr-3 text-sm transition-all duration-300 ease-out ${
                       isChildActive
                         ? 'bg-sky-500/20 text-white ring-1 ring-sky-400/40 shadow-[0_10px_24px_rgba(14,165,233,0.15)]'
@@ -516,12 +641,16 @@ const TocNav = ({
   activeHash,
   expandedSectionId,
   onToggleSection,
+  onNavigate,
+  showTitle = true,
 }) => (
   <nav className="rounded-2xl border border-slate-700/60 bg-slate-950/60 p-4 backdrop-blur-sm">
-    <div className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
-      <LayoutList size={15} />
-      <span>Browse The Manual</span>
-    </div>
+    {showTitle ? (
+      <div className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
+        <LayoutList size={15} />
+        <span>Browse The Manual</span>
+      </div>
+    ) : null}
     <div className="space-y-5">
       {groups.map((group) => (
         <div key={group.label}>
@@ -555,6 +684,7 @@ const TocNav = ({
                     key={`${group.label}-${item.href}`}
                     item={item}
                     activeHash={activeHash}
+                    onNavigate={onNavigate}
                   />
                 ))}
               </div>
@@ -589,6 +719,7 @@ const TopicCard = ({
   markdown,
   nestedSubsections,
   colors,
+  sectionReferenceLookup,
 }) => {
   const code = extractCode(title);
 
@@ -609,9 +740,9 @@ const TopicCard = ({
         ) : null}
       </div>
       {id === '51-whats-griefing' ? (
-        <AntiGriefingOverviewBody markdown={markdown} colors={colors} />
+        <AntiGriefingOverviewBody markdown={markdown} colors={colors} sectionReferenceLookup={sectionReferenceLookup} />
       ) : (
-        <MarkdownBody markdown={markdown} colors={colors} />
+        <MarkdownBody markdown={markdown} colors={colors} sectionReferenceLookup={sectionReferenceLookup} />
       )}
 
       {nestedSubsections.length ? (
@@ -635,7 +766,7 @@ const TopicCard = ({
                     </span>
                   ) : null}
                 </div>
-                <MarkdownBody markdown={nested.markdown} colors={colors} />
+                <MarkdownBody markdown={nested.markdown} colors={colors} sectionReferenceLookup={sectionReferenceLookup} />
               </div>
             );
           })}
@@ -650,6 +781,7 @@ const FaqItem = ({
   colors,
   isOpen,
   onToggle,
+  sectionReferenceLookup,
 }) => (
   <article className="overflow-hidden rounded-2xl border border-slate-700/60 bg-slate-950/45">
     <button
@@ -672,7 +804,7 @@ const FaqItem = ({
 
     {isOpen ? (
       <div className="border-t border-slate-800 px-3.5 pb-3.5 pt-3 md:px-5 md:pb-5 md:pt-4">
-        <MarkdownBody markdown={item.markdown} colors={colors} />
+        <MarkdownBody markdown={item.markdown} colors={colors} sectionReferenceLookup={sectionReferenceLookup} />
       </div>
     ) : null}
   </article>
@@ -681,19 +813,20 @@ const FaqItem = ({
 const GlossaryGrid = ({
   glossary,
   colors,
+  sectionReferenceLookup,
 }) => (
   <div className="space-y-6">
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       {glossary.entries.map((entry) => (
         <article key={entry.term} className="rounded-2xl border border-slate-700/60 bg-slate-950/45 p-3.5 md:p-5">
           <h3 className={`mb-3 text-lg font-semibold ${colors.secondary}`}>{entry.term}</h3>
-          <MarkdownBody markdown={entry.markdown} colors={colors} />
+          <MarkdownBody markdown={entry.markdown} colors={colors} sectionReferenceLookup={sectionReferenceLookup} />
         </article>
       ))}
     </div>
     {glossary.footerMarkdown ? (
       <div className="rounded-2xl border border-slate-700/60 bg-slate-950/60 p-3.5 md:p-5">
-        <MarkdownBody markdown={glossary.footerMarkdown} colors={colors} />
+        <MarkdownBody markdown={glossary.footerMarkdown} colors={colors} sectionReferenceLookup={sectionReferenceLookup} />
       </div>
     ) : null}
   </div>
@@ -705,12 +838,13 @@ const renderSectionBody = ({
   faqOpenId,
   setFaqOpenId,
   glossary,
+  sectionReferenceLookup,
 }) => {
-  if (section.id === '7-glossary') {
-    return <GlossaryGrid glossary={glossary} colors={colors} />;
+  if (isAppendixSection(section)) {
+    return <GlossaryGrid glossary={glossary} colors={colors} sectionReferenceLookup={sectionReferenceLookup} />;
   }
 
-  if (section.id === '6-edge-cases--faq') {
+  if (isFaqSection(section)) {
     return (
       <div className="space-y-4">
         {section.subsections.map((subsection) => (
@@ -720,6 +854,7 @@ const renderSectionBody = ({
             colors={colors}
             isOpen={faqOpenId === subsection.id}
             onToggle={() => setFaqOpenId((current) => (current === subsection.id ? null : subsection.id))}
+            sectionReferenceLookup={sectionReferenceLookup}
           />
         ))}
       </div>
@@ -738,6 +873,7 @@ const renderSectionBody = ({
           markdown={subsection.markdown}
           nestedSubsections={subsection.nestedSubsections}
           colors={colors}
+          sectionReferenceLookup={sectionReferenceLookup}
         />
       ))}
     </div>
@@ -750,6 +886,7 @@ const UserManualV2 = ({
   defaultExpanded = false,
   collapsible = true,
   showAllSections = false,
+  useDrawerNavOnMobile = false,
 }) => {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded || !collapsible);
   const [manualData, setManualData] = useState(null);
@@ -759,7 +896,9 @@ const UserManualV2 = ({
   const [faqOpenId, setFaqOpenId] = useState(null);
   const [expandedSectionId, setExpandedSectionId] = useState('1-getting-started');
   const [displayedSectionId, setDisplayedSectionId] = useState('1-getting-started');
+  const [mobileNavExpandedSectionId, setMobileNavExpandedSectionId] = useState('1-getting-started');
   const [contentVisible, setContentVisible] = useState(true);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
   const colors = isElite ? {
     primary: 'text-[#fbbf24]',
@@ -888,6 +1027,8 @@ const UserManualV2 = ({
   const hasExpandedSection = Boolean(expandedSection);
   const displayedSection = manualData?.sections.find((section) => section.id === displayedSectionId) ?? null;
   const hasDisplayedSection = Boolean(displayedSection);
+  const showDocumentNav = showAllSections && manualData && isExpanded && !isLoading && !errorMessage;
+  const showMobileDrawerNav = (showAllSections || useDrawerNavOnMobile) && manualData && isExpanded && !isLoading && !errorMessage;
 
   const handleToggleSection = (group) => {
     if (!group) return;
@@ -924,6 +1065,21 @@ const UserManualV2 = ({
     }
   };
 
+  const handleMobileToggleSection = (group) => {
+    if (!group) return;
+
+    if (useDrawerNavOnMobile && !showAllSections) {
+      setMobileNavExpandedSectionId((current) => (current === group.id ? null : group.id));
+      return;
+    }
+
+    handleToggleSection(group);
+  };
+
+  const handleNavLinkClick = () => {
+    setIsMobileNavOpen(false);
+  };
+
   useEffect(() => {
     const handleOpenManual = (event) => {
       setIsExpanded(true);
@@ -940,6 +1096,14 @@ const UserManualV2 = ({
       window.removeEventListener('open-user-manual', handleOpenManual);
     };
   }, []);
+
+  useEffect(() => {
+    if (!useDrawerNavOnMobile || showAllSections) {
+      return;
+    }
+
+    setMobileNavExpandedSectionId(expandedSectionId);
+  }, [expandedSectionId, showAllSections, useDrawerNavOnMobile]);
 
   useEffect(() => {
     if (showAllSections) {
@@ -1058,18 +1222,18 @@ const UserManualV2 = ({
       <SectionHeader
         title={section.title}
         colors={colors}
-        subtitle={section.id === '6-edge-cases--faq'
-          ? 'FAQ items now render as interactive accordions backed by the markdown headings.'
-          : section.id === '7-glossary'
-          ? 'Glossary entries are parsed into discrete cards while still authored in one markdown section.'
-          : null}
+        subtitle={null}
       />
 
-      {section.id !== '7-glossary' ? (
-        <MarkdownBody markdown={section.introMarkdown} colors={colors} />
+      {!isAppendixSection(section) ? (
+        <MarkdownBody
+          markdown={section.introMarkdown}
+          colors={colors}
+          sectionReferenceLookup={manualData.sectionReferenceLookup}
+        />
       ) : null}
 
-      {section.id !== '7-glossary' && section.introMarkdown && section.subsections.length ? (
+      {!isAppendixSection(section) && section.introMarkdown && section.subsections.length ? (
         <hr className={`my-6 ${colors.borderDark}`} />
       ) : null}
 
@@ -1079,12 +1243,67 @@ const UserManualV2 = ({
         faqOpenId,
         setFaqOpenId,
         glossary: manualData.glossary,
+        sectionReferenceLookup: manualData.sectionReferenceLookup,
       })}
     </section>
   );
 
   return (
     <div className={`bg-gradient-to-br ${colors.bg} border ${colors.border} rounded-2xl p-3 md:p-6`}>
+      {showMobileDrawerNav ? (
+        <div className="fixed right-4 top-4 z-[60] flex lg:hidden">
+          <button
+            type="button"
+            aria-label={isMobileNavOpen ? 'Close manual navigation' : 'Open manual navigation'}
+            aria-expanded={isMobileNavOpen}
+            onClick={() => setIsMobileNavOpen((current) => !current)}
+            className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-sky-300/45 bg-slate-950/95 text-white shadow-[0_14px_32px_rgba(0,0,0,0.34)] ring-1 ring-sky-300/20 backdrop-blur transition-colors hover:bg-slate-900"
+          >
+            {isMobileNavOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
+      ) : null}
+
+      {showMobileDrawerNav && isMobileNavOpen ? (
+        <div
+          aria-hidden="false"
+          className="fixed inset-0 z-50 transition-opacity duration-200 ease-out lg:hidden pointer-events-auto opacity-100"
+        >
+          <button
+            type="button"
+            aria-label="Close manual navigation"
+            onClick={() => setIsMobileNavOpen(false)}
+            className="absolute inset-0 bg-black/45 backdrop-blur-[1px] transition-opacity duration-200 ease-out"
+          />
+          <div className="absolute left-4 right-4 top-20 max-h-[70vh] origin-top overflow-hidden rounded-2xl border border-slate-700/60 bg-slate-950 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.42)] transition-all duration-200 ease-out translate-y-0 scale-100 opacity-100">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <LayoutList className="text-sky-300" size={18} />
+                <h2 className="text-lg font-semibold text-sky-100">Browse The Manual</h2>
+              </div>
+              <button
+                type="button"
+                aria-label="Close manual navigation"
+                onClick={() => setIsMobileNavOpen(false)}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-sky-300/20 text-sky-100 transition-colors hover:bg-white/[0.04] hover:text-white"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="max-h-[calc(70vh-4.5rem)] overflow-y-auto">
+              <TocNav
+                groups={manualData.tocGroups}
+                activeHash={activeHash}
+                expandedSectionId={useDrawerNavOnMobile && !showAllSections ? mobileNavExpandedSectionId : expandedSectionId}
+                onToggleSection={handleMobileToggleSection}
+                onNavigate={handleNavLinkClick}
+                showTitle={false}
+              />
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {collapsible ? (
         <button
           type="button"
@@ -1125,24 +1344,29 @@ const UserManualV2 = ({
               </div>
             </div>
           ) : manualData ? (
-            <div className="flex flex-col gap-6 xl:flex-row xl:items-start">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
               <aside
                 className={`space-y-4 transition-[max-width,transform,opacity] duration-500 ease-out ${
                   showAllSections
-                    ? 'xl:sticky xl:top-24 xl:w-[320px] xl:min-w-[320px] xl:max-w-[320px]'
+                    ? 'hidden lg:sticky lg:top-24 lg:block lg:w-[320px] lg:min-w-[320px] lg:max-w-[320px]'
+                    : showMobileDrawerNav
+                    ? hasExpandedSection
+                      ? 'hidden lg:sticky lg:top-24 lg:block lg:w-[320px] lg:min-w-[320px] lg:max-w-[320px]'
+                      : 'hidden lg:flex-1 lg:w-full lg:max-w-none lg:block'
                     : hasExpandedSection
-                    ? 'xl:sticky xl:top-24 xl:w-[320px] xl:min-w-[320px] xl:max-w-[320px]'
-                    : 'xl:flex-1 xl:w-full xl:max-w-none'
+                    ? 'lg:sticky lg:top-24 lg:w-[320px] lg:min-w-[320px] lg:max-w-[320px]'
+                    : 'lg:flex-1 lg:w-full lg:max-w-none'
                 }`}
               >
                 <div
-                  className="w-full transition-[transform,width,max-width] duration-500 ease-out xl:translate-x-0"
+                  className="w-full transition-[transform,width,max-width] duration-500 ease-out lg:translate-x-0"
                 >
                   <TocNav
                     groups={manualData.tocGroups}
                     activeHash={activeHash}
                     expandedSectionId={expandedSectionId}
                     onToggleSection={handleToggleSection}
+                    onNavigate={handleNavLinkClick}
                   />
                 </div>
               </aside>
@@ -1150,10 +1374,10 @@ const UserManualV2 = ({
               <div
                 className={`min-w-0 overflow-hidden transition-[max-width,opacity,transform,margin] duration-500 ease-out ${
                   showAllSections
-                    ? 'xl:flex-1 xl:max-w-none xl:translate-x-0 xl:opacity-100'
+                    ? 'lg:flex-1 lg:max-w-none lg:translate-x-0 lg:opacity-100'
                     : hasExpandedSection
-                    ? 'xl:flex-1 xl:max-w-none xl:translate-x-0 xl:opacity-100'
-                    : 'xl:max-w-0 xl:translate-x-10 xl:opacity-0 xl:pointer-events-none'
+                    ? 'lg:flex-1 lg:max-w-none lg:translate-x-0 lg:opacity-100'
+                    : 'lg:max-w-0 lg:translate-x-10 lg:opacity-0 lg:pointer-events-none'
                 }`}
                 aria-hidden={showAllSections ? false : !hasExpandedSection}
               >

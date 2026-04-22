@@ -17,11 +17,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getPlayerProfileContract, getInstanceContract, resolvePlayerProfileAddress } from '../lib/tictactoe';
 import { adjustProfileWinTotal, isProfileEnrollmentWin } from '../lib/playerProfileStats';
+import { multicallContracts } from '../../utils/multicall';
 
 const HISTORY_LIMIT = 20;
 const POLL_INTERVAL_MS = 8000;
 
-export function usePlayerProfile(factoryContract, runner, account) {
+export function usePlayerProfile(factoryContract, runner, account, options = {}) {
+  const {
+    enabled = true,
+    pollIntervalMs = POLL_INTERVAL_MS,
+  } = options;
   const [profileAddress, setProfileAddress] = useState(null);
   const [stats, setStats] = useState(null);
   const [enrollments, setEnrollments] = useState([]);
@@ -53,37 +58,46 @@ export function usePlayerProfile(factoryContract, runner, account) {
 
       const profile = getPlayerProfileContract(addr, runner);
 
-      const [rawStats, count] = await Promise.all([
-        profile.getStats().catch(() => null),
-        profile.getEnrollmentCount().catch(() => 0n),
-      ]);
+      const profileResults = await multicallContracts([
+        { contract: profile, functionName: 'getStats' },
+        { contract: profile, functionName: 'getEnrollmentCount' },
+      ], runner);
+      const rawStats = profileResults[0]?.success ? profileResults[0].result : await profile.getStats().catch(() => null);
+      const count = profileResults[1]?.success ? profileResults[1].result : await profile.getEnrollmentCount().catch(() => 0n);
 
       const total = Number(count);
       let recs = [];
       let enriched = [];
 
       if (total > 0) {
-        const offset = Math.max(0, total - HISTORY_LIMIT);
-        const limit = Math.min(total, HISTORY_LIMIT);
-        recs = await profile.getEnrollments(offset, limit).catch(() => []);
+        recs = await profile.getEnrollments(0, total).catch(() => []);
+        const instanceMap = new Map();
+        for (const rec of recs) {
+          const lower = rec.instance?.toLowerCase();
+          if (!lower || instanceMap.has(lower)) continue;
+          instanceMap.set(lower, { address: rec.instance, contract: getInstanceContract(rec.instance, runner) });
+        }
+        const instanceEntries = [...instanceMap.values()];
+        const infoResults = instanceEntries.length > 0
+          ? await multicallContracts(
+            instanceEntries.map(({ contract }) => ({ contract, functionName: 'getInstanceInfo' })),
+            runner
+          )
+          : [];
+        const instanceInfoByAddress = new Map();
+        instanceEntries.forEach((entry, index) => {
+          instanceInfoByAddress.set(entry.address.toLowerCase(), infoResults[index]?.success ? infoResults[index].result : null);
+        });
+
         // Enrich only display metadata that is not present on the profile record itself.
-        enriched = await Promise.all([...recs].map(async r => {
-          let playerCount = null;
-          let instanceStatus = null;
-          let instanceResolutionReason = null;
-          let instanceResolutionCategory = null;
-          let instanceWinner = null;
-          let instancePrizeAwarded = 0n;
-          try {
-            const inst = getInstanceContract(r.instance, runner);
-            const info = await inst.getInstanceInfo();
-            playerCount = Number(info.playerCount ?? info.enrolledCount ?? 0) || null;
-            instanceStatus = Number(info.status);
-            instanceResolutionReason = Number(info.completionReason ?? 0);
-            instanceResolutionCategory = Number(info.completionCategory ?? 0);
-            instanceWinner = info.winner ?? null;
-            instancePrizeAwarded = info.prizeAwarded ?? 0n;
-          } catch { /* ignore */ }
+        enriched = [...recs].map((r) => {
+          const info = instanceInfoByAddress.get(r.instance?.toLowerCase()) || null;
+          const playerCount = Number(info?.enrolledCount ?? info?.playerCount ?? 0) || null;
+          const instanceStatus = info ? Number(info.status) : null;
+          const instanceResolutionReason = info ? Number(info.completionReason ?? 0) : null;
+          const instanceResolutionCategory = info ? Number(info.completionCategory ?? 0) : null;
+          const instanceWinner = info?.winner ?? null;
+          const instancePrizeAwarded = info?.prizeAwarded ?? 0n;
           const isCancelled = instanceStatus === 3;
           const isResolvedOnChain = instanceStatus === 2 || isCancelled;
           const inferredResolutionReason = (!r.concluded && isResolvedOnChain)
@@ -120,7 +134,7 @@ export function usePlayerProfile(factoryContract, runner, account) {
             tournamentResolutionReason: inferredResolutionReason,
             tournamentResolutionCategory: inferredResolutionCategory,
           };
-        }));
+        });
         setEnrollments(enriched.sort((a, b) => b.enrolledAt - a.enrolledAt));
       } else {
         setEnrollments([]);
@@ -143,14 +157,19 @@ export function usePlayerProfile(factoryContract, runner, account) {
   }, [factoryContract, runner, account]);
 
   useEffect(() => {
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
     fetch();
-  }, [fetch]);
+  }, [enabled, fetch]);
 
   useEffect(() => {
-    if (!factoryContract || !runner || !account) return;
-    const id = setInterval(() => fetch(), POLL_INTERVAL_MS);
+    if (!enabled || !factoryContract || !runner || !account) return;
+    if (!Number.isFinite(pollIntervalMs) || pollIntervalMs <= 0) return;
+    const id = setInterval(() => fetch(), pollIntervalMs);
     return () => clearInterval(id);
-  }, [account, factoryContract, fetch, runner]);
+  }, [account, enabled, factoryContract, fetch, pollIntervalMs, runner]);
 
   return { profileAddress, stats, enrollments, loading, error, refetch: fetch };
 }

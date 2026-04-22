@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Shield, Lock, Eye, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Shield, Link2, Lock, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
@@ -288,8 +288,8 @@ function WhitepaperSection() {
 
 
 const HERO_PHRASES = ["Challenge Your Crew", "Pick Your Stakes", "Settle The Score"];
-const HERO_VISIBLE_MS = 2200;
-const HERO_FADE_MS = 450;
+const HERO_VISIBLE_MS = 2600;
+const HERO_FADE_MS = 550;
 
 function useHeroCycle() {
   const [index, setIndex] = useState(0);
@@ -331,9 +331,12 @@ export default function Landing() {
   const [whitepaperGlow, setWhitepaperGlow] = useState(false);
   const whitepaperGlowTimer = useRef(null);
   const { phrase, visible } = useHeroCycle();
+  const scrollToReadySection = () => {
+    document.getElementById('ready-to-prove-yourself')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
   // Set page title
   useEffect(() => {
-    document.title = 'ETour - Pure Competition. No Nonsense.';
+    document.title = 'ETour - Pure Competition';
   }, []);
 
   return (
@@ -362,11 +365,11 @@ export default function Landing() {
                 <span className="text-blue-100 font-medium">100% On-Chain</span>
               </div>
               <div className="flex items-center gap-2">
-                <Lock className="text-blue-400" size={16} />
+                <Link2 className="text-blue-400" size={16} />
                 <span className="text-blue-100 font-medium">Immutable Rules</span>
               </div>
               <div className="flex items-center gap-2">
-                <Eye className="text-blue-400" size={16} />
+                <Lock className="text-blue-400" size={16} />
                 <span className="text-blue-100 font-medium">Every Move Verifiable</span>
               </div>
               <div className="flex items-center gap-2">
@@ -378,22 +381,17 @@ export default function Landing() {
 	        </div>
 
 	        {/* ============ HERO SECTION ============ */}
-		        <div className="h-7 md:h-12" aria-hidden="true" />
-		        <section className="min-h-[70vh] flex flex-col justify-center items-center px-6 py-16">
+		        <div className="h-3 md:h-12" aria-hidden="true" />
+		        <section className="min-h-[58vh] md:min-h-[62vh] flex flex-col justify-center items-center px-6 pt-10 md:pt-16 pb-16">
 	          
 	          {/* Eyebrow */}
 	          <div className="flex items-center gap-4 mb-0">
 	            <div className="h-px w-16 bg-gradient-to-r from-transparent to-cyan-500/50" />
             <a
-              href="#read-the-whitepaper"
+              href="#ready-to-prove-yourself"
               onClick={(e) => {
                 e.preventDefault();
-                document.getElementById('read-the-whitepaper')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                clearTimeout(whitepaperGlowTimer.current);
-                setTimeout(() => {
-                  setWhitepaperGlow(true);
-                  whitepaperGlowTimer.current = setTimeout(() => setWhitepaperGlow(false), 2000);
-                }, 600);
+                scrollToReadySection();
               }}
               className="text-cyan-400 text-base md:text-xl font-semibold tracking-widest uppercase hover:text-cyan-300 transition-colors cursor-pointer"
             >
@@ -421,31 +419,25 @@ export default function Landing() {
           </h1>
 
           {/* Subheadline */}
-          <p className="text-xl md:text-2xl text-slate-400 text-center max-w-2xl mb-12 leading-relaxed">
+          <p className="text-xl md:text-2xl text-slate-400 text-center max-w-2xl mb-8 leading-relaxed">
             <a
-              href="#learn-more-links"
+              href="#ready-to-prove-yourself"
               onClick={(e) => {
                 e.preventDefault();
-                document.getElementById('learn-more-links')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                clearTimeout(whitepaperGlowTimer.current);
-                setTimeout(() => {
-                  setWhitepaperGlow(true);
-                  whitepaperGlowTimer.current = setTimeout(() => setWhitepaperGlow(false), 2000);
-                }, 600);
+                scrollToReadySection();
               }}
               className="inline-flex items-center hover:text-slate-300 transition-colors cursor-pointer underline decoration-dotted decoration-slate-500 underline-offset-4"
             >
-              Classic games. ETH stakes. No hidden costs.
+              Classic games. Real ETH on the line.
             </a>
             <br />
-            <span className="text-white font-semibold inline-block mt-4">Skill vs skill. Real ETH on the line.</span>
           </p>
           
           {/* Trust Signals */}
-          <div className="flex flex-wrap justify-center gap-6 mb-12">
-            <TrustSignal icon="🔒" text="Every move verified on-chain" />
-            <TrustSignal icon="⚡" text="Instant ETH payouts to your wallet" />
-            <TrustSignal icon="🎯" text="No RNG, pure skill" />
+          <div className="flex flex-wrap justify-center gap-6 mb-16">
+            <TrustSignal icon="🔒" text="Every Move is Verified" />
+            <TrustSignal icon="⚡" text="Every Payout is Instant" />
+            <TrustSignal icon="🎯" text="Every Match is Grief-Proof" />
           </div>
           
           {/* CTA */}
@@ -465,10 +457,10 @@ export default function Landing() {
         </section>
         
         {/* ============ GAMES SECTION ============ */}
-        <section id="games" className="px-6 py-0 max-w-7xl mx-auto">
+        <section id="games" className="px-6 py-0 max-w-7xl mx-auto scroll-mt-28 md:scroll-mt-32">
 
           {/* Section Header */}
-          <div className="text-center mb-16">
+          <div className="text-center mb-8">
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
               Pick Your Arena
             </h2>
@@ -489,7 +481,7 @@ export default function Landing() {
                 "Perfect for your first match",
                 "Quick games, instant results",
               ]}
-              href="/v2/tictactoe"
+              href="/tictactoe"
               accentColor="#06b6d4"
             />
 
@@ -501,7 +493,7 @@ export default function Landing() {
                 "Deceptively deep strategy",
                 "First to four wins it all"
               ]}
-              href="/v2/connect4"
+              href="/connect4"
               accentColor="#ef4444"
             />
 
@@ -509,11 +501,11 @@ export default function Landing() {
               icon="♔"
               title="Chess"
               features={[
-                "Full chess. Every rule.",
-                "Castling. En-Passant. Promotions. Etc..",
+                "Full chess. Every rule",
+                "Castling. En-Passant. Etc..",
                 "Now with real stakes",
               ]}
-              href="/v2/chess"
+              href="/chess"
               accentColor="#fbbf24"
             />
 
@@ -526,7 +518,7 @@ export default function Landing() {
         <section className="px-6 py-16">
           <div className="max-w-5xl mx-auto">
             
-            <div className="text-center mb-16">
+            <div className="text-center mb-10">
               <h2 className="text-4xl font-bold text-white mb-4">Trust by Blockchain</h2>
               <p className="text-slate-400 text-lg">Everything runs on Ethereum. Nothing is hidden. Nothing is centralized.</p>
             </div>
@@ -574,32 +566,46 @@ export default function Landing() {
         </section>
 
         {/* ============ FINAL CTA ============ */}
-        <section className="px-6 py-16 text-center">
+        <section id="ready-to-prove-yourself" className="px-6 py-16 text-center scroll-mt-28 md:scroll-mt-36">
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
             Ready to Prove Yourself?
           </h2>
           <p className="text-xl text-slate-400 mb-12 max-w-xl mx-auto">
           </p>
-          <div className="flex flex-col items-center gap-4">
-            <button
-              onClick={() => document.getElementById('games')?.scrollIntoView({ behavior: 'smooth' })}
-              className="px-16 py-6 rounded-2xl font-bold text-xl text-white transition-all duration-300 hover:-translate-y-1 cursor-pointer"
-              style={{
-                background: 'linear-gradient(135deg, #06b6d4, #3b82f6)',
-                boxShadow: '0 8px 40px rgba(6, 182, 212, 0.4)'
-              }}
-            >
-              Start Playing
-            </button>
-            <span className="text-slate-500 text-lg font-medium">or</span>
-            <div
-              id="learn-more-links"
-              className="grid items-center gap-x-3 gap-y-2 text-xl font-bold sm:grid-cols-[1fr_auto_1fr]"
-            >
+          <div
+            id="learn-more-links"
+            className="mx-auto grid w-full max-w-3xl grid-cols-1 items-center gap-6 sm:grid-cols-[1fr_auto_1fr] sm:gap-x-8"
+          >
+            <div className="flex flex-col items-center gap-5">
+              <span className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
+                As a Player
+              </span>
+              <Link
+                to="/manual"
+                className="text-xl font-bold text-cyan-400 underline decoration-dotted decoration-2 underline-offset-4 transition-colors duration-300 hover:text-cyan-300"
+              >
+                Read The Manual
+              </Link>
+              <button
+                onClick={() => document.getElementById('games')?.scrollIntoView({ behavior: 'smooth' })}
+                className="w-full max-w-[260px] px-8 py-4 rounded-2xl font-bold text-xl text-white transition-all duration-300 hover:-translate-y-1 cursor-pointer"
+                style={{
+                  background: 'linear-gradient(135deg, #06b6d4, #3b82f6)',
+                  boxShadow: '0 8px 40px rgba(6, 182, 212, 0.4)'
+                }}
+              >
+                Start Playing
+              </button>
+            </div>
+            <div className="h-px w-full bg-slate-700/60 sm:h-28 sm:w-px" aria-hidden="true" />
+            <div className="flex flex-col items-center gap-5">
+              <span className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
+                As a Builder
+              </span>
               <Link
                 id="read-the-whitepaper"
                 to="/whitepaper"
-                className="text-cyan-400 transition-all duration-300 hover:text-cyan-300 sm:justify-self-end"
+                className="text-xl font-bold text-cyan-400 underline decoration-dotted decoration-2 underline-offset-4 transition-all duration-300 hover:text-cyan-300"
                 style={whitepaperGlow ? {
                   textShadow: '0 0 8px #22d3ee, 0 0 20px #22d3ee, 0 0 40px #06b6d4',
                   animation: 'whitepaperPulse 2s ease-out forwards',
@@ -607,12 +613,15 @@ export default function Landing() {
               >
                 Read The Whitepaper
               </Link>
-              <span className="text-center text-slate-500">or</span>
               <Link
-                to="/manual"
-                className="text-cyan-400 transition-colors duration-300 hover:text-cyan-300 sm:justify-self-start"
+                to="/docs"
+                className="w-full max-w-[260px] px-8 py-4 rounded-2xl font-bold text-xl text-white transition-all duration-300 hover:-translate-y-1"
+                style={{
+                  background: 'linear-gradient(135deg, #ec4899, #8b5cf6)',
+                  boxShadow: '0 8px 40px rgba(192, 38, 211, 0.35)'
+                }}
               >
-                Browse The Manual
+                Start Building
               </Link>
             </div>
           </div>

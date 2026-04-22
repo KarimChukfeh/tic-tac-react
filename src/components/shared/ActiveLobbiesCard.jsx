@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
-import { AlertTriangle, Check, Clock3, RefreshCw, Rocket, TimerReset, X, Zap } from 'lucide-react';
-import { shortenAddress } from '../../utils/formatters';
+import { AlertTriangle, Check, Clock3, RefreshCw, TimerReset, X, Zap } from 'lucide-react';
+import { timeAgo } from '../../utils/formatters';
 import { linkifyReasonText } from './UserManualAnchorLink';
+import { getV2TournamentResolutionText } from '../../v2/lib/reasonLabels';
 
 const FILTERS = [
   { id: 'all', label: 'All' },
   { id: 'waiting', label: 'Waiting' },
   { id: 'escalations', label: 'Escalations' },
+  { id: 'resolved', label: 'Resolved' },
 ];
 
 function formatCountdown(targetTs, now) {
@@ -32,96 +34,112 @@ function formatCountLabel(count, singular, plural = `${singular}s`) {
   return `${count} ${count === 1 ? singular : plural}`;
 }
 
-function getLobbyHighlights(lobby, now) {
-  const highlights = [];
-  const canShowEnrollmentEscalations = lobby.status === 0;
+function getLobbyEscalationSummary(lobby, now) {
+  if (lobby.isUserEnrolled && lobby.status === 0 && lobby.enrollmentEscalation?.el1Available) {
+    return 'EL1 available now';
+  }
 
-  if (lobby.isUserEnrolled) {
-    if (canShowEnrollmentEscalations && lobby.enrollmentEscalation?.el1Available) {
-      highlights.push({ key: 'el1-live', label: 'EL1 available now', tone: 'yellow' });
-    }
-  } else if (canShowEnrollmentEscalations && lobby.enrollmentEscalation?.el2Available) {
-    highlights.push({ key: 'el2-live', label: 'EL2 available now', tone: 'yellow' });
-  } else if (canShowEnrollmentEscalations && lobby.enrollmentEscalation?.el2Soon) {
-    highlights.push({
-      key: 'el2-soon',
-      label: `EL2 in ${formatCountdown(lobby.enrollmentEscalation.el2At, now)}`,
-      tone: 'amber',
-    });
+  if (!lobby.isUserEnrolled && lobby.status === 0 && lobby.enrollmentEscalation?.el2Available) {
+    return 'EL2 available now';
+  }
+
+  if (!lobby.isUserEnrolled && lobby.status === 0 && lobby.enrollmentEscalation?.el2Soon) {
+    return `EL2 in ${formatCountdown(lobby.enrollmentEscalation.el2At, now)}`;
   }
 
   for (const match of lobby.matchHighlights || []) {
     if (lobby.isUserEnrolled && match.ml1RelevantAvailable) {
-      highlights.push({
-        key: `ml1-${match.roundNumber}-${match.matchNumber}`,
-        label: `Match ${match.matchNumber + 1}: ML1 available`,
-        tone: 'yellow',
-      });
-      continue;
+      return `Match ${match.matchNumber + 1}: ML1 available`;
     }
 
     if (lobby.isUserEnrolled && match.ml2RelevantAvailable) {
-      highlights.push({
-        key: `ml2-${match.roundNumber}-${match.matchNumber}`,
-        label: `Match ${match.matchNumber + 1}: ML2 available`,
-        tone: 'yellow',
-      });
-      continue;
+      return `Match ${match.matchNumber + 1}: ML2 available`;
     }
 
     if (lobby.isUserEnrolled && match.ml2RelevantSoon && match.ml2At > 0) {
-      highlights.push({
-        key: `ml2-soon-${match.roundNumber}-${match.matchNumber}`,
-        label: `Match ${match.matchNumber + 1}: ML2 in ${formatCountdown(match.ml2At, now)}`,
-        tone: 'amber',
-      });
-      continue;
+      return `Match ${match.matchNumber + 1}: ML2 in ${formatCountdown(match.ml2At, now)}`;
     }
 
     if (!lobby.isUserEnrolled && match.ml3Available) {
-      highlights.push({
-        key: `ml3-${match.roundNumber}-${match.matchNumber}`,
-        label: `Match ${match.matchNumber + 1}: ML3 available`,
-        tone: 'yellow',
-      });
-      continue;
+      return `Match ${match.matchNumber + 1}: ML3 available`;
     }
 
     if (!lobby.isUserEnrolled && match.ml3Soon && match.ml2Available && match.ml3At > 0) {
-      highlights.push({
-        key: `ml3-soon-${match.roundNumber}-${match.matchNumber}`,
-        label: `Match ${match.matchNumber + 1}: ML3 in ${formatCountdown(match.ml3At, now)}`,
-        tone: 'amber',
-      });
+      return `Match ${match.matchNumber + 1}: ML3 in ${formatCountdown(match.ml3At, now)}`;
     }
   }
 
-  return highlights.slice(0, 4);
-}
+  if (lobby.isUserEnrolled && lobby.ownRelevantAvailableCount > 0) {
+    return `${formatCountLabel(lobby.ownRelevantAvailableCount, 'action')} now`;
+  }
 
-function highlightToneClass(tone) {
-  if (tone === 'yellow') return 'border-yellow-300/50 bg-yellow-400/10 text-yellow-100';
-  if (tone === 'amber') return 'border-amber-300/40 bg-amber-400/10 text-amber-100';
-  return 'border-orange-300/40 bg-orange-400/10 text-orange-100';
+  if (lobby.isUserEnrolled && lobby.ownRelevantSoonCount > 0) {
+    return `${formatCountLabel(lobby.ownRelevantSoonCount, 'action')} soon`;
+  }
+
+  if (!lobby.isUserEnrolled && lobby.publicOpportunityCount > 0) {
+    return `${formatCountLabel(lobby.publicOpportunityCount, 'public window')} live`;
+  }
+
+  if (!lobby.isUserEnrolled && lobby.publicOpportunitySoonCount > 0) {
+    return `${formatCountLabel(lobby.publicOpportunitySoonCount, 'public window')} soon`;
+  }
+
+  if (lobby.hasEscalationActivity) {
+    return 'Monitoring timers';
+  }
+
+  return 'Quiet';
 }
 
 function hasFeaturedEscalation(lobby) {
   return (lobby?.featuredEscalationAvailableCount || 0) > 0;
 }
 
+function EthLogo({ size = 12, className = '' }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 256 417"
+      width={size}
+      height={size}
+      className={className}
+      fill="currentColor"
+    >
+      <path d="M127.9 0L124.7 10.9V279.1L127.9 282.3L255.8 210.7z" />
+      <path d="M127.9 0L0 210.7L127.9 282.3V152.2z" opacity="0.8" />
+      <path d="M127.9 306.5L126.1 308.8V416.6L127.9 421.8L255.9 234.9z" />
+      <path d="M127.9 421.8V306.5L0 234.9z" opacity="0.8" />
+      <path d="M127.9 282.3L255.8 210.7L127.9 152.2z" opacity="0.6" />
+      <path d="M0 210.7L127.9 282.3V152.2z" opacity="0.45" />
+    </svg>
+  );
+}
+
 const ActiveLobbiesCard = ({
   lobbies = [],
+  resolvedLobbies = [],
   loading = false,
+  resolvedLoading = false,
   syncing = false,
+  resolvedSyncing = false,
   error = null,
+  resolvedError = null,
+  resolvedLoaded = false,
+  resolvedPage = 0,
+  resolvedTotalCount = 0,
+  resolvedPageSize = 10,
   gamesCardHeight = 0,
   playerActivityHeight = 0,
   recentMatchesCardHeight = 0,
   onHeightChange,
   onRefresh,
+  onRefreshResolved,
+  onResolvedPageChange,
   isExpanded: externalIsExpanded,
   onToggleExpand,
   onViewTournament,
+  onLoadResolved,
   getTournamentTypeLabel,
   disabled = false,
   showTooltip = false,
@@ -207,9 +225,16 @@ const ActiveLobbiesCard = ({
     onHeightChange(expandedPanelRef.current.offsetHeight);
 
     return () => observer.disconnect();
-  }, [isExpanded, lobbies, filter, loading, error, onHeightChange]);
+  }, [isExpanded, lobbies, resolvedLobbies, filter, loading, resolvedLoading, error, resolvedError, onHeightChange]);
+
+  useEffect(() => {
+    if (!isExpanded || disabled || filter !== 'resolved') return;
+    if (resolvedLoaded || resolvedLoading || !onLoadResolved) return;
+    onLoadResolved();
+  }, [disabled, filter, isExpanded, onLoadResolved, resolvedLoaded, resolvedLoading]);
 
   const visibleLobbies = lobbies.filter((lobby) => !(hideMine && lobby.isUserEnrolled));
+  const visibleResolvedLobbies = resolvedLobbies.filter((lobby) => !(hideMine && lobby.isUserEnrolled));
 
   const filteredLobbies = visibleLobbies.filter((lobby) => {
     if (filter === 'waiting') return lobby.status === 0;
@@ -219,6 +244,16 @@ const ActiveLobbiesCard = ({
 
   const totalWaiting = visibleLobbies.filter((lobby) => lobby.status === 0).length;
   const totalEscalations = visibleLobbies.filter((lobby) => hasFeaturedEscalation(lobby)).length;
+  const isResolvedFilter = filter === 'resolved';
+  const shouldPrefetchResolved = isResolvedFilter && !resolvedLoaded && !resolvedError;
+  const currentLoading = isResolvedFilter ? (resolvedLoading || shouldPrefetchResolved) : loading;
+  const currentSyncing = isResolvedFilter ? resolvedSyncing : syncing;
+  const currentError = isResolvedFilter ? resolvedError : error;
+  const currentLobbies = isResolvedFilter ? visibleResolvedLobbies : filteredLobbies;
+  const currentRefresh = isResolvedFilter
+    ? (resolvedLoaded ? onRefreshResolved : onLoadResolved)
+    : onRefresh;
+  const resolvedTotalPages = Math.ceil(resolvedTotalCount / resolvedPageSize);
 
   const BASE_TOP_DESKTOP = 80;
   const COLLAPSED_BUTTON_HEIGHT_DESKTOP = 64;
@@ -262,7 +297,7 @@ const ActiveLobbiesCard = ({
           aria-label={disabled ? 'Connect wallet to access discover lobbies' : isExpanded ? 'Close discover lobbies' : 'Open discover lobbies'}
           title={disabled ? 'Connect Wallet to View Discover Lobbies' : ''}
         >
-          <Rocket size={16} className="text-white md:w-6 md:h-6" />
+          <Zap size={16} className="text-white md:w-6 md:h-6" />
 
           {syncing && (
             <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-cyan-300 animate-spin"></div>
@@ -349,12 +384,12 @@ const ActiveLobbiesCard = ({
             </div>
             <div className="flex items-center gap-1">
               <button
-                onClick={onRefresh}
+                onClick={currentRefresh}
                 className="rounded-lg border border-yellow-200/30 bg-white/10 hover:bg-white/15 transition-colors p-2 text-yellow-50"
-                aria-label="Refresh active lobbies"
-                title="Refresh active lobbies"
+                aria-label={isResolvedFilter ? 'Refresh resolved tournaments' : 'Refresh active lobbies'}
+                title={isResolvedFilter ? 'Refresh resolved tournaments' : 'Refresh active lobbies'}
               >
-                <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />
+                <RefreshCw size={16} className={currentSyncing ? 'animate-spin' : ''} />
               </button>
               <button
                 onClick={() => handleSetExpanded(false)}
@@ -368,52 +403,57 @@ const ActiveLobbiesCard = ({
           </div>
 
           <div className="flex flex-wrap gap-2 mb-4">
-            {FILTERS.map((option) => (
-              <button
-                key={option.id}
-                onClick={() => setFilter(option.id)}
-                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                  filter === option.id
-                    ? 'bg-yellow-200 text-amber-950'
-                    : 'bg-white/10 text-yellow-50 hover:bg-white/15'
-                }`}
+            {FILTERS.map((option) => {
+              let count = null;
+              if (option.id === 'all') count = visibleLobbies.length;
+              else if (option.id === 'waiting') count = totalWaiting;
+              else if (option.id === 'escalations') count = totalEscalations;
+              else if (option.id === 'resolved') count = null;
+
+              return (
+                <button
+                  key={option.id}
+                  onClick={() => setFilter(option.id)}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                    filter === option.id
+                      ? 'bg-yellow-200 text-amber-950'
+                      : 'bg-white/10 text-yellow-50 hover:bg-white/15'
+                  }`}
                 >
-                {option.label} ({option.id === 'all'
-                  ? visibleLobbies.length
-                  : option.id === 'waiting'
-                  ? totalWaiting
-                  : totalEscalations})
-              </button>
-            ))}
+                  {option.label}{count === null ? '' : ` (${count})`}
+                </button>
+              );
+            })}
           </div>
 
-          {loading ? (
+          {currentLoading ? (
             <div className="rounded-xl border border-yellow-200/20 bg-black/15 p-6 text-center text-yellow-50">
               <RefreshCw size={18} className="animate-spin mx-auto mb-3 text-yellow-200" />
-              Scanning active lobbies...
+              {isResolvedFilter ? 'Loading resolved tournaments...' : 'Scanning active lobbies...'}
             </div>
-          ) : error ? (
+          ) : currentError ? (
             <div className="rounded-xl border border-red-300/30 bg-red-950/30 p-4 text-red-100">
               <div className="flex items-center gap-2 font-semibold mb-1">
                 <AlertTriangle size={16} />
-                <span>Could not load active lobbies</span>
+                <span>{isResolvedFilter ? 'Could not load resolved tournaments' : 'Could not load active lobbies'}</span>
               </div>
-              <p className="text-sm text-red-100/80">{error}</p>
+              <p className="text-sm text-red-100/80">{currentError}</p>
             </div>
-          ) : filteredLobbies.length === 0 ? (
+          ) : currentLobbies.length === 0 ? (
             <div className="rounded-xl border border-yellow-200/20 bg-black/15 p-6 text-center text-yellow-50">
-              <Rocket size={18} className="mx-auto mb-3 text-yellow-200" />
+              <Zap size={18} className="mx-auto mb-3 text-yellow-200" />
               {filter === 'all' && 'No available lobbies right now.'}
               {filter === 'waiting' && 'No open lobbies are currently waiting for players.'}
               {filter === 'escalations' && 'No live escalation windows are available right now.'}
+              {filter === 'resolved' && 'No resolved tournaments found yet.'}
             </div>
           ) : (
             <div className="space-y-3">
-              {filteredLobbies.map((lobby) => {
-                const highlights = getLobbyHighlights(lobby, now);
+              {currentLobbies.map((lobby) => {
                 const tournamentType = getTournamentTypeLabel
                   ? getTournamentTypeLabel(lobby.playerCount)
                   : (lobby.playerCount === 2 ? 'Duel' : 'Tournament');
+                const resolution = getV2TournamentResolutionText(lobby.completionReason);
 
                 return (
                   <div
@@ -424,38 +464,36 @@ const ActiveLobbiesCard = ({
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-white font-semibold">{tournamentType}</span>
-                          <span className={`text-[11px] uppercase tracking-[0.16em] px-2 py-1 rounded-full border ${
-                            lobby.status === 0
-                              ? 'border-emerald-300/30 bg-emerald-400/10 text-emerald-100'
-                              : 'border-cyan-300/30 bg-cyan-400/10 text-cyan-100'
-                          }`}>
-                            {lobby.statusLabel}
-                          </span>
+                          {!isResolvedFilter && (
+                            <span className={`text-[11px] uppercase tracking-[0.16em] px-2 py-1 rounded-full border ${
+                              lobby.status === 0
+                                ? 'border-emerald-300/30 bg-emerald-400/10 text-emerald-100'
+                                : 'border-cyan-300/30 bg-cyan-400/10 text-cyan-100'
+                            }`}>
+                              {lobby.statusLabel}
+                            </span>
+                          )}
                           {lobby.isUserEnrolled && (
                             <span className="text-[11px] uppercase tracking-[0.16em] px-2 py-1 rounded-full border border-sky-300/30 bg-sky-400/10 text-sky-100">
-                              Yours
-                            </span>
-                          )}
-                          {lobby.isUserEnrolled && lobby.ownRelevantAvailableCount > 0 && (
-                            <span className="text-[11px] uppercase tracking-[0.16em] px-2 py-1 rounded-full border border-yellow-300/40 bg-yellow-300/15 text-yellow-100">
-                              Your Action
-                            </span>
-                          )}
-                          {!lobby.isUserEnrolled && lobby.publicOpportunityCount > 0 && (
-                            <span className="text-[11px] uppercase tracking-[0.16em] px-2 py-1 rounded-full border border-yellow-300/40 bg-yellow-300/15 text-yellow-100">
-                              Public Opportunity
+                              {isResolvedFilter ? 'You Played' : 'Yours'}
                             </span>
                           )}
                         </div>
                         <div className="text-yellow-100/80 text-sm mt-1">
-                          {shortenAddress(lobby.address)} • {formatEntryFee(lobby.entryFeeEth)} ETH • {lobby.enrolledCount}/{lobby.playerCount} players
+                          {isResolvedFilter
+                            ? `${lobby.enrolledCount}/${lobby.playerCount} players • ${formatEntryFee(lobby.entryFeeEth)} ETH • ${timeAgo(lobby.startedAt || lobby.createdAt || 0)}`
+                            : `Entry fee ${formatEntryFee(lobby.entryFeeEth)} ETH • ${lobby.enrolledCount}/${lobby.playerCount} players`}
                         </div>
                       </div>
                       <button
                         onClick={() => handleViewTournament(lobby.address)}
-                        className="shrink-0 rounded-lg bg-yellow-200 text-amber-950 px-3 py-2 text-sm font-semibold hover:bg-yellow-100 transition-colors"
+                        className={`shrink-0 rounded-lg bg-yellow-200 text-amber-950 font-semibold hover:bg-yellow-100 transition-colors ${
+                          isResolvedFilter ? 'px-2.5 py-1.5 text-xs' : 'px-3 py-2 text-sm'
+                        }`}
                       >
-                        {lobby.status === 0
+                        {isResolvedFilter
+                          ? 'View Results'
+                          : lobby.status === 0
                           ? (lobby.isUserEnrolled ? 'View Lobby' : 'View & Enroll')
                           : 'View Bracket'}
                       </button>
@@ -464,99 +502,60 @@ const ActiveLobbiesCard = ({
                     <div className="grid grid-cols-2 gap-2 mb-3">
                       <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
                         <div className="flex items-center gap-2 text-yellow-100/70 text-xs uppercase tracking-[0.14em] mb-1">
-                          <Clock3 size={12} />
-                          <span>Status</span>
+                          {isResolvedFilter ? <Check size={12} /> : <Clock3 size={12} />}
+                          <span>{isResolvedFilter ? 'Resolution' : 'Status'}</span>
                         </div>
                         <div className="text-sm text-white">
-                          {lobby.status === 0
-                            ? 'Waiting for more players'
-                            : `Round ${lobby.currentRound + 1}/${Math.max(lobby.actualTotalRounds, lobby.currentRound + 1)}`}
+                          {isResolvedFilter
+                            ? resolution.text
+                            : lobby.status === 0
+                              ? 'Waiting for more players'
+                              : `Round ${lobby.currentRound + 1}/${Math.max(lobby.actualTotalRounds, lobby.currentRound + 1)}`}
                         </div>
                       </div>
                       <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
                         <div className="flex items-center gap-2 text-yellow-100/70 text-xs uppercase tracking-[0.14em] mb-1">
-                          <TimerReset size={12} />
-                          <span>Escalations</span>
+                          {isResolvedFilter ? <EthLogo size={12} className="text-yellow-100/70" /> : <TimerReset size={12} />}
+                          <span>{isResolvedFilter ? 'Prize Pool' : 'Escalations'}</span>
                         </div>
                         <div className="text-sm text-white">
-                          {lobby.isUserEnrolled && lobby.ownRelevantAvailableCount > 0
-                            ? `${formatCountLabel(lobby.ownRelevantAvailableCount, 'action')} now`
-                            : lobby.isUserEnrolled && lobby.ownRelevantSoonCount > 0
-                            ? `${formatCountLabel(lobby.ownRelevantSoonCount, 'action')} soon`
-                            : !lobby.isUserEnrolled && lobby.publicOpportunityCount > 0
-                            ? `${formatCountLabel(lobby.publicOpportunityCount, 'public window')} live`
-                            : !lobby.isUserEnrolled && lobby.publicOpportunitySoonCount > 0
-                            ? `${formatCountLabel(lobby.publicOpportunitySoonCount, 'public window')} soon`
-                            : lobby.hasEscalationActivity
-                            ? 'Monitoring timers'
-                            : 'Quiet'}
+                          {isResolvedFilter
+                            ? `${formatEntryFee(lobby.prizePoolEth || '0')} ETH`
+                            : linkifyReasonText(getLobbyEscalationSummary(lobby, now), {
+                                keyPrefix: `active-lobbies-escalation-${lobby.address}`,
+                                linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white',
+                              })}
                         </div>
                       </div>
                     </div>
 
-                    {lobby.status === 1 && (
-                      <div className="flex flex-wrap gap-2 mb-3 text-xs">
-                        {lobby.isUserEnrolled && lobby.matchEscalationSummary.ml1RelevantAvailableCount > 0 && (
-                          <span className="px-2 py-1 rounded-full bg-yellow-300/15 text-yellow-100 border border-yellow-300/30">
-                            {linkifyReasonText(`ML1 ${lobby.matchEscalationSummary.ml1RelevantAvailableCount}`, {
-                              keyPrefix: `active-lobbies-ml1-${lobby.instanceAddress ?? lobby.instanceId ?? 'unknown'}`,
-                              linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white',
-                            })}
-                          </span>
-                        )}
-                        {lobby.isUserEnrolled && lobby.matchEscalationSummary.ml2RelevantAvailableCount > 0 && (
-                          <span className="px-2 py-1 rounded-full bg-yellow-300/15 text-yellow-100 border border-yellow-300/30">
-                            {linkifyReasonText(`ML2 ${lobby.matchEscalationSummary.ml2RelevantAvailableCount}`, {
-                              keyPrefix: `active-lobbies-ml2-${lobby.instanceAddress ?? lobby.instanceId ?? 'unknown'}`,
-                              linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white',
-                            })}
-                          </span>
-                        )}
-                        {lobby.isUserEnrolled && lobby.matchEscalationSummary.ml2RelevantSoonCount > 0 && (
-                          <span className="px-2 py-1 rounded-full bg-yellow-300/10 text-yellow-50 border border-yellow-300/20">
-                            {linkifyReasonText(`ML2 soon ${lobby.matchEscalationSummary.ml2RelevantSoonCount}`, {
-                              keyPrefix: `active-lobbies-ml2-soon-${lobby.instanceAddress ?? lobby.instanceId ?? 'unknown'}`,
-                              linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white',
-                            })}
-                          </span>
-                        )}
-                        {!lobby.isUserEnrolled && lobby.matchEscalationSummary.ml3AvailableCount > 0 && (
-                          <span className="px-2 py-1 rounded-full bg-yellow-300/15 text-yellow-100 border border-yellow-300/30">
-                            {linkifyReasonText(`ML3 ${lobby.matchEscalationSummary.ml3AvailableCount}`, {
-                              keyPrefix: `active-lobbies-ml3-${lobby.instanceAddress ?? lobby.instanceId ?? 'unknown'}`,
-                              linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white',
-                            })}
-                          </span>
-                        )}
-                        {!lobby.isUserEnrolled && lobby.matchEscalationSummary.ml3SoonCount > 0 && (
-                          <span className="px-2 py-1 rounded-full bg-yellow-300/10 text-yellow-50 border border-yellow-300/20">
-                            {linkifyReasonText(`ML3 soon ${lobby.matchEscalationSummary.ml3SoonCount}`, {
-                              keyPrefix: `active-lobbies-ml3-soon-${lobby.instanceAddress ?? lobby.instanceId ?? 'unknown'}`,
-                              linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white',
-                            })}
-                          </span>
-                        )}
-                      </div>
-                    )}
-
-                    {highlights.length > 0 && (
-                      <div className="space-y-2">
-                        {highlights.map((highlight) => (
-                          <div
-                            key={highlight.key}
-                            className={`rounded-lg border px-3 py-2 text-sm ${highlightToneClass(highlight.tone)}`}
-                          >
-                            {linkifyReasonText(highlight.label, {
-                              keyPrefix: `active-lobbies-highlight-${highlight.key}`,
-                              linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white',
-                            })}
-                          </div>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {isResolvedFilter && resolvedTotalPages > 1 && (
+            <div className="mt-4 flex items-center justify-between gap-3 border-t border-yellow-200/15 pt-4">
+              <button
+                type="button"
+                onClick={() => onResolvedPageChange?.(resolvedPage - 1)}
+                disabled={resolvedPage <= 0 || currentSyncing}
+                className="rounded-lg border border-yellow-200/30 bg-white/10 px-3 py-2 text-sm font-medium text-yellow-50 transition-colors enabled:hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Newer
+              </button>
+              <span className="text-sm text-yellow-100/80">
+                Page {resolvedPage + 1} of {resolvedTotalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => onResolvedPageChange?.(resolvedPage + 1)}
+                disabled={resolvedPage >= resolvedTotalPages - 1 || currentSyncing}
+                className="rounded-lg border border-yellow-200/30 bg-white/10 px-3 py-2 text-sm font-medium text-yellow-50 transition-colors enabled:hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Older
+              </button>
             </div>
           )}
 

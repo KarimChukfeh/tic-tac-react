@@ -15,6 +15,8 @@ import EnrolledPlayersList from './EnrolledPlayersList';
 import { formatTime, getTournamentTypeLabel, shortenAddress } from '../../utils/formatters';
 import { CompletionReason, getTournamentCompletionText, getTournamentResolutionReasonValue } from '../../utils/completionReasons';
 import {
+  getV2CompletionReasonHref,
+  getV2ReasonCode,
   getV2StatsResolutionReason,
   getV2TournamentResolutionText,
   isV2TournamentCancelledReason,
@@ -22,6 +24,7 @@ import {
 } from '../../v2/lib/reasonLabels';
 import UserManualAnchorLink, { linkifyReasonText } from './UserManualAnchorLink';
 import { getUserManualHrefForReasonCode } from '../../utils/userManualLinks';
+import { INTERACTIVE_ADDRESS_BUTTON_CLASSNAME } from './addressButtonStyles';
 
 // Game-specific configurations
 const GAME_CONFIGS = {
@@ -123,10 +126,12 @@ const TournamentHeader = ({
   totalEntryFeesAccrued,
   prizeAwarded,
   prizeRecipient,
+  payoutEntries,
 
   // Optional: Custom colors override
   colors: customColors,
   reasonLabelMode = 'default',
+  onPlayerAddressClick = null,
 }) => {
   const formatEnrollmentFee = (value) => {
     if (typeof value === 'bigint') return ethers.formatEther(value);
@@ -140,7 +145,11 @@ const TournamentHeader = ({
   const config = GAME_CONFIGS[gameType] || GAME_CONFIGS.tictactoe;
   const colors = customColors || config.colors;
   const totalRounds = Math.ceil(Math.log2(playerCount));
+  const isV2Header = reasonLabelMode === 'v2';
   const isInProgress = status === 1;
+  const isV2EnrollmentState = isV2Header && status === 0;
+  const isV2ResolvedState = isV2Header && status >= 2;
+  const useV2InlinePlayersCard = isV2EnrollmentState || isV2ResolvedState;
   const tournamentTypeLabel = getTournamentTypeLabel(playerCount);
   const formattedEntryFee = formatEnrollmentFee(entryFee);
   const showEnrollmentCta = status === 0 && !isEnrolled && !isFull && (account ? !!onEnroll : !!onConnectWallet);
@@ -157,6 +166,7 @@ const TournamentHeader = ({
       ? isV2TournamentCancelledReason(tournamentResolutionReason)
       : tournamentResolutionReason === CompletionReason.SOLO_ENROLL_CANCELLED
   );
+  const isV2El0CancelledState = isV2ResolvedState && tournamentResolutionReason === V2TournamentResolutionReason.SOLO_ENROLL_CANCELLED;
   const isCompleted = status >= 2;
   const resolutionText = useV2ReasonLabels
     ? getV2TournamentResolutionText(tournamentResolutionReason)
@@ -186,6 +196,21 @@ const TournamentHeader = ({
   const formatRecipient = (address) => (
     address && address !== ethers.ZeroAddress ? shortenAddress(address) : 'None'
   );
+  const v2CompletionReasonCode = getV2ReasonCode(tournamentResolutionReason);
+  const v2CompletionReasonHref = getV2CompletionReasonHref(tournamentResolutionReason);
+  const shouldShowV2CompletedReason = isV2ResolvedState && v2CompletionReasonCode && v2CompletionReasonCode !== 'R0';
+  const resolvedPayoutEntries = Array.isArray(payoutEntries) && payoutEntries.length > 0
+    ? payoutEntries.filter(({ recipient, amount }) => (
+      recipient &&
+      recipient !== ethers.ZeroAddress &&
+      typeof amount === 'bigint' &&
+      amount > 0n
+    ))
+    : (
+      resolvedPrizeRecipient && resolvedPrizeRecipient !== ethers.ZeroAddress && resolvedPrizeAwarded > 0n
+        ? [{ recipient: resolvedPrizeRecipient, amount: resolvedPrizeAwarded }]
+        : []
+    );
   const isSoloEnrollmentState = status === 0 && enrolledCount === 1;
   const isSoloEnrolled = isSoloEnrollmentState && isEnrolled;
 
@@ -319,6 +344,70 @@ const TournamentHeader = ({
     }
   };
 
+  const completedStatusDetail = shouldShowV2CompletedReason
+    ? (
+      v2CompletionReasonHref ? (
+        <UserManualAnchorLink
+          href={v2CompletionReasonHref}
+          className="text-cyan-300 hover:text-cyan-200 font-semibold underline decoration-dotted underline-offset-[2px]"
+          title={`Open User Manual entry for ${v2CompletionReasonCode}`}
+        >
+          via {resolutionText.text}
+        </UserManualAnchorLink>
+      ) : (
+        <span className="text-cyan-300 font-semibold">via {resolutionText.text}</span>
+      )
+    )
+    : null;
+
+  const renderPlayerAddress = (address) => {
+    const normalized = address?.toLowerCase?.();
+    const isCurrentUser = normalized && normalized === account?.toLowerCase?.();
+    const isClickable = typeof onPlayerAddressClick === 'function'
+      && normalized
+      && normalized !== ethers.ZeroAddress.toLowerCase()
+      && !isCurrentUser;
+    const label = shortenAddress(address);
+
+    if (isCurrentUser) {
+      return <span className="font-semibold">You</span>;
+    }
+
+    if (!isClickable) {
+      return <span className="font-mono">{label}</span>;
+    }
+
+    return (
+      <button
+        type="button"
+        onClick={() => onPlayerAddressClick(address)}
+        className={INTERACTIVE_ADDRESS_BUTTON_CLASSNAME}
+        aria-label={`Open stats for ${label}`}
+      >
+        {label}
+      </button>
+    );
+  };
+
+  const completedPayoutCardContent = resolvedPayoutEntries.length > 0
+    ? (
+      <div className="space-y-2">
+        {resolvedPayoutEntries.map(({ recipient, amount }, index) => (
+          <div key={`${recipient}-${index}`} className="text-white text-[11px] md:text-sm leading-relaxed break-words">
+            <span className="text-purple-300">{isV2El0CancelledState ? 'Refunded ' : 'Awarded '}</span>
+            <span className="font-semibold text-yellow-400">{formatResolutionEth(amount)} ETH</span>
+            <span className="text-purple-300"> to </span>
+            {renderPlayerAddress(recipient)}
+          </div>
+        ))}
+      </div>
+    )
+    : (
+      <div className="text-white/50 font-bold text-xs md:text-base">No payouts recorded</div>
+    );
+  const showSoloCancelAction = isSoloEnrolled && onCancelTournament;
+  const showSoloResetAction = (forceShowResetEnrollmentWindow || canResetWindow) && isSoloEnrolled && onResetEnrollmentWindow;
+
   return (
     <div ref={headerRef} className={`bg-gradient-to-r ${colors.headerBg} backdrop-blur-lg rounded-2xl p-4 md:p-8 border ${colors.headerBorder} mb-8`}>
       {/* Back Button */}
@@ -327,7 +416,7 @@ const TournamentHeader = ({
         className={`mb-4 flex items-center gap-2 ${colors.text} ${colors.textHover} transition-colors`}
       >
         <ChevronDown className="rotate-90" size={20} />
-        Back to {tournamentTypeLabel}s
+        Back
       </button>
 
       {/* Title Row - stacks on mobile */}
@@ -348,9 +437,9 @@ const TournamentHeader = ({
                 href={instanceExplorerUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`${colors.text} ${colors.textHover} transition-colors text-xs md:text-sm break-all`}
+                className={`${colors.text} ${colors.textHover} transition-colors inline-flex items-center gap-1 text-[11px] md:text-xs font-semibold underline decoration-dotted underline-offset-[2px]`}
               >
-                {instanceAddress}
+                <span>Unique Instance {shortenAddress(instanceAddress)}</span>
               </a>
             )}
             {!instanceAddress && (
@@ -361,12 +450,14 @@ const TournamentHeader = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 md:block md:text-right bg-black/20 md:bg-transparent rounded-lg p-3 md:p-0">
-          <div className={`${colors.text} text-sm`}>Prize Pool</div>
-          <div className="text-xl md:text-3xl font-bold text-yellow-400 whitespace-nowrap">
-            {ethers.formatEther(prizePool)} ETH
+        {!isV2El0CancelledState && (
+          <div className="flex items-center gap-2 md:block md:text-right bg-black/20 md:bg-transparent rounded-lg p-3 md:p-0">
+            <div className={`${colors.text} text-sm`}>{isV2EnrollmentState ? 'Current Pot' : 'Prize Pool'}</div>
+            <div className="text-xl md:text-3xl font-bold text-yellow-400 whitespace-nowrap">
+              {ethers.formatEther(prizePool)} ETH
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Stats Grid */}
@@ -377,9 +468,16 @@ const TournamentHeader = ({
         resolutionReason={statsResolutionReason}
         currentRound={currentRound}
         totalRounds={totalRounds}
+        hideRoundCard={isV2EnrollmentState || isV2ResolvedState}
+        statusDetail={isV2ResolvedState ? completedStatusDetail : null}
+        playersDetails={useV2InlinePlayersCard ? enrolledPlayers : null}
+        account={account}
+        thirdCardLabel={isV2ResolvedState ? 'Payouts' : null}
+        thirdCardContent={isV2ResolvedState ? completedPayoutCardContent : null}
         colors={colors}
         syncDots={syncDots}
         statusTimerTarget={statusTimerTarget}
+        onPlayerAddressClick={isV2ResolvedState ? onPlayerAddressClick : null}
       />
 
       {/* Enroll Button */}
@@ -411,40 +509,28 @@ const TournamentHeader = ({
       {renderCountdown && renderCountdown()}
 
       {/* Tournament Status Badge - Waiting for more players */}
-      {status === 0 && enrolledCount > 0 && (
+      {status === 0 && enrolledCount > 0 && !isSoloEnrolled && (
         <div className="mt-4">
           <div className={`${
             !isSoloEnrollmentState && isEnrolled && escalationState.canStartEscalation2
               ? 'bg-red-500/20 border-red-400'
-              : isSoloEnrolled
-                ? 'bg-blue-500/20 border-blue-400'
-                : 'bg-yellow-500/20 border-yellow-400'
+              : 'bg-yellow-500/20 border-yellow-400'
           } border rounded-lg p-3`}>
             <div className="flex items-center justify-center gap-2">
               <div className={`w-2 h-2 ${
                 !isSoloEnrollmentState && isEnrolled && escalationState.canStartEscalation2
                   ? 'bg-red-400'
-                  : isSoloEnrolled
-                    ? 'bg-blue-400'
-                    : 'bg-yellow-400'
+                  : 'bg-yellow-400'
               } rounded-full animate-pulse`}></div>
               <span className={`${
                 !isSoloEnrollmentState && isEnrolled && escalationState.canStartEscalation2
                   ? 'text-red-300'
-                  : isSoloEnrolled
-                    ? 'text-blue-300'
-                    : 'text-yellow-300'
+                  : 'text-yellow-300'
               } font-bold text-sm`}>
-                {isSoloEnrolled ? 'You are the sole enroller' : 'Waiting for more players'}
+                Waiting for more players
               </span>
             </div>
-            {isSoloEnrolled ? (
-              <div className="text-center mt-1">
-                <span className="text-blue-200/80 text-[10px]">
-                  You can cancel or reset the enrollment window at any time while no one else is enrolled
-                </span>
-              </div>
-            ) : isEnrolled && escalationState.timeToEscalation2 > 0 && escalationState.canStartEscalation1 ? (
+            {isEnrolled && escalationState.timeToEscalation2 > 0 && escalationState.canStartEscalation1 ? (
               <div className="text-center mt-1">
                 <span className="text-yellow-300/70 text-[10px]">
                   {formatTime(escalationState.timeToEscalation2)} until considered abandoned
@@ -514,50 +600,6 @@ const TournamentHeader = ({
             </div>
           )}
 
-          {/* EL0: Solo player can cancel at any time while still alone */}
-          {isSoloEnrolled && onCancelTournament && (
-            <div className="mt-4">
-              <button
-                onClick={() => onCancelTournament(tierId, instanceId)}
-                disabled={loading || !account}
-                className={`w-full bg-gradient-to-r ${account ? 'from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800' : `${connectCtaGradient} ${connectCtaHover}`} text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-xs`}
-              >
-                <XCircle size={14} />
-                {loading ? 'Cancelling...' : !account ? 'Connect Wallet' : 'Cancel Tournament'}
-              </button>
-              {!loading && account ? (
-                <UserManualAnchorLink
-                  href={getUserManualHrefForReasonCode('EL0')}
-                  className="mt-2 block w-full text-center text-slate-300 hover:text-slate-200 hover:bg-slate-500/10 text-xs py-2 px-4 rounded-lg border border-slate-400/30 hover:border-slate-400/50 transition-all"
-                >
-                  Learn more about EL0 (Cancel Tournament)
-                </UserManualAnchorLink>
-              ) : null}
-            </div>
-          )}
-
-          {/* EL1*: Reset Enrollment Window - Solo player can extend enrollment */}
-          {(forceShowResetEnrollmentWindow || canResetWindow) && isSoloEnrolled && onResetEnrollmentWindow && (
-            <div className="mt-4">
-              <button
-                onClick={() => onResetEnrollmentWindow(tierId, instanceId)}
-                disabled={loading || !account}
-                className={`w-full bg-gradient-to-r ${account ? 'from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700' : `${connectCtaGradient} ${connectCtaHover}`} text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-xs`}
-              >
-                <RefreshCw size={14} />
-                {loading ? 'Resetting...' : !account ? 'Connect Wallet' : 'Reset Enrollment Window'}
-              </button>
-              {!loading && account ? (
-                <UserManualAnchorLink
-                  href={getUserManualHrefForReasonCode('EL1*')}
-                  className="mt-2 block w-full text-center text-yellow-300 hover:text-yellow-200 hover:bg-yellow-500/10 text-xs py-2 px-4 rounded-lg border border-yellow-400/30 hover:border-yellow-400/50 transition-all"
-                >
-                  Learn more about EL1* (Reset Enrollment Window)
-                </UserManualAnchorLink>
-              ) : null}
-            </div>
-          )}
-
           {/* Escalation 1: Enrolled players can force start */}
           {escalationState.canStartEscalation1 && isEnrolled && enrolledCount > 1 && onManualStart && (
             <div className="mt-4">
@@ -600,7 +642,7 @@ const TournamentHeader = ({
         </>
       )}
 
-      {isCompleted && (
+      {isCompleted && !isV2ResolvedState && (
         <div className="mt-4 bg-black/20 rounded-lg p-4 border border-purple-400/30">
           <div className="text-purple-300 text-sm mb-1">{detailedResolutionAvailable ? 'Payouts' : 'Resolution'}</div>
           {!detailedResolutionAvailable ? (
@@ -653,11 +695,13 @@ const TournamentHeader = ({
       )}
 
       {/* Enrolled Players */}
-      <EnrolledPlayersList
-        enrolledPlayers={enrolledPlayers}
-        account={account}
-        colors={colors}
-      />
+      {!useV2InlinePlayersCard && (
+        <EnrolledPlayersList
+          enrolledPlayers={enrolledPlayers}
+          account={account}
+          colors={colors}
+        />
+      )}
 
       {/* Shareable URL Section */}
       {!isInProgress && (
@@ -680,6 +724,68 @@ const TournamentHeader = ({
               {copiedUrl ? <Check size={18} /> : <Copy size={18} />}
               {copiedUrl ? 'Copied!' : 'Copy Link'}
             </button>
+          </div>
+        </div>
+      )}
+
+      {status === 0 && isSoloEnrolled && (
+        <div className="mt-4">
+          <div className="bg-blue-500/20 border border-blue-400 rounded-lg p-3">
+            <div className="flex items-center justify-center gap-2">
+              <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+              <span className="text-blue-300 font-bold text-sm">
+                You are the sole enroller
+              </span>
+            </div>
+            <div className="text-center mt-1">
+              <span className="text-blue-200/80 text-[10px]">
+                You can cancel or reset the enrollment window at any time while no one else is enrolled
+              </span>
+            </div>
+            {(showSoloCancelAction || showSoloResetAction) && (
+              <div className="mx-auto mt-4 grid w-full max-w-2xl grid-cols-2 gap-3 md:gap-8">
+                {showSoloResetAction && (
+                  <div className="min-w-0">
+                    {!loading && account ? (
+                      <UserManualAnchorLink
+                        href={getUserManualHrefForReasonCode('EL1*')}
+                        className="mb-1.5 block w-full text-center text-yellow-300 hover:text-yellow-200 hover:bg-yellow-500/10 text-[11px] py-1.5 px-2 rounded-lg border border-yellow-400/30 hover:border-yellow-400/50 transition-all leading-tight"
+                      >
+                        Learn about Resetting Enrollment
+                      </UserManualAnchorLink>
+                    ) : null}
+                    <button
+                      onClick={() => onResetEnrollmentWindow(tierId, instanceId)}
+                      disabled={loading || !account}
+                      className={`w-full min-h-9 bg-gradient-to-r ${account ? 'from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700' : `${connectCtaGradient} ${connectCtaHover}`} text-white font-semibold py-1.5 px-2 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-1.5 text-[11px] text-center`}
+                    >
+                      <RefreshCw size={13} className="shrink-0" />
+                      <span className="min-w-0 leading-tight">{loading ? 'Resetting...' : !account ? 'Connect Wallet' : 'Reset'}</span>
+                    </button>
+                  </div>
+                )}
+                {showSoloCancelAction && (
+                  <div className="min-w-0">
+                    {!loading && account ? (
+                      <UserManualAnchorLink
+                        href={getUserManualHrefForReasonCode('EL0')}
+                        className="mb-1.5 block w-full text-center text-red-300 hover:text-red-200 hover:bg-red-500/10 text-[11px] py-1.5 px-2 rounded-lg border border-red-400/30 hover:border-red-400/50 transition-all leading-tight"
+                      >
+                        Learn about Cancellations
+                      </UserManualAnchorLink>
+                    ) : null}
+                    <button
+                      onClick={() => onCancelTournament(tierId, instanceId)}
+                      disabled={loading || !account}
+                      className={`w-full min-h-9 bg-gradient-to-r ${account ? 'from-red-600 to-red-700 hover:from-red-700 hover:to-red-800' : `${connectCtaGradient} ${connectCtaHover}`} text-white font-semibold py-1.5 px-2 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-1.5 text-[11px] text-center`}
+                    >
+                      <XCircle size={13} className="shrink-0" />
+                      <span className="min-w-0 leading-tight">{loading ? 'Cancelling...' : !account ? 'Connect Wallet' : 'Cancel'}</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

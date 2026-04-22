@@ -28,7 +28,7 @@ Competitive players have simple desires that haven't changed since the dawn of g
 
 Adding a Web3 layer to games is counterproductive unless it delivers on those core needs first *and* adds value that wouldn't be possible without blockchain.
 
-ETour inverts the typical Web3 gaming approach:
+#### ETour inverts the typical Web3 gaming approach
 
 - **Current Web3:** Here's our token/coin/scheme. You must learn about its tokenomics, governance, and yield farming. There's also a game somewhere.
 
@@ -50,7 +50,7 @@ Blockchain provides three irreplaceable properties for competitive gaming:
 
 **Autonomy.** No servers to maintain. No admins to trust. No company to depend on.
 
-These aren't "extra features." These are properties we inherited by building on blockchain. ETour runs itself forever according to its code.
+These aren't "extra features". They're fundamental properties that every fully on-chain software inherits by default.
 
 ### The RW3 Movement
 
@@ -71,85 +71,75 @@ These commitments shape every technical decision in ETour. They're not roadmap i
 ---
 
 ## 2. The Problems with Competitive Gaming
+Every online competitive system faces the same fundamental issues
 
 ### The Trust Problem
 
-Every online competitive system faces the same fundamental issue: you must trust a third party to keep your money, execute the rules fairly, and actually pay you if you win.
+You must trust a third party to keep your money, execute the rules fairly, and actually pay you if you win.
 
 - A platform can freeze your account and keep your funds.
 - A server operator can manipulate game state to favor certain players.
 - A payment processor can reverse transactions after the fact.
 - A company can shut down tomorrow, taking your winnings with them.
 
-Traditional solutions require accepting this risk because there was no alternative. Web3 changes that.
+Traditional solutions require accepting this risk because there was no alternative. 
+
+ETour solves that by removing the trust out of the equation. There's no company on ETour, only immutable code.
 
 ### The Griefing Problem
 
-Every competitive system faces the same behavioral problem: losing players stall to avoid defeat.
+Every competitive system faces the same behavioral problem: losing players grief other players to avoid defeat or to ruin the fun for everyone else.
 
-In chess, they let the clock run. In poker, they tank every decision. Online, they disconnect and hope opponents quit.
+Traditional solutions require human intervention like moderators, support tickets, manual reviews, etc. 
 
-Traditional solutions require human intervention - moderators, support tickets, manual reviews. These introduce bias and centralization that goes directly against what Web3 stands for.
+These introduce bias and centralization that goes directly against what Web3 stands for.
 
-ETour solves stalling through economic incentives that escalate over time. The longer someone stalls, the more people benefit from their inaction. The only party that doesn't benefit is the staller. This is game theory, not punishment.
+ETour solves stalling through economic incentives that escalate over time. The longer someone stalls, the more people benefit from their inaction. The only party that doesn't benefit is the staller. 
+
+This is game theory, not punishment.
 
 ### The Cost Problem
 
-Every action on a blockchain costs gas. But the real cost problem isn't the price per move — it's how costs accumulate over time.
+Every action on a blockchain costs gas. But the real cost problem isn't the price per move, it's how cost accumulate over time.
 
-Traditional Web3 games write every move, every match, every outcome to storage indiscriminately. This accumulates fast. As the game grows more popular, storage fills up, and gas costs for every subsequent move increase.
+Traditional Web3 games write every move, every match, every outcome to storage indiscriminately. This accumulates fast. As the game grows more popular, storage fills up, and gas costs for every subsequent move increase. The more people play, the more expensive it gets. The more expensive it gets, the fewer people play. The game collapses.
 
-The more people play, the more expensive it gets. The more expensive it gets, the fewer people play. The game collapses.
+That's not a gas problem. It's a design problem.
 
-This isn't a gas problem. It's a design problem.
-
-ETour was built from day one to avoid this trap through deliberate storage architecture. Historical data lives in read-only, append-only storage and is never used in active gameplay logic.
+ETour is built to avoid this trap through deliberate storage architecture. Historical data lives in read-only, append-only storage and is never used in active gameplay logic.
 
 The gas cost of a move in round one of the billionth tournament is identical to the cost of a move in round one of the first tournament.
-
-### Platform Dependency
-
-All competitive gaming lives inside a company's walled garden. The company controls the rules, the matchmaking, the fee structure, and ultimately whether the platform survives.
-
-Players have no recourse. Their history, their stats, their hard-won ranking — all of it evaporates if the company shuts down.
-
-ETour eliminates this dependency. The protocol is code, not discretion. The rules are transparent and unchangeable. The platform survives independently of any company's viability.
 
 ---
 
 ## 3. The ETour Approach
 
-### Settlement Integrity
+### Guaranteed Settlement
 
-Every player who enters a tournament receives an ironclad guarantee: the outcome will be settled automatically, permanently, and without human intervention.
+Every player receives an ironclad guarantee: their ETH will be settled automatically, fairly, permanently, and without any human intervention.
 
-No refunds. No reversals. No exceptions. The smart contracts execute exactly as written.
+Players compete knowing that resolution is guaranteed, is fair, and is permanent.
 
-This sounds harsh until you realize what it means for competitive integrity. There is no human in the middle. There is no appeal to a support team that might be biased, underpaid, or simply overloaded. There is only code and economics.
+This is the foundation of trustless competition.
 
-Players compete knowing that victory is final and failure is permanent. This is the foundation of trustless competition.
-
-### Fair by Design
-
-ETour is not trying to prevent cheating or eliminate bots. That's an endless cat-and-mouse game where billion-dollar companies lose constantly.
-
-Instead, ETour operates under the assumption that bad actors exist and builds the system to be resilient to them.
-
-What ETour does prevent is the *platform* exploiting players. There is no hidden rake. There is no algorithm optimizing for the house's profit. There is no governance vote that changes the rules in favor of token holders.
-
-The fee structure is hardcoded and transparent: 90% to the winner, 7.5% to the creator, 2.5% to sustain the protocol. These percentages cannot be changed. No governance, no voting, no discretion.
-
-The prize pool can only go to the winner. It cannot be forfeited. It cannot be delayed. It cannot be taken back.
-
-This is fairness by design: the code enforces equity more reliably than any human audit ever could.
 
 ### Self-Sustaining Economics
 
-ETour doesn't need token sales, venture funding, or financial engineering to survive.
+A self-sustaining business model is the most radical form of trustlessness.
 
-As long as people want to compete, ETour generates enough revenue to run itself. The 7.5% creator fee and 2.5% protocol fee fund development and infrastructure. The economics are simple enough for anyone to verify: prize pool size multiplied by entry fee equals total revenue. Subtract the fees, and you see exactly how much reaches the winner.
+ETour doesn't need token sales, venture funding, or financial engineering to survive. It runs forever as long as there are players who want to compete.
 
-This simplicity is intentional. A self-sustaining business model is the most radical form of trustlessness — the company can't fail and take the platform with it because the platform doesn't depend on the company. It depends only on Arbitrum's continued existence.
+The fee structure is hardcoded and transparent: players pay a fee to play, 95% of all entry fees goes to the winner, 5% goes to the game's creator. 
+
+### Honest Design
+
+ETour doesn't promise anti-cheat or bot detection. These are endless cat-and-mouse games that even billion-dollar companies lose constantly.
+
+What ETour promises is preventing *platforms* from exploiting players. 
+
+There is no hidden rake. There is no algorithm optimizing for the house's profit. There is no governance vote that changes the rules in favor of token holders.
+
+This is honest and fair design. 
 
 ---
 
@@ -159,36 +149,32 @@ This simplicity is intentional. A self-sustaining business model is the most rad
 
 ETour separates universal tournament logic from game-specific rules.
 
-Game contracts only need to implement move validation, win detection, and state management. Everything else — brackets, matchmaking, timeouts, escalation, prizes, leaderboards — is inherited from the protocol.
+Game contracts only need to implement move validation, win detection, and state management. Everything else like brackets, matchmaking, timeouts, escalation, prizes, leaderboards, are all inherited from the protocol.
 
 This means any developer can build a game on ETour by implementing roughly a dozen functions. Focus on making your game fun and strategic. Let ETour handle the competitive infrastructure.
 
-The three games launching with ETour (Tic-Tac-Toe, Chess, Connect Four) prove this approach works. Each is built by implementing game logic only. The tournament orchestration is not reimplemented — it's reused.
+The three games launching with ETour (Tic-Tac-Toe, Chess, Connect Four) prove this approach works. Each is built by implementing game logic only. The tournament orchestration is reused, not reimplemented.
 
 As more games build on the protocol, network effects emerge naturally: shared player bases, unified leaderboards, cross-game achievements. But growth isn't the goal — sustainability is.
 
 ### What Becomes Possible
 
-ETour proves that blockchain applications can be simple, useful, and sustainable without tokens or speculation.
+ETour proves that blockchain applications can be useful and sustainable without tokenomics and speculation.
 
-This model (fee-based services with transparent economics) represents blockchain's true potential: not as financial engineering, but as trust(less) infrastructure for human coordination.
+This model (fee-based services with transparent economics) represents Web3's true potential; not as financial engineering, but as trust(less) infrastructure for human coordination.
 
-Competitive gaming is just the beginning. Any system where fairness matters and transparency creates value can be rebuilt on this foundation. The same principles that make trustless tournaments possible apply to audits, verification, dispute resolution, and reputation systems.
+Competitive gaming is just the beginning. 
 
-ETour succeeds if it's still running unchanged in ten years, facilitating fair competition for whoever wants to play.
+**Any system where fairness and transparency matter can be built on the same core principles.**
 
 ---
 
 ## 5. Conclusion
 
-ETour is built on a simple belief: competitive players don't need tokens, governance votes, or complex economics. They need fair matches, transparent outcomes, and reliable payouts.
+ETour delivers on the simple idea that Web3 gaming doesn't need new tokens or complex economics. Players want fair matches, transparent outcomes, and reliable payouts.
 
-Everything else is noise.
+**If you're a player:** Pick a game and compete. Test yourself against others with real stakes on the line.
 
-If you're a player: pick a game and compete. Test yourself against others with real stakes on the line.
+**If you're a developer:** Build your game on ETour. Inherit its infrastructure and focus on what makes your game special.
 
-If you're a developer: build your game on ETour. Inherit our infrastructure and focus on what makes your game special.
-
-If you're a skeptic: read the code. Verify the claims. Find flaws.
-
-ETour will be running on Arbitrum long after this whitepaper is outdated. Code is its forever guarantee.
+**If you're a skeptic:** Read the code. Verify the claims. Find flaws.

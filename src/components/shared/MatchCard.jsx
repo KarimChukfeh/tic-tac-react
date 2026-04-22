@@ -20,6 +20,7 @@ import { getMatchStatusText, getMatchStatusColor } from '../../utils/matchStatus
 import { calculatePlayerTimes } from '../../utils/timeCalculations';
 import UserManualAnchorLink, { linkifyReasonText } from './UserManualAnchorLink';
 import { getUserManualHrefForReasonCode } from '../../utils/userManualLinks';
+import { V2TournamentResolutionReason } from '../../v2/lib/reasonLabels';
 
 /**
  * Format seconds into MM:SS display
@@ -93,6 +94,8 @@ const MatchCard = ({
   gameName,
   isTournamentCompleted = false,
   reasonLabelMode = 'default',
+  tournamentCompletionReason = null,
+  totalMatchesInRound = null,
 }) => {
   // Handle both matchStatus and status field names (V1 vs V2)
   const matchStatus = match.matchStatus ?? match.status;
@@ -104,6 +107,30 @@ const MatchCard = ({
   const isPlayer1 = match.player1?.toLowerCase() === account?.toLowerCase();
   const isPlayer2 = match.player2?.toLowerCase() === account?.toLowerCase();
   const completionReason = getMatchCompletionReasonValue(match);
+  const canViewCompletedMatch = Boolean(account) && isTournamentCompleted && matchStatus === 2;
+  const canAccessActiveMatch = Boolean(account) && isUserMatch && matchStatus !== 2;
+  const canSpectateActiveMatch = Boolean(account) && !isUserMatch && matchStatus === 1 && Boolean(onSpectateMatch);
+  const shouldShowMatchCta = canViewCompletedMatch || canAccessActiveMatch;
+  const zeroAddress = '0x0000000000000000000000000000000000000000';
+  const player1Normalized = match.player1?.toLowerCase?.() || '';
+  const player2Normalized = match.player2?.toLowerCase?.() || '';
+  const winnerNormalized = match.winner?.toLowerCase?.() || '';
+  const hasPlayer1 = Boolean(player1Normalized && player1Normalized !== zeroAddress);
+  const hasPlayer2 = Boolean(player2Normalized && player2Normalized !== zeroAddress);
+  const isR2UncontestedFinalistCard = (
+    reasonLabelMode === 'v2' &&
+    isTournamentCompleted &&
+    Number(tournamentCompletionReason) === V2TournamentResolutionReason.UNCONTESTED_FINALS_WIN &&
+    matchStatus === 0 &&
+    ((hasPlayer1 && !hasPlayer2) || (!hasPlayer1 && hasPlayer2))
+  );
+  const finalistAddress = hasPlayer1
+    ? match.player1
+    : hasPlayer2
+      ? match.player2
+      : (winnerNormalized && winnerNormalized !== zeroAddress ? match.winner : null);
+  const isSingleMatchRound = Number(totalMatchesInRound) === 1;
+  const isCompletedMatch = matchStatus === 2;
 
   useEffect(() => {
     if (matchStatus !== 2) return;
@@ -317,12 +344,25 @@ const MatchCard = ({
       className={`bg-black/30 rounded-xl p-4 border-2 transition-all ${borderClass}`}
     >
       {/* Header */}
-      <div className="flex items-center justify-between mb-3">
-        <span className={colors.matchLabel || "text-purple-300 text-sm font-semibold"}>
-          Match {matchIdx + 1}
-        </span>
+      <div className={`flex items-center ${isSingleMatchRound ? 'justify-end' : 'justify-between'} mb-3`}>
+        {!isSingleMatchRound && (
+          <span className={colors.matchLabel || "text-purple-300 text-sm font-semibold"}>
+            Match {matchIdx + 1}
+          </span>
+        )}
         {/* Status */}
         {(() => {
+          if (isR2UncontestedFinalistCard) {
+            return (
+              <UserManualAnchorLink
+                href={getUserManualHrefForReasonCode('R2')}
+                className="text-xs font-bold text-cyan-300 underline decoration-dotted underline-offset-2 hover:text-cyan-200"
+                title="Learn more about R2 in the User Manual"
+              >
+                R2 Uncontested Finalist
+              </UserManualAnchorLink>
+            );
+          }
           // For completed matches, show a viewer-relative outcome pill.
           if (matchStatus === 2) {
             const userWon = match.winner?.toLowerCase() === account?.toLowerCase();
@@ -420,6 +460,23 @@ const MatchCard = ({
       )}
 
       <div className="space-y-2">
+        {isR2UncontestedFinalistCard ? (
+          <div className={`flex items-center justify-between p-2 rounded ${getPlayer1BgClass()}`}>
+            <div className="flex flex-col">
+              <div className="flex items-center gap-1.5">
+                {playerIcons?.player1 && <span className="text-lg">{playerIcons.player1}</span>}
+                <span className="text-white font-mono text-sm">
+                  {shortenAddress(finalistAddress)}
+                </span>
+              </div>
+              {showThisIsYou && finalistAddress?.toLowerCase?.() === account?.toLowerCase() && (
+                <span className="text-yellow-300 text-xs font-bold mt-0.5">THIS IS YOU</span>
+              )}
+            </div>
+            <Award className="text-green-400" size={16} />
+          </div>
+        ) : (
+          <>
         {/* Player 1 */}
         <div className={`flex items-center justify-between p-2 rounded ${getPlayer1BgClass()}`}>
           <div className="flex flex-col">
@@ -474,7 +531,13 @@ const MatchCard = ({
               </span>
             )}
             {match.winner?.toLowerCase() === match.player1?.toLowerCase() && (
-              <Award className="text-green-400" size={16} />
+              isCompletedMatch ? (
+                <span className="text-[11px] font-extrabold tracking-wide text-green-300">
+                  WINS
+                </span>
+              ) : (
+                <Award className="text-green-400" size={16} />
+              )
             )}
           </div>
         </div>
@@ -535,43 +598,41 @@ const MatchCard = ({
               </span>
             )}
             {match.winner?.toLowerCase() === match.player2?.toLowerCase() && (
-              <Award className="text-green-400" size={16} />
+              isCompletedMatch ? (
+                <span className="text-[11px] font-extrabold tracking-wide text-green-300">
+                  WINS
+                </span>
+              ) : (
+                <Award className="text-green-400" size={16} />
+              )
             )}
           </div>
         </div>
-
-        {/* Match CTA for user's matches */}
-        {isUserMatch && (isTournamentCompleted || matchStatus !== 2) && (
-          <button
-            onClick={() => onEnterMatch(tierId, instanceId, roundIdx, matchIdx)}
-            disabled={loading || (!isTournamentCompleted && matchStatus === 0)}
-            className={`w-full mt-2 bg-gradient-to-r ${isTournamentCompleted ? 'from-purple-500 to-violet-500 hover:from-purple-600 hover:to-violet-600' : 'from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600'} disabled:from-gray-500 disabled:to-gray-600 text-white font-bold py-2 px-4 rounded-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2`}
-          >
-            {isTournamentCompleted ? (
-              <>
-                <Eye size={16} />
-                View Match
-              </>
-            ) : (
-              <>
-                <Play size={16} />
-                {matchStatus === 0 ? 'Waiting to Start' : 'Enter Match'}
-              </>
-            )}
-          </button>
+          </>
         )}
 
-        {/* COMMENTED OUT: Spectate Button disabled for now */}
-        {/* {!isUserMatch && match.matchStatus === 1 && onSpectateMatch && (
-          <button
-            onClick={() => onSpectateMatch(tierId, instanceId, roundIdx, matchIdx)}
-            disabled={loading}
-            className="w-full mt-2 bg-gradient-to-r from-blue-500/80 to-purple-500/80 hover:from-blue-600/90 hover:to-purple-600/90 disabled:from-gray-500 disabled:to-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
-          >
-            <Eye size={16} />
-            Spectate Match
-          </button>
-        )} */}
+        {/* Match CTA for user's matches */}
+        {shouldShowMatchCta && (
+          <div className="pt-4">
+            <button
+              onClick={() => onEnterMatch(tierId, instanceId, roundIdx, matchIdx)}
+              disabled={loading || (!isTournamentCompleted && matchStatus === 0)}
+              className={`w-full bg-gradient-to-r ${isTournamentCompleted ? 'from-purple-500 to-violet-500 hover:from-purple-600 hover:to-violet-600' : 'from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600'} disabled:from-gray-500 disabled:to-gray-600 text-white font-bold py-2 px-4 rounded-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2`}
+            >
+              {isTournamentCompleted ? (
+                <>
+                  <Eye size={16} />
+                  View Match
+                </>
+              ) : (
+                <>
+                  <Play size={16} />
+                  {matchStatus === 0 ? 'Waiting to Start' : 'Enter Match'}
+                </>
+              )}
+            </button>
+          </div>
+        )}
 
         {/* Escalation CTAs for outsiders */}
         {showEscalation && !isUserMatch && matchStatus === 1 && (
@@ -626,6 +687,19 @@ const MatchCard = ({
               </div>
             )}
           </>
+        )}
+
+        {canSpectateActiveMatch && (
+          <div className="mt-2">
+            <button
+              onClick={() => onSpectateMatch(tierId, instanceId, roundIdx, matchIdx)}
+              disabled={loading}
+              className="w-full bg-gradient-to-r from-blue-500/80 to-purple-500/80 hover:from-blue-600/90 hover:to-purple-600/90 disabled:from-gray-500 disabled:to-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
+            >
+              <Eye size={16} />
+              Spectate
+            </button>
+          </div>
         )}
       </div>
     </div>

@@ -1,6 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom'
 import Landing from './Landing.jsx'
 import TicTacChain from './TicTacChain.jsx'
 import Chess from './Chess.jsx'
@@ -10,10 +10,9 @@ import ConnectFourV2 from './v2/pages/ConnectFourV2.jsx'
 import ChessV2 from './v2/pages/ChessV2.jsx'
 import Whitepaper from './Whitepaper.jsx'
 import Manual from './Manual.jsx'
+import Docs from './Docs.jsx'
 import NotFound from './NotFound.jsx'
-import WalletBrowserPrompt from './components/WalletBrowserPrompt.jsx'
 import './index.css'
-import { useWalletBrowserPrompt } from './hooks/useWalletBrowserPrompt'
 import { useErudaDebugConsole } from './hooks/useErudaDebugConsole'
 
 const PAGE_EXIT_DURATION_MS = 180;
@@ -44,6 +43,22 @@ function ScrollToTopOnPathChange({ pathname }) {
   }, [pathname]);
 
   return null;
+}
+
+function CanonicalRedirect({ to }) {
+  const location = useLocation();
+
+  return (
+    <Navigate
+      to={{
+        pathname: to,
+        search: location.search,
+        hash: location.hash,
+      }}
+      replace
+      state={location.state}
+    />
+  );
 }
 
 function AppRoutes() {
@@ -120,15 +135,19 @@ function AppRoutes() {
       >
         <Routes location={displayLocation}>
           <Route path="/" element={<Landing />} />
-          <Route path="/tictactoe" element={<TicTacChain />} />
-          <Route path="/chess" element={<Chess />} />
-          <Route path="/connect4" element={<ConnectFour />} />
-          <Route path="/v2/tictactoe" element={<TicTacToeV2 />} />
-          <Route path="/v2/connec4" element={<ConnectFourV2 />} />
-          <Route path="/v2/connect4" element={<ConnectFourV2 />} />
-          <Route path="/v2/chess" element={<ChessV2 />} />
+          <Route path="/tictactoe" element={<TicTacToeV2 />} />
+          <Route path="/connect4" element={<ConnectFourV2 />} />
+          <Route path="/chess" element={<ChessV2 />} />
+          <Route path="/v1/tictactoe" element={<TicTacChain />} />
+          <Route path="/v1/connect4" element={<ConnectFour />} />
+          <Route path="/v1/chess" element={<Chess />} />
+          <Route path="/v2/tictactoe" element={<CanonicalRedirect to="/tictactoe" />} />
+          <Route path="/v2/connec4" element={<CanonicalRedirect to="/connect4" />} />
+          <Route path="/v2/connect4" element={<CanonicalRedirect to="/connect4" />} />
+          <Route path="/v2/chess" element={<CanonicalRedirect to="/chess" />} />
           <Route path="/whitepaper" element={<Whitepaper />} />
           <Route path="/manual" element={<Manual />} />
+          <Route path="/docs" element={<Docs />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </div>
@@ -136,25 +155,11 @@ function AppRoutes() {
   )
 }
 
-// Wrapper component to handle wallet browser deep linking on mobile
 function App() {
-  // Get wallet browser prompt state and handlers
-  const { showPrompt, handleWalletChoice, handleContinueChoice } = useWalletBrowserPrompt();
-
   return (
-    <>
-      {/* Show wallet browser choice prompt on mobile */}
-      {showPrompt && (
-        <WalletBrowserPrompt
-          onWalletChoice={handleWalletChoice}
-          onContinueChoice={handleContinueChoice}
-        />
-      )}
-
-      <BrowserRouter>
-        <AppRoutes />
-      </BrowserRouter>
-    </>
+    <BrowserRouter>
+      <AppRoutes />
+    </BrowserRouter>
   )
 }
 

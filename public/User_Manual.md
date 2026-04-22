@@ -37,7 +37,7 @@
   - [5.3.2: ML2 — Eliminate Both Players in a Stalled Match](#532-ml2--eliminate-both-players-in-a-stalled-match)
   - [5.3.3: ML3 — Replace Players in an Abandoned Match](#533-ml3--replace-players-in-an-abandoned-match)
 
-**6. Edge Cases & FAQ**
+**6. FAQ**
 - [6.1: What if nobody joins my lobby?](#61-what-if-nobody-joins-my-lobby)
 - [6.2: What if my opponent disconnects?](#62-what-if-my-opponent-disconnects)
 - [6.3: What if all matches in a round draw?](#63-what-if-all-matches-in-a-round-draw)
@@ -47,7 +47,7 @@
 - [6.7: Can I withdraw after enrolling?](#67-can-i-withdraw-after-enrolling)
 - [6.8: What happens to my ETH if the tournament never starts?](#68-what-happens-to-my-eth-if-the-tournament-never-starts)
 
-**[7. Glossary](#7-glossary)**
+**[7. Appendix](#7-appendix)**
 
 ---
 
@@ -79,7 +79,7 @@ You decide who competes and what's at stake:
 
 5) Winners advance. Losers are eliminated. 
 
-6) The champion takes **the entire prize pool** (95% of the all entry fees).
+6) The champion takes **the entire prize pool** (95% of all entry fees).
 
 ### 1.3: What You Need
 
@@ -145,17 +145,17 @@ If you are the sole enrollee and decide you no longer want to wait, you can canc
 ### 2.3: Prize Pool
 
 **How the Pool is Calculated**
-The prize pool is simple: entry fee multiplied by number of enrolled players.
+The prize pool is simple: entry fee multiplied by the number of enrolled players.
 
-For example, a 4-player lobby with a 0.01 ETH entry fee has a total prize pool of 0.04 ETH.
+For example, a 4-player lobby with a 0.01 ETH entry fee has a pot of 0.04 ETH.
 
 **Fee Breakdown**
-Every entry fee is split two ways at the moment the tournament resolves:
+Every pot is split two ways at the moment the tournament resolves:
 
 | Recipient | Share |
 |---|---|
 | Tournament winner | 95% |
-| ETour creator | 5% |
+| Game developer | 5% |
 
 These percentages are hardcoded in the smart contract and cannot be changed by anyone. No governance, no admin adjustments, no surprises.
 
@@ -163,9 +163,9 @@ These percentages are hardcoded in the smart contract and cannot be changed by a
 
 | Allocation | Amount |
 |---|---|
-| Prize pool (95%) | 0.038 ETH |
-| ETour creator (5%) | 0.002 ETH |
-| Total | 0.040 ETH |
+| Total pot (100%) | 0.040 ETH |
+| Tournament winner (95%) | 0.038 ETH |
+| Game developer (5%) | 0.002 ETH |
 
 **When and How You Get Paid**
 The winner receives their ETH the moment the final match resolves. No withdrawal step, no waiting period, no approval required. The smart contract sends the prize pool directly to the winner's wallet automatically.
@@ -194,8 +194,8 @@ Every move you make is a blockchain transaction. This means every move costs a s
 
 Every move is permanent and publicly verifiable. Nobody can alter a move after it's been made. Nobody can reverse an outcome after it's been determined.
 
-**The Fischer Timer**
-Each player has a time bank for their moves. This is a Fischer timer. You start with a base time and receive a small increment added back to your clock after each move you make.
+**Player Timer**
+Each player has a time bank for their moves. You start with a base time and receive a small increment added back to your clock after each move you make.
 
 Time management is part of the game. Run low on time and you must play faster, potentially making mistakes under pressure. Your opponent knows when you're running low and may try to complicate positions to exploit your time trouble.
 
@@ -224,7 +224,7 @@ These are resolution reasons 4.2 (R1) and 4.3 (R2). See Section 4: Resolution fo
 ### 4.0: Taxonomy Overview
 
 **What is a Resolution Reason?**
-Every tournament on ETour ends for a reason. That reason is codified as a resolution code, a short identifier that tells you exactly why and how a tournament concluded.
+Every match and tournament on ETour end for a reason. That reason is codified as a resolution code, a short identifier that tells you exactly why and how a match or tournament concluded.
 
 Resolution reasons exist at two levels:
 
@@ -237,14 +237,14 @@ Understanding resolution reasons helps you know exactly what happened to your to
 
 | Code | Name | Trigger |
 |---|---|---|
-| R0 | Normal resolution | Full bracket, clear winner, no complications |
-| R1 | Draw resolution | Finals draw, or all matches in a round draw |
-| R2 | Uncontested finalist | Other semifinal ends in a draw |
-| EL0 | Canceled tournament | Solo enrollee cancels before anyone else joins |
-| EL2 | Abandoned tournament | Insufficient enrollment, outsider claims prize pool |
-| ML1 | Match timeout | Player's clock hits zero, opponent claims victory |
-| ML2 | Advanced player wins | Stalled match eliminated by advanced player |
-| ML3 | Outsider replaces both players | Both players stall, outsider claims their spots |
+| R0 | Normal resolution | Clear winner, no complications |
+| R1 | Draw resolution | Match ended in a draw |
+| R2 | Uncontested finalist | Sole finalist wins because of a draw in the other semifinals |
+| EL0 | Canceled tournament | Solo enrollee cancelled the instance |
+| EL2 | Abandoned tournament | Insufficient enrollment, outsider claimed prize pool |
+| ML1 | Match timeout | Player's clock hit zero, opponent claimed victory |
+| ML2 | Advanced player wins | Advanced player eliminated both stalled players |
+| ML3 | Outsider replaces both players | Outsider replaced both stalled players |
 
 ### 4.1: R0 - Normal Resolution
 
@@ -340,7 +340,7 @@ EL2 is the nuclear option. It exists to ensure tournaments never get permanently
 ML1 occurs when a player's clock hits zero during a match. Their opponent can claim victory by forfeit.
 
 **What triggers it**
-A player's Fischer timer reaches zero during an active match.
+A player's timer reaches zero during an active match.
 
 **What happens**
 The opponent can claim victory immediately. The timed-out player is eliminated. The match resolves as ML1. The winner advances normally.
@@ -494,7 +494,7 @@ Match escalations apply during active gameplay, after the tournament has started
 ML1 is the first and most direct match escalation. When your opponent's clock hits zero, you can claim victory by forfeit.
 
 **When it becomes available**
-Your opponent's Fischer timer reaches zero.
+Your opponent's timer reaches zero.
 
 **Who can trigger it**
 The active opponent in the match, the player whose clock has not hit zero.
@@ -554,7 +554,7 @@ The existence of ML3 creates a cascading pressure effect across all three match 
 
 Inaction at every level is punished. Action at every level is rewarded. This is ETour's core anti-griefing guarantee.
 
-## 6. Edge Cases & FAQ
+## 6. FAQ
 
 ### 6.1: What if nobody joins my lobby?
 
@@ -574,7 +574,7 @@ From ETour's perspective, a disconnected opponent is identical to a stalling opp
 
 If your opponent stops making moves:
 
-1. Wait for their Fischer timer to hit zero
+1. Wait for their timer to hit zero
 2. Claim victory via 5.3.1 (ML1). Your opponent is eliminated, and you advance.
 
 Do not wait indefinitely for a disconnected opponent to return. Once their clock hits zero, claim your victory immediately. The option is available to you and it does not expire.
@@ -605,11 +605,11 @@ If you are a finalist and both you and your opponent have stalled, be aware that
 
 ### 6.6: What if I run out of time on my clock?
 
-If your Fischer timer hits zero, your opponent can claim victory over you via 5.3.1 (ML1) at any moment. You cannot make any more moves once your clock hits zero.
+If your timer hits zero, your opponent can claim victory over you via 5.3.1 (ML1) at any moment.
 
-There is no appeal, no extension, and no grace period. Time management is your responsibility. If your clock hits zero, you have lost the match. Your opponent simply needs to claim it.
+Time management is your responsibility. If your clock hits zero, your opponent can claim the match.
 
-**Prevention:** Manage your time bank carefully. The Fischer timer gives you a small increment after each move you make, so staying active keeps your clock healthier than going silent for long periods.
+**Prevention:** Manage your time bank carefully. The timer gives you a small increment after each move you make, so staying active keeps your clock healthier than going silent for long periods.
 
 ### 6.7: Can I withdraw after enrolling?
 
@@ -630,40 +630,33 @@ If you are enrolled in a lobby that never fills:
 
 The safest path: if your lobby isn't filling and the enrollment window is expiring, trigger EL1 yourself. Start the tournament with whoever showed up. Don't wait for EL2 to become available to outsiders.
 
-## 7. Glossary
+## 7. Appendix
 
-**Bracket**
-The single elimination structure that pairs players into matches round by round until one player remains.
 
 **Entry fee**
 The amount of ETH each player pays to enroll in a lobby. Set by the lobby creator. All entry fees pool together to form the prize pool.
 
 **Enrollment window**
-The time period during which players can join a lobby after it has been created. Can be reset by the sole enrollee via 5.2.2 (EL1*).
+The time period during which players can join a lobby after it has been created.
+
+**Lobby**
+The pre-tournament space where players gather and enroll. A lobby is configured by its creator with a player count and entry fee. Once the lobby fills, it becomes an active tournament.
+
+**Prize pool**
+The total ETH at stake in a tournament. Equals to 95% of the ETH entry fee multiplied by the number of enrolled players.
+
+**Instance**
+The smart contract deployment that represents a specific tournament. Each lobby creates its own on-chain tournament instance.
+
+**Player timer**
+The timer each player gets to make their moves during match. 
 
 **Escalation level**
 A time-triggered intervention that becomes available when a tournament or match stalls. Each escalation level opens to a wider group of potential triggers over time.
 
-**Fischer timer**
-The time control system used in ETour matches. Each player starts with a base time bank and receives a small time increment added back to their clock after each move they make.
-
-**Instance**
-The smart contract deployment that represents a specific tournament. Each lobby creates its own on-chain instance.
-
-**Lobby**
-The pre-tournament space where players gather and enroll. A lobby is configured by its creator with a player count, entry fee, and public or private visibility. Once the lobby fills, it becomes an active tournament.
-
-**Prize pool**
-The total ETH at stake in a tournament. Equal to the entry fee multiplied by the number of enrolled players. 95% goes to the winner, 5% to ETour.
-
 **Resolution reason**
-The codified explanation for how and why a tournament ended. Every tournament resolves with exactly one resolution reason. See 4.0 for the full taxonomy.
+The codified explanation for how a match or tournament ended. Every match and every tournament resolve with exactly one resolution reason. See 4.0 for the full taxonomy.
 
-**Single elimination**
-The bracket format used by ETour. One loss and you're out. Winners advance until one player remains.
-
-**Tournament**
-An active competition on ETour. A lobby becomes a tournament the moment it starts. Tournaments run autonomously on-chain from start to payout with no admin intervention.
 
 ---
 

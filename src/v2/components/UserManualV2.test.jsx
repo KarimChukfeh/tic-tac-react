@@ -20,10 +20,10 @@ const manualMarkdown = `## Table of Contents
 - [5.3: Match Escalations](#53-match-escalations)
   - [5.3.1: ML1 — Claim Victory by Opponent Timeout](#531-ml1--claim-victory-by-opponent-timeout)
 
-**6. Edge Cases & FAQ**
+**6. FAQ**
 - [6.1: What if nobody joins my lobby?](#61-what-if-nobody-joins-my-lobby)
 
-**[7. Glossary](#7-glossary)**
+**[7. Appendix](#7-appendix)**
 
 ---
 
@@ -64,14 +64,15 @@ Force-start the tournament.
 #### 5.3.1: ML1 — Claim Victory by Opponent Timeout
 
 Trigger ML1 when your opponent times out.
+If your timer hits zero, your opponent can claim victory over you via 5.3.1 (ML1) at any moment.
 
-## 6. Edge Cases & FAQ
+## 6. FAQ
 
 ### 6.1: What if nobody joins my lobby?
 
 No. The moment a second player joins, you lose the ability to cancel.
 
-## 7. Glossary
+## 7. Appendix
 
 **Batch**
 All matches within the same round.
@@ -125,14 +126,14 @@ describe('UserManualV2', () => {
     fireEvent.click(screen.getByRole('button', { name: '3. Matches & Play' }));
 
     expect(screen.queryByText('No. The moment a second player joins, you lose the ability to cancel.')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '6. Edge Cases & FAQ' }));
+    fireEvent.click(screen.getByRole('button', { name: '6. FAQ' }));
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /6.1: What if nobody joins my lobby\?/i })).toBeInTheDocument();
     });
     fireEvent.click(screen.getByRole('button', { name: /6.1: What if nobody joins my lobby\?/i }));
     expect(screen.getByText('No. The moment a second player joins, you lose the ability to cancel.')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: '7. Glossary' }));
+    fireEvent.click(screen.getByRole('button', { name: '7. Appendix' }));
     await waitFor(() => {
       expect(screen.getByText('Batch')).toBeInTheDocument();
     });
@@ -153,13 +154,49 @@ describe('UserManualV2', () => {
 
     expect(await screen.findByRole('heading', { name: '1.1: What is ETour?' })).toBeInTheDocument();
     expect(screen.getByText('Draws eliminate both players.')).toBeInTheDocument();
-    expect(screen.getByText('Trigger ML1 when your opponent times out.')).toBeInTheDocument();
+    expect(screen.getByText(/Trigger ML1 when your opponent times out\./, { selector: 'p' })).toBeInTheDocument();
     expect(screen.getByText('Batch')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '5.3.1 (ML1)' })).toHaveAttribute('href', '#531-ml1--claim-victory-by-opponent-timeout');
 
     fireEvent.click(screen.getByRole('button', { name: '3. Matches & Play' }));
 
     await waitFor(() => {
       expect(window.location.hash).toBe('#3-matches--play');
+    });
+  });
+
+  it('linkifies section references inside markdown body content', async () => {
+    render(<UserManualV2 defaultExpanded collapsible={false} showAllSections />);
+
+    const crossReference = await screen.findByRole('link', { name: '5.3.1 (ML1)' });
+
+    expect(crossReference).toHaveAttribute('href', '#531-ml1--claim-victory-by-opponent-timeout');
+
+    fireEvent.click(crossReference);
+
+    await waitFor(() => {
+      expect(window.location.hash).toBe('#531-ml1--claim-victory-by-opponent-timeout');
+    });
+  });
+
+  it('opens the full manual navigation in a mobile drawer', async () => {
+    render(<UserManualV2 defaultExpanded collapsible={false} showAllSections />);
+
+    expect(await screen.findByRole('heading', { name: '1.1: What is ETour?' })).toBeInTheDocument();
+
+    const toggle = screen.getByRole('button', { name: 'Open manual navigation' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.click(toggle);
+
+    expect(screen.getByRole('button', { name: 'Close manual navigation', expanded: true })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Browse The Manual' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByRole('link', { name: '3.2: Draws' }).at(-1));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Open manual navigation' })).toHaveAttribute('aria-expanded', 'false');
+      expect(window.location.hash).toBe('#32-draws');
     });
   });
 
@@ -172,8 +209,8 @@ describe('UserManualV2', () => {
     const thirdSection = document.getElementById('3-matches--play');
     const fourthSection = document.getElementById('4-resolution');
     const fifthSection = document.getElementById('5-anti-griefing');
-    const sixthSection = document.getElementById('6-edge-cases--faq');
-    const seventhSection = document.getElementById('7-glossary');
+    const sixthSection = document.getElementById('6-faq');
+    const seventhSection = document.getElementById('7-appendix');
 
     const createRect = (top) => ({
       top,
@@ -219,8 +256,8 @@ describe('UserManualV2', () => {
     const thirdSection = document.getElementById('3-matches--play');
     const fourthSection = document.getElementById('4-resolution');
     const fifthSection = document.getElementById('5-anti-griefing');
-    const sixthSection = document.getElementById('6-edge-cases--faq');
-    const seventhSection = document.getElementById('7-glossary');
+    const sixthSection = document.getElementById('6-faq');
+    const seventhSection = document.getElementById('7-appendix');
 
     const createRect = (top) => ({
       top,
