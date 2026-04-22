@@ -14,7 +14,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import {
-  Grid,
   Shield,
   Link2,
   Lock,
@@ -53,6 +52,7 @@ import RecentMatchesCard from '../../components/shared/RecentMatchesCard';
 import GamesCard from '../../components/shared/GamesCard';
 import BracketScrollHint from '../../components/shared/BracketScrollHint';
 import RecentInstanceCard from '../../components/shared/RecentInstanceCard';
+import TraditionalTournamentBracket from '../../components/shared/TraditionalTournamentBracket';
 import UserManualAnchorIcon from '../../components/shared/UserManualAnchorIcon';
 import V2GameLobbyIntro from '../../components/shared/V2GameLobbyIntro';
 import V2ContractsTable from '../../components/shared/V2ContractsTable';
@@ -446,60 +446,44 @@ const TournamentBracket = ({
         onPlayerAddressClick={onPlayerAddressClick}
       />
 
-      <div ref={bracketViewRef} className={`bg-gradient-to-br from-slate-900/50 to-purple-900/30 backdrop-blur-lg rounded-2xl p-8 border ${colors.headerBorder}`}>
-        <h3 className={`text-2xl font-bold ${colors.text} mb-3 flex items-center gap-2`}>
-          <Grid size={24} />
-          {tournamentTypeLabel} Bracket
-        </h3>
-
-        {hasValidRounds ? (
-          <div className="space-y-8">
-            {rounds.map((round, roundIdx) => (
-              <div key={roundIdx}>
-                <h4 className={`text-xl font-bold ${colors.icon} mb-4`}>
-                  Round {roundIdx + 1}
-                  {roundIdx === totalRounds - 1 && ' - Finals'}
-                  {roundIdx === totalRounds - 2 && rounds.length > 1 && ' - Semi-Finals'}
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {round.matches.map((match, matchIdx) => (
-                    <div key={matchIdx}>
-                      <MatchCard
-                        match={match}
-                        reasonLabelMode="v2"
-                        tournamentCompletionReason={tournamentData.completionReason}
-                        totalMatchesInRound={round.matches.length}
-                        matchIdx={matchIdx}
-                        roundIdx={roundIdx}
-                        tierId={tierId}
-                        instanceId={instanceId}
-                        account={account}
-                        loading={loading}
-                        onEnterMatch={onEnterMatch}
-                        onSpectateMatch={onSpectateMatch}
-                        onForceEliminate={onForceEliminate}
-                        onClaimReplacement={onClaimReplacement}
-                        matchStatusOptions={matchStatusOptions}
-                        showEscalation={true}
-                        showThisIsYou={true}
-                        gameName="tictactoe"
-                        isTournamentCompleted={status === 2}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="space-y-6">
-            <div className="text-left py-4">
-              <div className={`${colors.text} text-lg`}>
-                {status === 0
-                  ? 'Brackets will be generated once the instance starts.'
-                  : 'No bracket data available.'}
-              </div>
-            </div>
+      <TraditionalTournamentBracket
+        bracketRef={bracketViewRef}
+        title="Bracket"
+        rounds={rounds}
+        hasValidRounds={hasValidRounds}
+        panelClassName={`bg-gradient-to-br from-slate-900/50 to-purple-900/30 backdrop-blur-lg rounded-2xl p-8 border ${colors.headerBorder}`}
+        titleClassName={`text-2xl font-bold ${colors.text}`}
+        roundLabelClassName={`text-sm font-semibold uppercase tracking-[0.22em] ${colors.icon}`}
+        emptyStateClassName={`${colors.text} text-lg`}
+        emptyMessage={status === 0
+          ? 'Brackets will be generated once the instance starts.'
+          : 'No bracket data available.'}
+        renderMatch={({ match, round, roundIdx, matchIdx }) => (
+          <MatchCard
+            match={match}
+            reasonLabelMode="v2"
+            tournamentCompletionReason={tournamentData.completionReason}
+            totalMatchesInRound={round.matches.length}
+            matchIdx={matchIdx}
+            roundIdx={roundIdx}
+            tierId={tierId}
+            instanceId={instanceId}
+            account={account}
+            loading={loading}
+            onEnterMatch={onEnterMatch}
+            onSpectateMatch={onSpectateMatch}
+            onForceEliminate={onForceEliminate}
+            onClaimReplacement={onClaimReplacement}
+            matchStatusOptions={matchStatusOptions}
+            showEscalation={true}
+            showThisIsYou={true}
+            gameName="tictactoe"
+            compact={true}
+            isTournamentCompleted={status === 2}
+          />
+        )}
+        renderEmpty={() => (
+          <>
             {enrolledCount === 0 && <hr className="border-purple-500/20" />}
             {enrolledCount === 0 && (
               <div id="last-instance">
@@ -513,9 +497,9 @@ const TournamentBracket = ({
                 />
               </div>
             )}
-          </div>
+          </>
         )}
-      </div>
+      />
 
       <BracketScrollHint
         bracketRef={bracketViewRef}

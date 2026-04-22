@@ -257,9 +257,9 @@ export function getTournamentTypeLabel(playerCount) {
 }
 
 export function getRoundLabel(roundIndex, totalRounds) {
-  if (totalRounds <= 1) return 'Final';
-  if (roundIndex === totalRounds - 1) return 'Final';
-  if (roundIndex === totalRounds - 2) return 'Semi Final';
+  if (totalRounds <= 1) return 'Finals';
+  if (roundIndex === totalRounds - 1) return 'Finals';
+  if (roundIndex === totalRounds - 2) return 'Semi Finals';
   return `Round ${roundIndex + 1}`;
 }
 

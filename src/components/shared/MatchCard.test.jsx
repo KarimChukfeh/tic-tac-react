@@ -19,7 +19,7 @@ const activeMatch = {
 };
 
 describe('MatchCard', () => {
-  it('shows View Match for completed tournaments even when the connected wallet is not in the match', () => {
+  it('shows View for completed tournaments even when the connected wallet is not in the match', () => {
     const onEnterMatch = vi.fn();
 
     render(
@@ -38,12 +38,12 @@ describe('MatchCard', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /view match/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^view$/i }));
 
     expect(onEnterMatch).toHaveBeenCalledWith(0, 0, 2, 1);
   });
 
-  it('does not show View Match for completed tournaments when no wallet is connected', () => {
+  it('does not show View for completed tournaments when no wallet is connected', () => {
     render(
       <MatchCard
         match={completedMatch}
@@ -60,7 +60,7 @@ describe('MatchCard', () => {
       />
     );
 
-    expect(screen.queryByRole('button', { name: /view match/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^view$/i })).not.toBeInTheDocument();
   });
 
   it('shows Spectate for an active match when a connected outsider views the card', () => {

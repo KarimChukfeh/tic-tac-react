@@ -73,6 +73,7 @@ const getBorderClass = (isUserMatch, isStalled, escL2Available, escL3Available, 
  * @param {boolean} [props.showThisIsYou=false] - Whether to show "THIS IS YOU" label
  * @param {Object} [props.colors] - Color theme overrides
  * @param {string} [props.gameName] - Game name ('tictactoe', 'chess', 'connect4')
+ * @param {boolean} [props.compact=false] - Use a denser bracket layout
  */
 const MatchCard = ({
   match,
@@ -92,6 +93,7 @@ const MatchCard = ({
   showThisIsYou = false,
   colors = {},
   gameName,
+  compact = false,
   isTournamentCompleted = false,
   reasonLabelMode = 'default',
   tournamentCompletionReason = null,
@@ -341,12 +343,12 @@ const MatchCard = ({
   return (
     <div
       id={`r${roundIdx}m${matchIdx}`}
-      className={`bg-black/30 rounded-xl p-4 border-2 transition-all ${borderClass}`}
+      className={`bg-black/30 rounded-xl border-2 transition-all ${compact ? 'p-3 sm:p-4' : 'p-4'} ${borderClass}`}
     >
       {/* Header */}
       <div className={`flex items-center ${isSingleMatchRound ? 'justify-end' : 'justify-between'} mb-3`}>
         {!isSingleMatchRound && (
-          <span className={colors.matchLabel || "text-purple-300 text-sm font-semibold"}>
+          <span className={colors.matchLabel || `${compact ? 'text-xs sm:text-sm' : 'text-sm'} text-purple-300 font-semibold`}>
             Match {matchIdx + 1}
           </span>
         )}
@@ -459,13 +461,13 @@ const MatchCard = ({
         </div>
       )}
 
-      <div className="space-y-2">
+      <div className={compact ? 'space-y-1.5 sm:space-y-2' : 'space-y-2'}>
         {isR2UncontestedFinalistCard ? (
-          <div className={`flex items-center justify-between p-2 rounded ${getPlayer1BgClass()}`}>
+          <div className={`flex items-center justify-between rounded ${compact ? 'p-2' : 'p-2'} ${getPlayer1BgClass()}`}>
             <div className="flex flex-col">
               <div className="flex items-center gap-1.5">
                 {playerIcons?.player1 && <span className="text-lg">{playerIcons.player1}</span>}
-                <span className="text-white font-mono text-sm">
+                <span className={`text-white font-mono ${compact ? 'text-xs sm:text-sm' : 'text-sm'}`}>
                   {shortenAddress(finalistAddress)}
                 </span>
               </div>
@@ -478,11 +480,11 @@ const MatchCard = ({
         ) : (
           <>
         {/* Player 1 */}
-        <div className={`flex items-center justify-between p-2 rounded ${getPlayer1BgClass()}`}>
+        <div className={`flex items-center justify-between rounded ${compact ? 'p-2' : 'p-2'} ${getPlayer1BgClass()}`}>
           <div className="flex flex-col">
             <div className="flex items-center gap-1.5">
               {playerIcons?.player1 && <span className="text-lg">{playerIcons.player1}</span>}
-              <span className="text-white font-mono text-sm">
+              <span className={`text-white font-mono ${compact ? 'text-xs sm:text-sm' : 'text-sm'}`}>
                 {shortenAddress(match.player1)}
               </span>
               {player1Symbol && (
@@ -542,14 +544,14 @@ const MatchCard = ({
           </div>
         </div>
 
-        <div className={colors.vsText || "text-center text-purple-400 font-bold"}>VS</div>
+        <div className={colors.vsText || `text-center text-purple-400 font-bold ${compact ? 'text-xs sm:text-sm' : ''}`}>VS</div>
 
         {/* Player 2 */}
-        <div className={`flex items-center justify-between p-2 rounded ${getPlayer2BgClass()}`}>
+        <div className={`flex items-center justify-between rounded ${compact ? 'p-2' : 'p-2'} ${getPlayer2BgClass()}`}>
           <div className="flex flex-col">
             <div className="flex items-center gap-1.5">
               {playerIcons?.player2 && <span className="text-lg">{playerIcons.player2}</span>}
-              <span className="text-white font-mono text-sm">
+              <span className={`text-white font-mono ${compact ? 'text-xs sm:text-sm' : 'text-sm'}`}>
                 {shortenAddress(match.player2)}
               </span>
               {player2Symbol && (
@@ -613,16 +615,16 @@ const MatchCard = ({
 
         {/* Match CTA for user's matches */}
         {shouldShowMatchCta && (
-          <div className="pt-4">
+          <div className={compact ? 'pt-3' : 'pt-4'}>
             <button
               onClick={() => onEnterMatch(tierId, instanceId, roundIdx, matchIdx)}
               disabled={loading || (!isTournamentCompleted && matchStatus === 0)}
-              className={`w-full bg-gradient-to-r ${isTournamentCompleted ? 'from-purple-500 to-violet-500 hover:from-purple-600 hover:to-violet-600' : 'from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600'} disabled:from-gray-500 disabled:to-gray-600 text-white font-bold py-2 px-4 rounded-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2`}
+              className={`w-full bg-gradient-to-r ${isTournamentCompleted ? 'from-purple-500 to-violet-500 hover:from-purple-600 hover:to-violet-600' : 'from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600'} disabled:from-gray-500 disabled:to-gray-600 text-white font-bold ${compact ? (isTournamentCompleted ? 'py-1 px-2 text-[11px]' : 'py-2 px-3 text-sm') : 'py-2 px-4'} rounded-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2`}
             >
               {isTournamentCompleted ? (
                 <>
-                  <Eye size={16} />
-                  View Match
+                  <Eye size={compact ? 12 : 16} />
+                  View
                 </>
               ) : (
                 <>
@@ -648,14 +650,14 @@ const MatchCard = ({
                     matchNumber: matchIdx
                   })}
                   disabled={loading}
-                  className="w-full bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 flex items-center justify-center gap-2 text-xs"
+                  className={`w-full bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 text-white font-semibold ${compact ? 'py-2 px-3' : 'py-2 px-4'} rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 flex items-center justify-center gap-2 text-xs`}
                 >
                   <Zap size={14} />
                   {loading ? 'Eliminating...' : 'Force Eliminate Both'}
                 </button>
                 <UserManualAnchorLink
                   href={getUserManualHrefForReasonCode('ML2')}
-                  className="block w-full text-center text-yellow-300 hover:text-yellow-200 hover:bg-yellow-500/10 text-xs mt-2 py-2 px-4 rounded-lg border border-yellow-400/30 hover:border-yellow-400/50 transition-all"
+                  className={`block w-full text-center text-yellow-300 hover:text-yellow-200 hover:bg-yellow-500/10 text-xs mt-2 ${compact ? 'py-2 px-3' : 'py-2 px-4'} rounded-lg border border-yellow-400/30 hover:border-yellow-400/50 transition-all`}
                 >
                   {linkifyReasonText('Learn more about ML2 (Force Eliminate)', { keyPrefix: `match-card-ml2-learn-${tierId}-${instanceId}-${roundIdx}-${matchIdx}` })}
                 </UserManualAnchorLink>
@@ -673,14 +675,14 @@ const MatchCard = ({
                     matchNumber: matchIdx
                   })}
                   disabled={loading}
-                  className="w-full bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white font-semibold py-2 px-4 rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 flex items-center justify-center gap-2 text-xs"
+                  className={`w-full bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white font-semibold ${compact ? 'py-2 px-3' : 'py-2 px-4'} rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 flex items-center justify-center gap-2 text-xs`}
                 >
                   <Users size={14} />
                   {loading ? 'Claiming...' : 'Replace & Claim Match'}
                 </button>
                 <UserManualAnchorLink
                   href={getUserManualHrefForReasonCode('ML3')}
-                  className="block w-full text-center text-red-300 hover:text-red-200 hover:bg-red-500/10 text-xs mt-2 py-2 px-4 rounded-lg border border-red-400/30 hover:border-red-400/50 transition-all"
+                  className={`block w-full text-center text-red-300 hover:text-red-200 hover:bg-red-500/10 text-xs mt-2 ${compact ? 'py-2 px-3' : 'py-2 px-4'} rounded-lg border border-red-400/30 hover:border-red-400/50 transition-all`}
                 >
                   {linkifyReasonText('Learn more about ML3 (Replace Players)', { keyPrefix: `match-card-ml3-learn-${tierId}-${instanceId}-${roundIdx}-${matchIdx}` })}
                 </UserManualAnchorLink>
@@ -694,7 +696,7 @@ const MatchCard = ({
             <button
               onClick={() => onSpectateMatch(tierId, instanceId, roundIdx, matchIdx)}
               disabled={loading}
-              className="w-full bg-gradient-to-r from-blue-500/80 to-purple-500/80 hover:from-blue-600/90 hover:to-purple-600/90 disabled:from-gray-500 disabled:to-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
+              className={`w-full bg-gradient-to-r from-blue-500/80 to-purple-500/80 hover:from-blue-600/90 hover:to-purple-600/90 disabled:from-gray-500 disabled:to-gray-600 text-white font-semibold ${compact ? 'py-2 px-3 text-sm' : 'py-2 px-4'} rounded-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2`}
             >
               <Eye size={16} />
               Spectate
