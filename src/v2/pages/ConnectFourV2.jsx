@@ -24,6 +24,7 @@ import ParticleBackground from '../../components/shared/ParticleBackground';
 import MatchCard from '../../components/shared/MatchCard';
 import UserManualV2 from '../components/UserManualV2';
 import QuickGuideModal from '../components/QuickGuideModal';
+import WhatIsThisModal from '../components/WhatIsThisModal';
 import CenteredErrorFlash from '../components/CenteredErrorFlash';
 import MatchEndModal from '../../components/shared/MatchEndModal';
 import ActiveMatchAlertModal from '../../components/shared/ActiveMatchAlertModal';
@@ -102,9 +103,9 @@ const currentTheme = {
 };
 
 const HERO_LINKS = [
+  { label: "What's This?", type: 'what-is-this' },
   { label: 'Quick Guide', type: 'quick-guide' },
   { label: 'User Manual', type: 'manual' },
-  { label: 'Visual Demos', type: 'placeholder' },
 ];
 
 function isWalletAvailable() {
@@ -737,28 +738,9 @@ export default function ConnectFourV2() {
   const [shouldRenderCreateFormBody, setShouldRenderCreateFormBody] = useState(false);
   const [isCreateFormBodyVisible, setIsCreateFormBodyVisible] = useState(false);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
+  const [isWhatIsThisOpen, setIsWhatIsThisOpen] = useState(false);
   const [isQuickGuideOpen, setIsQuickGuideOpen] = useState(false);
-  const [heroLinkNoticeVisible, setHeroLinkNoticeVisible] = useState(false);
-  const heroLinkNoticeTimeoutRef = useRef(null);
   const hadConnectedAccountRef = useRef(false);
-
-  const handlePlaceholderLinkClick = useCallback((event) => {
-    event.preventDefault();
-    if (heroLinkNoticeTimeoutRef.current) {
-      clearTimeout(heroLinkNoticeTimeoutRef.current);
-    }
-    setHeroLinkNoticeVisible(true);
-    heroLinkNoticeTimeoutRef.current = window.setTimeout(() => {
-      setHeroLinkNoticeVisible(false);
-      heroLinkNoticeTimeoutRef.current = null;
-    }, 1800);
-  }, []);
-
-  useEffect(() => () => {
-    if (heroLinkNoticeTimeoutRef.current) {
-      clearTimeout(heroLinkNoticeTimeoutRef.current);
-    }
-  }, []);
 
   useEffect(() => {
     const hasAccount = Boolean(account);
@@ -794,23 +776,18 @@ export default function ConnectFourV2() {
     };
   }, [isCreateFormExpanded, shouldRenderCreateFormBody]);
 
+  const handleWhatIsThisLinkClick = useCallback((event) => {
+    event.preventDefault();
+    setIsWhatIsThisOpen(true);
+  }, []);
+
   const handleQuickGuideLinkClick = useCallback((event) => {
     event.preventDefault();
-    if (heroLinkNoticeTimeoutRef.current) {
-      clearTimeout(heroLinkNoticeTimeoutRef.current);
-      heroLinkNoticeTimeoutRef.current = null;
-    }
-    setHeroLinkNoticeVisible(false);
     setIsQuickGuideOpen(true);
   }, []);
 
   const handleUserManualLinkClick = useCallback((event) => {
     event.preventDefault();
-    if (heroLinkNoticeTimeoutRef.current) {
-      clearTimeout(heroLinkNoticeTimeoutRef.current);
-      heroLinkNoticeTimeoutRef.current = null;
-    }
-    setHeroLinkNoticeVisible(false);
     window.dispatchEvent(new CustomEvent('open-user-manual', {
       detail: { targetHash: '11-what-is-etour' },
     }));
@@ -2743,22 +2720,19 @@ export default function ConnectFourV2() {
           connectCtaClassName={currentTheme.connectCtaClassName}
         >
           <div className={`relative flex flex-wrap items-center justify-center gap-2 text-sm md:text-base ${currentTheme.heroSubtext}`}>
-            {heroLinkNoticeVisible ? (
-              <div className="pointer-events-none absolute bottom-full left-1/2 mb-3 -translate-x-1/2 whitespace-nowrap rounded-full border border-cyan-400/40 bg-slate-950/90 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white shadow-lg shadow-cyan-500/20 backdrop-blur-sm animate-pulse">
-                Coming Soon
-              </div>
-            ) : null}
             {HERO_LINKS.map((link, index) => (
               <div key={link.label} className="flex items-center gap-2">
                 {index > 0 ? <span aria-hidden="true">•</span> : null}
                 <a
                   href={link.type === 'manual' ? '#user-manual' : '#'}
                   onClick={
-                    link.type === 'manual'
+                    link.type === 'what-is-this'
+                      ? handleWhatIsThisLinkClick
+                      : link.type === 'manual'
                       ? handleUserManualLinkClick
                       : link.type === 'quick-guide'
                         ? handleQuickGuideLinkClick
-                        : handlePlaceholderLinkClick
+                        : undefined
                   }
                   className="underline decoration-dotted underline-offset-4 transition-colors hover:text-white"
                 >
@@ -3069,6 +3043,11 @@ export default function ConnectFourV2() {
       <QuickGuideModal
         isOpen={isQuickGuideOpen}
         onClose={() => setIsQuickGuideOpen(false)}
+      />
+      <WhatIsThisModal
+        gameName="Connect Four"
+        isOpen={isWhatIsThisOpen}
+        onClose={() => setIsWhatIsThisOpen(false)}
       />
 
       <style>{`
