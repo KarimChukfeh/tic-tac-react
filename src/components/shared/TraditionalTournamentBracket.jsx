@@ -27,14 +27,14 @@ function TreeConnector({ branching }) {
   return (
     <div
       aria-hidden="true"
-      className="relative my-3 h-8 w-full min-w-[7rem] sm:my-4 sm:h-10"
+      className="relative my-2 h-6 w-full min-w-[5.5rem] sm:my-4 sm:h-10 sm:min-w-[7rem]"
     >
       {branching ? (
         <>
-          <div className="absolute left-1/4 top-0 h-4 w-px -translate-x-1/2 bg-gradient-to-b from-cyan-300/45 to-fuchsia-300/55 sm:h-5" />
-          <div className="absolute right-1/4 top-0 h-4 w-px translate-x-1/2 bg-gradient-to-b from-cyan-300/45 to-fuchsia-300/55 sm:h-5" />
-          <div className="absolute left-1/4 right-1/4 top-4 h-px bg-gradient-to-r from-cyan-300/40 via-fuchsia-300/55 to-cyan-300/40 sm:top-5" />
-          <div className="absolute left-1/2 top-4 bottom-0 w-px -translate-x-1/2 bg-gradient-to-b from-fuchsia-300/55 to-cyan-300/40 sm:top-5" />
+          <div className="absolute left-1/4 top-0 h-3 w-px -translate-x-1/2 bg-gradient-to-b from-cyan-300/45 to-fuchsia-300/55 sm:h-5" />
+          <div className="absolute right-1/4 top-0 h-3 w-px translate-x-1/2 bg-gradient-to-b from-cyan-300/45 to-fuchsia-300/55 sm:h-5" />
+          <div className="absolute left-1/4 right-1/4 top-3 h-px bg-gradient-to-r from-cyan-300/40 via-fuchsia-300/55 to-cyan-300/40 sm:top-5" />
+          <div className="absolute left-1/2 top-3 bottom-0 w-px -translate-x-1/2 bg-gradient-to-b from-fuchsia-300/55 to-cyan-300/40 sm:top-5" />
         </>
       ) : (
         <div className="absolute left-1/2 top-0 bottom-0 w-px -translate-x-1/2 bg-gradient-to-b from-fuchsia-300/55 to-cyan-300/40" />
@@ -47,8 +47,8 @@ function RoundLevelLabel({ label, roundLabelClassName }) {
   if (!label) return null;
 
   return (
-    <div className="mb-2 text-center sm:mb-3">
-      <div className={`${roundLabelClassName} inline-flex rounded-full border border-purple-300/20 bg-purple-500/8 px-3 py-1`}>
+    <div className="mb-1.5 text-center sm:mb-3">
+      <div className={`${roundLabelClassName} inline-flex rounded-full border border-purple-300/20 bg-purple-500/8 px-2.5 py-0.5 sm:px-3 sm:py-1`}>
         {label}
       </div>
     </div>
@@ -67,7 +67,7 @@ function BracketTreeNode({ node, renderMatch, roundLabelClassName, isRoot = fals
             label={childRoundLabel}
             roundLabelClassName={roundLabelClassName}
           />
-          <div className="flex min-w-fit items-start justify-center gap-3 sm:gap-4 lg:gap-6">
+          <div className="flex min-w-fit items-start justify-center gap-1.5 sm:gap-4 lg:gap-6">
           {node.children.map((child) => (
             <BracketTreeNode
               key={child.key}
@@ -82,7 +82,7 @@ function BracketTreeNode({ node, renderMatch, roundLabelClassName, isRoot = fals
 
       {hasChildren && <TreeConnector branching={node.children.length > 1} />}
 
-      <div className="w-[15rem] max-w-full sm:w-[16.75rem] lg:w-[21rem]">
+      <div className="w-[12rem] max-w-full sm:w-[16.75rem] lg:w-[21rem]">
         {isRoot && (
           <RoundLevelLabel
             label={node.round?.label}
@@ -105,9 +105,9 @@ export default function TraditionalTournamentBracket({
   title,
   rounds,
   hasValidRounds,
-  panelClassName = 'bg-gradient-to-br from-slate-900/50 to-purple-900/30 backdrop-blur-lg rounded-2xl p-8 border border-purple-400/30',
-  titleClassName = 'text-2xl font-bold text-purple-300',
-  roundLabelClassName = 'text-sm font-semibold uppercase tracking-[0.22em] text-purple-300/80',
+  panelClassName = 'bg-gradient-to-br from-slate-900/50 to-purple-900/30 backdrop-blur-lg rounded-2xl p-4 sm:p-8 border border-purple-400/30',
+  titleClassName = 'text-xl sm:text-2xl font-bold text-purple-300',
+  roundLabelClassName = 'text-[10px] sm:text-sm font-semibold uppercase tracking-[0.18em] sm:tracking-[0.22em] text-purple-300/80',
   emptyStateClassName = 'text-purple-300 text-lg',
   emptyMessage,
   renderMatch,
@@ -121,13 +121,13 @@ export default function TraditionalTournamentBracket({
 
   return (
     <div ref={bracketRef} className={panelClassName}>
-      <h3 className={`${titleClassName} mb-5 flex items-center gap-2`}>
-        <Grid size={24} />
+      <h3 className={`${titleClassName} mb-3 sm:mb-5 flex items-center gap-2`}>
+        <Grid size={20} className="sm:w-6 sm:h-6" />
         {title}
       </h3>
 
       {hasValidRounds ? (
-          <div className="-mx-3 overflow-x-auto px-3 pb-3 [-webkit-overflow-scrolling:touch] [scrollbar-width:thin] [scrollbar-color:rgba(103,232,249,0.45)_rgba(15,23,42,0.25)]">
+          <div className="-mx-2 overflow-x-auto px-2 pb-2 sm:-mx-3 sm:px-3 sm:pb-3 [-webkit-overflow-scrolling:touch] [scrollbar-width:thin] [scrollbar-color:rgba(103,232,249,0.45)_rgba(15,23,42,0.25)]">
             <div className="flex min-w-fit justify-center">
               <div className="inline-flex min-w-fit flex-col items-center">
                 {rootNodes.map((node) => (

@@ -451,9 +451,9 @@ const TournamentBracket = ({
         title="Bracket"
         rounds={rounds}
         hasValidRounds={hasValidRounds}
-        panelClassName={`bg-gradient-to-br from-slate-900/50 to-purple-900/30 backdrop-blur-lg rounded-2xl p-8 border ${colors.headerBorder}`}
-        titleClassName={`text-2xl font-bold ${colors.text}`}
-        roundLabelClassName={`text-sm font-semibold uppercase tracking-[0.22em] ${colors.icon}`}
+        panelClassName={`bg-gradient-to-br from-slate-900/50 to-purple-900/30 backdrop-blur-lg rounded-2xl p-4 sm:p-8 border ${colors.headerBorder}`}
+        titleClassName={`text-xl sm:text-2xl font-bold ${colors.text}`}
+        roundLabelClassName={`text-[10px] sm:text-sm font-semibold uppercase tracking-[0.18em] sm:tracking-[0.22em] ${colors.icon}`}
         emptyStateClassName={`${colors.text} text-lg`}
         emptyMessage={status === 0
           ? 'Brackets will be generated once the instance starts.'

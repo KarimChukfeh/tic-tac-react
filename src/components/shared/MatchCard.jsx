@@ -343,12 +343,12 @@ const MatchCard = ({
   return (
     <div
       id={`r${roundIdx}m${matchIdx}`}
-      className={`bg-black/30 rounded-xl border-2 transition-all ${compact ? 'p-3 sm:p-4' : 'p-4'} ${borderClass}`}
+      className={`bg-black/30 rounded-xl border-2 transition-all ${compact ? 'p-2.5 sm:p-4' : 'p-4'} ${borderClass}`}
     >
       {/* Header */}
-      <div className={`flex items-center ${isSingleMatchRound ? 'justify-end' : 'justify-between'} mb-3`}>
+      <div className={`flex items-center ${isSingleMatchRound ? 'justify-end' : 'justify-between'} ${compact ? 'mb-2 sm:mb-3' : 'mb-3'}`}>
         {!isSingleMatchRound && (
-          <span className={colors.matchLabel || `${compact ? 'text-xs sm:text-sm' : 'text-sm'} text-purple-300 font-semibold`}>
+          <span className={colors.matchLabel || `${compact ? 'text-[11px] sm:text-sm' : 'text-sm'} text-purple-300 font-semibold`}>
             Match {matchIdx + 1}
           </span>
         )}
@@ -461,13 +461,13 @@ const MatchCard = ({
         </div>
       )}
 
-      <div className={compact ? 'space-y-1.5 sm:space-y-2' : 'space-y-2'}>
+      <div className={compact ? 'space-y-1 sm:space-y-2' : 'space-y-2'}>
         {isR2UncontestedFinalistCard ? (
-          <div className={`flex items-center justify-between rounded ${compact ? 'p-2' : 'p-2'} ${getPlayer1BgClass()}`}>
+          <div className={`flex items-center justify-between rounded ${compact ? 'p-1.5 sm:p-2' : 'p-2'} ${getPlayer1BgClass()}`}>
             <div className="flex flex-col">
               <div className="flex items-center gap-1.5">
                 {playerIcons?.player1 && <span className="text-lg">{playerIcons.player1}</span>}
-                <span className={`text-white font-mono ${compact ? 'text-xs sm:text-sm' : 'text-sm'}`}>
+                <span className={`text-white font-mono ${compact ? 'text-[10px] sm:text-sm' : 'text-sm'}`}>
                   {shortenAddress(finalistAddress)}
                 </span>
               </div>
@@ -480,21 +480,21 @@ const MatchCard = ({
         ) : (
           <>
         {/* Player 1 */}
-        <div className={`flex items-center justify-between rounded ${compact ? 'p-2' : 'p-2'} ${getPlayer1BgClass()}`}>
+        <div className={`flex items-center justify-between rounded ${compact ? 'p-1.5 sm:p-2' : 'p-2'} ${getPlayer1BgClass()}`}>
           <div className="flex flex-col">
-            <div className="flex items-center gap-1.5">
+            <div className={`flex items-center ${compact ? 'gap-1' : 'gap-1.5'}`}>
               {playerIcons?.player1 && <span className="text-lg">{playerIcons.player1}</span>}
-              <span className={`text-white font-mono ${compact ? 'text-xs sm:text-sm' : 'text-sm'}`}>
+              <span className={`text-white font-mono ${compact ? 'text-[10px] sm:text-sm' : 'text-sm'}`}>
                 {shortenAddress(match.player1)}
               </span>
               {player1Symbol && (
                 <>
-                  <span className="text-gray-400 text-xs">as</span>
+                  <span className={`text-gray-400 ${compact ? 'text-[10px] sm:text-xs' : 'text-xs'}`}>as</span>
                   {gameName === 'chess' ? (
                     <img
                       src={player1Symbol === 'White' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
                       alt={player1Symbol}
-                      className="w-3.5 h-3.5"
+                      className={compact ? 'w-3 h-3 sm:w-3.5 sm:h-3.5' : 'w-3.5 h-3.5'}
                       draggable="false"
                     />
                   ) : gameName === 'tictactoe' ? (
@@ -507,9 +507,9 @@ const MatchCard = ({
                       <span className="w-3 h-3 rounded-full inline-block border-2 border-red-500"></span>
                     )
                   ) : gameName === 'connect4' ? (
-                    <span className={`w-3 h-3 rounded-full inline-block ${player1Symbol === 'Red' ? 'bg-red-500' : 'bg-blue-500'}`}></span>
+                    <span className={`${compact ? 'w-2.5 h-2.5 sm:w-3 sm:h-3' : 'w-3 h-3'} rounded-full inline-block ${player1Symbol === 'Red' ? 'bg-red-500' : 'bg-blue-500'}`}></span>
                   ) : (
-                    <span className="text-gray-300 text-xs">({player1Symbol})</span>
+                    <span className={`text-gray-300 ${compact ? 'text-[10px] sm:text-xs' : 'text-xs'}`}>({player1Symbol})</span>
                   )}
                 </>
               )}
@@ -544,24 +544,24 @@ const MatchCard = ({
           </div>
         </div>
 
-        <div className={colors.vsText || `text-center text-purple-400 font-bold ${compact ? 'text-xs sm:text-sm' : ''}`}>VS</div>
+        <div className={colors.vsText || `text-center text-purple-400 font-bold ${compact ? 'text-[11px] sm:text-sm' : ''}`}>VS</div>
 
         {/* Player 2 */}
-        <div className={`flex items-center justify-between rounded ${compact ? 'p-2' : 'p-2'} ${getPlayer2BgClass()}`}>
+        <div className={`flex items-center justify-between rounded ${compact ? 'p-1.5 sm:p-2' : 'p-2'} ${getPlayer2BgClass()}`}>
           <div className="flex flex-col">
-            <div className="flex items-center gap-1.5">
+            <div className={`flex items-center ${compact ? 'gap-1' : 'gap-1.5'}`}>
               {playerIcons?.player2 && <span className="text-lg">{playerIcons.player2}</span>}
-              <span className={`text-white font-mono ${compact ? 'text-xs sm:text-sm' : 'text-sm'}`}>
+              <span className={`text-white font-mono ${compact ? 'text-[10px] sm:text-sm' : 'text-sm'}`}>
                 {shortenAddress(match.player2)}
               </span>
               {player2Symbol && (
                 <>
-                  <span className="text-gray-400 text-xs">as</span>
+                  <span className={`text-gray-400 ${compact ? 'text-[10px] sm:text-xs' : 'text-xs'}`}>as</span>
                   {gameName === 'chess' ? (
                     <img
                       src={player2Symbol === 'White' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
                       alt={player2Symbol}
-                      className="w-3.5 h-3.5"
+                      className={compact ? 'w-3 h-3 sm:w-3.5 sm:h-3.5' : 'w-3.5 h-3.5'}
                       draggable="false"
                     />
                   ) : gameName === 'tictactoe' ? (
@@ -574,9 +574,9 @@ const MatchCard = ({
                       <span className="w-3 h-3 rounded-full inline-block border-2 border-red-500"></span>
                     )
                   ) : gameName === 'connect4' ? (
-                    <span className={`w-3 h-3 rounded-full inline-block ${player2Symbol === 'Red' ? 'bg-red-500' : 'bg-blue-500'}`}></span>
+                    <span className={`${compact ? 'w-2.5 h-2.5 sm:w-3 sm:h-3' : 'w-3 h-3'} rounded-full inline-block ${player2Symbol === 'Red' ? 'bg-red-500' : 'bg-blue-500'}`}></span>
                   ) : (
-                    <span className="text-gray-300 text-xs">({player2Symbol})</span>
+                    <span className={`text-gray-300 ${compact ? 'text-[10px] sm:text-xs' : 'text-xs'}`}>({player2Symbol})</span>
                   )}
                 </>
               )}
@@ -615,11 +615,11 @@ const MatchCard = ({
 
         {/* Match CTA for user's matches */}
         {shouldShowMatchCta && (
-          <div className={compact ? 'pt-3' : 'pt-4'}>
+          <div className={compact ? 'pt-2 sm:pt-3' : 'pt-4'}>
             <button
               onClick={() => onEnterMatch(tierId, instanceId, roundIdx, matchIdx)}
               disabled={loading || (!isTournamentCompleted && matchStatus === 0)}
-              className={`w-full bg-gradient-to-r ${isTournamentCompleted ? 'from-purple-500 to-violet-500 hover:from-purple-600 hover:to-violet-600' : 'from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600'} disabled:from-gray-500 disabled:to-gray-600 text-white font-bold ${compact ? (isTournamentCompleted ? 'py-1 px-2 text-[11px]' : 'py-2 px-3 text-sm') : 'py-2 px-4'} rounded-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2`}
+              className={`w-full bg-gradient-to-r ${isTournamentCompleted ? 'from-purple-500 to-violet-500 hover:from-purple-600 hover:to-violet-600' : 'from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600'} disabled:from-gray-500 disabled:to-gray-600 text-white font-bold ${compact ? (isTournamentCompleted ? 'py-1 px-2 text-[11px]' : 'py-1.5 px-2.5 text-xs sm:py-2 sm:px-3 sm:text-sm') : 'py-2 px-4'} rounded-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-1.5 sm:gap-2`}
             >
               {isTournamentCompleted ? (
                 <>
@@ -628,7 +628,7 @@ const MatchCard = ({
                 </>
               ) : (
                 <>
-                  <Play size={16} />
+                  <Play size={compact ? 14 : 16} />
                   {matchStatus === 0 ? 'Waiting to Start' : 'Enter Match'}
                 </>
               )}
