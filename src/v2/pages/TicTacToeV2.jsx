@@ -244,8 +244,8 @@ const AnimatedTicTacToeSymbol = ({ delay = 0, size = 'large' }) => {
   }, [started]);
 
   const symbolSize = typeof size === 'number' ? size : size === 'large' ? 128 : 32;
-  const xStrokeWidth = Math.max(4, Math.round(symbolSize * 0.08));
-  const oBorderWidth = Math.max(4, Math.round(symbolSize * 0.08));
+  const xStrokeWidth = Math.max(6, Math.round(symbolSize * 0.12));
+  const oBorderWidth = Math.max(6, Math.round(symbolSize * 0.12));
 
   return (
     <span
