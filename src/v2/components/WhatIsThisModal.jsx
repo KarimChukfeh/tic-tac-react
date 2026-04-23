@@ -79,10 +79,10 @@ const WhatIsThisModal = ({ isOpen, onClose }) => {
               </div>
               <div className="mt-3 max-w-2xl space-y-4 text-sm leading-7 text-blue-100/80 md:text-base">
                 <p className="font-semibold text-white">
-                  This is a fully on-chain gaming platform.
+                  This is true on-chain gaming.
                 </p>
                 <p>
-                  You configure your lobby, set your ETH entry fee, then invite whoever you want to challenge.
+                  You configure your lobby, set its ETH entry fee, then invite whoever you want to challenge.
                 </p>
                 <p>
                   Winners advance through the bracket until a champion takes the entire ETH prize pool.

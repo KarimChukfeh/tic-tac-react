@@ -2530,7 +2530,7 @@ export default function TicTacToeV2() {
             TicTacToe
           </h1>
           <p className="pt-4 text-2xl text-blue-200 mb-6">
-            Play on-chain TicTacToe with real ETH on the line
+            Play TicTacToe on-chain with real ETH on the line
           </p>
         </div>
 
