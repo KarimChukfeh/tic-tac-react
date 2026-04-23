@@ -123,6 +123,7 @@ export default function TraditionalTournamentBracket({
   renderMatch,
   renderEmpty,
 }) {
+  const hasSingleMatchBracket = hasValidRounds && rounds.length === 1 && (rounds[0]?.matches?.length || 0) === 1;
   const rootNodes = hasValidRounds
     ? (rounds.at(-1)?.matches || [])
         .map((_, matchIdx) => buildMatchTree(rounds, rounds.length - 1, matchIdx))
@@ -141,10 +142,12 @@ export default function TraditionalTournamentBracket({
           <div className="space-y-3 sm:hidden">
             {rounds.map((round, roundIdx) => (
               <div key={round.roundIndex ?? roundIdx}>
-                <RoundLevelLabel
-                  label={round.label}
-                  roundLabelClassName={roundLabelClassName}
-                />
+                {!hasSingleMatchBracket && (
+                  <RoundLevelLabel
+                    label={round.label}
+                    roundLabelClassName={roundLabelClassName}
+                  />
+                )}
                 <div className="space-y-2">
                   {round.matches.map((match, matchIdx) => (
                     <div key={match.matchNumber ?? matchIdx} className="w-full">
@@ -166,7 +169,7 @@ export default function TraditionalTournamentBracket({
                     node={node}
                     renderMatch={renderMatch}
                     roundLabelClassName={roundLabelClassName}
-                    isRoot={true}
+                    isRoot={!hasSingleMatchBracket}
                   />
                 ))}
               </div>

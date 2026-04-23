@@ -59,4 +59,25 @@ describe('TraditionalTournamentBracket', () => {
     expect(screen.getByText('Brackets will be generated once the instance starts.')).toBeInTheDocument();
     expect(screen.getByText('Recent instance')).toBeInTheDocument();
   });
+
+  it('hides the round label when the bracket has only one match', () => {
+    render(
+      <TraditionalTournamentBracket
+        title="Tournament Bracket"
+        rounds={[
+          {
+            roundIndex: 0,
+            label: 'Finals',
+            matches: [{ matchNumber: 0 }],
+          },
+        ]}
+        hasValidRounds={true}
+        renderMatch={() => <div>Only Match</div>}
+      />
+    );
+
+    expect(screen.getByText('Tournament Bracket')).toBeInTheDocument();
+    expect(screen.getAllByText('Only Match').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Finals')).not.toBeInTheDocument();
+  });
 });
