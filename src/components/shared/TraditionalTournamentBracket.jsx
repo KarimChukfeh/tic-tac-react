@@ -55,6 +55,16 @@ function RoundLevelLabel({ label, roundLabelClassName }) {
   );
 }
 
+function MobileRoundConnector() {
+  return (
+    <div aria-hidden="true" className="flex flex-col items-center py-3">
+      <div className="h-6 w-px bg-gradient-to-b from-cyan-300/40 to-fuchsia-300/55" />
+      <div className="mt-1 h-2 w-2 rounded-full bg-fuchsia-300/60 shadow-[0_0_10px_rgba(216,180,254,0.35)]" />
+      <div className="mt-1 h-6 w-px bg-gradient-to-b from-fuchsia-300/55 to-cyan-300/30" />
+    </div>
+  );
+}
+
 function BracketTreeNode({ node, renderMatch, roundLabelClassName, isRoot = false }) {
   const hasChildren = node.children.length > 0;
   const childRoundLabel = hasChildren ? node.children[0]?.round?.label : null;
@@ -127,7 +137,27 @@ export default function TraditionalTournamentBracket({
       </h3>
 
       {hasValidRounds ? (
-          <div className="-mx-2 overflow-x-auto px-2 pb-2 sm:-mx-3 sm:px-3 sm:pb-3 [-webkit-overflow-scrolling:touch] [scrollbar-width:thin] [scrollbar-color:rgba(103,232,249,0.45)_rgba(15,23,42,0.25)]">
+        <>
+          <div className="space-y-3 sm:hidden">
+            {rounds.map((round, roundIdx) => (
+              <div key={round.roundIndex ?? roundIdx}>
+                <RoundLevelLabel
+                  label={round.label}
+                  roundLabelClassName={roundLabelClassName}
+                />
+                <div className="space-y-2">
+                  {round.matches.map((match, matchIdx) => (
+                    <div key={match.matchNumber ?? matchIdx} className="w-full">
+                      {renderMatch({ match, round, roundIdx, matchIdx })}
+                    </div>
+                  ))}
+                </div>
+                {roundIdx < rounds.length - 1 && <MobileRoundConnector />}
+              </div>
+            ))}
+          </div>
+
+          <div className="hidden sm:block sm:-mx-3 sm:overflow-x-auto sm:px-3 sm:pb-3 [-webkit-overflow-scrolling:touch] [scrollbar-width:thin] [scrollbar-color:rgba(103,232,249,0.45)_rgba(15,23,42,0.25)]">
             <div className="flex min-w-fit justify-center">
               <div className="inline-flex min-w-fit flex-col items-center">
                 {rootNodes.map((node) => (
@@ -142,6 +172,7 @@ export default function TraditionalTournamentBracket({
               </div>
             </div>
           </div>
+        </>
       ) : (
         <div className="space-y-6">
           <div className="text-left py-4">
