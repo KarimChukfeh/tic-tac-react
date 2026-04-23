@@ -417,12 +417,10 @@ const MatchCard = ({
     );
   }
 
-  const renderAsMobileOverlay = compact && isCompactMobile && isExpandedOnMobile;
-
   const cardContent = (
     <div
       id={`r${roundIdx}m${matchIdx}`}
-      className={`bg-black/30 rounded-xl border-2 transition-all ${compact ? 'p-2.5 sm:p-4' : 'p-4'} ${renderAsMobileOverlay ? 'relative z-20 left-1/2 w-[min(16rem,calc(100vw-2rem))] max-w-none -translate-x-1/2 bg-[rgba(18,7,34,0.98)] shadow-[0_24px_80px_rgba(0,0,0,0.45)]' : ''} ${borderClass}`}
+      className={`bg-black/30 rounded-xl border-2 transition-all ${compact ? 'p-2.5 sm:p-4' : 'p-4'} ${borderClass}`}
     >
       {compact && isCompactMobile && (
         <div className="mb-2 flex justify-end">
