@@ -82,16 +82,13 @@ const WhatIsThisModal = ({ isOpen, onClose }) => {
                   This is a fully on-chain gaming platform.
                 </p>
                 <p>
-                  You compete in skill-based games against real opponents over real ETH stakes.
+                  You configure your lobby, set your ETH entry fee, then invite whoever you want to challenge.
                 </p>
                 <p>
-                  You create your lobby, set your ETH entry fee, and invite whoever you want to challenge.
-                </p>
-                <p>
-                  Winners advance through the bracket until the champion takes the entire ETH prize pool, paid instantly to their wallet.
+                  Winners advance through the bracket until a champion takes the entire ETH prize pool.
                 </p>
                 <p className="font-semibold text-white">
-                  No one can change these rules.
+                  Every move is a transaction.
                 </p>
                 <p className="font-semibold text-white">
                   Every outcome is permanent.
