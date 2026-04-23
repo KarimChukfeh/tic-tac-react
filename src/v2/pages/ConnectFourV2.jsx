@@ -2683,7 +2683,7 @@ export default function ConnectFourV2() {
             Connect Four
           </h1>
           <p className={`pt-4 text-2xl ${currentTheme.heroText} mb-6`}>
-            Connect Four on the blockchain with real ETH on the line
+            Play on-chain Connect Four with real ETH on the line
           </p>
         </div>
 

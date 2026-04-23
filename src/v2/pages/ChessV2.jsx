@@ -2309,7 +2309,7 @@ export default function ChessV2() {
             Chess
           </h1>
           <p className={`pt-4 text-2xl ${currentTheme.heroText} mb-6`}>
-            Chess on the blockchain with real ETH on the line
+            Play on-chain Chess with real ETH on the line
           </p>
         </div>
 
