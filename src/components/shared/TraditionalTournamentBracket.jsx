@@ -82,7 +82,7 @@ function BracketTreeNode({ node, renderMatch, roundLabelClassName, isRoot = fals
 
       {hasChildren && <TreeConnector branching={node.children.length > 1} />}
 
-      <div className="w-[12rem] max-w-full sm:w-[16.75rem] lg:w-[21rem]">
+      <div className="w-[9.75rem] max-w-full sm:w-[16.75rem] lg:w-[21rem]">
         {isRoot && (
           <RoundLevelLabel
             label={node.round?.label}

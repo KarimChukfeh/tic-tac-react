@@ -43,6 +43,46 @@ describe('MatchCard', () => {
     expect(onEnterMatch).toHaveBeenCalledWith(0, 0, 2, 1);
   });
 
+  it('starts collapsed on compact mobile bracket cards and expands on demand', () => {
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = vi.fn().mockImplementation(() => ({
+      matches: true,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+    }));
+
+    const onEnterMatch = vi.fn();
+
+    render(
+      <MatchCard
+        match={completedMatch}
+        matchIdx={1}
+        roundIdx={2}
+        tierId={0}
+        instanceId={0}
+        account="0x3333333333333333333333333333333333333333"
+        loading={false}
+        onEnterMatch={onEnterMatch}
+        showEscalation={false}
+        isTournamentCompleted
+        gameName="tictactoe"
+        compact
+      />
+    );
+
+    expect(screen.getByRole('button', { name: /expand match 2/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^view$/i })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /expand match 2/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^view$/i }));
+
+    expect(onEnterMatch).toHaveBeenCalledWith(0, 0, 2, 1);
+
+    window.matchMedia = originalMatchMedia;
+  });
+
   it('does not show View for completed tournaments when no wallet is connected', () => {
     render(
       <MatchCard
