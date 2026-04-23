@@ -2901,7 +2901,6 @@ export default function TicTacToeV2() {
         onClose={() => setIsQuickGuideOpen(false)}
       />
       <WhatIsThisModal
-        gameName="TicTacToe"
         isOpen={isWhatIsThisOpen}
         onClose={() => setIsWhatIsThisOpen(false)}
       />

@@ -3,7 +3,7 @@ import { BookOpen, X } from 'lucide-react';
 
 const WHAT_IS_THIS_TRANSITION_MS = 220;
 
-const WhatIsThisModal = ({ gameName, isOpen, onClose }) => {
+const WhatIsThisModal = ({ isOpen, onClose }) => {
   const [shouldRender, setShouldRender] = useState(isOpen);
   const [isVisible, setIsVisible] = useState(false);
 
@@ -77,23 +77,27 @@ const WhatIsThisModal = ({ gameName, isOpen, onClose }) => {
                 <BookOpen size={14} />
                 What&apos;s This?
               </div>
-              <h2 className="mt-4 text-3xl font-bold text-white md:text-4xl">
-                What&apos;s ETour?
-              </h2>
               <div className="mt-3 max-w-2xl space-y-4 text-sm leading-7 text-blue-100/80 md:text-base">
-                <p>
-                  ETour is a fully on-chain gaming platform. You compete in skill-based games against real opponents over real ETH stakes.
+                <p className="font-semibold text-white">
+                  This is a fully on-chain gaming platform.
                 </p>
                 <p>
-                  Create a lobby, set your entry fee, and invite whoever you want to challenge. When the lobby fills, matches begin automatically.
+                  You compete in skill-based games against real opponents over real ETH stakes.
                 </p>
                 <p>
-                  Winners advance through the bracket until the champion takes the entire prize pool paid instantly to their wallet.
+                  You create your lobby, set your ETH entry fee, and invite whoever you want to challenge.
                 </p>
                 <p>
-                  Every move is a transaction.<br/>
-                  Every outcome is permanent.<br/>
-                  No one can change the rules.
+                  Winners advance through the bracket until the champion takes the entire ETH prize pool, paid instantly to their wallet.
+                </p>
+                <p className="font-semibold text-white">
+                  No one can change these rules.
+                </p>
+                <p className="font-semibold text-white">
+                  Every outcome is permanent.
+                </p>
+                <p className="font-semibold text-white">
+                  Every payout is instant.
                 </p>
               </div>
             </div>
