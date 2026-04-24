@@ -381,24 +381,22 @@ const GameMatchLayout = ({
             <div className="flex-1 min-w-0">
               {/* Address row with symbol inline on mobile */}
               <div className={`flex items-center ${compactChessMatchView ? 'gap-1' : 'gap-2'}`}>
-                {compactChessMatchView && (
-                  (icon === '♚' || icon === '♔') ? (
-                    <img
-                      src={icon === '♚' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
-                      alt={label}
-                      className="w-5 h-5 flex-shrink-0"
-                      draggable="false"
-                    />
-                  ) : (
-                    <div className={`w-5 h-5 text-[13px] ${cardColors.iconBg} rounded-full flex items-center justify-center font-bold border ${
-                      isTurn && !isGameOver ? 'border-green-400' : cardColors.border
-                    }`}>
-                      {icon}
-                    </div>
-                  )
+                {(icon === '♚' || icon === '♔') ? (
+                  <img
+                    src={icon === '♚' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
+                    alt={label}
+                    className={`flex-shrink-0 ${compactChessMatchView ? 'w-5 h-5' : 'w-8 h-8'}`}
+                    draggable="false"
+                  />
+                ) : (
+                  <div className={`${compactChessMatchView ? 'w-5 h-5 text-[13px]' : 'w-8 h-8 text-lg'} ${cardColors.iconBg} rounded-full flex items-center justify-center font-bold border ${
+                    isTurn && !isGameOver ? 'border-green-400' : cardColors.border
+                  }`}>
+                    {icon}
+                  </div>
                 )}
                 <div className={`font-mono truncate text-white ${compactChessMatchView ? 'text-[9px]' : 'text-[11px]'}`}>
-                  {playerAddress ? `${playerAddress.slice(0, 5)}...${playerAddress.slice(-3)}` : ''}
+                  {playerAddress ? compactChessMatchView ? `${playerAddress.slice(0, 5)}...${playerAddress.slice(-3)}` : `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : ''}
                 </div>
                 {isYou && <span className={`text-yellow-300 font-bold flex-shrink-0 ${compactChessMatchView ? 'text-[7px]' : 'text-[10px]'}`}>YOU</span>}
               </div>
