@@ -74,6 +74,7 @@ import {
 import { normalizePrizeDistribution } from '../lib/prizeDistribution';
 import { resolveFlatBoard } from '../lib/matchBoardState';
 import { formatActionErrorMessage } from '../lib/actionErrors';
+import { V2TournamentResolutionReason } from '../lib/reasonLabels';
 
 const CONNECTFOUR_SYMBOLS = ['🔴', '🔵'];
 const VIRTUAL_TIER_ID = 0;
@@ -626,6 +627,13 @@ const TournamentBracket = ({
       match.player1 && match.player1 !== ethers.ZeroAddress
     )
   );
+  const bracketEmptyMessage = status === 0
+    ? 'Brackets will be generated once the instance starts.'
+    : Number(tournamentData.completionReason) === V2TournamentResolutionReason.SOLO_ENROLL_CANCELLED
+      ? 'This instance was cancelled.'
+      : Number(tournamentData.completionReason) === V2TournamentResolutionReason.ABANDONED_TOURNAMENT_CLAIMED
+        ? 'This instance was abandoned.'
+        : 'No bracket data available.';
 
   const prizePool = tournamentData.prizePoolWei || 0n;
 
@@ -678,13 +686,15 @@ const TournamentBracket = ({
         title="Bracket"
         rounds={rounds}
         hasValidRounds={hasValidRounds}
-        emptyMessage={status === 0 ? 'Brackets will be generated once the instance starts.' : 'No bracket data available.'}
-        renderMatch={({ match, round, roundIdx, matchIdx }) => (
+        emptyMessage={bracketEmptyMessage}
+        renderMatch={({ match, round, roundIdx, matchIdx, nextRound, isFinalRound }) => (
           <MatchCard
             match={match}
             reasonLabelMode="v2"
             tournamentCompletionReason={tournamentData.completionReason}
             totalMatchesInRound={round.matches.length}
+            nextRoundLabel={nextRound?.label ?? null}
+            isFinalRound={isFinalRound}
             matchIdx={matchIdx}
             roundIdx={roundIdx}
             tierId={VIRTUAL_TIER_ID}

@@ -43,16 +43,7 @@ describe('MatchCard', () => {
     expect(onEnterMatch).toHaveBeenCalledWith(0, 0, 2, 1);
   });
 
-  it('starts collapsed on compact mobile bracket cards and expands on demand', () => {
-    const originalMatchMedia = window.matchMedia;
-    window.matchMedia = vi.fn().mockImplementation(() => ({
-      matches: true,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-    }));
-
+  it('renders compact bracket cards expanded by default on mobile', () => {
     const onEnterMatch = vi.fn();
 
     render(
@@ -72,15 +63,9 @@ describe('MatchCard', () => {
       />
     );
 
-    expect(screen.getByRole('button', { name: /expand match 2/i })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /^view$/i })).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: /expand match 2/i }));
     fireEvent.click(screen.getByRole('button', { name: /^view$/i }));
 
     expect(onEnterMatch).toHaveBeenCalledWith(0, 0, 2, 1);
-
-    window.matchMedia = originalMatchMedia;
   });
 
   it('does not show View for completed tournaments when no wallet is connected', () => {
@@ -167,11 +152,32 @@ describe('MatchCard', () => {
     expect(screen.queryByRole('button', { name: /^spectate$/i })).not.toBeInTheDocument();
   });
 
-  it('shows WINS text for the winner on completed match cards', () => {
+  it('shows the next-round advance label for completed non-final bracket cards', () => {
     render(
       <MatchCard
         match={completedMatch}
         matchIdx={1}
+        roundIdx={1}
+        tierId={0}
+        instanceId={0}
+        account="0x3333333333333333333333333333333333333333"
+        loading={false}
+        onEnterMatch={vi.fn()}
+        showEscalation={false}
+        isTournamentCompleted
+        gameName="tictactoe"
+        nextRoundLabel="Finals"
+      />
+    );
+
+    expect(screen.getByText('ADVANCES TO FINALS')).toBeInTheDocument();
+  });
+
+  it('shows CHAMPION for the winner on completed finals cards', () => {
+    render(
+      <MatchCard
+        match={completedMatch}
+        matchIdx={0}
         roundIdx={2}
         tierId={0}
         instanceId={0}
@@ -181,10 +187,11 @@ describe('MatchCard', () => {
         showEscalation={false}
         isTournamentCompleted
         gameName="tictactoe"
+        isFinalRound
       />
     );
 
-    expect(screen.getByText('WINS')).toBeInTheDocument();
+    expect(screen.getByText('CHAMPION')).toBeInTheDocument();
   });
 
   it('shows the R2 uncontested finalist state without a TBD opponent row', () => {

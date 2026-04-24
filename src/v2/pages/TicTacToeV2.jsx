@@ -87,6 +87,7 @@ import {
 import { normalizePrizeDistribution } from '../lib/prizeDistribution';
 import { resolveFlatBoard } from '../lib/matchBoardState';
 import { formatActionErrorMessage } from '../lib/actionErrors';
+import { V2TournamentResolutionReason } from '../lib/reasonLabels';
 
 const TICTACTOE_SYMBOLS = ['✕', '○'];
 
@@ -443,6 +444,13 @@ const TournamentBracket = ({
       match.player1 && match.player1 !== '0x0000000000000000000000000000000000000000'
     )
   );
+  const bracketEmptyMessage = status === 0
+    ? 'Brackets will be generated once the instance starts.'
+    : Number(tournamentData.completionReason) === V2TournamentResolutionReason.SOLO_ENROLL_CANCELLED
+      ? 'This instance was cancelled.'
+      : Number(tournamentData.completionReason) === V2TournamentResolutionReason.ABANDONED_TOURNAMENT_CLAIMED
+        ? 'This instance was abandoned.'
+        : 'No bracket data available.';
 
   // Adapt to V1 TournamentHeader props
   const tierId = VIRTUAL_TIER_ID;
@@ -503,15 +511,15 @@ const TournamentBracket = ({
         titleClassName={`text-xl sm:text-2xl font-bold ${colors.text}`}
         roundLabelClassName={`text-[10px] sm:text-sm font-semibold uppercase tracking-[0.18em] sm:tracking-[0.22em] ${colors.icon}`}
         emptyStateClassName={`${colors.text} text-lg`}
-        emptyMessage={status === 0
-          ? 'Brackets will be generated once the instance starts.'
-          : 'No bracket data available.'}
-        renderMatch={({ match, round, roundIdx, matchIdx }) => (
+        emptyMessage={bracketEmptyMessage}
+        renderMatch={({ match, round, roundIdx, matchIdx, nextRound, isFinalRound }) => (
           <MatchCard
             match={match}
             reasonLabelMode="v2"
             tournamentCompletionReason={tournamentData.completionReason}
             totalMatchesInRound={round.matches.length}
+            nextRoundLabel={nextRound?.label ?? null}
+            isFinalRound={isFinalRound}
             matchIdx={matchIdx}
             roundIdx={roundIdx}
             tierId={tierId}

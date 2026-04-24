@@ -12,7 +12,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { Play, Award, Clock, HelpCircle, Zap, Users, Eye, ChevronDown, ChevronUp } from 'lucide-react';
+import { Play, Award, Clock, HelpCircle, Zap, Users, Eye } from 'lucide-react';
 import { shortenAddress } from '../../utils/formatters';
 import { getMatchCompletionReasonValue } from '../../utils/completionReasons';
 import CompletedMatchOutcomeBadge from './CompletedMatchOutcomeBadge';
@@ -74,6 +74,8 @@ const getBorderClass = (isUserMatch, isStalled, escL2Available, escL3Available, 
  * @param {Object} [props.colors] - Color theme overrides
  * @param {string} [props.gameName] - Game name ('tictactoe', 'chess', 'connect4')
  * @param {boolean} [props.compact=false] - Use a denser bracket layout
+ * @param {string|null} [props.nextRoundLabel] - Label for the round after this match
+ * @param {boolean} [props.isFinalRound=false] - Whether this match decides the champion
  */
 const MatchCard = ({
   match,
@@ -98,6 +100,8 @@ const MatchCard = ({
   reasonLabelMode = 'default',
   tournamentCompletionReason = null,
   totalMatchesInRound = null,
+  nextRoundLabel = null,
+  isFinalRound = false,
 }) => {
   // Handle both matchStatus and status field names (V1 vs V2)
   const matchStatus = match.matchStatus ?? match.status;
@@ -133,6 +137,11 @@ const MatchCard = ({
       : (winnerNormalized && winnerNormalized !== zeroAddress ? match.winner : null);
   const isSingleMatchRound = Number(totalMatchesInRound) === 1;
   const isCompletedMatch = matchStatus === 2;
+  const completedWinnerLabel = isFinalRound
+    ? 'CHAMPION'
+    : nextRoundLabel
+      ? `ADVANCES TO ${String(nextRoundLabel).toUpperCase()}`
+      : 'WINS';
 
   useEffect(() => {
     if (matchStatus !== 2) return;
@@ -218,31 +227,6 @@ const MatchCard = ({
   const lastServerPlayer1TimeRef = useRef(player1TimeRemaining);
   const lastServerPlayer2TimeRef = useRef(player2TimeRemaining);
   const lastUpdateRef = useRef(Date.now());
-  const [isCompactMobile, setIsCompactMobile] = useState(false);
-  const [isExpandedOnMobile, setIsExpandedOnMobile] = useState(false);
-
-  useEffect(() => {
-    if (!compact || typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
-      setIsCompactMobile(false);
-      return undefined;
-    }
-
-    const mediaQuery = window.matchMedia('(max-width: 639px)');
-    const syncCompactMode = () => {
-      setIsCompactMobile(mediaQuery.matches);
-      if (!mediaQuery.matches) setIsExpandedOnMobile(false);
-    };
-
-    syncCompactMode();
-
-    if (typeof mediaQuery.addEventListener === 'function') {
-      mediaQuery.addEventListener('change', syncCompactMode);
-      return () => mediaQuery.removeEventListener('change', syncCompactMode);
-    }
-
-    mediaQuery.addListener(syncCompactMode);
-    return () => mediaQuery.removeListener(syncCompactMode);
-  }, [compact]);
 
   // Update ticking time when server data changes (on poll)
   useEffect(() => {
@@ -285,8 +269,6 @@ const MatchCard = ({
 
   const displayPlayer1Time = tickingPlayer1Time !== null ? tickingPlayer1Time : player1TimeRemaining;
   const displayPlayer2Time = tickingPlayer2Time !== null ? tickingPlayer2Time : player2TimeRemaining;
-  const isCollapsedMobileCard = compact && isCompactMobile && !isExpandedOnMobile;
-
   // Determine player symbols based on game type and firstPlayer
   let player1Symbol = '';
   let player2Symbol = '';
@@ -366,76 +348,11 @@ const MatchCard = ({
     return colors.player2Default || 'bg-purple-500/10';
   };
 
-  const mobileCollapsedStatusText = isR2UncontestedFinalistCard
-    ? 'R2 Finalist'
-    : getMatchStatusText(matchStatus, match.winner, completionReason, matchStatusOptions);
-
-  if (isCollapsedMobileCard) {
-    return (
-      <div
-        id={`r${roundIdx}m${matchIdx}`}
-        className={`bg-black/30 rounded-xl border-2 transition-all p-2 ${borderClass}`}
-      >
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            {!isSingleMatchRound && (
-              <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-purple-300/85">
-                Match {matchIdx + 1}
-              </div>
-            )}
-            <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.08em] text-slate-300">
-              {mobileCollapsedStatusText}
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => setIsExpandedOnMobile(true)}
-            className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-purple-300/20 bg-purple-500/10 text-purple-200"
-            aria-expanded={false}
-            aria-label={`Expand match ${matchIdx + 1}`}
-          >
-            <ChevronDown size={12} />
-          </button>
-        </div>
-
-        <div className="mt-2 space-y-1">
-          <div className={`rounded-md px-1.5 py-1 ${getPlayer1BgClass()}`}>
-            <div className="truncate text-[10px] font-mono text-white">
-              {shortenAddress(match.player1)}
-            </div>
-          </div>
-          <div className="text-center text-[10px] font-bold uppercase tracking-[0.16em] text-purple-400/90">
-            VS
-          </div>
-          <div className={`rounded-md px-1.5 py-1 ${getPlayer2BgClass()}`}>
-            <div className="truncate text-[10px] font-mono text-white">
-              {shortenAddress(match.player2)}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   const cardContent = (
     <div
       id={`r${roundIdx}m${matchIdx}`}
       className={`bg-black/30 rounded-xl border-2 transition-all ${compact ? 'p-2.5 sm:p-4' : 'p-4'} ${borderClass}`}
     >
-      {compact && isCompactMobile && (
-        <div className="mb-2 flex justify-end">
-          <button
-            type="button"
-            onClick={() => setIsExpandedOnMobile(false)}
-            className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-purple-300/20 bg-purple-500/10 text-purple-200"
-            aria-expanded={true}
-            aria-label={`Collapse match ${matchIdx + 1}`}
-          >
-            <ChevronUp size={12} />
-          </button>
-        </div>
-      )}
-
       {/* Header */}
       <div className={`flex items-center ${isSingleMatchRound ? 'justify-end' : 'justify-between'} ${compact ? 'mb-2 sm:mb-3' : 'mb-3'}`}>
         {!isSingleMatchRound && (
@@ -625,8 +542,8 @@ const MatchCard = ({
             )}
             {match.winner?.toLowerCase() === match.player1?.toLowerCase() && (
               isCompletedMatch ? (
-                <span className="text-[11px] font-extrabold tracking-wide text-green-300">
-                  WINS
+                <span className={`max-w-[7.25rem] text-right font-extrabold uppercase leading-tight text-green-300 ${compact ? 'text-[9px] sm:text-[11px]' : 'text-[11px]'}`}>
+                  {completedWinnerLabel}
                 </span>
               ) : (
                 <Award className="text-green-400" size={16} />
@@ -692,8 +609,8 @@ const MatchCard = ({
             )}
             {match.winner?.toLowerCase() === match.player2?.toLowerCase() && (
               isCompletedMatch ? (
-                <span className="text-[11px] font-extrabold tracking-wide text-green-300">
-                  WINS
+                <span className={`max-w-[7.25rem] text-right font-extrabold uppercase leading-tight text-green-300 ${compact ? 'text-[9px] sm:text-[11px]' : 'text-[11px]'}`}>
+                  {completedWinnerLabel}
                 </span>
               ) : (
                 <Award className="text-green-400" size={16} />

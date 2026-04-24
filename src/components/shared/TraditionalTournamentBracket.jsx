@@ -65,7 +65,7 @@ function MobileRoundConnector() {
   );
 }
 
-function BracketTreeNode({ node, renderMatch, roundLabelClassName, isRoot = false }) {
+function BracketTreeNode({ node, renderMatch, roundLabelClassName, rounds, isRoot = false }) {
   const hasChildren = node.children.length > 0;
   const childRoundLabel = hasChildren ? node.children[0]?.round?.label : null;
 
@@ -84,6 +84,7 @@ function BracketTreeNode({ node, renderMatch, roundLabelClassName, isRoot = fals
               node={child}
               renderMatch={renderMatch}
               roundLabelClassName={roundLabelClassName}
+              rounds={rounds}
             />
           ))}
           </div>
@@ -104,6 +105,8 @@ function BracketTreeNode({ node, renderMatch, roundLabelClassName, isRoot = fals
           round: node.round,
           roundIdx: node.roundIdx,
           matchIdx: node.matchIdx,
+          nextRound: rounds[node.roundIdx + 1] || null,
+          isFinalRound: node.roundIdx === rounds.length - 1,
         })}
       </div>
     </div>
@@ -151,7 +154,14 @@ export default function TraditionalTournamentBracket({
                 <div className="space-y-2">
                   {round.matches.map((match, matchIdx) => (
                     <div key={match.matchNumber ?? matchIdx} className="w-full">
-                      {renderMatch({ match, round, roundIdx, matchIdx })}
+                      {renderMatch({
+                        match,
+                        round,
+                        roundIdx,
+                        matchIdx,
+                        nextRound: rounds[roundIdx + 1] || null,
+                        isFinalRound: roundIdx === rounds.length - 1,
+                      })}
                     </div>
                   ))}
                 </div>
@@ -169,6 +179,7 @@ export default function TraditionalTournamentBracket({
                     node={node}
                     renderMatch={renderMatch}
                     roundLabelClassName={roundLabelClassName}
+                    rounds={rounds}
                     isRoot={!hasSingleMatchBracket}
                   />
                 ))}

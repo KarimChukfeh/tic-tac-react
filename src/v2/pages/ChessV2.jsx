@@ -76,6 +76,7 @@ import {
 import { normalizePrizeDistribution } from '../lib/prizeDistribution';
 import { resolveChessBoardState } from '../lib/matchBoardState';
 import { formatActionErrorMessage } from '../lib/actionErrors';
+import { V2TournamentResolutionReason } from '../lib/reasonLabels';
 
 const CHESS_PIECES = ['♔', '♕', '♖', '♗', '♘', '♙', '♚', '♛', '♜', '♝', '♞', '♟'];
 const VIRTUAL_TIER_ID = 0;
@@ -601,6 +602,13 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onSpectateMat
   }, [status, isEnrolled]);
 
   const hasValidRounds = rounds && rounds.length > 0 && rounds.some(round => round.matches && round.matches.length > 0 && round.matches.some(match => match.player1 && match.player1 !== ethers.ZeroAddress));
+  const bracketEmptyMessage = status === 0
+    ? 'Brackets will be generated once the instance starts.'
+    : Number(tournamentData.completionReason) === V2TournamentResolutionReason.SOLO_ENROLL_CANCELLED
+      ? 'This instance was cancelled.'
+      : Number(tournamentData.completionReason) === V2TournamentResolutionReason.ABANDONED_TOURNAMENT_CLAIMED
+        ? 'This instance was abandoned.'
+        : 'No bracket data available.';
 
   return (
     <div className="mb-16">
@@ -650,13 +658,15 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onSpectateMat
         title="Bracket"
         rounds={rounds}
         hasValidRounds={hasValidRounds}
-        emptyMessage={status === 0 ? 'Brackets will be generated once the instance starts.' : 'No bracket data available.'}
-        renderMatch={({ match, round, roundIdx, matchIdx }) => (
+        emptyMessage={bracketEmptyMessage}
+        renderMatch={({ match, round, roundIdx, matchIdx, nextRound, isFinalRound }) => (
           <MatchCard
             match={match}
             reasonLabelMode="v2"
             tournamentCompletionReason={tournamentData.completionReason}
             totalMatchesInRound={round.matches.length}
+            nextRoundLabel={nextRound?.label ?? null}
+            isFinalRound={isFinalRound}
             matchIdx={matchIdx}
             roundIdx={roundIdx}
             tierId={VIRTUAL_TIER_ID}
