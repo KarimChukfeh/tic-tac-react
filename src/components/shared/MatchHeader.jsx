@@ -5,6 +5,7 @@
  * Adapts styling based on gameType for theme consistency.
  */
 
+import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { getBracketRoundLabel, getTournamentTypeLabel, shortenAddress } from '../../utils/formatters';
 import { isDraw } from '../../utils/completionReasons';
@@ -27,6 +28,8 @@ const MatchHeader = ({
   reasonLabelMode = 'default',
   onPlayerAddressClick = null,
 }) => {
+  const [isMobileExpanded, setIsMobileExpanded] = useState(false);
+
   const getStatusBadge = () => {
     const useV2ReasonLabels = reasonLabelMode === 'v2';
     const v2ReasonCode = getV2ReasonCode(completionReason);
@@ -171,6 +174,22 @@ const MatchHeader = ({
       ? `T${tournamentInfo.tierId + 1}-I${tournamentInfo.instanceId + 1} • Round ${tournamentInfo.roundNumber + 1} • Match ${tournamentInfo.matchNumber + 1}`
       : null);
   const statusSectionLabel = isV2MatchHeader && matchStatus === 2 ? 'Resolution' : 'Status';
+  const isCollapsible = isV2MatchHeader && matchStatus === 2;
+  const collapsedResolutionText = (() => {
+    if (!isCollapsible) return null;
+    const reason = Number(completionReason ?? 0);
+    const player1Address = tournamentInfo?.player1?.toLowerCase();
+    const player2Address = tournamentInfo?.player2?.toLowerCase();
+    const winnerAddress = tournamentInfo?.winner?.toLowerCase();
+    const winnerIsPlayer1 = winnerAddress && player1Address && winnerAddress === player1Address;
+    const winnerIsPlayer2 = winnerAddress && player2Address && winnerAddress === player2Address;
+    const winnerPlayerLabel = winnerIsPlayer1 ? player1Label : winnerIsPlayer2 ? player2Label : winnerLabel;
+    if (reason === 0 || reason === 1) return `${winnerPlayerLabel} wins`;
+    if (reason === 2) return 'Draw';
+    if (reason === 3) return 'Players eliminated';
+    if (reason === 4) return 'Players replaced';
+    return null;
+  })();
   const completedMatchExplanation = (() => {
     if (!isV2MatchHeader || matchStatus !== 2) return null;
 
@@ -320,15 +339,45 @@ const MatchHeader = ({
 
       <div className={`mb-4 ${isV2MatchHeader ? '' : 'flex items-center justify-between'}`}>
         <div>
-          <div className="flex items-center gap-3">
-            {icon && <span className="text-3xl">{icon}</span>}
-            <h2 className="text-3xl font-bold text-white">
-              {headerTitle}
-            </h2>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              {icon && <span className="text-3xl">{icon}</span>}
+              <h2 className="text-3xl font-bold text-white">
+                {headerTitle}
+              </h2>
+            </div>
+            {isCollapsible && (
+              <button
+                type="button"
+                onClick={() => setIsMobileExpanded((v) => !v)}
+                aria-expanded={isMobileExpanded}
+                aria-label={isMobileExpanded ? 'Collapse match details' : 'Expand match details'}
+                className={`lg:hidden flex-shrink-0 rounded-lg p-1.5 transition-colors ${theme.textMuted} hover:text-white hover:bg-white/10`}
+              >
+                <ChevronDown
+                  size={20}
+                  className={`transition-transform duration-200 ${isMobileExpanded ? 'rotate-180' : ''}`}
+                />
+              </button>
+            )}
           </div>
+          {isCollapsible && !isMobileExpanded && (
+            <div className="lg:hidden mt-3 space-y-2">
+              <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                <span className="font-mono text-cyan-200/90">{player1Label}</span>
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-purple-200/60">vs</span>
+                <span className="font-mono text-pink-200/90">{player2Label}</span>
+              </div>
+              {collapsedResolutionText && (
+                <span className={`inline-flex items-center rounded-lg px-2.5 py-1 text-[11px] font-semibold ${status.className}`}>
+                  {collapsedResolutionText}
+                </span>
+              )}
+            </div>
+          )}
           {headerSubtitle && (
             isV2MatchHeader ? (
-              <div className="mt-4">
+              <div className={`mt-4 ${isCollapsible && !isMobileExpanded ? 'hidden lg:block' : ''}`}>
                 <div className="mb-2 text-xs font-semibold uppercase tracking-[0.24em] text-purple-200/75">
                   Players
                 </div>
@@ -348,7 +397,7 @@ const MatchHeader = ({
           )}
           {isV2MatchHeader && (
             <>
-              <div className="mt-4">
+              <div className={`mt-4 ${isCollapsible && !isMobileExpanded ? 'hidden lg:block' : ''}`}>
                 <div className="mb-2 text-xs font-semibold uppercase tracking-[0.24em] text-purple-200/75">
                   {statusSectionLabel}
                 </div>
@@ -376,7 +425,7 @@ const MatchHeader = ({
                 </div>
               </div>
               {completedMatchExplanation && (
-                <div className="mt-4 max-w-3xl">
+                <div className={`mt-4 max-w-3xl ${isCollapsible && !isMobileExpanded ? 'hidden lg:block' : ''}`}>
                   <div className="mb-2 text-xs font-semibold uppercase tracking-[0.24em] text-purple-200/75">
                     Reasoning
                   </div>
