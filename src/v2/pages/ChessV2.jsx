@@ -2246,11 +2246,10 @@ export default function ChessV2() {
       : 'bg-orange-500/20 border border-orange-400 text-orange-200';
     const badgeText = isCheckmated ? 'CHECKMATE' : 'CHECK';
 
+    // Return just the badge without wrapper - will be placed inline with result pill
     return (
-      <div className="mt-1.5 text-center md:mt-2">
-        <div className={`${badgeClasses} inline-flex items-center justify-center rounded-md px-1.5 py-1 md:rounded-lg md:px-2 md:py-2`}>
-          <span className="text-[9px] font-semibold leading-none md:text-xs md:font-bold">{badgeText}</span>
-        </div>
+      <div className={`${badgeClasses} inline-flex items-center justify-center rounded-full px-2 py-0.5 md:rounded-lg md:px-2 md:py-2 border font-bold tracking-wide`}>
+        <span className="text-[9px] leading-none md:text-xs">{badgeText}</span>
       </div>
     );
   }, [currentMatch, replayMoveIndex, effectiveReplayMoveIndex, moveHistory.length, replayCheckStatus]);

@@ -106,7 +106,7 @@ const CapturedPieces = ({ capturedPieces, color, collapsible = false }) => {
 
   // Collapsible (mobile): toggle replaces the entire "Lost:" + pieces section
   return (
-    <div className="bg-slate-800/30 rounded-lg px-2 py-1 border border-gray-600/30">
+    <div className="bg-slate-800/30 rounded-lg px-1.5 py-0.5 border border-gray-600/30">
       {isExpanded ? (
         <>
           <div className="flex items-center gap-1 flex-wrap">
@@ -114,7 +114,7 @@ const CapturedPieces = ({ capturedPieces, color, collapsible = false }) => {
           </div>
           <button
             onClick={() => setIsExpanded(false)}
-            className="mt-1 flex items-center gap-1 text-[10px] text-gray-400 hover:text-gray-200 transition-colors w-full justify-end"
+            className="mt-0.5 flex items-center gap-0.5 text-[8px] text-gray-400 hover:text-gray-200 transition-colors w-full justify-end"
             aria-label="Collapse lost pieces"
           >
             <span>hide {totalCount}x captured</span>
@@ -124,7 +124,7 @@ const CapturedPieces = ({ capturedPieces, color, collapsible = false }) => {
       ) : (
         <button
           onClick={() => setIsExpanded(true)}
-          className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-gray-200 transition-colors w-full"
+          className="flex items-center gap-0.5 text-[8px] text-gray-400 hover:text-gray-200 transition-colors w-full"
           aria-label="Show lost pieces"
         >
           <span className="font-semibold">{totalCount}x captured</span>

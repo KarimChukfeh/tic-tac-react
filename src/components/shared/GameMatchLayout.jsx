@@ -17,7 +17,7 @@
  * </GameMatchLayout>
  */
 
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { isDraw } from '../../utils/completionReasons';
 import MatchHeader from './MatchHeader';
@@ -349,12 +349,17 @@ const GameMatchLayout = ({
       const cardColors = COLOR_CONFIGS[colorScheme] || COLOR_CONFIGS.blue;
       const cardBg = isMobileHeaderFixed ? cardColors.bgFixed : cardColors.bg;
 
+      // Check if there's captured pieces to display
+      const hasCapturedPieces = extraContent && React.Children.toArray(extraContent.props.children).some(child => {
+        return child && child.type && (child.type.displayName === 'CapturedPieces' || child.type.name === 'CapturedPieces');
+      });
+
       return (
-        <div className={`relative rounded-lg border-2 mt-3 ${
+        <div className={`relative rounded-lg border-2 mt-3 min-h-[5.5rem] ${
           isTurn && isYou && !isGameOver
             ? `border-green-400 ${isMobileHeaderFixed ? 'bg-green-900' : 'bg-green-500/10'} ring-2 ring-green-400/30`
             : `${cardColors.border} ${cardBg}`
-        } ${compactChessMatchView ? 'pt-2.5 px-2 pb-1.5 space-y-1' : 'pt-4 px-3 pb-3 space-y-2'}`}>
+        } ${compactChessMatchView ? (hasCapturedPieces ? 'pt-2.5 px-2 pb-1.5' : 'py-2 px-2 flex flex-col justify-center') : 'pt-4 px-3 pb-3 space-y-2'}`}>
           {/* Turn Indicator Badge — always reserves space so both cards stay aligned */}
           <div className={`absolute left-0 right-0 flex items-center justify-center ${compactChessMatchView ? '-top-2.5 h-[1.125rem]' : '-top-4 h-6'}`}>
             {isTurn && !isGameOver && (
@@ -370,8 +375,10 @@ const GameMatchLayout = ({
             )}
           </div>
 
-          {/* Player Info Section */}
-          <div className={`flex items-center ${compactChessMatchView ? 'gap-1' : 'gap-2'}`}>
+          {/* Content wrapper for proper spacing */}
+          <div className="space-y-1">
+            {/* Player Info Section */}
+            <div className={`flex items-center ${compactChessMatchView ? 'gap-1' : 'gap-2'}`}>
             {(icon === '♚' || icon === '♔') ? (
               <img
                 src={icon === '♚' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
@@ -388,12 +395,20 @@ const GameMatchLayout = ({
             )}
             <div className="flex-1 min-w-0">
               <div className={`flex items-center ${compactChessMatchView ? 'gap-0.5' : 'gap-1'}`}>
-                <div className={`font-mono truncate text-white ${compactChessMatchView ? 'text-[8px]' : 'text-[11px]'}`}>{playerAddress ? `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : ''}</div>
-                {isYou && <span className={`text-yellow-300 font-bold flex-shrink-0 ${compactChessMatchView ? 'text-[7px]' : 'text-[10px]'}`}>YOU</span>}
+                <div className={`font-mono truncate text-white ${compactChessMatchView ? 'text-[10px]' : 'text-[11px]'}`}>{playerAddress ? `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : ''}</div>
+                {isYou && <span className={`text-yellow-300 font-bold flex-shrink-0 ${compactChessMatchView ? 'text-[8px]' : 'text-[10px]'}`}>YOU</span>}
               </div>
-              {resultBadge && (
-                <div className={`self-start mt-1 inline-flex rounded-full border font-bold tracking-wide ${resultBadge.className} ${compactChessMatchView ? 'px-1.5 py-0 text-[7px]' : 'px-2 py-0.5 text-[9px]'}`}>
-                  {resultBadge.text}
+              {(resultBadge || extraContent) && (
+                <div className={`self-start mt-1 flex items-center ${compactChessMatchView ? 'gap-1' : 'gap-1'} flex-wrap`}>
+                  {resultBadge && (
+                    <div className={`inline-flex rounded-full border font-bold tracking-wide ${resultBadge.className} ${compactChessMatchView ? 'px-2 py-0.5 text-[9px]' : 'px-2 py-0.5 text-[9px]'}`}>
+                      {resultBadge.text}
+                    </div>
+                  )}
+                  {extraContent && React.Children.toArray(extraContent.props.children).find(child => {
+                    // Find the check/checkmate badge (not CapturedPieces)
+                    return child && child.type && (child.type.displayName !== 'CapturedPieces' && child.type.name !== 'CapturedPieces');
+                  })}
                 </div>
               )}
               {showTurnTimer && (
@@ -414,19 +429,27 @@ const GameMatchLayout = ({
             </div>
           </div>
 
-          {/* ML1 CTA (replaces timer when timeout claimable) */}
-          {showTurnTimer && showCTA && (
-            <button
-              onClick={onClaimTimeoutWin}
-              disabled={loading}
-              className={`w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold rounded-lg transition-all disabled:opacity-50 ${compactChessMatchView ? 'py-1 px-1.5 text-[9px]' : 'py-2 px-3 text-xs'}`}
-            >
-              Claim Timeout Victory
-            </button>
-          )}
+            {/* ML1 CTA (replaces timer when timeout claimable) */}
+            {showTurnTimer && showCTA && (
+              <button
+                onClick={onClaimTimeoutWin}
+                disabled={loading}
+                className={`w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold rounded-lg transition-all disabled:opacity-50 ${compactChessMatchView ? 'py-1 px-1.5 text-[9px]' : 'py-2 px-3 text-xs'}`}
+              >
+                Claim Timeout Victory
+              </button>
+            )}
 
-          {/* Extra Content (Lost Pieces) - Below Timer */}
-          {extraContent && <div>{extraContent}</div>}
+            {/* Extra Content (Captured Pieces) - Below Timer */}
+            {extraContent && (
+              <div>
+                {React.Children.toArray(extraContent.props.children).filter(child => {
+                  // Show only CapturedPieces component here
+                  return child && child.type && (child.type.displayName === 'CapturedPieces' || child.type.name === 'CapturedPieces');
+                })}
+              </div>
+            )}
+          </div>
         </div>
       );
     };
@@ -550,9 +573,17 @@ const GameMatchLayout = ({
               <p className={`${cardColors.text} font-mono text-xs`}>
                 {playerAddress ? `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : ''}
               </p>
-              {resultBadge && (
-                <div className={`self-start mt-1 inline-flex rounded-full border px-2.5 py-1 text-[10px] font-bold tracking-wide ${resultBadge.className}`}>
-                  {resultBadge.text}
+              {(resultBadge || extraContent) && (
+                <div className="self-start mt-1 flex items-center gap-1.5 flex-wrap">
+                  {resultBadge && (
+                    <div className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-bold tracking-wide ${resultBadge.className}`}>
+                      {resultBadge.text}
+                    </div>
+                  )}
+                  {extraContent && React.Children.toArray(extraContent.props.children).find(child => {
+                    // Find the check/checkmate badge (not CapturedPieces)
+                    return child && child.type && (child.type.displayName !== 'CapturedPieces' && child.type.name !== 'CapturedPieces');
+                  })}
                 </div>
               )}
             </div>
@@ -592,8 +623,15 @@ const GameMatchLayout = ({
             </div>
           )}
 
-          {/* Extra Content (Lost Pieces) - Below Timer */}
-          {extraContent && <div className="mt-4">{extraContent}</div>}
+          {/* Extra Content (Captured Pieces) - Below Timer */}
+          {extraContent && (
+            <div className="mt-4">
+              {React.Children.toArray(extraContent.props.children).filter(child => {
+                // Show only CapturedPieces component here
+                return child && child.type && (child.type.displayName === 'CapturedPieces' || child.type.name === 'CapturedPieces');
+              })}
+            </div>
+          )}
         </div>
       );
     };
@@ -765,8 +803,15 @@ const GameMatchLayout = ({
             )
           )}
 
-          {/* Extra Content (Lost Pieces) - Below Timer */}
-          {extraContent && <div className="mt-4">{extraContent}</div>}
+          {/* Extra Content (Captured Pieces) - Below Timer */}
+          {extraContent && (
+            <div className="mt-4">
+              {React.Children.toArray(extraContent.props.children).filter(child => {
+                // Show only CapturedPieces component here
+                return child && child.type && (child.type.displayName === 'CapturedPieces' || child.type.name === 'CapturedPieces');
+              })}
+            </div>
+          )}
         </div>
       );
     };
@@ -1020,9 +1065,17 @@ const GameMatchLayout = ({
               <p className={`${cardColors.text} font-mono text-xs`}>
                 {playerAddress ? `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : ''}
               </p>
-              {resultBadge && (
-                <div className={`self-start mt-1 inline-flex rounded-full border px-2.5 py-1 text-[10px] font-bold tracking-wide ${resultBadge.className}`}>
-                  {resultBadge.text}
+              {(resultBadge || extraContent) && (
+                <div className="self-start mt-1 flex items-center gap-1.5 flex-wrap">
+                  {resultBadge && (
+                    <div className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-bold tracking-wide ${resultBadge.className}`}>
+                      {resultBadge.text}
+                    </div>
+                  )}
+                  {extraContent && React.Children.toArray(extraContent.props.children).find(child => {
+                    // Find the check/checkmate badge (not CapturedPieces)
+                    return child && child.type && (child.type.displayName !== 'CapturedPieces' && child.type.name !== 'CapturedPieces');
+                  })}
                 </div>
               )}
             </div>
@@ -1055,8 +1108,15 @@ const GameMatchLayout = ({
             )
           )}
 
-          {/* Extra Content (Lost Pieces) - Below Timer */}
-          {extraContent && <div className={compactChessMatchView ? 'mt-2' : 'mt-4'}>{extraContent}</div>}
+          {/* Extra Content (Captured Pieces) - Below Timer */}
+          {extraContent && (
+            <div className={compactChessMatchView ? 'mt-2' : 'mt-4'}>
+              {React.Children.toArray(extraContent.props.children).filter(child => {
+                // Show only CapturedPieces component here
+                return child && child.type && (child.type.displayName === 'CapturedPieces' || child.type.name === 'CapturedPieces');
+              })}
+            </div>
+          )}
         </div>
       );
     };
