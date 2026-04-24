@@ -378,28 +378,34 @@ const GameMatchLayout = ({
           {/* Content wrapper for proper spacing */}
           <div className="space-y-1">
             {/* Player Info Section */}
-            <div className={`flex items-center ${compactChessMatchView ? 'gap-1' : 'gap-2'}`}>
-            {(icon === '♚' || icon === '♔') ? (
-              <img
-                src={icon === '♚' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
-                alt={label}
-                className={compactChessMatchView ? 'w-[1.625rem] h-[1.625rem]' : 'w-10 h-10'}
-                draggable="false"
-              />
-            ) : (
-              <div className={`${compactChessMatchView ? 'w-[1.625rem] h-[1.625rem] text-[15px]' : 'w-10 h-10 text-xl'} ${cardColors.iconBg} rounded-full flex items-center justify-center font-bold border ${
-                isTurn && !isGameOver ? 'border-green-400' : cardColors.border
-              }`}>
-                {icon}
-              </div>
-            )}
             <div className="flex-1 min-w-0">
-              <div className={`flex items-center ${compactChessMatchView ? 'gap-0.5' : 'gap-1'}`}>
-                <div className={`font-mono truncate text-white ${compactChessMatchView ? 'text-[10px]' : 'text-[11px]'}`}>{playerAddress ? `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : ''}</div>
-                {isYou && <span className={`text-yellow-300 font-bold flex-shrink-0 ${compactChessMatchView ? 'text-[8px]' : 'text-[10px]'}`}>YOU</span>}
+              {/* Address row with symbol inline on mobile */}
+              <div className={`flex items-center ${compactChessMatchView ? 'gap-1' : 'gap-2'}`}>
+                {compactChessMatchView && (
+                  (icon === '♚' || icon === '♔') ? (
+                    <img
+                      src={icon === '♚' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
+                      alt={label}
+                      className="w-5 h-5 flex-shrink-0"
+                      draggable="false"
+                    />
+                  ) : (
+                    <div className={`w-5 h-5 text-[13px] ${cardColors.iconBg} rounded-full flex items-center justify-center font-bold border ${
+                      isTurn && !isGameOver ? 'border-green-400' : cardColors.border
+                    }`}>
+                      {icon}
+                    </div>
+                  )
+                )}
+                <div className={`font-mono truncate text-white ${compactChessMatchView ? 'text-[9px]' : 'text-[11px]'}`}>
+                  {playerAddress ? `${playerAddress.slice(0, 5)}...${playerAddress.slice(-3)}` : ''}
+                </div>
+                {isYou && <span className={`text-yellow-300 font-bold flex-shrink-0 ${compactChessMatchView ? 'text-[7px]' : 'text-[10px]'}`}>YOU</span>}
               </div>
+
+              {/* Pills row - guaranteed to fit on same row */}
               {(resultBadge || extraContent) && (
-                <div className={`self-start mt-1 flex items-center ${compactChessMatchView ? 'gap-1' : 'gap-1'} flex-wrap`}>
+                <div className={`mt-0.5 flex items-center ${compactChessMatchView ? 'gap-1' : 'gap-1'}`}>
                   {resultBadge && (
                     <div className={`inline-flex rounded-full border font-bold tracking-wide ${resultBadge.className} ${compactChessMatchView ? 'px-2 py-0.5 text-[9px]' : 'px-2 py-0.5 text-[9px]'}`}>
                       {resultBadge.text}
@@ -424,7 +430,6 @@ const GameMatchLayout = ({
                 </div>
               )}
             </div>
-          </div>
 
             {/* ML1 CTA (replaces timer when timeout claimable) */}
             {showTurnTimer && showCTA && (
