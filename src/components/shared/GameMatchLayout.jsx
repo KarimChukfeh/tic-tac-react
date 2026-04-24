@@ -157,7 +157,7 @@ const GameMatchLayout = ({
   }
 
   const isGameOver = matchStatus === 2;
-  const shouldRenderMobileResultAfterMoveHistory = compactChessMatchView && isGameOver;
+  const shouldRenderMobileResultAfterMoveHistory = false; // Always show MatchComplete before move history
   const zeroAddress = '0x0000000000000000000000000000000000000000';
   const hasWinner = winner && winner !== zeroAddress;
   const userWon = hasWinner && account && winner.toLowerCase() === account.toLowerCase();
