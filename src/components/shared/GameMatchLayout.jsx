@@ -405,10 +405,7 @@ const GameMatchLayout = ({
                       {resultBadge.text}
                     </div>
                   )}
-                  {extraContent && React.Children.toArray(extraContent.props.children).find(child => {
-                    // Find the check/checkmate badge (not CapturedPieces)
-                    return child && child.type && (child.type.displayName !== 'CapturedPieces' && child.type.name !== 'CapturedPieces');
-                  })}
+                  {extraContent && React.Children.toArray(extraContent.props.children)[1]}
                 </div>
               )}
               {showTurnTimer && (
@@ -441,14 +438,7 @@ const GameMatchLayout = ({
             )}
 
             {/* Extra Content (Captured Pieces) - Below Timer */}
-            {extraContent && (
-              <div>
-                {React.Children.toArray(extraContent.props.children).filter(child => {
-                  // Show only CapturedPieces component here
-                  return child && child.type && (child.type.displayName === 'CapturedPieces' || child.type.name === 'CapturedPieces');
-                })}
-              </div>
-            )}
+            {extraContent && React.Children.toArray(extraContent.props.children)[0]}
           </div>
         </div>
       );
@@ -580,10 +570,7 @@ const GameMatchLayout = ({
                       {resultBadge.text}
                     </div>
                   )}
-                  {extraContent && React.Children.toArray(extraContent.props.children).find(child => {
-                    // Find the check/checkmate badge (not CapturedPieces)
-                    return child && child.type && (child.type.displayName !== 'CapturedPieces' && child.type.name !== 'CapturedPieces');
-                  })}
+                  {extraContent && React.Children.toArray(extraContent.props.children)[1]}
                 </div>
               )}
             </div>
@@ -626,10 +613,7 @@ const GameMatchLayout = ({
           {/* Extra Content (Captured Pieces) - Below Timer */}
           {extraContent && (
             <div className="mt-4">
-              {React.Children.toArray(extraContent.props.children).filter(child => {
-                // Show only CapturedPieces component here
-                return child && child.type && (child.type.displayName === 'CapturedPieces' || child.type.name === 'CapturedPieces');
-              })}
+              {React.Children.toArray(extraContent.props.children)[0]}
             </div>
           )}
         </div>
@@ -806,10 +790,7 @@ const GameMatchLayout = ({
           {/* Extra Content (Captured Pieces) - Below Timer */}
           {extraContent && (
             <div className="mt-4">
-              {React.Children.toArray(extraContent.props.children).filter(child => {
-                // Show only CapturedPieces component here
-                return child && child.type && (child.type.displayName === 'CapturedPieces' || child.type.name === 'CapturedPieces');
-              })}
+              {React.Children.toArray(extraContent.props.children)[0]}
             </div>
           )}
         </div>
@@ -1072,10 +1053,7 @@ const GameMatchLayout = ({
                       {resultBadge.text}
                     </div>
                   )}
-                  {extraContent && React.Children.toArray(extraContent.props.children).find(child => {
-                    // Find the check/checkmate badge (not CapturedPieces)
-                    return child && child.type && (child.type.displayName !== 'CapturedPieces' && child.type.name !== 'CapturedPieces');
-                  })}
+                  {extraContent && React.Children.toArray(extraContent.props.children)[1]}
                 </div>
               )}
             </div>
@@ -1111,10 +1089,7 @@ const GameMatchLayout = ({
           {/* Extra Content (Captured Pieces) - Below Timer */}
           {extraContent && (
             <div className={compactChessMatchView ? 'mt-2' : 'mt-4'}>
-              {React.Children.toArray(extraContent.props.children).filter(child => {
-                // Show only CapturedPieces component here
-                return child && child.type && (child.type.displayName === 'CapturedPieces' || child.type.name === 'CapturedPieces');
-              })}
+              {React.Children.toArray(extraContent.props.children)[0]}
             </div>
           )}
         </div>
