@@ -138,22 +138,6 @@ const MatchComplete = ({
   // Spectator view - Show winner info
   const hasWinner = winner && winner.toLowerCase() !== zeroAddress;
 
-  // Determine appropriate message based on completion reason
-  const getCompletionText = () => {
-    if (gameSpecificText) return gameSpecificText;
-
-    if (isMatchDraw) return useV2ReasonLabels ? getV2NeutralMatchReasonLabel(completionReason) : 'Draw';
-
-    // ML2 (3) or ML3 (4) - no winner
-    if (completionReason === 3 || completionReason === 4) {
-      return useV2ReasonLabels
-        ? getV2NeutralMatchReasonLabel(completionReason)
-        : (completionReason === 3 ? 'Force Eliminated (ML2)' : 'Replacement Claimed (ML3)');
-    }
-
-    return hasWinner ? 'Victory!' : 'Match Complete';
-  };
-
   return (
     <div
       className="rounded-xl p-4 text-center"
@@ -167,12 +151,19 @@ const MatchComplete = ({
         <Trophy className="text-green-400" size={20} />
         <p className="text-green-400 font-bold text-lg">Match Complete</p>
       </div>
-      <p className="text-white font-mono text-sm mb-1">
+      <p className="text-white font-mono text-sm mb-3">
         Winner: {hasWinner ? shortenAddress(winner) : 'No winner'}
       </p>
-      <p className="text-green-300 text-xs">
-        {linkifyReasonText(getCompletionText(), { keyPrefix: 'match-complete-summary', linkClassName: 'underline decoration-dotted underline-offset-2 hover:text-white' })}
-      </p>
+
+      {/* CTA Button */}
+      {onReturnToBracket && (
+        <button
+          onClick={onReturnToBracket}
+          className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition-all transform hover:scale-105"
+        >
+          Retrun to Brackets
+        </button>
+      )}
     </div>
   );
 };
