@@ -24,6 +24,8 @@ import {
   Loader,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   History,
 } from 'lucide-react';
 import { ethers } from 'ethers';
@@ -122,6 +124,52 @@ const HERO_LINKS = [
 
 function isWalletAvailable() {
   return typeof window !== 'undefined' && typeof window.ethereum !== 'undefined';
+}
+
+function getTicTacToeCellValue(firstPlayer, player1, player2) {
+  if (!firstPlayer) return 1;
+  if (firstPlayer?.toLowerCase() === player1?.toLowerCase()) return 1;
+  if (firstPlayer?.toLowerCase() === player2?.toLowerCase()) return 2;
+  return 1;
+}
+
+function buildReplayTicTacToeBoard(moveHistory, effectiveReplayMoveIndex, firstPlayer, player1, player2, fallbackBoard) {
+  if (effectiveReplayMoveIndex >= moveHistory.length - 1) {
+    return fallbackBoard;
+  }
+
+  const board = Array(9).fill(0);
+  const firstPlayerCellValue = getTicTacToeCellValue(firstPlayer, player1, player2);
+  const secondPlayerCellValue = firstPlayerCellValue === 1 ? 2 : 1;
+
+  for (let i = 0; i <= effectiveReplayMoveIndex && i < moveHistory.length; i++) {
+    const move = moveHistory[i];
+    if (move?.cell < 0 || move?.cell > 8) continue;
+    board[move.cell] = i % 2 === 0 ? firstPlayerCellValue : secondPlayerCellValue;
+  }
+
+  return board;
+}
+
+function findTicTacToeWinningCells(board) {
+  const lines = [
+    [0, 1, 2],
+    [3, 4, 5],
+    [6, 7, 8],
+    [0, 3, 6],
+    [1, 4, 7],
+    [2, 5, 8],
+    [0, 4, 8],
+    [2, 4, 6],
+  ];
+
+  for (const [a, b, c] of lines) {
+    if (board[a] !== 0 && board[a] === board[b] && board[a] === board[c]) {
+      return [a, b, c];
+    }
+  }
+
+  return [];
 }
 
 function buildV2MatchKey(roundNumber, matchNumber) {
@@ -643,6 +691,7 @@ export default function TicTacToeV2() {
   const [matchLoading, setMatchLoading] = useState(false);
   const [matchLoadingMessage, setMatchLoadingMessage] = useState(DEFAULT_MATCH_LOADING_MESSAGE);
   const [moveHistory, setMoveHistory] = useState([]);
+  const [replayMoveIndex, setReplayMoveIndex] = useState(-2); // -2 final, -1 start, 0+ move index
 
   // Debug logging for moveHistory changes
   useEffect(() => {
@@ -729,6 +778,30 @@ export default function TicTacToeV2() {
   const skipNavEffectRef = useRef(false);
   // True on the very first handleNav run — skip stale session state on direct page load
   const isInitialNavRef = useRef(true);
+
+  useEffect(() => {
+    setReplayMoveIndex(-2);
+  }, [currentMatch?.instanceAddress, currentMatch?.roundNumber, currentMatch?.matchNumber, currentMatch?.matchStatus]);
+
+  const effectiveReplayMoveIndex = replayMoveIndex === -2 ? moveHistory.length - 1 : replayMoveIndex;
+  const displayedBoard = currentMatch
+    ? (currentMatch.matchStatus === 2 && moveHistory.length > 0
+      ? buildReplayTicTacToeBoard(
+          moveHistory,
+          effectiveReplayMoveIndex,
+          currentMatch.firstPlayer,
+          currentMatch.player1,
+          currentMatch.player2,
+          currentMatch.board
+        )
+      : currentMatch.board)
+    : null;
+  const displayedWinningCells = displayedBoard ? findTicTacToeWinningCells(displayedBoard) : [];
+  const displayedLastMoveCell = currentMatch?.matchStatus === 2
+    ? (effectiveReplayMoveIndex >= 0 && moveHistory[effectiveReplayMoveIndex]
+      ? moveHistory[effectiveReplayMoveIndex].cell
+      : null)
+    : null;
 
   const getReadRunner = () => rpcProviderRef.current;
 
@@ -1892,6 +1965,7 @@ export default function TicTacToeV2() {
     const address = currentMatch?.instanceAddress || viewingTournament?.address;
     setCurrentMatch(null);
     setMoveHistory([]);
+    setReplayMoveIndex(-2);
     setIsSpectator(false);
     setMoveTxTimeout(null);
     setMatchEndResult(null);
@@ -2602,13 +2676,48 @@ export default function TicTacToeV2() {
               isSpectator={isSpectator}
               renderMoveHistory={moveHistory.length > 0 ? () => (
                 <div>
-                  <h3 className="text-xl font-bold text-purple-300 mb-4 flex items-center gap-2">
-                    <History size={20} />
-                    Move History
-                  </h3>
+                  <div className="mb-4 flex items-center gap-2">
+                    <h3 className="text-xl font-bold text-purple-300 flex items-center gap-2">
+                      <History size={20} />
+                      Move History
+                    </h3>
+                    {currentMatch.matchStatus === 2 ? (
+                      <div className="ml-auto flex items-center gap-1">
+                        <button
+                          onClick={() => setReplayMoveIndex(prev => Math.max(-1, (prev === -2 ? moveHistory.length - 1 : prev) - 1))}
+                          disabled={(replayMoveIndex === -2 ? moveHistory.length - 1 : replayMoveIndex) <= -1}
+                          className="rounded bg-slate-700/50 p-1.5 transition-colors hover:bg-slate-600/50 disabled:cursor-not-allowed disabled:opacity-30"
+                          title="Previous move"
+                        >
+                          <ChevronLeft size={18} className="text-purple-300" />
+                        </button>
+                        <span className="min-w-[3.5rem] text-center text-xs text-slate-400">
+                          {replayMoveIndex === -1 ? 'Start' : replayMoveIndex === -2 ? 'Final' : `Move ${replayMoveIndex + 1}`}
+                        </span>
+                        <button
+                          onClick={() => setReplayMoveIndex(prev => Math.min(moveHistory.length - 1, (prev === -2 ? moveHistory.length - 1 : prev) + 1))}
+                          disabled={(replayMoveIndex === -2 ? moveHistory.length - 1 : replayMoveIndex) >= moveHistory.length - 1}
+                          className="rounded bg-slate-700/50 p-1.5 transition-colors hover:bg-slate-600/50 disabled:cursor-not-allowed disabled:opacity-30"
+                          title="Next move"
+                        >
+                          <ChevronRight size={18} className="text-purple-300" />
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
                   <div className="space-y-2">
                     {moveHistory.map((move, idx) => (
-                      <div key={idx} className="flex items-center gap-2 text-sm bg-purple-500/10 p-2 rounded">
+                      <div
+                        key={idx}
+                        onClick={currentMatch.matchStatus === 2 ? () => setReplayMoveIndex(idx) : undefined}
+                        className={`flex items-center gap-2 rounded p-2 text-sm transition-colors ${
+                          currentMatch.matchStatus === 2 && idx === effectiveReplayMoveIndex
+                            ? 'cursor-pointer border border-purple-400/50 bg-purple-500/30'
+                            : currentMatch.matchStatus === 2
+                              ? 'cursor-pointer bg-purple-500/10 hover:bg-purple-500/20'
+                              : 'bg-purple-500/10'
+                        }`}
+                      >
                         <span className="text-purple-300">Move {idx + 1}:</span>
                         <span className="text-white">
                           <span className="font-bold">{move.player}</span>
@@ -2626,12 +2735,14 @@ export default function TicTacToeV2() {
                   {(() => {
                     const isPlayer1First = currentMatch.firstPlayer?.toLowerCase() === currentMatch.player1?.toLowerCase();
                     const firstPlayerCellValue = isPlayer1First ? 1 : 2;
-                    return currentMatch.board.map((cell, idx) => {
-                      const isGhost = cell === 0 && ghostMove?.cellIndex === idx;
+                    return displayedBoard.map((cell, idx) => {
+                      const isGhost = currentMatch.matchStatus !== 2 && cell === 0 && ghostMove?.cellIndex === idx;
                       const isFirstPlayerCell = cell === firstPlayerCellValue;
                       const isOpponentFirst = currentMatch.firstPlayer?.toLowerCase() !== account?.toLowerCase();
                       const ghostSymbol = isOpponentFirst ? 'X' : 'O';
                       const cellSymbol = cell === 0 ? (isGhost ? ghostSymbol : '') : (isFirstPlayerCell ? 'X' : 'O');
+                      const isWinningCell = displayedWinningCells.includes(idx);
+                      const isReplayLastMove = displayedLastMoveCell === idx;
                       const cellColorClass = isGhost
                         ? 'bg-purple-500/20 text-white/30 animate-pulse cursor-not-allowed'
                         : cell === 0
@@ -2644,7 +2755,9 @@ export default function TicTacToeV2() {
                           key={idx}
                           onClick={isSpectator ? null : () => handleCellClick(idx)}
                           disabled={isSpectator || matchLoading || currentMatch.matchStatus === 2 || !currentMatch.isYourTurn || isGhost}
-                          className={`aspect-square rounded-xl flex items-center justify-center text-4xl font-bold transition-all transform hover:scale-105 disabled:cursor-not-allowed ${cellColorClass}`}
+                          className={`aspect-square rounded-xl flex items-center justify-center text-4xl font-bold transition-all transform hover:scale-105 disabled:cursor-not-allowed ${
+                            isWinningCell ? 'ring-4 ring-yellow-400' : isReplayLastMove ? 'ring-2 ring-white/70' : ''
+                          } ${cellColorClass}`}
                         >
                           {cellSymbol}
                         </button>

@@ -11,6 +11,8 @@ import {
   Loader,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   History,
 } from 'lucide-react';
 import { ethers } from 'ethers';
@@ -235,6 +237,39 @@ function getDropRow(grid, column) {
   return -1;
 }
 
+function getConnectFourCellValue(firstPlayer, player1, player2) {
+  if (!firstPlayer) return 1;
+  if (firstPlayer?.toLowerCase() === player1?.toLowerCase()) return 1;
+  if (firstPlayer?.toLowerCase() === player2?.toLowerCase()) return 2;
+  return 1;
+}
+
+function buildReplayConnectFourBoard(moveHistory, effectiveReplayMoveIndex, firstPlayer, player1, player2, fallbackBoard) {
+  if (effectiveReplayMoveIndex >= moveHistory.length - 1) {
+    return fallbackBoard;
+  }
+
+  const board = Array(42).fill(0);
+  const firstPlayerCellValue = getConnectFourCellValue(firstPlayer, player1, player2);
+  const secondPlayerCellValue = firstPlayerCellValue === 1 ? 2 : 1;
+
+  for (let i = 0; i <= effectiveReplayMoveIndex && i < moveHistory.length; i++) {
+    const move = moveHistory[i];
+    const columnIndex = Number(move?.column) - 1;
+    if (columnIndex < 0 || columnIndex > 6) continue;
+
+    for (let row = 5; row >= 0; row--) {
+      const boardIndex = row * 7 + columnIndex;
+      if (board[boardIndex] === 0) {
+        board[boardIndex] = i % 2 === 0 ? firstPlayerCellValue : secondPlayerCellValue;
+        break;
+      }
+    }
+  }
+
+  return board;
+}
+
 function findWinningCells(grid, winner) {
   if (winner === 0) return [];
   const directions = [
@@ -261,6 +296,11 @@ function findWinningCells(grid, winner) {
     }
   }
   return [];
+}
+
+function findConnectFourWinningCells(flatBoard) {
+  const grid = boardToGrid(flatBoard);
+  return findWinningCells(grid, 1).length > 0 ? findWinningCells(grid, 1) : findWinningCells(grid, 2);
 }
 
 const AnimatedDisc = ({ delay = 0, size = 'large' }) => {
@@ -355,6 +395,7 @@ const ConnectFourBoard = ({
   winner,
   lastColumn,
   ghostMove,
+  winningCellsOverride,
 }) => {
   const [hoveredColumn, setHoveredColumn] = useState(-1);
   const [boardSize, setBoardSize] = useState(null);
@@ -385,7 +426,9 @@ const ConnectFourBoard = ({
     ? (winner.toLowerCase() === firstPlayer?.toLowerCase() ? firstPlayerCellValue : (firstPlayerCellValue === 1 ? 2 : 1))
     : 0;
 
-  const winningCells = findWinningCells(grid, winnerValue);
+  const winningCells = Array.isArray(winningCellsOverride)
+    ? winningCellsOverride
+    : findWinningCells(grid, winnerValue);
 
   const getTopDiscRow = (col) => {
     for (let row = 0; row < 6; row++) {
@@ -445,14 +488,18 @@ const ConnectFourBoard = ({
                 return (
                   <div
                     key={colIdx}
-                    className={`rounded-full flex items-center justify-center transition-all ${isWinning ? 'ring-4 ring-yellow-400 animate-pulse' : ''} ${isLastMove && !isWinning ? 'ring-2 ring-white/70' : ''}`}
+                    className={`rounded-full flex items-center justify-center transition-all ${
+                      isWinning ? 'ring-4 ring-yellow-400 animate-pulse bg-amber-200/10' : ''
+                    } ${isLastMove && !isWinning ? 'ring-2 ring-white/70' : ''}`}
                     style={{
                       width: cellSize,
                       height: cellSize,
                       background: '#09192d',
-                      boxShadow: isLastMove && !isWinning
-                        ? 'inset 0 4px 8px rgba(0,0,0,0.5), 0 0 15px 2px rgba(255,255,255,0.3)'
-                        : 'inset 0 4px 8px rgba(0,0,0,0.5)',
+                      boxShadow: isWinning
+                        ? 'inset 0 4px 8px rgba(0,0,0,0.5), 0 0 18px 4px rgba(250,204,21,0.45), 0 0 34px 8px rgba(250,204,21,0.2)'
+                        : isLastMove && !isWinning
+                          ? 'inset 0 4px 8px rgba(0,0,0,0.5), 0 0 15px 2px rgba(255,255,255,0.3)'
+                          : 'inset 0 4px 8px rgba(0,0,0,0.5)',
                     }}
                     onMouseEnter={() => setHoveredColumn(colIdx)}
                     onMouseLeave={() => setHoveredColumn(-1)}
@@ -464,18 +511,20 @@ const ConnectFourBoard = ({
                   >
                     {cell !== 0 ? (
                       <div
-                        className={`rounded-full transition-all ${isWinning ? 'scale-110' : ''} ${isLastMove && !isWinning ? 'animate-pulse' : ''}`}
+                        className={`rounded-full transition-all ${isWinning ? 'scale-110 animate-pulse' : ''} ${isLastMove && !isWinning ? 'animate-pulse' : ''}`}
                         style={{
                           width: cellSize - 8,
                           height: cellSize - 8,
                           background: cell === firstPlayerCellValue
                             ? 'radial-gradient(circle at 30% 30%, #ef4444, #b91c1c)'
                             : 'radial-gradient(circle at 30% 30%, #3b82f6, #1d4ed8)',
-                          boxShadow: isLastMove && !isWinning
-                            ? cell === firstPlayerCellValue
-                              ? '0 0 20px 4px rgba(239,68,68,0.8), 0 0 40px 8px rgba(239,68,68,0.4), inset 0 -4px 8px rgba(0,0,0,0.3)'
-                              : '0 0 20px 4px rgba(59,130,246,0.8), 0 0 40px 8px rgba(59,130,246,0.4), inset 0 -4px 8px rgba(0,0,0,0.3)'
-                            : 'inset 0 -4px 8px rgba(0,0,0,0.3)',
+                          boxShadow: isWinning
+                            ? '0 0 0 3px rgba(250,204,21,0.9), 0 0 18px 6px rgba(250,204,21,0.55), 0 0 36px 10px rgba(250,204,21,0.25), inset 0 -4px 8px rgba(0,0,0,0.3)'
+                            : isLastMove && !isWinning
+                              ? cell === firstPlayerCellValue
+                                ? '0 0 20px 4px rgba(239,68,68,0.8), 0 0 40px 8px rgba(239,68,68,0.4), inset 0 -4px 8px rgba(0,0,0,0.3)'
+                                : '0 0 20px 4px rgba(59,130,246,0.8), 0 0 40px 8px rgba(59,130,246,0.4), inset 0 -4px 8px rgba(0,0,0,0.3)'
+                              : 'inset 0 -4px 8px rgba(0,0,0,0.3)',
                         }}
                       />
                     ) : isGhost ? (
@@ -802,6 +851,7 @@ export default function ConnectFourV2() {
   const [matchLoading, setMatchLoading] = useState(false);
   const [matchLoadingMessage, setMatchLoadingMessage] = useState(DEFAULT_MATCH_LOADING_MESSAGE);
   const [moveHistory, setMoveHistory] = useState([]);
+  const [replayMoveIndex, setReplayMoveIndex] = useState(-2); // -2 final, -1 start, 0+ move index
   const [syncDots, setSyncDots] = useState(1);
   const [isSpectator, setIsSpectator] = useState(false);
   const [matchEndResult, setMatchEndResult] = useState(null);
@@ -871,6 +921,30 @@ export default function ConnectFourV2() {
   const matchEndModalShownRef = useRef(false);
   const skipNavEffectRef = useRef(false);
   const isInitialNavRef = useRef(true);
+
+  useEffect(() => {
+    setReplayMoveIndex(-2);
+  }, [currentMatch?.instanceAddress, currentMatch?.roundNumber, currentMatch?.matchNumber, currentMatch?.matchStatus]);
+
+  const effectiveReplayMoveIndex = replayMoveIndex === -2 ? moveHistory.length - 1 : replayMoveIndex;
+  const displayedBoard = currentMatch
+    ? (currentMatch.matchStatus === 2 && moveHistory.length > 0
+      ? buildReplayConnectFourBoard(
+          moveHistory,
+          effectiveReplayMoveIndex,
+          currentMatch.firstPlayer,
+          currentMatch.player1,
+          currentMatch.player2,
+          currentMatch.board
+        )
+      : currentMatch.board)
+    : null;
+  const displayedLastColumn = currentMatch?.matchStatus === 2
+    ? (effectiveReplayMoveIndex >= 0 && moveHistory[effectiveReplayMoveIndex]
+      ? moveHistory[effectiveReplayMoveIndex].column - 1
+      : null)
+    : currentMatch?.lastColumn ?? null;
+  const displayedWinningCells = displayedBoard ? findConnectFourWinningCells(displayedBoard) : [];
 
   const getReadRunner = () => rpcProviderRef.current;
 
@@ -2046,6 +2120,7 @@ export default function ConnectFourV2() {
     const address = currentMatch?.instanceAddress || viewingTournament?.address;
     setCurrentMatch(null);
     setMoveHistory([]);
+    setReplayMoveIndex(-2);
     setIsSpectator(false);
     setMoveTxTimeout(null);
     setMatchEndResult(null);
@@ -2754,13 +2829,48 @@ export default function ConnectFourV2() {
               isSpectator={isSpectator}
               renderMoveHistory={moveHistory.length > 0 ? () => (
                 <div>
-                  <h3 className="text-xl font-bold text-purple-300 mb-4 flex items-center gap-2">
-                    <History size={20} />
-                    Move History
-                  </h3>
+                  <div className="mb-4 flex items-center gap-2">
+                    <h3 className="text-xl font-bold text-purple-300 flex items-center gap-2">
+                      <History size={20} />
+                      Move History
+                    </h3>
+                    {currentMatch.matchStatus === 2 ? (
+                      <div className="ml-auto flex items-center gap-1">
+                        <button
+                          onClick={() => setReplayMoveIndex(prev => Math.max(-1, (prev === -2 ? moveHistory.length - 1 : prev) - 1))}
+                          disabled={(replayMoveIndex === -2 ? moveHistory.length - 1 : replayMoveIndex) <= -1}
+                          className="rounded bg-slate-700/50 p-1.5 transition-colors hover:bg-slate-600/50 disabled:cursor-not-allowed disabled:opacity-30"
+                          title="Previous move"
+                        >
+                          <ChevronLeft size={18} className="text-purple-300" />
+                        </button>
+                        <span className="min-w-[3.5rem] text-center text-xs text-slate-400">
+                          {replayMoveIndex === -1 ? 'Start' : replayMoveIndex === -2 ? 'Final' : `Move ${replayMoveIndex + 1}`}
+                        </span>
+                        <button
+                          onClick={() => setReplayMoveIndex(prev => Math.min(moveHistory.length - 1, (prev === -2 ? moveHistory.length - 1 : prev) + 1))}
+                          disabled={(replayMoveIndex === -2 ? moveHistory.length - 1 : replayMoveIndex) >= moveHistory.length - 1}
+                          className="rounded bg-slate-700/50 p-1.5 transition-colors hover:bg-slate-600/50 disabled:cursor-not-allowed disabled:opacity-30"
+                          title="Next move"
+                        >
+                          <ChevronRight size={18} className="text-purple-300" />
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
                   <div className="space-y-2">
                     {moveHistory.map((move, idx) => (
-                      <div key={idx} className="flex items-center gap-2 text-sm bg-purple-500/10 p-2 rounded">
+                      <div
+                        key={idx}
+                        onClick={currentMatch.matchStatus === 2 ? () => setReplayMoveIndex(idx) : undefined}
+                        className={`flex items-center gap-2 rounded p-2 text-sm transition-colors ${
+                          currentMatch.matchStatus === 2 && idx === effectiveReplayMoveIndex
+                            ? 'cursor-pointer border border-purple-400/50 bg-purple-500/30'
+                            : currentMatch.matchStatus === 2
+                              ? 'cursor-pointer bg-purple-500/10 hover:bg-purple-500/20'
+                              : 'bg-purple-500/10'
+                        }`}
+                      >
                         <span className="text-purple-300">Move {idx + 1}:</span>
                         <span className="text-white">
                           <span className="font-bold">{move.player}</span>
@@ -2773,7 +2883,7 @@ export default function ConnectFourV2() {
               ) : undefined}
             >
               <ConnectFourBoard
-                board={currentMatch.board}
+                board={displayedBoard}
                 onColumnClick={isSpectator ? null : handleColumnClick}
                 currentTurn={currentMatch.currentTurn}
                 account={account}
@@ -2783,8 +2893,9 @@ export default function ConnectFourV2() {
                 matchStatus={currentMatch.matchStatus}
                 loading={matchLoading}
                 winner={currentMatch.winner}
-                lastColumn={currentMatch.lastColumn}
-                ghostMove={ghostMove}
+                lastColumn={displayedLastColumn}
+                ghostMove={currentMatch.matchStatus === 2 ? null : ghostMove}
+                winningCellsOverride={displayedWinningCells}
               />
             </GameMatchLayout>
 
