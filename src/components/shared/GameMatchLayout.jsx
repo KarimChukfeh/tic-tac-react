@@ -615,8 +615,10 @@ const GameMatchLayout = ({
             {/* Game Controls */}
             <div className="space-y-3 mt-6">
               {renderGameControls?.()}
+            </div>
 
-              {isGameOver && (
+            {isGameOver && (
+              <div className="mt-8">
                 <MatchComplete
                   completionReason={completionReason}
                   winner={winner}
@@ -628,8 +630,8 @@ const GameMatchLayout = ({
                   onEnterNextMatch={onEnterNextMatch}
                   onReturnToBracket={onReturnToBracket}
                 />
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
           {/* Right Panel - Player 2 (hidden on mobile) */}
@@ -784,7 +786,7 @@ const GameMatchLayout = ({
             {renderGameControls?.()}
 
             {isGameOver && (
-              <div className="w-full max-w-md mt-4">
+              <div className="w-full max-w-md mt-8">
                 <MatchComplete
                   completionReason={completionReason}
                   winner={winner}
@@ -1078,17 +1080,19 @@ const GameMatchLayout = ({
           {renderGameControls?.()}
 
           {isGameOver && !shouldRenderMobileResultAfterMoveHistory && (
-            <MatchComplete
-              completionReason={completionReason}
-              winner={winner}
-              loser={loser}
-              currentAccount={account}
-              reasonLabelMode={reasonLabelMode}
-              gameSpecificText={!isMatchDraw ? theme.completeText : undefined}
-              hasNextActiveMatch={hasNextActiveMatch}
-              onEnterNextMatch={onEnterNextMatch}
-              onReturnToBracket={onReturnToBracket}
-            />
+            <div style={{ marginTop: '2rem' }}>
+              <MatchComplete
+                completionReason={completionReason}
+                winner={winner}
+                loser={loser}
+                currentAccount={account}
+                reasonLabelMode={reasonLabelMode}
+                gameSpecificText={!isMatchDraw ? theme.completeText : undefined}
+                hasNextActiveMatch={hasNextActiveMatch}
+                onEnterNextMatch={onEnterNextMatch}
+                onReturnToBracket={onReturnToBracket}
+              />
+            </div>
           )}
 
           {/* Move History - Mobile Section */}
@@ -1099,17 +1103,19 @@ const GameMatchLayout = ({
           )}
 
           {isGameOver && shouldRenderMobileResultAfterMoveHistory && (
-            <MatchComplete
-              completionReason={completionReason}
-              winner={winner}
-              loser={loser}
-              currentAccount={account}
-              reasonLabelMode={reasonLabelMode}
-              gameSpecificText={!isMatchDraw ? theme.completeText : undefined}
-              hasNextActiveMatch={hasNextActiveMatch}
-              onEnterNextMatch={onEnterNextMatch}
-              onReturnToBracket={onReturnToBracket}
-            />
+            <div style={{ marginTop: '2rem' }}>
+              <MatchComplete
+                completionReason={completionReason}
+                winner={winner}
+                loser={loser}
+                currentAccount={account}
+                reasonLabelMode={reasonLabelMode}
+                gameSpecificText={!isMatchDraw ? theme.completeText : undefined}
+                hasNextActiveMatch={hasNextActiveMatch}
+                onEnterNextMatch={onEnterNextMatch}
+                onReturnToBracket={onReturnToBracket}
+              />
+            </div>
           )}
         </div>
 
@@ -1134,7 +1140,7 @@ const GameMatchLayout = ({
             {renderGameControls?.()}
 
             {isGameOver && (
-              <div className="w-full max-w-md mt-4">
+              <div className="w-full max-w-md mt-8">
                 <MatchComplete
                   completionReason={completionReason}
                   winner={winner}
