@@ -566,11 +566,11 @@ export default function Landing() {
         </section>
 
         {/* ============ FINAL CTA ============ */}
-        <section id="ready-to-prove-yourself" className="px-6 py-16 text-center scroll-mt-28 md:scroll-mt-36">
+        <section id="ready-to-prove-yourself" className="px-6 py-2 text-center scroll-mt-28 md:scroll-mt-36">
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
             Ready to Prove Yourself?
           </h2>
-          <p className="text-xl text-slate-400 mb-12 max-w-xl mx-auto">
+          <p className="text-xl text-slate-400 mb-6 max-w-xl mx-auto sm:mb-12">
           </p>
           <div
             id="learn-more-links"
@@ -628,7 +628,7 @@ export default function Landing() {
         </section>
         
         {/* ============ FOOTER ============ */}
-        <footer className="border-t border-slate-800/50 px-6 py-16">
+        <footer className="mt-12 border-t border-slate-800/50 px-6 py-16">
           <div className="max-w-6xl mx-auto">
 
             {/* Main Footer Content */}
