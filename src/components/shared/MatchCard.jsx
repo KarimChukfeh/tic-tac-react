@@ -113,7 +113,7 @@ const MatchCard = ({
   const isPlayer1 = match.player1?.toLowerCase() === account?.toLowerCase();
   const isPlayer2 = match.player2?.toLowerCase() === account?.toLowerCase();
   const completionReason = getMatchCompletionReasonValue(match);
-  const canViewCompletedMatch = Boolean(account) && isTournamentCompleted && matchStatus === 2;
+  const canViewCompletedMatch = isTournamentCompleted && matchStatus === 2;
   const canAccessActiveMatch = Boolean(account) && isUserMatch && matchStatus !== 2;
   const canSpectateActiveMatch = Boolean(account) && !isUserMatch && matchStatus === 1 && Boolean(onSpectateMatch);
   const shouldShowMatchCta = canViewCompletedMatch || canAccessActiveMatch;

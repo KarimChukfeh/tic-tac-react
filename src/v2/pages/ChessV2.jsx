@@ -1721,11 +1721,13 @@ export default function ChessV2() {
   }, [viewingTournament?.address]);
 
   const handlePlayMatch = useCallback(async (_tierId, _instanceId, roundNumber, matchNumber) => {
-    if (!account) { alert('Please connect your wallet first.'); return; }
+    // Allow viewing completed tournaments without wallet connection
+    const isTournamentCompleted = viewingTournament?.status === 2;
+    if (!account && !isTournamentCompleted) { alert('Please connect your wallet first.'); return; }
     const instanceAddress = (typeof _instanceId === 'string' && _instanceId.startsWith('0x')) ? _instanceId : (viewingTournament?.address || '');
     let instanceCont = activeInstanceContractRef.current;
     if (!instanceCont || (instanceAddress && (instanceCont.target || instanceCont.address)?.toLowerCase() !== instanceAddress.toLowerCase())) {
-      if (!instanceAddress) { alert('Missing instance address.'); return; }
+      if (!instanceAddress) { alert(isTournamentCompleted ? 'Unable to load tournament data.' : 'Missing instance address.'); return; }
       instanceCont = getInstanceContract(instanceAddress, getReadRunner());
       setActiveInstanceContract(instanceCont);
       activeInstanceContractRef.current = instanceCont;
@@ -1735,7 +1737,7 @@ export default function ChessV2() {
       setMatchLoading(true);
       const updated = await refreshMatchData(instanceCont, account, { tierId: VIRTUAL_TIER_ID, instanceId: VIRTUAL_INSTANCE_ID, roundNumber, matchNumber, playerCount: viewingTournament?.playerCount ?? null, prizePool: viewingTournament?.prizePoolWei || 0n, instanceAddress });
       if (updated) {
-        setIsSpectator(!(updated.player1?.toLowerCase() === account.toLowerCase() || updated.player2?.toLowerCase() === account.toLowerCase()));
+        setIsSpectator(!(account && (updated.player1?.toLowerCase() === account.toLowerCase() || updated.player2?.toLowerCase() === account.toLowerCase())));
         setCurrentMatch(updated);
         previousBoardRef.current = JSON.stringify(updated.board);
         setMatchEndResult(null);

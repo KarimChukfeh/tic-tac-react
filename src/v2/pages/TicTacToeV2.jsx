@@ -1684,7 +1684,9 @@ export default function TicTacToeV2() {
   // ─── Match actions ───────────────────────────────────────────────────────────
 
   const handlePlayMatch = useCallback(async (_tierId, _instanceId, roundNumber, matchNumber) => {
-    if (!account) {
+    // Allow viewing completed tournaments without wallet connection
+    const isTournamentCompleted = viewingTournament?.status === 2;
+    if (!account && !isTournamentCompleted) {
       alert('Please connect your wallet first.');
       return;
     }
@@ -1695,7 +1697,10 @@ export default function TicTacToeV2() {
       : (viewingTournament?.address || '');
     let instanceCont = activeInstanceContractRef.current;
     if (!instanceCont || (instanceAddress && (instanceCont.target || instanceCont.address)?.toLowerCase() !== instanceAddress.toLowerCase())) {
-      if (!instanceAddress) { alert('Please connect your wallet first.'); return; }
+      if (!instanceAddress) {
+        alert(isTournamentCompleted ? 'Unable to load tournament data.' : 'Please connect your wallet first.');
+        return;
+      }
       instanceCont = getInstanceContract(instanceAddress, getReadRunner());
       setActiveInstanceContract(instanceCont);
       activeInstanceContractRef.current = instanceCont;
@@ -1713,7 +1718,7 @@ export default function TicTacToeV2() {
       });
 
       if (updated) {
-        setIsSpectator(!(updated.player1?.toLowerCase() === account.toLowerCase() || updated.player2?.toLowerCase() === account.toLowerCase()));
+        setIsSpectator(!(account && (updated.player1?.toLowerCase() === account.toLowerCase() || updated.player2?.toLowerCase() === account.toLowerCase())));
         setCurrentMatch(updated);
         previousBoardRef.current = [...updated.board];
         setMatchEndResult(null);

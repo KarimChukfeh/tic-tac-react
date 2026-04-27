@@ -1844,7 +1844,9 @@ export default function ConnectFourV2() {
   }, [viewingTournament?.address]);
 
   const handlePlayMatch = useCallback(async (_tierId, _instanceId, roundNumber, matchNumber) => {
-    if (!account) {
+    // Allow viewing completed tournaments without wallet connection
+    const isTournamentCompleted = viewingTournament?.status === 2;
+    if (!account && !isTournamentCompleted) {
       alert('Please connect your wallet first.');
       return;
     }
@@ -1854,7 +1856,7 @@ export default function ConnectFourV2() {
     let instanceCont = activeInstanceContractRef.current;
     if (!instanceCont || (instanceAddress && (instanceCont.target || instanceCont.address)?.toLowerCase() !== instanceAddress.toLowerCase())) {
       if (!instanceAddress) {
-        alert('Missing instance address.');
+        alert(isTournamentCompleted ? 'Unable to load tournament data.' : 'Missing instance address.');
         return;
       }
       instanceCont = getInstanceContract(instanceAddress, getReadRunner());
@@ -1875,7 +1877,7 @@ export default function ConnectFourV2() {
       });
 
       if (updated) {
-        setIsSpectator(!(updated.player1?.toLowerCase() === account.toLowerCase() || updated.player2?.toLowerCase() === account.toLowerCase()));
+        setIsSpectator(!(account && (updated.player1?.toLowerCase() === account.toLowerCase() || updated.player2?.toLowerCase() === account.toLowerCase())));
         setCurrentMatch(updated);
         previousBoardRef.current = [...updated.board];
         setMatchEndResult(null);
