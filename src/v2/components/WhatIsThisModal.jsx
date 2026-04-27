@@ -87,15 +87,17 @@ const WhatIsThisModal = ({ isOpen, onClose }) => {
                 <p>
                   Winners advance through the bracket until a champion takes the entire ETH prize pool.
                 </p>
-                <p className="font-semibold text-white">
-                  Every move is a transaction.
-                </p>
-                <p className="font-semibold text-white">
-                  Every outcome is permanent.
-                </p>
-                <p className="font-semibold text-white">
-                  Every payout is instant.
-                </p>
+                <div className="space-y-1">
+                  <p className="font-semibold text-white">
+                    Every move is a transaction.
+                  </p>
+                  <p className="font-semibold text-white">
+                    Every outcome is permanent.
+                  </p>
+                  <p className="font-semibold text-white">
+                    Every payout is instant.
+                  </p>
+                </div>
               </div>
             </div>
 
