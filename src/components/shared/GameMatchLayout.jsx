@@ -64,6 +64,46 @@ const GAME_THEMES = {
   }
 };
 
+const isChessIcon = (icon) => icon === '♚' || icon === '♔';
+
+const renderPlayerSymbol = ({ icon, label, imageClassName, symbolClassName }) => {
+  if (isChessIcon(icon)) {
+    return (
+      <img
+        src={icon === '♚' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
+        alt={label}
+        className={imageClassName}
+        draggable="false"
+      />
+    );
+  }
+
+  if (icon === 'X') {
+    return (
+      <span className={symbolClassName} aria-hidden="true">
+        <span className="relative inline-block h-full w-full">
+          <span className="absolute inset-0 left-1/2 h-full w-[3px] -translate-x-1/2 rotate-45 bg-blue-500" />
+          <span className="absolute inset-0 left-1/2 h-full w-[3px] -translate-x-1/2 -rotate-45 bg-blue-500" />
+        </span>
+      </span>
+    );
+  }
+
+  if (icon === 'O') {
+    return (
+      <span className={symbolClassName} aria-hidden="true">
+        <span className="inline-block h-full w-full rounded-full border-[3px] border-red-500" />
+      </span>
+    );
+  }
+
+  return (
+    <span className={symbolClassName} aria-hidden="true">
+      {icon}
+    </span>
+  );
+};
+
 const GameMatchLayout = ({
   // Required props
   gameType, // 'tictactoe' | 'chess' | 'connectfour'
@@ -381,20 +421,12 @@ const GameMatchLayout = ({
             <div className="flex-1 min-w-0">
               {/* Address row with symbol inline on mobile */}
               <div className={`flex items-center ${compactChessMatchView ? 'gap-1' : 'gap-2'}`}>
-                {(icon === '♚' || icon === '♔') ? (
-                  <img
-                    src={icon === '♚' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
-                    alt={label}
-                    className={`flex-shrink-0 ${compactChessMatchView ? 'w-[1.375rem] h-[1.375rem]' : 'w-8 h-8'}`}
-                    draggable="false"
-                  />
-                ) : (
-                  <div className={`${compactChessMatchView ? 'w-[1.375rem] h-[1.375rem] text-[14px]' : 'w-8 h-8 text-lg'} ${cardColors.iconBg} rounded-full flex items-center justify-center font-bold border ${
-                    isTurn && !isGameOver ? 'border-green-400' : cardColors.border
-                  }`}>
-                    {icon}
-                  </div>
-                )}
+                {renderPlayerSymbol({
+                  icon,
+                  label,
+                  imageClassName: `flex-shrink-0 ${compactChessMatchView ? 'w-[1.375rem] h-[1.375rem]' : 'w-8 h-8'}`,
+                  symbolClassName: `flex h-[1.375rem] w-[1.375rem] flex-shrink-0 items-center justify-center font-bold leading-none text-white ${compactChessMatchView ? 'text-[14px]' : 'h-8 w-8 text-lg'}`
+                })}
                 <div className={`font-mono truncate text-white ${compactChessMatchView ? 'text-[10px]' : 'text-xs'}`}>
                   {playerAddress ? compactChessMatchView ? `${playerAddress.slice(0, 5)}...${playerAddress.slice(-3)}` : `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : ''}
                 </div>
@@ -549,18 +581,12 @@ const GameMatchLayout = ({
 
           {/* Player Info */}
           <div className="flex items-center gap-3 mb-2">
-            {(icon === '♚' || icon === '♔') ? (
-              <img
-                src={icon === '♚' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
-                alt={label}
-                className="w-14 h-14 flex-shrink-0"
-                draggable="false"
-              />
-            ) : (
-              <div className={`w-12 h-12 flex-shrink-0 ${cardColors.iconBg} rounded-full flex items-center justify-center text-2xl font-bold border-2 ${cardColors.border}`}>
-                {icon}
-              </div>
-            )}
+            {renderPlayerSymbol({
+              icon,
+              label,
+              imageClassName: 'w-14 h-14 flex-shrink-0',
+              symbolClassName: 'flex h-12 w-12 flex-shrink-0 items-center justify-center text-2xl font-bold leading-none text-white'
+            })}
             <div className="flex flex-col">
               {isYou && <span className="text-yellow-400 text-sm font-bold leading-tight">YOU</span>}
               <p className={`${cardColors.text} font-mono text-xs`}>
@@ -738,18 +764,12 @@ const GameMatchLayout = ({
 
           {/* Player Info */}
           <div className={`flex items-center mb-1.5 ${compactChessMatchView ? 'gap-1.5' : 'gap-3'}`}>
-            {(icon === '♚' || icon === '♔') ? (
-              <img
-                src={icon === '♚' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
-                alt={label}
-                className={`${compactChessMatchView ? 'w-9 h-9' : 'w-14 h-14'} flex-shrink-0`}
-                draggable="false"
-              />
-            ) : (
-              <div className={`${compactChessMatchView ? 'w-8 h-8 text-base' : 'w-12 h-12 text-2xl'} flex-shrink-0 ${cardColors.iconBg} rounded-full flex items-center justify-center font-bold border-2 ${cardColors.border}`}>
-                {icon}
-              </div>
-            )}
+            {renderPlayerSymbol({
+              icon,
+              label,
+              imageClassName: `${compactChessMatchView ? 'w-9 h-9' : 'w-14 h-14'} flex-shrink-0`,
+              symbolClassName: `${compactChessMatchView ? 'h-8 w-8 text-base' : 'h-12 w-12 text-2xl'} flex flex-shrink-0 items-center justify-center font-bold leading-none text-white`
+            })}
             <div className="flex flex-col">
               {isYou && <span className={`text-yellow-400 font-bold leading-tight ${compactChessMatchView ? 'text-[10px]' : 'text-sm'}`}>YOU</span>}
               <p className={`${cardColors.text} font-mono ${compactChessMatchView ? 'text-[9px]' : 'text-xs'}`}>
@@ -1032,18 +1052,12 @@ const GameMatchLayout = ({
 
           {/* Player Info */}
           <div className="flex items-center gap-3 mb-2">
-            {(icon === '♚' || icon === '♔') ? (
-              <img
-                src={icon === '♚' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
-                alt={label}
-                className="w-14 h-14 flex-shrink-0"
-                draggable="false"
-              />
-            ) : (
-              <div className={`w-12 h-12 flex-shrink-0 ${cardColors.iconBg} rounded-full flex items-center justify-center text-2xl font-bold border-2 ${cardColors.border}`}>
-                {icon}
-              </div>
-            )}
+            {renderPlayerSymbol({
+              icon,
+              label,
+              imageClassName: 'w-14 h-14 flex-shrink-0',
+              symbolClassName: 'flex h-12 w-12 flex-shrink-0 items-center justify-center text-2xl font-bold leading-none text-white'
+            })}
             <div className="flex flex-col">
               {isYou && <span className="text-yellow-400 text-sm font-bold leading-tight">YOU</span>}
               <p className={`${cardColors.text} font-mono text-xs`}>
