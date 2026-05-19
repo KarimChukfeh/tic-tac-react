@@ -3,7 +3,7 @@
  */
 
 /**
- * Generate shareable tournament URL
+ * Generate shareable tournament URL using the canonical game routes.
  * @param {string} gameType - 'tictactoe', 'chess', or 'connectfour'
  * @param {number} tierId - Tournament tier ID (0-indexed)
  * @param {number} instanceId - Tournament instance ID (0-indexed)
@@ -17,8 +17,8 @@ export const generateTournamentUrl = (gameType, tierId, instanceId) => {
   };
 
   const gamePath = gamePathMap[gameType] || gameType;
-  // Convert 0-indexed to 1-indexed for user-friendly URLs
-  return `${window.location.origin}/v1/${gamePath}?t=${tierId + 1}&i=${instanceId + 1}`;
+  // Convert 0-indexed to 1-indexed for user-friendly URLs.
+  return `${window.location.origin}/${gamePath}?t=${tierId + 1}&i=${instanceId + 1}`;
 };
 
 /**

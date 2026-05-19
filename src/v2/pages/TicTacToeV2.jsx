@@ -52,6 +52,7 @@ import { useV2MatchHistory } from '../hooks/useV2MatchHistory';
 import { useActiveLobbies } from '../hooks/useActiveLobbies';
 import RecentMatchesCard from '../../components/shared/RecentMatchesCard';
 import GamesCard from '../../components/shared/GamesCard';
+import MobileBottomNavDrawer from '../../components/shared/MobileBottomNavDrawer';
 import BracketScrollHint from '../../components/shared/BracketScrollHint';
 import RecentInstanceCard from '../../components/shared/RecentInstanceCard';
 import TraditionalTournamentBracket from '../../components/shared/TraditionalTournamentBracket';
@@ -723,6 +724,7 @@ export default function TicTacToeV2() {
 
   // --- Mobile panel coordination ---
   const [expandedPanel, setExpandedPanel] = useState(null);
+  const [isMobileBottomNavExpanded, setIsMobileBottomNavExpanded] = useState(true);
   const [activeTooltip, setActiveTooltip] = useState(null);
   const [selectedProfileAddress, setSelectedProfileAddress] = useState(null);
   const [isTabActive, setIsTabActive] = useState(typeof document === 'undefined' ? true : !document.hidden);
@@ -766,6 +768,10 @@ export default function TicTacToeV2() {
   // --- Active match alert ---
   const [showMatchAlert, setShowMatchAlert] = useState(false);
   const [alertMatch, setAlertMatch] = useState(null);
+
+  useEffect(() => {
+    setIsMobileBottomNavExpanded(!currentMatch);
+  }, [currentMatch]);
 
   // --- Mobile wallet prompt ---
   const { showPrompt, handleWalletChoice, handleContinueChoice, triggerWalletPrompt } = useWalletBrowserPrompt();
@@ -2392,7 +2398,11 @@ export default function TicTacToeV2() {
       {/* Bottom Nav Bar (mobile + desktop — mirrors V1) */}
       <div className="fixed bottom-0 left-0 right-0 z-50 md:static md:z-auto">
         {/* Mobile */}
-        <div className="md:hidden bg-gradient-to-b from-slate-800 to-slate-900 border-t border-purple-400/30 px-4 py-2.5 flex items-center justify-between">
+        <MobileBottomNavDrawer
+          enabled={Boolean(currentMatch)}
+          expanded={isMobileBottomNavExpanded}
+          onToggle={() => setIsMobileBottomNavExpanded(prev => !prev)}
+        >
           <GamesCard
             currentGame="tictactoe"
             onHeightChange={setGamesCardHeight}
@@ -2485,8 +2495,7 @@ export default function TicTacToeV2() {
             onHideTooltip={() => setActiveTooltip(null)}
             connectCtaClassName={currentTheme.connectCtaClassName}
           />
-        </div>
-        {/* Desktop */}
+        </MobileBottomNavDrawer>
         <div className="hidden md:block">
           <GamesCard
             currentGame="tictactoe"
@@ -2538,6 +2547,8 @@ export default function TicTacToeV2() {
             connectCtaClassName={currentTheme.connectCtaClassName}
             onNavigateToTournament={() => {}}
             leaderboard={leaderboard}
+            onMatchesLoad={() => {}}
+            onScrollToMatch={(fn) => { recentMatchesScrollRef.current = fn; }}
             playerProfile={playerProfile}
             onRefresh={refreshHistoryPanel}
             showTournamentRaffles={false}
@@ -2743,8 +2754,8 @@ export default function TicTacToeV2() {
               ) : undefined}
             >
               {/* TicTacToe Board */}
-              <div className="w-full max-w-md mx-auto">
-                <div className="grid grid-cols-3 gap-3">
+              <div className="w-full max-w-[min(19rem,calc(100vw-1.5rem))] sm:max-w-md mx-auto">
+                <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
                   {(() => {
                     const isPlayer1First = currentMatch.firstPlayer?.toLowerCase() === currentMatch.player1?.toLowerCase();
                     const firstPlayerCellValue = isPlayer1First ? 1 : 2;
@@ -2768,7 +2779,7 @@ export default function TicTacToeV2() {
                           key={idx}
                           onClick={isSpectator ? null : () => handleCellClick(idx)}
                           disabled={isSpectator || matchLoading || currentMatch.matchStatus === 2 || !currentMatch.isYourTurn || isGhost}
-                          className={`aspect-square rounded-xl flex items-center justify-center text-4xl font-bold transition-all transform hover:scale-105 disabled:cursor-not-allowed ${
+                          className={`aspect-square rounded-xl flex items-center justify-center text-[2.25rem] sm:text-4xl font-bold transition-all transform hover:scale-105 disabled:cursor-not-allowed ${
                             isWinningCell ? 'ring-4 ring-yellow-400' : isReplayLastMove ? 'ring-2 ring-white/70' : ''
                           } ${cellColorClass}`}
                         >

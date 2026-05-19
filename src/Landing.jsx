@@ -4,7 +4,6 @@ import { Shield, Link2, Lock, CheckCircle, ChevronDown, ChevronUp } from 'lucide
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
-import TotalEarningsCard from './components/shared/TotalEarningsCard';
 import V2ContractsTable from './components/shared/V2ContractsTable';
 
 // Floating Game Particles - each hovers around its initial position
@@ -467,7 +466,6 @@ export default function Landing() {
             <p className="text-slate-400 text-lg mb-3">
               Three games. Multiple stake levels. One rule: <span className="text-cyan-400">winner takes all.</span>
             </p>
-            <TotalEarningsCard />
           </div>
           
           {/* Games Grid */}

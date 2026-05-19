@@ -2,9 +2,6 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom'
 import Landing from './Landing.jsx'
-import TicTacChain from './TicTacChain.jsx'
-import Chess from './Chess.jsx'
-import ConnectFour from './ConnectFour.jsx'
 import TicTacToeV2 from './v2/pages/TicTacToeV2.jsx'
 import ConnectFourV2 from './v2/pages/ConnectFourV2.jsx'
 import ChessV2 from './v2/pages/ChessV2.jsx'
@@ -138,9 +135,6 @@ function AppRoutes() {
           <Route path="/tictactoe" element={<TicTacToeV2 />} />
           <Route path="/connect4" element={<ConnectFourV2 />} />
           <Route path="/chess" element={<ChessV2 />} />
-          <Route path="/v1/tictactoe" element={<TicTacChain />} />
-          <Route path="/v1/connect4" element={<ConnectFour />} />
-          <Route path="/v1/chess" element={<Chess />} />
           <Route path="/v2/tictactoe" element={<CanonicalRedirect to="/tictactoe" />} />
           <Route path="/v2/connec4" element={<CanonicalRedirect to="/connect4" />} />
           <Route path="/v2/connect4" element={<CanonicalRedirect to="/connect4" />} />

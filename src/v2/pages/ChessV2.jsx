@@ -38,6 +38,7 @@ import PlayerActivity from '../../components/shared/PlayerActivity';
 import ActiveLobbiesCard from '../../components/shared/ActiveLobbiesCard';
 import RecentMatchesCard from '../../components/shared/RecentMatchesCard';
 import GamesCard from '../../components/shared/GamesCard';
+import MobileBottomNavDrawer from '../../components/shared/MobileBottomNavDrawer';
 import BracketScrollHint from '../../components/shared/BracketScrollHint';
 import RecentInstanceCard from '../../components/shared/RecentInstanceCard';
 import TraditionalTournamentBracket from '../../components/shared/TraditionalTournamentBracket';
@@ -336,7 +337,7 @@ const ChessBoard = ({ board, packedBoard, packedState, onMove, currentTurn, acco
 
   useEffect(() => {
     const updateSize = () => {
-      const viewportLimit = window.innerHeight * 0.55;
+      const viewportLimit = window.innerHeight * 0.52;
       const containerWidth = containerRef.current?.offsetWidth || window.innerWidth * 0.9;
       setBoardSize(Math.min(viewportLimit, containerWidth, maxSize));
     };
@@ -849,6 +850,7 @@ export default function ChessV2() {
 
   const [leaderboard] = useState([]);
   const [expandedPanel, setExpandedPanel] = useState(null);
+  const [isMobileBottomNavExpanded, setIsMobileBottomNavExpanded] = useState(true);
   const [activeTooltip, setActiveTooltip] = useState(null);
   const [selectedProfileAddress, setSelectedProfileAddress] = useState(null);
   const [isTabActive, setIsTabActive] = useState(typeof document === 'undefined' ? true : !document.hidden);
@@ -858,6 +860,10 @@ export default function ChessV2() {
   const shouldPollPlayerProfile = Boolean(account) && isTabActive && expandedPanel === 'recentMatches';
   const [showMatchAlert, setShowMatchAlert] = useState(false);
   const [alertMatch, setAlertMatch] = useState(null);
+
+  useEffect(() => {
+    setIsMobileBottomNavExpanded(!currentMatch);
+  }, [currentMatch]);
   const [gamesCardHeight, setGamesCardHeight] = useState(0);
   const [playerActivityHeight, setPlayerActivityHeight] = useState(0);
   const [recentMatchesCardHeight, setRecentMatchesCardHeight] = useState(0);
@@ -2250,8 +2256,8 @@ export default function ChessV2() {
 
     // Return just the badge without wrapper - will be placed inline with result pill
     return (
-      <div className={`${badgeClasses} inline-flex items-center justify-center rounded-full px-2 py-0.5 md:rounded-lg md:px-2 md:py-2 border font-bold tracking-wide`}>
-        <span className="text-[9px] leading-none md:text-xs">{badgeText}</span>
+      <div className={`${badgeClasses} inline-flex items-center justify-center rounded-full px-2.5 py-0.5 md:rounded-lg md:px-2 md:py-2 border font-bold tracking-wide`}>
+        <span className="text-[10px] leading-none md:text-xs">{badgeText}</span>
       </div>
     );
   }, [currentMatch, replayMoveIndex, effectiveReplayMoveIndex, moveHistory.length, replayCheckStatus]);
@@ -2278,12 +2284,16 @@ export default function ChessV2() {
       />
 
       <div className="fixed bottom-0 left-0 right-0 z-50 md:static md:z-auto">
-        <div className="md:hidden bg-gradient-to-b from-slate-800 to-slate-900 border-t border-purple-400/30 px-4 py-2.5 flex items-center justify-between">
+        <MobileBottomNavDrawer
+          enabled={Boolean(currentMatch)}
+          expanded={isMobileBottomNavExpanded}
+          onToggle={() => setIsMobileBottomNavExpanded(prev => !prev)}
+        >
           <GamesCard currentGame="chess" onHeightChange={setGamesCardHeight} isExpanded={expandedPanel === 'games'} onToggleExpand={() => setExpandedPanel(expandedPanel === 'games' ? null : 'games')} />
           <PlayerActivity activity={playerActivity.data} loading={playerActivity.loading} syncing={playerActivity.syncing} contract={activeInstanceContract} account={account} onEnterMatch={handlePlayMatch} onEnterTournament={handleEnterTournamentFromActivity} onRefresh={playerActivity.refetch} onDismissMatch={playerActivity.dismissMatch} gameName="chess" gameEmoji="♟️" connectCtaClassName={currentTheme.connectCtaClassName} gamesCardHeight={gamesCardHeight} onHeightChange={setPlayerActivityHeight} onCollapse={(fn) => { collapseActivityPanelRef.current = fn; }} isExpanded={expandedPanel === 'playerActivity'} onToggleExpand={() => setExpandedPanel(expandedPanel === 'playerActivity' ? null : 'playerActivity')} tierConfig={{}} disabled={!account} showTooltip={activeTooltip === 'playerActivity'} onShowTooltip={() => setActiveTooltip('playerActivity')} onHideTooltip={() => setActiveTooltip(null)} reasonLabelMode="v2" refreshOnExpand={false} />
           <RecentMatchesCard contract={null} account={account} gameName="chess" gameEmoji="♟️" gamesCardHeight={gamesCardHeight} playerActivityHeight={playerActivityHeight} onHeightChange={setRecentMatchesCardHeight} isExpanded={expandedPanel === 'recentMatches'} onToggleExpand={() => setExpandedPanel(expandedPanel === 'recentMatches' ? null : 'recentMatches')} tierConfig={{}} disabled={!account} showTooltip={activeTooltip === 'recentMatches'} onShowTooltip={() => setActiveTooltip('recentMatches')} onHideTooltip={() => setActiveTooltip(null)} connectCtaClassName={currentTheme.connectCtaClassName} onNavigateToTournament={() => {}} leaderboard={leaderboard} playerProfile={playerProfile} onRefresh={refreshHistoryPanel} showTournamentRaffles={false} onViewTournament={enterInstanceBracket} getTournamentTypeLabel={getTournamentTypeLabel} v2Matches={v2MatchHistory.matches} v2MatchesLoading={v2MatchHistory.loading} reasonLabelMode="v2" panelVariant="stats" />
           <ActiveLobbiesCard lobbies={activeLobbies.lobbies} resolvedLobbies={activeLobbies.resolvedLobbies} loading={activeLobbies.loading} resolvedLoading={activeLobbies.resolvedLoading} syncing={activeLobbies.syncing} resolvedSyncing={activeLobbies.resolvedSyncing} error={activeLobbies.error} resolvedError={activeLobbies.resolvedError} resolvedLoaded={activeLobbies.resolvedLoaded} resolvedPage={activeLobbies.resolvedPage} resolvedTotalCount={activeLobbies.resolvedTotalCount} resolvedPageSize={activeLobbies.resolvedPageSize} gamesCardHeight={gamesCardHeight} playerActivityHeight={playerActivityHeight} recentMatchesCardHeight={recentMatchesCardHeight} onRefresh={activeLobbies.refetch} onRefreshResolved={activeLobbies.refetchResolved} onResolvedPageChange={activeLobbies.goToResolvedPage} onLoadResolved={activeLobbies.refetchResolved} isExpanded={expandedPanel === 'activeLobbies'} onToggleExpand={() => setExpandedPanel(expandedPanel === 'activeLobbies' ? null : 'activeLobbies')} onViewTournament={enterInstanceBracket} getTournamentTypeLabel={getTournamentTypeLabel} disabled={!account} showTooltip={activeTooltip === 'activeLobbies'} onShowTooltip={() => setActiveTooltip('activeLobbies')} onHideTooltip={() => setActiveTooltip(null)} connectCtaClassName={currentTheme.connectCtaClassName} />
-        </div>
+        </MobileBottomNavDrawer>
         <div className="hidden md:block">
           <GamesCard currentGame="chess" onHeightChange={setGamesCardHeight} isExpanded={expandedPanel === 'games'} onToggleExpand={() => setExpandedPanel(expandedPanel === 'games' ? null : 'games')} />
           <PlayerActivity activity={playerActivity.data} loading={playerActivity.loading} syncing={playerActivity.syncing} contract={activeInstanceContract} account={account} onEnterMatch={handlePlayMatch} onEnterTournament={handleEnterTournamentFromActivity} onRefresh={playerActivity.refetch} onDismissMatch={playerActivity.dismissMatch} gameName="chess" gameEmoji="♟️" connectCtaClassName={currentTheme.connectCtaClassName} gamesCardHeight={gamesCardHeight} onHeightChange={setPlayerActivityHeight} onCollapse={(fn) => { collapseActivityPanelRef.current = fn; }} isExpanded={expandedPanel === 'playerActivity'} onToggleExpand={() => setExpandedPanel(expandedPanel === 'playerActivity' ? null : 'playerActivity')} tierConfig={{}} disabled={!account} showTooltip={activeTooltip === 'playerActivity'} onShowTooltip={() => setActiveTooltip('playerActivity')} onHideTooltip={() => setActiveTooltip(null)} reasonLabelMode="v2" refreshOnExpand={false} />

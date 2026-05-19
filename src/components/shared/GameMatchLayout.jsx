@@ -359,16 +359,16 @@ const GameMatchLayout = ({
           isTurn && isYou && !isGameOver
             ? `border-green-400 ${isMobileHeaderFixed ? 'bg-green-900' : 'bg-green-500/10'} ring-2 ring-green-400/30`
             : `${cardColors.border} ${cardBg}`
-        } ${compactChessMatchView ? (hasCapturedPieces ? 'pt-2.5 px-2 pb-1.5' : 'py-2 px-2 flex flex-col justify-center') : 'pt-4 px-3 pb-3 space-y-2'}`}>
+        } ${compactChessMatchView ? (hasCapturedPieces ? 'pt-2.5 px-2 pb-1.5' : 'py-2 px-2 flex flex-col justify-center') : 'pt-3.5 px-3 pb-2.5 space-y-1.5'}`}>
           {/* Turn Indicator Badge — always reserves space so both cards stay aligned */}
           <div className={`absolute left-0 right-0 flex items-center justify-center ${compactChessMatchView ? '-top-2.5 h-[1.125rem]' : '-top-4 h-6'}`}>
             {isTurn && !isGameOver && (
               isYou ? (
-                <div className={`inline-flex items-center justify-center bg-gradient-to-r from-green-500 to-emerald-500 font-bold leading-none text-white whitespace-nowrap rounded-full shadow-lg animate-bounce z-10 ${compactChessMatchView ? 'min-h-[17px] px-1.5 py-0 text-[8px]' : 'min-h-[22px] px-2.5 py-0.5 text-[11px]'}`}>
+                <div className={`inline-flex items-center justify-center bg-gradient-to-r from-green-500 to-emerald-500 font-bold leading-none text-white whitespace-nowrap rounded-full shadow-lg animate-bounce z-10 ${compactChessMatchView ? 'min-h-[18px] px-2 py-0 text-[9px]' : 'min-h-[24px] px-3 py-0.5 text-xs'}`}>
                   YOUR TURN!
                 </div>
               ) : (
-                <div className={`inline-flex items-center justify-center bg-gradient-to-r from-red-500 to-rose-500 font-bold leading-none text-white whitespace-nowrap rounded-full shadow-lg animate-bounce z-10 ${compactChessMatchView ? 'min-h-[17px] px-1.5 py-0 text-[8px]' : 'min-h-[22px] px-2.5 py-0.5 text-[11px]'}`}>
+                <div className={`inline-flex items-center justify-center bg-gradient-to-r from-red-500 to-rose-500 font-bold leading-none text-white whitespace-nowrap rounded-full shadow-lg animate-bounce z-10 ${compactChessMatchView ? 'min-h-[18px] px-2 py-0 text-[9px]' : 'min-h-[24px] px-3 py-0.5 text-xs'}`}>
                   THEIR TURN
                 </div>
               )
@@ -385,27 +385,27 @@ const GameMatchLayout = ({
                   <img
                     src={icon === '♚' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
                     alt={label}
-                    className={`flex-shrink-0 ${compactChessMatchView ? 'w-5 h-5' : 'w-8 h-8'}`}
+                    className={`flex-shrink-0 ${compactChessMatchView ? 'w-[1.375rem] h-[1.375rem]' : 'w-8 h-8'}`}
                     draggable="false"
                   />
                 ) : (
-                  <div className={`${compactChessMatchView ? 'w-5 h-5 text-[13px]' : 'w-8 h-8 text-lg'} ${cardColors.iconBg} rounded-full flex items-center justify-center font-bold border ${
+                  <div className={`${compactChessMatchView ? 'w-[1.375rem] h-[1.375rem] text-[14px]' : 'w-8 h-8 text-lg'} ${cardColors.iconBg} rounded-full flex items-center justify-center font-bold border ${
                     isTurn && !isGameOver ? 'border-green-400' : cardColors.border
                   }`}>
                     {icon}
                   </div>
                 )}
-                <div className={`font-mono truncate text-white ${compactChessMatchView ? 'text-[9px]' : 'text-[11px]'}`}>
+                <div className={`font-mono truncate text-white ${compactChessMatchView ? 'text-[10px]' : 'text-xs'}`}>
                   {playerAddress ? compactChessMatchView ? `${playerAddress.slice(0, 5)}...${playerAddress.slice(-3)}` : `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : ''}
                 </div>
-                {isYou && <span className={`text-yellow-300 font-bold flex-shrink-0 ${compactChessMatchView ? 'text-[7px]' : 'text-[10px]'}`}>YOU</span>}
+                {isYou && <span className={`text-yellow-300 font-bold flex-shrink-0 ${compactChessMatchView ? 'text-[8px]' : 'text-[11px]'}`}>YOU</span>}
               </div>
 
               {/* Pills row - guaranteed to fit on same row */}
               {(resultBadge || extraContent) && (
                 <div className={`mt-0.5 flex items-center ${compactChessMatchView ? 'gap-1' : 'gap-1'}`}>
                   {resultBadge && (
-                    <div className={`inline-flex rounded-full border font-bold tracking-wide ${resultBadge.className} ${compactChessMatchView ? 'px-2 py-0.5 text-[9px]' : 'px-2 py-0.5 text-[9px]'}`}>
+                    <div className={`inline-flex rounded-full border font-bold tracking-wide ${resultBadge.className} ${compactChessMatchView ? 'px-2 py-0.5 text-[10px]' : 'px-2.5 py-0.5 text-[10px]'}`}>
                       {resultBadge.text}
                     </div>
                   )}
@@ -417,8 +417,8 @@ const GameMatchLayout = ({
                   isTurn ? `${colors.border} ${colors.bg}` : 'border-gray-600/30 opacity-60'
                 }`}>
                   <div className="flex items-center justify-between mb-0.5">
-                    <span className={`font-bold text-gray-300 ${compactChessMatchView ? 'text-[7px]' : 'text-[10px]'}`}>Time Left</span>
-                    <span className={`font-mono font-bold ${colors.text} ${compactChessMatchView ? 'text-[9px]' : 'text-xs'}`}>
+                    <span className={`font-bold text-gray-300 ${compactChessMatchView ? 'text-[8px]' : 'text-[11px]'}`}>Time Left</span>
+                    <span className={`font-mono font-bold ${colors.text} ${compactChessMatchView ? 'text-[10px]' : 'text-[13px]'}`}>
                       {timeLeft > 0 ? formatTime(timeLeft) : 'OUT'}
                     </span>
                   </div>
@@ -453,7 +453,7 @@ const GameMatchLayout = ({
         className={`lg:hidden ${isMobileHeaderFixed ? `fixed left-0 right-0 z-[9999] px-4 bg-black/95 backdrop-blur-sm border border-purple-500 [box-shadow:0_0_8px_rgba(168,85,247,0.7),0_0_20px_rgba(168,85,247,0.4)] [animation:glow-pulse_2s_ease-in-out_infinite] ${isBoardBelow ? 'bottom-20 pt-2 pb-2' : 'top-0 pt-3 pb-3'}` : 'mb-6'}`}
       >
         {/* Single row: Combined player cards with timers */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2.5">
           {renderPlayerCard(1)}
           {renderPlayerCard(2)}
         </div>

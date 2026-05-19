@@ -35,6 +35,7 @@ import PlayerActivity from '../../components/shared/PlayerActivity';
 import ActiveLobbiesCard from '../../components/shared/ActiveLobbiesCard';
 import RecentMatchesCard from '../../components/shared/RecentMatchesCard';
 import GamesCard from '../../components/shared/GamesCard';
+import MobileBottomNavDrawer from '../../components/shared/MobileBottomNavDrawer';
 import BracketScrollHint from '../../components/shared/BracketScrollHint';
 import RecentInstanceCard from '../../components/shared/RecentInstanceCard';
 import TraditionalTournamentBracket from '../../components/shared/TraditionalTournamentBracket';
@@ -404,7 +405,7 @@ const ConnectFourBoard = ({
 
   useEffect(() => {
     const updateSize = () => {
-      const vh55 = window.innerHeight * 0.55;
+      const vh55 = window.innerHeight * 0.52;
       const containerWidth = containerRef.current?.offsetWidth || window.innerWidth * 0.9;
       setBoardSize(Math.min(vh55, containerWidth, 500));
     };
@@ -875,6 +876,7 @@ export default function ConnectFourV2() {
   const [leaderboard] = useState([]);
 
   const [expandedPanel, setExpandedPanel] = useState(null);
+  const [isMobileBottomNavExpanded, setIsMobileBottomNavExpanded] = useState(true);
   const [activeTooltip, setActiveTooltip] = useState(null);
   const [selectedProfileAddress, setSelectedProfileAddress] = useState(null);
   const [isTabActive, setIsTabActive] = useState(typeof document === 'undefined' ? true : !document.hidden);
@@ -884,6 +886,10 @@ export default function ConnectFourV2() {
   const shouldPollPlayerProfile = Boolean(account) && isTabActive && expandedPanel === 'recentMatches';
   const [showMatchAlert, setShowMatchAlert] = useState(false);
   const [alertMatch, setAlertMatch] = useState(null);
+
+  useEffect(() => {
+    setIsMobileBottomNavExpanded(!currentMatch);
+  }, [currentMatch]);
   const [gamesCardHeight, setGamesCardHeight] = useState(0);
   const [playerActivityHeight, setPlayerActivityHeight] = useState(0);
   const [recentMatchesCardHeight, setRecentMatchesCardHeight] = useState(0);
@@ -2549,7 +2555,11 @@ export default function ConnectFourV2() {
       />
 
       <div className="fixed bottom-0 left-0 right-0 z-50 md:static md:z-auto">
-      <div className="md:hidden bg-gradient-to-b from-slate-800 to-slate-900 border-t border-purple-400/30 px-4 py-2.5 flex items-center justify-between">
+        <MobileBottomNavDrawer
+          enabled={Boolean(currentMatch)}
+          expanded={isMobileBottomNavExpanded}
+          onToggle={() => setIsMobileBottomNavExpanded(prev => !prev)}
+        >
           <GamesCard
             currentGame="connect4"
             onHeightChange={setGamesCardHeight}
@@ -2640,7 +2650,7 @@ export default function ConnectFourV2() {
             onHideTooltip={() => setActiveTooltip(null)}
             connectCtaClassName={currentTheme.connectCtaClassName}
           />
-        </div>
+        </MobileBottomNavDrawer>
 
         <div className="hidden md:block">
           <GamesCard
