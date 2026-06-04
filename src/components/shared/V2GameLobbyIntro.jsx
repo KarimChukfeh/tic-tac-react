@@ -1,6 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { HelpCircle, Loader, Wallet } from 'lucide-react';
+import { ethers } from 'ethers';
 import { shortenAddress } from '../../utils/formatters';
+
+function formatBalance(value) {
+  if (value == null) return null;
+  const parsed = Number(ethers.formatEther(value));
+  if (!Number.isFinite(parsed)) return null;
+  return parsed.toFixed(4);
+}
 
 export default function V2GameLobbyIntro({
   account,
@@ -10,6 +18,8 @@ export default function V2GameLobbyIntro({
   children = null,
 }) {
   const [isTooltipOpen, setIsTooltipOpen] = useState(false);
+  const [walletBalance, setWalletBalance] = useState(null);
+  const [isBalanceLoading, setIsBalanceLoading] = useState(false);
   const tooltipRef = useRef(null);
 
   useEffect(() => {
@@ -29,6 +39,38 @@ export default function V2GameLobbyIntro({
     };
   }, [isTooltipOpen]);
 
+  useEffect(() => {
+    let ignore = false;
+
+    const loadBalance = async () => {
+      if (!account || !window.ethereum) {
+        setWalletBalance(null);
+        setIsBalanceLoading(false);
+        return;
+      }
+
+      setIsBalanceLoading(true);
+      try {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const balance = await provider.getBalance(account);
+        if (!ignore) setWalletBalance(balance);
+      } catch (error) {
+        console.error('Failed to load wallet balance:', error);
+        if (!ignore) setWalletBalance(null);
+      } finally {
+        if (!ignore) setIsBalanceLoading(false);
+      }
+    };
+
+    loadBalance();
+
+    return () => {
+      ignore = true;
+    };
+  }, [account]);
+
+  const formattedBalance = formatBalance(walletBalance);
+
   return (
     <div className="max-w-lg mx-auto mb-8 md:mb-10 space-y-5 md:space-y-6">
       {children ? (
@@ -39,8 +81,19 @@ export default function V2GameLobbyIntro({
 
       <div className="pt-2 flex flex-wrap items-center justify-center gap-3 text-center">
         {account ? (
-          <div className="text-sm md:text-base font-semibold text-green-300">
-            Connected as <span className="font-mono">{shortenAddress(account)}</span>
+          <div className="w-full max-w-sm rounded-lg border border-green-400/25 bg-slate-950/65 px-4 py-3 text-left shadow-xl shadow-green-950/20 backdrop-blur-sm">
+            <div className="flex items-start justify-between gap-2 sm:gap-4">
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-semibold text-green-300 md:text-base">Connected</div>
+                <div className="mt-1 truncate font-mono text-sm font-semibold text-white md:text-base">{shortenAddress(account)}</div>
+              </div>
+              <div className="min-w-0 flex-1 text-right">
+                <div className="text-sm font-semibold text-cyan-300 md:text-base">Balance</div>
+                <div className="mt-1 truncate text-sm font-semibold text-white md:text-base">
+                  {isBalanceLoading && formattedBalance == null ? '--' : `${formattedBalance ?? '0.0000'} ETH`}
+                </div>
+              </div>
+            </div>
           </div>
         ) : onConnectWallet ? (
           <div className="relative mt-3 mb-4 inline-flex items-center justify-center gap-2 md:mt-0 md:mb-0" ref={tooltipRef}>
