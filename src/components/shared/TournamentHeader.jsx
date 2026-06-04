@@ -738,7 +738,7 @@ const TournamentHeader = ({
               </span>
             </div>
             <div className="text-center mt-1">
-              <span className="text-blue-200/80 text-[10px]">
+              <span className="text-blue-200/80 text-[12px]">
                 You can cancel or reset the enrollment window at any time while no one else is enrolled
               </span>
             </div>
