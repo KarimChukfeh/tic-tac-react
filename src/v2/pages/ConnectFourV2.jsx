@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
   History,
+  Gamepad2,
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import { CURRENT_NETWORK, TARGET_CHAIN_ID_HEX, getAddressUrl, getWalletAddChainParams } from '../../config/networks';
@@ -81,6 +82,9 @@ const CONNECTFOUR_SYMBOLS = ['🔴', '🔵'];
 const VIRTUAL_TIER_ID = 0;
 const VIRTUAL_INSTANCE_ID = 0;
 const DEFAULT_MATCH_LOADING_MESSAGE = 'Loading match...';
+const DEMO_HUMAN_ADDRESS = '0xDeF0000000000000000000000000000000000001';
+const DEMO_COMPUTER_ADDRESS = '0xDeF0000000000000000000000000000000000002';
+const DEMO_MATCH_TIME_SECONDS = 120;
 
 const DEFAULT_CREATE_FORM = {
   playerCount: 2,
@@ -303,6 +307,84 @@ function findWinningCells(grid, winner) {
 function findConnectFourWinningCells(flatBoard) {
   const grid = boardToGrid(flatBoard);
   return findWinningCells(grid, 1).length > 0 ? findWinningCells(grid, 1) : findWinningCells(grid, 2);
+}
+
+function checkConnectFourWinner(grid) {
+  const directions = [
+    [0, 1],   // horizontal
+    [1, 0],   // vertical
+    [1, 1],   // diagonal down-right
+    [1, -1],  // diagonal down-left
+  ];
+
+  for (let row = 0; row < 6; row++) {
+    for (let col = 0; col < 7; col++) {
+      const player = grid[row][col];
+      if (player === 0) continue;
+
+      for (const [dr, dc] of directions) {
+        let count = 1;
+        for (let i = 1; i < 4; i++) {
+          const nr = row + dr * i;
+          const nc = col + dc * i;
+          if (nr < 0 || nr >= 6 || nc < 0 || nc >= 7) break;
+          if (grid[nr][nc] !== player) break;
+          count++;
+        }
+        if (count === 4) return player;
+      }
+    }
+  }
+  return 0;
+}
+
+function isConnectFourDraw(flatBoard) {
+  if (checkConnectFourWinner(boardToGrid(flatBoard)) !== 0) return false;
+  return flatBoard.every(cell => cell !== 0);
+}
+
+function getBestDemoComputerMoveConnectFour(flatBoard, computerValue, humanValue) {
+  const grid = boardToGrid(flatBoard);
+  const availableColumns = [];
+
+  for (let col = 0; col < 7; col++) {
+    if (getDropRow(grid, col) !== -1) {
+      availableColumns.push(col);
+    }
+  }
+
+  if (availableColumns.length === 0) return null;
+
+  // Check for immediate winning move
+  for (const col of availableColumns) {
+    const row = getDropRow(grid, col);
+    grid[row][col] = computerValue;
+    if (checkConnectFourWinner(grid) === computerValue) {
+      grid[row][col] = 0;
+      return col;
+    }
+    grid[row][col] = 0;
+  }
+
+  // Check for blocking opponent's winning move
+  for (const col of availableColumns) {
+    const row = getDropRow(grid, col);
+    grid[row][col] = humanValue;
+    if (checkConnectFourWinner(grid) === humanValue) {
+      grid[row][col] = 0;
+      return col;
+    }
+    grid[row][col] = 0;
+  }
+
+  // Prefer center columns (make the AI less perfect)
+  const centerColumns = availableColumns.filter(col => col >= 2 && col <= 4);
+  if (centerColumns.length > 0 && Math.random() < 0.6) {
+    return centerColumns[Math.floor(Math.random() * centerColumns.length)];
+  }
+
+  // Random move from available columns
+  return availableColumns[Math.floor(Math.random() * availableColumns.length)];
 }
 
 const AnimatedDisc = ({ delay = 0, size = 'large' }) => {
@@ -872,6 +954,8 @@ export default function ConnectFourV2() {
   const [nextActiveMatch, setNextActiveMatch] = useState(null);
   const [moveTxTimeout, setMoveTxTimeout] = useState(null);
   const [ghostMove, setGhostMove] = useState(null);
+  const [demoSymbol, setDemoSymbol] = useState(null);
+  const demoComputerMoveTimeoutRef = useRef(null);
 
   const [leaderboard] = useState([]);
 
@@ -1911,7 +1995,221 @@ export default function ConnectFourV2() {
     }
   }, [account, viewingTournament, refreshMatchData, buildMoveHistory, navigate, location.state?.view]);
 
+  const resolveDemoMatch = useCallback((board, history) => {
+    const grid = boardToGrid(board);
+    const winnerCellValue = checkConnectFourWinner(grid);
+    const isDemoMatchDraw = winnerCellValue === 0 && board.every(cell => cell !== 0);
+
+    if (winnerCellValue === 0 && !isDemoMatchDraw) return false;
+
+    const winnerAddress = winnerCellValue === 1
+      ? DEMO_HUMAN_ADDRESS
+      : winnerCellValue === 2
+      ? DEMO_COMPUTER_ADDRESS
+      : '0x0000000000000000000000000000000000000000';
+
+    const loserAddress = winnerCellValue === 1
+      ? DEMO_COMPUTER_ADDRESS
+      : winnerCellValue === 2
+      ? DEMO_HUMAN_ADDRESS
+      : '0x0000000000000000000000000000000000000000';
+
+    setCurrentMatch(prev => prev ? ({
+      ...prev,
+      board,
+      matchStatus: 2,
+      completionReason: isDemoMatchDraw ? 2 : 0,
+      winner: winnerAddress,
+      loser: loserAddress,
+      movesString: history.map(move => move.column - 1).join(','),
+    }) : prev);
+
+    previousBoardRef.current = [...board];
+    setMoveHistory(history);
+
+    const userWon = winnerAddress === DEMO_HUMAN_ADDRESS;
+    const resultType = isDemoMatchDraw ? 'draw' : (userWon ? 'win' : 'lose');
+
+    setTimeout(() => {
+      setMatchEndResult({ result: resultType, completionReason: isDemoMatchDraw ? 2 : 0 });
+      setMatchEndWinner(winnerAddress);
+      setMatchEndLoser(loserAddress);
+      matchEndModalShownRef.current = true;
+    }, 350);
+
+    return true;
+  }, []);
+
+  const makeDemoComputerMove = useCallback((board, history, matchSnapshot) => {
+    const humanCellValue = matchSnapshot.player1 === DEMO_HUMAN_ADDRESS ? 1 : 2;
+    const computerCellValue = humanCellValue === 1 ? 2 : 1;
+    const computerColumn = getBestDemoComputerMoveConnectFour(board, computerCellValue, humanCellValue);
+
+    if (computerColumn == null) return;
+
+    const grid = boardToGrid(board);
+    const dropRow = getDropRow(grid, computerColumn);
+    if (dropRow === -1) return;
+
+    const nextBoard = [...board];
+    const boardIndex = dropRow * 7 + computerColumn;
+    nextBoard[boardIndex] = computerCellValue;
+
+    const computerSymbol = computerCellValue === getConnectFourCellValue(
+      matchSnapshot.firstPlayer,
+      matchSnapshot.player1,
+      matchSnapshot.player2
+    ) ? 'Red' : 'Blue';
+
+    const nextHistory = [
+      ...history,
+      {
+        player: `Computer (${computerSymbol})`,
+        column: computerColumn + 1,
+      },
+    ];
+
+    if (resolveDemoMatch(nextBoard, nextHistory)) return;
+
+    setCurrentMatch(prev => prev ? ({
+      ...prev,
+      board: nextBoard,
+      currentTurn: DEMO_HUMAN_ADDRESS,
+      isYourTurn: true,
+      movesString: nextHistory.map(move => move.column - 1).join(','),
+    }) : prev);
+    previousBoardRef.current = [...nextBoard];
+    setMoveHistory(nextHistory);
+  }, [resolveDemoMatch]);
+
+  const handleStartDemoMatch = useCallback(() => {
+    if (account) return;
+    if (demoComputerMoveTimeoutRef.current) {
+      window.clearTimeout(demoComputerMoveTimeoutRef.current);
+      demoComputerMoveTimeoutRef.current = null;
+    }
+
+    const humanStarts = Math.random() < 0.5;
+    const firstPlayer = humanStarts ? DEMO_HUMAN_ADDRESS : DEMO_COMPUTER_ADDRESS;
+    const humanSymbol = humanStarts ? 'Red' : 'Blue';
+    const computerSymbol = humanStarts ? 'Blue' : 'Red';
+
+    const demoMatch = {
+      isDemo: true,
+      tierId: VIRTUAL_TIER_ID,
+      instanceId: VIRTUAL_INSTANCE_ID,
+      instanceAddress: '',
+      roundNumber: 0,
+      matchNumber: 0,
+      playerCount: 2,
+      player1: DEMO_HUMAN_ADDRESS,
+      player2: DEMO_COMPUTER_ADDRESS,
+      player1DisplayLabel: `You (${humanSymbol})`,
+      player2DisplayLabel: `Computer (${computerSymbol})`,
+      firstPlayer,
+      currentTurn: firstPlayer,
+      matchStatus: 1,
+      completionReason: 0,
+      winner: '0x0000000000000000000000000000000000000000',
+      loser: '0x0000000000000000000000000000000000000000',
+      lastMoveTime: Math.floor(Date.now() / 1000),
+      startTime: Math.floor(Date.now() / 1000),
+      isYourTurn: humanStarts,
+      timeoutState: { timeoutActive: false },
+      matchTimePerPlayer: DEMO_MATCH_TIME_SECONDS,
+      player1TimeRemaining: DEMO_MATCH_TIME_SECONDS,
+      player2TimeRemaining: DEMO_MATCH_TIME_SECONDS,
+      board: Array(42).fill(0),
+      movesString: '',
+    };
+
+    setDemoSymbol(humanSymbol);
+    setCurrentMatch(demoMatch);
+    setViewingTournament(null);
+    setActiveInstanceContract(null);
+    activeInstanceContractRef.current = null;
+    setIsSpectator(false);
+    setMatchLoading(false);
+    setMatchLoadingMessage(DEFAULT_MATCH_LOADING_MESSAGE);
+    setMoveHistory([]);
+    setReplayMoveIndex(-2);
+    setMoveTxTimeout(null);
+    setMatchEndResult(null);
+    setNextActiveMatch(null);
+    previousBoardRef.current = [...demoMatch.board];
+    matchEndModalShownRef.current = false;
+    skipNavEffectRef.current = true;
+    navigate('/connect4', { replace: false, state: { view: 'demo-match' } });
+
+    window.setTimeout(() => {
+      matchViewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+
+    if (!humanStarts) {
+      demoComputerMoveTimeoutRef.current = window.setTimeout(() => {
+        makeDemoComputerMove(demoMatch.board, [], demoMatch);
+        demoComputerMoveTimeoutRef.current = null;
+      }, 550);
+    }
+  }, [account, makeDemoComputerMove, navigate]);
+
+  useEffect(() => () => {
+    if (demoComputerMoveTimeoutRef.current) {
+      window.clearTimeout(demoComputerMoveTimeoutRef.current);
+    }
+  }, []);
+
   const handleColumnClick = async (columnIndex) => {
+    // Handle demo mode
+    if (currentMatch?.isDemo) {
+      if (!currentMatch.isYourTurn) return;
+      const grid = boardToGrid(currentMatch.board);
+      if (getDropRow(grid, columnIndex) === -1) return;
+      if (currentMatch.matchStatus === 2) return;
+
+      const humanCellValue = currentMatch.player1 === DEMO_HUMAN_ADDRESS ? 1 : 2;
+      const dropRow = getDropRow(grid, columnIndex);
+      const nextBoard = [...currentMatch.board];
+      const boardIndex = dropRow * 7 + columnIndex;
+      nextBoard[boardIndex] = humanCellValue;
+
+      const humanSymbol = humanCellValue === getConnectFourCellValue(
+        currentMatch.firstPlayer,
+        currentMatch.player1,
+        currentMatch.player2
+      ) ? 'Red' : 'Blue';
+
+      const nextHistory = [
+        ...moveHistory,
+        {
+          player: `You (${humanSymbol})`,
+          column: columnIndex + 1,
+        },
+      ];
+
+      if (resolveDemoMatch(nextBoard, nextHistory)) return;
+
+      const pendingComputerMatch = {
+        ...currentMatch,
+        board: nextBoard,
+        currentTurn: DEMO_COMPUTER_ADDRESS,
+        isYourTurn: false,
+        movesString: nextHistory.map(move => move.column - 1).join(','),
+      };
+
+      setCurrentMatch(pendingComputerMatch);
+      previousBoardRef.current = [...nextBoard];
+      setMoveHistory(nextHistory);
+
+      demoComputerMoveTimeoutRef.current = window.setTimeout(() => {
+        makeDemoComputerMove(nextBoard, nextHistory, pendingComputerMatch);
+        demoComputerMoveTimeoutRef.current = null;
+      }, 550);
+
+      return;
+    }
+
+    // Handle blockchain mode
     if (!currentMatch || !activeInstanceContractRef.current || !account) return;
     if (!currentMatch.isYourTurn) {
       alert("It's not your turn!");
@@ -2135,6 +2433,11 @@ export default function ConnectFourV2() {
   };
 
   const closeMatch = useCallback(async () => {
+    if (demoComputerMoveTimeoutRef.current) {
+      window.clearTimeout(demoComputerMoveTimeoutRef.current);
+      demoComputerMoveTimeoutRef.current = null;
+    }
+    setDemoSymbol(null);
     const address = currentMatch?.instanceAddress || viewingTournament?.address;
     setCurrentMatch(null);
     setMoveHistory([]);
@@ -2795,6 +3098,16 @@ export default function ConnectFourV2() {
           isConnecting={isConnecting}
           onConnectWallet={connectWallet}
           connectCtaClassName={currentTheme.connectCtaClassName}
+          unauthenticatedActions={!account ? (
+            <button
+              type="button"
+              onClick={handleStartDemoMatch}
+              className="inline-flex min-w-[240px] items-center justify-center gap-3 rounded-xl border-2 border-cyan-300/50 bg-cyan-400/15 px-6 py-3 text-base font-bold text-cyan-50 shadow-xl shadow-cyan-950/30 transition-all hover:scale-105 hover:border-cyan-200 hover:bg-cyan-400/25 md:text-lg"
+            >
+              <Gamepad2 size={20} />
+              Play Demo
+            </button>
+          ) : null}
         >
           <div className={`relative flex flex-wrap items-center justify-center gap-2 text-sm md:text-base ${currentTheme.heroSubtext}`}>
             {HERO_LINKS.map((link, index) => (
@@ -2826,21 +3139,28 @@ export default function ConnectFourV2() {
               gameType="connectfour"
               reasonLabelMode="v2"
               match={currentMatch}
-              account={account}
+              account={currentMatch.isDemo ? DEMO_HUMAN_ADDRESS : account}
               loading={matchLoading}
               loadingMessage={matchLoadingMessage}
               syncDots={syncDots}
               pendingOpponentMove={!!ghostMove}
               onClose={closeMatch}
-              onClaimTimeoutWin={isSpectator ? null : handleClaimTimeoutWin}
-              onForceEliminate={isSpectator ? null : handleForceEliminateStalledMatch}
-              onClaimReplacement={isSpectator ? null : handleClaimMatchSlotByReplacement}
-              onEnterNextMatch={handleEnterNextMatch}
+              onClaimTimeoutWin={currentMatch.isDemo || isSpectator ? null : handleClaimTimeoutWin}
+              onForceEliminate={currentMatch.isDemo || isSpectator ? null : handleForceEliminateStalledMatch}
+              onClaimReplacement={currentMatch.isDemo || isSpectator ? null : handleClaimMatchSlotByReplacement}
+              onEnterNextMatch={currentMatch.isDemo ? null : handleEnterNextMatch}
               onReturnToBracket={handleReturnToBracket}
               onPlayerAddressClick={setSelectedProfileAddress}
-              hasNextActiveMatch={!!nextActiveMatch}
+              hasNextActiveMatch={currentMatch.isDemo ? false : !!nextActiveMatch}
               playerCount={viewingTournament?.playerCount || null}
               playerConfig={(() => {
+                if (currentMatch.isDemo) {
+                  const isPlayer1First = currentMatch.firstPlayer?.toLowerCase() === currentMatch.player1?.toLowerCase();
+                  return {
+                    player1: { icon: isPlayer1First ? '🔴' : '🔵', label: currentMatch.player1DisplayLabel || 'You' },
+                    player2: { icon: isPlayer1First ? '🔵' : '🔴', label: currentMatch.player2DisplayLabel || 'Computer' },
+                  };
+                }
                 const isPlayer1First = currentMatch.firstPlayer?.toLowerCase() === currentMatch.player1?.toLowerCase();
                 return {
                   player1: { icon: isPlayer1First ? '🔴' : '🔵', label: isPlayer1First ? 'Player 1 (Red)' : 'Player 1 (Blue)' },
@@ -2849,6 +3169,10 @@ export default function ConnectFourV2() {
               })()}
               layout="players-board-history"
               isSpectator={isSpectator}
+              demoInfo={currentMatch.isDemo ? {
+                title: 'Demo Match',
+                subtitle: 'You vs Computer',
+              } : undefined}
               renderMoveHistory={moveHistory.length > 0 ? () => (
                 <div>
                   <div className="mb-4 flex items-center gap-2">
@@ -2908,7 +3232,7 @@ export default function ConnectFourV2() {
                 board={displayedBoard}
                 onColumnClick={isSpectator ? null : handleColumnClick}
                 currentTurn={currentMatch.currentTurn}
-                account={account}
+                account={currentMatch.isDemo ? DEMO_HUMAN_ADDRESS : account}
                 player1={currentMatch.player1}
                 player2={currentMatch.player2}
                 firstPlayer={currentMatch.firstPlayer}
