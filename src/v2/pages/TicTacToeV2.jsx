@@ -27,6 +27,7 @@ import {
   ChevronLeft,
   ChevronRight,
   History,
+  Gamepad2,
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import { CURRENT_NETWORK, TARGET_CHAIN_ID_HEX, getAddressUrl, getWalletAddChainParams } from '../../config/networks';
@@ -100,6 +101,9 @@ const DEFAULT_CREATE_FORM = {
   entryFee: DEFAULT_SELECTED_ENTRY_FEE,
   ...getDefaultTimeouts(2),
 };
+const DEMO_HUMAN_ADDRESS = '0xDeF0000000000000000000000000000000000001';
+const DEMO_COMPUTER_ADDRESS = '0xDeF0000000000000000000000000000000000002';
+const DEMO_MATCH_TIME_SECONDS = 120;
 
 const currentTheme = {
   border: 'rgba(0, 255, 255, 0.3)',
@@ -172,6 +176,47 @@ function findTicTacToeWinningCells(board) {
   }
 
   return [];
+}
+
+function getTicTacToeWinnerCellValue(board) {
+  const winningCells = findTicTacToeWinningCells(board);
+  return winningCells.length > 0 ? board[winningCells[0]] : 0;
+}
+
+function isTicTacToeDrawBoard(board) {
+  return board.every(Boolean) && getTicTacToeWinnerCellValue(board) === 0;
+}
+
+function getBestDemoComputerMove(board, computerCellValue, humanCellValue) {
+  const availableCells = board
+    .map((cell, index) => (cell === 0 ? index : null))
+    .filter(index => index !== null);
+
+  const scoreBoard = (candidateBoard, isComputerTurn) => {
+    const winnerCellValue = getTicTacToeWinnerCellValue(candidateBoard);
+    if (winnerCellValue === computerCellValue) return 10;
+    if (winnerCellValue === humanCellValue) return -10;
+    if (candidateBoard.every(Boolean)) return 0;
+
+    const nextCells = candidateBoard
+      .map((cell, index) => (cell === 0 ? index : null))
+      .filter(index => index !== null);
+    const scores = nextCells.map((index) => {
+      const nextBoard = [...candidateBoard];
+      nextBoard[index] = isComputerTurn ? computerCellValue : humanCellValue;
+      const depthPenalty = isComputerTurn ? -1 : 1;
+      return scoreBoard(nextBoard, !isComputerTurn) + depthPenalty;
+    });
+    return isComputerTurn ? Math.max(...scores) : Math.min(...scores);
+  };
+
+  return availableCells.reduce((bestMove, cellIndex) => {
+    const candidateBoard = [...board];
+    candidateBoard[cellIndex] = computerCellValue;
+    const score = scoreBoard(candidateBoard, false);
+    if (!bestMove || score > bestMove.score) return { cellIndex, score };
+    return bestMove;
+  }, null)?.cellIndex ?? availableCells[0] ?? null;
 }
 
 function buildV2MatchKey(roundNumber, matchNumber) {
@@ -713,11 +758,13 @@ export default function TicTacToeV2() {
   const [matchEndWinner, setMatchEndWinner] = useState(null);
   const [matchEndLoser, setMatchEndLoser] = useState(null);
   const [nextActiveMatch, setNextActiveMatch] = useState(null);
+  const [demoSymbol, setDemoSymbol] = useState(null);
   const previousBoardRef = useRef(null);
   const moveTxInProgressRef = useRef(false);
   const [moveTxTimeout, setMoveTxTimeout] = useState(null);
   const matchEndModalShownRef = useRef(false);
   const [ghostMove, setGhostMove] = useState(null);
+  const demoComputerMoveTimeoutRef = useRef(null);
 
   // --- Leaderboard / history ---
   const [leaderboard] = useState([]);
@@ -1754,6 +1801,42 @@ export default function TicTacToeV2() {
   }, [account, viewingTournament, refreshMatchData, buildMoveHistory, navigate, location.state?.view, rpcProvider]);
 
   const handleCellClick = async (cellIndex) => {
+    if (currentMatch?.isDemo) {
+      if (!currentMatch.isYourTurn) return;
+      if (currentMatch.board[cellIndex] !== 0) return;
+      if (currentMatch.matchStatus === 2) return;
+      if (demoComputerMoveTimeoutRef.current) return;
+
+      const humanCellValue = currentMatch.player1 === DEMO_HUMAN_ADDRESS ? 1 : 2;
+      const nextBoard = [...currentMatch.board];
+      nextBoard[cellIndex] = humanCellValue;
+      const nextHistory = [
+        ...moveHistory,
+        {
+          player: `You (${demoSymbol || 'X'})`,
+          cell: cellIndex,
+        },
+      ];
+
+      if (resolveDemoMatch(nextBoard, nextHistory)) return;
+
+      const pendingComputerMatch = {
+        ...currentMatch,
+        board: nextBoard,
+        currentTurn: DEMO_COMPUTER_ADDRESS,
+        isYourTurn: false,
+        movesString: nextHistory.map(move => move.cell).join(','),
+      };
+      setCurrentMatch(pendingComputerMatch);
+      previousBoardRef.current = [...nextBoard];
+      setMoveHistory(nextHistory);
+      demoComputerMoveTimeoutRef.current = window.setTimeout(() => {
+        makeDemoComputerMove(nextBoard, nextHistory, pendingComputerMatch);
+        demoComputerMoveTimeoutRef.current = null;
+      }, 550);
+      return;
+    }
+
     if (!currentMatch || !activeInstanceContractRef.current || !account) return;
     if (!currentMatch.isYourTurn) { alert("It's not your turn!"); return; }
     if (currentMatch.board[cellIndex] !== 0) { alert('Cell already taken!'); return; }
@@ -1981,11 +2064,16 @@ export default function TicTacToeV2() {
   };
 
   const closeMatch = useCallback(async () => {
+    if (demoComputerMoveTimeoutRef.current) {
+      window.clearTimeout(demoComputerMoveTimeoutRef.current);
+      demoComputerMoveTimeoutRef.current = null;
+    }
     const address = currentMatch?.instanceAddress || viewingTournament?.address;
     setCurrentMatch(null);
     setMoveHistory([]);
     setReplayMoveIndex(-2);
     setIsSpectator(false);
+    setDemoSymbol(null);
     setMoveTxTimeout(null);
     setMatchEndResult(null);
     setMatchEndWinner(null);
@@ -2068,6 +2156,140 @@ export default function TicTacToeV2() {
   }, [nextActiveMatch, handlePlayMatch]);
 
   const handleReturnToBracket = useCallback(() => closeMatch(), [closeMatch]);
+
+  const resolveDemoMatch = useCallback((board, history) => {
+    const winnerCellValue = getTicTacToeWinnerCellValue(board);
+    const isDrawBoard = winnerCellValue === 0 && isTicTacToeDrawBoard(board);
+    if (!winnerCellValue && !isDrawBoard) return null;
+
+    const winnerAddress = winnerCellValue === 1
+      ? DEMO_HUMAN_ADDRESS
+      : winnerCellValue === 2
+        ? DEMO_COMPUTER_ADDRESS
+        : '0x0000000000000000000000000000000000000000';
+    const loserAddress = winnerCellValue === 1
+      ? DEMO_COMPUTER_ADDRESS
+      : winnerCellValue === 2
+        ? DEMO_HUMAN_ADDRESS
+        : '0x0000000000000000000000000000000000000000';
+
+    setCurrentMatch(prev => prev ? ({
+      ...prev,
+      board,
+      currentTurn: '0x0000000000000000000000000000000000000000',
+      isYourTurn: false,
+      matchStatus: 2,
+      completionReason: isDrawBoard ? 2 : 0,
+      winner: winnerAddress,
+      loser: loserAddress,
+      movesString: history.map(move => move.cell).join(','),
+    }) : prev);
+    previousBoardRef.current = [...board];
+    setMoveHistory(history);
+    return true;
+  }, []);
+
+  const makeDemoComputerMove = useCallback((board, history, matchSnapshot) => {
+    const humanCellValue = matchSnapshot.player1 === DEMO_HUMAN_ADDRESS ? 1 : 2;
+    const computerCellValue = humanCellValue === 1 ? 2 : 1;
+    const computerMove = getBestDemoComputerMove(board, computerCellValue, humanCellValue);
+    if (computerMove == null) return;
+
+    const nextBoard = [...board];
+    nextBoard[computerMove] = computerCellValue;
+    const nextHistory = [
+      ...history,
+      {
+        player: `Computer (${computerCellValue === getTicTacToeCellValue(matchSnapshot.firstPlayer, matchSnapshot.player1, matchSnapshot.player2) ? 'X' : 'O'})`,
+        cell: computerMove,
+      },
+    ];
+    if (resolveDemoMatch(nextBoard, nextHistory)) return;
+
+    setCurrentMatch(prev => prev ? ({
+      ...prev,
+      board: nextBoard,
+      currentTurn: DEMO_HUMAN_ADDRESS,
+      isYourTurn: true,
+      movesString: nextHistory.map(move => move.cell).join(','),
+    }) : prev);
+    previousBoardRef.current = [...nextBoard];
+    setMoveHistory(nextHistory);
+  }, [resolveDemoMatch]);
+
+  const handleStartDemoMatch = useCallback(() => {
+    if (account) return;
+    if (demoComputerMoveTimeoutRef.current) {
+      window.clearTimeout(demoComputerMoveTimeoutRef.current);
+      demoComputerMoveTimeoutRef.current = null;
+    }
+
+    const humanStarts = Math.random() < 0.5;
+    const firstPlayer = humanStarts ? DEMO_HUMAN_ADDRESS : DEMO_COMPUTER_ADDRESS;
+    const humanSymbol = humanStarts ? 'X' : 'O';
+    const computerSymbol = humanStarts ? 'O' : 'X';
+    const demoMatch = {
+      isDemo: true,
+      tierId: VIRTUAL_TIER_ID,
+      instanceId: VIRTUAL_INSTANCE_ID,
+      instanceAddress: '',
+      roundNumber: 0,
+      matchNumber: 0,
+      playerCount: 2,
+      player1: DEMO_HUMAN_ADDRESS,
+      player2: DEMO_COMPUTER_ADDRESS,
+      player1DisplayLabel: `You (${humanSymbol})`,
+      player2DisplayLabel: `Computer (${computerSymbol})`,
+      firstPlayer,
+      currentTurn: firstPlayer,
+      matchStatus: 1,
+      completionReason: 0,
+      winner: '0x0000000000000000000000000000000000000000',
+      loser: '0x0000000000000000000000000000000000000000',
+      lastMoveTime: Math.floor(Date.now() / 1000),
+      startTime: Math.floor(Date.now() / 1000),
+      isYourTurn: humanStarts,
+      timeoutState: { timeoutActive: false },
+      matchTimePerPlayer: DEMO_MATCH_TIME_SECONDS,
+      player1TimeRemaining: DEMO_MATCH_TIME_SECONDS,
+      player2TimeRemaining: DEMO_MATCH_TIME_SECONDS,
+      board: Array(9).fill(0),
+      movesString: '',
+    };
+
+    setDemoSymbol(humanSymbol);
+    setCurrentMatch(demoMatch);
+    setViewingTournament(null);
+    setActiveInstanceContract(null);
+    activeInstanceContractRef.current = null;
+    setIsSpectator(false);
+    setMatchLoading(false);
+    setMatchLoadingMessage(DEFAULT_MATCH_LOADING_MESSAGE);
+    setMoveHistory([]);
+    setReplayMoveIndex(-2);
+    setMoveTxTimeout(null);
+    setMatchEndResult(null);
+    setNextActiveMatch(null);
+    previousBoardRef.current = [...demoMatch.board];
+    skipNavEffectRef.current = true;
+    navigate('/tictactoe', { replace: false, state: { view: 'demo-match' } });
+    window.setTimeout(() => {
+      matchViewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+
+    if (!humanStarts) {
+      demoComputerMoveTimeoutRef.current = window.setTimeout(() => {
+        makeDemoComputerMove(demoMatch.board, [], demoMatch);
+        demoComputerMoveTimeoutRef.current = null;
+      }, 550);
+    }
+  }, [account, makeDemoComputerMove, navigate]);
+
+  useEffect(() => () => {
+    if (demoComputerMoveTimeoutRef.current) {
+      window.clearTimeout(demoComputerMoveTimeoutRef.current);
+    }
+  }, []);
 
   // ─── Polling (mirrors V1) ────────────────────────────────────────────────────
 
@@ -2643,6 +2865,16 @@ export default function TicTacToeV2() {
           isConnecting={isConnecting}
           onConnectWallet={connectWallet}
           connectCtaClassName={currentTheme.connectCtaClassName}
+          unauthenticatedActions={!account ? (
+            <button
+              type="button"
+              onClick={handleStartDemoMatch}
+              className="inline-flex min-w-[240px] items-center justify-center gap-3 rounded-xl border-2 border-cyan-300/50 bg-cyan-400/15 px-6 py-3 text-base font-bold text-cyan-50 shadow-xl shadow-cyan-950/30 transition-all hover:scale-105 hover:border-cyan-200 hover:bg-cyan-400/25 md:text-lg"
+            >
+              <Gamepad2 size={20} />
+              Play Demo
+            </button>
+          ) : null}
         >
           <div className={`relative flex flex-wrap items-center justify-center gap-2 text-sm md:text-base ${currentTheme.heroSubtext}`}>
             {HERO_LINKS.map((link, index) => (
@@ -2675,19 +2907,19 @@ export default function TicTacToeV2() {
               gameType="tictactoe"
               reasonLabelMode="v2"
               match={currentMatch}
-              account={account}
+              account={currentMatch.isDemo ? DEMO_HUMAN_ADDRESS : account}
               loading={matchLoading}
               loadingMessage={matchLoadingMessage}
               syncDots={syncDots}
               pendingOpponentMove={!!ghostMove}
               onClose={closeMatch}
-              onClaimTimeoutWin={isSpectator ? null : handleClaimTimeoutWin}
-              onForceEliminate={isSpectator ? null : handleForceEliminateStalledMatch}
-              onClaimReplacement={isSpectator ? null : handleClaimMatchSlotByReplacement}
-              onEnterNextMatch={handleEnterNextMatch}
+              onClaimTimeoutWin={currentMatch.isDemo || isSpectator ? null : handleClaimTimeoutWin}
+              onForceEliminate={currentMatch.isDemo || isSpectator ? null : handleForceEliminateStalledMatch}
+              onClaimReplacement={currentMatch.isDemo || isSpectator ? null : handleClaimMatchSlotByReplacement}
+              onEnterNextMatch={currentMatch.isDemo ? null : handleEnterNextMatch}
               onReturnToBracket={handleReturnToBracket}
               onPlayerAddressClick={setSelectedProfileAddress}
-              hasNextActiveMatch={!!nextActiveMatch}
+              hasNextActiveMatch={currentMatch.isDemo ? false : !!nextActiveMatch}
               playerCount={viewingTournament?.playerCount || null}
               playerConfig={(() => {
                 const isPlayer1First = currentMatch.firstPlayer?.toLowerCase() === currentMatch.player1?.toLowerCase();
@@ -2698,6 +2930,11 @@ export default function TicTacToeV2() {
               })()}
               layout="players-board-history"
               isSpectator={isSpectator}
+              demoInfo={currentMatch.isDemo ? {
+                title: 'Demo Duel',
+                subtitle: 'You vs Computer',
+                notice: 'Demo match against the computer. No wallet, no fees, no transactions, and no match data is preserved.',
+              } : null}
               renderMoveHistory={moveHistory.length > 0 ? () => (
                 <div>
                   <div className="mb-4 flex items-center gap-2">
@@ -2759,10 +2996,11 @@ export default function TicTacToeV2() {
                   {(() => {
                     const isPlayer1First = currentMatch.firstPlayer?.toLowerCase() === currentMatch.player1?.toLowerCase();
                     const firstPlayerCellValue = isPlayer1First ? 1 : 2;
+                    const matchAccount = currentMatch.isDemo ? DEMO_HUMAN_ADDRESS : account;
                     return displayedBoard.map((cell, idx) => {
                       const isGhost = currentMatch.matchStatus !== 2 && cell === 0 && ghostMove?.cellIndex === idx;
                       const isFirstPlayerCell = cell === firstPlayerCellValue;
-                      const isOpponentFirst = currentMatch.firstPlayer?.toLowerCase() !== account?.toLowerCase();
+                      const isOpponentFirst = currentMatch.firstPlayer?.toLowerCase() !== matchAccount?.toLowerCase();
                       const ghostSymbol = isOpponentFirst ? 'X' : 'O';
                       const cellSymbol = cell === 0 ? (isGhost ? ghostSymbol : '') : (isFirstPlayerCell ? 'X' : 'O');
                       const isWinningCell = displayedWinningCells.includes(idx);

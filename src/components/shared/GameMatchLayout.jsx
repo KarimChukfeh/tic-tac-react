@@ -149,6 +149,7 @@ const GameMatchLayout = ({
   // Optional reason label behavior
   reasonLabelMode = 'default',
   onPlayerAddressClick = null,
+  demoInfo = null,
 
   // Children = the game board component
   children
@@ -197,6 +198,7 @@ const GameMatchLayout = ({
   }
 
   const isGameOver = matchStatus === 2;
+  const matchCompleteReasonLabelMode = demoInfo ? 'default' : reasonLabelMode;
   const shouldRenderMobileResultAfterMoveHistory = false; // Always show MatchComplete before move history
   const zeroAddress = '0x0000000000000000000000000000000000000000';
   const hasWinner = winner && winner !== zeroAddress;
@@ -214,6 +216,13 @@ const GameMatchLayout = ({
   const isPlayer1You = account && player1?.toLowerCase() === account.toLowerCase();
   const isPlayer1Turn = currentTurn?.toLowerCase() === player1?.toLowerCase();
   const isPlayer2Turn = currentTurn?.toLowerCase() === player2?.toLowerCase();
+  const player1DisplayLabel = match.player1DisplayLabel || match.player1Label || null;
+  const player2DisplayLabel = match.player2DisplayLabel || match.player2Label || null;
+  const getPlayerDisplayText = (playerNum, playerAddress) => {
+    const displayLabel = playerNum === 1 ? player1DisplayLabel : player2DisplayLabel;
+    if (displayLabel) return displayLabel;
+    return playerAddress ? `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : '';
+  };
 
   const getPlayerResultBadge = (playerAddress) => {
     if (!isGameOver || !playerAddress) return null;
@@ -428,7 +437,7 @@ const GameMatchLayout = ({
                   symbolClassName: `flex h-[1.375rem] w-[1.375rem] flex-shrink-0 items-center justify-center font-bold leading-none text-white ${compactChessMatchView ? 'text-[14px]' : 'h-8 w-8 text-lg'}`
                 })}
                 <div className={`font-mono truncate text-white ${compactChessMatchView ? 'text-[10px]' : 'text-xs'}`}>
-                  {playerAddress ? compactChessMatchView ? `${playerAddress.slice(0, 5)}...${playerAddress.slice(-3)}` : `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : ''}
+                  {getPlayerDisplayText(playerNum, playerAddress)}
                 </div>
                 {isYou && <span className={`text-yellow-300 font-bold flex-shrink-0 ${compactChessMatchView ? 'text-[8px]' : 'text-[11px]'}`}>YOU</span>}
               </div>
@@ -590,7 +599,7 @@ const GameMatchLayout = ({
             <div className="flex flex-col">
               {isYou && <span className="text-yellow-400 text-sm font-bold leading-tight">YOU</span>}
               <p className={`${cardColors.text} font-mono text-xs`}>
-                {playerAddress ? `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : ''}
+                {getPlayerDisplayText(playerNum, playerAddress)}
               </p>
               {(resultBadge || extraContent) && (
                 <div className="self-start mt-1 flex items-center gap-1.5 flex-wrap">
@@ -675,7 +684,7 @@ const GameMatchLayout = ({
                   winner={winner}
                   loser={loser}
                   currentAccount={account}
-                  reasonLabelMode={reasonLabelMode}
+                  reasonLabelMode={matchCompleteReasonLabelMode}
                   gameSpecificText={!isMatchDraw ? theme.completeText : undefined}
                   hasNextActiveMatch={hasNextActiveMatch}
                   onEnterNextMatch={onEnterNextMatch}
@@ -773,7 +782,7 @@ const GameMatchLayout = ({
             <div className="flex flex-col">
               {isYou && <span className={`text-yellow-400 font-bold leading-tight ${compactChessMatchView ? 'text-[10px]' : 'text-sm'}`}>YOU</span>}
               <p className={`${cardColors.text} font-mono ${compactChessMatchView ? 'text-[9px]' : 'text-xs'}`}>
-                {playerAddress ? `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : ''}
+                {getPlayerDisplayText(playerNum, playerAddress)}
               </p>
               {resultBadge && (
                 <div className={`self-start mt-1 inline-flex rounded-full border font-bold tracking-wide ${resultBadge.className} ${compactChessMatchView ? 'px-1.5 py-0.5 text-[8px]' : 'px-2.5 py-1 text-[10px]'}`}>
@@ -841,7 +850,7 @@ const GameMatchLayout = ({
                   winner={winner}
                   loser={loser}
                   currentAccount={account}
-                  reasonLabelMode={reasonLabelMode}
+                  reasonLabelMode={matchCompleteReasonLabelMode}
                   gameSpecificText={!isMatchDraw ? theme.completeText : undefined}
                   hasNextActiveMatch={hasNextActiveMatch}
                   onEnterNextMatch={onEnterNextMatch}
@@ -926,7 +935,7 @@ const GameMatchLayout = ({
             )}
             <div className="flex-1">
               <div className="flex items-center gap-1">
-                <div className="font-mono text-[11px] text-white">{playerAddress ? `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : ''}</div>
+                <div className="font-mono text-[11px] text-white">{getPlayerDisplayText(playerNum, playerAddress)}</div>
                 {isYou && <span className="text-yellow-400 text-[10px] font-bold">YOU</span>}
               </div>
               {resultBadge && (
@@ -1061,7 +1070,7 @@ const GameMatchLayout = ({
             <div className="flex flex-col">
               {isYou && <span className="text-yellow-400 text-sm font-bold leading-tight">YOU</span>}
               <p className={`${cardColors.text} font-mono text-xs`}>
-                {playerAddress ? `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}` : ''}
+                {getPlayerDisplayText(playerNum, playerAddress)}
               </p>
               {(resultBadge || extraContent) && (
                 <div className="self-start mt-1 flex items-center gap-1.5 flex-wrap">
@@ -1138,7 +1147,7 @@ const GameMatchLayout = ({
                 winner={winner}
                 loser={loser}
                 currentAccount={account}
-                reasonLabelMode={reasonLabelMode}
+                reasonLabelMode={matchCompleteReasonLabelMode}
                 gameSpecificText={!isMatchDraw ? theme.completeText : undefined}
                 hasNextActiveMatch={hasNextActiveMatch}
                 onEnterNextMatch={onEnterNextMatch}
@@ -1161,7 +1170,7 @@ const GameMatchLayout = ({
                 winner={winner}
                 loser={loser}
                 currentAccount={account}
-                reasonLabelMode={reasonLabelMode}
+                reasonLabelMode={matchCompleteReasonLabelMode}
                 gameSpecificText={!isMatchDraw ? theme.completeText : undefined}
                 hasNextActiveMatch={hasNextActiveMatch}
                 onEnterNextMatch={onEnterNextMatch}
@@ -1198,7 +1207,7 @@ const GameMatchLayout = ({
                   winner={winner}
                   loser={loser}
                   currentAccount={account}
-                  reasonLabelMode={reasonLabelMode}
+                  reasonLabelMode={matchCompleteReasonLabelMode}
                   gameSpecificText={!isMatchDraw ? theme.completeText : undefined}
                   hasNextActiveMatch={hasNextActiveMatch}
                   onEnterNextMatch={onEnterNextMatch}
@@ -1266,9 +1275,12 @@ const GameMatchLayout = ({
           player2Symbol: playerConfig?.player2?.label?.match(/\(([^)]+)\)/)?.[1] ?? playerConfig?.player2?.label ?? null,
           winner: match.winner,
           loser: match.loser,
+          player1Label: player1DisplayLabel,
+          player2Label: player2DisplayLabel,
         }}
         theme={theme}
         onPlayerAddressClick={onPlayerAddressClick}
+        demoInfo={demoInfo}
       />
 
       {/* Mobile: Sticky player cards (direct child of root for full-page sticky range) */}

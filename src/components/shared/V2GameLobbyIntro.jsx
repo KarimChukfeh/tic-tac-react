@@ -15,6 +15,7 @@ export default function V2GameLobbyIntro({
   isConnecting = false,
   onConnectWallet,
   connectCtaClassName = '',
+  unauthenticatedActions = null,
   children = null,
 }) {
   const [isTooltipOpen, setIsTooltipOpen] = useState(false);
@@ -96,44 +97,47 @@ export default function V2GameLobbyIntro({
             </div>
           </div>
         ) : onConnectWallet ? (
-          <div className="relative mt-3 mb-4 inline-flex items-center justify-center gap-2 md:mt-0 md:mb-0" ref={tooltipRef}>
-            <button
-              type="button"
-              onClick={onConnectWallet}
-              disabled={isConnecting}
-              className={`inline-flex min-w-[240px] items-center justify-center gap-3 px-6 py-3 text-base md:text-lg font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed ${connectCtaClassName}`}
-            >
-              {isConnecting ? <Loader size={20} className="animate-spin" /> : <Wallet size={20} />}
-              {isConnecting ? 'Connecting...' : 'Connect Wallet'}
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsTooltipOpen((open) => !open)}
-              onMouseEnter={() => setIsTooltipOpen(true)}
-              onMouseLeave={() => setIsTooltipOpen(false)}
-              aria-label="Why Arbitrum?"
-              aria-expanded={isTooltipOpen}
-              className="relative inline-flex items-center justify-center text-purple-300 transition-colors hover:text-white"
-            >
-              <HelpCircle size={22} />
-            </button>
-            {isTooltipOpen && (
-              <div
-                className="absolute bottom-full left-1/2 z-20 mb-3 w-[300px] max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-xl border border-cyan-400/30 bg-slate-950/95 p-4 text-left shadow-2xl shadow-cyan-500/10 backdrop-blur-md"
+          <div className="flex flex-col items-start gap-3">
+            <div className="relative mt-3 mb-1 inline-flex items-center justify-center gap-2 md:mt-0" ref={tooltipRef}>
+              <button
+                type="button"
+                onClick={onConnectWallet}
+                disabled={isConnecting}
+                className={`inline-flex min-w-[240px] items-center justify-center gap-3 px-6 py-3 text-base md:text-lg font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed ${connectCtaClassName}`}
+              >
+                {isConnecting ? <Loader size={20} className="animate-spin" /> : <Wallet size={20} />}
+                {isConnecting ? 'Connecting...' : 'Connect Wallet'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsTooltipOpen((open) => !open)}
                 onMouseEnter={() => setIsTooltipOpen(true)}
                 onMouseLeave={() => setIsTooltipOpen(false)}
+                aria-label="Why Arbitrum?"
+                aria-expanded={isTooltipOpen}
+                className="relative inline-flex items-center justify-center text-purple-300 transition-colors hover:text-white"
               >
-                <p className="text-sm font-semibold text-cyan-200">Why Arbitrum?</p>
-                <p className="mt-2 text-sm leading-relaxed text-slate-300">
-                  This game runs on <a href="https://arbitrum.io" target="_blank" rel="noopener noreferrer" className="font-semibold text-cyan-300 underline decoration-current/50 transition-colors hover:text-white">Arbitrum One</a>, an Ethereum L2 network.
-                </p>
-                <div className="mt-3 space-y-2 text-sm leading-relaxed text-slate-400">
-                  <p><strong className="text-cyan-200">First time on Arbitrum?</strong> You&apos;ll need to select Arbitrum One in MetaMask and bridge ETH from Ethereum mainnet.</p>
-                  <p><strong className="text-cyan-200">Already have Arbitrum ETH?</strong> Just connect and play.</p>
-                  <p><strong className="text-cyan-200">Why Arbitrum?</strong> Lower fees. Same ETH.</p>
+                <HelpCircle size={22} />
+              </button>
+              {isTooltipOpen && (
+                <div
+                  className="absolute bottom-full left-1/2 z-20 mb-3 w-[300px] max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-xl border border-cyan-400/30 bg-slate-950/95 p-4 text-left shadow-2xl shadow-cyan-500/10 backdrop-blur-md"
+                  onMouseEnter={() => setIsTooltipOpen(true)}
+                  onMouseLeave={() => setIsTooltipOpen(false)}
+                >
+                  <p className="text-sm font-semibold text-cyan-200">Why Arbitrum?</p>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-300">
+                    This game runs on <a href="https://arbitrum.io" target="_blank" rel="noopener noreferrer" className="font-semibold text-cyan-300 underline decoration-current/50 transition-colors hover:text-white">Arbitrum One</a>, an Ethereum L2 network.
+                  </p>
+                  <div className="mt-3 space-y-2 text-sm leading-relaxed text-slate-400">
+                    <p><strong className="text-cyan-200">First time on Arbitrum?</strong> You&apos;ll need to select Arbitrum One in MetaMask and bridge ETH from Ethereum mainnet.</p>
+                    <p><strong className="text-cyan-200">Already have Arbitrum ETH?</strong> Just connect and play.</p>
+                    <p><strong className="text-cyan-200">Why Arbitrum?</strong> Lower fees. Same ETH.</p>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
+            {unauthenticatedActions}
           </div>
         ) : null}
       </div>

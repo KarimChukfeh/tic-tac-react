@@ -27,10 +27,25 @@ const MatchHeader = ({
   theme,
   reasonLabelMode = 'default',
   onPlayerAddressClick = null,
+  demoInfo = null,
 }) => {
   const [isMobileExpanded, setIsMobileExpanded] = useState(false);
 
   const getStatusBadge = () => {
+    if (demoInfo) {
+      if (matchStatus === 1) {
+        return { text: 'Demo In Progress', className: 'bg-cyan-500/20 text-cyan-200', href: null };
+      }
+      if (matchStatus === 2) {
+        return {
+          text: isDraw(completionReason) ? 'Demo Draw' : 'Demo Complete',
+          className: 'bg-green-500/20 text-green-300',
+          href: null,
+        };
+      }
+      return { text: 'Demo', className: 'bg-cyan-500/20 text-cyan-200', href: null };
+    }
+
     const useV2ReasonLabels = reasonLabelMode === 'v2';
     const v2ReasonCode = getV2ReasonCode(completionReason);
     if (matchStatus === 0) {
@@ -68,7 +83,8 @@ const MatchHeader = ({
 
   const status = getStatusBadge();
   const isV2MatchHeader = reasonLabelMode === 'v2';
-  const shouldHidePrimaryResolvedBadge = isV2MatchHeader
+  const shouldHidePrimaryResolvedBadge = !demoInfo
+    && isV2MatchHeader
     && matchStatus === 2
     && [0, 1, 2, 3, 4].includes(Number(completionReason ?? 0));
 
@@ -78,8 +94,8 @@ const MatchHeader = ({
     : 'Tournament';
   const isDuel = tournamentInfo?.playerCount === 2;
   const bracketRoundLabel = getBracketRoundLabel(tournamentInfo?.playerCount, tournamentInfo?.roundNumber);
-  const player1Label = shortenAddress(tournamentInfo?.player1);
-  const player2Label = shortenAddress(tournamentInfo?.player2);
+  const player1Label = tournamentInfo?.player1Label || shortenAddress(tournamentInfo?.player1);
+  const player2Label = tournamentInfo?.player2Label || shortenAddress(tournamentInfo?.player2);
   const winnerLabel = shortenAddress(tournamentInfo?.winner);
   const connectedAccount = account?.toLowerCase?.() || null;
   const canOpenPlayerProfile = (address) => {
@@ -161,20 +177,20 @@ const MatchHeader = ({
 
     return <span className="font-semibold text-white">{symbol}</span>;
   };
-  const headerTitle = isV2MatchHeader
+  const headerTitle = demoInfo?.title || (isV2MatchHeader
     ? (isDuel
       ? 'Duel'
       : (bracketRoundLabel
         ? `${bracketRoundLabel} Match`
         : `Match ${Number(tournamentInfo?.matchNumber ?? 0) + 1} • Round ${Number(tournamentInfo?.roundNumber ?? 0) + 1}`))
-    : title;
-  const headerSubtitle = isV2MatchHeader
+    : title);
+  const headerSubtitle = demoInfo?.subtitle || (isV2MatchHeader
     ? `${player1Label} vs ${player2Label}`
     : (tournamentInfo
       ? `T${tournamentInfo.tierId + 1}-I${tournamentInfo.instanceId + 1} • Round ${tournamentInfo.roundNumber + 1} • Match ${tournamentInfo.matchNumber + 1}`
-      : null);
-  const statusSectionLabel = isV2MatchHeader && matchStatus === 2 ? 'Resolution' : 'Status';
-  const isCollapsible = isV2MatchHeader && matchStatus === 2;
+      : null));
+  const statusSectionLabel = demoInfo ? 'Demo Status' : (isV2MatchHeader && matchStatus === 2 ? 'Resolution' : 'Status');
+  const isCollapsible = !demoInfo && isV2MatchHeader && matchStatus === 2;
   const collapsedResolutionText = (() => {
     if (!isCollapsible) return null;
     const reason = Number(completionReason ?? 0);
@@ -191,7 +207,7 @@ const MatchHeader = ({
     return null;
   })();
   const completedMatchExplanation = (() => {
-    if (!isV2MatchHeader || matchStatus !== 2) return null;
+    if (demoInfo || !isV2MatchHeader || matchStatus !== 2) return null;
 
     const reason = Number(completionReason ?? 0);
     const player1Address = tournamentInfo?.player1?.toLowerCase();
@@ -241,7 +257,7 @@ const MatchHeader = ({
     return null;
   })();
   const completedMatchOutcomeBadge = (() => {
-    if (!isV2MatchHeader || matchStatus !== 2) return null;
+    if (demoInfo || !isV2MatchHeader || matchStatus !== 2) return null;
 
     const reason = Number(completionReason ?? 0);
     const player1Address = tournamentInfo?.player1?.toLowerCase();
@@ -397,6 +413,11 @@ const MatchHeader = ({
           )}
           {isV2MatchHeader && (
             <>
+              {demoInfo?.notice ? (
+                <div className={`mt-4 rounded-xl border border-cyan-300/25 bg-cyan-400/10 px-4 py-3 text-sm leading-relaxed text-cyan-50 ${isCollapsible && !isMobileExpanded ? 'hidden lg:block' : ''}`}>
+                  {demoInfo.notice}
+                </div>
+              ) : null}
               <div className={`mt-4 ${isCollapsible && !isMobileExpanded ? 'hidden lg:block' : ''}`}>
                 <div className="mb-2 text-xs font-semibold uppercase tracking-[0.24em] text-purple-200/75">
                   {statusSectionLabel}
