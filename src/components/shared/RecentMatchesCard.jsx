@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { X, RefreshCw, History, ChevronDown, ChevronUp, Eye, ChevronLeft, ChevronRight, ArrowUpRight, TrendingUp, ExternalLink, ArrowUp, Trophy } from 'lucide-react';
+import { X, RefreshCw, History, ChevronDown, ChevronUp, Eye, ChevronLeft, ChevronRight, TrendingUp, ExternalLink, ArrowUp, Trophy } from 'lucide-react';
 import { shortenAddress, getCellPositionName } from '../../utils/formatters';
 import {
   CompletionReason,
@@ -1310,11 +1310,11 @@ const RecentMatchesCard = ({
                                 handleSetExpanded(false);
                                 onViewTournament(rec.instance);
                               }}
-                              className="text-purple-300 hover:text-purple-200 transition-colors shrink-0"
-                              title="View tournament"
-                            >
-                              <ExternalLink size={16} />
-                            </button>
+                            className="text-purple-300 hover:text-purple-200 transition-colors shrink-0"
+                            title="View tournament"
+                          >
+                            <Eye size={16} />
+                          </button>
                           </div>
                           <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-1">
                             {hasCancelledTournamentReason(rec) || isCancelledTournamentRecord(rec) ? (
@@ -1465,7 +1465,7 @@ const RecentMatchesCard = ({
                             className="absolute top-0 right-0 p-1 rounded bg-slate-700/50 hover:bg-slate-600/70 text-teal-300 hover:text-teal-200 transition-colors"
                             title="Expand to full view"
                           >
-                            <ArrowUpRight size={14} />
+                            <Eye size={14} />
                           </button>
                         )}
                         {/* Tier Type with Instance - Combined Link */}
