@@ -14,6 +14,7 @@ import {
   History,
   ChevronLeft,
   ChevronRight,
+  Gamepad2,
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import { CURRENT_NETWORK, TARGET_CHAIN_ID_HEX, getAddressUrl, getWalletAddChainParams } from '../../config/networks';
@@ -83,6 +84,18 @@ const CHESS_PIECES = ['♔', '♕', '♖', '♗', '♘', '♙', '♚', '♛', '�
 const VIRTUAL_TIER_ID = 0;
 const VIRTUAL_INSTANCE_ID = 0;
 const DEFAULT_MATCH_LOADING_MESSAGE = 'Loading match...';
+const DEMO_HUMAN_ADDRESS = '0xDeF0000000000000000000000000000000000001';
+const DEMO_COMPUTER_ADDRESS = '0xDeF0000000000000000000000000000000000002';
+const DEMO_MATCH_TIME_SECONDS = 300;
+const CHESS_NO_EN_PASSANT = 63n;
+const WHITE_KING_MOVED = 1n << 6n;
+const BLACK_KING_MOVED = 1n << 7n;
+const WHITE_ROOK_A_MOVED = 1n << 8n;
+const WHITE_ROOK_H_MOVED = 1n << 9n;
+const BLACK_ROOK_A_MOVED = 1n << 10n;
+const BLACK_ROOK_H_MOVED = 1n << 11n;
+const WHITE_IN_CHECK = 1n << 12n;
+const BLACK_IN_CHECK = 1n << 13n;
 
 const DEFAULT_CREATE_FORM = {
   playerCount: 2,
@@ -567,17 +580,142 @@ function createInitialChessBoard() {
   return board;
 }
 
+function getDemoChessInitialState() {
+  return CHESS_NO_EN_PASSANT;
+}
+
+function getDemoChessMovePromotion(board, from, to, requestedPromotion = 0) {
+  const piece = board[from];
+  if (!piece || Number(piece.pieceType) !== 1) return 0;
+  const toRank = Math.floor(to / 8);
+  const isPromotionRank = toRank === 0 || toRank === 7;
+  if (!isPromotionRank) return 0;
+  return requestedPromotion || 5;
+}
+
+function getDemoChessLegalMoves(board, packedState, isWhite) {
+  const packedBoard = boardArrayToPackedBoard(board);
+  const legalMoves = [];
+
+  for (let from = 0; from < 64; from++) {
+    const piece = board[from];
+    if (!piece || Number(piece.pieceType) === 0) continue;
+    if (isWhite && Number(piece.color) !== 1) continue;
+    if (!isWhite && Number(piece.color) !== 2) continue;
+
+    const targets = getLegalMovesForSquare(packedBoard, packedState, from, isWhite);
+    for (const to of targets) {
+      legalMoves.push({
+        from,
+        to,
+        promotion: getDemoChessMovePromotion(board, from, to),
+      });
+    }
+  }
+
+  return legalMoves;
+}
+
+function applyDemoChessMove(board, packedState, from, to, promotion = 0) {
+  const nextBoard = board.map(piece => ({ ...piece }));
+  const movingPiece = nextBoard[from];
+  if (!movingPiece || Number(movingPiece.pieceType) === 0) {
+    return { board: nextBoard, packedState };
+  }
+
+  const movingPieceType = Number(movingPiece.pieceType);
+  const movingColor = Number(movingPiece.color);
+  const isWhite = movingColor === 1;
+  const capturedPiece = nextBoard[to];
+  const previousEnPassant = Number(BigInt(packedState) & 0x3Fn);
+  let nextState = BigInt(packedState) & ~0x3Fn;
+  nextState |= CHESS_NO_EN_PASSANT;
+
+  if (movingPieceType === 6) {
+    nextState |= isWhite ? WHITE_KING_MOVED : BLACK_KING_MOVED;
+    if (Math.abs((to % 8) - (from % 8)) === 2) {
+      const rookFrom = to > from ? from + 3 : from - 4;
+      const rookTo = to > from ? from + 1 : from - 1;
+      nextBoard[rookTo] = nextBoard[rookFrom];
+      nextBoard[rookFrom] = { pieceType: 0, color: 0 };
+    }
+  }
+
+  if (movingPieceType === 4) {
+    if (from === 0) nextState |= WHITE_ROOK_A_MOVED;
+    if (from === 7) nextState |= WHITE_ROOK_H_MOVED;
+    if (from === 56) nextState |= BLACK_ROOK_A_MOVED;
+    if (from === 63) nextState |= BLACK_ROOK_H_MOVED;
+  }
+
+  if (capturedPiece?.pieceType) {
+    if (to === 0) nextState |= WHITE_ROOK_A_MOVED;
+    if (to === 7) nextState |= WHITE_ROOK_H_MOVED;
+    if (to === 56) nextState |= BLACK_ROOK_A_MOVED;
+    if (to === 63) nextState |= BLACK_ROOK_H_MOVED;
+  }
+
+  if (movingPieceType === 1 && to === previousEnPassant && !capturedPiece?.pieceType) {
+    const capturedPawnSquare = isWhite ? to - 8 : to + 8;
+    nextBoard[capturedPawnSquare] = { pieceType: 0, color: 0 };
+  }
+
+  const fromRank = Math.floor(from / 8);
+  const toRank = Math.floor(to / 8);
+  const promotedPieceType = getDemoChessMovePromotion(board, from, to, promotion);
+  nextBoard[to] = {
+    pieceType: promotedPieceType || movingPieceType,
+    color: movingColor,
+  };
+  nextBoard[from] = { pieceType: 0, color: 0 };
+
+  if (movingPieceType === 1 && Math.abs(toRank - fromRank) === 2) {
+    nextState = (nextState & ~0x3Fn) | BigInt(isWhite ? from + 8 : from - 8);
+  }
+
+  const checkStatus = getCheckStatusFromPackedBoard(boardArrayToPackedBoard(nextBoard));
+  nextState &= ~(WHITE_IN_CHECK | BLACK_IN_CHECK);
+  if (checkStatus.whiteInCheck) nextState |= WHITE_IN_CHECK;
+  if (checkStatus.blackInCheck) nextState |= BLACK_IN_CHECK;
+
+  return {
+    board: nextBoard,
+    packedBoard: boardArrayToPackedBoard(nextBoard),
+    packedState: nextState,
+    whiteInCheck: checkStatus.whiteInCheck,
+    blackInCheck: checkStatus.blackInCheck,
+  };
+}
+
+function getDemoChessResolution(board, packedState, nextIsWhite) {
+  const legalMoves = getDemoChessLegalMoves(board, packedState, nextIsWhite);
+  if (legalMoves.length > 0) return null;
+
+  const checkStatus = getCheckStatusFromPackedBoard(boardArrayToPackedBoard(board));
+  const nextPlayerInCheck = nextIsWhite ? checkStatus.whiteInCheck : checkStatus.blackInCheck;
+  return nextPlayerInCheck ? 'checkmate' : 'stalemate';
+}
+
 function buildReplayChessBoard(moveHistory, effectiveMoveIndex, fallbackBoard) {
   if (effectiveMoveIndex >= moveHistory.length - 1) {
     return fallbackBoard;
   }
 
   const board = createInitialChessBoard();
+  let packedState = getDemoChessInitialState();
   for (let i = 0; i <= effectiveMoveIndex && i < moveHistory.length; i++) {
     const move = moveHistory[i];
     if (move.from >= 0 && move.from < 64 && move.to >= 0 && move.to < 64) {
-      board[move.to] = board[move.from];
-      board[move.from] = { pieceType: 0, color: 0 };
+      if (move.isDemo) {
+        const moveResult = applyDemoChessMove(board, packedState, move.from, move.to, move.promotion || 0);
+        for (let square = 0; square < 64; square++) {
+          board[square] = moveResult.board[square];
+        }
+        packedState = moveResult.packedState;
+      } else {
+        board[move.to] = board[move.from];
+        board[move.from] = { pieceType: 0, color: 0 };
+      }
     }
   }
 
@@ -847,6 +985,7 @@ export default function ChessV2() {
   const [nextActiveMatch, setNextActiveMatch] = useState(null);
   const [moveTxTimeout, setMoveTxTimeout] = useState(null);
   const [ghostMove, setGhostMove] = useState(null);
+  const demoComputerMoveTimeoutRef = useRef(null);
 
   const [leaderboard] = useState([]);
   const [expandedPanel, setExpandedPanel] = useState(null);
@@ -1767,7 +1906,238 @@ export default function ChessV2() {
     }
   }, [account, viewingTournament, refreshMatchData, buildMoveHistory, navigate, location.state?.view]);
 
+  const resolveDemoMatch = useCallback((nextMatch, history, nextIsWhite) => {
+    const resolution = getDemoChessResolution(nextMatch.board, nextMatch.packedState, nextIsWhite);
+    if (!resolution) return false;
+
+    const isDemoMatchDraw = resolution === 'stalemate';
+    const whiteAddress = nextMatch.firstPlayer;
+    const blackAddress = whiteAddress?.toLowerCase() === nextMatch.player1?.toLowerCase()
+      ? nextMatch.player2
+      : nextMatch.player1;
+    const playerToMoveAddress = nextIsWhite ? whiteAddress : blackAddress;
+    const winnerAddress = isDemoMatchDraw
+      ? ethers.ZeroAddress
+      : (playerToMoveAddress?.toLowerCase() === nextMatch.player1?.toLowerCase() ? nextMatch.player2 : nextMatch.player1);
+    const loserAddress = isDemoMatchDraw
+      ? ethers.ZeroAddress
+      : playerToMoveAddress;
+
+    const completedMatch = {
+      ...nextMatch,
+      matchStatus: 2,
+      status: 2,
+      completionReason: isDemoMatchDraw ? CompletionReason.DRAW : CompletionReason.NORMAL_WIN,
+      winner: winnerAddress,
+      loser: loserAddress,
+      currentTurn: ethers.ZeroAddress,
+      isYourTurn: false,
+      movesString: history.map(move => `${String.fromCharCode(move.from)}${String.fromCharCode(move.to)}`).join(''),
+    };
+
+    setCurrentMatch(completedMatch);
+    previousBoardRef.current = JSON.stringify(completedMatch.board);
+    setMoveHistory(history);
+
+    const userWon = winnerAddress === DEMO_HUMAN_ADDRESS;
+    const resultType = isDemoMatchDraw ? 'draw' : (userWon ? 'win' : 'lose');
+
+    window.setTimeout(() => {
+      setMatchEndResult({ result: resultType, completionReason: completedMatch.completionReason });
+      setMatchEndWinner(winnerAddress);
+      setMatchEndLoser(loserAddress);
+      matchEndModalShownRef.current = true;
+    }, 350);
+
+    return true;
+  }, []);
+
+  const makeDemoComputerMove = useCallback((matchSnapshot, history) => {
+    const computerIsWhite = matchSnapshot.firstPlayer?.toLowerCase() === DEMO_COMPUTER_ADDRESS.toLowerCase();
+    const legalMoves = getDemoChessLegalMoves(matchSnapshot.board, matchSnapshot.packedState, computerIsWhite);
+    if (legalMoves.length === 0) {
+      resolveDemoMatch(matchSnapshot, history, computerIsWhite);
+      return;
+    }
+
+    const move = legalMoves[Math.floor(Math.random() * legalMoves.length)];
+    const moveResult = applyDemoChessMove(matchSnapshot.board, matchSnapshot.packedState, move.from, move.to, move.promotion);
+    const computerSymbol = computerIsWhite ? 'White' : 'Black';
+    const nextHistory = [
+      ...history,
+      {
+        player: computerIsWhite ? '♔' : '♚',
+        move: `${indexToChessNotation(move.from)}→${indexToChessNotation(move.to)}`,
+        from: move.from,
+        to: move.to,
+        promotion: move.promotion,
+        address: DEMO_COMPUTER_ADDRESS,
+        label: `Computer (${computerSymbol})`,
+        isDemo: true,
+      },
+    ];
+    const nextMatch = {
+      ...matchSnapshot,
+      board: moveResult.board,
+      packedBoard: moveResult.packedBoard,
+      packedState: moveResult.packedState,
+      currentTurn: DEMO_HUMAN_ADDRESS,
+      isYourTurn: true,
+      lastMoveTime: Math.floor(Date.now() / 1000),
+      whiteInCheck: moveResult.whiteInCheck,
+      blackInCheck: moveResult.blackInCheck,
+      lastMove: { from: move.from, to: move.to, isMyMove: false },
+      movesString: nextHistory.map(historyMove => `${String.fromCharCode(historyMove.from)}${String.fromCharCode(historyMove.to)}`).join(''),
+    };
+
+    if (resolveDemoMatch(nextMatch, nextHistory, !computerIsWhite)) return;
+
+    setCurrentMatch(nextMatch);
+    previousBoardRef.current = JSON.stringify(nextMatch.board);
+    setMoveHistory(nextHistory);
+  }, [resolveDemoMatch]);
+
+  const handleStartDemoMatch = useCallback(() => {
+    if (account) return;
+    if (demoComputerMoveTimeoutRef.current) {
+      window.clearTimeout(demoComputerMoveTimeoutRef.current);
+      demoComputerMoveTimeoutRef.current = null;
+    }
+
+    const humanStarts = Math.random() < 0.5;
+    const firstPlayer = humanStarts ? DEMO_HUMAN_ADDRESS : DEMO_COMPUTER_ADDRESS;
+    const humanSymbol = humanStarts ? 'White' : 'Black';
+    const computerSymbol = humanStarts ? 'Black' : 'White';
+    const initialBoard = createInitialChessBoard();
+    const initialPackedBoard = boardArrayToPackedBoard(initialBoard);
+    const initialPackedState = getDemoChessInitialState();
+    const now = Math.floor(Date.now() / 1000);
+
+    const demoMatch = {
+      isDemo: true,
+      tierId: VIRTUAL_TIER_ID,
+      instanceId: VIRTUAL_INSTANCE_ID,
+      instanceAddress: '',
+      roundNumber: 0,
+      matchNumber: 0,
+      playerCount: 2,
+      player1: DEMO_HUMAN_ADDRESS,
+      player2: DEMO_COMPUTER_ADDRESS,
+      player1DisplayLabel: `You (${humanSymbol})`,
+      player2DisplayLabel: `Computer (${computerSymbol})`,
+      firstPlayer,
+      currentTurn: firstPlayer,
+      matchStatus: 1,
+      status: 1,
+      completionReason: 0,
+      winner: ethers.ZeroAddress,
+      loser: ethers.ZeroAddress,
+      lastMoveTime: now,
+      startTime: now,
+      isYourTurn: humanStarts,
+      timeoutState: { timeoutActive: false },
+      matchTimePerPlayer: DEMO_MATCH_TIME_SECONDS,
+      player1TimeRemaining: DEMO_MATCH_TIME_SECONDS,
+      player2TimeRemaining: DEMO_MATCH_TIME_SECONDS,
+      board: initialBoard,
+      packedBoard: initialPackedBoard,
+      packedState: initialPackedState,
+      whiteInCheck: false,
+      blackInCheck: false,
+      lastMove: null,
+      movesString: '',
+    };
+
+    setCurrentMatch(demoMatch);
+    setViewingTournament(null);
+    setActiveInstanceContract(null);
+    activeInstanceContractRef.current = null;
+    setIsSpectator(false);
+    setMatchLoading(false);
+    setMatchLoadingMessage(DEFAULT_MATCH_LOADING_MESSAGE);
+    setMoveHistory([]);
+    setReplayMoveIndex(-2);
+    setMoveTxTimeout(null);
+    setMatchEndResult(null);
+    setMatchEndWinner(null);
+    setMatchEndLoser(null);
+    setMatchEndWinnerLabel('');
+    setNextActiveMatch(null);
+    setGhostMove(null);
+    previousBoardRef.current = JSON.stringify(demoMatch.board);
+    matchEndModalShownRef.current = false;
+    skipNavEffectRef.current = true;
+    navigate('/chess', { replace: false, state: { view: 'demo-match' } });
+
+    window.setTimeout(() => {
+      matchViewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+
+    if (!humanStarts) {
+      demoComputerMoveTimeoutRef.current = window.setTimeout(() => {
+        makeDemoComputerMove(demoMatch, []);
+        demoComputerMoveTimeoutRef.current = null;
+      }, 550);
+    }
+  }, [account, makeDemoComputerMove, navigate]);
+
+  useEffect(() => () => {
+    if (demoComputerMoveTimeoutRef.current) {
+      window.clearTimeout(demoComputerMoveTimeoutRef.current);
+    }
+  }, []);
+
   const handleMakeMove = async (fromSquare, toSquare, promotion = 0) => {
+    if (currentMatch?.isDemo) {
+      if (!currentMatch.isYourTurn || currentMatch.matchStatus === 2) return;
+      const humanIsWhite = currentMatch.firstPlayer?.toLowerCase() === DEMO_HUMAN_ADDRESS.toLowerCase();
+      const demoPromotion = getDemoChessMovePromotion(currentMatch.board, fromSquare, toSquare, promotion);
+      const reason = validateMoveWithReason(currentMatch.packedBoard, currentMatch.packedState, fromSquare, toSquare, humanIsWhite, demoPromotion);
+      if (reason) { alert(`Invalid Move: ${reason}`); return; }
+
+      const moveResult = applyDemoChessMove(currentMatch.board, currentMatch.packedState, fromSquare, toSquare, demoPromotion);
+      const humanSymbol = humanIsWhite ? 'White' : 'Black';
+      const nextHistory = [
+        ...moveHistory,
+        {
+          player: humanIsWhite ? '♔' : '♚',
+          move: `${indexToChessNotation(fromSquare)}→${indexToChessNotation(toSquare)}`,
+          from: fromSquare,
+          to: toSquare,
+          promotion: demoPromotion,
+          address: DEMO_HUMAN_ADDRESS,
+          label: `You (${humanSymbol})`,
+          isDemo: true,
+        },
+      ];
+      const pendingComputerMatch = {
+        ...currentMatch,
+        board: moveResult.board,
+        packedBoard: moveResult.packedBoard,
+        packedState: moveResult.packedState,
+        currentTurn: DEMO_COMPUTER_ADDRESS,
+        isYourTurn: false,
+        lastMoveTime: Math.floor(Date.now() / 1000),
+        whiteInCheck: moveResult.whiteInCheck,
+        blackInCheck: moveResult.blackInCheck,
+        lastMove: { from: fromSquare, to: toSquare, isMyMove: true },
+        movesString: nextHistory.map(move => `${String.fromCharCode(move.from)}${String.fromCharCode(move.to)}`).join(''),
+      };
+
+      if (resolveDemoMatch(pendingComputerMatch, nextHistory, !humanIsWhite)) return;
+
+      setCurrentMatch(pendingComputerMatch);
+      previousBoardRef.current = JSON.stringify(pendingComputerMatch.board);
+      setMoveHistory(nextHistory);
+
+      demoComputerMoveTimeoutRef.current = window.setTimeout(() => {
+        makeDemoComputerMove(pendingComputerMatch, nextHistory);
+        demoComputerMoveTimeoutRef.current = null;
+      }, 550);
+
+      return;
+    }
+
     if (!currentMatch || !activeInstanceContractRef.current || !account) return;
     setMoveTxTimeout(null);
     if (currentMatch.packedBoard != null && currentMatch.packedState != null) {
@@ -1981,6 +2351,10 @@ export default function ChessV2() {
 
   const closeMatch = useCallback(async () => {
     const address = currentMatch?.instanceAddress || viewingTournament?.address;
+    if (demoComputerMoveTimeoutRef.current) {
+      window.clearTimeout(demoComputerMoveTimeoutRef.current);
+      demoComputerMoveTimeoutRef.current = null;
+    }
     setCurrentMatch(null);
     setMoveHistory([]);
     setIsSpectator(false);
@@ -2270,7 +2644,7 @@ export default function ChessV2() {
         onDismiss={dismissActionError}
       />
       {showPrompt && <WalletBrowserPrompt onWalletChoice={handleWalletChoice} onContinueChoice={handleContinueChoice} />}
-      {matchEndResult && <MatchEndModal result={matchEndResult.result} completionReason={matchEndResult.completionReason} winnerLabel={matchEndWinnerLabel} winnerAddress={matchEndWinner} loserAddress={matchEndLoser} currentAccount={account} hasNextMatch={!!nextActiveMatch} onClose={handleMatchEndModalClose} onEnterNextMatch={handleEnterNextMatch} onReturnToBracket={handleReturnToBracket} gameType="chess" roundNumber={currentMatch?.roundNumber} totalRounds={viewingTournament?.totalRounds} prizePool={viewingTournament?.prizePoolWei} reasonLabelMode="v2" />}
+      {matchEndResult && <MatchEndModal result={matchEndResult.result} completionReason={matchEndResult.completionReason} winnerLabel={matchEndWinnerLabel} winnerAddress={matchEndWinner} loserAddress={matchEndLoser} currentAccount={currentMatch?.isDemo ? DEMO_HUMAN_ADDRESS : account} hasNextMatch={currentMatch?.isDemo ? false : !!nextActiveMatch} onClose={handleMatchEndModalClose} onEnterNextMatch={currentMatch?.isDemo ? null : handleEnterNextMatch} onReturnToBracket={handleReturnToBracket} gameType="chess" roundNumber={currentMatch?.roundNumber} totalRounds={viewingTournament?.totalRounds} prizePool={viewingTournament?.prizePoolWei} reasonLabelMode="v2" />}
       {showMatchAlert && alertMatch && !isAlertMatchAlreadyOpen && <ActiveMatchAlertModal match={alertMatch} autoDismiss={isAlertMatchAlreadyOpen} onEnterMatch={() => { handleMatchAlertClose(); handlePlayMatch(alertMatch.tierId, alertMatch.instanceId, alertMatch.roundIdx, alertMatch.matchIdx); }} onDismiss={handleMatchAlertClose} />}
       <PlayerProfileModal
         isOpen={Boolean(selectedProfileAddress)}
@@ -2345,6 +2719,16 @@ export default function ChessV2() {
           isConnecting={isConnecting}
           onConnectWallet={connectWallet}
           connectCtaClassName={currentTheme.connectCtaClassName}
+          unauthenticatedActions={!account ? (
+            <button
+              type="button"
+              onClick={handleStartDemoMatch}
+              className="inline-flex min-w-[240px] items-center justify-center gap-3 rounded-xl border-2 border-cyan-300/50 bg-cyan-400/15 px-6 py-3 text-base font-bold text-cyan-50 shadow-xl shadow-cyan-950/30 transition-all hover:scale-105 hover:border-cyan-200 hover:bg-cyan-400/25 md:text-lg"
+            >
+              <Gamepad2 size={20} />
+              Play Demo
+            </button>
+          ) : null}
         >
           <div className={`relative flex flex-wrap items-center justify-center gap-2 text-sm md:text-base ${currentTheme.heroSubtext}`}>
             {HERO_LINKS.map((link, index) => (
@@ -2382,17 +2766,31 @@ export default function ChessV2() {
               syncDots={syncDots}
               pendingOpponentMove={!!ghostMove}
               onClose={closeMatch}
-              onClaimTimeoutWin={isSpectator ? null : handleClaimTimeoutWin}
-              onForceEliminate={isSpectator ? null : handleForceEliminateStalledMatch}
-              onClaimReplacement={isSpectator ? null : handleClaimMatchSlotByReplacement}
-              onEnterNextMatch={handleEnterNextMatch}
+              onClaimTimeoutWin={currentMatch.isDemo || isSpectator ? null : handleClaimTimeoutWin}
+              onForceEliminate={currentMatch.isDemo || isSpectator ? null : handleForceEliminateStalledMatch}
+              onClaimReplacement={currentMatch.isDemo || isSpectator ? null : handleClaimMatchSlotByReplacement}
+              onEnterNextMatch={currentMatch.isDemo ? null : handleEnterNextMatch}
               onReturnToBracket={handleReturnToBracket}
               onPlayerAddressClick={setSelectedProfileAddress}
-              hasNextActiveMatch={!!nextActiveMatch}
+              hasNextActiveMatch={currentMatch.isDemo ? false : !!nextActiveMatch}
               playerCount={viewingTournament?.playerCount || null}
-              playerConfig={{ player1: { icon: '♚', label: 'White' }, player2: { icon: '♔', label: 'Black' } }}
+              playerConfig={(() => {
+                if (currentMatch.isDemo) {
+                  const isPlayer1First = currentMatch.firstPlayer?.toLowerCase() === currentMatch.player1?.toLowerCase();
+                  return {
+                    player1: { icon: isPlayer1First ? '♔' : '♚', label: currentMatch.player1DisplayLabel || 'You' },
+                    player2: { icon: isPlayer1First ? '♚' : '♔', label: currentMatch.player2DisplayLabel || 'Computer' },
+                  };
+                }
+                return { player1: { icon: '♚', label: 'White' }, player2: { icon: '♔', label: 'Black' } };
+              })()}
               layout="players-board-history"
               isSpectator={isSpectator}
+              demoInfo={currentMatch.isDemo ? {
+                title: 'Demo Match',
+                subtitle: 'You vs Computer',
+                notice: 'Demo match against a random-move computer. No wallet, no fees, no transactions, and no match data is preserved.',
+              } : undefined}
               renderPlayer1Extra={(isMobile) => {
                 const capturedPieces = calculateCapturedPieces(displayedBoard);
                 return (
@@ -2463,7 +2861,7 @@ export default function ChessV2() {
                 </>
               ) : undefined}
             >
-              <ChessBoard board={displayedBoard} packedBoard={currentMatch.packedBoard} packedState={currentMatch.packedState} onMove={isSpectator || currentMatch.matchStatus === 2 ? null : handleMakeMove} currentTurn={currentMatch.currentTurn} account={isSpectator ? null : account} player1={currentMatch.player1} player2={currentMatch.player2} firstPlayer={currentMatch.firstPlayer} matchStatus={currentMatch.matchStatus} loading={matchLoading} whiteInCheck={currentMatch.matchStatus === 2 ? replayCheckStatus.whiteInCheck : currentMatch.whiteInCheck} blackInCheck={currentMatch.matchStatus === 2 ? replayCheckStatus.blackInCheck : currentMatch.blackInCheck} lastMoveTime={currentMatch.lastMoveTime} startTime={currentMatch.startTime} lastMove={displayedLastMove} maxSize={820} ghostMove={currentMatch.matchStatus === 2 ? null : ghostMove} />
+              <ChessBoard board={displayedBoard} packedBoard={currentMatch.packedBoard} packedState={currentMatch.packedState} onMove={isSpectator || currentMatch.matchStatus === 2 ? null : handleMakeMove} currentTurn={currentMatch.currentTurn} account={isSpectator ? null : (currentMatch.isDemo ? DEMO_HUMAN_ADDRESS : account)} player1={currentMatch.player1} player2={currentMatch.player2} firstPlayer={currentMatch.firstPlayer} matchStatus={currentMatch.matchStatus} loading={matchLoading} whiteInCheck={currentMatch.matchStatus === 2 ? replayCheckStatus.whiteInCheck : currentMatch.whiteInCheck} blackInCheck={currentMatch.matchStatus === 2 ? replayCheckStatus.blackInCheck : currentMatch.blackInCheck} lastMoveTime={currentMatch.lastMoveTime} startTime={currentMatch.startTime} lastMove={displayedLastMove} maxSize={820} ghostMove={currentMatch.matchStatus === 2 ? null : ghostMove} />
             </GameMatchLayout>
 
             {moveTxTimeout && (

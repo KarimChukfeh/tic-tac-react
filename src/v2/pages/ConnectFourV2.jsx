@@ -343,6 +343,22 @@ function isConnectFourDraw(flatBoard) {
   return flatBoard.every(cell => cell !== 0);
 }
 
+const DEMO_COMPUTER_BLOCK_CHANCE = 0.58;
+const DEMO_COMPUTER_CENTER_BIAS_CHANCE = 0.55;
+
+function chooseRandomConnectFourColumn(columns) {
+  return columns[Math.floor(Math.random() * columns.length)];
+}
+
+function chooseCasualDemoComputerMove(availableColumns) {
+  const centerColumns = availableColumns.filter(col => col >= 2 && col <= 4);
+  if (centerColumns.length > 0 && Math.random() < DEMO_COMPUTER_CENTER_BIAS_CHANCE) {
+    return chooseRandomConnectFourColumn(centerColumns);
+  }
+
+  return chooseRandomConnectFourColumn(availableColumns);
+}
+
 function getBestDemoComputerMoveConnectFour(flatBoard, computerValue, humanValue) {
   const grid = boardToGrid(flatBoard);
   const availableColumns = [];
@@ -367,24 +383,24 @@ function getBestDemoComputerMoveConnectFour(flatBoard, computerValue, humanValue
   }
 
   // Check for blocking opponent's winning move
+  const blockingColumns = [];
   for (const col of availableColumns) {
     const row = getDropRow(grid, col);
     grid[row][col] = humanValue;
     if (checkConnectFourWinner(grid) === humanValue) {
       grid[row][col] = 0;
-      return col;
+      blockingColumns.push(col);
+    } else {
+      grid[row][col] = 0;
     }
-    grid[row][col] = 0;
   }
 
-  // Prefer center columns (make the AI less perfect)
-  const centerColumns = availableColumns.filter(col => col >= 2 && col <= 4);
-  if (centerColumns.length > 0 && Math.random() < 0.6) {
-    return centerColumns[Math.floor(Math.random() * centerColumns.length)];
+  if (blockingColumns.length > 0 && Math.random() < DEMO_COMPUTER_BLOCK_CHANCE) {
+    return chooseRandomConnectFourColumn(blockingColumns);
   }
 
-  // Random move from available columns
-  return availableColumns[Math.floor(Math.random() * availableColumns.length)];
+  const nonBlockingColumns = availableColumns.filter(col => !blockingColumns.includes(col));
+  return chooseCasualDemoComputerMove(nonBlockingColumns.length > 0 ? nonBlockingColumns : availableColumns);
 }
 
 const AnimatedDisc = ({ delay = 0, size = 'large' }) => {
