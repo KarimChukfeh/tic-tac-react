@@ -49,6 +49,7 @@ import V2GameLobbyIntro from '../../components/shared/V2GameLobbyIntro';
 import V2ContractsTable from '../../components/shared/V2ContractsTable';
 import PlayerProfileModal from '../../components/shared/PlayerProfileModal';
 import WalletBrowserPrompt from '../../components/WalletBrowserPrompt';
+import DemoLevelModal from '../components/DemoLevelModal';
 import EntryFeeSlider, { DEFAULT_SELECTED_ENTRY_FEE } from '../components/EntryFeeSlider';
 import TimeoutSettingSlider, { clampCreateTimeoutValue, isCreateTimeoutField, normalizeCreateTimeouts } from '../components/TimeoutSettingSlider';
 import { useInitialDocumentScrollTop } from '../../hooks/useInitialDocumentScrollTop';
@@ -96,6 +97,50 @@ const BLACK_ROOK_A_MOVED = 1n << 10n;
 const BLACK_ROOK_H_MOVED = 1n << 11n;
 const WHITE_IN_CHECK = 1n << 12n;
 const BLACK_IN_CHECK = 1n << 13n;
+const DEMO_CHESS_MIN_ELO = 0;
+const DEMO_CHESS_MAX_ELO = 2000;
+const DEFAULT_DEMO_CHESS_ELO = 1000;
+const DEMO_CHESS_AI_CENTER_SQUARES = new Set([27, 28, 35, 36]);
+const DEMO_CHESS_AI_EXTENDED_CENTER_SQUARES = new Set([18, 19, 20, 21, 26, 29, 34, 37, 42, 43, 44, 45]);
+const DEMO_CHESS_PIECE_VALUES = {
+  1: 100,
+  2: 320,
+  3: 330,
+  4: 500,
+  5: 900,
+  6: 20_000,
+};
+
+function clampDemoChessElo(elo) {
+  const parsedElo = Number(elo);
+  if (!Number.isFinite(parsedElo)) return DEFAULT_DEMO_CHESS_ELO;
+  return Math.min(DEMO_CHESS_MAX_ELO, Math.max(DEMO_CHESS_MIN_ELO, Math.round(parsedElo / 25) * 25));
+}
+
+function getDemoChessAiSettings(elo) {
+  const selectedElo = clampDemoChessElo(elo);
+  if (selectedElo < 100) {
+    const lowEloProgress = selectedElo / 100;
+    return {
+      smartMoveChance: 0.02 + 0.16 * lowEloProgress,
+      sensibleMoveMargin: Math.round(550 - 250 * lowEloProgress),
+      imperfectMoveMargin: Math.round(1600 - 700 * lowEloProgress),
+      imperfectMovePoolRatio: 1 - 0.25 * lowEloProgress,
+      scoreNoise: 150 - 70 * lowEloProgress,
+    };
+  }
+
+  const normalizedLevel = (selectedElo - 100) / (DEMO_CHESS_MAX_ELO - 100);
+  const remainingStrength = 1 - normalizedLevel;
+
+  return {
+    smartMoveChance: 0.18 + 0.8 * (normalizedLevel ** 0.32),
+    sensibleMoveMargin: Math.round(25 + 275 * (remainingStrength ** 4)),
+    imperfectMoveMargin: Math.round(100 + 800 * (remainingStrength ** 2)),
+    imperfectMovePoolRatio: 0.1 + 0.65 * (remainingStrength ** 1.4),
+    scoreNoise: 3 + 77 * (remainingStrength ** 2),
+  };
+}
 
 const DEFAULT_CREATE_FORM = {
   playerCount: 2,
@@ -696,6 +741,130 @@ function getDemoChessResolution(board, packedState, nextIsWhite) {
   return nextPlayerInCheck ? 'checkmate' : 'stalemate';
 }
 
+function getDemoChessPieceValue(piece) {
+  return DEMO_CHESS_PIECE_VALUES[Number(piece?.pieceType) || 0] || 0;
+}
+
+function getDemoChessSquareScore(piece, square) {
+  const pieceType = Number(piece?.pieceType || 0);
+  const color = Number(piece?.color || 0);
+  if (!pieceType || !color) return 0;
+
+  const file = square % 8;
+  const rank = Math.floor(square / 8);
+  const centerDistance = Math.abs(file - 3.5) + Math.abs(rank - 3.5);
+
+  if (pieceType === 1) {
+    const progress = color === 1 ? rank : 7 - rank;
+    return progress * 9 - Math.abs(file - 3.5) * 2;
+  }
+  if (pieceType === 2 || pieceType === 3) return Math.round(30 - centerDistance * 7);
+  if (pieceType === 4) return Math.round(12 - Math.abs(file - 3.5) * 2);
+  if (pieceType === 5) return Math.round(10 - centerDistance * 2);
+  if (pieceType === 6) {
+    const homeRank = color === 1 ? 0 : 7;
+    const isCastled = rank === homeRank && (file === 2 || file === 6);
+    return isCastled ? 45 : -Math.round(centerDistance * 2);
+  }
+  return 0;
+}
+
+function getDemoChessPositionScore(board, computerIsWhite) {
+  let score = 0;
+
+  for (let square = 0; square < 64; square++) {
+    const piece = board[square];
+    if (!piece?.pieceType) continue;
+
+    const pieceScore = getDemoChessPieceValue(piece) + getDemoChessSquareScore(piece, square);
+    const isComputerPiece = computerIsWhite ? Number(piece.color) === 1 : Number(piece.color) === 2;
+    score += isComputerPiece ? pieceScore : -pieceScore;
+  }
+
+  return score;
+}
+
+function getDemoChessOpponentBestReplyScore(board, packedState, opponentIsWhite, computerIsWhite) {
+  const opponentMoves = getDemoChessLegalMoves(board, packedState, opponentIsWhite);
+  if (opponentMoves.length === 0) {
+    const resolution = getDemoChessResolution(board, packedState, opponentIsWhite);
+    return resolution === 'checkmate' ? 100_000 : 0;
+  }
+
+  let worstScore = Number.POSITIVE_INFINITY;
+  for (const reply of opponentMoves) {
+    const replyResult = applyDemoChessMove(board, packedState, reply.from, reply.to, reply.promotion);
+    const computerInCheck = computerIsWhite ? replyResult.whiteInCheck : replyResult.blackInCheck;
+    let replyScore = getDemoChessPositionScore(replyResult.board, computerIsWhite);
+
+    if (computerInCheck) {
+      const computerMoves = getDemoChessLegalMoves(replyResult.board, replyResult.packedState, computerIsWhite);
+      if (computerMoves.length === 0) replyScore = -100_000;
+      else replyScore -= 30;
+    }
+
+    worstScore = Math.min(worstScore, replyScore);
+  }
+
+  return worstScore;
+}
+
+function scoreDemoChessComputerMove(board, packedState, move, computerIsWhite, aiSettings) {
+  const movingPiece = board[move.from];
+  const movingPieceType = Number(movingPiece?.pieceType || 0);
+  const moveResult = applyDemoChessMove(board, packedState, move.from, move.to, move.promotion);
+  const opponentIsWhite = !computerIsWhite;
+  const opponentInCheck = opponentIsWhite ? moveResult.whiteInCheck : moveResult.blackInCheck;
+  const replyScore = getDemoChessOpponentBestReplyScore(
+    moveResult.board,
+    moveResult.packedState,
+    opponentIsWhite,
+    computerIsWhite,
+  );
+
+  if (replyScore >= 100_000) return replyScore;
+
+  let score = replyScore;
+  if (opponentInCheck) score += 35;
+  if (move.promotion) score += 250;
+  if (DEMO_CHESS_AI_CENTER_SQUARES.has(move.to)) score += 18;
+  else if (DEMO_CHESS_AI_EXTENDED_CENTER_SQUARES.has(move.to)) score += 8;
+
+  const fromRank = Math.floor(move.from / 8);
+  const backRank = computerIsWhite ? 0 : 7;
+  if ((movingPieceType === 2 || movingPieceType === 3) && fromRank === backRank) score += 18;
+  if (movingPieceType === 6 && Math.abs((move.to % 8) - (move.from % 8)) === 2) score += 35;
+  if (movingPieceType === 5 && board.filter(piece => Number(piece?.pieceType) > 0).length > 26) score -= 18;
+
+  return score + Math.random() * aiSettings.scoreNoise;
+}
+
+function chooseDemoChessComputerMove(board, packedState, computerIsWhite, demoElo = DEFAULT_DEMO_CHESS_ELO) {
+  const legalMoves = getDemoChessLegalMoves(board, packedState, computerIsWhite);
+  if (legalMoves.length === 0) return null;
+
+  const aiSettings = getDemoChessAiSettings(demoElo);
+  const scoredMoves = legalMoves
+    .map(move => ({
+      ...move,
+      score: scoreDemoChessComputerMove(board, packedState, move, computerIsWhite, aiSettings),
+    }))
+    .sort((a, b) => b.score - a.score);
+
+  if (scoredMoves[0]?.score >= 100_000) return scoredMoves[0];
+
+  const bestScore = scoredMoves[0]?.score ?? 0;
+  const sensibleMoves = scoredMoves.filter(move => move.score >= bestScore - aiSettings.sensibleMoveMargin);
+  if (Math.random() < aiSettings.smartMoveChance) {
+    return sensibleMoves[Math.floor(Math.random() * sensibleMoves.length)];
+  }
+
+  const imperfectMoves = scoredMoves.filter(move => move.score >= bestScore - aiSettings.imperfectMoveMargin);
+  const imperfectMoveCount = Math.max(1, Math.ceil(imperfectMoves.length * aiSettings.imperfectMovePoolRatio));
+  const imperfectMovePool = imperfectMoves.slice(0, imperfectMoveCount);
+  return imperfectMovePool[Math.floor(Math.random() * imperfectMovePool.length)];
+}
+
 function buildReplayChessBoard(moveHistory, effectiveMoveIndex, fallbackBoard) {
   if (effectiveMoveIndex >= moveHistory.length - 1) {
     return fallbackBoard;
@@ -894,6 +1063,8 @@ export default function ChessV2() {
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [isWhatIsThisOpen, setIsWhatIsThisOpen] = useState(false);
   const [isQuickGuideOpen, setIsQuickGuideOpen] = useState(false);
+  const [isDemoLevelOpen, setIsDemoLevelOpen] = useState(false);
+  const [demoElo, setDemoElo] = useState(DEFAULT_DEMO_CHESS_ELO);
   const hadConnectedAccountRef = useRef(false);
 
   useEffect(() => {
@@ -1954,13 +2125,17 @@ export default function ChessV2() {
 
   const makeDemoComputerMove = useCallback((matchSnapshot, history) => {
     const computerIsWhite = matchSnapshot.firstPlayer?.toLowerCase() === DEMO_COMPUTER_ADDRESS.toLowerCase();
-    const legalMoves = getDemoChessLegalMoves(matchSnapshot.board, matchSnapshot.packedState, computerIsWhite);
-    if (legalMoves.length === 0) {
+    const move = chooseDemoChessComputerMove(
+      matchSnapshot.board,
+      matchSnapshot.packedState,
+      computerIsWhite,
+      matchSnapshot.demoElo,
+    );
+    if (!move) {
       resolveDemoMatch(matchSnapshot, history, computerIsWhite);
       return;
     }
 
-    const move = legalMoves[Math.floor(Math.random() * legalMoves.length)];
     const moveResult = applyDemoChessMove(matchSnapshot.board, matchSnapshot.packedState, move.from, move.to, move.promotion);
     const computerSymbol = computerIsWhite ? 'White' : 'Black';
     const nextHistory = [
@@ -1997,7 +2172,7 @@ export default function ChessV2() {
     setMoveHistory(nextHistory);
   }, [resolveDemoMatch]);
 
-  const handleStartDemoMatch = useCallback(() => {
+  const handleStartDemoMatch = useCallback((selectedElo = demoElo) => {
     if (account) return;
     if (demoComputerMoveTimeoutRef.current) {
       window.clearTimeout(demoComputerMoveTimeoutRef.current);
@@ -2007,7 +2182,7 @@ export default function ChessV2() {
     const humanStarts = Math.random() < 0.5;
     const firstPlayer = humanStarts ? DEMO_HUMAN_ADDRESS : DEMO_COMPUTER_ADDRESS;
     const humanSymbol = humanStarts ? 'White' : 'Black';
-    const computerSymbol = humanStarts ? 'Black' : 'White';
+    const selectedDemoElo = clampDemoChessElo(selectedElo);
     const initialBoard = createInitialChessBoard();
     const initialPackedBoard = boardArrayToPackedBoard(initialBoard);
     const initialPackedState = getDemoChessInitialState();
@@ -2024,7 +2199,8 @@ export default function ChessV2() {
       player1: DEMO_HUMAN_ADDRESS,
       player2: DEMO_COMPUTER_ADDRESS,
       player1DisplayLabel: `You (${humanSymbol})`,
-      player2DisplayLabel: `Computer (${computerSymbol})`,
+      player2DisplayLabel: `Computer (${selectedDemoElo} ELO)`,
+      demoElo: selectedDemoElo,
       firstPlayer,
       currentTurn: firstPlayer,
       matchStatus: 1,
@@ -2079,7 +2255,7 @@ export default function ChessV2() {
         demoComputerMoveTimeoutRef.current = null;
       }, 550);
     }
-  }, [account, makeDemoComputerMove, navigate]);
+  }, [account, demoElo, makeDemoComputerMove, navigate]);
 
   useEffect(() => () => {
     if (demoComputerMoveTimeoutRef.current) {
@@ -2722,7 +2898,7 @@ export default function ChessV2() {
           unauthenticatedActions={!account ? (
             <button
               type="button"
-              onClick={handleStartDemoMatch}
+              onClick={() => setIsDemoLevelOpen(true)}
               className="inline-flex min-w-[240px] items-center justify-center gap-3 rounded-xl border-2 border-cyan-300/50 bg-cyan-400/15 px-6 py-3 text-base font-bold text-cyan-50 shadow-xl shadow-cyan-950/30 transition-all hover:scale-105 hover:border-cyan-200 hover:bg-cyan-400/25 md:text-lg"
             >
               <Gamepad2 size={20} />
@@ -2788,8 +2964,8 @@ export default function ChessV2() {
               isSpectator={isSpectator}
               demoInfo={currentMatch.isDemo ? {
                 title: 'Demo Match',
-                subtitle: 'You vs Computer',
-                notice: 'Demo match against a random-move computer. No wallet, no fees, no transactions, and no match data is preserved.',
+                subtitle: `You vs Computer (${currentMatch.demoElo || DEFAULT_DEMO_CHESS_ELO} ELO)`,
+                notice: 'Demo match with no wallet, fees, transactions, or saved match data.',
               } : undefined}
               renderPlayer1Extra={(isMobile) => {
                 const capturedPieces = calculateCapturedPieces(displayedBoard);
@@ -3023,6 +3199,19 @@ export default function ChessV2() {
       <WhatIsThisModal
         isOpen={isWhatIsThisOpen}
         onClose={() => setIsWhatIsThisOpen(false)}
+      />
+      <DemoLevelModal
+        isOpen={isDemoLevelOpen}
+        level={demoElo}
+        minLevel={DEMO_CHESS_MIN_ELO}
+        maxLevel={DEMO_CHESS_MAX_ELO}
+        step={25}
+        onChange={level => setDemoElo(clampDemoChessElo(level))}
+        onClose={() => setIsDemoLevelOpen(false)}
+        onStart={() => {
+          setIsDemoLevelOpen(false);
+          handleStartDemoMatch(demoElo);
+        }}
       />
 
       <style>{`
