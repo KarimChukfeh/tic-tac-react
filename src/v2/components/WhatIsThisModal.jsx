@@ -87,7 +87,7 @@ const WhatIsThisModal = ({ isOpen, onClose, onOpenQuickGuide, gameTitle }) => {
               </div>
               <div className="mt-3 max-w-2xl space-y-4 text-sm leading-7 text-blue-100/80 md:text-base">
                 <p className="text-white">
-                  This is true on-chain {gameTitle} competition.
+                  This is fully on-chain {gameTitle} competition.
                 </p>
                 <ul className="list-disc space-y-1 pl-5">
                   <li>Configure your lobby (2–32 players)</li>

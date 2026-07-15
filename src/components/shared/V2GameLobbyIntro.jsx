@@ -91,7 +91,7 @@ export default function V2GameLobbyIntro({
             </div>
           </div>
         ) : onConnectWallet ? (
-          <div className="flex flex-row flex-wrap items-center justify-center gap-5">
+          <div className="flex flex-col items-start gap-3 md:flex-row md:flex-wrap md:items-center md:justify-center md:gap-5">
             {unauthenticatedActions}
             <div className="relative mt-3 mb-1 inline-flex items-center justify-center gap-2 md:mt-0" ref={tooltipRef}>
               <button
