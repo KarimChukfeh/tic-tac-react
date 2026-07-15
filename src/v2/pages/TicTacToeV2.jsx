@@ -3278,6 +3278,8 @@ export default function TicTacToeV2() {
       <WhatIsThisModal
         isOpen={isWhatIsThisOpen}
         onClose={() => setIsWhatIsThisOpen(false)}
+        onOpenQuickGuide={() => setIsQuickGuideOpen(true)}
+        gameTitle="TicTacToe"
       />
 
       <style>{`

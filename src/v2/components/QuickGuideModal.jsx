@@ -87,6 +87,15 @@ const QuickGuideModal = ({ isOpen, onClose }) => {
 
   if (!shouldRender) return null;
 
+  const handleUserManualLinkClick = (event) => {
+    event.preventDefault();
+    onClose();
+    window.dispatchEvent(new CustomEvent('open-user-manual'));
+    window.setTimeout(() => {
+      document.getElementById('user-manual')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, QUICK_GUIDE_TRANSITION_MS);
+  };
+
   return (
     <div className="fixed inset-0 z-[140] flex items-start justify-center overflow-y-auto p-4 md:items-center md:p-6">
       <button
@@ -154,6 +163,15 @@ const QuickGuideModal = ({ isOpen, onClose }) => {
                 </p>
               </article>
             ))}
+          </div>
+          <div className="mt-6 flex justify-start">
+            <a
+              href="#user-manual"
+              onClick={handleUserManualLinkClick}
+              className="inline-flex font-semibold text-cyan-200 underline decoration-cyan-300/60 underline-offset-4 transition-colors hover:text-cyan-100"
+            >
+              User Manual
+            </a>
           </div>
         </div>
       </div>

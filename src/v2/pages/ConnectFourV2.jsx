@@ -3501,6 +3501,8 @@ export default function ConnectFourV2() {
       <WhatIsThisModal
         isOpen={isWhatIsThisOpen}
         onClose={() => setIsWhatIsThisOpen(false)}
+        onOpenQuickGuide={() => setIsQuickGuideOpen(true)}
+        gameTitle="Connect Four"
       />
 
       <style>{`

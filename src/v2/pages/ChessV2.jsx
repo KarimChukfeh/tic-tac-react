@@ -3199,6 +3199,8 @@ export default function ChessV2() {
       <WhatIsThisModal
         isOpen={isWhatIsThisOpen}
         onClose={() => setIsWhatIsThisOpen(false)}
+        onOpenQuickGuide={() => setIsQuickGuideOpen(true)}
+        gameTitle="Chess"
       />
       <DemoLevelModal
         isOpen={isDemoLevelOpen}

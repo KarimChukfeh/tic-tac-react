@@ -3,7 +3,7 @@ import { BookOpen, X } from 'lucide-react';
 
 const WHAT_IS_THIS_TRANSITION_MS = 220;
 
-const WhatIsThisModal = ({ isOpen, onClose }) => {
+const WhatIsThisModal = ({ isOpen, onClose, onOpenQuickGuide, gameTitle }) => {
   const [shouldRender, setShouldRender] = useState(isOpen);
   const [isVisible, setIsVisible] = useState(false);
 
@@ -54,6 +54,14 @@ const WhatIsThisModal = ({ isOpen, onClose }) => {
 
   if (!shouldRender) return null;
 
+  const handleQuickGuideLinkClick = (event) => {
+    event.preventDefault();
+    onClose();
+    window.setTimeout(() => {
+      onOpenQuickGuide();
+    }, WHAT_IS_THIS_TRANSITION_MS);
+  };
+
   return (
     <div className="fixed inset-0 z-[140] flex items-start justify-center overflow-y-auto p-4 md:items-center md:p-6">
       <button
@@ -78,26 +86,23 @@ const WhatIsThisModal = ({ isOpen, onClose }) => {
                 What&apos;s This?
               </div>
               <div className="mt-3 max-w-2xl space-y-4 text-sm leading-7 text-blue-100/80 md:text-base">
-                <p className="font-semibold text-white">
-                  This is true on-chain gaming.
+                <p className="text-white">
+                  This is true on-chain {gameTitle} competition.
                 </p>
-                <p>
-                  You configure your lobby, set its ETH entry fee, then invite whoever you want to challenge.
-                </p>
-                <p>
-                  Winners advance through the bracket until a champion takes the entire ETH prize pool.
-                </p>
-                <div className="space-y-1">
-                  <p className="font-semibold text-white">
-                    Every move is a transaction.
-                  </p>
-                  <p className="font-semibold text-white">
-                    Every outcome is permanent.
-                  </p>
-                  <p className="font-semibold text-white">
-                    Every payout is instant.
-                  </p>
-                </div>
+                <ul className="list-disc space-y-1 pl-5">
+                  <li>Configure your lobby (2–32 players)</li>
+                  <li>Set the ETH entry fee per player</li>
+                  <li>Share the invite link with your opponents</li>
+                  <li>Winners advance through the bracket</li>
+                  <li>Finals&apos; winner takes the ETH prize pool</li>
+                </ul>
+                <a
+                  href="#"
+                  onClick={handleQuickGuideLinkClick}
+                  className="inline-flex font-semibold text-cyan-200 underline decoration-cyan-300/60 underline-offset-4 transition-colors hover:text-cyan-100"
+                >
+                  Quick Guide
+                </a>
               </div>
             </div>
 
