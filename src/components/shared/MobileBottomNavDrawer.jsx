@@ -13,12 +13,12 @@ export default function MobileBottomNavDrawer({ enabled = false, expanded = true
 
   if (!expanded) {
     return (
-      <div className={`${containerClassName} px-4 py-1`}>
+      <div className={`${containerClassName} px-4 py-1.5`}>
         <button
           type="button"
           onClick={onToggle}
           aria-label="Expand bottom navigation"
-          className="flex w-full items-center justify-center gap-2 rounded-full py-0.5 text-purple-200 transition-colors hover:text-white"
+          className="flex w-full items-center justify-center gap-2 rounded-full py-1 text-purple-200 transition-colors hover:text-white"
         >
           <ChevronUp size={18} />
           <div className="flex items-center gap-1.5 text-white/70" aria-hidden="true">
