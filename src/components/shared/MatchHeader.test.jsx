@@ -185,6 +185,30 @@ describe('MatchHeader', () => {
     expect(screen.queryByText('Resolved via ML1 Timeout Victory')).not.toBeInTheDocument();
   });
 
+  it('uses the completed-match resolution and reasoning copy for demo matches', () => {
+    render(
+      <MatchHeader
+        {...baseProps}
+        reasonLabelMode="v2"
+        matchStatus={2}
+        completionReason={0}
+        demoInfo={{ notice: 'Demo match against the computer. No entry fee. No prize pool. No data preserved.' }}
+        tournamentInfo={{
+          ...baseProps.tournamentInfo,
+          winner: baseProps.tournamentInfo.player1,
+        }}
+      />
+    );
+
+    expect(screen.getByText('Players')).toBeInTheDocument();
+    expect(screen.getByText('Resolution')).toBeInTheDocument();
+    expect(screen.getByText('Reasoning')).toBeInTheDocument();
+    expect(screen.queryByText('Demo Status')).not.toBeInTheDocument();
+    expect(screen.getByText('wins')).toBeInTheDocument();
+    expect(screen.getByText('wins because they connected 3 in a row before')).toBeInTheDocument();
+    expect(screen.getByText('Demo match against the computer. No entry fee. No prize pool. No data preserved.')).toBeInTheDocument();
+  });
+
   it('renders ML2 and ML3 completed explanations in the V2 header', () => {
     const externalWinner = '0x3333333333333333333333333333333333333333';
     const { rerender } = render(

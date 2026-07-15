@@ -83,8 +83,7 @@ const MatchHeader = ({
 
   const status = getStatusBadge();
   const isV2MatchHeader = reasonLabelMode === 'v2';
-  const shouldHidePrimaryResolvedBadge = !demoInfo
-    && isV2MatchHeader
+  const shouldHidePrimaryResolvedBadge = isV2MatchHeader
     && matchStatus === 2
     && [0, 1, 2, 3, 4].includes(Number(completionReason ?? 0));
 
@@ -189,8 +188,8 @@ const MatchHeader = ({
     : (tournamentInfo
       ? `T${tournamentInfo.tierId + 1}-I${tournamentInfo.instanceId + 1} • Round ${tournamentInfo.roundNumber + 1} • Match ${tournamentInfo.matchNumber + 1}`
       : null));
-  const statusSectionLabel = demoInfo ? 'Demo Status' : (isV2MatchHeader && matchStatus === 2 ? 'Resolution' : 'Status');
-  const isCollapsible = !demoInfo && isV2MatchHeader && matchStatus === 2;
+  const statusSectionLabel = isV2MatchHeader && matchStatus === 2 ? 'Resolution' : 'Status';
+  const isCollapsible = isV2MatchHeader && matchStatus === 2;
   const collapsedResolutionText = (() => {
     if (!isCollapsible) return null;
     const reason = Number(completionReason ?? 0);
@@ -207,7 +206,7 @@ const MatchHeader = ({
     return null;
   })();
   const completedMatchExplanation = (() => {
-    if (demoInfo || !isV2MatchHeader || matchStatus !== 2) return null;
+    if (!isV2MatchHeader || matchStatus !== 2) return null;
 
     const reason = Number(completionReason ?? 0);
     const player1Address = tournamentInfo?.player1?.toLowerCase();
@@ -257,7 +256,7 @@ const MatchHeader = ({
     return null;
   })();
   const completedMatchOutcomeBadge = (() => {
-    if (demoInfo || !isV2MatchHeader || matchStatus !== 2) return null;
+    if (!isV2MatchHeader || matchStatus !== 2) return null;
 
     const reason = Number(completionReason ?? 0);
     const player1Address = tournamentInfo?.player1?.toLowerCase();

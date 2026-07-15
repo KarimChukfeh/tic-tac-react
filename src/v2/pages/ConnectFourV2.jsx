@@ -3188,6 +3188,7 @@ export default function ConnectFourV2() {
               demoInfo={currentMatch.isDemo ? {
                 title: 'Demo Match',
                 subtitle: 'You vs Computer',
+                notice: 'Demo match against the computer. No entry fee. No prize pool. No data preserved.',
               } : undefined}
               renderMoveHistory={moveHistory.length > 0 ? () => (
                 <div>
