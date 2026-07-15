@@ -295,13 +295,12 @@ const MatchHeader = ({
     if (reason === 2) {
       return (
         <>
-          <span>No Winner.</span>
           <UserManualAnchorLink
             href={getUserManualHrefForReasonCode('R1')}
             className="underline decoration-dotted underline-offset-4 hover:opacity-80 transition-colors"
             title="Learn more about R1 in the User Manual"
           >
-            Draw Resolution (R1)
+            Draw (R1)
           </UserManualAnchorLink>
         </>
       );

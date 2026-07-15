@@ -265,7 +265,7 @@ The winner receives 95% of the total prize pool instantly and automatically. ETo
 ### 4.2: R1 - Draw Resolution
 
 **What it is**
-R1 occurs when a draw ends the tournament. This happens in one of two ways: the finals match ends in a draw, or every match in a round ends in a draw simultaneously.
+R1 occurs when a draw ends a match or a tournament. This happens in one of two ways: the finals match ends in a draw, or every match in a round ends in a draw simultaneously.
 
 **What triggers it**
 - Finals match ends in a draw, OR

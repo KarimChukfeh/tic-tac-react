@@ -174,11 +174,11 @@ describe('MatchHeader', () => {
       />
     );
 
-    const r1Link = screen.getByRole('link', { name: 'Draw Resolution (R1)' });
+    const r1Link = screen.getByRole('link', { name: 'Draw (R1)' });
     expect(r1Link).toBeInTheDocument();
     expect(r1Link).toHaveAttribute('href', '#42-r1---draw-resolution');
     expect(screen.queryByText('Resolved via R1 Draw Resolution')).not.toBeInTheDocument();
-    expect(screen.getByText('No Winner.')).toBeInTheDocument();
+    expect(screen.queryByText('No Winner.')).not.toBeInTheDocument();
     expect(screen.getByText('Both players')).toBeInTheDocument();
     expect(screen.getByText('and')).toBeInTheDocument();
     expect(screen.getByText('played until a draw')).toBeInTheDocument();
