@@ -625,6 +625,7 @@ export default function TicTacToeV2() {
   const pendingScrollAddressRef = useRef(null);
   const tournamentBracketRef = useRef(null);
   const matchViewRef = useRef(null);
+  const boardViewRef = useRef(null);
   const collapseActivityPanelRef = useRef(null);
   const recentMatchesScrollRef = useRef(null);
 
@@ -2274,7 +2275,7 @@ export default function TicTacToeV2() {
     skipNavEffectRef.current = true;
     navigate('/tictactoe', { replace: false, state: { view: 'demo-match' } });
     window.setTimeout(() => {
-      matchViewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      boardViewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 100);
 
     if (!humanStarts) {
@@ -2919,6 +2920,7 @@ export default function TicTacToeV2() {
               onEnterNextMatch={currentMatch.isDemo ? null : handleEnterNextMatch}
               onReturnToBracket={handleReturnToBracket}
               onPlayerAddressClick={setSelectedProfileAddress}
+              boardScrollRef={boardViewRef}
               hasNextActiveMatch={currentMatch.isDemo ? false : !!nextActiveMatch}
               playerCount={viewingTournament?.playerCount || null}
               playerConfig={(() => {

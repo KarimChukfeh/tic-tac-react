@@ -150,6 +150,8 @@ const GameMatchLayout = ({
   reasonLabelMode = 'default',
   onPlayerAddressClick = null,
   demoInfo = null,
+  // Optional scroll target placed immediately before the board area.
+  boardScrollRef = null,
 
   // Children = the game board component
   children
@@ -1288,6 +1290,9 @@ const GameMatchLayout = ({
 
       {/* Sentinel: top of board — detects when board is below viewport */}
       <div ref={mobileBoardStartRef} className="lg:hidden" />
+
+      {/* Shared board anchor for callers that need to focus play instead of the header. */}
+      <div ref={boardScrollRef} aria-hidden="true" />
 
       {/* Main Layout */}
       {renderLayout()}
