@@ -73,13 +73,7 @@ export default function V2GameLobbyIntro({
   const formattedBalance = formatBalance(walletBalance);
 
   return (
-    <div className="max-w-lg mx-auto mb-8 md:mb-10 space-y-5 md:space-y-6">
-      {children ? (
-        <div className="flex justify-center text-center">
-          {children}
-        </div>
-      ) : null}
-
+    <div className="max-w-2xl mx-auto mb-8 md:mb-10 space-y-5 md:space-y-6">
       <div className="pt-2 flex flex-wrap items-center justify-center gap-3 text-center">
         {account ? (
           <div className="w-full max-w-sm rounded-lg border border-green-400/25 bg-slate-950/65 px-4 py-3 text-left shadow-xl shadow-green-950/20 backdrop-blur-sm">
@@ -97,7 +91,8 @@ export default function V2GameLobbyIntro({
             </div>
           </div>
         ) : onConnectWallet ? (
-          <div className="flex flex-col items-start gap-3">
+          <div className="flex flex-row flex-wrap items-center justify-center gap-5">
+            {unauthenticatedActions}
             <div className="relative mt-3 mb-1 inline-flex items-center justify-center gap-2 md:mt-0" ref={tooltipRef}>
               <button
                 type="button"
@@ -137,10 +132,15 @@ export default function V2GameLobbyIntro({
                 </div>
               )}
             </div>
-            {unauthenticatedActions}
           </div>
         ) : null}
       </div>
+
+      {children ? (
+        <div className="flex justify-center text-center">
+          {children}
+        </div>
+      ) : null}
     </div>
   );
 }
