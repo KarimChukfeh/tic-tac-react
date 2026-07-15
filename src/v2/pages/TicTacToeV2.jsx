@@ -2935,7 +2935,7 @@ export default function TicTacToeV2() {
               demoInfo={currentMatch.isDemo ? {
                 title: 'Demo Duel',
                 subtitle: 'You vs Computer',
-                notice: 'Demo match against the computer. No entry fee. No prize pool. No data preserved.',
+                notice: 'Demo match against the computer with no ETH prize pool and no data preserved.',
               } : null}
               renderMoveHistory={moveHistory.length > 0 ? () => (
                 <div>

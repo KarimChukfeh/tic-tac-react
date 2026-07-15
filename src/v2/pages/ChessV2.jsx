@@ -2967,7 +2967,7 @@ export default function ChessV2() {
               demoInfo={currentMatch.isDemo ? {
                 title: 'Demo Match',
                 subtitle: `You vs Computer (${currentMatch.demoElo || DEFAULT_DEMO_CHESS_ELO} ELO)`,
-                notice: 'Demo match against the computer. No entry fee. No prize pool. No data preserved.',
+                notice: 'Demo match against the computer with no ETH prize pool and no data preserved.',
               } : undefined}
               renderPlayer1Extra={(isMobile) => {
                 const capturedPieces = calculateCapturedPieces(displayedBoard);
