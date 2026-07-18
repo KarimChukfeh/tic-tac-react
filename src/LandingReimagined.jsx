@@ -328,6 +328,9 @@ export default function LandingReimagined() {
           <div className="lr-proof__intro">
             <h2>Trust the chain.<br /><em>Not us.</em></h2>
             <p>Everything runs on Ethereum. Nothing is hidden. Nothing is centralized.</p>
+            <Link to="/manual" className="lr-proof__manual">
+              Full manual <ArrowRight size={16} />
+            </Link>
           </div>
           <div className="lr-proof__cards">
             {PROOFS.map((proof) => <ProofCard proof={proof} key={proof.title} />)}

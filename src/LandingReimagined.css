@@ -789,6 +789,29 @@
 .lr-proof__intro { position: relative; z-index: 1; align-self: center; }
 .lr-proof__intro > p { max-width: 450px; margin: 2rem 0 0; color: #8495a8; font-size: 1.05rem; line-height: 1.75; }
 
+.lr-proof__manual {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1.75rem;
+  padding: 0.8rem 1rem;
+  color: #d9faff;
+  border: 1px solid rgba(84, 229, 248, 0.3);
+  background: rgba(84, 229, 248, 0.05);
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+
+.lr-proof__manual:hover {
+  border-color: rgba(84, 229, 248, 0.65);
+  background: rgba(84, 229, 248, 0.12);
+  transform: translateY(-2px);
+}
+
 .lr-proof__cards {
   position: relative;
   z-index: 2;

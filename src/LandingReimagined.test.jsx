@@ -24,6 +24,7 @@ describe('LandingReimagined', () => {
     expect(screen.getByRole('link', { name: 'Play Tic Tac Toe' })).toHaveAttribute('href', '/tictactoe');
     expect(screen.getByRole('link', { name: 'Play Connect Four' })).toHaveAttribute('href', '/connect4');
     expect(screen.getByRole('link', { name: 'Play Chess' })).toHaveAttribute('href', '/chess');
+    expect(screen.getByRole('link', { name: 'Full manual' })).toHaveAttribute('href', '/manual');
     expect(screen.getByRole('heading', { name: 'Fully On-Chain' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Anti-Stall Protection' })).toBeInTheDocument();
   });
