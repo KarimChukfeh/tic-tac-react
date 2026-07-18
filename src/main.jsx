@@ -1,7 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom'
-import Landing from './Landing.jsx'
 import LandingReimagined from './LandingReimagined.jsx'
 import TicTacToeV2 from './v2/pages/TicTacToeV2.jsx'
 import ConnectFourV2 from './v2/pages/ConnectFourV2.jsx'
@@ -132,8 +131,7 @@ function AppRoutes() {
         aria-busy={transitionStage !== 'entered'}
       >
         <Routes location={displayLocation}>
-          <Route path="/" element={<Landing />} />
-          <Route path="/landing" element={<LandingReimagined />} />
+          <Route path="/" element={<LandingReimagined />} />
           <Route path="/tictactoe" element={<TicTacToeV2 />} />
           <Route path="/connect4" element={<ConnectFourV2 />} />
           <Route path="/chess" element={<ChessV2 />} />
