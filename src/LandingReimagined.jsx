@@ -83,7 +83,7 @@ const PROOFS = [
     number: '04',
     icon: Clock3,
     title: 'Anti-Stall Protection',
-    copy: 'Timeout escalation means no one can grief you by going AFK. If they stall, you win. Simple as that.',
+    copy: 'Timeout escalation means no one can grief you by going AFK. If they stall, you win.',
   },
 ];
 
@@ -283,15 +283,15 @@ export default function LandingReimagined() {
               <span><i /> ETour games</span>
             </div>
             <h1 aria-label="Bring your game. Leave with the pot.">
-              Bring your game.
-              <span>Leave with the pot.</span>
+              Bring Your Game.
+              <span>Take the Pot.</span>
             </h1>
             <p className="lr-hero__lede">
-              Challenge your crew. Pick your stakes. Settle the score.
+              Challenge your crew. Settle the score.
               <br />
               <strong>Fully on-chain.</strong>
             </p>
-            <p className="lr-hero__sublede">Classic games with ETH on the line.</p>
+            <p className="lr-hero__sublede">Classic games with ETH stakes on the line.</p>
             <div className="lr-hero__actions">
               <button className="lr-button lr-button--primary" onClick={() => scrollTo('arenas')}>
                 Browse arenas <ArrowDown size={18} />
