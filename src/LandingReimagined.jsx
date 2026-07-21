@@ -54,7 +54,7 @@ const GAMES = [
     kicker: 'The classic. Now with consequences.',
     features: [
       'Full chess. Every rule',
-      'Castling. En-Passant. Etc..',
+      'Castling. En-Passant. Etc.',
       'Now with real stakes',
     ],
   },
