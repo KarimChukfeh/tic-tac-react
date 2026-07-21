@@ -266,7 +266,7 @@ export default function LandingReimagined() {
   const [contractsExpanded, setContractsExpanded] = useState(false);
 
   useEffect(() => {
-    document.title = 'ETour — The On-Chain Arena';
+    document.title = 'ETour — On-Chain Arena';
   }, []);
 
   const scrollTo = (id) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
