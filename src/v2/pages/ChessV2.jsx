@@ -46,6 +46,7 @@ import TraditionalTournamentBracket from '../../components/shared/TraditionalTou
 import CapturedPieces from '../../components/shared/CapturedPieces';
 import UserManualAnchorIcon from '../../components/shared/UserManualAnchorIcon';
 import V2GameLobbyIntro from '../../components/shared/V2GameLobbyIntro';
+import ArenaGameHero from '../components/ArenaGameHero';
 import V2ContractsTable from '../../components/shared/V2ContractsTable';
 import PlayerProfileModal from '../../components/shared/PlayerProfileModal';
 import WalletBrowserPrompt from '../../components/WalletBrowserPrompt';
@@ -82,6 +83,7 @@ import { formatActionErrorMessage } from '../lib/actionErrors';
 import { V2TournamentResolutionReason } from '../lib/reasonLabels';
 
 const CHESS_PIECES = ['♔', '♕', '♖', '♗', '♘', '♙', '♚', '♛', '♜', '♝', '♞', '♟'];
+const CHESS_ARENA_EFFECTS_STORAGE_KEY = 'etour:chess2:3d-effects';
 const VIRTUAL_TIER_ID = 0;
 const VIRTUAL_INSTANCE_ID = 0;
 const DEFAULT_MATCH_LOADING_MESSAGE = 'Loading match...';
@@ -163,6 +165,14 @@ const currentTheme = {
   connectButtonGradient: 'from-purple-600 to-fuchsia-600',
   connectButtonHover: 'hover:from-purple-700 hover:to-fuchsia-700',
   connectCtaClassName: 'bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white rounded-xl shadow-2xl border-2 border-purple-400/60 hover:scale-105 hover:from-purple-700 hover:to-fuchsia-700',
+};
+
+const arenaTheme = {
+  ...currentTheme,
+  border: 'rgba(246, 200, 95, 0.26)',
+  particleColors: ['#f6c85f', '#d99b2b'],
+  gradient: 'radial-gradient(circle at 76% 12%, rgba(246, 200, 95, 0.13), transparent 28rem), radial-gradient(circle at 12% 43%, rgba(217, 155, 43, 0.08), transparent 34rem), #030811',
+  connectCtaClassName: 't2-connect-wallet',
 };
 
 const PIECE_SVGS = {
@@ -381,7 +391,7 @@ function ActionMessage({ type = 'info', message }) {
   );
 }
 
-const ChessBoard = ({ board, packedBoard, packedState, onMove, currentTurn, account, player1, player2, firstPlayer, matchStatus, loading, whiteInCheck, blackInCheck, lastMoveTime, startTime, lastMove, maxSize = 520, ghostMove }) => {
+export const ChessBoard = ({ board, packedBoard, packedState, onMove, currentTurn, account, player1, player2, firstPlayer, matchStatus, loading, whiteInCheck, blackInCheck, lastMoveTime, startTime, lastMove, maxSize = 520, ghostMove, arenaStyle = false }) => {
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [promotionSquare, setPromotionSquare] = useState(null);
   const [pendingMove, setPendingMove] = useState(null);
@@ -532,8 +542,17 @@ const ChessBoard = ({ board, packedBoard, packedState, onMove, currentTurn, acco
       squares.push(
         <div
           key={displayIdx}
-          onClick={() => handleSquareClick(displayIdx)}
-          className={`relative flex items-center justify-center cursor-pointer transition-all duration-200 ${isLight ? 'bg-stone-300' : 'bg-stone-700'}${isSelected ? ' ring-2 ring-emerald-400 ring-inset bg-emerald-500/50' : ''}${isKingInCheck ? ' bg-red-500/50 ring-2 ring-red-400 ring-inset' : ''}${isLegalTarget && !isCaptureTarget ? ' bg-cyan-400/10' : ''} ${getLastMoveFromClass()} ${getLastMoveToClass()}${ghostFromClass}${ghostToClass}${isMyTurn && isMyPiece(piece) && !isSelected ? ' hover:bg-emerald-500/30' : ''}${isMyTurn && isLegalTarget ? ' hover:bg-cyan-400/20' : ''}`}
+          data-display-square={displayIdx}
+          data-piece={pieceType ? `${pieceColor === 1 ? 'white' : 'black'}-${PIECE_TYPES[pieceType]}` : 'empty'}
+          data-selected={isSelected ? 'true' : undefined}
+          data-legal={isLegalTarget ? 'true' : undefined}
+          data-capture={isCaptureTarget ? 'true' : undefined}
+          data-check={isKingInCheck ? 'true' : undefined}
+          data-last-from={isLastMoveFrom ? 'true' : undefined}
+          data-last-to={isLastMoveTo ? 'true' : undefined}
+          data-ghost={isGhostFrom || isGhostTo ? 'true' : undefined}
+          onClick={arenaStyle ? undefined : () => handleSquareClick(displayIdx)}
+          className={`relative flex items-center justify-center cursor-pointer transition-all duration-200 ${arenaStyle ? 'arena-chess-square' : ''} ${isLight ? 'bg-stone-300' : 'bg-stone-700'}${isSelected ? ' ring-2 ring-emerald-400 ring-inset bg-emerald-500/50' : ''}${isKingInCheck ? ' bg-red-500/50 ring-2 ring-red-400 ring-inset' : ''}${isLegalTarget && !isCaptureTarget ? ' bg-cyan-400/10' : ''} ${getLastMoveFromClass()} ${getLastMoveToClass()}${ghostFromClass}${ghostToClass}${isMyTurn && isMyPiece(piece) && !isSelected ? ' hover:bg-emerald-500/30' : ''}${isMyTurn && isLegalTarget ? ' hover:bg-cyan-400/20' : ''}`}
           style={{ boxShadow: isSelected ? 'inset 0 0 20px rgba(16, 185, 129, 0.5)' : getLastMoveShadow(), background: isGhostTo ? 'rgba(251, 146, 60, 0.25)' : squareBg }}
         >
           {getPieceSvg(piece) && <img src={getPieceSvg(piece)} alt="" className={`w-3/4 h-3/4 select-none transition-all duration-300 ${isSelected ? 'scale-110' : ''}${isGhostFrom ? ' opacity-30' : ''}`} style={{ filter: getPieceGlow() }} draggable="false" />}
@@ -548,14 +567,59 @@ const ChessBoard = ({ board, packedBoard, packedState, onMove, currentTurn, acco
   };
 
   return (
-    <div className="relative flex flex-col items-center">
+    <div className={`relative flex flex-col items-center ${arenaStyle ? 'arena-chess-board' : ''}`}>
+      {arenaStyle ? (
+        <>
+          <div className="arena-board-halo" aria-hidden="true" />
+          <div className="arena-board-orbit" aria-hidden="true"><i /><i /></div>
+          <div className="arena-board-projection" aria-hidden="true" />
+        </>
+      ) : null}
       <div ref={containerRef} className="w-full flex justify-center">
-        <div className="relative rounded-xl overflow-hidden" style={{ width: boardSize || 400, height: boardSize || 400, minWidth: 248, minHeight: 248, background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.9))', border: '1px solid rgba(148, 163, 184, 0.2)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(6, 182, 212, 0.1), inset 0 1px 0 rgba(255,255,255,0.05)' }}>
-          <div className="grid gap-0 w-full h-full" style={{ gridTemplateColumns: 'repeat(8, 1fr)', gridTemplateRows: 'repeat(8, 1fr)' }}>{renderBoard()}</div>
+        <div className={`relative rounded-xl overflow-hidden ${arenaStyle ? 'arena-chess-board__frame' : ''}`} style={{ width: boardSize || 400, height: boardSize || 400, minWidth: 248, minHeight: 248, background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.9))', border: '1px solid rgba(148, 163, 184, 0.2)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(6, 182, 212, 0.1), inset 0 1px 0 rgba(255,255,255,0.05)' }}>
+          <div className={`grid gap-0 w-full h-full ${arenaStyle ? 'arena-chess-visual-surface' : ''}`} aria-hidden={arenaStyle ? 'true' : undefined} style={{ gridTemplateColumns: 'repeat(8, 1fr)', gridTemplateRows: 'repeat(8, 1fr)' }}>{renderBoard()}</div>
+          {arenaStyle ? (
+            <div className="arena-chess-hit-grid" role="group" aria-label="Chess board">
+              {Array.from({ length: 64 }, (_, displayIdx) => {
+                const actualIdx = getActualIndex(displayIdx);
+                const piece = board[actualIdx];
+                const pieceType = piece ? Number(piece.pieceType) : 0;
+                const pieceColor = piece ? Number(piece.color) : 0;
+                const squareLabel = indexToChessNotation(actualIdx);
+                const pieceLabel = pieceType
+                  ? `${pieceColor === 1 ? 'White' : 'Black'} ${PIECE_TYPES[pieceType]}`
+                  : 'empty';
+                const setHoverState = (event, active) => {
+                  const visualSquare = event.currentTarget
+                    .closest('.arena-chess-board__frame')
+                    ?.querySelector(`[data-display-square="${displayIdx}"]`);
+                  visualSquare?.classList.toggle('is-hit-hover', active);
+                };
+
+                return (
+                  <button
+                    key={displayIdx}
+                    type="button"
+                    aria-label={`${squareLabel}, ${pieceLabel}`}
+                    aria-pressed={selectedSquare === displayIdx}
+                    data-display-square={displayIdx}
+                    disabled={matchStatus !== 1 || !isMyTurn || loading || !onMove}
+                    onClick={() => handleSquareClick(displayIdx)}
+                    onMouseEnter={(event) => setHoverState(event, true)}
+                    onMouseLeave={(event) => setHoverState(event, false)}
+                    onFocus={(event) => setHoverState(event, true)}
+                    onBlur={(event) => setHoverState(event, false)}
+                    className="arena-chess-hit-square"
+                  />
+                );
+              })}
+            </div>
+          ) : null}
+          {arenaStyle ? <div className="arena-board-scan" aria-hidden="true" /> : null}
         </div>
       </div>
       {promotionSquare !== null && (
-        <div className="absolute inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center rounded-xl">
+        <div className={`absolute inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center rounded-xl ${arenaStyle ? 'arena-promotion-layer' : ''}`}>
           <div className="p-6 rounded-2xl" style={{ background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.95))', border: '1px solid rgba(168, 85, 247, 0.4)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 30px rgba(168, 85, 247, 0.2)' }}>
             <h3 className="text-slate-100 font-bold text-lg mb-4 text-center">Promote Pawn</h3>
             <div className="flex gap-3">
@@ -891,7 +955,7 @@ function buildReplayChessBoard(moveHistory, effectiveMoveIndex, fallbackBoard) {
   return board;
 }
 
-const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onSpectateMatch, onForceEliminate, onClaimReplacement, onManualStart, onClaimAbandonedPool, onResetEnrollmentWindow, onCancelTournament, onEnroll, onConnectWallet, account, loading, connectLoading, syncDots, isEnrolled, entryFee, isFull, instanceContract, onPlayerAddressClick }) => {
+const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onSpectateMatch, onForceEliminate, onClaimReplacement, onManualStart, onClaimAbandonedPool, onResetEnrollmentWindow, onCancelTournament, onEnroll, onConnectWallet, account, loading, connectLoading, syncDots, isEnrolled, entryFee, isFull, instanceContract, onPlayerAddressClick, arenaStyle = false, routeBase = '/chess' }) => {
   const { status, currentRound, enrolledCount, rounds, playerCount, players, enrollmentTimeout } = tournamentData;
   const bracketViewRef = useRef(null);
   const prevStatusRef = useRef(status);
@@ -919,14 +983,14 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onSpectateMat
         : 'No bracket data available.';
 
   return (
-    <div className="mb-16">
+    <div className={`mb-16 ${arenaStyle ? 'arena-bracket t2-tournament-bracket' : ''}`}>
       <TournamentHeader
         gameType="chess"
         reasonLabelMode="v2"
         tierId={VIRTUAL_TIER_ID}
         instanceId={VIRTUAL_INSTANCE_ID}
         instanceAddress={tournamentData.address}
-        shareUrlOverride={tournamentData.address ? generateV2TournamentUrl('chess', tournamentData.address) : undefined}
+        shareUrlOverride={tournamentData.address ? (arenaStyle ? `${window.location.origin}${routeBase}?c=${tournamentData.address}` : generateV2TournamentUrl('chess', tournamentData.address)) : undefined}
         status={status}
         currentRound={currentRound}
         playerCount={playerCount}
@@ -963,7 +1027,7 @@ const TournamentBracket = ({ tournamentData, onBack, onEnterMatch, onSpectateMat
       />
       <TraditionalTournamentBracket
         bracketRef={bracketViewRef}
-        title="Bracket"
+        title={arenaStyle ? 'Arena Bracket' : 'Bracket'}
         rounds={rounds}
         hasValidRounds={hasValidRounds}
         emptyMessage={bracketEmptyMessage}
@@ -1025,8 +1089,37 @@ function indexToChessNotation(index) {
   return `${String.fromCharCode(97 + col)}${row + 1}`;
 }
 
-export default function ChessV2() {
-  useInitialDocumentScrollTop('/chess');
+export default function ChessV2({ experience = 'classic', routeBase = '/chess' }) {
+  useInitialDocumentScrollTop(routeBase);
+
+  const isArenaExperience = experience === 'arena';
+  const activeTheme = isArenaExperience ? arenaTheme : currentTheme;
+  const [arenaEffectsEnabled, setArenaEffectsEnabled] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    try {
+      return window.localStorage.getItem(CHESS_ARENA_EFFECTS_STORAGE_KEY) !== 'off';
+    } catch {
+      return true;
+    }
+  });
+
+  const toggleArenaEffects = useCallback(() => {
+    setArenaEffectsEnabled((wasEnabled) => {
+      const isEnabled = !wasEnabled;
+      try {
+        window.localStorage.setItem(CHESS_ARENA_EFFECTS_STORAGE_KEY, isEnabled ? 'on' : 'off');
+      } catch {
+        // The visual preference still applies for this visit.
+      }
+      return isEnabled;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!isArenaExperience) return undefined;
+    document.body.classList.add('t2-experience-active');
+    return () => document.body.classList.remove('t2-experience-active');
+  }, [isArenaExperience]);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
@@ -1137,7 +1230,7 @@ export default function ChessV2() {
   const selectedAddress = searchParams.get('instance');
   const explorerUrl = getAddressUrl(factoryAddress);
   const [hasProcessedInviteParam, setHasProcessedInviteParam] = useState(false);
-  const [allowInitialUrlHydration, setAllowInitialUrlHydration] = useState(() => !shouldResetOnInitialDocumentLoad('/chess', { allowInviteParam: true }));
+  const [allowInitialUrlHydration, setAllowInitialUrlHydration] = useState(() => !shouldResetOnInitialDocumentLoad(routeBase, { allowInviteParam: true }));
   const [viewingTournament, setViewingTournament] = useState(null);
   const [bracketSyncDots, setBracketSyncDots] = useState(1);
   const [tournamentsLoading, setTournamentsLoading] = useState(false);
@@ -1533,7 +1626,7 @@ export default function ChessV2() {
         activeInstanceContractRef.current = instance;
         setViewingTournament(bracketData);
         skipNavEffectRef.current = true;
-        navigate('/chess', { replace: false, state: { view: 'bracket', instanceAddress: address, from: location.state?.view || 'landing' } });
+        navigate(routeBase, { replace: false, state: { view: 'bracket', instanceAddress: address, from: location.state?.view || 'landing' } });
       }
     } catch (error) {
       console.error('[ChessV2] Error entering bracket:', error);
@@ -1583,12 +1676,12 @@ export default function ChessV2() {
     setViewingTournament(null);
     setCurrentMatch(null);
     setHasProcessedInviteParam(true);
-    navigate('/chess', { replace: true, state: null });
+    navigate(routeBase, { replace: true, state: null });
   }, [allowInitialUrlHydration, navigate]);
 
   useEffect(() => {
     if (allowInitialUrlHydration) return;
-    if (location.pathname !== '/chess' || location.search || location.state) return;
+    if (location.pathname !== routeBase || location.search || location.state) return;
     setAllowInitialUrlHydration(true);
   }, [allowInitialUrlHydration, location.pathname, location.search, location.state]);
 
@@ -1765,7 +1858,7 @@ export default function ChessV2() {
       setCurrentMatch(null);
       setActiveInstanceContract(null);
       activeInstanceContractRef.current = null;
-      navigate('/chess', { replace: true, state: null });
+      navigate(routeBase, { replace: true, state: null });
     } catch (error) {
       console.error('[ChessV2] Cancel tournament error:', error);
       showActionError('cancel this tournament', error, 'Could not cancel this tournament.');
@@ -1840,7 +1933,7 @@ export default function ChessV2() {
     setCurrentMatch(null);
     setActiveInstanceContract(null);
     activeInstanceContractRef.current = null;
-    navigate('/chess', { replace: true, state: null });
+    navigate(routeBase, { replace: true, state: null });
     window.requestAnimationFrame(() => {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     });
@@ -2064,7 +2157,7 @@ export default function ChessV2() {
         matchEndModalShownRef.current = updated.matchStatus === 2;
         setMoveHistory(buildMoveHistory(updated.movesString, updated.firstPlayer, updated.player1, updated.player2));
         skipNavEffectRef.current = true;
-        navigate('/chess', { replace: false, state: { view: 'match', instanceAddress, roundNumber, matchNumber, from: location.state?.view || 'bracket' } });
+        navigate(routeBase, { replace: false, state: { view: 'match', instanceAddress, roundNumber, matchNumber, from: location.state?.view || 'bracket' } });
         setTimeout(() => {
           matchViewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
           collapseActivityPanelRef.current?.();
@@ -2244,7 +2337,7 @@ export default function ChessV2() {
     previousBoardRef.current = JSON.stringify(demoMatch.board);
     matchEndModalShownRef.current = false;
     skipNavEffectRef.current = true;
-    navigate('/chess', { replace: false, state: { view: 'demo-match' } });
+    navigate(routeBase, { replace: false, state: { view: 'demo-match' } });
 
     window.setTimeout(() => {
       boardViewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -2543,7 +2636,7 @@ export default function ChessV2() {
     previousBoardRef.current = null;
     if (!address) {
       skipNavEffectRef.current = true;
-      navigate('/chess', { replace: true, state: null });
+      navigate(routeBase, { replace: true, state: null });
       window.requestAnimationFrame(() => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
       });
@@ -2551,7 +2644,7 @@ export default function ChessV2() {
     }
     pendingScrollAddressRef.current = address;
     skipNavEffectRef.current = true;
-    navigate('/chess', {
+    navigate(routeBase, {
       replace: true,
       state: { view: 'bracket', instanceAddress: address, from: 'match' },
     });
@@ -2712,7 +2805,7 @@ export default function ChessV2() {
   useEffect(() => {
     const handleNav = async () => {
       if (skipNavEffectRef.current) { skipNavEffectRef.current = false; return; }
-      if (isInitialNavRef.current) { isInitialNavRef.current = false; navigate('/chess', { replace: true, state: null }); return; }
+      if (isInitialNavRef.current) { isInitialNavRef.current = false; navigate(routeBase, { replace: true, state: null }); return; }
       const state = location.state;
       if (!state || !state.view) { if (currentMatch || viewingTournament) { setCurrentMatch(null); setViewingTournament(null); } return; }
       if (state.view === 'bracket' && state.instanceAddress) {
@@ -2765,7 +2858,9 @@ export default function ChessV2() {
     return () => { clearTimeout(timer); document.removeEventListener('click', handleClickAway); };
   }, [activeTooltip]);
 
-  useEffect(() => { document.title = 'Chess'; }, []);
+  useEffect(() => {
+    document.title = isArenaExperience ? 'ETour — Chess Arena' : 'Chess';
+  }, [isArenaExperience]);
 
   const isAlertMatchAlreadyOpen = Boolean(
     currentMatch &&
@@ -2814,8 +2909,15 @@ export default function ChessV2() {
   }, [currentMatch, replayMoveIndex, effectiveReplayMoveIndex, moveHistory.length, replayCheckStatus]);
 
   return (
-    <div style={{ minHeight: '100vh', background: currentTheme.gradient, color: '#fff', position: 'relative', overflow: 'clip', transition: 'background 0.8s ease-in-out' }}>
-      <ParticleBackground colors={currentTheme.particleColors} symbols={CHESS_PIECES} fontSize="40px" />
+    <div
+      className={isArenaExperience ? 't2-page arena-game-page arena-game-page--chess' : undefined}
+      data-t2-view={currentMatch ? 'match' : viewingTournament ? 'bracket' : 'lobby'}
+      data-t2-effects={isArenaExperience ? (arenaEffectsEnabled ? 'on' : 'off') : undefined}
+      style={{ minHeight: '100vh', background: activeTheme.gradient, color: '#fff', position: 'relative', overflow: 'clip', transition: 'background 0.8s ease-in-out' }}
+    >
+      {(!isArenaExperience || arenaEffectsEnabled) ? (
+        <ParticleBackground colors={activeTheme.particleColors} symbols={CHESS_PIECES} fontSize="40px" />
+      ) : null}
       <CenteredErrorFlash
         message={actionState.type === 'error' ? actionState.message : ''}
         onDismiss={dismissActionError}
@@ -2853,7 +2955,7 @@ export default function ChessV2() {
         </div>
       </div>
 
-      <div style={{ background: 'rgba(0, 100, 200, 0.2)', borderBottom: `1px solid ${currentTheme.border}`, backdropFilter: 'blur(10px)', position: 'relative', zIndex: 10 }}>
+      <div className={isArenaExperience ? 't2-trust-rail' : ''} style={{ background: isArenaExperience ? undefined : 'rgba(0, 100, 200, 0.2)', borderBottom: `1px solid ${activeTheme.border}`, backdropFilter: 'blur(10px)', position: 'relative', zIndex: 10 }}>
         <div className="max-w-7xl mx-auto px-6 py-3">
           <div className="relative flex flex-col items-center gap-3 md:min-h-6 md:justify-center text-xs md:text-sm">
             <div className="flex w-full flex-wrap items-center justify-center gap-x-4 gap-y-2 md:gap-6">
@@ -2867,7 +2969,18 @@ export default function ChessV2() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 pt-12" style={{ position: 'relative', zIndex: 10 }}>
+      <div className={`max-w-7xl mx-auto px-6 pt-12 ${isArenaExperience ? 't2-shell' : ''}`} style={{ position: 'relative', zIndex: 10 }}>
+        {isArenaExperience ? (
+          <ArenaGameHero
+            game="chess"
+            compact={Boolean(currentMatch || viewingTournament)}
+            effectsEnabled={arenaEffectsEnabled}
+            onToggleEffects={toggleArenaEffects}
+            onOpenWhatIsThis={handleWhatIsThisLinkClick}
+            onOpenQuickGuide={handleQuickGuideLinkClick}
+            onOpenManual={handleUserManualLinkClick}
+          />
+        ) : (
         <div className="text-center mb-5 md:mb-6">
           <div className="inline-block mb-6">
             <div className="relative flex h-28 w-28 items-center justify-center md:h-32 md:w-32">
@@ -2884,6 +2997,7 @@ export default function ChessV2() {
             Play Chess on-chain with real ETH on the line
           </p>
         </div>
+        )}
 
         {dashboardError ? (
           <div className="mb-8">
@@ -2895,7 +3009,7 @@ export default function ChessV2() {
           account={account}
           isConnecting={isConnecting}
           onConnectWallet={connectWallet}
-          connectCtaClassName={currentTheme.connectCtaClassName}
+          connectCtaClassName={activeTheme.connectCtaClassName}
           unauthenticatedActions={!account ? (
             <button
               type="button"
@@ -2907,7 +3021,7 @@ export default function ChessV2() {
             </button>
           ) : null}
         >
-          <div className={`relative flex flex-wrap items-center justify-center gap-2 text-sm md:text-base ${currentTheme.heroSubtext}`}>
+          {!isArenaExperience ? <div className={`relative flex flex-wrap items-center justify-center gap-2 text-sm md:text-base ${activeTheme.heroSubtext}`}>
             {HERO_LINKS.map((link, index) => (
               <div key={link.label} className="flex items-center gap-2">
                 {index > 0 ? <span aria-hidden="true">•</span> : null}
@@ -2928,11 +3042,11 @@ export default function ChessV2() {
                 </a>
               </div>
             ))}
-          </div>
+          </div> : null}
         </V2GameLobbyIntro>
 
         {currentMatch && (
-          <div ref={matchViewRef}>
+          <div ref={matchViewRef} className={isArenaExperience ? 'arena-match-view t2-match-view' : undefined}>
             <GameMatchLayout
               gameType="chess"
               reasonLabelMode="v2"
@@ -3039,7 +3153,7 @@ export default function ChessV2() {
                 </>
               ) : undefined}
             >
-              <ChessBoard board={displayedBoard} packedBoard={currentMatch.packedBoard} packedState={currentMatch.packedState} onMove={isSpectator || currentMatch.matchStatus === 2 ? null : handleMakeMove} currentTurn={currentMatch.currentTurn} account={isSpectator ? null : (currentMatch.isDemo ? DEMO_HUMAN_ADDRESS : account)} player1={currentMatch.player1} player2={currentMatch.player2} firstPlayer={currentMatch.firstPlayer} matchStatus={currentMatch.matchStatus} loading={matchLoading} whiteInCheck={currentMatch.matchStatus === 2 ? replayCheckStatus.whiteInCheck : currentMatch.whiteInCheck} blackInCheck={currentMatch.matchStatus === 2 ? replayCheckStatus.blackInCheck : currentMatch.blackInCheck} lastMoveTime={currentMatch.lastMoveTime} startTime={currentMatch.startTime} lastMove={displayedLastMove} maxSize={820} ghostMove={currentMatch.matchStatus === 2 ? null : ghostMove} />
+              <ChessBoard board={displayedBoard} packedBoard={currentMatch.packedBoard} packedState={currentMatch.packedState} onMove={isSpectator || currentMatch.matchStatus === 2 ? null : handleMakeMove} currentTurn={currentMatch.currentTurn} account={isSpectator ? null : (currentMatch.isDemo ? DEMO_HUMAN_ADDRESS : account)} player1={currentMatch.player1} player2={currentMatch.player2} firstPlayer={currentMatch.firstPlayer} matchStatus={currentMatch.matchStatus} loading={matchLoading} whiteInCheck={currentMatch.matchStatus === 2 ? replayCheckStatus.whiteInCheck : currentMatch.whiteInCheck} blackInCheck={currentMatch.matchStatus === 2 ? replayCheckStatus.blackInCheck : currentMatch.blackInCheck} lastMoveTime={currentMatch.lastMoveTime} startTime={currentMatch.startTime} lastMove={displayedLastMove} maxSize={820} ghostMove={currentMatch.matchStatus === 2 ? null : ghostMove} arenaStyle={isArenaExperience} />
             </GameMatchLayout>
 
             {moveTxTimeout && (
@@ -3063,13 +3177,13 @@ export default function ChessV2() {
           <>
             {viewingTournament ? (
               <div ref={tournamentBracketRef}>
-                <TournamentBracket tournamentData={viewingTournament} onBack={handleBackToTournaments} onEnterMatch={handlePlayMatch} onSpectateMatch={handlePlayMatch} onForceEliminate={handleForceEliminateStalledMatch} onClaimReplacement={handleClaimMatchSlotByReplacement} onManualStart={handleManualStart} onClaimAbandonedPool={handleClaimAbandonedPool} onResetEnrollmentWindow={handleResetEnrollmentWindow} onCancelTournament={handleCancelTournament} onEnroll={handleEnroll} onConnectWallet={connectWallet} account={account} loading={tournamentsLoading} connectLoading={isConnecting} syncDots={bracketSyncDots} isEnrolled={viewingTournament?.players?.some(addr => addr.toLowerCase() === account?.toLowerCase())} entryFee={viewingTournament?.entryFeeEth ?? '0'} isFull={viewingTournament?.enrolledCount >= viewingTournament?.playerCount} instanceContract={activeInstanceContract} onPlayerAddressClick={setSelectedProfileAddress} />
+                <TournamentBracket tournamentData={viewingTournament} onBack={handleBackToTournaments} onEnterMatch={handlePlayMatch} onSpectateMatch={handlePlayMatch} onForceEliminate={handleForceEliminateStalledMatch} onClaimReplacement={handleClaimMatchSlotByReplacement} onManualStart={handleManualStart} onClaimAbandonedPool={handleClaimAbandonedPool} onResetEnrollmentWindow={handleResetEnrollmentWindow} onCancelTournament={handleCancelTournament} onEnroll={handleEnroll} onConnectWallet={connectWallet} account={account} loading={tournamentsLoading} connectLoading={isConnecting} syncDots={bracketSyncDots} isEnrolled={viewingTournament?.players?.some(addr => addr.toLowerCase() === account?.toLowerCase())} entryFee={viewingTournament?.entryFeeEth ?? '0'} isFull={viewingTournament?.enrolledCount >= viewingTournament?.playerCount} instanceContract={activeInstanceContract} onPlayerAddressClick={setSelectedProfileAddress} arenaStyle={isArenaExperience} routeBase={routeBase} />
               </div>
             ) : (
               <div className="space-y-8 md:space-y-10">
                 <div id="live-instances">
                   <form onSubmit={createInstance}>
-                    <div className="bg-slate-900/50 border border-purple-400/20 rounded-2xl p-4 md:p-5">
+                    <div className={`bg-slate-900/50 border border-purple-400/20 rounded-2xl p-4 md:p-5 ${isArenaExperience ? 't2-create-panel' : ''}`}>
                       <div className="mb-4 flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2">
                           <h2 className="text-xl font-semibold text-white">Configure Your Lobby</h2>

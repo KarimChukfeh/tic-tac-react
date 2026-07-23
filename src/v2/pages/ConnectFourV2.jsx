@@ -42,6 +42,7 @@ import RecentInstanceCard from '../../components/shared/RecentInstanceCard';
 import TraditionalTournamentBracket from '../../components/shared/TraditionalTournamentBracket';
 import UserManualAnchorIcon from '../../components/shared/UserManualAnchorIcon';
 import V2GameLobbyIntro from '../../components/shared/V2GameLobbyIntro';
+import ArenaGameHero from '../components/ArenaGameHero';
 import V2ContractsTable from '../../components/shared/V2ContractsTable';
 import PlayerProfileModal from '../../components/shared/PlayerProfileModal';
 import WalletBrowserPrompt from '../../components/WalletBrowserPrompt';
@@ -79,6 +80,7 @@ import { formatActionErrorMessage } from '../lib/actionErrors';
 import { V2TournamentResolutionReason } from '../lib/reasonLabels';
 
 const CONNECTFOUR_SYMBOLS = ['🔴', '🔵'];
+const CONNECTFOUR_ARENA_EFFECTS_STORAGE_KEY = 'etour:connect42:3d-effects';
 const VIRTUAL_TIER_ID = 0;
 const VIRTUAL_INSTANCE_ID = 0;
 const DEFAULT_MATCH_LOADING_MESSAGE = 'Loading match...';
@@ -108,6 +110,14 @@ const currentTheme = {
   connectCtaClassName: 'bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white rounded-xl shadow-2xl border-2 border-purple-400/60 hover:scale-105 hover:from-purple-700 hover:to-fuchsia-700',
   primary: 'rgba(0, 255, 255, 0.5)',
   secondary: 'rgba(255, 0, 255, 0.5)',
+};
+
+const arenaTheme = {
+  ...currentTheme,
+  border: 'rgba(255, 93, 117, 0.25)',
+  particleColors: ['#ff5d75', '#5b93ff'],
+  gradient: 'radial-gradient(circle at 78% 13%, rgba(91,147,255,0.12), transparent 29rem), radial-gradient(circle at 12% 42%, rgba(255,93,117,0.09), transparent 34rem), #030811',
+  connectCtaClassName: 't2-connect-wallet',
 };
 
 const HERO_LINKS = [
@@ -482,7 +492,7 @@ function ActionMessage({ type = 'info', message }) {
   );
 }
 
-const ConnectFourBoard = ({
+export const ConnectFourBoard = ({
   board,
   onColumnClick,
   currentTurn,
@@ -496,6 +506,7 @@ const ConnectFourBoard = ({
   lastColumn,
   ghostMove,
   winningCellsOverride,
+  arenaStyle = false,
 }) => {
   const [hoveredColumn, setHoveredColumn] = useState(-1);
   const [boardSize, setBoardSize] = useState(null);
@@ -540,8 +551,15 @@ const ConnectFourBoard = ({
   const cellSize = boardSize ? (boardSize - 32 - 24) / 7 : 60;
 
   return (
-    <div ref={containerRef} className="flex flex-col items-center">
-      <div className="flex gap-1 mb-2" style={{ width: boardSize || 'auto' }}>
+    <div ref={containerRef} className={`relative flex flex-col items-center ${arenaStyle ? 'arena-connect-board' : ''}`}>
+      {arenaStyle ? (
+        <>
+          <div className="arena-board-halo" aria-hidden="true" />
+          <div className="arena-board-orbit" aria-hidden="true"><i /><i /></div>
+          <div className="arena-board-projection" aria-hidden="true" />
+        </>
+      ) : null}
+      <div className={`flex gap-1 mb-2 ${arenaStyle ? 'arena-connect-column-indicators' : ''}`} aria-hidden={arenaStyle ? 'true' : undefined} style={{ width: boardSize || 'auto' }}>
         {[0, 1, 2, 3, 4, 5, 6].map(col => {
           const isColumnFull = getDropRow(grid, col) === -1;
           return (
@@ -550,7 +568,7 @@ const ConnectFourBoard = ({
               className={`flex-1 h-8 rounded-t-lg transition-all flex items-center justify-center ${isMyTurn && !isColumnFull && matchStatus === 1 ? 'hover:bg-white/20 cursor-pointer' : 'cursor-not-allowed opacity-50'} ${hoveredColumn === col && isMyTurn && !isColumnFull ? 'bg-white/20' : ''}`}
               onMouseEnter={() => !isColumnFull && setHoveredColumn(col)}
               onMouseLeave={() => setHoveredColumn(-1)}
-              onClick={() => {
+              onClick={arenaStyle ? undefined : () => {
                 if (isMyTurn && !isColumnFull && matchStatus === 1 && !loading) {
                   onColumnClick?.(col);
                 }
@@ -569,13 +587,13 @@ const ConnectFourBoard = ({
       </div>
 
       <div
-        className="rounded-2xl p-4 shadow-2xl"
+        className={`rounded-2xl p-4 shadow-2xl ${arenaStyle ? 'arena-connect-board__frame' : ''}`}
         style={{
           background: 'linear-gradient(135deg, #1b4b91 0%, #0d294b 100%)',
           width: boardSize || 'auto',
         }}
       >
-        <div className="grid gap-1" style={{ gridTemplateRows: `repeat(6, ${cellSize}px)` }}>
+        <div className={`grid gap-1 ${arenaStyle ? 'arena-connect-visual-grid' : ''}`} aria-hidden={arenaStyle ? 'true' : undefined} style={{ gridTemplateRows: `repeat(6, ${cellSize}px)` }}>
           {grid.map((row, rowIdx) => (
             <div key={rowIdx} className="flex gap-1">
               {row.map((cell, colIdx) => {
@@ -588,7 +606,10 @@ const ConnectFourBoard = ({
                 return (
                   <div
                     key={colIdx}
-                    className={`rounded-full flex items-center justify-center transition-all ${
+                    data-column={colIdx}
+                    data-filled={cell !== 0 ? 'true' : undefined}
+                    data-winning={isWinning ? 'true' : undefined}
+                    className={`rounded-full flex items-center justify-center transition-all ${arenaStyle ? 'arena-connect-slot' : ''} ${
                       isWinning ? 'ring-4 ring-yellow-400 animate-pulse bg-amber-200/10' : ''
                     } ${isLastMove && !isWinning ? 'ring-2 ring-white/70' : ''}`}
                     style={{
@@ -601,9 +622,9 @@ const ConnectFourBoard = ({
                           ? 'inset 0 4px 8px rgba(0,0,0,0.5), 0 0 15px 2px rgba(255,255,255,0.3)'
                           : 'inset 0 4px 8px rgba(0,0,0,0.5)',
                     }}
-                    onMouseEnter={() => setHoveredColumn(colIdx)}
-                    onMouseLeave={() => setHoveredColumn(-1)}
-                    onClick={() => {
+                    onMouseEnter={arenaStyle ? undefined : () => setHoveredColumn(colIdx)}
+                    onMouseLeave={arenaStyle ? undefined : () => setHoveredColumn(-1)}
+                    onClick={arenaStyle ? undefined : () => {
                       if (isMyTurn && getDropRow(grid, colIdx) !== -1 && matchStatus === 1 && !loading) {
                         onColumnClick?.(colIdx);
                       }
@@ -611,7 +632,7 @@ const ConnectFourBoard = ({
                   >
                     {cell !== 0 ? (
                       <div
-                        className={`rounded-full transition-all ${isWinning ? 'scale-110 animate-pulse' : ''} ${isLastMove && !isWinning ? 'animate-pulse' : ''}`}
+                        className={`rounded-full transition-all ${arenaStyle ? 'arena-connect-board__disc' : ''} ${isWinning ? 'scale-110 animate-pulse' : ''} ${isLastMove && !isWinning ? 'animate-pulse' : ''}`}
                         style={{
                           width: cellSize - 8,
                           height: cellSize - 8,
@@ -629,7 +650,7 @@ const ConnectFourBoard = ({
                       />
                     ) : isGhost ? (
                       <div
-                        className="rounded-full animate-pulse"
+                        className={`rounded-full animate-pulse ${arenaStyle ? 'arena-connect-board__disc arena-connect-board__disc--ghost' : ''}`}
                         style={{
                           width: cellSize - 8,
                           height: cellSize - 8,
@@ -641,7 +662,7 @@ const ConnectFourBoard = ({
                       />
                     ) : isPreview ? (
                       <div
-                        className="rounded-full opacity-40"
+                        className={`rounded-full opacity-40 ${arenaStyle ? 'arena-connect-board__disc arena-connect-board__disc--preview' : ''}`}
                         style={{
                           width: cellSize - 8,
                           height: cellSize - 8,
@@ -657,6 +678,29 @@ const ConnectFourBoard = ({
             </div>
           ))}
         </div>
+        {arenaStyle ? (
+          <div className="arena-connect-hit-grid" role="group" aria-label="Connect Four columns">
+            {[0, 1, 2, 3, 4, 5, 6].map((columnIndex) => {
+              const isColumnFull = getDropRow(grid, columnIndex) === -1;
+              return (
+                <button
+                  key={columnIndex}
+                  type="button"
+                  aria-label={`Drop disc in column ${columnIndex + 1}`}
+                  data-column={columnIndex}
+                  disabled={!isMyTurn || isColumnFull || matchStatus !== 1 || loading || !onColumnClick}
+                  onMouseEnter={() => !isColumnFull && setHoveredColumn(columnIndex)}
+                  onMouseLeave={() => setHoveredColumn(-1)}
+                  onFocus={() => !isColumnFull && setHoveredColumn(columnIndex)}
+                  onBlur={() => setHoveredColumn(-1)}
+                  onClick={() => onColumnClick?.(columnIndex)}
+                  className="arena-connect-hit-column"
+                />
+              );
+            })}
+          </div>
+        ) : null}
+        {arenaStyle ? <div className="arena-board-scan" aria-hidden="true" /> : null}
       </div>
 
       <div className="flex gap-1 mt-2" style={{ width: boardSize || 'auto', paddingLeft: 16, paddingRight: 16 }}>
@@ -692,6 +736,8 @@ const TournamentBracket = ({
   isFull,
   instanceContract,
   onPlayerAddressClick,
+  arenaStyle = false,
+  routeBase = '/connect4',
 }) => {
   const {
     status,
@@ -737,14 +783,14 @@ const TournamentBracket = ({
   const prizePool = tournamentData.prizePoolWei || 0n;
 
   return (
-    <div className="mb-16">
+    <div className={`mb-16 ${arenaStyle ? 'arena-bracket t2-tournament-bracket' : ''}`}>
       <TournamentHeader
         gameType="connectfour"
         reasonLabelMode="v2"
         tierId={VIRTUAL_TIER_ID}
         instanceId={VIRTUAL_INSTANCE_ID}
         instanceAddress={tournamentData.address}
-        shareUrlOverride={tournamentData.address ? generateV2TournamentUrl('connectfour', tournamentData.address) : undefined}
+        shareUrlOverride={tournamentData.address ? (arenaStyle ? `${window.location.origin}${routeBase}?c=${tournamentData.address}` : generateV2TournamentUrl('connectfour', tournamentData.address)) : undefined}
         status={status}
         currentRound={currentRound}
         playerCount={playerCount}
@@ -782,7 +828,7 @@ const TournamentBracket = ({
 
       <TraditionalTournamentBracket
         bracketRef={bracketViewRef}
-        title="Bracket"
+        title={arenaStyle ? 'Arena Bracket' : 'Bracket'}
         rounds={rounds}
         hasValidRounds={hasValidRounds}
         emptyMessage={bracketEmptyMessage}
@@ -840,8 +886,37 @@ const TournamentBracket = ({
   );
 };
 
-export default function ConnectFourV2() {
-  useInitialDocumentScrollTop('/connect4');
+export default function ConnectFourV2({ experience = 'classic', routeBase = '/connect4' }) {
+  useInitialDocumentScrollTop(routeBase);
+
+  const isArenaExperience = experience === 'arena';
+  const activeTheme = isArenaExperience ? arenaTheme : currentTheme;
+  const [arenaEffectsEnabled, setArenaEffectsEnabled] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    try {
+      return window.localStorage.getItem(CONNECTFOUR_ARENA_EFFECTS_STORAGE_KEY) !== 'off';
+    } catch {
+      return true;
+    }
+  });
+
+  const toggleArenaEffects = useCallback(() => {
+    setArenaEffectsEnabled((wasEnabled) => {
+      const isEnabled = !wasEnabled;
+      try {
+        window.localStorage.setItem(CONNECTFOUR_ARENA_EFFECTS_STORAGE_KEY, isEnabled ? 'on' : 'off');
+      } catch {
+        // The visual preference still applies for this visit.
+      }
+      return isEnabled;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!isArenaExperience) return undefined;
+    document.body.classList.add('t2-experience-active');
+    return () => document.body.classList.remove('t2-experience-active');
+  }, [isArenaExperience]);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
@@ -951,7 +1026,7 @@ export default function ConnectFourV2() {
   const explorerUrl = getAddressUrl(factoryAddress);
 
   const [hasProcessedInviteParam, setHasProcessedInviteParam] = useState(false);
-  const [allowInitialUrlHydration, setAllowInitialUrlHydration] = useState(() => !shouldResetOnInitialDocumentLoad('/connect4', { allowInviteParam: true }));
+  const [allowInitialUrlHydration, setAllowInitialUrlHydration] = useState(() => !shouldResetOnInitialDocumentLoad(routeBase, { allowInviteParam: true }));
   const [viewingTournament, setViewingTournament] = useState(null);
   const [bracketSyncDots, setBracketSyncDots] = useState(1);
   const [tournamentsLoading, setTournamentsLoading] = useState(false);
@@ -1388,7 +1463,7 @@ export default function ConnectFourV2() {
         activeInstanceContractRef.current = instance;
         setViewingTournament(bracketData);
         skipNavEffectRef.current = true;
-        navigate('/connect4', {
+        navigate(routeBase, {
           replace: false,
           state: { view: 'bracket', instanceAddress: address, from: location.state?.view || 'landing' },
         });
@@ -1445,12 +1520,12 @@ export default function ConnectFourV2() {
     setViewingTournament(null);
     setCurrentMatch(null);
     setHasProcessedInviteParam(true);
-    navigate('/connect4', { replace: true, state: null });
+    navigate(routeBase, { replace: true, state: null });
   }, [allowInitialUrlHydration, navigate]);
 
   useEffect(() => {
     if (allowInitialUrlHydration) return;
-    if (location.pathname !== '/connect4' || location.search || location.state) return;
+    if (location.pathname !== routeBase || location.search || location.state) return;
     setAllowInitialUrlHydration(true);
   }, [allowInitialUrlHydration, location.pathname, location.search, location.state]);
 
@@ -1685,7 +1760,7 @@ export default function ConnectFourV2() {
       setCurrentMatch(null);
       setActiveInstanceContract(null);
       activeInstanceContractRef.current = null;
-      navigate('/connect4', { replace: true, state: null });
+      navigate(routeBase, { replace: true, state: null });
     } catch (error) {
       console.error('[ConnectFourV2] Cancel tournament error:', error);
       showActionError('cancel this tournament', error, 'Could not cancel this tournament.');
@@ -1778,7 +1853,7 @@ export default function ConnectFourV2() {
     setCurrentMatch(null);
     setActiveInstanceContract(null);
     activeInstanceContractRef.current = null;
-    navigate('/connect4', { replace: true, state: null });
+    navigate(routeBase, { replace: true, state: null });
     window.requestAnimationFrame(() => {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     });
@@ -1995,7 +2070,7 @@ export default function ConnectFourV2() {
         const history = buildMoveHistory(updated.movesString, updated.firstPlayer, updated.player1, updated.player2);
         setMoveHistory(history);
         skipNavEffectRef.current = true;
-        navigate('/connect4', {
+        navigate(routeBase, {
           replace: false,
           state: { view: 'match', instanceAddress, roundNumber, matchNumber, from: location.state?.view || 'bracket' },
         });
@@ -2156,7 +2231,7 @@ export default function ConnectFourV2() {
     previousBoardRef.current = [...demoMatch.board];
     matchEndModalShownRef.current = false;
     skipNavEffectRef.current = true;
-    navigate('/connect4', { replace: false, state: { view: 'demo-match' } });
+    navigate(routeBase, { replace: false, state: { view: 'demo-match' } });
 
     window.setTimeout(() => {
       boardViewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -2468,7 +2543,7 @@ export default function ConnectFourV2() {
     previousBoardRef.current = null;
     if (!address) {
       skipNavEffectRef.current = true;
-      navigate('/connect4', { replace: true, state: null });
+      navigate(routeBase, { replace: true, state: null });
       window.requestAnimationFrame(() => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
       });
@@ -2476,7 +2551,7 @@ export default function ConnectFourV2() {
     }
     pendingScrollAddressRef.current = address;
     skipNavEffectRef.current = true;
-    navigate('/connect4', {
+    navigate(routeBase, {
       replace: true,
       state: { view: 'bracket', instanceAddress: address, from: 'match' },
     });
@@ -2713,7 +2788,7 @@ export default function ConnectFourV2() {
       }
       if (isInitialNavRef.current) {
         isInitialNavRef.current = false;
-        navigate('/connect4', { replace: true, state: null });
+        navigate(routeBase, { replace: true, state: null });
         return;
       }
 
@@ -2792,8 +2867,8 @@ export default function ConnectFourV2() {
   }, [activeTooltip]);
 
   useEffect(() => {
-    document.title = 'Connect Four';
-  }, []);
+    document.title = isArenaExperience ? 'ETour — Connect Four Arena' : 'Connect Four';
+  }, [isArenaExperience]);
 
   const isAlertMatchAlreadyOpen = Boolean(
     currentMatch &&
@@ -2812,16 +2887,21 @@ export default function ConnectFourV2() {
 
   return (
     <div
+      className={isArenaExperience ? 't2-page arena-game-page arena-game-page--connect4' : undefined}
+      data-t2-view={currentMatch ? 'match' : viewingTournament ? 'bracket' : 'lobby'}
+      data-t2-effects={isArenaExperience ? (arenaEffectsEnabled ? 'on' : 'off') : undefined}
       style={{
         minHeight: '100vh',
-        background: currentTheme.gradient,
+        background: activeTheme.gradient,
         color: '#fff',
         position: 'relative',
         overflow: 'clip',
         transition: 'background 0.8s ease-in-out',
       }}
     >
-      <ParticleBackground colors={currentTheme.particleColors} symbols={CONNECTFOUR_SYMBOLS} fontSize="24px" count={38} />
+      {(!isArenaExperience || arenaEffectsEnabled) ? (
+        <ParticleBackground colors={activeTheme.particleColors} symbols={CONNECTFOUR_SYMBOLS} fontSize="24px" count={38} />
+      ) : null}
       <CenteredErrorFlash
         message={actionState.type === 'error' ? actionState.message : ''}
         onDismiss={dismissActionError}
@@ -3066,7 +3146,7 @@ export default function ConnectFourV2() {
         </div>
       </div>
 
-      <div style={{ background: 'rgba(0, 100, 200, 0.2)', borderBottom: `1px solid ${currentTheme.border}`, backdropFilter: 'blur(10px)', position: 'relative', zIndex: 10 }}>
+      <div className={isArenaExperience ? 't2-trust-rail' : ''} style={{ background: isArenaExperience ? undefined : 'rgba(0, 100, 200, 0.2)', borderBottom: `1px solid ${activeTheme.border}`, backdropFilter: 'blur(10px)', position: 'relative', zIndex: 10 }}>
         <div className="max-w-7xl mx-auto px-6 py-3">
           <div className="relative flex flex-col items-center gap-3 md:min-h-6 md:justify-center text-xs md:text-sm">
             <div className="flex w-full flex-wrap items-center justify-center gap-x-4 gap-y-2 md:gap-6">
@@ -3086,7 +3166,18 @@ export default function ConnectFourV2() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 pt-12" style={{ position: 'relative', zIndex: 10 }}>
+      <div className={`max-w-7xl mx-auto px-6 pt-12 ${isArenaExperience ? 't2-shell' : ''}`} style={{ position: 'relative', zIndex: 10 }}>
+        {isArenaExperience ? (
+          <ArenaGameHero
+            game="connect4"
+            compact={Boolean(currentMatch || viewingTournament)}
+            effectsEnabled={arenaEffectsEnabled}
+            onToggleEffects={toggleArenaEffects}
+            onOpenWhatIsThis={handleWhatIsThisLinkClick}
+            onOpenQuickGuide={handleQuickGuideLinkClick}
+            onOpenManual={handleUserManualLinkClick}
+          />
+        ) : (
         <div className="text-center mb-5 md:mb-6">
           <div className="inline-block mb-6">
             <div className="relative flex h-28 w-28 items-center justify-center md:h-32 md:w-32">
@@ -3103,6 +3194,7 @@ export default function ConnectFourV2() {
             Play Connect Four on-chain with real ETH on the line
           </p>
         </div>
+        )}
 
         {dashboardError ? (
           <div className="mb-8">
@@ -3114,7 +3206,7 @@ export default function ConnectFourV2() {
           account={account}
           isConnecting={isConnecting}
           onConnectWallet={connectWallet}
-          connectCtaClassName={currentTheme.connectCtaClassName}
+          connectCtaClassName={activeTheme.connectCtaClassName}
           unauthenticatedActions={!account ? (
             <button
               type="button"
@@ -3126,7 +3218,7 @@ export default function ConnectFourV2() {
             </button>
           ) : null}
         >
-          <div className={`relative flex flex-wrap items-center justify-center gap-2 text-sm md:text-base ${currentTheme.heroSubtext}`}>
+          {!isArenaExperience ? <div className={`relative flex flex-wrap items-center justify-center gap-2 text-sm md:text-base ${activeTheme.heroSubtext}`}>
             {HERO_LINKS.map((link, index) => (
               <div key={link.label} className="flex items-center gap-2">
                 {index > 0 ? <span aria-hidden="true">•</span> : null}
@@ -3147,11 +3239,11 @@ export default function ConnectFourV2() {
                 </a>
               </div>
             ))}
-          </div>
+          </div> : null}
         </V2GameLobbyIntro>
 
         {currentMatch && (
-          <div ref={matchViewRef}>
+          <div ref={matchViewRef} className={isArenaExperience ? 'arena-match-view t2-match-view' : undefined}>
             <GameMatchLayout
               gameType="connectfour"
               reasonLabelMode="v2"
@@ -3261,6 +3353,7 @@ export default function ConnectFourV2() {
                 lastColumn={displayedLastColumn}
                 ghostMove={currentMatch.matchStatus === 2 ? null : ghostMove}
                 winningCellsOverride={displayedWinningCells}
+                arenaStyle={isArenaExperience}
               />
             </GameMatchLayout>
 
@@ -3332,13 +3425,15 @@ export default function ConnectFourV2() {
                   isFull={viewingTournament?.enrolledCount >= viewingTournament?.playerCount}
                   instanceContract={activeInstanceContract}
                   onPlayerAddressClick={setSelectedProfileAddress}
+                  arenaStyle={isArenaExperience}
+                  routeBase={routeBase}
                 />
               </div>
             ) : (
               <div className="space-y-8 md:space-y-10">
                 <div id="live-instances">
                   <form onSubmit={createInstance}>
-                    <div className="bg-slate-900/50 border border-purple-400/20 rounded-2xl p-4 md:p-5">
+                    <div className={`bg-slate-900/50 border border-purple-400/20 rounded-2xl p-4 md:p-5 ${isArenaExperience ? 't2-create-panel' : ''}`}>
                       <div className="mb-4 flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2">
                           <h2 className="text-xl font-semibold text-white">Configure Your Lobby</h2>

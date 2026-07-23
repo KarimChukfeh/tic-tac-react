@@ -6,6 +6,8 @@ import TicTacToeV2 from './v2/pages/TicTacToeV2.jsx'
 import TicTacToeArena from './v2/pages/TicTacToeArena.jsx'
 import ConnectFourV2 from './v2/pages/ConnectFourV2.jsx'
 import ChessV2 from './v2/pages/ChessV2.jsx'
+import ConnectFourArena from './v2/pages/ConnectFourArena.jsx'
+import ChessArena from './v2/pages/ChessArena.jsx'
 import Whitepaper from './Whitepaper.jsx'
 import Manual from './Manual.jsx'
 import Docs from './Docs.jsx'
@@ -136,7 +138,9 @@ function AppRoutes() {
           <Route path="/tictactoe" element={<TicTacToeV2 />} />
           <Route path="/tictactoe2" element={<TicTacToeArena />} />
           <Route path="/connect4" element={<ConnectFourV2 />} />
+          <Route path="/connect42" element={<ConnectFourArena />} />
           <Route path="/chess" element={<ChessV2 />} />
+          <Route path="/chess2" element={<ChessArena />} />
           <Route path="/v2/tictactoe" element={<CanonicalRedirect to="/tictactoe" />} />
           <Route path="/v2/connec4" element={<CanonicalRedirect to="/connect4" />} />
           <Route path="/v2/connect4" element={<CanonicalRedirect to="/connect4" />} />
