@@ -3010,6 +3010,7 @@ export default function ChessV2({ experience = 'classic', routeBase = '/chess' }
           isConnecting={isConnecting}
           onConnectWallet={connectWallet}
           connectCtaClassName={activeTheme.connectCtaClassName}
+          wideArbitrumCta={isArenaExperience}
           unauthenticatedActions={!account ? (
             <button
               type="button"

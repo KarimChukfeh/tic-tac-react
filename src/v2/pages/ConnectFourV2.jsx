@@ -3207,6 +3207,7 @@ export default function ConnectFourV2({ experience = 'classic', routeBase = '/co
           isConnecting={isConnecting}
           onConnectWallet={connectWallet}
           connectCtaClassName={activeTheme.connectCtaClassName}
+          wideArbitrumCta={isArenaExperience}
           unauthenticatedActions={!account ? (
             <button
               type="button"

@@ -3000,6 +3000,7 @@ export default function TicTacToeV2({ experience = 'classic', routeBase = '/tict
           isConnecting={isConnecting}
           onConnectWallet={connectWallet}
           connectCtaClassName={activeTheme.connectCtaClassName}
+          wideArbitrumCta={isArenaExperience}
           unauthenticatedActions={!account ? (
             <button
               type="button"

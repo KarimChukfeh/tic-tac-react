@@ -406,6 +406,42 @@
 
 .t2-connect-wallet:hover { transform: translateY(-2px); box-shadow: 0 18px 42px rgba(36,201,232,0.3); }
 
+.v2-lobby-actions--arena {
+  max-width: 31.25rem;
+  margin-inline: auto;
+}
+
+.v2-lobby-primary-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.v2-lobby-actions--arena .v2-lobby-primary-actions > button,
+.v2-lobby-actions--arena .v2-why-arbitrum {
+  width: 100%;
+  min-width: 0;
+}
+
+.v2-lobby-actions--arena .v2-lobby-primary-actions > button {
+  min-height: 3.75rem;
+}
+
+.v2-why-arbitrum {
+  min-height: 3.2rem;
+  border-color: color-mix(in srgb, var(--t2-cyan) 34%, transparent) !important;
+  color: #bceef5;
+  background: color-mix(in srgb, var(--t2-cyan) 8%, rgba(3, 11, 20, 0.76));
+  font-size: 0.9rem;
+  letter-spacing: 0.025em;
+}
+
+.v2-why-arbitrum:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--t2-cyan) 60%, transparent) !important;
+  background: color-mix(in srgb, var(--t2-cyan) 14%, rgba(3, 11, 20, 0.82));
+}
+
 .t2-shell > .max-w-2xl button:not(.t2-connect-wallet) {
   border-radius: 0 !important;
 }
@@ -1146,10 +1182,15 @@
   .t2-hero__scene { width: 116%; min-height: 350px; margin-inline: -8%; }
   .t2-hero-board { top: 14%; left: 22%; width: 58%; }
   .t2-hero__orbit { top: 1%; left: 14%; width: 72%; }
-  .t2-hero__status { right: 9%; bottom: 9%; }
+  .t2-hero__status,
+  .t2-hero--compact .t2-hero__status {
+    top: 9%;
+    right: 9%;
+    bottom: auto;
+  }
 
   .t2-shell > .max-w-2xl { margin-inline: 0; padding: 0; }
-  .t2-shell > .max-w-2xl > div:first-child > div {
+  .t2-shell > .max-w-2xl > div:first-child > div:not(.v2-lobby-actions--arena) {
     display: grid;
     width: 100%;
     grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
@@ -1157,7 +1198,7 @@
     gap: 0.65rem;
   }
   .t2-shell > .max-w-2xl button { width: 100%; min-width: 0 !important; }
-  .t2-shell > .max-w-2xl > div:first-child > div > div {
+  .t2-shell > .max-w-2xl > div:first-child > div:not(.v2-lobby-actions--arena) > div {
     display: grid;
     width: 100%;
     grid-template-columns: minmax(0, 1fr) 2.75rem;
@@ -1175,10 +1216,21 @@
   .t2-shell > .max-w-2xl > div:first-child > div > button:hover {
     transform: none;
   }
-  .t2-shell > .max-w-2xl button[aria-label="Why Arbitrum?"] {
+  .t2-shell > .max-w-2xl button[aria-label="Why Arbitrum?"]:not(.v2-why-arbitrum) {
     width: 2.75rem;
     min-height: 4rem;
     align-self: stretch;
+  }
+  .v2-lobby-actions--arena {
+    max-width: none;
+    gap: 0.65rem;
+  }
+  .v2-lobby-primary-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+  }
+  .v2-lobby-actions--arena .v2-why-arbitrum {
+    min-height: 3.35rem;
   }
 
   .t2-create-panel { padding: 1rem !important; }
