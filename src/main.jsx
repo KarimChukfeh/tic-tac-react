@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom'
 import LandingReimagined from './LandingReimagined.jsx'
 import TicTacToeV2 from './v2/pages/TicTacToeV2.jsx'
+import TicTacToeArena from './v2/pages/TicTacToeArena.jsx'
 import ConnectFourV2 from './v2/pages/ConnectFourV2.jsx'
 import ChessV2 from './v2/pages/ChessV2.jsx'
 import Whitepaper from './Whitepaper.jsx'
@@ -133,6 +134,7 @@ function AppRoutes() {
         <Routes location={displayLocation}>
           <Route path="/" element={<LandingReimagined />} />
           <Route path="/tictactoe" element={<TicTacToeV2 />} />
+          <Route path="/tictactoe2" element={<TicTacToeArena />} />
           <Route path="/connect4" element={<ConnectFourV2 />} />
           <Route path="/chess" element={<ChessV2 />} />
           <Route path="/v2/tictactoe" element={<CanonicalRedirect to="/tictactoe" />} />

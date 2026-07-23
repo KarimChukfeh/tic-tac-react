@@ -32,7 +32,7 @@ import {
 import { ethers } from 'ethers';
 import { CURRENT_NETWORK, TARGET_CHAIN_ID_HEX, getAddressUrl, getWalletAddChainParams } from '../../config/networks';
 import { shortenAddress, getCellPositionName } from '../../utils/formatters';
-import { generateV2TournamentUrl, parseV2ContractParam } from '../../utils/urlHelpers';
+import { parseV2ContractParam } from '../../utils/urlHelpers';
 import { shouldResetOnInitialDocumentLoad } from '../../utils/navigation';
 import { isDraw, getCompletionReasonText, getCompletionReasonDescription } from '../../utils/completionReasons';
 import ParticleBackground from '../../components/shared/ParticleBackground';
@@ -92,6 +92,7 @@ import { formatActionErrorMessage } from '../lib/actionErrors';
 import { V2TournamentResolutionReason } from '../lib/reasonLabels';
 
 const TICTACTOE_SYMBOLS = ['✕', '○'];
+const TICTACTOE_ARENA_EFFECTS_STORAGE_KEY = 'etour:tictactoe2:3d-effects';
 
 // Virtual tier/instance IDs used when adapting V2 instance contracts to V1 component API
 const VIRTUAL_TIER_ID = 0;
@@ -120,6 +121,17 @@ const currentTheme = {
   connectCtaClassName: 'bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white rounded-xl shadow-2xl border-2 border-purple-400/60 hover:scale-105 hover:from-purple-700 hover:to-fuchsia-700',
   primary: 'rgba(0, 255, 255, 0.5)',
   secondary: 'rgba(255, 0, 255, 0.5)',
+};
+
+const arenaTheme = {
+  ...currentTheme,
+  border: 'rgba(84, 229, 248, 0.24)',
+  particleColors: ['#54e5f8', '#9b7cff'],
+  gradient: 'radial-gradient(circle at 76% 12%, rgba(84, 229, 248, 0.11), transparent 28rem), radial-gradient(circle at 12% 43%, rgba(155, 124, 255, 0.08), transparent 34rem), #030811',
+  heroGlow: 'from-cyan-300 via-sky-400 to-violet-400',
+  heroTitle: 'from-cyan-300 via-sky-200 to-violet-400',
+  heroSubtext: 'text-cyan-100/70',
+  connectCtaClassName: 't2-connect-wallet',
 };
 
 const HERO_LINKS = [
@@ -385,6 +397,75 @@ const AnimatedTicTacToeSymbol = ({ delay = 0, size = 'large' }) => {
   );
 };
 
+function ArenaTicTacToeHero({
+  compact = false,
+  effectsEnabled = true,
+  onToggleEffects,
+  onOpenWhatIsThis,
+  onOpenQuickGuide,
+  onOpenManual,
+}) {
+  const marks = ['X', '', 'O', '', 'X', '', 'O', '', 'X'];
+
+  return (
+    <section className={`t2-hero ${compact ? 't2-hero--compact' : ''}`}>
+      <div className="t2-hero__grid" aria-hidden="true" />
+      <div className="t2-hero__copy">
+        <div className="t2-hero__eyebrow">
+          <Link to="/">ETour games</Link>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={effectsEnabled}
+            aria-label={`3D Effects ${effectsEnabled ? 'on' : 'off'}`}
+            className="t2-effects-switch"
+            onClick={onToggleEffects}
+          >
+            <span className="t2-effects-switch__label">3D Effects</span>
+            <span className="t2-effects-switch__track" aria-hidden="true"><i /></span>
+            <strong>{effectsEnabled ? 'ON' : 'OFF'}</strong>
+          </button>
+        </div>
+        <h1>Tic Tac Toe</h1>
+        <p className="t2-hero__kicker">Small board. <strong>Big gains.</strong></p>
+        {!compact ? (
+          <p className="t2-hero__lede">
+            The game everyone knows, rebuilt as a fully verifiable tournament. Every move on-chain. Every outcome settled in ETH.
+          </p>
+        ) : null}
+        <div className="t2-hero__meta t2-hero__help-links">
+          {HERO_LINKS.map((link, index) => (
+            <div key={link.label} className="t2-hero__help-link">
+              {index > 0 ? <span aria-hidden="true">•</span> : null}
+              <a
+                href={link.type === 'manual' ? '#user-manual' : '#'}
+                onClick={
+                  link.type === 'what-is-this'
+                    ? onOpenWhatIsThis
+                    : link.type === 'manual'
+                      ? onOpenManual
+                      : onOpenQuickGuide
+                }
+              >
+                {link.label}
+              </a>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="t2-hero__scene" aria-hidden="true">
+        <div className="t2-hero-board">
+          {marks.map((mark, index) => (
+            <span className={mark === 'X' ? 'is-x' : mark === 'O' ? 'is-o' : ''} key={index}>{mark}</span>
+          ))}
+        </div>
+        <div className="t2-hero__orbit"><i /><i /></div>
+        <div className="t2-hero__status"><i /> Arena ready</div>
+      </div>
+    </section>
+  );
+}
+
 function ActionMessage({ type = 'info', message }) {
   if (!message) return null;
   const styles = {
@@ -448,6 +529,9 @@ const TournamentBracket = ({
   isFull,
   instanceContract,
   onPlayerAddressClick,
+  routeBase = '/tictactoe',
+  arenaStyle = false,
+  theme = currentTheme,
 }) => {
   const {
     status,
@@ -505,14 +589,14 @@ const TournamentBracket = ({
   const prizePool = tournamentData.prizePoolWei || 0n;
 
   return (
-    <div className="mb-16">
+    <div className={`mb-16 ${arenaStyle ? 't2-tournament-bracket' : ''}`}>
       <TournamentHeader
         gameType="tictactoe"
         reasonLabelMode="v2"
         tierId={tierId}
         instanceId={instanceId}
         instanceAddress={tournamentData.address}
-        shareUrlOverride={tournamentData.address ? generateV2TournamentUrl('tictactoe', tournamentData.address) : undefined}
+        shareUrlOverride={tournamentData.address ? `${window.location.origin}${routeBase}?c=${tournamentData.address}` : undefined}
         status={status}
         currentRound={currentRound}
         playerCount={playerCount}
@@ -535,8 +619,8 @@ const TournamentBracket = ({
         onConnectWallet={onConnectWallet}
         loading={loading}
         connectLoading={connectLoading}
-        connectButtonGradient={currentTheme.connectButtonGradient}
-        connectButtonHover={currentTheme.connectButtonHover}
+        connectButtonGradient={theme.connectButtonGradient}
+        connectButtonHover={theme.connectButtonHover}
         statusTimerTarget={enrollmentWindowDeadline}
         enrollmentTimeout={enrollmentTimeout}
         onManualStart={onManualStart ? () => onManualStart(tierId, instanceId) : null}
@@ -550,7 +634,7 @@ const TournamentBracket = ({
 
       <TraditionalTournamentBracket
         bracketRef={bracketViewRef}
-        title="Bracket"
+        title={arenaStyle ? 'Arena Bracket' : 'Bracket'}
         rounds={rounds}
         hasValidRounds={hasValidRounds}
         panelClassName={`bg-gradient-to-br from-slate-900/50 to-purple-900/30 backdrop-blur-lg rounded-2xl p-4 sm:p-8 border ${colors.headerBorder}`}
@@ -614,8 +698,40 @@ const TournamentBracket = ({
 
 const DEFAULT_MATCH_LOADING_MESSAGE = 'Loading match...';
 
-export default function TicTacToeV2() {
-  useInitialDocumentScrollTop('/tictactoe');
+export default function TicTacToeV2({ experience = 'classic', routeBase = '/tictactoe' }) {
+  useInitialDocumentScrollTop(routeBase);
+
+  const isArenaExperience = experience === 'arena';
+  const activeTheme = isArenaExperience ? arenaTheme : currentTheme;
+  const [arenaEffectsEnabled, setArenaEffectsEnabled] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    try {
+      return window.localStorage.getItem(TICTACTOE_ARENA_EFFECTS_STORAGE_KEY) !== 'off';
+    } catch {
+      return true;
+    }
+  });
+
+  const toggleArenaEffects = useCallback(() => {
+    setArenaEffectsEnabled((wasEnabled) => {
+      const isEnabled = !wasEnabled;
+      try {
+        window.localStorage.setItem(
+          TICTACTOE_ARENA_EFFECTS_STORAGE_KEY,
+          isEnabled ? 'on' : 'off',
+        );
+      } catch {
+        // The preference still applies for this visit when storage is unavailable.
+      }
+      return isEnabled;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!isArenaExperience) return undefined;
+    document.body.classList.add('t2-experience-active');
+    return () => document.body.classList.remove('t2-experience-active');
+  }, [isArenaExperience]);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
@@ -731,7 +847,7 @@ export default function TicTacToeV2() {
 
   // --- Invite link: ?c=0x... (V2 contract address) ---
   const [hasProcessedInviteParam, setHasProcessedInviteParam] = useState(false);
-  const [allowInitialUrlHydration, setAllowInitialUrlHydration] = useState(() => !shouldResetOnInitialDocumentLoad('/tictactoe', { allowInviteParam: true }));
+  const [allowInitialUrlHydration, setAllowInitialUrlHydration] = useState(() => !shouldResetOnInitialDocumentLoad(routeBase, { allowInviteParam: true }));
 
   // --- Viewing tournament bracket (V1-style) ---
   const [viewingTournament, setViewingTournament] = useState(null); // normalizedInstanceSnapshot + rounds
@@ -1273,7 +1389,7 @@ export default function TicTacToeV2() {
         activeInstanceContractRef.current = instance;
         setViewingTournament(bracketData);
         skipNavEffectRef.current = true;
-        navigate('/tictactoe', {
+        navigate(routeBase, {
           replace: false,
           state: { view: 'bracket', instanceAddress: address, from: location.state?.view || 'landing' },
         });
@@ -1334,12 +1450,12 @@ export default function TicTacToeV2() {
     setViewingTournament(null);
     setCurrentMatch(null);
     setHasProcessedInviteParam(true);
-    navigate('/tictactoe', { replace: true, state: null });
+    navigate(routeBase, { replace: true, state: null });
   }, [allowInitialUrlHydration, navigate]);
 
   useEffect(() => {
     if (allowInitialUrlHydration) return;
-    if (location.pathname !== '/tictactoe' || location.search || location.state) return;
+    if (location.pathname !== routeBase || location.search || location.state) return;
     setAllowInitialUrlHydration(true);
   }, [allowInitialUrlHydration, location.pathname, location.search, location.state]);
 
@@ -1490,7 +1606,7 @@ export default function TicTacToeV2() {
       setCurrentMatch(null);
       setActiveInstanceContract(null);
       activeInstanceContractRef.current = null;
-      navigate('/tictactoe', { replace: true, state: null });
+      navigate(routeBase, { replace: true, state: null });
       setTournamentsLoading(false);
     } catch (error) {
       console.error('[V2] Cancel tournament error:', error);
@@ -1565,7 +1681,7 @@ export default function TicTacToeV2() {
     setCurrentMatch(null);
     setActiveInstanceContract(null);
     activeInstanceContractRef.current = null;
-    navigate('/tictactoe', { replace: true, state: null });
+    navigate(routeBase, { replace: true, state: null });
     window.requestAnimationFrame(() => {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     });
@@ -1784,7 +1900,7 @@ export default function TicTacToeV2() {
         console.log('[V2] handleLoadMatch - Setting moveHistory:', history);
         setMoveHistory(history);
         skipNavEffectRef.current = true;
-        navigate('/tictactoe', {
+        navigate(routeBase, {
           replace: false,
           state: { view: 'match', instanceAddress, roundNumber, matchNumber, from: location.state?.view || 'bracket' },
         });
@@ -2083,7 +2199,7 @@ export default function TicTacToeV2() {
     previousBoardRef.current = null;
     if (!address) {
       skipNavEffectRef.current = true;
-      navigate('/tictactoe', { replace: true, state: null });
+      navigate(routeBase, { replace: true, state: null });
       window.requestAnimationFrame(() => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
       });
@@ -2091,7 +2207,7 @@ export default function TicTacToeV2() {
     }
     pendingScrollAddressRef.current = address;
     skipNavEffectRef.current = true;
-    navigate('/tictactoe', {
+    navigate(routeBase, {
       replace: true,
       state: { view: 'bracket', instanceAddress: address, from: 'match' },
     });
@@ -2273,7 +2389,7 @@ export default function TicTacToeV2() {
     setNextActiveMatch(null);
     previousBoardRef.current = [...demoMatch.board];
     skipNavEffectRef.current = true;
-    navigate('/tictactoe', { replace: false, state: { view: 'demo-match' } });
+    navigate(routeBase, { replace: false, state: { view: 'demo-match' } });
     window.setTimeout(() => {
       boardViewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 100);
@@ -2466,7 +2582,7 @@ export default function TicTacToeV2() {
       // On initial page load, clear any stale history state and show landing
       if (isInitialNavRef.current) {
         isInitialNavRef.current = false;
-        navigate('/tictactoe', { replace: true, state: null });
+        navigate(routeBase, { replace: true, state: null });
         return;
       }
       const state = location.state;
@@ -2532,7 +2648,9 @@ export default function TicTacToeV2() {
   }, [activeTooltip]);
 
   // Set page title
-  useEffect(() => { document.title = 'TicTacToe'; }, []);
+  useEffect(() => {
+    document.title = isArenaExperience ? 'ETour — Tic Tac Toe Arena' : 'TicTacToe';
+  }, [isArenaExperience]);
 
   // ─── Render ──────────────────────────────────────────────────────────────────
 
@@ -2553,16 +2671,21 @@ export default function TicTacToeV2() {
 
   return (
     <div
+      className={isArenaExperience ? 't2-page' : undefined}
+      data-t2-view={currentMatch ? 'match' : viewingTournament ? 'bracket' : 'lobby'}
+      data-t2-effects={isArenaExperience ? (arenaEffectsEnabled ? 'on' : 'off') : undefined}
       style={{
         minHeight: '100vh',
-        background: currentTheme.gradient,
+        background: activeTheme.gradient,
         color: '#fff',
         position: 'relative',
         overflow: 'clip',
         transition: 'background 0.8s ease-in-out',
       }}
     >
-      <ParticleBackground colors={currentTheme.particleColors} symbols={TICTACTOE_SYMBOLS} fontSize="24px" count={38} />
+      {(!isArenaExperience || arenaEffectsEnabled) ? (
+        <ParticleBackground colors={activeTheme.particleColors} symbols={TICTACTOE_SYMBOLS} fontSize="24px" count={38} />
+      ) : null}
       <CenteredErrorFlash
         message={actionState.type === 'error' ? actionState.message : ''}
         onDismiss={dismissActionError}
@@ -2619,7 +2742,7 @@ export default function TicTacToeV2() {
       />
 
       {/* Bottom Nav Bar (mobile + desktop — mirrors V1) */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 md:static md:z-auto">
+      <div className={`fixed bottom-0 left-0 right-0 z-50 md:static md:z-auto ${isArenaExperience ? 't2-dashboard-dock' : ''}`}>
         {/* Mobile */}
         <MobileBottomNavDrawer
           enabled={Boolean(currentMatch)}
@@ -2654,7 +2777,7 @@ export default function TicTacToeV2() {
             showTooltip={activeTooltip === 'playerActivity'}
             onShowTooltip={() => setActiveTooltip('playerActivity')}
             onHideTooltip={() => setActiveTooltip(null)}
-            connectCtaClassName={currentTheme.connectCtaClassName}
+            connectCtaClassName={activeTheme.connectCtaClassName}
             reasonLabelMode="v2"
             refreshOnExpand={false}
           />
@@ -2673,7 +2796,7 @@ export default function TicTacToeV2() {
             showTooltip={activeTooltip === 'recentMatches'}
             onShowTooltip={() => setActiveTooltip('recentMatches')}
             onHideTooltip={() => setActiveTooltip(null)}
-            connectCtaClassName={currentTheme.connectCtaClassName}
+            connectCtaClassName={activeTheme.connectCtaClassName}
             onNavigateToTournament={() => {}}
             leaderboard={leaderboard}
             onMatchesLoad={() => {}}
@@ -2716,7 +2839,7 @@ export default function TicTacToeV2() {
             showTooltip={activeTooltip === 'activeLobbies'}
             onShowTooltip={() => setActiveTooltip('activeLobbies')}
             onHideTooltip={() => setActiveTooltip(null)}
-            connectCtaClassName={currentTheme.connectCtaClassName}
+            connectCtaClassName={activeTheme.connectCtaClassName}
           />
         </MobileBottomNavDrawer>
         <div className="hidden md:block">
@@ -2748,7 +2871,7 @@ export default function TicTacToeV2() {
             showTooltip={activeTooltip === 'playerActivity'}
             onShowTooltip={() => setActiveTooltip('playerActivity')}
             onHideTooltip={() => setActiveTooltip(null)}
-            connectCtaClassName={currentTheme.connectCtaClassName}
+            connectCtaClassName={activeTheme.connectCtaClassName}
             reasonLabelMode="v2"
             refreshOnExpand={false}
           />
@@ -2767,7 +2890,7 @@ export default function TicTacToeV2() {
             showTooltip={activeTooltip === 'recentMatches'}
             onShowTooltip={() => setActiveTooltip('recentMatches')}
             onHideTooltip={() => setActiveTooltip(null)}
-            connectCtaClassName={currentTheme.connectCtaClassName}
+            connectCtaClassName={activeTheme.connectCtaClassName}
             onNavigateToTournament={() => {}}
             leaderboard={leaderboard}
             onMatchesLoad={() => {}}
@@ -2810,13 +2933,13 @@ export default function TicTacToeV2() {
             showTooltip={activeTooltip === 'activeLobbies'}
             onShowTooltip={() => setActiveTooltip('activeLobbies')}
             onHideTooltip={() => setActiveTooltip(null)}
-            connectCtaClassName={currentTheme.connectCtaClassName}
+            connectCtaClassName={activeTheme.connectCtaClassName}
           />
         </div>
       </div>
 
       {/* Trust Banner */}
-      <div style={{ background: 'rgba(0, 100, 200, 0.2)', borderBottom: `1px solid ${currentTheme.border}`, backdropFilter: 'blur(10px)', position: 'relative', zIndex: 10 }}>
+      <div className={isArenaExperience ? 't2-trust-rail' : ''} style={{ background: isArenaExperience ? undefined : 'rgba(0, 100, 200, 0.2)', borderBottom: `1px solid ${activeTheme.border}`, backdropFilter: 'blur(10px)', position: 'relative', zIndex: 10 }}>
         <div className="max-w-7xl mx-auto px-6 py-3">
           <div className="relative flex flex-col items-center gap-3 md:min-h-6 md:justify-center text-xs md:text-sm">
             <div className="flex w-full flex-wrap items-center justify-center gap-x-4 gap-y-2 md:gap-6">
@@ -2836,24 +2959,35 @@ export default function TicTacToeV2() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 pt-12" style={{ position: 'relative', zIndex: 10 }}>
+      <div className={`max-w-7xl mx-auto px-6 pt-12 ${isArenaExperience ? 't2-shell' : ''}`} style={{ position: 'relative', zIndex: 10 }}>
         {/* Hero Section */}
-        <div className="text-center mb-5 md:mb-6">
-          <div className="inline-block mb-6">
-            <div className="relative flex h-28 w-28 items-center justify-center md:h-32 md:w-32">
-              <div className={`absolute inset-0 bg-gradient-to-r ${currentTheme.heroGlow} rounded-full blur-xl opacity-50 animate-pulse`}></div>
-              <div className="relative">
-                <AnimatedTicTacToeSymbol size={88} />
+        {isArenaExperience ? (
+          <ArenaTicTacToeHero
+            compact={Boolean(currentMatch || viewingTournament)}
+            effectsEnabled={arenaEffectsEnabled}
+            onToggleEffects={toggleArenaEffects}
+            onOpenWhatIsThis={handleWhatIsThisLinkClick}
+            onOpenQuickGuide={handleQuickGuideLinkClick}
+            onOpenManual={handleUserManualLinkClick}
+          />
+        ) : (
+          <div className="text-center mb-5 md:mb-6">
+            <div className="inline-block mb-6">
+              <div className="relative flex h-28 w-28 items-center justify-center md:h-32 md:w-32">
+                <div className={`absolute inset-0 bg-gradient-to-r ${activeTheme.heroGlow} rounded-full blur-xl opacity-50 animate-pulse`}></div>
+                <div className="relative">
+                  <AnimatedTicTacToeSymbol size={88} />
+                </div>
               </div>
             </div>
+            <h1 className={`mb-4 bg-gradient-to-r bg-clip-text text-6xl font-bold leading-none text-transparent md:text-7xl ${activeTheme.heroTitle}`}>
+              TicTacToe
+            </h1>
+            <p className="pt-4 text-2xl text-blue-200 mb-6">
+              Play TicTacToe on-chain with real ETH on the line
+            </p>
           </div>
-          <h1 className={`mb-4 bg-gradient-to-r bg-clip-text text-6xl font-bold leading-none text-transparent md:text-7xl ${currentTheme.heroTitle}`}>
-            TicTacToe
-          </h1>
-          <p className="pt-4 text-2xl text-blue-200 mb-6">
-            Play TicTacToe on-chain with real ETH on the line
-          </p>
-        </div>
+        )}
 
         {dashboardError ? (
           <div className="mb-8">
@@ -2865,7 +2999,7 @@ export default function TicTacToeV2() {
           account={account}
           isConnecting={isConnecting}
           onConnectWallet={connectWallet}
-          connectCtaClassName={currentTheme.connectCtaClassName}
+          connectCtaClassName={activeTheme.connectCtaClassName}
           unauthenticatedActions={!account ? (
             <button
               type="button"
@@ -2877,33 +3011,35 @@ export default function TicTacToeV2() {
             </button>
           ) : null}
         >
-          <div className={`relative flex flex-wrap items-center justify-center gap-2 text-sm md:text-base ${currentTheme.heroSubtext}`}>
-            {HERO_LINKS.map((link, index) => (
-              <div key={link.label} className="flex items-center gap-2">
-                {index > 0 ? <span aria-hidden="true">•</span> : null}
-                <a
-                  href={link.type === 'manual' ? '#user-manual' : '#'}
-                  onClick={
-                    link.type === 'what-is-this'
-                      ? handleWhatIsThisLinkClick
-                      : link.type === 'manual'
-                      ? handleUserManualLinkClick
-                      : link.type === 'quick-guide'
-                        ? handleQuickGuideLinkClick
-                        : undefined
-                  }
-                  className="underline decoration-dotted underline-offset-4 transition-colors hover:text-white"
-                >
-                  {link.label}
-                </a>
-              </div>
-            ))}
-          </div>
+          {!isArenaExperience ? (
+            <div className={`relative flex flex-wrap items-center justify-center gap-2 text-sm md:text-base ${activeTheme.heroSubtext}`}>
+              {HERO_LINKS.map((link, index) => (
+                <div key={link.label} className="flex items-center gap-2">
+                  {index > 0 ? <span aria-hidden="true">•</span> : null}
+                  <a
+                    href={link.type === 'manual' ? '#user-manual' : '#'}
+                    onClick={
+                      link.type === 'what-is-this'
+                        ? handleWhatIsThisLinkClick
+                        : link.type === 'manual'
+                          ? handleUserManualLinkClick
+                          : link.type === 'quick-guide'
+                            ? handleQuickGuideLinkClick
+                            : undefined
+                    }
+                    className="underline decoration-dotted underline-offset-4 transition-colors hover:text-white"
+                  >
+                    {link.label}
+                  </a>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </V2GameLobbyIntro>
 
         {/* Match View */}
         {currentMatch && (
-          <div ref={matchViewRef}>
+          <div ref={matchViewRef} className={isArenaExperience ? 't2-match-view' : undefined}>
             <GameMatchLayout
               gameType="tictactoe"
               reasonLabelMode="v2"
@@ -2993,42 +3129,137 @@ export default function TicTacToeV2() {
               ) : undefined}
             >
               {/* TicTacToe Board */}
-              <div className="w-full max-w-[min(19rem,calc(100vw-1.5rem))] sm:max-w-md mx-auto">
-                <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
-                  {(() => {
-                    const isPlayer1First = currentMatch.firstPlayer?.toLowerCase() === currentMatch.player1?.toLowerCase();
-                    const firstPlayerCellValue = isPlayer1First ? 1 : 2;
-                    const matchAccount = currentMatch.isDemo ? DEMO_HUMAN_ADDRESS : account;
-                    return displayedBoard.map((cell, idx) => {
-                      const isGhost = currentMatch.matchStatus !== 2 && cell === 0 && ghostMove?.cellIndex === idx;
-                      const isFirstPlayerCell = cell === firstPlayerCellValue;
-                      const isOpponentFirst = currentMatch.firstPlayer?.toLowerCase() !== matchAccount?.toLowerCase();
-                      const ghostSymbol = isOpponentFirst ? 'X' : 'O';
-                      const cellSymbol = cell === 0 ? (isGhost ? ghostSymbol : '') : (isFirstPlayerCell ? 'X' : 'O');
-                      const isWinningCell = displayedWinningCells.includes(idx);
-                      const isReplayLastMove = displayedLastMoveCell === idx;
-                      const cellColorClass = isGhost
-                        ? 'bg-purple-500/20 text-white/30 animate-pulse cursor-not-allowed'
-                        : cell === 0
-                        ? 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-200'
-                        : isFirstPlayerCell
-                        ? 'bg-blue-500/40 text-blue-200'
-                        : 'bg-pink-500/40 text-pink-200';
-                      return (
-                        <button
-                          key={idx}
-                          onClick={isSpectator ? null : () => handleCellClick(idx)}
-                          disabled={isSpectator || matchLoading || currentMatch.matchStatus === 2 || !currentMatch.isYourTurn || isGhost}
-                          className={`aspect-square rounded-xl flex items-center justify-center text-[2.25rem] sm:text-4xl font-bold transition-all transform hover:scale-105 disabled:cursor-not-allowed ${
-                            isWinningCell ? 'ring-4 ring-yellow-400' : isReplayLastMove ? 'ring-2 ring-white/70' : ''
-                          } ${cellColorClass}`}
-                        >
-                          {cellSymbol}
-                        </button>
-                      );
-                    });
-                  })()}
-                </div>
+              <div
+                className={`w-full max-w-[min(19rem,calc(100vw-1.5rem))] sm:max-w-md mx-auto ${isArenaExperience ? 't2-match-board' : ''}`}
+              >
+                {(() => {
+                  const isPlayer1First = currentMatch.firstPlayer?.toLowerCase() === currentMatch.player1?.toLowerCase();
+                  const firstPlayerCellValue = isPlayer1First ? 1 : 2;
+                  const matchAccount = currentMatch.isDemo ? DEMO_HUMAN_ADDRESS : account;
+                  const boardStatus = currentMatch.matchStatus === 2
+                    ? 'Final state'
+                    : isSpectator
+                      ? 'Spectator feed'
+                      : currentMatch.isYourTurn
+                        ? 'Your move'
+                        : 'Opponent move';
+                  const cellModels = displayedBoard.map((cell, idx) => {
+                    const isGhost = currentMatch.matchStatus !== 2 && cell === 0 && ghostMove?.cellIndex === idx;
+                    const isFirstPlayerCell = cell === firstPlayerCellValue;
+                    const isOpponentFirst = currentMatch.firstPlayer?.toLowerCase() !== matchAccount?.toLowerCase();
+                    const ghostSymbol = isOpponentFirst ? 'X' : 'O';
+                    const cellSymbol = cell === 0 ? (isGhost ? ghostSymbol : '') : (isFirstPlayerCell ? 'X' : 'O');
+                    const isWinningCell = displayedWinningCells.includes(idx);
+                    const isReplayLastMove = displayedLastMoveCell === idx;
+                    const cellColorClass = isGhost
+                      ? 'bg-purple-500/20 text-white/30 animate-pulse cursor-not-allowed'
+                      : cell === 0
+                      ? 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-200'
+                      : isFirstPlayerCell
+                      ? 'bg-blue-500/40 text-blue-200'
+                      : 'bg-pink-500/40 text-pink-200';
+                    const cellLabel = cellSymbol
+                      ? `${getCellPositionName(idx)}: ${cellSymbol}`
+                      : `Play ${getCellPositionName(idx)}`;
+                    return { cell, idx, isGhost, cellSymbol, isWinningCell, isReplayLastMove, cellColorClass, cellLabel };
+                  });
+
+                  if (!isArenaExperience) {
+                    return (
+                      <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
+                        {cellModels.map(({ cell, idx, isGhost, cellSymbol, isWinningCell, isReplayLastMove, cellColorClass, cellLabel }) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            aria-label={cellLabel}
+                            onClick={isSpectator ? undefined : () => handleCellClick(idx)}
+                            disabled={isSpectator || matchLoading || currentMatch.matchStatus === 2 || !currentMatch.isYourTurn || isGhost}
+                            className={`aspect-square rounded-xl flex items-center justify-center text-[2.25rem] sm:text-4xl font-bold transition-all transform hover:scale-105 disabled:cursor-not-allowed ${
+                              isWinningCell ? 'ring-4 ring-yellow-400' : isReplayLastMove ? 'ring-2 ring-white/70' : ''
+                            } ${cellColorClass}`}
+                          >
+                            <span aria-hidden="true">{cellSymbol}</span>
+                          </button>
+                        ))}
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="t2-board-scene">
+                      <div className="t2-board-halo" aria-hidden="true" />
+                      <div className="t2-board-orbit" aria-hidden="true">
+                        <i />
+                        <i />
+                      </div>
+                      <div className="t2-board-projection" aria-hidden="true" />
+                      <div className="t2-board-chassis">
+                        <div className="t2-board-coordinates t2-board-coordinates--columns" aria-hidden="true">
+                          <span>A</span><span>B</span><span>C</span>
+                        </div>
+                        <div className="t2-board-coordinates t2-board-coordinates--rows" aria-hidden="true">
+                          <span>1</span><span>2</span><span>3</span>
+                        </div>
+                        <div className="t2-board-grid grid grid-cols-3" aria-hidden="true">
+                          {cellModels.map(({ idx, cellSymbol, isWinningCell, isReplayLastMove, cellColorClass }) => (
+                            <div
+                              key={idx}
+                              data-symbol={cellSymbol || 'empty'}
+                              data-winning={isWinningCell ? 'true' : undefined}
+                              data-replay-last={isReplayLastMove ? 'true' : undefined}
+                              className={`t2-match-cell t2-match-cell--visual aspect-square flex items-center justify-center ${cellColorClass}`}
+                            >
+                              <span className="t2-match-symbol">{cellSymbol}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="t2-board-light" aria-hidden="true" />
+                        <div className="t2-board-scan" aria-hidden="true" />
+                      </div>
+                      <div className="t2-board-hit-grid" role="group" aria-label="Tic Tac Toe board">
+                        {cellModels.map(({
+                          cell,
+                          idx,
+                          isGhost,
+                          cellLabel,
+                          cellSymbol,
+                          isWinningCell,
+                          isReplayLastMove,
+                        }) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            aria-label={cellLabel}
+                            data-cell-index={idx}
+                            data-symbol={cellSymbol || 'empty'}
+                            data-winning={isWinningCell ? 'true' : undefined}
+                            data-replay-last={isReplayLastMove ? 'true' : undefined}
+                            onClick={isSpectator ? undefined : () => handleCellClick(idx)}
+                            onKeyDown={isSpectator ? undefined : (event) => {
+                              if ((event.key === 'Enter' || event.key === ' ') && !event.repeat) {
+                                event.preventDefault();
+                                handleCellClick(idx);
+                              }
+                            }}
+                            onMouseEnter={(event) => { event.currentTarget.closest('.t2-match-board').dataset.activeCell = String(idx); }}
+                            onMouseLeave={(event) => { delete event.currentTarget.closest('.t2-match-board').dataset.activeCell; }}
+                            onFocus={(event) => { event.currentTarget.closest('.t2-match-board').dataset.activeCell = String(idx); }}
+                            onBlur={(event) => { delete event.currentTarget.closest('.t2-match-board').dataset.activeCell; }}
+                            disabled={isSpectator || matchLoading || currentMatch.matchStatus === 2 || !currentMatch.isYourTurn || isGhost || cell !== 0}
+                            className="t2-board-hit-cell"
+                          >
+                            <span aria-hidden="true">{cellSymbol}</span>
+                          </button>
+                        ))}
+                      </div>
+                      <div className="t2-board-hud" aria-hidden="true">
+                        <span><i /> Grid 3×3</span>
+                        <strong>{boardStatus}</strong>
+                        <span>Arbitrum // live</span>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </GameMatchLayout>
 
@@ -3075,7 +3306,7 @@ export default function TicTacToeV2() {
         {!currentMatch && (
           <>
             {viewingTournament ? (
-              <div ref={tournamentBracketRef}>
+              <div ref={tournamentBracketRef} className={isArenaExperience ? 't2-bracket-view' : undefined}>
                 <TournamentBracket
                   tournamentData={viewingTournament}
                   onBack={handleBackToTournaments}
@@ -3098,18 +3329,23 @@ export default function TicTacToeV2() {
                   isFull={viewingTournament?.enrolledCount >= viewingTournament?.playerCount}
                   instanceContract={activeInstanceContract}
                   onPlayerAddressClick={setSelectedProfileAddress}
+                  routeBase={routeBase}
+                  arenaStyle={isArenaExperience}
+                  theme={activeTheme}
                 />
               </div>
             ) : (
               // Landing — lobby + create form
-              <div className="space-y-8 md:space-y-10">
+              <div className={`space-y-8 md:space-y-10 ${isArenaExperience ? 't2-lobby-view' : ''}`}>
                 {/* Create Tournament section */}
                 <div id="live-instances">
                   <form onSubmit={createInstance}>
-                    <div className="bg-slate-900/50 border border-purple-400/20 rounded-2xl p-4 md:p-5">
+                    <div className={`bg-slate-900/50 border border-purple-400/20 rounded-2xl p-4 md:p-5 ${isArenaExperience ? 't2-create-panel' : ''}`}>
                       <div className="mb-4 flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2">
-                          <h2 className="text-xl font-semibold text-white">Configure Your Lobby</h2>
+                          <h2 className="text-xl font-semibold text-white">
+                            {isArenaExperience ? 'Build Your Arena' : 'Configure Your Lobby'}
+                          </h2>
                           <UserManualAnchorIcon
                             href="#21-creating-a-lobby"
                             title="Open User Manual section 2.1: Creating a Lobby"
@@ -3131,7 +3367,9 @@ export default function TicTacToeV2() {
                       </div>
                       {!isCreateFormExpanded ? (
                         <p className="text-sm leading-6 text-slate-300">
-                          Connect your wallet to create a custom lobby.
+                          {isArenaExperience
+                            ? 'Connect your wallet to set the field, the stake, and the clock.'
+                            : 'Connect your wallet to create a custom lobby.'}
                         </p>
                       ) : null}
                       {shouldRenderCreateFormBody ? (
@@ -3185,7 +3423,9 @@ export default function TicTacToeV2() {
                               className="flex items-center gap-2 text-purple-300 hover:text-purple-200 transition-colors mb-2"
                             >
                               {showAdvancedSettings ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                              <span className="text-sm font-semibold">More Settings</span>
+                              <span className="text-sm font-semibold">
+                                {isArenaExperience ? 'Match Parameters' : 'More Settings'}
+                              </span>
                             </button>
 
                             {showAdvancedSettings && (
@@ -3222,7 +3462,9 @@ export default function TicTacToeV2() {
                               className={`inline-flex w-full md:w-auto min-w-[220px] items-center justify-center gap-2.5 px-6 py-3 rounded-xl font-bold text-base md:text-lg shadow-2xl transition-all disabled:cursor-not-allowed ${account ? 'bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 transform hover:scale-105 text-white border border-sky-300/40 shadow-[0_0_30px_rgba(59,130,246,0.35)]' : 'bg-slate-800/90 border border-slate-700 text-slate-500'}`}
                             >
                               {createLoading ? <Loader size={20} className="animate-spin" /> : null}
-                              {createLoading ? 'Creating Lobby...' : 'Create Lobby'}
+                              {createLoading
+                                ? (isArenaExperience ? 'Launching Arena...' : 'Creating Lobby...')
+                                : (isArenaExperience ? 'Launch Arena' : 'Create Lobby')}
                             </button>
                           </div>
                         </div>
@@ -3237,12 +3479,12 @@ export default function TicTacToeV2() {
       </div>
 
       {/* User Manual */}
-      <div id="user-manual" className="max-w-7xl mx-auto px-2 pt-8 pb-12 md:px-6 md:pt-10" style={{ position: 'relative', zIndex: 10 }}>
+      <div id="user-manual" className={`max-w-7xl mx-auto px-2 pt-8 pb-12 md:px-6 md:pt-10 ${isArenaExperience ? 't2-manual' : ''}`} style={{ position: 'relative', zIndex: 10 }}>
         <UserManualV2 />
       </div>
 
       {/* Footer */}
-      <footer className="border-t border-slate-800/50 px-6 py-12" style={{ position: 'relative', zIndex: 10 }}>
+      <footer className={`border-t border-slate-800/50 px-6 py-12 ${isArenaExperience ? 't2-footer' : ''}`} style={{ position: 'relative', zIndex: 10 }}>
         <div className="max-w-6xl mx-auto">
           <div className="flex flex-col md:flex-row justify-between items-center gap-8 mb-8">
             <div className="text-center md:text-left">

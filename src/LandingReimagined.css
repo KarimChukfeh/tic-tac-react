@@ -1022,9 +1022,26 @@
   .lr-footer__bottom { padding-inline: 1.5rem; }
 }
 
+@media (max-width: 720px) {
+  .lr-trust-rail { overflow-x: hidden; }
+  .lr-trust-rail__track {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .lr-trust-rail__item {
+    min-width: 0;
+    padding: 0.65rem 0.35rem;
+    border-bottom: 1px solid rgba(84, 229, 248, 0.12);
+    font-size: clamp(0.49rem, 2.3vw, 0.58rem);
+    letter-spacing: 0.07em;
+    white-space: nowrap;
+  }
+  .lr-trust-rail__item svg { flex: 0 0 auto; }
+  .lr-trust-rail__item:nth-last-child(-n + 2) { border-bottom: 0; }
+}
+
 @media (max-width: 600px) {
-  .lr-trust-rail__track { justify-content: flex-start; }
-  .lr-trust-rail__item { min-width: auto; padding-inline: 1rem; font-size: 0.57rem; }
   .lr-hero { padding-top: 2.5rem; }
   .lr-eyebrow { margin-bottom: 1.4rem; }
   .lr-hero h1 { font-size: clamp(3.25rem, 16vw, 4.4rem); }
