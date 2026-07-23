@@ -367,10 +367,97 @@
 }
 
 .arena-game-page[data-t2-effects="on"] .arena-chess-square > img {
+  position: relative;
+  z-index: 2;
   translate: 0 -3px;
   filter:
     drop-shadow(0 3px 0 rgba(0,0,0,0.5))
     drop-shadow(0 8px 5px rgba(0,0,0,0.42));
+}
+
+.arena-game-page[data-t2-effects="on"] .arena-chess-square[data-piece^="black-"] > img:not(.absolute) {
+  filter:
+    drop-shadow(0 0 1px rgba(255,246,214,0.96))
+    drop-shadow(0 0 2px rgba(246,200,95,0.56))
+    drop-shadow(0 4px 1px rgba(0,0,0,0.82))
+    drop-shadow(0 9px 6px rgba(0,0,0,0.56)) !important;
+}
+
+.arena-game-page[data-t2-effects="on"] .arena-chess-square[data-piece^="white-"] > img:not(.absolute) {
+  filter:
+    drop-shadow(1px 0 0 rgba(8,12,17,0.82))
+    drop-shadow(-1px 0 0 rgba(8,12,17,0.82))
+    drop-shadow(0 1px 0 rgba(8,12,17,0.82))
+    drop-shadow(0 -1px 0 rgba(8,12,17,0.82))
+    drop-shadow(0 4px 1px rgba(0,0,0,0.68))
+    drop-shadow(0 9px 6px rgba(0,0,0,0.5)) !important;
+}
+
+.arena-game-page[data-t2-effects="on"] .arena-chess-square[data-last-from="true"]:not([data-selected="true"]):not([data-check="true"]),
+.arena-game-page[data-t2-effects="on"] .arena-chess-square[data-last-to="true"]:not([data-selected="true"]):not([data-check="true"]) {
+  z-index: 11;
+  transform: translateZ(16px);
+  border-width: 2px;
+}
+
+.arena-game-page[data-t2-effects="on"] .arena-chess-square[data-last-from="true"][data-last-owner="player"]:not([data-selected="true"]):not([data-check="true"]) {
+  border-color: #e9d5ff !important;
+  background: linear-gradient(145deg, rgba(168,85,247,0.94), rgba(76,29,149,0.96)) !important;
+  box-shadow:
+    inset 0 0 0 3px rgba(216,180,254,0.82),
+    inset 0 0 20px rgba(76,29,149,0.72),
+    0 5px 0 #3b146f,
+    0 11px 17px rgba(0,0,0,0.5),
+    0 0 25px rgba(168,85,247,0.74) !important;
+}
+
+.arena-game-page[data-t2-effects="on"] .arena-chess-square[data-last-to="true"][data-last-owner="player"]:not([data-selected="true"]):not([data-check="true"]) {
+  border-color: #bfdbfe !important;
+  background: linear-gradient(145deg, rgba(59,130,246,0.96), rgba(29,78,216,0.98)) !important;
+  box-shadow:
+    inset 0 0 0 3px rgba(147,197,253,0.86),
+    inset 0 0 20px rgba(29,78,216,0.72),
+    0 5px 0 #153c9e,
+    0 11px 17px rgba(0,0,0,0.5),
+    0 0 27px rgba(59,130,246,0.8) !important;
+}
+
+.arena-game-page[data-t2-effects="on"] .arena-chess-square[data-last-from="true"][data-last-owner="opponent"]:not([data-selected="true"]):not([data-check="true"]) {
+  border-color: #fef08a !important;
+  background: linear-gradient(145deg, rgba(234,179,8,0.97), rgba(133,77,14,0.98)) !important;
+  box-shadow:
+    inset 0 0 0 3px rgba(254,240,138,0.86),
+    inset 0 0 20px rgba(133,77,14,0.74),
+    0 5px 0 #713f12,
+    0 11px 17px rgba(0,0,0,0.5),
+    0 0 27px rgba(234,179,8,0.78) !important;
+}
+
+.arena-game-page[data-t2-effects="on"] .arena-chess-square[data-last-to="true"][data-last-owner="opponent"]:not([data-selected="true"]):not([data-check="true"]) {
+  border-color: #fecaca !important;
+  background: linear-gradient(145deg, rgba(239,68,68,0.97), rgba(153,27,27,0.98)) !important;
+  box-shadow:
+    inset 0 0 0 3px rgba(254,202,202,0.86),
+    inset 0 0 20px rgba(127,29,29,0.76),
+    0 5px 0 #7f1d1d,
+    0 11px 17px rgba(0,0,0,0.5),
+    0 0 27px rgba(239,68,68,0.82) !important;
+}
+
+.arena-game-page[data-t2-effects="on"] .arena-chess-square[data-last-to="true"][data-last-owner="player"][data-piece^="black-"] > img:not(.absolute) {
+  filter:
+    drop-shadow(0 0 1px rgba(255,246,214,0.96))
+    drop-shadow(0 0 2px rgba(246,200,95,0.56))
+    drop-shadow(0 0 7px rgba(147,197,253,0.94))
+    drop-shadow(0 9px 6px rgba(0,0,0,0.56)) !important;
+}
+
+.arena-game-page[data-t2-effects="on"] .arena-chess-square[data-last-to="true"][data-last-owner="opponent"][data-piece^="black-"] > img:not(.absolute) {
+  filter:
+    drop-shadow(0 0 1px rgba(255,246,214,0.96))
+    drop-shadow(0 0 2px rgba(246,200,95,0.56))
+    drop-shadow(0 0 7px rgba(254,202,202,0.94))
+    drop-shadow(0 9px 6px rgba(0,0,0,0.56)) !important;
 }
 
 .arena-game-page[data-t2-effects="on"] .arena-chess-square[data-selected="true"],

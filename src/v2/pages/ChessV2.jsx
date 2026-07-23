@@ -550,6 +550,7 @@ export const ChessBoard = ({ board, packedBoard, packedState, onMove, currentTur
           data-check={isKingInCheck ? 'true' : undefined}
           data-last-from={isLastMoveFrom ? 'true' : undefined}
           data-last-to={isLastMoveTo ? 'true' : undefined}
+          data-last-owner={isLastMoveFrom || isLastMoveTo ? (isMyMove ? 'player' : 'opponent') : undefined}
           data-ghost={isGhostFrom || isGhostTo ? 'true' : undefined}
           onClick={arenaStyle ? undefined : () => handleSquareClick(displayIdx)}
           className={`relative flex items-center justify-center cursor-pointer transition-all duration-200 ${arenaStyle ? 'arena-chess-square' : ''} ${isLight ? 'bg-stone-300' : 'bg-stone-700'}${isSelected ? ' ring-2 ring-emerald-400 ring-inset bg-emerald-500/50' : ''}${isKingInCheck ? ' bg-red-500/50 ring-2 ring-red-400 ring-inset' : ''}${isLegalTarget && !isCaptureTarget ? ' bg-cyan-400/10' : ''} ${getLastMoveFromClass()} ${getLastMoveToClass()}${ghostFromClass}${ghostToClass}${isMyTurn && isMyPiece(piece) && !isSelected ? ' hover:bg-emerald-500/30' : ''}${isMyTurn && isLegalTarget ? ' hover:bg-cyan-400/20' : ''}`}
