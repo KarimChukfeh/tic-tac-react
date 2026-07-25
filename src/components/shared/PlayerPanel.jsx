@@ -6,6 +6,7 @@
  */
 
 import { shortenAddress } from '../../utils/formatters';
+import { getChessKingIconSvg } from '../../utils/chessPieceAssets';
 
 const COLOR_CONFIGS = {
   blue: {
@@ -97,7 +98,7 @@ const PlayerPanel = ({
 
   // Check if icon is a chess piece and convert to SVG
   const isChessPiece = icon === '♚' || icon === '♔';
-  const chessIconSvg = isChessPiece ? (icon === '♚' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg') : null;
+  const chessIconSvg = isChessPiece ? getChessKingIconSvg(icon) : null;
 
   if (variant === 'mobile-compact') {
     // Mobile-compact variant for ultra-compact mobile layouts (~60px height)

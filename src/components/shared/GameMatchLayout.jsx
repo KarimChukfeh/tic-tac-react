@@ -22,6 +22,7 @@ import { createPortal } from 'react-dom';
 import { isDraw } from '../../utils/completionReasons';
 import MatchHeader from './MatchHeader';
 import PlayerPanel from './PlayerPanel';
+import { getChessKingIconSvg } from '../../utils/chessPieceAssets';
 import TurnIndicator from './TurnIndicator';
 import TurnTimer from './TurnTimer';
 import MatchComplete from './MatchComplete';
@@ -70,7 +71,7 @@ const renderPlayerSymbol = ({ icon, label, imageClassName, symbolClassName }) =>
   if (isChessIcon(icon)) {
     return (
       <img
-        src={icon === '♚' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
+        src={getChessKingIconSvg(icon)}
         alt={label}
         className={imageClassName}
         draggable="false"
@@ -927,7 +928,7 @@ const GameMatchLayout = ({
           <div className="flex items-center gap-2">
             {(icon === '♚' || icon === '♔') ? (
               <img
-                src={icon === '♚' ? '/chess-pieces/king-w.svg' : '/chess-pieces/king-b.svg'}
+                src={getChessKingIconSvg(icon)}
                 alt={label}
                 className="w-10 h-10"
                 draggable="false"
@@ -1252,7 +1253,10 @@ const GameMatchLayout = ({
   };
 
   return (
-    <div className="mb-16">
+    <div
+      className="mb-16"
+      data-mobile-header-fixed={isMobileHeaderFixed ? 'true' : undefined}
+    >
       {/* Header */}
       <MatchHeader
         gameType={gameType}

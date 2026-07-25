@@ -43,6 +43,7 @@ import TraditionalTournamentBracket from '../../components/shared/TraditionalTou
 import UserManualAnchorIcon from '../../components/shared/UserManualAnchorIcon';
 import V2GameLobbyIntro from '../../components/shared/V2GameLobbyIntro';
 import ArenaGameHero from '../components/ArenaGameHero';
+import ArenaEffectsSwitch from '../components/ArenaEffectsSwitch';
 import V2ContractsTable from '../../components/shared/V2ContractsTable';
 import PlayerProfileModal from '../../components/shared/PlayerProfileModal';
 import WalletBrowserPrompt from '../../components/WalletBrowserPrompt';
@@ -507,6 +508,8 @@ export const ConnectFourBoard = ({
   ghostMove,
   winningCellsOverride,
   arenaStyle = false,
+  effectsEnabled = true,
+  onToggleEffects,
 }) => {
   const [hoveredColumn, setHoveredColumn] = useState(-1);
   const [boardSize, setBoardSize] = useState(null);
@@ -552,6 +555,15 @@ export const ConnectFourBoard = ({
 
   return (
     <div ref={containerRef} className={`relative flex flex-col items-center ${arenaStyle ? 'arena-connect-board' : ''}`}>
+      {arenaStyle ? (
+        <div className="arena-match-effects-control" style={{ width: boardSize || '100%' }}>
+          <ArenaEffectsSwitch
+            enabled={effectsEnabled}
+            onToggle={onToggleEffects}
+            context="match"
+          />
+        </div>
+      ) : null}
       {arenaStyle ? (
         <>
           <div className="arena-board-halo" aria-hidden="true" />
@@ -632,10 +644,12 @@ export const ConnectFourBoard = ({
                   >
                     {cell !== 0 ? (
                       <div
-                        className={`rounded-full transition-all ${arenaStyle ? 'arena-connect-board__disc' : ''} ${isWinning ? 'scale-110 animate-pulse' : ''} ${isLastMove && !isWinning ? 'animate-pulse' : ''}`}
+                        className={`rounded-full transition-all ${arenaStyle ? 'arena-connect-board__disc' : ''} ${isWinning ? `scale-110 ${effectsEnabled && isLastMove ? '' : 'animate-pulse'}` : ''} ${isLastMove && !isWinning && !effectsEnabled ? 'animate-pulse' : ''}${effectsEnabled && isLastMove ? ' arena-connect-board__disc--drop' : ''}`}
                         style={{
                           width: cellSize - 8,
                           height: cellSize - 8,
+                          '--arena-connect-drop-y': `-${Math.round((rowIdx + 1) * (cellSize + 4) + 24)}px`,
+                          '--arena-connect-drop-duration': `${420 + rowIdx * 48}ms`,
                           background: cell === firstPlayerCellValue
                             ? 'radial-gradient(circle at 30% 30%, #ef4444, #b91c1c)'
                             : 'radial-gradient(circle at 30% 30%, #3b82f6, #1d4ed8)',
@@ -2114,6 +2128,7 @@ export default function ConnectFourV2({ experience = 'classic', routeBase = '/co
       winner: winnerAddress,
       loser: loserAddress,
       movesString: history.map(move => move.column - 1).join(','),
+      lastColumn: history.length > 0 ? history[history.length - 1].column - 1 : null,
     }) : prev);
 
     previousBoardRef.current = [...board];
@@ -2169,6 +2184,7 @@ export default function ConnectFourV2({ experience = 'classic', routeBase = '/co
       currentTurn: DEMO_HUMAN_ADDRESS,
       isYourTurn: true,
       movesString: nextHistory.map(move => move.column - 1).join(','),
+      lastColumn: computerColumn,
     }) : prev);
     previousBoardRef.current = [...nextBoard];
     setMoveHistory(nextHistory);
@@ -2213,6 +2229,7 @@ export default function ConnectFourV2({ experience = 'classic', routeBase = '/co
       player2TimeRemaining: DEMO_MATCH_TIME_SECONDS,
       board: Array(42).fill(0),
       movesString: '',
+      lastColumn: null,
     };
 
     setDemoSymbol(humanSymbol);
@@ -2287,6 +2304,7 @@ export default function ConnectFourV2({ experience = 'classic', routeBase = '/co
         currentTurn: DEMO_COMPUTER_ADDRESS,
         isYourTurn: false,
         movesString: nextHistory.map(move => move.column - 1).join(','),
+        lastColumn: columnIndex,
       };
 
       setCurrentMatch(pendingComputerMatch);
@@ -3355,6 +3373,8 @@ export default function ConnectFourV2({ experience = 'classic', routeBase = '/co
                 ghostMove={currentMatch.matchStatus === 2 ? null : ghostMove}
                 winningCellsOverride={displayedWinningCells}
                 arenaStyle={isArenaExperience}
+                effectsEnabled={arenaEffectsEnabled}
+                onToggleEffects={toggleArenaEffects}
               />
             </GameMatchLayout>
 

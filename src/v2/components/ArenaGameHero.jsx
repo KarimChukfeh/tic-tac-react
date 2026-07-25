@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import ArenaEffectsSwitch from './ArenaEffectsSwitch';
 
 const HELP_LINKS = [
   { label: "What's This?", key: 'what' },
@@ -47,18 +48,7 @@ export default function ArenaGameHero({
       <div className="t2-hero__copy">
         <div className="t2-hero__eyebrow">
           <Link to="/">ETour games</Link>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={effectsEnabled}
-            aria-label={`3D Effects ${effectsEnabled ? 'on' : 'off'}`}
-            className="t2-effects-switch"
-            onClick={onToggleEffects}
-          >
-            <span className="t2-effects-switch__label">3D Effects</span>
-            <span className="t2-effects-switch__track" aria-hidden="true"><i /></span>
-            <strong>{effectsEnabled ? 'ON' : 'OFF'}</strong>
-          </button>
+          <ArenaEffectsSwitch enabled={effectsEnabled} onToggle={onToggleEffects} />
         </div>
 
         <h1>{content.title}</h1>

@@ -41,6 +41,7 @@ import UserManualV2 from '../components/UserManualV2';
 import QuickGuideModal from '../components/QuickGuideModal';
 import WhatIsThisModal from '../components/WhatIsThisModal';
 import CenteredErrorFlash from '../components/CenteredErrorFlash';
+import ArenaEffectsSwitch from '../components/ArenaEffectsSwitch';
 import MatchEndModal from '../../components/shared/MatchEndModal';
 import ActiveMatchAlertModal from '../../components/shared/ActiveMatchAlertModal';
 import GameMatchLayout from '../../components/shared/GameMatchLayout';
@@ -413,18 +414,7 @@ function ArenaTicTacToeHero({
       <div className="t2-hero__copy">
         <div className="t2-hero__eyebrow">
           <Link to="/">ETour games</Link>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={effectsEnabled}
-            aria-label={`3D Effects ${effectsEnabled ? 'on' : 'off'}`}
-            className="t2-effects-switch"
-            onClick={onToggleEffects}
-          >
-            <span className="t2-effects-switch__label">3D Effects</span>
-            <span className="t2-effects-switch__track" aria-hidden="true"><i /></span>
-            <strong>{effectsEnabled ? 'ON' : 'OFF'}</strong>
-          </button>
+          <ArenaEffectsSwitch enabled={effectsEnabled} onToggle={onToggleEffects} />
         </div>
         <h1>Tic Tac Toe</h1>
         <p className="t2-hero__kicker">Small board. <strong>Big gains.</strong></p>
@@ -3133,6 +3123,15 @@ export default function TicTacToeV2({ experience = 'classic', routeBase = '/tict
               <div
                 className={`w-full max-w-[min(19rem,calc(100vw-1.5rem))] sm:max-w-md mx-auto ${isArenaExperience ? 't2-match-board' : ''}`}
               >
+                {isArenaExperience ? (
+                  <div className="arena-match-effects-control">
+                    <ArenaEffectsSwitch
+                      enabled={arenaEffectsEnabled}
+                      onToggle={toggleArenaEffects}
+                      context="match"
+                    />
+                  </div>
+                ) : null}
                 {(() => {
                   const isPlayer1First = currentMatch.firstPlayer?.toLowerCase() === currentMatch.player1?.toLowerCase();
                   const firstPlayerCellValue = isPlayer1First ? 1 : 2;

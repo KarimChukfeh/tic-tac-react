@@ -375,6 +375,11 @@
     drop-shadow(0 8px 5px rgba(0,0,0,0.42));
 }
 
+.arena-chess-piece-move-in {
+  animation: arena-chess-piece-move 520ms cubic-bezier(0.2, 0.85, 0.25, 1) both;
+  will-change: transform, opacity;
+}
+
 .arena-game-page[data-t2-effects="on"] .arena-chess-square[data-piece^="black-"] > img:not(.absolute) {
   filter:
     drop-shadow(0 0 1px rgba(255,246,214,0.96))
@@ -567,6 +572,11 @@
     drop-shadow(0 10px 8px rgba(0,0,0,0.4));
 }
 
+.arena-game-page[data-t2-effects="on"] .arena-connect-board__disc--drop {
+  animation: arena-connect-disc-drop var(--arena-connect-drop-duration, 620ms) cubic-bezier(0.2, 0.72, 0.24, 1) both;
+  will-change: transform, opacity;
+}
+
 .arena-game-page[data-t2-effects="on"] .arena-connect-board__disc::after {
   content: '';
   position: absolute;
@@ -672,6 +682,52 @@
   82%, 100% { top: 96%; opacity: 0; }
 }
 
+@keyframes arena-chess-piece-move {
+  0% {
+    opacity: 0.45;
+    transform: translate(var(--arena-move-x), var(--arena-move-y)) scale(0.94);
+  }
+  68% {
+    opacity: 1;
+    transform: translate(0, -8%) scale(1.06);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+@keyframes arena-connect-disc-drop {
+  0% {
+    opacity: 0.3;
+    transform: translateY(var(--arena-connect-drop-y)) translateZ(17px) scale(0.92);
+  }
+  68% {
+    opacity: 1;
+    transform: translateY(0) translateZ(17px) scale(1);
+  }
+  80% {
+    transform: translateY(-10px) translateZ(17px) scale(1.025);
+  }
+  90% {
+    transform: translateY(0) translateZ(17px) scale(1);
+  }
+  96% {
+    transform: translateY(-3px) translateZ(17px) scale(1.01);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) translateZ(17px) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arena-chess-piece-move-in,
+  .arena-connect-board__disc--drop {
+    animation: none;
+  }
+}
+
 @media (max-width: 640px) {
   .arena-game-page .arena-hero h1 {
     font-size: clamp(3.35rem, 16.5vw, 4.8rem);
@@ -692,5 +748,11 @@
   .arena-game-page .arena-chess-board,
   .arena-game-page .arena-connect-board {
     padding-inline: 0;
+  }
+}
+
+@media (max-width: 1023px) {
+  .arena-game-page--chess .t2-match-view [data-mobile-header-fixed="true"] .arena-match-effects-control {
+    margin-top: 6.25rem;
   }
 }

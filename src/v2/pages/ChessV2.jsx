@@ -25,6 +25,7 @@ import { CompletionReason, isDraw } from '../../utils/completionReasons';
 import { boardArrayToPackedBoard, getCheckStatusFromPackedBoard, getLegalMovesForSquare, validateMoveWithReason } from '../../utils/chessValidator';
 import { didMatchStateAdvance, waitForTxOrStateSync } from '../../utils/txSync';
 import { multicallContracts } from '../../utils/multicall';
+import { getChessPlayerSideIcons } from '../../utils/chessPieceAssets';
 import ParticleBackground from '../../components/shared/ParticleBackground';
 import MatchCard from '../../components/shared/MatchCard';
 import UserManualV2 from '../components/UserManualV2';
@@ -47,6 +48,7 @@ import CapturedPieces from '../../components/shared/CapturedPieces';
 import UserManualAnchorIcon from '../../components/shared/UserManualAnchorIcon';
 import V2GameLobbyIntro from '../../components/shared/V2GameLobbyIntro';
 import ArenaGameHero from '../components/ArenaGameHero';
+import ArenaEffectsSwitch from '../components/ArenaEffectsSwitch';
 import V2ContractsTable from '../../components/shared/V2ContractsTable';
 import PlayerProfileModal from '../../components/shared/PlayerProfileModal';
 import WalletBrowserPrompt from '../../components/WalletBrowserPrompt';
@@ -391,7 +393,7 @@ function ActionMessage({ type = 'info', message }) {
   );
 }
 
-export const ChessBoard = ({ board, packedBoard, packedState, onMove, currentTurn, account, player1, player2, firstPlayer, matchStatus, loading, whiteInCheck, blackInCheck, lastMoveTime, startTime, lastMove, maxSize = 520, ghostMove, arenaStyle = false }) => {
+export const ChessBoard = ({ board, packedBoard, packedState, onMove, currentTurn, account, player1, player2, firstPlayer, matchStatus, loading, whiteInCheck, blackInCheck, lastMoveTime, startTime, lastMove, maxSize = 520, ghostMove, arenaStyle = false, effectsEnabled = false, onToggleEffects }) => {
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [promotionSquare, setPromotionSquare] = useState(null);
   const [pendingMove, setPendingMove] = useState(null);
@@ -494,6 +496,8 @@ export const ChessBoard = ({ board, packedBoard, packedState, onMove, currentTur
     }
   };
 
+  const interactionDisabled = matchStatus !== 1 || !isMyTurn || loading || !onMove;
+
   const renderBoard = () => {
     const squares = [];
     for (let displayIdx = 0; displayIdx < 64; displayIdx++) {
@@ -533,6 +537,18 @@ export const ChessBoard = ({ board, packedBoard, packedState, onMove, currentTur
         return 'none';
       };
       const getPieceGlow = () => !isLastMoveTo || pieceType === 0 ? undefined : (isMyMove ? 'drop-shadow(0 0 10px rgba(59, 130, 246, 0.8))' : 'drop-shadow(0 0 10px rgba(239, 68, 68, 0.8))');
+      const getPieceStyle = () => {
+        const style = { filter: getPieceGlow() };
+        if (!effectsEnabled || !isLastMoveTo || !lastMove) return style;
+        const fromDisplayIdx = getActualIndex(lastMove.from);
+        const fromDisplayRow = Math.floor(fromDisplayIdx / 8);
+        const fromDisplayCol = fromDisplayIdx % 8;
+        return {
+          ...style,
+          '--arena-move-x': `${(fromDisplayCol - displayCol) * 133.333}%`,
+          '--arena-move-y': `${(fromDisplayRow - displayRow) * 133.333}%`,
+        };
+      };
       const squareBg = isSelected
         ? undefined
         : (isKingInCheck ? undefined : (isCaptureTarget ? 'rgba(34, 211, 238, 0.15)' : (getLastMoveFromBg() || getLastMoveToBg())));
@@ -556,7 +572,7 @@ export const ChessBoard = ({ board, packedBoard, packedState, onMove, currentTur
           className={`relative flex items-center justify-center cursor-pointer transition-all duration-200 ${arenaStyle ? 'arena-chess-square' : ''} ${isLight ? 'bg-stone-300' : 'bg-stone-700'}${isSelected ? ' ring-2 ring-emerald-400 ring-inset bg-emerald-500/50' : ''}${isKingInCheck ? ' bg-red-500/50 ring-2 ring-red-400 ring-inset' : ''}${isLegalTarget && !isCaptureTarget ? ' bg-cyan-400/10' : ''} ${getLastMoveFromClass()} ${getLastMoveToClass()}${ghostFromClass}${ghostToClass}${isMyTurn && isMyPiece(piece) && !isSelected ? ' hover:bg-emerald-500/30' : ''}${isMyTurn && isLegalTarget ? ' hover:bg-cyan-400/20' : ''}`}
           style={{ boxShadow: isSelected ? 'inset 0 0 20px rgba(16, 185, 129, 0.5)' : getLastMoveShadow(), background: isGhostTo ? 'rgba(251, 146, 60, 0.25)' : squareBg }}
         >
-          {getPieceSvg(piece) && <img src={getPieceSvg(piece)} alt="" className={`w-3/4 h-3/4 select-none transition-all duration-300 ${isSelected ? 'scale-110' : ''}${isGhostFrom ? ' opacity-30' : ''}`} style={{ filter: getPieceGlow() }} draggable="false" />}
+          {getPieceSvg(piece) && <img src={getPieceSvg(piece)} alt="" className={`w-3/4 h-3/4 select-none transition-all duration-300 ${isSelected ? 'scale-110' : ''}${isGhostFrom ? ' opacity-30' : ''}${effectsEnabled && isLastMoveTo ? ' arena-chess-piece-move-in' : ''}`} style={getPieceStyle()} draggable="false" />}
           {isGhostTo && ghostPiece && getPieceSvg(ghostPiece) && <img src={getPieceSvg(ghostPiece)} alt="" className="w-3/4 h-3/4 select-none absolute animate-pulse" style={{ opacity: 0.4 }} draggable="false" />}
           {isLegalTarget && !isCaptureTarget && <div className="absolute w-3.5 h-3.5 rounded-full bg-cyan-300/80 shadow-[0_0_12px_rgba(103,232,249,0.65)] pointer-events-none" />}
           {showRankLabel && <span className={`absolute left-1 top-0.5 text-[10px] font-medium ${isLight ? 'text-slate-500' : 'text-slate-600'}`}>{rankLabel}</span>}
@@ -569,6 +585,15 @@ export const ChessBoard = ({ board, packedBoard, packedState, onMove, currentTur
 
   return (
     <div className={`relative flex flex-col items-center ${arenaStyle ? 'arena-chess-board' : ''}`}>
+      {arenaStyle ? (
+        <div className="arena-match-effects-control" style={{ width: boardSize || 400 }}>
+          <ArenaEffectsSwitch
+            enabled={effectsEnabled}
+            onToggle={onToggleEffects}
+            context="match"
+          />
+        </div>
+      ) : null}
       {arenaStyle ? (
         <>
           <div className="arena-board-halo" aria-hidden="true" />
@@ -604,7 +629,7 @@ export const ChessBoard = ({ board, packedBoard, packedState, onMove, currentTur
                     aria-label={`${squareLabel}, ${pieceLabel}`}
                     aria-pressed={selectedSquare === displayIdx}
                     data-display-square={displayIdx}
-                    disabled={matchStatus !== 1 || !isMyTurn || loading || !onMove}
+                    disabled={interactionDisabled}
                     onClick={() => handleSquareClick(displayIdx)}
                     onMouseEnter={(event) => setHoverState(event, true)}
                     onMouseLeave={(event) => setHoverState(event, false)}
@@ -3069,14 +3094,20 @@ export default function ChessV2({ experience = 'classic', routeBase = '/chess' }
               hasNextActiveMatch={currentMatch.isDemo ? false : !!nextActiveMatch}
               playerCount={viewingTournament?.playerCount || null}
               playerConfig={(() => {
+                const { player1IsWhite, player1Icon, player2Icon } = getChessPlayerSideIcons(
+                  currentMatch.firstPlayer,
+                  currentMatch.player1,
+                );
                 if (currentMatch.isDemo) {
-                  const isPlayer1First = currentMatch.firstPlayer?.toLowerCase() === currentMatch.player1?.toLowerCase();
                   return {
-                    player1: { icon: isPlayer1First ? '♔' : '♚', label: currentMatch.player1DisplayLabel || 'You' },
-                    player2: { icon: isPlayer1First ? '♚' : '♔', label: currentMatch.player2DisplayLabel || 'Computer' },
+                    player1: { icon: player1Icon, label: currentMatch.player1DisplayLabel || 'You' },
+                    player2: { icon: player2Icon, label: currentMatch.player2DisplayLabel || 'Computer' },
                   };
                 }
-                return { player1: { icon: '♚', label: 'White' }, player2: { icon: '♔', label: 'Black' } };
+                return {
+                  player1: { icon: player1Icon, label: player1IsWhite ? 'White' : 'Black' },
+                  player2: { icon: player2Icon, label: player1IsWhite ? 'Black' : 'White' },
+                };
               })()}
               layout="players-board-history"
               isSpectator={isSpectator}
@@ -3155,7 +3186,7 @@ export default function ChessV2({ experience = 'classic', routeBase = '/chess' }
                 </>
               ) : undefined}
             >
-              <ChessBoard board={displayedBoard} packedBoard={currentMatch.packedBoard} packedState={currentMatch.packedState} onMove={isSpectator || currentMatch.matchStatus === 2 ? null : handleMakeMove} currentTurn={currentMatch.currentTurn} account={isSpectator ? null : (currentMatch.isDemo ? DEMO_HUMAN_ADDRESS : account)} player1={currentMatch.player1} player2={currentMatch.player2} firstPlayer={currentMatch.firstPlayer} matchStatus={currentMatch.matchStatus} loading={matchLoading} whiteInCheck={currentMatch.matchStatus === 2 ? replayCheckStatus.whiteInCheck : currentMatch.whiteInCheck} blackInCheck={currentMatch.matchStatus === 2 ? replayCheckStatus.blackInCheck : currentMatch.blackInCheck} lastMoveTime={currentMatch.lastMoveTime} startTime={currentMatch.startTime} lastMove={displayedLastMove} maxSize={820} ghostMove={currentMatch.matchStatus === 2 ? null : ghostMove} arenaStyle={isArenaExperience} />
+              <ChessBoard board={displayedBoard} packedBoard={currentMatch.packedBoard} packedState={currentMatch.packedState} onMove={isSpectator || currentMatch.matchStatus === 2 ? null : handleMakeMove} currentTurn={currentMatch.currentTurn} account={isSpectator ? null : (currentMatch.isDemo ? DEMO_HUMAN_ADDRESS : account)} player1={currentMatch.player1} player2={currentMatch.player2} firstPlayer={currentMatch.firstPlayer} matchStatus={currentMatch.matchStatus} loading={matchLoading} whiteInCheck={currentMatch.matchStatus === 2 ? replayCheckStatus.whiteInCheck : currentMatch.whiteInCheck} blackInCheck={currentMatch.matchStatus === 2 ? replayCheckStatus.blackInCheck : currentMatch.blackInCheck} lastMoveTime={currentMatch.lastMoveTime} startTime={currentMatch.startTime} lastMove={displayedLastMove} maxSize={820} ghostMove={currentMatch.matchStatus === 2 ? null : ghostMove} arenaStyle={isArenaExperience} effectsEnabled={isArenaExperience && arenaEffectsEnabled} onToggleEffects={toggleArenaEffects} />
             </GameMatchLayout>
 
             {moveTxTimeout && (
