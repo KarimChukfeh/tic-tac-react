@@ -5,11 +5,74 @@
   --t2-cyan: #54e5f8;
   --t2-violet: #9b7cff;
   --t2-pink: #f472b6;
-  --t2-line: rgba(117, 173, 203, 0.17);
-  --t2-panel: rgba(8, 19, 34, 0.88);
+  --arena-accent: #54e5f8;
+  --arena-secondary: #9b7cff;
+  --arena-corner: 4px;
+  --arena-line: color-mix(in srgb, var(--arena-accent) 22%, rgba(117, 173, 203, 0.12));
+  --arena-line-strong: color-mix(in srgb, var(--arena-accent) 40%, rgba(117, 173, 203, 0.14));
+  --arena-panel: rgba(5, 15, 28, 0.9);
+  --arena-panel-soft: rgba(7, 19, 34, 0.78);
+  --arena-accent-soft: color-mix(in srgb, var(--arena-accent) 8%, transparent);
+  --arena-accent-text: color-mix(in srgb, var(--arena-accent) 66%, white);
+  --t2-line: var(--arena-line);
+  --t2-panel: var(--arena-panel);
   isolation: isolate;
   color: var(--t2-ink);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.t2-page.arena-game-page--tictactoe {
+  --t2-cyan: #5b93ff;
+  --t2-violet: #9b7cff;
+  --arena-accent: #5b93ff;
+  --arena-secondary: #9b7cff;
+  --arena-accent-text: #c7dcff;
+  --arena-secondary-text: #ddd3ff;
+  --arena-secondary-line: color-mix(in srgb, var(--arena-secondary) 34%, rgba(117, 173, 203, 0.12));
+  --arena-secondary-soft: color-mix(in srgb, var(--arena-secondary) 11%, transparent);
+}
+
+.t2-page :where(
+  [class*="rounded-3xl"],
+  [class*="rounded-2xl"],
+  [class*="rounded-xl"],
+  [class*="rounded-lg"],
+  [class*="rounded-md"],
+  [class~="rounded"]
+) {
+  border-radius: var(--arena-corner) !important;
+}
+
+.t2-page :where(button, a, [role="button"])[class*="rounded-full"] {
+  border-radius: var(--arena-corner) !important;
+}
+
+.t2-page [class*="rounded-t-lg"] {
+  border-radius: var(--arena-corner) var(--arena-corner) 0 0 !important;
+}
+
+.t2-page .t2-shell [class*="border-purple"] {
+  border-color: var(--arena-line) !important;
+}
+
+.t2-page .t2-shell [class*="text-purple"] {
+  color: var(--arena-accent-text) !important;
+}
+
+.t2-page .t2-shell [class*="bg-purple"] {
+  background-color: var(--arena-accent-soft) !important;
+}
+
+.t2-page.arena-game-page--tictactoe .t2-shell [class*="border-purple"] {
+  border-color: var(--arena-secondary-line) !important;
+}
+
+.t2-page.arena-game-page--tictactoe .t2-shell [class*="text-purple"] {
+  color: var(--arena-secondary-text) !important;
+}
+
+.t2-page.arena-game-page--tictactoe .t2-shell [class*="bg-purple"] {
+  background-color: var(--arena-secondary-soft) !important;
 }
 
 .t2-page::before {
@@ -370,7 +433,7 @@
   transform: translateZ(24px);
 }
 
-.t2-hero-board .is-x { color: var(--t2-cyan); text-shadow: 0 0 18px rgba(84,229,248,0.7); }
+.t2-hero-board .is-x { color: var(--t2-cyan); text-shadow: 0 0 18px rgba(91,147,255,0.76); }
 .t2-hero-board .is-o { color: var(--t2-violet); text-shadow: 0 0 18px rgba(155,124,255,0.7); }
 
 .t2-hero__orbit {
@@ -441,14 +504,18 @@
 }
 
 .t2-connect-wallet {
+  gap: 0.55rem;
   border: 1px solid rgba(84, 229, 248, 0.65);
-  border-radius: 0;
+  border-radius: var(--arena-corner);
   color: #031018;
   background: linear-gradient(110deg, var(--t2-cyan), #77caff);
   box-shadow: 0 15px 38px rgba(36,201,232,0.2);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
 }
+
+.t2-connect-wallet svg { flex-shrink: 0; }
 
 .t2-connect-wallet:hover { transform: translateY(-2px); box-shadow: 0 18px 42px rgba(36,201,232,0.3); }
 
@@ -489,7 +556,7 @@
 }
 
 .t2-shell > .max-w-2xl button:not(.t2-connect-wallet) {
-  border-radius: 0 !important;
+  border-radius: var(--arena-corner) !important;
 }
 
 .t2-lobby-view { max-width: 1100px; margin-inline: auto; }
@@ -497,11 +564,11 @@
 .t2-create-panel {
   position: relative;
   overflow: hidden;
-  border-color: rgba(84,229,248,0.24) !important;
-  border-radius: 0 !important;
+  border-color: var(--arena-line-strong) !important;
+  border-radius: var(--arena-corner) !important;
   background:
-    linear-gradient(145deg, rgba(84,229,248,0.055), transparent 35%),
-    rgba(6, 17, 31, 0.9) !important;
+    linear-gradient(145deg, var(--arena-accent-soft), transparent 35%),
+    var(--arena-panel) !important;
   box-shadow: 0 32px 80px rgba(0,0,0,0.32);
 }
 
@@ -509,7 +576,7 @@
   content: 'CREATE / TOURNAMENT INSTANCE';
   display: block;
   margin: -0.25rem 0 1.2rem;
-  color: var(--t2-cyan);
+  color: var(--arena-accent);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.58rem;
   letter-spacing: 0.13em;
@@ -522,10 +589,10 @@
 
 .t2-create-panel [class*="rounded-2xl"],
 .t2-create-panel [class*="rounded-xl"] {
-  border-radius: 2px !important;
+  border-radius: var(--arena-corner) !important;
 }
 
-.t2-create-panel [class*="border-purple"] { border-color: rgba(84,229,248,0.18) !important; }
+.t2-create-panel [class*="border-purple"] { border-color: var(--arena-line) !important; }
 .t2-create-panel [class*="bg-slate-9"] { background-color: rgba(5,14,26,0.8) !important; }
 
 /* Dashboard cards */
@@ -536,16 +603,27 @@
 
 .t2-dashboard-dock [class*="rounded-2xl"],
 .t2-dashboard-dock [class*="rounded-xl"] {
-  border-radius: 2px !important;
+  border-radius: var(--arena-corner) !important;
 }
 
 .t2-dashboard-dock [class*="border-purple"],
 .t2-dashboard-dock [class*="border-slate"] {
-  border-color: rgba(84,229,248,0.17) !important;
+  border-color: var(--arena-line) !important;
 }
 
 .t2-dashboard-dock [class*="bg-slate"] {
   background-color: rgba(5,15,27,0.94) !important;
+}
+
+.t2-dashboard-dock [class*="text-purple"] {
+  color: var(--arena-accent-text) !important;
+}
+
+.t2-dashboard-dock [class*="from-purple-600"][class*="to-fuchsia-600"] {
+  border-color: rgba(84,229,248,0.55) !important;
+  color: #031018 !important;
+  background: linear-gradient(110deg, #54e5f8, #77caff) !important;
+  box-shadow: 0 15px 38px rgba(36,201,232,0.2) !important;
 }
 
 .t2-dashboard-dock [class*="left-full"][class*="opacity-0"] {
@@ -557,11 +635,11 @@
 
 .t2-tournament-bracket > div:first-child,
 .t2-tournament-bracket > div:nth-child(2) {
-  border-color: rgba(84,229,248,0.23) !important;
-  border-radius: 2px !important;
+  border-color: var(--arena-line-strong) !important;
+  border-radius: var(--arena-corner) !important;
   background:
-    linear-gradient(145deg, rgba(84,229,248,0.065), transparent 34%),
-    rgba(5,15,28,0.9) !important;
+    linear-gradient(145deg, var(--arena-accent-soft), transparent 34%),
+    var(--arena-panel) !important;
   box-shadow: 0 28px 70px rgba(0,0,0,0.3);
 }
 
@@ -569,7 +647,7 @@
   content: 'TOURNAMENT / CONTROL DECK';
   display: block;
   margin-bottom: 1rem;
-  color: var(--t2-cyan);
+  color: var(--arena-accent);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.58rem;
   letter-spacing: 0.13em;
@@ -584,28 +662,28 @@
 .t2-tournament-bracket [class*="rounded-2xl"],
 .t2-tournament-bracket [class*="rounded-xl"],
 .t2-tournament-bracket [class*="rounded-lg"] {
-  border-radius: 2px !important;
+  border-radius: var(--arena-corner) !important;
 }
 
 .t2-tournament-bracket [class*="border-purple"] {
-  border-color: rgba(84,229,248,0.2) !important;
+  border-color: var(--arena-line) !important;
 }
 
 .t2-tournament-bracket [class*="bg-purple"] {
-  background-color: rgba(37, 64, 89, 0.28) !important;
+  background-color: color-mix(in srgb, var(--arena-accent) 10%, rgba(20, 42, 61, 0.2)) !important;
 }
 
-.t2-tournament-bracket [class*="text-purple"] { color: #9dddeb !important; }
+.t2-tournament-bracket [class*="text-purple"] { color: var(--arena-accent-text) !important; }
 
 /* Match board and all match subviews */
 .t2-match-view { scroll-margin-top: 1rem; }
 
 .t2-match-view > .mb-16 > div:first-child {
-  border-color: rgba(84,229,248,0.25) !important;
-  border-radius: 2px !important;
+  border-color: var(--arena-line-strong) !important;
+  border-radius: var(--arena-corner) !important;
   background:
-    linear-gradient(145deg, rgba(84,229,248,0.07), transparent 42%),
-    rgba(5,15,28,0.92) !important;
+    linear-gradient(145deg, var(--arena-accent-soft), transparent 42%),
+    var(--arena-panel) !important;
   box-shadow: 0 28px 70px rgba(0,0,0,0.28);
 }
 
@@ -613,7 +691,7 @@
   content: 'LIVE / MATCH INSTANCE';
   display: block;
   margin-bottom: 0.9rem;
-  color: var(--t2-cyan);
+  color: var(--arena-accent);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.58rem;
   letter-spacing: 0.13em;
@@ -622,12 +700,12 @@
 .t2-match-view [class*="rounded-2xl"],
 .t2-match-view [class*="rounded-xl"],
 .t2-match-view [class*="rounded-lg"] {
-  border-radius: 2px !important;
+  border-radius: var(--arena-corner) !important;
 }
 
-.t2-match-view [class*="border-purple"] { border-color: rgba(84,229,248,0.2) !important; }
+.t2-match-view [class*="border-purple"] { border-color: var(--arena-line) !important; }
 .t2-match-view [class*="bg-slate-900"] { background-color: rgba(5,15,28,0.88) !important; }
-.t2-match-view [class*="text-purple"] { color: #9dddeb !important; }
+.t2-match-view [class*="text-purple"] { color: var(--arena-accent-text) !important; }
 
 .t2-match-board {
   --t2-board-rx: 38deg;
@@ -793,7 +871,7 @@
   transform: translateZ(16px) !important;
   transform-style: preserve-3d;
   border: 1px solid rgba(84,229,248,0.24) !important;
-  border-radius: 3px !important;
+  border-radius: var(--arena-corner) !important;
   background:
     linear-gradient(145deg, rgba(25,64,82,0.7), rgba(4,14,25,0.92)) !important;
   box-shadow:
@@ -823,9 +901,9 @@
 }
 
 .t2-match-cell[data-symbol="X"] {
-  border-color: rgba(84,229,248,0.46) !important;
-  background: linear-gradient(145deg, rgba(19,76,96,0.76), rgba(3,18,30,0.95)) !important;
-  box-shadow: 0 1px 0 rgba(186,248,255,0.32), 0 8px 0 #082032, 0 15px 28px rgba(0,0,0,0.5), 0 0 24px rgba(84,229,248,0.11), inset 0 0 30px rgba(84,229,248,0.09);
+  border-color: rgba(91,147,255,0.52) !important;
+  background: linear-gradient(145deg, rgba(29,63,118,0.78), rgba(4,14,34,0.96)) !important;
+  box-shadow: 0 1px 0 rgba(199,220,255,0.34), 0 8px 0 #0b1b3d, 0 15px 28px rgba(0,0,0,0.5), 0 0 24px rgba(91,147,255,0.14), inset 0 0 30px rgba(91,147,255,0.1);
 }
 
 .t2-match-cell[data-symbol="O"] {
@@ -845,14 +923,14 @@
 }
 
 .t2-match-cell[data-symbol="X"] .t2-match-symbol {
-  color: #6cecff;
+  color: #74a5ff;
   text-shadow:
     0 1px 0 #2297b0,
     0 3px 0 #176a83,
     0 6px 1px #0b3347,
     0 12px 18px rgba(0,0,0,0.7),
-    0 0 16px rgba(84,229,248,0.95),
-    0 0 36px rgba(84,229,248,0.58);
+    0 0 16px rgba(91,147,255,0.95),
+    0 0 36px rgba(91,147,255,0.58);
 }
 
 .t2-match-cell[data-symbol="O"] .t2-match-symbol {
@@ -906,7 +984,7 @@
   cursor: pointer;
   appearance: none;
   border: 1px solid transparent;
-  border-radius: 4px;
+  border-radius: var(--arena-corner);
   background: transparent;
   box-shadow: none;
   touch-action: manipulation;
@@ -978,7 +1056,7 @@
   display: grid;
   place-items: center;
   border-color: rgba(84,229,248,0.25);
-  border-radius: 3px;
+  border-radius: var(--arena-corner);
   background:
     linear-gradient(145deg, rgba(20,50,67,0.76), rgba(4,14,25,0.94));
   box-shadow:
@@ -995,9 +1073,9 @@
 }
 
 .t2-page[data-t2-effects="off"] .t2-board-hit-cell[data-symbol="X"] {
-  border-color: rgba(84,229,248,0.5);
-  color: #6cecff;
-  text-shadow: 0 0 18px rgba(84,229,248,0.72);
+  border-color: rgba(91,147,255,0.58);
+  color: #74a5ff;
+  text-shadow: 0 0 18px rgba(91,147,255,0.76);
 }
 
 .t2-page[data-t2-effects="off"] .t2-board-hit-cell[data-symbol="O"] {
@@ -1011,6 +1089,14 @@
   color: #ffe477;
   background: linear-gradient(145deg, rgba(91,72,24,0.78), rgba(28,23,8,0.96));
   box-shadow: 0 0 24px rgba(255,213,75,0.22), inset 0 0 28px rgba(255,224,119,0.1);
+}
+
+.t2-page[data-t2-effects="off"] .t2-board-hit-cell[data-winning="true"][data-symbol="X"] {
+  color: #74a5ff;
+}
+
+.t2-page[data-t2-effects="off"] .t2-board-hit-cell[data-winning="true"][data-symbol="O"] {
+  color: #af91ff;
 }
 
 .t2-page[data-t2-effects="off"] .t2-board-hit-cell[data-replay-last="true"] {
@@ -1097,6 +1183,7 @@
   gap: 0.8rem;
   padding: 0.65rem 0.85rem;
   border: 1px solid rgba(84,229,248,0.17);
+  border-radius: var(--arena-corner);
   background: rgba(3,11,20,0.8);
   box-shadow: 0 14px 30px rgba(0,0,0,0.3), inset 0 0 22px rgba(84,229,248,0.025);
   backdrop-filter: blur(9px);
@@ -1114,13 +1201,14 @@
 
 /* Manual and footer */
 .t2-manual > div {
-  border-color: rgba(84,229,248,0.16) !important;
-  border-radius: 2px !important;
+  border-color: var(--arena-line) !important;
+  border-radius: var(--arena-corner) !important;
   background: rgba(5,15,28,0.78) !important;
 }
 
-.t2-manual [class*="rounded-"] { border-radius: 2px !important; }
-.t2-manual [class*="border-purple"] { border-color: rgba(84,229,248,0.18) !important; }
+.t2-manual [class*="rounded-"] { border-radius: var(--arena-corner) !important; }
+.t2-manual [class*="border-purple"] { border-color: var(--arena-line) !important; }
+.t2-manual [class*="text-purple"] { color: var(--arena-accent-text) !important; }
 
 .t2-footer {
   border-color: var(--t2-line) !important;
@@ -1137,9 +1225,94 @@
 }
 
 /* Modals and overlays shown while the arena route is active */
+.t2-experience-active {
+  --arena-accent: #5b93ff;
+  --arena-secondary: #9b7cff;
+  --arena-corner: 4px;
+  --arena-accent-text: #c7dcff;
+  --arena-line: color-mix(in srgb, var(--arena-accent) 22%, rgba(117, 173, 203, 0.12));
+  --arena-line-strong: color-mix(in srgb, var(--arena-accent) 42%, rgba(117, 173, 203, 0.14));
+}
+
+.t2-experience-connect4 {
+  --arena-accent: #ff5d75;
+  --arena-secondary: #5b93ff;
+  --arena-accent-text: #ffd1d8;
+}
+
+.t2-experience-chess {
+  --arena-accent: #f6c85f;
+  --arena-secondary: #5b93ff;
+  --arena-accent-text: #ffe7a8;
+}
+
+.t2-experience-active.t2-experience-tictactoe {
+  --arena-secondary-text: #ddd3ff;
+  --arena-secondary-line: color-mix(in srgb, var(--arena-secondary) 38%, rgba(117, 173, 203, 0.12));
+  --arena-secondary-soft: color-mix(in srgb, var(--arena-secondary) 12%, transparent);
+}
+
+.t2-experience-active.t2-experience-tictactoe [role="dialog"] [class*="border-purple"] {
+  border-color: var(--arena-secondary-line) !important;
+}
+
+.t2-experience-active.t2-experience-tictactoe [role="dialog"] [class*="text-purple"] {
+  color: var(--arena-secondary-text) !important;
+}
+
+.t2-experience-active.t2-experience-tictactoe [role="dialog"] [class*="bg-purple"] {
+  background-color: var(--arena-secondary-soft) !important;
+}
+
+.t2-experience-active [role="dialog"] {
+  border-color: var(--arena-line-strong) !important;
+  background:
+    linear-gradient(155deg, color-mix(in srgb, var(--arena-accent) 11%, #020617) 0%, #071323 54%, color-mix(in srgb, var(--arena-secondary) 9%, #071323) 100%) !important;
+  box-shadow: 0 30px 120px color-mix(in srgb, var(--arena-accent) 22%, transparent) !important;
+}
+
+.t2-experience-active [role="dialog"] [class*="border-cyan"],
+.t2-experience-active [role="dialog"] [class*="border-purple"] {
+  border-color: var(--arena-line-strong) !important;
+}
+
+.t2-experience-active [role="dialog"] [class*="bg-cyan"],
+.t2-experience-active [role="dialog"] [class*="bg-purple"] {
+  background-color: color-mix(in srgb, var(--arena-accent) 11%, transparent) !important;
+}
+
+.t2-experience-active [role="dialog"] [class*="text-cyan"],
+.t2-experience-active [role="dialog"] [class*="text-purple"] {
+  color: var(--arena-accent-text) !important;
+}
+
+.t2-experience-active [role="dialog"] [class*="decoration-cyan"] {
+  text-decoration-color: color-mix(in srgb, var(--arena-accent) 58%, transparent) !important;
+}
+
+.t2-experience-active .arena-mobile-match-header {
+  border-color: var(--arena-line-strong) !important;
+  background: rgba(2, 8, 16, 0.96) !important;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--arena-accent) 20%, transparent),
+    0 12px 32px rgba(0,0,0,0.48),
+    0 0 24px color-mix(in srgb, var(--arena-accent) 14%, transparent) !important;
+}
+
+.t2-experience-active .arena-mobile-match-header :where(
+  [class*="rounded-2xl"],
+  [class*="rounded-xl"],
+  [class*="rounded-lg"],
+  [class*="rounded-md"],
+  [class*="rounded-full"],
+  [class~="rounded"]
+) {
+  border-radius: var(--arena-corner) !important;
+}
+
 .t2-experience-active [role="dialog"] [class*="rounded-"],
 .t2-experience-active .fixed.inset-0 [class*="rounded-"] {
-  border-radius: 2px !important;
+  border-radius: var(--arena-corner) !important;
 }
 
 .t2-experience-active .fixed.inset-0 [class*="bg-slate-8"],

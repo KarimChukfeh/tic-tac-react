@@ -18,7 +18,7 @@ export default function DemoLevelModal({
   const safeLevel = Math.min(maxLevel, Math.max(minLevel, Number(level) || minLevel));
   const progress = ((safeLevel - minLevel) / Math.max(1, maxLevel - minLevel)) * 100;
   const sliderBackground = {
-    background: `linear-gradient(90deg, rgba(34,211,238,0.95) 0%, rgba(168,85,247,0.95) ${progress}%, rgba(51,65,85,0.75) ${progress}%, rgba(51,65,85,0.35) 100%)`,
+    background: `linear-gradient(90deg, var(--arena-accent, rgba(34,211,238,0.95)) 0%, var(--arena-secondary, rgba(168,85,247,0.95)) ${progress}%, rgba(51,65,85,0.75) ${progress}%, rgba(51,65,85,0.35) 100%)`,
   };
 
   useEffect(() => {

@@ -37,7 +37,7 @@ const GAME_THEMES = {
     headerBorder: 'border-purple-400/30',
     textMuted: 'text-purple-300',
     player1Color: 'blue',
-    player2Color: 'pink',
+    player2Color: 'purple',
     moveTimeout: 60, // Legacy: Now uses total match time (300s per player)
     completeText: 'Match Complete!'
   },
@@ -93,7 +93,7 @@ const renderPlayerSymbol = ({ icon, label, imageClassName, symbolClassName }) =>
   if (icon === 'O') {
     return (
       <span className={symbolClassName} aria-hidden="true">
-        <span className="inline-block h-full w-full rounded-full border-[3px] border-red-500" />
+        <span className="inline-block h-full w-full rounded-full border-[3px] border-violet-400" />
       </span>
     );
   }
@@ -179,7 +179,7 @@ const GameMatchLayout = ({
 
   // Swap theme colors if player2 is the firstPlayer
   // Connect Four: firstPlayer gets RED card background, other player gets BLUE
-  // Tic Tac Toe: firstPlayer (X) gets BLUE card background, other player (O) gets PINK
+  // Tic Tac Toe: firstPlayer (X) gets BLUE, other player (O) gets PURPLE
   if (firstPlayer && player1 && player2) {
     const isPlayer1First = firstPlayer.toLowerCase() === player1.toLowerCase();
     if (!isPlayer1First) {
@@ -193,7 +193,7 @@ const GameMatchLayout = ({
       } else if (gameType === 'tictactoe') {
         theme = {
           ...theme,
-          player1Color: 'pink',
+          player1Color: 'purple',
           player2Color: 'blue'
         };
       }
@@ -393,6 +393,7 @@ const GameMatchLayout = ({
       const COLOR_CONFIGS = {
         blue: { border: 'border-blue-400/30', bg: 'bg-gradient-to-br from-blue-600/20 to-cyan-600/20', bgFixed: 'bg-gradient-to-br from-blue-900 to-cyan-900', iconBg: 'bg-blue-500', text: 'text-blue-300' },
         pink: { border: 'border-pink-400/30', bg: 'bg-gradient-to-br from-pink-600/20 to-purple-600/20', bgFixed: 'bg-gradient-to-br from-pink-900 to-purple-900', iconBg: 'bg-pink-500', text: 'text-pink-300' },
+        purple: { border: 'border-violet-400/35', bg: 'bg-gradient-to-br from-violet-600/20 to-purple-600/20', bgFixed: 'bg-gradient-to-br from-violet-950 to-purple-950', iconBg: 'bg-violet-500', text: 'text-violet-300' },
         white: { border: 'border-blue-500/30', bg: 'bg-slate-900/50', bgFixed: 'bg-slate-900', iconBg: 'bg-white text-black', text: 'text-blue-300' },
         black: { border: 'border-pink-500/30', bg: 'bg-slate-900/50', bgFixed: 'bg-slate-900', iconBg: 'bg-gray-900 text-white', text: 'text-pink-300' },
         neonred: { border: 'border-red-400/30', bg: 'bg-gradient-to-br from-red-600/20 to-rose-600/20', bgFixed: 'bg-gradient-to-br from-red-900 to-rose-900', iconBg: 'bg-red-500', text: 'text-red-300' },
@@ -494,7 +495,7 @@ const GameMatchLayout = ({
     const headerContent = (
       <div
         ref={mobileHeaderRef}
-        className={`lg:hidden ${isMobileHeaderFixed ? `fixed left-0 right-0 z-[9999] px-4 bg-black/95 backdrop-blur-sm border border-purple-500 [box-shadow:0_0_8px_rgba(168,85,247,0.7),0_0_20px_rgba(168,85,247,0.4)] [animation:glow-pulse_2s_ease-in-out_infinite] ${isBoardBelow ? 'bottom-20 pt-2 pb-2' : 'top-0 pt-3 pb-3'}` : 'mb-6'}`}
+        className={`arena-mobile-match-header lg:hidden ${isMobileHeaderFixed ? `fixed left-0 right-0 z-[9999] px-4 bg-black/95 backdrop-blur-sm border border-purple-500 [box-shadow:0_0_8px_rgba(168,85,247,0.7),0_0_20px_rgba(168,85,247,0.4)] [animation:glow-pulse_2s_ease-in-out_infinite] ${isBoardBelow ? 'bottom-20 pt-2 pb-2' : 'top-0 pt-3 pb-3'}` : 'mb-6'}`}
       >
         {/* Single row: Combined player cards with timers */}
         <div className="grid grid-cols-2 gap-2.5">
@@ -569,6 +570,7 @@ const GameMatchLayout = ({
       const COLOR_CONFIGS = {
         blue: { border: 'border-blue-400/30', bg: 'bg-gradient-to-br from-blue-600/20 to-cyan-600/20', iconBg: 'bg-blue-500', text: 'text-blue-300' },
         pink: { border: 'border-pink-400/30', bg: 'bg-gradient-to-br from-pink-600/20 to-purple-600/20', iconBg: 'bg-pink-500', text: 'text-pink-300' },
+        purple: { border: 'border-violet-400/35', bg: 'bg-gradient-to-br from-violet-600/20 to-purple-600/20', iconBg: 'bg-violet-500', text: 'text-violet-300' },
         white: { border: 'border-blue-500/30', bg: 'bg-slate-900/50', iconBg: 'bg-white text-black', text: 'text-blue-300' },
         black: { border: 'border-pink-500/30', bg: 'bg-slate-900/50', iconBg: 'bg-gray-900 text-white', text: 'text-pink-300' },
         neonred: { border: 'border-red-400/30', bg: 'bg-gradient-to-br from-red-600/20 to-rose-600/20', iconBg: 'bg-red-500', text: 'text-red-300' },
@@ -752,6 +754,7 @@ const GameMatchLayout = ({
       const COLOR_CONFIGS = {
         blue: { border: 'border-blue-400/30', bg: 'bg-gradient-to-br from-blue-600/20 to-cyan-600/20', iconBg: 'bg-blue-500', text: 'text-blue-300' },
         pink: { border: 'border-pink-400/30', bg: 'bg-gradient-to-br from-pink-600/20 to-purple-600/20', iconBg: 'bg-pink-500', text: 'text-pink-300' },
+        purple: { border: 'border-violet-400/35', bg: 'bg-gradient-to-br from-violet-600/20 to-purple-600/20', iconBg: 'bg-violet-500', text: 'text-violet-300' },
         white: { border: 'border-blue-500/30', bg: 'bg-slate-900/50', iconBg: 'bg-white text-black', text: 'text-blue-300' },
         black: { border: 'border-pink-500/30', bg: 'bg-slate-900/50', iconBg: 'bg-gray-900 text-white', text: 'text-pink-300' },
         neonred: { border: 'border-red-400/30', bg: 'bg-gradient-to-br from-red-600/20 to-rose-600/20', iconBg: 'bg-red-500', text: 'text-red-300' },
@@ -1040,6 +1043,7 @@ const GameMatchLayout = ({
       const COLOR_CONFIGS = {
         blue: { border: 'border-blue-400/30', bg: 'bg-gradient-to-br from-blue-600/20 to-cyan-600/20', iconBg: 'bg-blue-500', text: 'text-blue-300' },
         pink: { border: 'border-pink-400/30', bg: 'bg-gradient-to-br from-pink-600/20 to-purple-600/20', iconBg: 'bg-pink-500', text: 'text-pink-300' },
+        purple: { border: 'border-violet-400/35', bg: 'bg-gradient-to-br from-violet-600/20 to-purple-600/20', iconBg: 'bg-violet-500', text: 'text-violet-300' },
         white: { border: 'border-blue-500/30', bg: 'bg-slate-900/50', iconBg: 'bg-white text-black', text: 'text-blue-300' },
         black: { border: 'border-pink-500/30', bg: 'bg-slate-900/50', iconBg: 'bg-gray-900 text-white', text: 'text-pink-300' },
         neonred: { border: 'border-red-400/30', bg: 'bg-gradient-to-br from-red-600/20 to-rose-600/20', iconBg: 'bg-red-500', text: 'text-red-300' },

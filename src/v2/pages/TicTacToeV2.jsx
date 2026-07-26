@@ -93,6 +93,10 @@ import { formatActionErrorMessage } from '../lib/actionErrors';
 import { V2TournamentResolutionReason } from '../lib/reasonLabels';
 
 const TICTACTOE_SYMBOLS = ['✕', '○'];
+const TICTACTOE_ARENA_SYMBOL_COLORS = {
+  '✕': '#5b93ff',
+  '○': '#9b7cff',
+};
 const TICTACTOE_ARENA_EFFECTS_STORAGE_KEY = 'etour:tictactoe2:3d-effects';
 
 // Virtual tier/instance IDs used when adapting V2 instance contracts to V1 component API
@@ -126,12 +130,12 @@ const currentTheme = {
 
 const arenaTheme = {
   ...currentTheme,
-  border: 'rgba(84, 229, 248, 0.24)',
-  particleColors: ['#54e5f8', '#9b7cff'],
-  gradient: 'radial-gradient(circle at 76% 12%, rgba(84, 229, 248, 0.11), transparent 28rem), radial-gradient(circle at 12% 43%, rgba(155, 124, 255, 0.08), transparent 34rem), #030811',
-  heroGlow: 'from-cyan-300 via-sky-400 to-violet-400',
-  heroTitle: 'from-cyan-300 via-sky-200 to-violet-400',
-  heroSubtext: 'text-cyan-100/70',
+  border: 'rgba(91, 147, 255, 0.26)',
+  particleColors: ['#5b93ff', '#9b7cff'],
+  gradient: 'radial-gradient(circle at 76% 12%, rgba(91, 147, 255, 0.12), transparent 28rem), radial-gradient(circle at 12% 43%, rgba(155, 124, 255, 0.1), transparent 34rem), #030811',
+  heroGlow: 'from-blue-400 via-indigo-400 to-violet-400',
+  heroTitle: 'from-blue-300 via-indigo-300 to-violet-400',
+  heroSubtext: 'text-blue-100/70',
   connectCtaClassName: 't2-connect-wallet',
 };
 
@@ -719,8 +723,8 @@ export default function TicTacToeV2({ experience = 'classic', routeBase = '/tict
 
   useEffect(() => {
     if (!isArenaExperience) return undefined;
-    document.body.classList.add('t2-experience-active');
-    return () => document.body.classList.remove('t2-experience-active');
+    document.body.classList.add('t2-experience-active', 't2-experience-tictactoe');
+    return () => document.body.classList.remove('t2-experience-active', 't2-experience-tictactoe');
   }, [isArenaExperience]);
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -2661,7 +2665,7 @@ export default function TicTacToeV2({ experience = 'classic', routeBase = '/tict
 
   return (
     <div
-      className={isArenaExperience ? 't2-page' : undefined}
+      className={isArenaExperience ? 't2-page arena-game-page arena-game-page--tictactoe' : undefined}
       data-t2-view={currentMatch ? 'match' : viewingTournament ? 'bracket' : 'lobby'}
       data-t2-effects={isArenaExperience ? (arenaEffectsEnabled ? 'on' : 'off') : undefined}
       style={{
@@ -2674,7 +2678,13 @@ export default function TicTacToeV2({ experience = 'classic', routeBase = '/tict
       }}
     >
       {(!isArenaExperience || arenaEffectsEnabled) ? (
-        <ParticleBackground colors={activeTheme.particleColors} symbols={TICTACTOE_SYMBOLS} fontSize="24px" count={38} />
+        <ParticleBackground
+          colors={activeTheme.particleColors}
+          symbols={TICTACTOE_SYMBOLS}
+          symbolColors={isArenaExperience ? TICTACTOE_ARENA_SYMBOL_COLORS : undefined}
+          fontSize="24px"
+          count={38}
+        />
       ) : null}
       <CenteredErrorFlash
         message={actionState.type === 'error' ? actionState.message : ''}

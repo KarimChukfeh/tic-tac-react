@@ -1,16 +1,19 @@
 .arena-game-page {
   --arena-accent: #54e5f8;
   --arena-secondary: #9b7cff;
+  --arena-accent-text: #bff8ff;
 }
 
 .arena-game-page--connect4 {
   --arena-accent: #ff5d75;
   --arena-secondary: #5b93ff;
+  --arena-accent-text: #ffd1d8;
 }
 
 .arena-game-page--chess {
   --arena-accent: #f6c85f;
-  --arena-secondary: #d99b2b;
+  --arena-secondary: #5b93ff;
+  --arena-accent-text: #ffe7a8;
 }
 
 .arena-game-page .arena-hero h1 {
@@ -172,16 +175,16 @@
 
 .arena-game-page .arena-bracket > div:first-child,
 .arena-game-page .arena-match-view > div:first-child {
-  border-radius: 2px !important;
+  border-radius: var(--arena-corner) !important;
 }
 
 .arena-game-page .t2-shell > .space-y-8 > div,
 .arena-game-page .t2-shell > .space-y-10 > div {
-  border-color: rgba(84,229,248,0.18) !important;
+  border-color: var(--arena-line) !important;
 }
 
 .arena-game-page .t2-shell [class*="rounded-2xl"] {
-  border-radius: 2px !important;
+  border-radius: var(--arena-corner) !important;
 }
 
 .arena-game-page .t2-shell [class*="bg-slate-900"] {
@@ -189,11 +192,11 @@
 }
 
 .arena-game-page .t2-shell [class*="border-purple"] {
-  border-color: rgba(84,229,248,0.2) !important;
+  border-color: var(--arena-line) !important;
 }
 
 .arena-game-page .t2-shell [class*="text-purple"] {
-  color: #9dddeb !important;
+  color: var(--arena-accent-text) !important;
 }
 
 .arena-game-page .arena-chess-board,
@@ -286,7 +289,7 @@
   z-index: 3;
   overflow: visible !important;
   transform-style: preserve-3d;
-  border-radius: 3px !important;
+  border-radius: var(--arena-corner) !important;
 }
 
 .arena-game-page .arena-chess-board__frame {
@@ -660,7 +663,7 @@
   touch-action: manipulation;
   appearance: none;
   border: 1px solid transparent;
-  border-radius: 2px;
+  border-radius: var(--arena-corner);
   background: transparent;
   -webkit-tap-highlight-color: rgba(91,147,255,0.16);
 }

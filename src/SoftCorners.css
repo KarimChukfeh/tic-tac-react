@@ -1,0 +1,34 @@
+.ui-soft-corners {
+  --ui-corner: 4px;
+}
+
+.ui-soft-corners :where(
+  [class*="rounded-3xl"],
+  [class*="rounded-2xl"],
+  [class*="rounded-xl"],
+  [class*="rounded-lg"],
+  [class*="rounded-md"],
+  [class*="rounded-["],
+  [class~="rounded"]
+) {
+  border-radius: var(--ui-corner) !important;
+}
+
+.ui-soft-corners :where(button, a, [role="button"])[class*="rounded-full"] {
+  border-radius: var(--ui-corner) !important;
+}
+
+.ui-soft-corners :where(
+  button,
+  [role="button"],
+  [role="dialog"],
+  article,
+  aside,
+  section,
+  pre,
+  input,
+  select,
+  textarea
+) {
+  border-radius: var(--ui-corner);
+}

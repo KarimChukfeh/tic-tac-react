@@ -1156,8 +1156,8 @@ export default function ChessV2({ experience = 'classic', routeBase = '/chess' }
 
   useEffect(() => {
     if (!isArenaExperience) return undefined;
-    document.body.classList.add('t2-experience-active');
-    return () => document.body.classList.remove('t2-experience-active');
+    document.body.classList.add('t2-experience-active', 't2-experience-chess');
+    return () => document.body.classList.remove('t2-experience-active', 't2-experience-chess');
   }, [isArenaExperience]);
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -3000,7 +3000,7 @@ export default function ChessV2({ experience = 'classic', routeBase = '/chess' }
         reasonLabelMode="v2"
       />
 
-      <div className="fixed bottom-0 left-0 right-0 z-50 md:static md:z-auto">
+      <div className={`fixed bottom-0 left-0 right-0 z-50 md:static md:z-auto ${isArenaExperience ? 't2-dashboard-dock' : ''}`}>
         <MobileBottomNavDrawer
           enabled={Boolean(currentMatch)}
           expanded={isMobileBottomNavExpanded}
@@ -3247,11 +3247,11 @@ export default function ChessV2({ experience = 'classic', routeBase = '/chess' }
         {!currentMatch && (
           <>
             {viewingTournament ? (
-              <div ref={tournamentBracketRef}>
+              <div ref={tournamentBracketRef} className={isArenaExperience ? 't2-bracket-view' : undefined}>
                 <TournamentBracket tournamentData={viewingTournament} onBack={handleBackToTournaments} onEnterMatch={handlePlayMatch} onSpectateMatch={handlePlayMatch} onForceEliminate={handleForceEliminateStalledMatch} onClaimReplacement={handleClaimMatchSlotByReplacement} onManualStart={handleManualStart} onClaimAbandonedPool={handleClaimAbandonedPool} onResetEnrollmentWindow={handleResetEnrollmentWindow} onCancelTournament={handleCancelTournament} onEnroll={handleEnroll} onConnectWallet={connectWallet} account={account} loading={tournamentsLoading} connectLoading={isConnecting} syncDots={bracketSyncDots} isEnrolled={viewingTournament?.players?.some(addr => addr.toLowerCase() === account?.toLowerCase())} entryFee={viewingTournament?.entryFeeEth ?? '0'} isFull={viewingTournament?.enrolledCount >= viewingTournament?.playerCount} instanceContract={activeInstanceContract} onPlayerAddressClick={setSelectedProfileAddress} arenaStyle={isArenaExperience} routeBase={routeBase} />
               </div>
             ) : (
-              <div className="space-y-8 md:space-y-10">
+              <div className={`space-y-8 md:space-y-10 ${isArenaExperience ? 't2-lobby-view' : ''}`}>
                 <div id="live-instances">
                   <form onSubmit={createInstance}>
                     <div className={`bg-slate-900/50 border border-purple-400/20 rounded-2xl p-4 md:p-5 ${isArenaExperience ? 't2-create-panel' : ''}`}>
@@ -3358,11 +3358,11 @@ export default function ChessV2({ experience = 'classic', routeBase = '/chess' }
           </>
         )}
       </div>
-      <div id="user-manual" className="max-w-7xl mx-auto px-2 pt-8 pb-12 md:px-6 md:pt-10" style={{ position: 'relative', zIndex: 10 }}>
+      <div id="user-manual" className={`max-w-7xl mx-auto px-2 pt-8 pb-12 md:px-6 md:pt-10 ${isArenaExperience ? 't2-manual' : ''}`} style={{ position: 'relative', zIndex: 10 }}>
         <UserManualV2 />
       </div>
 
-      <footer className="border-t border-slate-800/50 px-6 py-12" style={{ position: 'relative', zIndex: 10 }}>
+      <footer className={`border-t border-slate-800/50 px-6 py-12 ${isArenaExperience ? 't2-footer' : ''}`} style={{ position: 'relative', zIndex: 10 }}>
         <div className="max-w-6xl mx-auto">
           <div className="flex flex-col md:flex-row justify-between items-center gap-8 mb-8">
             <div className="text-center md:text-left">

@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import V2ContractsTable from './components/shared/V2ContractsTable';
 import './LandingReimagined.css';
+import './SoftCorners.css';
 
 const GAMES = [
   {
@@ -272,7 +273,7 @@ export default function LandingReimagined() {
   const scrollTo = (id) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   return (
-    <div className="lr-page">
+    <div className="lr-page ui-soft-corners">
       <TrustRail />
 
       <main>

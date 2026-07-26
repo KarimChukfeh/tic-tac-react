@@ -17,7 +17,7 @@ const HERO_CONTENT = {
   connect4: {
     title: 'Connect Four',
     kicker: <>Line them up. <strong>Cash it out.</strong></>,
-    lede: 'The classic race to four, rebuilt as a fully verifiable tournament. Every drop on-chain. Every outcome settled in ETH.',
+    lede: 'The classic race to four, rebuilt as a fully verifiable tournament. Every move on-chain. Every outcome settled in ETH.',
     marks: Array.from({ length: 42 }, (_, index) => {
       if ([35, 30, 25, 20].includes(index)) return 'red';
       if ([36, 29, 22, 15].includes(index)) return 'blue';

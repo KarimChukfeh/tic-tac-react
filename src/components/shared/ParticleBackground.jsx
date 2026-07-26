@@ -11,9 +11,10 @@ import { useState, useEffect, useMemo } from 'react';
  * @param {Object} props
  * @param {string[]} props.colors - Array of two color strings for particles
  * @param {string[]} props.symbols - Array of symbols to display as particles
+ * @param {Record<string, string>} [props.symbolColors] - Optional fixed color for each symbol
  * @param {string} [props.fontSize] - Optional font size (default: undefined, uses inherited)
  */
-const ParticleBackground = ({ colors, symbols, fontSize }) => {
+const ParticleBackground = ({ colors, symbols, symbolColors, fontSize }) => {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   useEffect(() => {
@@ -43,7 +44,7 @@ const ParticleBackground = ({ colors, symbols, fontSize }) => {
   return (
     <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 1, overflow: 'hidden' }}>
       {particles.map((p) => {
-        const color = colors[p.colorIndex];
+        const color = symbolColors?.[p.symbol] ?? colors[p.colorIndex];
         return (
           <div
             key={p.id}

@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import UserManualV2 from './v2/components/UserManualV2.jsx';
+import './SoftCorners.css';
 
 const Manual = () => {
   const navigate = useNavigate();
@@ -11,7 +12,7 @@ const Manual = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 px-2 py-4 md:p-6">
+    <div className="ui-soft-corners min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 px-2 py-4 md:p-6">
       <div className="mx-auto max-w-7xl">
         <div className="mb-6 flex items-center justify-between gap-4">
           <button

@@ -113,9 +113,12 @@ const MatchHeader = ({
     const tones = {
       cyan: 'border-cyan-300/35 bg-cyan-400/12 text-cyan-100',
       pink: 'border-pink-300/35 bg-pink-400/12 text-pink-100',
+      blue: 'border-blue-300/40 bg-blue-400/12 text-blue-100',
+      purple: 'border-violet-300/40 bg-violet-400/12 text-violet-100',
       emerald: 'border-emerald-300/35 bg-emerald-400/12 text-emerald-100',
       amber: 'border-amber-300/35 bg-amber-400/12 text-amber-100',
     };
+    const semanticTone = symbol === 'X' ? 'blue' : symbol === 'O' ? 'purple' : tone;
     const isConnectedWallet = connectedAccount && address?.toLowerCase?.() === connectedAccount;
     const { symbolPosition = 'after', symbolSize = 'default' } = options;
     const Component = canOpenPlayerProfile(address) ? 'button' : 'span';
@@ -123,11 +126,11 @@ const MatchHeader = ({
       ? {
         type: 'button',
         onClick: () => onPlayerAddressClick(address),
-        className: `${INTERACTIVE_ADDRESS_BUTTON_CLASSNAME} relative inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] shadow-[0_0_16px_rgba(255,255,255,0.06)] md:px-2.5 md:py-1.5 md:text-xs ${tones[tone] || tones.cyan}`,
+        className: `${INTERACTIVE_ADDRESS_BUTTON_CLASSNAME} relative inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] shadow-[0_0_16px_rgba(255,255,255,0.06)] md:px-2.5 md:py-1.5 md:text-xs ${tones[semanticTone] || tones.cyan}`,
         'aria-label': `Open stats for ${label}`,
       }
       : {
-        className: `relative inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] shadow-[0_0_16px_rgba(255,255,255,0.06)] md:px-2.5 md:py-1.5 md:text-xs ${tones[tone] || tones.cyan}`,
+        className: `relative inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] shadow-[0_0_16px_rgba(255,255,255,0.06)] md:px-2.5 md:py-1.5 md:text-xs ${tones[semanticTone] || tones.cyan}`,
       };
 
     return (
@@ -167,7 +170,7 @@ const MatchHeader = ({
     }
 
     if (symbol === 'O') {
-      return <span className={`inline-block ${isSmall ? 'h-4 w-4 border-2' : 'h-6 w-6 border-[3px]'} shrink-0 rounded-full border-red-500`} aria-hidden="true" />;
+      return <span className={`inline-block ${isSmall ? 'h-4 w-4 border-2' : 'h-6 w-6 border-[3px]'} shrink-0 rounded-full border-violet-400`} aria-hidden="true" />;
     }
 
     if (symbol === 'Red' || symbol === 'Blue') {
@@ -378,9 +381,9 @@ const MatchHeader = ({
           {isCollapsible && !isMobileExpanded && (
             <div className="lg:hidden mt-3 space-y-2">
               <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                <span className="font-mono text-cyan-200/90">{player1Label}</span>
+                <span className={`font-mono ${tournamentInfo?.player1Symbol === 'O' ? 'text-violet-200/90' : 'text-blue-200/90'}`}>{player1Label}</span>
                 <span className="text-[10px] font-semibold uppercase tracking-widest text-purple-200/60">vs</span>
-                <span className="font-mono text-pink-200/90">{player2Label}</span>
+                <span className={`font-mono ${tournamentInfo?.player2Symbol === 'O' ? 'text-violet-200/90' : 'text-blue-200/90'}`}>{player2Label}</span>
               </div>
               {collapsedResolutionText && (
                 <span className={`inline-flex items-center rounded-lg px-2.5 py-1 text-[11px] font-semibold ${status.className}`}>

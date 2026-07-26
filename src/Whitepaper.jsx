@@ -8,6 +8,7 @@
 import { useEffect, useState } from 'react';
 import { BookOpen, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import './SoftCorners.css';
 
 const Whitepaper = () => {
   const navigate = useNavigate();
@@ -431,7 +432,7 @@ const Whitepaper = () => {
   }, [isLoading]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 p-4">
+    <div className="ui-soft-corners min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 p-4">
       <div className="max-w-4xl mx-auto">
         {/* Back button */}
         <button
@@ -471,7 +472,7 @@ const Whitepaper = () => {
       </div>
 
       {/* Add CSS for highlight animation */}
-      <style jsx>{`
+      <style>{`
         @keyframes highlightPulse {
           0%, 100% {
             background-color: transparent;

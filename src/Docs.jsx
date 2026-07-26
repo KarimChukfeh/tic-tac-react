@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, BookOpen, ChevronLeft, ChevronRight, ListTree, Menu, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import './SoftCorners.css';
 
 const DOCS_REPO_BLOB_BASE = 'https://github.com/KarimChukfeh/tic-tac-react/blob/main';
 const SOLIDITY_KEYWORDS = new Set([
@@ -1002,7 +1003,7 @@ const Docs = () => {
 
   return (
     <div
-      className="min-h-screen px-3 py-4 sm:p-4"
+      className="ui-soft-corners min-h-screen px-3 py-4 sm:p-4"
       style={{
         background: 'linear-gradient(135deg, #160022 0%, #2a0a46 52%, #18002d 100%)',
       }}
