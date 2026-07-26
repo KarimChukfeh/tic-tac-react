@@ -1,5 +1,7 @@
 ETour is tournament infrastructure on the blockchain. 
 
+Visit [etour.games](https://etour.games) to play.
+
 Developers inherit this infrastructure by implementing a simple game contract.
 
 Players connect their wallets and compete.
