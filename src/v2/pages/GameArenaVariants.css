@@ -449,6 +449,57 @@
     0 0 27px rgba(239,68,68,0.82) !important;
 }
 
+.arena-game-page[data-t2-effects="on"] .arena-chess-square[data-previous-from="true"]:not([data-selected="true"]):not([data-check="true"]),
+.arena-game-page[data-t2-effects="on"] .arena-chess-square[data-previous-to="true"]:not([data-selected="true"]):not([data-check="true"]) {
+  z-index: 10;
+  transform: translateZ(11px);
+  border-width: 1px;
+}
+
+.arena-game-page[data-t2-effects="on"] .arena-chess-square[data-previous-from="true"][data-previous-owner="player"]:not([data-selected="true"]):not([data-check="true"]) {
+  border-color: rgba(216,180,254,0.22) !important;
+  background: linear-gradient(145deg, rgba(168,85,247,0.14), rgba(76,29,149,0.1)) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(216,180,254,0.14),
+    inset 0 0 11px rgba(76,29,149,0.1),
+    0 2px 0 rgba(59,20,111,0.38),
+    0 5px 9px rgba(0,0,0,0.2),
+    0 0 9px rgba(168,85,247,0.08) !important;
+}
+
+.arena-game-page[data-t2-effects="on"] .arena-chess-square[data-previous-to="true"][data-previous-owner="player"]:not([data-selected="true"]):not([data-check="true"]) {
+  border-color: rgba(147,197,253,0.34) !important;
+  background: linear-gradient(145deg, rgba(59,130,246,0.22), rgba(29,78,216,0.16)) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(147,197,253,0.22),
+    inset 0 0 12px rgba(29,78,216,0.17),
+    0 2px 0 rgba(21,60,158,0.46),
+    0 6px 10px rgba(0,0,0,0.22),
+    0 0 10px rgba(59,130,246,0.12) !important;
+}
+
+.arena-game-page[data-t2-effects="on"] .arena-chess-square[data-previous-from="true"][data-previous-owner="opponent"]:not([data-selected="true"]):not([data-check="true"]) {
+  border-color: rgba(254,240,138,0.22) !important;
+  background: linear-gradient(145deg, rgba(234,179,8,0.14), rgba(133,77,14,0.1)) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(254,240,138,0.14),
+    inset 0 0 11px rgba(133,77,14,0.1),
+    0 2px 0 rgba(113,63,18,0.38),
+    0 5px 9px rgba(0,0,0,0.2),
+    0 0 9px rgba(234,179,8,0.08) !important;
+}
+
+.arena-game-page[data-t2-effects="on"] .arena-chess-square[data-previous-to="true"][data-previous-owner="opponent"]:not([data-selected="true"]):not([data-check="true"]) {
+  border-color: rgba(254,202,202,0.34) !important;
+  background: linear-gradient(145deg, rgba(239,68,68,0.22), rgba(153,27,27,0.16)) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(254,202,202,0.22),
+    inset 0 0 12px rgba(127,29,29,0.17),
+    0 2px 0 rgba(127,29,29,0.46),
+    0 6px 10px rgba(0,0,0,0.22),
+    0 0 10px rgba(239,68,68,0.12) !important;
+}
+
 .arena-game-page[data-t2-effects="on"] .arena-chess-square[data-last-to="true"][data-last-owner="player"][data-piece^="black-"] > img:not(.absolute) {
   filter:
     drop-shadow(0 0 1px rgba(255,246,214,0.96))

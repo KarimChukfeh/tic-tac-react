@@ -34,11 +34,12 @@ describe('arena board interaction layers', () => {
     expect(square).toHaveAttribute('aria-pressed', 'true');
   });
 
-  it('marks player and opponent move cells for high-contrast styling', () => {
+  it('marks the latest move deeply and the previous move with faded styling', () => {
     const board = Array.from({ length: 64 }, () => ({ pieceType: 0, color: 0 }));
     board[0] = { pieceType: 4, color: 2 };
+    board[1] = { pieceType: 2, color: 1 };
 
-    const { container } = render(
+    const { container, rerender } = render(
       <ChessBoard
         board={board}
         onMove={vi.fn()}
@@ -52,16 +53,51 @@ describe('arena board interaction layers', () => {
         whiteInCheck={false}
         blackInCheck={false}
         lastMove={{ from: 8, to: 0, isMyMove: false }}
+        secondLastMove={{ from: 9, to: 1, isMyMove: true }}
         arenaStyle
+        effectsEnabled
       />,
     );
 
     const fromCell = container.querySelector('[data-last-from="true"]');
     const toCell = container.querySelector('[data-last-to="true"]');
+    const previousFromCell = container.querySelector('[data-previous-from="true"]');
+    const previousToCell = container.querySelector('[data-previous-to="true"]');
 
     expect(fromCell).toHaveAttribute('data-last-owner', 'opponent');
+    expect(fromCell).toHaveAttribute('data-move-depth', 'latest');
     expect(toCell).toHaveAttribute('data-last-owner', 'opponent');
     expect(toCell).toHaveAttribute('data-piece', 'black-rook');
+    expect(toCell.style.background).toContain('0.72');
+    expect(previousFromCell).toHaveAttribute('data-previous-owner', 'player');
+    expect(previousFromCell).toHaveAttribute('data-move-depth', 'previous');
+    expect(previousFromCell.style.background).toContain('0.09');
+    expect(previousToCell).toHaveAttribute('data-previous-owner', 'player');
+    expect(previousToCell).toHaveAttribute('data-piece', 'white-knight');
+    expect(previousToCell.style.background).toContain('0.15');
+
+    rerender(
+      <ChessBoard
+        board={board}
+        onMove={vi.fn()}
+        currentTurn={PLAYER_ONE}
+        account={PLAYER_ONE}
+        player1={PLAYER_ONE}
+        player2={PLAYER_TWO}
+        firstPlayer={PLAYER_ONE}
+        matchStatus={1}
+        loading={false}
+        whiteInCheck={false}
+        blackInCheck={false}
+        lastMove={{ from: 8, to: 0, isMyMove: false }}
+        secondLastMove={{ from: 9, to: 1, isMyMove: true }}
+        arenaStyle
+        effectsEnabled={false}
+      />,
+    );
+
+    expect(container.querySelectorAll('[data-move-depth="latest"]')).toHaveLength(2);
+    expect(container.querySelectorAll('[data-move-depth="previous"]')).toHaveLength(2);
   });
 
   it('animates the moved Chess piece only while effects are enabled', () => {

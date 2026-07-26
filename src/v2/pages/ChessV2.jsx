@@ -393,7 +393,7 @@ function ActionMessage({ type = 'info', message }) {
   );
 }
 
-export const ChessBoard = ({ board, packedBoard, packedState, onMove, currentTurn, account, player1, player2, firstPlayer, matchStatus, loading, whiteInCheck, blackInCheck, lastMoveTime, startTime, lastMove, maxSize = 520, ghostMove, arenaStyle = false, effectsEnabled = false, onToggleEffects }) => {
+export const ChessBoard = ({ board, packedBoard, packedState, onMove, currentTurn, account, player1, player2, firstPlayer, matchStatus, loading, whiteInCheck, blackInCheck, lastMoveTime, startTime, lastMove, secondLastMove, maxSize = 520, ghostMove, arenaStyle = false, effectsEnabled = false, onToggleEffects }) => {
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [promotionSquare, setPromotionSquare] = useState(null);
   const [pendingMove, setPendingMove] = useState(null);
@@ -508,6 +508,9 @@ export const ChessBoard = ({ board, packedBoard, packedState, onMove, currentTur
       const isLastMoveFrom = lastMove && lastMove.from === actualIdx;
       const isLastMoveTo = lastMove && lastMove.to === actualIdx;
       const isMyMove = lastMove?.isMyMove;
+      const isSecondLastMoveFrom = !isLastMoveFrom && !isLastMoveTo && secondLastMove?.from === actualIdx;
+      const isSecondLastMoveTo = !isLastMoveFrom && !isLastMoveTo && secondLastMove?.to === actualIdx;
+      const isSecondLastMyMove = secondLastMove?.isMyMove;
       const pieceType = piece ? Number(piece.pieceType) : 0;
       const pieceColor = piece ? Number(piece.color) : 0;
       const isKingInCheck = pieceType === 6 && ((pieceColor === 1 && whiteInCheck) || (pieceColor === 2 && blackInCheck));
@@ -527,12 +530,18 @@ export const ChessBoard = ({ board, packedBoard, packedState, onMove, currentTur
 
       const getLastMoveFromClass = () => !isLastMoveFrom || isSelected || isKingInCheck ? '' : (isMyMove ? 'ring-2 ring-purple-400 ring-inset' : 'ring-2 ring-yellow-400 ring-inset');
       const getLastMoveToClass = () => !isLastMoveTo || isSelected || isKingInCheck ? '' : (isMyMove ? 'ring-2 ring-blue-400 ring-inset' : 'ring-2 ring-red-400 ring-inset');
-      const getLastMoveFromBg = () => !isLastMoveFrom || isSelected || isKingInCheck ? undefined : (isMyMove ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.5), rgba(147, 51, 234, 0.5))' : 'linear-gradient(135deg, rgba(234, 179, 8, 0.5), rgba(202, 138, 4, 0.5))');
-      const getLastMoveToBg = () => !isLastMoveTo || isSelected || isKingInCheck ? undefined : (isMyMove ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.5), rgba(29, 78, 216, 0.5))' : 'linear-gradient(135deg, rgba(239, 68, 68, 0.5), rgba(220, 38, 38, 0.5))');
+      const getSecondLastMoveFromClass = () => !isSecondLastMoveFrom || isSelected || isKingInCheck ? '' : (isSecondLastMyMove ? 'ring-1 ring-purple-300/20 ring-inset' : 'ring-1 ring-yellow-300/20 ring-inset');
+      const getSecondLastMoveToClass = () => !isSecondLastMoveTo || isSelected || isKingInCheck ? '' : (isSecondLastMyMove ? 'ring-1 ring-blue-300/35 ring-inset' : 'ring-1 ring-red-300/35 ring-inset');
+      const getLastMoveFromBg = () => !isLastMoveFrom || isSelected || isKingInCheck ? undefined : (isMyMove ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.72), rgba(147, 51, 234, 0.72))' : 'linear-gradient(135deg, rgba(234, 179, 8, 0.72), rgba(202, 138, 4, 0.72))');
+      const getLastMoveToBg = () => !isLastMoveTo || isSelected || isKingInCheck ? undefined : (isMyMove ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.72), rgba(29, 78, 216, 0.72))' : 'linear-gradient(135deg, rgba(239, 68, 68, 0.72), rgba(220, 38, 38, 0.72))');
+      const getSecondLastMoveFromBg = () => !isSecondLastMoveFrom || isSelected || isKingInCheck ? undefined : (isSecondLastMyMove ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.09), rgba(147, 51, 234, 0.07))' : 'linear-gradient(135deg, rgba(234, 179, 8, 0.09), rgba(202, 138, 4, 0.07))');
+      const getSecondLastMoveToBg = () => !isSecondLastMoveTo || isSelected || isKingInCheck ? undefined : (isSecondLastMyMove ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(29, 78, 216, 0.12))' : 'linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(220, 38, 38, 0.12))');
       const getLastMoveShadow = () => {
         if (isSelected) return '0 0 20px rgba(6, 182, 212, 0.3)';
         if (isLastMoveTo && !isKingInCheck) return isMyMove ? 'inset 0 0 25px rgba(59, 130, 246, 0.6), 0 0 15px rgba(59, 130, 246, 0.4)' : 'inset 0 0 25px rgba(239, 68, 68, 0.6), 0 0 15px rgba(239, 68, 68, 0.4)';
         if (isLastMoveFrom && !isKingInCheck) return isMyMove ? 'inset 0 0 20px rgba(168, 85, 247, 0.5), 0 0 12px rgba(168, 85, 247, 0.3)' : 'inset 0 0 20px rgba(234, 179, 8, 0.5), 0 0 12px rgba(234, 179, 8, 0.3)';
+        if (isSecondLastMoveTo && !isKingInCheck) return isSecondLastMyMove ? 'inset 0 0 12px rgba(59, 130, 246, 0.13), 0 0 7px rgba(59, 130, 246, 0.07)' : 'inset 0 0 12px rgba(239, 68, 68, 0.13), 0 0 7px rgba(239, 68, 68, 0.07)';
+        if (isSecondLastMoveFrom && !isKingInCheck) return isSecondLastMyMove ? 'inset 0 0 10px rgba(168, 85, 247, 0.07), 0 0 5px rgba(168, 85, 247, 0.04)' : 'inset 0 0 10px rgba(234, 179, 8, 0.07), 0 0 5px rgba(234, 179, 8, 0.04)';
         if (isCaptureTarget) return 'inset 0 0 0 2px rgba(34, 211, 238, 0.9), inset 0 0 20px rgba(34, 211, 238, 0.25)';
         return 'none';
       };
@@ -551,7 +560,7 @@ export const ChessBoard = ({ board, packedBoard, packedState, onMove, currentTur
       };
       const squareBg = isSelected
         ? undefined
-        : (isKingInCheck ? undefined : (isCaptureTarget ? 'rgba(34, 211, 238, 0.15)' : (getLastMoveFromBg() || getLastMoveToBg())));
+        : (isKingInCheck ? undefined : (isCaptureTarget ? 'rgba(34, 211, 238, 0.15)' : (getLastMoveFromBg() || getLastMoveToBg() || getSecondLastMoveFromBg() || getSecondLastMoveToBg())));
       const ghostFromClass = isGhostFrom ? ' ring-2 ring-orange-400/60 ring-inset' : '';
       const ghostToClass = isGhostTo ? ' ring-2 ring-orange-400 ring-inset' : '';
 
@@ -567,9 +576,13 @@ export const ChessBoard = ({ board, packedBoard, packedState, onMove, currentTur
           data-last-from={isLastMoveFrom ? 'true' : undefined}
           data-last-to={isLastMoveTo ? 'true' : undefined}
           data-last-owner={isLastMoveFrom || isLastMoveTo ? (isMyMove ? 'player' : 'opponent') : undefined}
+          data-previous-from={isSecondLastMoveFrom ? 'true' : undefined}
+          data-previous-to={isSecondLastMoveTo ? 'true' : undefined}
+          data-previous-owner={isSecondLastMoveFrom || isSecondLastMoveTo ? (isSecondLastMyMove ? 'player' : 'opponent') : undefined}
+          data-move-depth={isLastMoveFrom || isLastMoveTo ? 'latest' : (isSecondLastMoveFrom || isSecondLastMoveTo ? 'previous' : undefined)}
           data-ghost={isGhostFrom || isGhostTo ? 'true' : undefined}
           onClick={arenaStyle ? undefined : () => handleSquareClick(displayIdx)}
-          className={`relative flex items-center justify-center cursor-pointer transition-all duration-200 ${arenaStyle ? 'arena-chess-square' : ''} ${isLight ? 'bg-stone-300' : 'bg-stone-700'}${isSelected ? ' ring-2 ring-emerald-400 ring-inset bg-emerald-500/50' : ''}${isKingInCheck ? ' bg-red-500/50 ring-2 ring-red-400 ring-inset' : ''}${isLegalTarget && !isCaptureTarget ? ' bg-cyan-400/10' : ''} ${getLastMoveFromClass()} ${getLastMoveToClass()}${ghostFromClass}${ghostToClass}${isMyTurn && isMyPiece(piece) && !isSelected ? ' hover:bg-emerald-500/30' : ''}${isMyTurn && isLegalTarget ? ' hover:bg-cyan-400/20' : ''}`}
+          className={`relative flex items-center justify-center cursor-pointer transition-all duration-200 ${arenaStyle ? 'arena-chess-square' : ''} ${isLight ? 'bg-stone-300' : 'bg-stone-700'}${isSelected ? ' ring-2 ring-emerald-400 ring-inset bg-emerald-500/50' : ''}${isKingInCheck ? ' bg-red-500/50 ring-2 ring-red-400 ring-inset' : ''}${isLegalTarget && !isCaptureTarget ? ' bg-cyan-400/10' : ''} ${getLastMoveFromClass()} ${getLastMoveToClass()} ${getSecondLastMoveFromClass()} ${getSecondLastMoveToClass()}${ghostFromClass}${ghostToClass}${isMyTurn && isMyPiece(piece) && !isSelected ? ' hover:bg-emerald-500/30' : ''}${isMyTurn && isLegalTarget ? ' hover:bg-cyan-400/20' : ''}`}
           style={{ boxShadow: isSelected ? 'inset 0 0 20px rgba(16, 185, 129, 0.5)' : getLastMoveShadow(), background: isGhostTo ? 'rgba(251, 146, 60, 0.25)' : squareBg }}
         >
           {getPieceSvg(piece) && <img src={getPieceSvg(piece)} alt="" className={`w-3/4 h-3/4 select-none transition-all duration-300 ${isSelected ? 'scale-110' : ''}${isGhostFrom ? ' opacity-30' : ''}${effectsEnabled && isLastMoveTo ? ' arena-chess-piece-move-in' : ''}`} style={getPieceStyle()} draggable="false" />}
@@ -2006,15 +2019,40 @@ export default function ChessV2({ experience = 'classic', routeBase = '/chess' }
   const replayCheckStatus = displayedBoard
     ? getCheckStatusFromPackedBoard(boardArrayToPackedBoard(displayedBoard))
     : { whiteInCheck: false, blackInCheck: false };
+  const highlightViewerAddress = currentMatch?.isDemo
+    ? DEMO_HUMAN_ADDRESS
+    : (account || currentMatch?.firstPlayer || '');
+  const getHistoryHighlightMove = (index) => {
+    const move = index >= 0 ? moveHistory[index] : null;
+    if (!move) return null;
+    return {
+      from: move.from,
+      to: move.to,
+      isMyMove: Boolean(
+        highlightViewerAddress &&
+        move.address?.toLowerCase() === highlightViewerAddress.toLowerCase()
+      ),
+    };
+  };
+  const historyLastIndex = moveHistory.length - 1;
+  const historyLatestMove = getHistoryHighlightMove(historyLastIndex);
+  const currentLatestMove = currentMatch?.lastMove ?? null;
+  const currentMoveMatchesHistory = Boolean(
+    currentLatestMove &&
+    historyLatestMove &&
+    currentLatestMove.from === historyLatestMove.from &&
+    currentLatestMove.to === historyLatestMove.to
+  );
   const displayedLastMove = currentMatch?.matchStatus === 2
-    ? (effectiveReplayMoveIndex >= 0 && moveHistory[effectiveReplayMoveIndex]
-      ? {
-          from: moveHistory[effectiveReplayMoveIndex].from,
-          to: moveHistory[effectiveReplayMoveIndex].to,
-          isMyMove: moveHistory[effectiveReplayMoveIndex].address?.toLowerCase() === currentMatch.firstPlayer?.toLowerCase(),
-        }
-      : null)
-    : currentMatch?.lastMove ?? null;
+    ? getHistoryHighlightMove(effectiveReplayMoveIndex)
+    : (currentMoveMatchesHistory ? historyLatestMove : (currentLatestMove || historyLatestMove));
+  const displayedSecondLastMove = currentMatch?.matchStatus === 2
+    ? getHistoryHighlightMove(effectiveReplayMoveIndex - 1)
+    : (
+        currentLatestMove && historyLatestMove && !currentMoveMatchesHistory
+          ? historyLatestMove
+          : getHistoryHighlightMove(historyLastIndex - 1)
+      );
 
   const refreshMatchData = useCallback(async (instanceCont, userAccount, matchInfo) => {
     try {
@@ -3186,7 +3224,7 @@ export default function ChessV2({ experience = 'classic', routeBase = '/chess' }
                 </>
               ) : undefined}
             >
-              <ChessBoard board={displayedBoard} packedBoard={currentMatch.packedBoard} packedState={currentMatch.packedState} onMove={isSpectator || currentMatch.matchStatus === 2 ? null : handleMakeMove} currentTurn={currentMatch.currentTurn} account={isSpectator ? null : (currentMatch.isDemo ? DEMO_HUMAN_ADDRESS : account)} player1={currentMatch.player1} player2={currentMatch.player2} firstPlayer={currentMatch.firstPlayer} matchStatus={currentMatch.matchStatus} loading={matchLoading} whiteInCheck={currentMatch.matchStatus === 2 ? replayCheckStatus.whiteInCheck : currentMatch.whiteInCheck} blackInCheck={currentMatch.matchStatus === 2 ? replayCheckStatus.blackInCheck : currentMatch.blackInCheck} lastMoveTime={currentMatch.lastMoveTime} startTime={currentMatch.startTime} lastMove={displayedLastMove} maxSize={820} ghostMove={currentMatch.matchStatus === 2 ? null : ghostMove} arenaStyle={isArenaExperience} effectsEnabled={isArenaExperience && arenaEffectsEnabled} onToggleEffects={toggleArenaEffects} />
+              <ChessBoard board={displayedBoard} packedBoard={currentMatch.packedBoard} packedState={currentMatch.packedState} onMove={isSpectator || currentMatch.matchStatus === 2 ? null : handleMakeMove} currentTurn={currentMatch.currentTurn} account={isSpectator ? null : (currentMatch.isDemo ? DEMO_HUMAN_ADDRESS : account)} player1={currentMatch.player1} player2={currentMatch.player2} firstPlayer={currentMatch.firstPlayer} matchStatus={currentMatch.matchStatus} loading={matchLoading} whiteInCheck={currentMatch.matchStatus === 2 ? replayCheckStatus.whiteInCheck : currentMatch.whiteInCheck} blackInCheck={currentMatch.matchStatus === 2 ? replayCheckStatus.blackInCheck : currentMatch.blackInCheck} lastMoveTime={currentMatch.lastMoveTime} startTime={currentMatch.startTime} lastMove={displayedLastMove} secondLastMove={displayedSecondLastMove} maxSize={820} ghostMove={currentMatch.matchStatus === 2 ? null : ghostMove} arenaStyle={isArenaExperience} effectsEnabled={isArenaExperience && arenaEffectsEnabled} onToggleEffects={toggleArenaEffects} />
             </GameMatchLayout>
 
             {moveTxTimeout && (
