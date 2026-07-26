@@ -49,7 +49,7 @@ import UserManualAnchorIcon from '../../components/shared/UserManualAnchorIcon';
 import V2GameLobbyIntro from '../../components/shared/V2GameLobbyIntro';
 import ArenaGameHero from '../components/ArenaGameHero';
 import ArenaEffectsSwitch from '../components/ArenaEffectsSwitch';
-import V2ContractsTable from '../../components/shared/V2ContractsTable';
+import EtourFooter from '../../components/shared/EtourFooter';
 import PlayerProfileModal from '../../components/shared/PlayerProfileModal';
 import WalletBrowserPrompt from '../../components/WalletBrowserPrompt';
 import DemoLevelModal from '../components/DemoLevelModal';
@@ -182,12 +182,6 @@ const PIECE_SVGS = {
   black: { pawn: 'pawn-b', knight: 'knight-b', bishop: 'bishop-b', rook: 'rook-b', queen: 'queen-b', king: 'king-b' },
 };
 const PIECE_TYPES = ['', 'pawn', 'knight', 'bishop', 'rook', 'queen', 'king'];
-const HERO_LINKS = [
-  { label: "What's This?", type: 'what-is-this' },
-  { label: 'Quick Guide', type: 'quick-guide' },
-  { label: 'User Manual', type: 'manual' },
-];
-
 function isWalletAvailable() {
   return typeof window !== 'undefined' && typeof window.ethereum !== 'undefined';
 }
@@ -307,59 +301,6 @@ function hydrateBracketMatchData(userAccount, matchInfo, {
     lastMove,
   };
 }
-
-const AnimatedKing = ({ delay = 0, size = 'large' }) => {
-  const [showWhite, setShowWhite] = useState(true);
-  const [started, setStarted] = useState(delay === 0);
-
-  useEffect(() => {
-    if (delay > 0) {
-      const timeout = setTimeout(() => setStarted(true), delay);
-      return () => clearTimeout(timeout);
-    }
-  }, [delay]);
-
-  useEffect(() => {
-    if (!started) return;
-    const interval = setInterval(() => {
-      setShowWhite((prev) => !prev);
-    }, 2000);
-    return () => clearInterval(interval);
-  }, [started]);
-
-  const pieceSize = typeof size === 'number' ? size : size === 'large' ? 128 : 32;
-
-  return (
-    <span
-      className="relative inline-block"
-      style={{ width: pieceSize, height: pieceSize }}
-      aria-hidden="true"
-    >
-      <img
-        src="/chess-pieces/king-w.svg"
-        alt=""
-        className="absolute inset-0 h-full w-full select-none object-contain"
-        style={{
-          opacity: showWhite ? 1 : 0,
-          transition: 'opacity 1s ease-in-out',
-          filter: 'drop-shadow(0 0 18px rgba(255, 255, 255, 0.35))',
-        }}
-        draggable="false"
-      />
-      <img
-        src="/chess-pieces/king-b.svg"
-        alt=""
-        className="absolute inset-0 h-full w-full select-none object-contain"
-        style={{
-          opacity: showWhite ? 0 : 1,
-          transition: 'opacity 1s ease-in-out',
-          filter: 'drop-shadow(0 0 18px rgba(34, 211, 238, 0.3))',
-        }}
-        draggable="false"
-      />
-    </span>
-  );
-};
 
 const getPieceSvg = (piece) => {
   if (!piece) return '';
@@ -1128,11 +1069,10 @@ function indexToChessNotation(index) {
   return `${String.fromCharCode(97 + col)}${row + 1}`;
 }
 
-export default function ChessV2({ experience = 'classic', routeBase = '/chess' }) {
+export default function ChessV2({ routeBase = '/chess' }) {
   useInitialDocumentScrollTop(routeBase);
 
-  const isArenaExperience = experience === 'arena';
-  const activeTheme = isArenaExperience ? arenaTheme : currentTheme;
+  const activeTheme = arenaTheme;
   const [arenaEffectsEnabled, setArenaEffectsEnabled] = useState(() => {
     if (typeof window === 'undefined') return true;
     try {
@@ -1155,10 +1095,9 @@ export default function ChessV2({ experience = 'classic', routeBase = '/chess' }
   }, []);
 
   useEffect(() => {
-    if (!isArenaExperience) return undefined;
     document.body.classList.add('t2-experience-active', 't2-experience-chess');
     return () => document.body.classList.remove('t2-experience-active', 't2-experience-chess');
-  }, [isArenaExperience]);
+  }, []);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
@@ -1178,7 +1117,6 @@ export default function ChessV2({ experience = 'classic', routeBase = '/chess' }
   const [rpcProvider, setRpcProvider] = useState(null);
   const [, setWalletBootDone] = useState(!isWalletAvailable());
   const [isConnecting, setIsConnecting] = useState(false);
-  const [contractsExpanded, setContractsExpanded] = useState(false);
 
   const [dashboardLoading, setDashboardLoading] = useState(true);
   const [dashboardError, setDashboardError] = useState('');
@@ -2923,8 +2861,8 @@ export default function ChessV2({ experience = 'classic', routeBase = '/chess' }
   }, [activeTooltip]);
 
   useEffect(() => {
-    document.title = isArenaExperience ? 'ETour — Chess Arena' : 'Chess';
-  }, [isArenaExperience]);
+    document.title = 'ETour — Chess Arena';
+  }, []);
 
   const isAlertMatchAlreadyOpen = Boolean(
     currentMatch &&
@@ -2974,12 +2912,12 @@ export default function ChessV2({ experience = 'classic', routeBase = '/chess' }
 
   return (
     <div
-      className={isArenaExperience ? 't2-page arena-game-page arena-game-page--chess' : undefined}
+      className="t2-page arena-game-page arena-game-page--chess"
       data-t2-view={currentMatch ? 'match' : viewingTournament ? 'bracket' : 'lobby'}
-      data-t2-effects={isArenaExperience ? (arenaEffectsEnabled ? 'on' : 'off') : undefined}
+      data-t2-effects={arenaEffectsEnabled ? 'on' : 'off'}
       style={{ minHeight: '100vh', background: activeTheme.gradient, color: '#fff', position: 'relative', overflow: 'clip', transition: 'background 0.8s ease-in-out' }}
     >
-      {(!isArenaExperience || arenaEffectsEnabled) ? (
+      {arenaEffectsEnabled ? (
         <ParticleBackground colors={activeTheme.particleColors} symbols={CHESS_PIECES} fontSize="40px" />
       ) : null}
       <CenteredErrorFlash
@@ -3000,7 +2938,7 @@ export default function ChessV2({ experience = 'classic', routeBase = '/chess' }
         reasonLabelMode="v2"
       />
 
-      <div className={`fixed bottom-0 left-0 right-0 z-50 md:static md:z-auto ${isArenaExperience ? 't2-dashboard-dock' : ''}`}>
+      <div className="fixed bottom-0 left-0 right-0 z-50 md:static md:z-auto t2-dashboard-dock">
         <MobileBottomNavDrawer
           enabled={Boolean(currentMatch)}
           expanded={isMobileBottomNavExpanded}
@@ -3019,7 +2957,7 @@ export default function ChessV2({ experience = 'classic', routeBase = '/chess' }
         </div>
       </div>
 
-      <div className={isArenaExperience ? 't2-trust-rail' : ''} style={{ background: isArenaExperience ? undefined : 'rgba(0, 100, 200, 0.2)', borderBottom: `1px solid ${activeTheme.border}`, backdropFilter: 'blur(10px)', position: 'relative', zIndex: 10 }}>
+      <div className="t2-trust-rail" style={{ borderBottom: `1px solid ${activeTheme.border}`, backdropFilter: 'blur(10px)', position: 'relative', zIndex: 10 }}>
         <div className="max-w-7xl mx-auto px-6 py-3">
           <div className="relative flex flex-col items-center gap-3 md:min-h-6 md:justify-center text-xs md:text-sm">
             <div className="flex w-full flex-wrap items-center justify-center gap-x-4 gap-y-2 md:gap-6">
@@ -3033,35 +2971,16 @@ export default function ChessV2({ experience = 'classic', routeBase = '/chess' }
         </div>
       </div>
 
-      <div className={`max-w-7xl mx-auto px-6 pt-12 ${isArenaExperience ? 't2-shell' : ''}`} style={{ position: 'relative', zIndex: 10 }}>
-        {isArenaExperience ? (
-          <ArenaGameHero
-            game="chess"
-            compact={Boolean(currentMatch || viewingTournament)}
-            effectsEnabled={arenaEffectsEnabled}
-            onToggleEffects={toggleArenaEffects}
-            onOpenWhatIsThis={handleWhatIsThisLinkClick}
-            onOpenQuickGuide={handleQuickGuideLinkClick}
-            onOpenManual={handleUserManualLinkClick}
-          />
-        ) : (
-        <div className="text-center mb-5 md:mb-6">
-          <div className="inline-block mb-6">
-            <div className="relative flex h-28 w-28 items-center justify-center md:h-32 md:w-32">
-              <div className={`absolute inset-0 bg-gradient-to-r ${currentTheme.heroGlow} rounded-full blur-xl opacity-50 animate-pulse`} />
-              <div className="relative">
-                <AnimatedKing size={88} />
-              </div>
-            </div>
-          </div>
-          <h1 className={`mb-4 bg-gradient-to-r bg-clip-text text-6xl font-bold leading-none text-transparent md:text-7xl ${currentTheme.heroTitle}`}>
-            Chess
-          </h1>
-          <p className={`pt-4 text-2xl ${currentTheme.heroText} mb-6`}>
-            Play Chess on-chain with real ETH on the line
-          </p>
-        </div>
-        )}
+      <div className="max-w-7xl mx-auto px-6 pt-12 t2-shell" style={{ position: 'relative', zIndex: 10 }}>
+        <ArenaGameHero
+          game="chess"
+          compact={Boolean(currentMatch || viewingTournament)}
+          effectsEnabled={arenaEffectsEnabled}
+          onToggleEffects={toggleArenaEffects}
+          onOpenWhatIsThis={handleWhatIsThisLinkClick}
+          onOpenQuickGuide={handleQuickGuideLinkClick}
+          onOpenManual={handleUserManualLinkClick}
+        />
 
         {dashboardError ? (
           <div className="mb-8">
@@ -3074,7 +2993,7 @@ export default function ChessV2({ experience = 'classic', routeBase = '/chess' }
           isConnecting={isConnecting}
           onConnectWallet={connectWallet}
           connectCtaClassName={activeTheme.connectCtaClassName}
-          wideArbitrumCta={isArenaExperience}
+          wideArbitrumCta
           unauthenticatedActions={!account ? (
             <button
               type="button"
@@ -3085,33 +3004,10 @@ export default function ChessV2({ experience = 'classic', routeBase = '/chess' }
               Play Demo
             </button>
           ) : null}
-        >
-          {!isArenaExperience ? <div className={`relative flex flex-wrap items-center justify-center gap-2 text-sm md:text-base ${activeTheme.heroSubtext}`}>
-            {HERO_LINKS.map((link, index) => (
-              <div key={link.label} className="flex items-center gap-2">
-                {index > 0 ? <span aria-hidden="true">•</span> : null}
-                <a
-                  href={link.type === 'manual' ? '#user-manual' : '#'}
-                  onClick={
-                    link.type === 'what-is-this'
-                      ? handleWhatIsThisLinkClick
-                      : link.type === 'manual'
-                      ? handleUserManualLinkClick
-                      : link.type === 'quick-guide'
-                        ? handleQuickGuideLinkClick
-                        : undefined
-                  }
-                  className="underline decoration-dotted underline-offset-4 transition-colors hover:text-white"
-                >
-                  {link.label}
-                </a>
-              </div>
-            ))}
-          </div> : null}
-        </V2GameLobbyIntro>
+        />
 
         {currentMatch && (
-          <div ref={matchViewRef} className={isArenaExperience ? 'arena-match-view t2-match-view' : undefined}>
+          <div ref={matchViewRef} className="arena-match-view t2-match-view">
             <GameMatchLayout
               gameType="chess"
               reasonLabelMode="v2"
@@ -3224,7 +3120,7 @@ export default function ChessV2({ experience = 'classic', routeBase = '/chess' }
                 </>
               ) : undefined}
             >
-              <ChessBoard board={displayedBoard} packedBoard={currentMatch.packedBoard} packedState={currentMatch.packedState} onMove={isSpectator || currentMatch.matchStatus === 2 ? null : handleMakeMove} currentTurn={currentMatch.currentTurn} account={isSpectator ? null : (currentMatch.isDemo ? DEMO_HUMAN_ADDRESS : account)} player1={currentMatch.player1} player2={currentMatch.player2} firstPlayer={currentMatch.firstPlayer} matchStatus={currentMatch.matchStatus} loading={matchLoading} whiteInCheck={currentMatch.matchStatus === 2 ? replayCheckStatus.whiteInCheck : currentMatch.whiteInCheck} blackInCheck={currentMatch.matchStatus === 2 ? replayCheckStatus.blackInCheck : currentMatch.blackInCheck} lastMoveTime={currentMatch.lastMoveTime} startTime={currentMatch.startTime} lastMove={displayedLastMove} secondLastMove={displayedSecondLastMove} maxSize={820} ghostMove={currentMatch.matchStatus === 2 ? null : ghostMove} arenaStyle={isArenaExperience} effectsEnabled={isArenaExperience && arenaEffectsEnabled} onToggleEffects={toggleArenaEffects} />
+              <ChessBoard board={displayedBoard} packedBoard={currentMatch.packedBoard} packedState={currentMatch.packedState} onMove={isSpectator || currentMatch.matchStatus === 2 ? null : handleMakeMove} currentTurn={currentMatch.currentTurn} account={isSpectator ? null : (currentMatch.isDemo ? DEMO_HUMAN_ADDRESS : account)} player1={currentMatch.player1} player2={currentMatch.player2} firstPlayer={currentMatch.firstPlayer} matchStatus={currentMatch.matchStatus} loading={matchLoading} whiteInCheck={currentMatch.matchStatus === 2 ? replayCheckStatus.whiteInCheck : currentMatch.whiteInCheck} blackInCheck={currentMatch.matchStatus === 2 ? replayCheckStatus.blackInCheck : currentMatch.blackInCheck} lastMoveTime={currentMatch.lastMoveTime} startTime={currentMatch.startTime} lastMove={displayedLastMove} secondLastMove={displayedSecondLastMove} maxSize={820} ghostMove={currentMatch.matchStatus === 2 ? null : ghostMove} arenaStyle effectsEnabled={arenaEffectsEnabled} onToggleEffects={toggleArenaEffects} />
             </GameMatchLayout>
 
             {moveTxTimeout && (
@@ -3247,14 +3143,14 @@ export default function ChessV2({ experience = 'classic', routeBase = '/chess' }
         {!currentMatch && (
           <>
             {viewingTournament ? (
-              <div ref={tournamentBracketRef} className={isArenaExperience ? 't2-bracket-view' : undefined}>
-                <TournamentBracket tournamentData={viewingTournament} onBack={handleBackToTournaments} onEnterMatch={handlePlayMatch} onSpectateMatch={handlePlayMatch} onForceEliminate={handleForceEliminateStalledMatch} onClaimReplacement={handleClaimMatchSlotByReplacement} onManualStart={handleManualStart} onClaimAbandonedPool={handleClaimAbandonedPool} onResetEnrollmentWindow={handleResetEnrollmentWindow} onCancelTournament={handleCancelTournament} onEnroll={handleEnroll} onConnectWallet={connectWallet} account={account} loading={tournamentsLoading} connectLoading={isConnecting} syncDots={bracketSyncDots} isEnrolled={viewingTournament?.players?.some(addr => addr.toLowerCase() === account?.toLowerCase())} entryFee={viewingTournament?.entryFeeEth ?? '0'} isFull={viewingTournament?.enrolledCount >= viewingTournament?.playerCount} instanceContract={activeInstanceContract} onPlayerAddressClick={setSelectedProfileAddress} arenaStyle={isArenaExperience} routeBase={routeBase} />
+              <div ref={tournamentBracketRef} className="t2-bracket-view">
+                <TournamentBracket tournamentData={viewingTournament} onBack={handleBackToTournaments} onEnterMatch={handlePlayMatch} onSpectateMatch={handlePlayMatch} onForceEliminate={handleForceEliminateStalledMatch} onClaimReplacement={handleClaimMatchSlotByReplacement} onManualStart={handleManualStart} onClaimAbandonedPool={handleClaimAbandonedPool} onResetEnrollmentWindow={handleResetEnrollmentWindow} onCancelTournament={handleCancelTournament} onEnroll={handleEnroll} onConnectWallet={connectWallet} account={account} loading={tournamentsLoading} connectLoading={isConnecting} syncDots={bracketSyncDots} isEnrolled={viewingTournament?.players?.some(addr => addr.toLowerCase() === account?.toLowerCase())} entryFee={viewingTournament?.entryFeeEth ?? '0'} isFull={viewingTournament?.enrolledCount >= viewingTournament?.playerCount} instanceContract={activeInstanceContract} onPlayerAddressClick={setSelectedProfileAddress} arenaStyle routeBase={routeBase} />
               </div>
             ) : (
-              <div className={`space-y-8 md:space-y-10 ${isArenaExperience ? 't2-lobby-view' : ''}`}>
+              <div className="space-y-8 md:space-y-10 t2-lobby-view">
                 <div id="live-instances">
                   <form onSubmit={createInstance}>
-                    <div className={`bg-slate-900/50 border border-purple-400/20 rounded-2xl p-4 md:p-5 ${isArenaExperience ? 't2-create-panel' : ''}`}>
+                    <div className="bg-slate-900/50 border border-purple-400/20 rounded-2xl p-4 md:p-5 t2-create-panel">
                       <div className="mb-4 flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2">
                           <h2 className="text-xl font-semibold text-white">Configure Your Lobby</h2>
@@ -3358,26 +3254,11 @@ export default function ChessV2({ experience = 'classic', routeBase = '/chess' }
           </>
         )}
       </div>
-      <div id="user-manual" className={`max-w-7xl mx-auto px-2 pt-8 pb-12 md:px-6 md:pt-10 ${isArenaExperience ? 't2-manual' : ''}`} style={{ position: 'relative', zIndex: 10 }}>
+      <div id="user-manual" className="max-w-7xl mx-auto px-2 pt-8 pb-12 md:px-6 md:pt-10 t2-manual" style={{ position: 'relative', zIndex: 10 }}>
         <UserManualV2 />
       </div>
 
-      <footer className={`border-t border-slate-800/50 px-6 py-12 ${isArenaExperience ? 't2-footer' : ''}`} style={{ position: 'relative', zIndex: 10 }}>
-        <div className="max-w-6xl mx-auto">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-8 mb-8">
-            <div className="text-center md:text-left">
-              <p className="text-slate-500 text-sm mb-2">Powered by <span className="font-semibold bg-clip-text text-transparent" style={{ background: 'linear-gradient(135deg, #06b6d4, #3b82f6)', WebkitBackgroundClip: 'text' }}>ETour Protocol</span></p>
-              <p className="text-slate-600 text-xs">Open-source perpetual tournament infrastructure on Arbitrum</p>
-            </div>
-            <div className="flex items-center gap-6">
-              <button onClick={() => setContractsExpanded(!contractsExpanded)} className="text-slate-500 hover:text-white transition-colors text-sm flex items-center gap-1">Contracts {contractsExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}</button>
-              <Link to="/" className="text-slate-500 hover:text-white transition-colors text-sm">Back Home</Link>
-            </div>
-          </div>
-          {contractsExpanded && <V2ContractsTable scope="chess" />}
-          <div className="text-center pt-8 border-t border-slate-800/30"><p className="text-slate-600 text-xs">No company needed. No trust required. No servers to shutdown.</p></div>
-        </div>
-      </footer>
+      <EtourFooter scope="chess" />
 
       <QuickGuideModal
         isOpen={isQuickGuideOpen}

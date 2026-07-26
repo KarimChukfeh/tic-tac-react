@@ -1,11 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowDown,
   ArrowRight,
   CheckCircle,
-  ChevronDown,
-  ChevronUp,
   Clock3,
   Code2,
   ExternalLink,
@@ -15,7 +13,7 @@ import {
   Sparkles,
   X,
 } from 'lucide-react';
-import V2ContractsTable from './components/shared/V2ContractsTable';
+import EtourFooter from './components/shared/EtourFooter';
 import './LandingReimagined.css';
 import './SoftCorners.css';
 
@@ -264,8 +262,6 @@ function ProofCard({ proof }) {
 }
 
 export default function LandingReimagined() {
-  const [contractsExpanded, setContractsExpanded] = useState(false);
-
   useEffect(() => {
     document.title = 'ETour — On-Chain Arena';
   }, []);
@@ -365,35 +361,7 @@ export default function LandingReimagined() {
         </section>
       </main>
 
-      <footer className="lr-footer">
-        <div className="lr-footer__top">
-          <Link to="/" className="lr-brand" aria-label="ETour home">
-            <span className="lr-brand__mark">E</span>
-            <span className="lr-brand__word">ETOUR</span>
-          </Link>
-          <p>
-            Powered by <strong>ETour Protocol</strong><br />
-            <span>Open-source perpetual tournament infrastructure on Arbitrum</span>
-          </p>
-          <div className="lr-footer__links">
-            <button onClick={() => setContractsExpanded((expanded) => !expanded)} aria-expanded={contractsExpanded}>
-              Contracts {contractsExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-            </button>
-            <a href="https://reclaimweb3.com" target="_blank" rel="noopener noreferrer">
-              RW3 Manifesto <ExternalLink size={13} />
-            </a>
-          </div>
-        </div>
-        {contractsExpanded && (
-          <div className="lr-footer__contracts">
-            <V2ContractsTable scope="landing" />
-          </div>
-        )}
-        <div className="lr-footer__bottom">
-          <span>No company needed. No trust required. No servers to shutdown.</span>
-          <span>ETOUR / ON-CHAIN SINCE BLOCK ONE</span>
-        </div>
-      </footer>
+      <EtourFooter scope="landing" />
     </div>
   );
 }

@@ -3,5 +3,5 @@ import './TicTacToeArena.css';
 import './GameArenaVariants.css';
 
 export default function ConnectFourArena() {
-  return <ConnectFourV2 experience="arena" routeBase="/connect42" />;
+  return <ConnectFourV2 routeBase="/connect4" />;
 }
