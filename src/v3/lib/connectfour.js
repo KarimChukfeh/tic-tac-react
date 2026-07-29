@@ -25,11 +25,12 @@ const sharedContracts = createSharedGameContracts({
 export const PLAYER_PROFILE_ABI = sharedContracts.PLAYER_PROFILE_ABI;
 export const PLAYER_REGISTRY_ABI = sharedContracts.PLAYER_REGISTRY_ABI;
 export const PLAYER_REGISTRY_ADDRESS = sharedContracts.PLAYER_REGISTRY_ADDRESS;
-export const CONNECTFOUR_V2_FACTORY_ADDRESS = sharedContracts.FACTORY_ADDRESS;
-export const CONNECTFOUR_V2_FACTORY_ABI = sharedContracts.FACTORY_ABI;
-export const CONNECTFOUR_V2_INSTANCE_ABI = sharedContracts.INSTANCE_ABI;
-export const CONNECTFOUR_V2_IMPLEMENTATION_ADDRESS = sharedContracts.IMPLEMENTATION_ADDRESS;
-export const CONNECTFOUR_V2_FACTORY_ADDRESS_CANDIDATES = sharedContracts.FACTORY_ADDRESS_CANDIDATES;
+export const CONNECTFOUR_DEPLOYMENT = sharedContracts.deployment;
+export const CONNECTFOUR_FACTORY_ADDRESS = sharedContracts.FACTORY_ADDRESS;
+export const CONNECTFOUR_FACTORY_ABI = sharedContracts.FACTORY_ABI;
+export const CONNECTFOUR_INSTANCE_ABI = sharedContracts.INSTANCE_ABI;
+export const CONNECTFOUR_IMPLEMENTATION_ADDRESS = sharedContracts.IMPLEMENTATION_ADDRESS;
+export const CONNECTFOUR_FACTORY_ADDRESS_CANDIDATES = sharedContracts.FACTORY_ADDRESS_CANDIDATES;
 
 export const PLAYER_COUNT_OPTIONS = [2, 4, 8, 16, 32];
 export const TIME_PER_PLAYER_OPTIONS = [120, 300, 600, 900];
@@ -66,7 +67,7 @@ export const DEFAULT_TIMEOUTS_BY_PLAYER_COUNT = {
 
 const CONNECTFOUR_ASCII_MOVES_PATTERN = /^\s*[0-6](?:\s*,\s*[0-6])*\s*$/;
 
-export function getFactoryContract(runner, address = CONNECTFOUR_V2_FACTORY_ADDRESS) {
+export function getFactoryContract(runner, address = CONNECTFOUR_FACTORY_ADDRESS) {
   return sharedContracts.getFactoryContract(runner, address);
 }
 
@@ -80,6 +81,14 @@ export function getPlayerProfileContract(address, runner) {
 
 export function getPlayerRegistryContract(runner, address = PLAYER_REGISTRY_ADDRESS) {
   return sharedContracts.getPlayerRegistryContract(runner, address);
+}
+
+export async function getWritableFactoryContract(browserProvider, readFactory, signer) {
+  return await sharedContracts.getWritableFactoryContract(browserProvider, readFactory, signer);
+}
+
+export async function getWritableInstanceContract(browserProvider, readFactory, instanceContract) {
+  return await sharedContracts.getWritableInstanceContract(browserProvider, readFactory, instanceContract);
 }
 
 export async function resolvePlayerProfileAddress(factoryContract, runner, account, registryAddress = PLAYER_REGISTRY_ADDRESS) {

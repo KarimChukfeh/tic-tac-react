@@ -1,7 +1,7 @@
-import ChessV2 from './ChessV2';
+import ChessPage from './ChessPage';
 import './TicTacToeArena.css';
 import './GameArenaVariants.css';
 
 export default function ChessArena() {
-  return <ChessV2 routeBase="/chess" />;
+  return <ChessPage />;
 }

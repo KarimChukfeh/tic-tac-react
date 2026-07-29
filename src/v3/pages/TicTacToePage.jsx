@@ -1,5 +1,5 @@
 /**
- * TicTacToeV2 - On-Chain TicTacToe V2 (Factory-based)
+ * TicTacToePage - V3 Tic-Tac-Toe tournament and gameplay surface.
  *
  * Differs from V1 only in the instance listing/creation flow.
  * Once an instance is selected, the UI mirrors V1 exactly:
@@ -32,7 +32,7 @@ import {
 import { ethers } from 'ethers';
 import { CURRENT_NETWORK, TARGET_CHAIN_ID_HEX, getAddressUrl, getWalletAddChainParams } from '../../config/networks';
 import { shortenAddress, getCellPositionName } from '../../utils/formatters';
-import { parseV2ContractParam } from '../../utils/urlHelpers';
+import { createV3TournamentUrl, parseV3InstanceParam } from '../routing/tournamentUrl';
 import { shouldResetOnInitialDocumentLoad } from '../../utils/navigation';
 import { isDraw, getCompletionReasonText, getCompletionReasonDescription } from '../../utils/completionReasons';
 import ParticleBackground from '../../components/shared/ParticleBackground';
@@ -67,17 +67,24 @@ import EntryFeeSlider, { DEFAULT_SELECTED_ENTRY_FEE } from '../components/EntryF
 import TimeoutSettingSlider, { clampCreateTimeoutValue, isCreateTimeoutField, normalizeCreateTimeouts } from '../components/TimeoutSettingSlider';
 import { useInitialDocumentScrollTop } from '../../hooks/useInitialDocumentScrollTop';
 import { useWalletBrowserPrompt } from '../../hooks/useWalletBrowserPrompt';
+import { useV3Wallet } from '../hooks/useV3Wallet';
 import { isMobileDevice, isWalletBrowser } from '../../utils/mobileDetection';
 import { didMatchStateAdvance, waitForTxOrStateSync } from '../../utils/txSync';
-import { multicallContracts } from '../../utils/multicall';
+import {
+  readV3ActiveMatchState,
+  readV3FactoryDashboard,
+  readV3TournamentState,
+} from '../lib/readOrchestration';
 import {
   PLAYER_COUNT_OPTIONS,
-  TICTACTOE_V2_FACTORY_ADDRESS,
-  TICTACTOE_V2_FACTORY_ADDRESS_CANDIDATES,
-  TICTACTOE_V2_IMPLEMENTATION_ADDRESS,
+  TICTACTOE_FACTORY_ADDRESS,
+  TICTACTOE_FACTORY_ADDRESS_CANDIDATES,
+  TICTACTOE_IMPLEMENTATION_ADDRESS,
   formatEth,
   getDefaultTimeouts,
   getFactoryContract,
+  getWritableFactoryContract,
+  getWritableInstanceContract,
   getReadableError,
   getInstanceContract,
   getRoundLabel,
@@ -144,10 +151,6 @@ const HERO_LINKS = [
   { label: 'Quick Guide', type: 'quick-guide' },
   { label: 'User Manual', type: 'manual' },
 ];
-
-function isWalletAvailable() {
-  return typeof window !== 'undefined' && typeof window.ethereum !== 'undefined';
-}
 
 function getTicTacToeCellValue(firstPlayer, player1, player2) {
   if (!firstPlayer) return 1;
@@ -234,10 +237,6 @@ function getBestDemoComputerMove(board, computerCellValue, humanCellValue) {
     if (!bestMove || score > bestMove.score) return { cellIndex, score };
     return bestMove;
   }, null)?.cellIndex ?? availableCells[0] ?? null;
-}
-
-function buildV2MatchKey(roundNumber, matchNumber) {
-  return ethers.keccak256(ethers.solidityPacked(['uint8', 'uint8'], [roundNumber, matchNumber]));
 }
 
 function hydrateBracketMatchData(userAccount, matchInfo, {
@@ -523,7 +522,7 @@ const TournamentBracket = ({
   isFull,
   instanceContract,
   onPlayerAddressClick,
-  routeBase = '/tictactoe',
+  routeBase = '/v3/tictactoe',
   arenaStyle = false,
   theme = currentTheme,
 }) => {
@@ -590,7 +589,7 @@ const TournamentBracket = ({
         tierId={tierId}
         instanceId={instanceId}
         instanceAddress={tournamentData.address}
-        shareUrlOverride={tournamentData.address ? `${window.location.origin}${routeBase}?c=${tournamentData.address}` : undefined}
+        shareUrlOverride={tournamentData.address ? createV3TournamentUrl('tictactoe', tournamentData.address) : undefined}
         status={status}
         currentRound={currentRound}
         playerCount={playerCount}
@@ -692,7 +691,7 @@ const TournamentBracket = ({
 
 const DEFAULT_MATCH_LOADING_MESSAGE = 'Loading match...';
 
-export default function TicTacToeV2({ routeBase = '/tictactoe' }) {
+export default function TicTacToePage({ routeBase = '/v3/tictactoe' }) {
   useInitialDocumentScrollTop(routeBase);
 
   const activeTheme = arenaTheme;
@@ -738,19 +737,25 @@ export default function TicTacToeV2({ routeBase = '/tictactoe' }) {
   const recentMatchesScrollRef = useRef(null);
 
   // --- Wallet & connection ---
-  const [factoryAddress, setFactoryAddress] = useState(TICTACTOE_V2_FACTORY_ADDRESS);
-  const [browserProvider, setBrowserProvider] = useState(null);
-  const [account, setAccount] = useState('');
+  const [factoryAddress, setFactoryAddress] = useState(TICTACTOE_FACTORY_ADDRESS);
+  const {
+    account,
+    browserProvider,
+    connect: connectV3Wallet,
+    isConnecting,
+    walletAvailable,
+  } = useV3Wallet({
+    targetChainIdHex: TARGET_CHAIN_ID_HEX,
+    getAddChainParams: getWalletAddChainParams,
+  });
   const [rpcReady, setRpcReady] = useState(false);
   const [rpcProvider, setRpcProvider] = useState(null);
-  const [, setWalletBootDone] = useState(!isWalletAvailable());
-  const [isConnecting, setIsConnecting] = useState(false);
 
   // --- Dashboard / factory ---
   const [dashboardLoading, setDashboardLoading] = useState(true);
   const [dashboardError, setDashboardError] = useState('');
   const [factoryRules, setFactoryRules] = useState(null);
-  const [implementationAddress, setImplementationAddress] = useState(TICTACTOE_V2_IMPLEMENTATION_ADDRESS);
+  const [implementationAddress, setImplementationAddress] = useState(TICTACTOE_IMPLEMENTATION_ADDRESS);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [resolvedFactoryContract, setResolvedFactoryContract] = useState(null);
 
@@ -979,14 +984,14 @@ export default function TicTacToeV2({ routeBase = '/tictactoe' }) {
   const resolveFactoryContract = async () => {
     const runner = rpcProviderRef.current;
     if (!runner) throw new Error('RPC provider is not ready.');
-    for (const candidateAddress of TICTACTOE_V2_FACTORY_ADDRESS_CANDIDATES) {
+    for (const candidateAddress of TICTACTOE_FACTORY_ADDRESS_CANDIDATES) {
       const code = await runner.getCode(candidateAddress);
       if (!code || code === '0x') continue;
       const contract = getFactoryContract(runner, candidateAddress);
       setFactoryAddress(candidateAddress);
       return contract;
     }
-    throw new Error(`No TicTacToe V2 factory found at ${TICTACTOE_V2_FACTORY_ADDRESS_CANDIDATES.join(' or ')} on ${CURRENT_NETWORK.name}.`);
+    throw new Error(`No validated Tic-Tac-Toe V3 factory found at ${TICTACTOE_FACTORY_ADDRESS_CANDIDATES.join(' or ')} on ${CURRENT_NETWORK.name}.`);
   };
 
   useEffect(() => {
@@ -1003,32 +1008,6 @@ export default function TicTacToeV2({ routeBase = '/tictactoe' }) {
   }, [factoryAddress]);
 
   useEffect(() => {
-    if (!isWalletAvailable()) return undefined;
-    const handleAccountsChanged = (accounts) => setAccount(accounts[0] || '');
-    const handleChainChanged = async () => {
-      if (!window.ethereum) return;
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      setBrowserProvider(provider);
-    };
-    window.ethereum.on('accountsChanged', handleAccountsChanged);
-    window.ethereum.on('chainChanged', handleChainChanged);
-    return () => {
-      window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
-      window.ethereum.removeListener('chainChanged', handleChainChanged);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!isWalletAvailable()) return;
-    const bootWallet = async () => {
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      setBrowserProvider(provider);
-      setWalletBootDone(true);
-    };
-    bootWallet().catch(() => setWalletBootDone(true));
-  }, []);
-
-  useEffect(() => {
     const handleVisibilityChange = () => {
       setIsTabActive(!document.hidden);
     };
@@ -1037,21 +1016,6 @@ export default function TicTacToeV2({ routeBase = '/tictactoe' }) {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
-  const ensureWalletOnCurrentNetwork = async (provider) => {
-    const network = await provider.getNetwork();
-    const currentChainId = `0x${BigInt(network.chainId).toString(16)}`;
-    if (currentChainId === TARGET_CHAIN_ID_HEX) return;
-    try {
-      await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: TARGET_CHAIN_ID_HEX }] });
-    } catch (switchError) {
-      if (switchError?.code !== 4902) throw switchError;
-      await window.ethereum.request({
-        method: 'wallet_addEthereumChain',
-        params: [getWalletAddChainParams()],
-      });
-    }
-  };
-
   useEffect(() => {
     if (!rpcReady && !browserProvider) return;
     let cancelled = false;
@@ -1059,12 +1023,12 @@ export default function TicTacToeV2({ routeBase = '/tictactoe' }) {
       setDashboardLoading(true);
       setDashboardError('');
       try {
-        const liveFactory = await resolveFactoryContract();
-        const [minEntryFee, feeIncrement, implementation] = await Promise.all([
-          liveFactory.MIN_ENTRY_FEE(),
-          liveFactory.FEE_INCREMENT(),
-          liveFactory.implementation(),
-        ]);
+        const {
+          factory: liveFactory,
+          minEntryFee,
+          feeIncrement,
+          implementation,
+        } = await readV3FactoryDashboard(resolveFactoryContract);
         if (cancelled) return;
         setFactoryRules({ minEntryFee, feeIncrement });
         setImplementationAddress(implementation);
@@ -1088,130 +1052,45 @@ export default function TicTacToeV2({ routeBase = '/tictactoe' }) {
     const runner = getReadRunner();
     const instance = instanceCont || getInstanceContract(address, runner);
 
-    const baseCallSpecs = [
-      { contract: instance, functionName: 'getInstanceInfo' },
-      { contract: instance, functionName: 'tournament' },
-      { contract: instance, functionName: 'getPlayers' },
-      { contract: instance, functionName: 'getPrizeDistribution' },
-      { contract: instance, functionName: 'getBracket' },
-      { contract: instance, functionName: 'tierConfig' },
-    ];
-    if (account) {
-      baseCallSpecs.push({ contract: instance, functionName: 'isEnrolled', params: [account] });
-    }
-
-    const baseResults = await multicallContracts(baseCallSpecs, runner);
-    const info = baseResults[0]?.success ? baseResults[0].result : await instance.getInstanceInfo();
-    const tournament = baseResults[1]?.success ? baseResults[1].result : await instance.tournament();
-    const players = baseResults[2]?.success ? baseResults[2].result : await instance.getPlayers();
-    const prizeDistribution = baseResults[3]?.success ? baseResults[3].result : await instance.getPrizeDistribution();
-    const bracket = baseResults[4]?.success ? baseResults[4].result : await instance.getBracket();
-    const tierConfig = baseResults[5]?.success ? baseResults[5].result : await instance.tierConfig();
-    const enrolled = account
-      ? (baseResults[6]?.success ? baseResults[6].result : await instance.isEnrolled(account))
-      : false;
-
-    const totalRounds = Number(bracket.totalRounds);
-    const roundDescriptors = Array.from({ length: totalRounds }, (_, roundIndex) => ({
-      roundIndex,
-      matchCount: Number(bracket.matchCounts[roundIndex] || 0),
-      completedCount: Number(bracket.completedCounts[roundIndex] || 0),
-    }));
-
-    const advancedRoundCallSpecs = account
-      ? roundDescriptors
-        .filter(({ matchCount }) => matchCount > 0)
-        .map(({ roundIndex }) => ({
-          contract: instance,
-          functionName: 'isPlayerInAdvancedRound',
-          params: [roundIndex, account],
-        }))
-      : [];
-
-    const matchDescriptors = [];
-    const matchCallSpecs = [];
-    for (const { roundIndex, matchCount } of roundDescriptors) {
-      for (let matchIndex = 0; matchIndex < matchCount; matchIndex++) {
-        const matchKey = buildV2MatchKey(roundIndex, matchIndex);
-        matchDescriptors.push({ roundIndex, matchIndex });
-        matchCallSpecs.push(
-          { contract: instance, functionName: 'getMatch', params: [roundIndex, matchIndex] },
-          { contract: instance, functionName: 'matches', params: [matchKey] },
-          { contract: instance, functionName: 'getBoard', params: [roundIndex, matchIndex] },
-          { contract: instance, functionName: 'matchTimeouts', params: [matchKey] },
-          { contract: instance, functionName: 'isMatchEscL2Available', params: [roundIndex, matchIndex] },
-          { contract: instance, functionName: 'isMatchEscL3Available', params: [roundIndex, matchIndex] },
-        );
-      }
-    }
-
-    const activityCallSpecs = [...advancedRoundCallSpecs, ...matchCallSpecs];
-    const activityResults = activityCallSpecs.length > 0
-      ? await multicallContracts(activityCallSpecs, runner)
-      : [];
-    const advancedRoundResults = activityResults.slice(0, advancedRoundCallSpecs.length);
-    const matchResults = activityResults.slice(advancedRoundCallSpecs.length);
-
-    const advancedByRound = new Map();
-    let advancedCursor = 0;
-    for (const { roundIndex, matchCount } of roundDescriptors) {
-      if (!account || matchCount === 0) continue;
-      const result = advancedRoundResults[advancedCursor++];
-      advancedByRound.set(roundIndex, Boolean(result?.success ? result.result : false));
-    }
-
-    const matchesByRound = new Map();
-    let matchCursor = 0;
-    for (const { roundIndex, matchIndex } of matchDescriptors) {
-      const matchResult = matchResults[matchCursor++];
-      const fullMatchResult = matchResults[matchCursor++];
-      const boardResult = matchResults[matchCursor++];
-      const timeoutResult = matchResults[matchCursor++];
-      const escL2Result = matchResults[matchCursor++];
-      const escL3Result = matchResults[matchCursor++];
-
-      if (!matchResult?.success) continue;
-
-      const matchData = matchResult.result;
-      const board = boardResult?.success ? boardResult.result : [];
-      const normalized = normalizeMatch(roundIndex, matchIndex, matchData, board);
-      const hydrated = hydrateBracketMatchData(account, normalized, {
+    return readV3TournamentState({
+      address,
+      instance,
+      runner,
+      account,
+      getRoundLabel,
+      virtualTierId: VIRTUAL_TIER_ID,
+      virtualInstanceId: VIRTUAL_INSTANCE_ID,
+      mapTournamentSnapshot: ({ address: instanceAddress, info, tournament, players, enrolled }) => (
+        normalizeInstanceSnapshot(instanceAddress, info, tournament, players, enrolled)
+      ),
+      mapPrizeDistribution: normalizePrizeDistribution,
+      mapBracketMatch: ({
+        roundNumber,
+        matchNumber,
         matchData,
-        fullMatch: fullMatchResult?.success ? fullMatchResult.result : null,
-        boardRaw: board,
+        fullMatch,
+        boardResult,
         tierConfig,
-        timeoutData: timeoutResult?.success ? timeoutResult.result : null,
-        escL2Available: Boolean(escL2Result?.success ? escL2Result.result : false),
-        escL3Available: Boolean(escL3Result?.success ? escL3Result.result : false),
-        isUserAdvancedForRound: advancedByRound.get(roundIndex) || false,
-      });
-
-      const roundMatches = matchesByRound.get(roundIndex) || [];
-      roundMatches.push({ ...hydrated, tierId: VIRTUAL_TIER_ID, instanceId: VIRTUAL_INSTANCE_ID });
-      matchesByRound.set(roundIndex, roundMatches);
-    }
-
-    const rounds = roundDescriptors.map(({ roundIndex, matchCount, completedCount }) => ({
-      roundIndex,
-      matchCount,
-      completedCount,
-      label: getRoundLabel(roundIndex, totalRounds),
-      matches: matchesByRound.get(roundIndex) || [],
-    }));
-
-    const snapshot = normalizeInstanceSnapshot(address, info, tournament, players, enrolled);
-
-    return {
-      ...snapshot,
-      payoutEntries: normalizePrizeDistribution(prizeDistribution),
-      rounds,
-      // Match the shape TournamentHeader / bracket expects
-      tierId: VIRTUAL_TIER_ID,
-      instanceId: VIRTUAL_INSTANCE_ID,
-    };
+        timeoutData,
+        escL2Available,
+        escL3Available,
+        isUserAdvancedForRound,
+      }) => {
+        const board = boardResult || [];
+        const normalized = normalizeMatch(roundNumber, matchNumber, matchData, board);
+        return hydrateBracketMatchData(account, normalized, {
+          matchData,
+          fullMatch,
+          boardRaw: board,
+          tierConfig,
+          timeoutData,
+          escL2Available,
+          escL3Available,
+          isUserAdvancedForRound,
+        });
+      },
+    });
   };
-
-  // ─── Refresh bracket (mirrors V1 refreshTournamentBracket) ──────────────────
 
   const refreshTournamentBracket = useCallback(async (address) => {
     try {
@@ -1227,23 +1106,15 @@ export default function TicTacToeV2({ routeBase = '/tictactoe' }) {
   // ─── Wallet connection ───────────────────────────────────────────────────────
 
   const connectWallet = async () => {
-    if (!isWalletAvailable()) {
+    if (!walletAvailable) {
       if (isMobileDevice() && !isWalletBrowser()) { triggerWalletPrompt(); return; }
       setActionState({ type: 'error', message: 'No injected wallet detected. Open this page in a wallet browser or install MetaMask.' });
       return;
     }
-    setIsConnecting(true);
     try {
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      await ensureWalletOnCurrentNetwork(provider);
-      await provider.send('eth_requestAccounts', []);
-      const signer = await provider.getSigner();
-      setBrowserProvider(provider);
-      setAccount(await signer.getAddress());
+      await connectV3Wallet();
     } catch (error) {
       showActionError('connect your wallet', error, 'Wallet connection failed.');
-    } finally {
-      setIsConnecting(false);
     }
   };
 
@@ -1253,12 +1124,12 @@ export default function TicTacToeV2({ routeBase = '/tictactoe' }) {
     setDashboardLoading(true);
     setDashboardError('');
     try {
-      const liveFactory = await resolveFactoryContract();
-      const [minEntryFee, feeIncrement, implementation] = await Promise.all([
-        liveFactory.MIN_ENTRY_FEE(),
-        liveFactory.FEE_INCREMENT(),
-        liveFactory.implementation(),
-      ]);
+      const {
+        factory: liveFactory,
+        minEntryFee,
+        feeIncrement,
+        implementation,
+      } = await readV3FactoryDashboard(resolveFactoryContract);
       setFactoryRules({ minEntryFee, feeIncrement });
       setImplementationAddress(implementation);
       setResolvedFactoryContract(liveFactory);
@@ -1300,8 +1171,7 @@ export default function TicTacToeV2({ routeBase = '/tictactoe' }) {
       const signer = await browserProvider.getSigner();
       const creator = await signer.getAddress();
       const readFactory = await resolveFactoryContract();
-      const resolvedFactoryAddress = readFactory.target;
-      const writableFactory = getFactoryContract(signer, resolvedFactoryAddress);
+      const writableFactory = await getWritableFactoryContract(browserProvider, readFactory, signer);
       setActionState({ type: 'info', message: 'Reading contract constraints...' });
       const [countBeforeRaw, minFeeRaw, feeIncrementRaw, maxFeeRaw] = await Promise.all([
         readFactory.getInstanceCount(),
@@ -1419,7 +1289,7 @@ export default function TicTacToeV2({ routeBase = '/tictactoe' }) {
   useEffect(() => {
     if (!allowInitialUrlHydration) return;
     if (hasProcessedInviteParam || !rpcReady) return;
-    const contractAddress = parseV2ContractParam(searchParams);
+    const contractAddress = parseV3InstanceParam(searchParams);
     if (!contractAddress) { setHasProcessedInviteParam(true); return; }
 
     setHasProcessedInviteParam(true);
@@ -1454,8 +1324,12 @@ export default function TicTacToeV2({ routeBase = '/tictactoe' }) {
 
   const withInstanceSigner = async (instanceContract) => {
     if (!browserProvider || !account) throw new Error('Connect a wallet first.');
-    const signer = await browserProvider.getSigner();
-    return getInstanceContract(instanceContract.target || instanceContract.address, signer);
+    if (!resolvedFactoryContract) throw new Error('The validated V3 factory is unavailable.');
+    return await getWritableInstanceContract(
+      browserProvider,
+      resolvedFactoryContract,
+      instanceContract,
+    );
   };
 
   const handleEnroll = useCallback(async () => {
@@ -1705,40 +1579,23 @@ export default function TicTacToeV2({ routeBase = '/tictactoe' }) {
 
   const refreshMatchData = useCallback(async (instanceCont, userAccount, matchInfo) => {
     try {
-      const { roundNumber, matchNumber } = matchInfo;
-      const matchKey = ethers.keccak256(ethers.solidityPacked(['uint8', 'uint8'], [roundNumber, matchNumber]));
       const runner = getReadRunner();
-
-      const callSpecs = [
-        { contract: instanceCont, functionName: 'getMatch', params: [roundNumber, matchNumber] },
-        { contract: instanceCont, functionName: 'matches', params: [matchKey] },
-        { contract: instanceCont, functionName: 'getBoard', params: [roundNumber, matchNumber] },
-        { contract: instanceCont, functionName: 'tierConfig' },
-        { contract: instanceCont, functionName: 'getInstanceInfo' },
-        { contract: instanceCont, functionName: 'matchTimeouts', params: [matchKey] },
-        { contract: instanceCont, functionName: 'isMatchEscL2Available', params: [roundNumber, matchNumber] },
-        { contract: instanceCont, functionName: 'isMatchEscL3Available', params: [roundNumber, matchNumber] },
-      ];
-      if (userAccount) {
-        callSpecs.push({
-          contract: instanceCont,
-          functionName: 'isPlayerInAdvancedRound',
-          params: [roundNumber, userAccount],
-        });
-      }
-
-      const results = runner ? await multicallContracts(callSpecs, runner) : [];
-      const matchData = results[0]?.success ? results[0].result : await instanceCont.getMatch(roundNumber, matchNumber);
-      const fullMatch = results[1]?.success ? results[1].result : await instanceCont.matches(matchKey);
-      const boardRaw = results[2]?.success ? results[2].result : await instanceCont.getBoard(roundNumber, matchNumber).catch(() => null);
-      const tierConfig = results[3]?.success ? results[3].result : await instanceCont.tierConfig();
-      const instanceInfo = results[4]?.success ? results[4].result : await instanceCont.getInstanceInfo().catch(() => null);
-      const timeoutData = results[5]?.success ? results[5].result : await instanceCont.matchTimeouts(matchKey).catch(() => null);
-      const escL2Available = results[6]?.success ? Boolean(results[6].result) : Boolean(await instanceCont.isMatchEscL2Available(roundNumber, matchNumber).catch(() => false));
-      const escL3Available = results[7]?.success ? Boolean(results[7].result) : Boolean(await instanceCont.isMatchEscL3Available(roundNumber, matchNumber).catch(() => false));
-      const isUserAdvancedForRound = userAccount
-        ? (results[8]?.success ? Boolean(results[8].result) : Boolean(await instanceCont.isPlayerInAdvancedRound(roundNumber, userAccount).catch(() => false)))
-        : false;
+      const {
+        matchData,
+        fullMatch,
+        boardResult: boardRaw,
+        tierConfig,
+        instanceInfo,
+        timeoutData,
+        escL2Available,
+        escL3Available,
+        isUserAdvancedForRound,
+      } = await readV3ActiveMatchState({
+        instance: instanceCont,
+        runner,
+        account: userAccount,
+        matchInfo,
+      });
       const playerCount = Number(instanceInfo?.playerCount ?? matchInfo.playerCount ?? 0) || null;
 
       const tierMatchTime = Number(tierConfig.timeouts?.matchTimePerPlayer ?? tierConfig.matchTimePerPlayer ?? 120);
@@ -1956,11 +1813,7 @@ export default function TicTacToeV2({ routeBase = '/tictactoe' }) {
       setMatchLoading(true);
       moveTxInProgressRef.current = true;
       const { roundNumber, matchNumber } = currentMatch;
-      const signer = await browserProvider.getSigner();
-      const writableInstance = getInstanceContract(
-        activeInstanceContractRef.current.target || activeInstanceContractRef.current.address,
-        signer
-      );
+      const writableInstance = await withInstanceSigner(activeInstanceContractRef.current);
       const tx = await writableInstance.makeMove(roundNumber, matchNumber, cellIndex);
       setActionState({ type: 'info', message: 'Move submitted. Waiting for block confirmation...' });
       setMatchLoadingMessage('Move submitted. Waiting for block confirmation...');
@@ -2063,10 +1916,7 @@ export default function TicTacToeV2({ routeBase = '/tictactoe' }) {
       setMatchLoadingMessage('Confirm the timeout claim in MetaMask...');
       setMatchLoading(true);
       const { roundNumber, matchNumber } = currentMatch;
-      const signer = await browserProvider.getSigner();
-      const writableInstance = getInstanceContract(
-        activeInstanceContractRef.current.target || activeInstanceContractRef.current.address, signer
-      );
+      const writableInstance = await withInstanceSigner(activeInstanceContractRef.current);
       const tx = await writableInstance.claimTimeoutWin(roundNumber, matchNumber);
       setActionState({ type: 'info', message: 'Timeout claim submitted. Waiting for block confirmation...' });
       setMatchLoadingMessage('Timeout claim submitted. Waiting for block confirmation...');
@@ -2113,10 +1963,7 @@ export default function TicTacToeV2({ routeBase = '/tictactoe' }) {
       setMatchLoadingMessage('Confirm the force-elimination in MetaMask...');
       setMatchLoading(true);
       const { roundNumber, matchNumber } = match;
-      const signer = await browserProvider.getSigner();
-      const writableInstance = getInstanceContract(
-        activeInstanceContractRef.current.target || activeInstanceContractRef.current.address, signer
-      );
+      const writableInstance = await withInstanceSigner(activeInstanceContractRef.current);
       const tx = await writableInstance.forceEliminateStalledMatch(roundNumber, matchNumber);
       setActionState({ type: 'info', message: 'Force-elimination submitted. Waiting for block confirmation...' });
       setMatchLoadingMessage('Force-elimination submitted. Waiting for block confirmation...');
@@ -2148,10 +1995,7 @@ export default function TicTacToeV2({ routeBase = '/tictactoe' }) {
       setMatchLoadingMessage('Confirm the replacement claim in MetaMask...');
       setMatchLoading(true);
       const { roundNumber, matchNumber } = match;
-      const signer = await browserProvider.getSigner();
-      const writableInstance = getInstanceContract(
-        activeInstanceContractRef.current.target || activeInstanceContractRef.current.address, signer
-      );
+      const writableInstance = await withInstanceSigner(activeInstanceContractRef.current);
       const tx = await writableInstance.claimMatchSlotByReplacement(roundNumber, matchNumber);
       setActionState({ type: 'info', message: 'Replacement claim submitted. Waiting for block confirmation...' });
       setMatchLoadingMessage('Replacement claim submitted. Waiting for block confirmation...');

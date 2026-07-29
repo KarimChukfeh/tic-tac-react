@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { ChessBoard } from './ChessV2';
-import { ConnectFourBoard } from './ConnectFourV2';
+import { ChessBoard } from './ChessPage';
+import { ConnectFourBoard } from './ConnectFourPage';
 
 const PLAYER_ONE = '0x1111111111111111111111111111111111111111';
 const PLAYER_TWO = '0x2222222222222222222222222222222222222222';

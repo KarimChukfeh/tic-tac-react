@@ -1,0 +1,156 @@
+2026-07-29 — Phase 0 baseline and first route-isolation batch
+
+Completed:
+- Read the complete frontend V3 plan and initialized the ordered tracking
+  checklist.
+- Captured the source, route, ABI, SDK, transaction, build, and test baseline
+  in `docs/baseline.md`.
+- Recorded generation routing, deterministic SDK sync, encrypted pre-instance
+  creation staging, runtime configuration, and transport policy decisions in
+  `docs/architecture-decisions.md`.
+- Corrected all three V3 arena route bases so generated links remain under
+  `/v3/tictactoe`, `/v3/connect4`, and `/v3/chess`.
+- Updated the focused arena tests to assert the V3 route namespace.
+- Added `generationBoundary.test.js` to reject direct V3-to-V2 source imports
+  and lock the explicit V2/V3 route-component mapping.
+
+Validation before this batch:
+- `npm run build`: passed; existing large-chunk warning remains.
+- `npm run test:run`: 34 files passed, 3 files failed; 144 tests passed, 2
+  failed. All three failing files are outside `src/v3/` and are documented in
+  `docs/baseline.md`.
+
+Validation after this batch:
+- `npx vitest run src/v3/generationBoundary.test.js
+  src/v3/pages/TicTacToeArena.test.jsx
+  src/v3/pages/ConnectFourArena.test.jsx
+  src/v3/pages/ChessArena.test.jsx`: 4 files and 5 tests passed.
+- `npm run build`: passed; only the existing browser-data and large-chunk
+  warnings remain.
+- `git diff --check`: passed.
+
+Decisions and risks:
+- The generated V3 factory and enrollment ABIs require `sessionExecutor`, but
+  all cloned V3 create/join calls still use V2 signatures. These paths are not
+  compatible with the generated contracts and must be replaced in Phase 4.
+- The SDK build exists at `e-tour/v3/sdk/dist/index.js`, but the backend does
+  not expose it as a package. Use a backend-owned, hashed sync artifact rather
+  than a sibling-directory runtime import or manual source copy.
+- Factory instance addresses cannot be predicted through the current public
+  ABI. Creation requires a new encrypted staged-creation/finalization SDK
+  flow.
+- The local backend exposes the chain at `127.0.0.1:8545`, but its two local
+  bundlers are in-process adapters rather than browser-reachable RPC
+  endpoints. Browser failover acceptance is blocked until the backend exposes
+  two ERC-7769 HTTP endpoints.
+
+Next recommended action:
+- Finish Phase 1's enforceable import/route boundary, then implement the
+  normalized V3 deployment loader before integrating SDK artifacts.
+
+2026-07-29 — Phase 1 V3 page, routing, deployment, and write boundaries
+
+Completed:
+- Renamed the three V2-derived page entry files to `TicTacToePage.jsx`,
+  `ConnectFourPage.jsx`, and `ChessPage.jsx`; arena wrappers now consume those
+  V3-named seams without passing legacy route configuration.
+- Added `routing/tournamentUrl.js` as the only V3 tournament link/parser
+  surface. All page defaults, share links, and invite parsing now use
+  `/v3/tictactoe`, `/v3/connect4`, or `/v3/chess`.
+- Added `config/deploymentGuard.js`. Every game contract module now validates
+  generation, network, chain ID, factory, implementation, player registry,
+  session registry, and the V3 create/enroll ABI signatures before constructing
+  contracts.
+- Reduced factory candidates to the address anchored by the validated V3
+  deployment manifest.
+- Replaced V2-named factory/ABI constants at the V3 game-module and page seams.
+- Added `lib/writeBoundary.js` and routed every signer-backed factory and
+  instance contract through it. The boundary checks the wallet chain, exact
+  V3 factory address, and `factory.isInstance(instance)` before returning an
+  instance writer.
+- Added `hooks/useV3Wallet.js` and migrated all three pages to its shared
+  provider boot, account hydration, account/chain listeners, target-network
+  switching/addition, connect state, and listener cleanup.
+- Added focused tests for URL isolation, malformed/mixed deployment artifacts,
+  real generated artifacts, wrong-chain writes, mixed factory writes, and
+  unregistered instance writes, plus wallet boot, switching, connection, and
+  cleanup.
+
+Validation:
+- Focused Phase 1 tests: 6 files and 22 tests passed.
+- `npx vitest run src/v3`: 16 files and 51 tests passed.
+- `npm run build`: passed; only the existing browser-data and large-chunk
+  warnings remain.
+- `npm run test:run`: 41 files passed and 2 baseline files failed; 167 tests
+  passed and 1 test failed. The remaining failures are outside `src/v3/`:
+  `src/App.test.jsx` still imports missing `./TicTacBlock`, and
+  `src/components/shared/MatchCard.test.jsx` disagrees with the current
+  no-wallet View-button behavior. The previously recorded Docs failure passed
+  on this run.
+- `git diff --check`: passed.
+
+Decisions and risks:
+- Phase 1 intentionally validates V3 artifacts without becoming the normalized
+  deployment loader planned for Phase 2.
+- Create/join still use their legacy argument lists and remain intentionally
+  tracked for Phase 4; this batch secures which contracts may receive writes,
+  not session registration.
+- Wallet lifecycle, lobby/tournament read state, and active-match read state
+  were split into separate Phase 1 checklist items rather than one misleading
+  all-or-nothing refactor item. Wallet lifecycle is now complete;
+  lobby/tournament and active-match read state remain in the large pages.
+
+Next recommended action:
+- Continue Phase 1 by extracting lobby/tournament read orchestration, followed
+  by active-match read orchestration. The wallet and write boundaries are
+  ready for the session provider and move controller.
+
+2026-07-29 — Phase 1 shared read orchestration and completion
+
+Completed:
+- Added `lib/readOrchestration.js` as the shared contract-read boundary for
+  factory dashboard metadata, tournament/bracket snapshots, and active-match
+  snapshots.
+- Moved multicall construction, direct-read fallback behavior, optional read
+  handling, account-scoped advanced-round checks, and V3 match-key generation
+  out of all three game pages.
+- Kept board decoding and game-specific match hydration behind adapters owned
+  by Tic-Tac-Toe, Connect Four, and Chess.
+- Migrated initial dashboard loads, manual dashboard refreshes, tournament
+  refreshes, polling, history re-entry, and post-transaction match refreshes
+  onto the shared readers.
+- Added focused tests covering factory reads, tournament mapping,
+  account-scoped reads, spectator reads, and direct fallbacks after multicall
+  failures.
+- Extended the generation-boundary suite to reject raw multicall orchestration
+  and legacy match-key helpers in V3 game pages.
+- Marked the Phase 1 isolation and structural-cleanup exit gate complete.
+
+Validation:
+- Focused read and arena tests: 5 files and 12 tests passed.
+- `npx vitest run src/v3`: 17 files and 56 tests passed.
+- `npm run build`: passed; only the existing browser-data and large-chunk
+  warnings remain.
+- `npm run test:run`: 42 files passed and 2 baseline files failed; 172 tests
+  passed and 1 test failed. The failures remain outside `src/v3/`:
+  `src/App.test.jsx` imports missing `./TicTacBlock`, and
+  `src/components/shared/MatchCard.test.jsx` expects no completed-match View
+  action when disconnected.
+- `git diff --check`: passed after the implementation and documentation
+  updates.
+
+Decisions and risks:
+- Shared readers own transport and fallback orchestration; game adapters still
+  own board representation and presentation-oriented normalization. This
+  keeps future SDK/session work generation-wide without forcing unlike board
+  formats into one model.
+- Optional board, timeout, and escalation reads preserve the cloned UI's
+  graceful fallback behavior. Required match and tier reads still fail the
+  refresh so stale state is not presented as authoritative.
+- Phase 1 does not normalize generated deployment payloads or integrate the
+  backend SDK. Those remain the first Phase 2 responsibilities.
+
+Next recommended action:
+- Begin Phase 2 with the normalized V3 deployment loader, including schema,
+  generation, chain, address, ABI, and runtime bytecode validation. Then make
+  the existing read/write boundaries consume only that normalized object.

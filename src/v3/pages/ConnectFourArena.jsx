@@ -1,7 +1,7 @@
-import ConnectFourV2 from './ConnectFourV2';
+import ConnectFourPage from './ConnectFourPage';
 import './TicTacToeArena.css';
 import './GameArenaVariants.css';
 
 export default function ConnectFourArena() {
-  return <ConnectFourV2 routeBase="/connect4" />;
+  return <ConnectFourPage />;
 }

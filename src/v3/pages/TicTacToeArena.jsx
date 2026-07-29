@@ -1,6 +1,6 @@
-import TicTacToeV2 from './TicTacToeV2';
+import TicTacToePage from './TicTacToePage';
 import './TicTacToeArena.css';
 
 export default function TicTacToeArena() {
-  return <TicTacToeV2 routeBase="/tictactoe" />;
+  return <TicTacToePage />;
 }
