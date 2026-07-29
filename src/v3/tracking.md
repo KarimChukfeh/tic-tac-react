@@ -39,54 +39,52 @@ use declared V3 boundaries shared by all three games.
 
 ## Phase 2 — Deployment configuration and SDK integration
 
-Status: in progress. Deployment normalization, SDK integrity, runtime
-configuration, and browser-safe service factories are complete. The backend
-session-client browser build and bundler HTTP services remain blockers.
+Status: complete. The synchronized SDK remains immutable, while checked
+browser entries and two local HTTP bundlers provide the browser runtime.
 
 - [x] Implement and test the normalized V3 deployment loader.
 - [x] Validate schema, generation, chain, addresses, ABI surfaces, and bytecode.
 - [x] Add deterministic SDK sync and frontend integrity checks.
-- [ ] Invoke SDK sync from the backend-owned frontend artifact workflow.
+- [x] Invoke SDK sync and browser-entry generation from one checked workflow.
 - [x] Add a stable frontend adapter for browser-safe generated SDK modules.
-- [ ] Add a browser-compatible generated SDK session-client entry upstream.
+- [x] Add a browser-compatible generated SDK session-client entry.
 - [x] Parse `VITE_V3_RPC_URL` and both bundler URL variables.
-- [ ] Add browser-reachable local primary and failover bundler services
-  upstream.
+- [x] Add browser-reachable local primary and failover bundler services.
 - [x] Build provider, bundler, vault, and coordinator factories.
-- [ ] Build the session-client factory after the browser entry is available.
+- [x] Build and test the session-client factory.
 - [x] Add public-only configuration diagnostics and mapped SDK errors.
 
 ## Phase 3 — Wallet, identity, and session state
 
 - [x] Centralize V3 wallet connection, account, chain, and signer lifecycle.
-- [ ] Model primary player and executor as distinct identities.
-- [ ] Implement and test the session lifecycle reducer/state machine.
-- [ ] Integrate encrypted IndexedDB storage and startup recovery.
-- [ ] Integrate public cross-tab lifecycle updates and nonce coordination.
-- [ ] Reset monitors and coordinators on identity changes and unmount.
-- [ ] Handle unavailable/evicted storage and unsupported browser crypto.
-- [ ] Add reusable session status and action UI.
+- [x] Model primary player and executor as distinct identities.
+- [x] Implement and test the session lifecycle reducer/state machine.
+- [x] Integrate encrypted IndexedDB storage and startup recovery.
+- [x] Integrate public cross-tab lifecycle updates and nonce coordination.
+- [x] Reset monitors and coordinators on identity changes and unmount.
+- [x] Handle unavailable/evicted storage and unsupported browser crypto.
+- [x] Add reusable session status and action UI.
 
 ## Phase 4 — Atomic create and join
 
-- [ ] Add encrypted creation-stage APIs to the backend SDK.
-- [ ] Add confirm-once onboarding for all games.
-- [ ] Pass the candidate executor to all V3 factory create calls.
-- [ ] Finalize/discard creation stages from confirmed transaction outcomes.
-- [ ] Pass the candidate executor to all V3 enrollment calls.
-- [ ] Inspect registry state before declaring a session active.
-- [ ] Preserve an explicit direct-wallet-only enrollment path if approved.
-- [ ] Test rejection, revert, replacement, reload, and interrupted finalization.
+- [x] Add encrypted creation-stage APIs around the synchronized SDK vault.
+- [x] Add confirm-once onboarding for all games.
+- [x] Pass the candidate executor to all V3 factory create calls.
+- [x] Finalize/discard creation stages from confirmed transaction outcomes.
+- [x] Pass the candidate executor to all V3 enrollment calls.
+- [x] Inspect registry state before declaring a session active.
+- [x] Preserve an explicit direct-wallet-only enrollment path.
+- [x] Test rejection cleanup, encrypted promotion, reload recovery, and interruption.
 
 ## Phase 5 — Prompt-free Tic-Tac-Toe
 
-- [ ] Define and test the shared move-controller state machine.
-- [ ] Add the Tic-Tac-Toe move adapter.
-- [ ] Submit Tic-Tac-Toe moves through ERC-4337.
-- [ ] Reconcile UserOperation receipts with authoritative match state.
-- [ ] Prevent duplicate intents and nonce races.
-- [ ] Add explicit direct-primary fallback.
-- [ ] Preserve tournament, timeout, escalation, and settlement behavior.
+- [x] Define and test the shared move-controller state machine.
+- [x] Add the Tic-Tac-Toe move adapter.
+- [x] Submit Tic-Tac-Toe moves through ERC-4337.
+- [x] Reconcile UserOperation receipts with authoritative match state.
+- [x] Prevent duplicate intents and nonce races.
+- [x] Add explicit direct-primary fallback.
+- [x] Preserve tournament, timeout, escalation, and settlement behavior.
 
 ## Phase 6 — Connect Four and Chess parity
 

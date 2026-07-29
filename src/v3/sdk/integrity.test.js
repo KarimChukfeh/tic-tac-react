@@ -49,7 +49,7 @@ describe('vendored V3 SDK integrity', () => {
     expect(treeHash).toBe(manifest.treeSha256);
   });
 
-  it('keeps the Node-only session entry isolated from the browser adapter', () => {
+  it('loads the immutable session entry through the generated browser entry', () => {
     const userOperationSource = fs.readFileSync(
       path.join(SDK_ROOT, 'dist', 'user-operation.js'),
       'utf8',
@@ -58,9 +58,15 @@ describe('vendored V3 SDK integrity', () => {
       path.resolve(import.meta.dirname, 'adapter.js'),
       'utf8',
     );
+    const generatedSource = fs.readFileSync(
+      path.resolve(import.meta.dirname, 'generated', 'user-operation.js'),
+      'utf8',
+    );
 
     expect(userOperationSource).toContain('createRequire');
     expect(adapterSource).not.toContain("vendor/sdk/dist/index.js");
-    expect(adapterSource).not.toContain("vendor/sdk/dist/session-client.js");
+    expect(adapterSource).toContain("generated/session-client.js");
+    expect(generatedSource).toContain('V3_DEPLOYMENTS.shared.simpleAccountFactory.abi');
+    expect(generatedSource).not.toContain('privateKey');
   });
 });

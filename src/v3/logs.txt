@@ -274,3 +274,177 @@ Next recommended action:
 - Fix the backend SDK browser entry and add the two browser-reachable ERC-7769
   bundler services in the backend repository. Then resync, enable the
   session-client factory, and run the Phase 2 browser exit gate.
+
+2026-07-29 — Phases 2–5 browser sessions and Tic-Tac-Toe acceptance
+
+Completed:
+- Generated a checked browser-compatible session entry while preserving the
+  synchronized backend SDK byte-for-byte.
+- Enabled the V3 session-client factory with normalized EntryPoint, registry,
+  account-factory, and paymaster addresses.
+- Added localhost primary/failover ERC-4337 JSON-RPC services on ports 4337
+  and 4338 with independent nonce-managed funded signers.
+- Added explicit primary-player/session-executor identities, deterministic
+  lifecycle states, encrypted IndexedDB recovery, cross-tab updates, nonce
+  coordination, and reusable status UI.
+- Added encrypted creation staging, confirmed promotion, reload recovery,
+  rejection cleanup, and registry inspection.
+- Updated all V3 create and enrollment calls to pass a candidate executor,
+  with an explicit zero-address wallet-only path.
+- Added the shared move controller and Tic-Tac-Toe adapter. Normal moves use
+  the SDK session client, reconcile UserOperation inclusion with authoritative
+  match state, and reject duplicate intents.
+- Kept wallet fallback explicit; session failures never resubmit a move.
+- Added a reproducible local acceptance command and local testing guide.
+
+Validation:
+- Focused session, SDK, runtime, arena, and interaction tests passed.
+- Production build passed with SDK and generated-entry integrity preflights.
+- Fresh local V3 deployment manifest and smoke checks passed.
+- Both HTTP bundlers advertised the canonical EntryPoint.
+- `npm run v3:tictactoe:accept` passed: two active sessions, five sponsored
+  moves, primary/executor event attribution, and prize settlement.
+- The rendered `/v3/tictactoe` route loaded without browser console errors.
+
+Next recommended action:
+- Begin Phase 6 by routing Connect Four and Chess moves through the same
+  controller; their Phase 4 atomic onboarding is already enabled.
+
+2026-07-29 — Explicit wallet connection and local create-instance recovery
+
+Completed:
+- Removed V3's mount-time `eth_accounts` hydration. The page now presents
+  `Play Demo` and `Connect Wallet` until the user explicitly connects.
+- Made explicit connection validate/switch to chain 412346 before exposing an
+  account, and clear the account when the wallet changes chains.
+- Fixed nested/native wallet errors so non-enumerable `Error.message` details
+  reach the transaction modal; unavailable local RPC errors now explain how
+  to start the backend.
+- Added canonical imports and validation for the generated PlayerProfile and
+  PlayerRegistry ABI payloads, allowing the guarded frontend ABI sync to cover
+  every generated file.
+- Reset the local backend, synchronized all ten V3 frontend deployment
+  payloads, removed a competing Anvil listener, and restarted stale bundlers
+  whose relayer nonce predated the chain reset.
+
+Validation:
+- Fresh backend manifest and deployed wiring smoke checks passed.
+- `npm run frontend:abis` generated, validated, and copied all ten payloads.
+- `npm run v3:tictactoe:accept` passed with instance creation and five
+  sponsored moves through primary and failover bundlers.
+- All 97 V3 tests passed and the production build passed.
+- Browser verification on `http://127.0.0.1:3000/v3/tictactoe` showed
+  `Play Demo` and `Connect Wallet`, no connected-wallet card, and no console
+  errors.
+
+2026-07-29 — V3 wallet network isolation
+
+Completed:
+- Removed the remaining V2 network-selector imports from all three V3 pages.
+  V3 wallet connection, chain addition, network naming, and explorer behavior
+  now come exclusively from the validated V3 runtime configuration.
+- V3 connection now requests the wallet account, switches to chain 412346,
+  confirms `eth_chainId` directly from the injected wallet, constructs a fresh
+  browser provider, and verifies that provider before exposing the account.
+- Added a generation-boundary regression assertion so V3 game pages cannot
+  import the shared V2 network configuration again.
+- Kept active-match alerts unchanged. The reported `Time to Play` alert was
+  traced to a real active local match left by an earlier interrupted acceptance
+  run.
+- Moved future acceptance runs from commonly imported demo accounts 1/2 to
+  dedicated local test accounts 20/21.
+
+Validation:
+- Focused wallet, runtime, write-boundary, and generation tests passed.
+- `npm run v3:tictactoe:accept` passed through both bundlers.
+- All 99 V3 tests passed and the production build passed.
+- Browser verification showed the explicit Connect Wallet CTA, no erroneous
+  Arbiscan factory link for localhost, and no console errors.
+
+2026-07-29 — Live runtime bytecode manifest
+
+Completed:
+- Diagnosed the creation-time factory mismatch as a hash-semantics bug rather
+  than ordinary stale deployment state. The backend manifest contained the
+  normalized artifact runtime hash, while the frontend compared it to raw
+  deployed bytecode containing linked/immutable values.
+- Advanced the complete deployment manifest to schema 3 and added a separate
+  `runtimeBytecodeHash` captured from each deployed address.
+- Made backend manifest validation require live runtime hashes for deployed
+  contracts and require null for the counterfactual session-account record.
+- Updated the frontend deployment loader to validate raw chain bytecode against
+  `runtimeBytecodeHash`, while preserving `deployedBytecodeHash` as the
+  normalized artifact identity.
+- Included the live runtime hash in generated release address books.
+- Expanded the local testing guide with the mandatory post-deployment ABI sync,
+  strict port-3000 startup, terminal ordering, and clean shutdown commands.
+
+Validation:
+- A controlled fresh backend deployment passed schema-3 manifest validation
+  and backend bytecode/wiring smoke tests.
+- Frontend ABI generation validated and copied all ten schema-3 payloads.
+- All 19 address-bearing manifest contracts matched their live raw runtime
+  hashes exactly on chain 412346.
+- All 99 V3 tests and the production build passed.
+- The backend verification process was stopped, its manager state was removed,
+  and ports 3000, 3001, 3002, 4337, 4338, and 8545 were verified empty.
+
+2026-07-29 — Local browser-wallet fee stability
+
+Completed:
+- Traced the lobby creation `UNKNOWN_ERROR` to the local RPC rejection hidden
+  inside the wallet error: MetaMask submitted a 30,000,000 wei max fee while
+  the deployment-heavy Hardhat chain required a 36,936,503 wei base fee.
+- Configured the V3 Hardhat network with `initialBaseFeePerGas: 0`, preventing
+  deployment bootstrap blocks from raising the local base fee above a browser
+  wallet's cached fee suggestion.
+- Updated V3 wallet error extraction to ignore generic ethers error codes and
+  show an actionable local-chain restart message for fee-cap rejections.
+
+Validation:
+- An isolated V3 Hardhat node reported a zero latest-block base fee; it was
+  stopped afterward and its temporary port was verified clear.
+- All 100 V3 tests passed and the production build passed.
+- The already-running user backend was left untouched; it must be restarted to
+  load the updated Hardhat network configuration.
+
+2026-07-29 — Prompt-free move relayer isolation and diagnostics
+
+Completed:
+- Confirmed both reported browser sessions were active on-chain, but every
+  successful move used the primary wallet; no session executor had submitted a
+  move.
+- Found that local bundler A used deterministic account 3, which had also been
+  supplied as an interactive MetaMask test wallet. Moved the two relayers to
+  reserved funded accounts 240 and 241 and documented that reservation.
+- Preserved JSON-RPC request IDs and added bounded nested error diagnostics to
+  the local bundler responses and terminal output.
+- Corrected SDK error mapping so `BundlerRpcError` is not itself treated as
+  proof of a transport outage; reviewed revert data now wins classification.
+- Made acceptance bundler URLs configurable so corrected relayers can be
+  tested on isolated ports without disturbing a user-run stack.
+
+Validation:
+- The focused backend session SDK suite passed with 15 tests.
+- All 100 frontend V3 tests and the production build passed.
+- Reserved-account bundlers on temporary ports 4437/4438 completed a fresh
+  two-player tournament with five sponsored moves.
+- The temporary bundlers were stopped after validation.
+
+2026-07-29 — Same-origin browser bundler transport
+
+Completed:
+- Isolated the remaining failure to the browser transport boundary: direct
+  bundler health and sponsored acceptance passed, while prompt-free browser
+  submission still reported a transport failure.
+- Added same-origin Vite JSON-RPC proxies for the primary and failover bundlers.
+  Local browser sessions now submit through the current frontend origin instead
+  of crossing from `localhost:3000` to `127.0.0.1`.
+- Added the Private Network Access response header to direct local bundler
+  endpoints while preserving explicit production URL overrides.
+
+Validation:
+- The live primary proxy returned the expected EntryPoint through
+  `http://localhost:3000/__v3/bundler-primary`.
+- All 101 frontend V3 tests passed and the production build passed.
+- The temporary browser verification tab was closed; no service was started.

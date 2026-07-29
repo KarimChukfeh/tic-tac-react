@@ -11,21 +11,33 @@ const localDeployment = {
 };
 
 describe('V3 runtime configuration', () => {
-  it('uses only the approved local RPC default', () => {
+  it('uses the approved local RPC and dual-bundler defaults', () => {
     const config = loadV3RuntimeConfig({}, localDeployment);
 
     expect(config.rpcUrl).toBe('http://127.0.0.1:8545/');
     expect(config.capabilities).toEqual({
       readRpcConfigured: true,
-      primaryBundlerConfigured: false,
-      failoverBundlerConfigured: false,
-      sessionSubmissionReady: false,
+      primaryBundlerConfigured: true,
+      failoverBundlerConfigured: true,
+      sessionSubmissionReady: true,
       directPrimaryFallbackAvailable: true,
     });
-    expect(config.diagnostics.issues.map((issue) => issue.code)).toEqual([
-      'V3_PRIMARY_BUNDLER_MISSING',
-      'V3_FAILOVER_BUNDLER_MISSING',
-    ]);
+    expect(config.bundlerPrimaryUrl).toBe('http://127.0.0.1:4337/');
+    expect(config.bundlerFailoverUrl).toBe('http://127.0.0.1:4338/');
+    expect(config.diagnostics.issues).toEqual([]);
+  });
+
+  it('uses same-origin Vite bundler proxies in a local browser', () => {
+    const config = loadV3RuntimeConfig(
+      {},
+      localDeployment,
+      'http://localhost:3000',
+    );
+
+    expect(config.bundlerPrimaryUrl)
+      .toBe('http://localhost:3000/__v3/bundler-primary');
+    expect(config.bundlerFailoverUrl)
+      .toBe('http://localhost:3000/__v3/bundler-failover');
   });
 
   it('requires explicit RPC configuration outside the approved local deployment', () => {

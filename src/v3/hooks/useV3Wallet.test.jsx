@@ -4,15 +4,26 @@ import { useV3Wallet, V3WalletUnavailableError } from './useV3Wallet';
 
 function walletFixture({ chainId = 412346n } = {}) {
   const listeners = new Map();
+  let activeChainId = chainId;
   const injectedProvider = {
     on: vi.fn((event, listener) => listeners.set(event, listener)),
     removeListener: vi.fn((event, listener) => {
       if (listeners.get(event) === listener) listeners.delete(event);
     }),
-    request: vi.fn(),
+    request: vi.fn(async ({ method, params }) => {
+      if (method === 'eth_chainId') return `0x${activeChainId.toString(16)}`;
+      if (method === 'wallet_switchEthereumChain') {
+        activeChainId = BigInt(params[0].chainId);
+        return null;
+      }
+      if (method === 'eth_requestAccounts') {
+        return ['0x1111111111111111111111111111111111111111'];
+      }
+      return null;
+    }),
   };
   const provider = {
-    getNetwork: vi.fn().mockResolvedValue({ chainId }),
+    getNetwork: vi.fn(async () => ({ chainId: activeChainId })),
     send: vi.fn(async (method) => (
       method === 'eth_accounts'
         ? ['0x1111111111111111111111111111111111111111']
@@ -32,7 +43,7 @@ function walletFixture({ chainId = 412346n } = {}) {
 }
 
 describe('useV3Wallet', () => {
-  it('boots the provider, hydrates the account, and removes listeners', async () => {
+  it('boots without silently connecting and removes listeners', async () => {
     const fixture = walletFixture();
     const { result, unmount } = renderHook(() => useV3Wallet({
       targetChainIdHex: '0x64aba',
@@ -42,11 +53,14 @@ describe('useV3Wallet', () => {
     }));
 
     await waitFor(() => expect(result.current.walletBootDone).toBe(true));
-    expect(result.current.account).toBe('0x1111111111111111111111111111111111111111');
+    expect(result.current.account).toBe('');
+    expect(fixture.provider.send).not.toHaveBeenCalledWith('eth_accounts', []);
     expect(fixture.listeners.has('accountsChanged')).toBe(true);
     expect(fixture.listeners.has('chainChanged')).toBe(true);
 
-    act(() => fixture.listeners.get('accountsChanged')([]));
+    act(() => fixture.listeners.get('accountsChanged')([
+      '0x2222222222222222222222222222222222222222',
+    ]));
     expect(result.current.account).toBe('');
 
     unmount();
@@ -71,7 +85,13 @@ describe('useV3Wallet', () => {
       method: 'wallet_switchEthereumChain',
       params: [{ chainId: '0x64aba' }],
     });
-    expect(fixture.provider.send).toHaveBeenCalledWith('eth_requestAccounts', []);
+    expect(fixture.injectedProvider.request).toHaveBeenCalledWith({
+      method: 'eth_requestAccounts',
+    });
+    expect(result.current.account).toBe('0x1111111111111111111111111111111111111111');
+
+    act(() => fixture.listeners.get('chainChanged')('0x1'));
+    expect(result.current.account).toBe('');
   });
 
   it('reports an unavailable injected wallet', async () => {

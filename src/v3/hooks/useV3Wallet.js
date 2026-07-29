@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ethers } from 'ethers';
 
 export class V3WalletUnavailableError extends Error {
@@ -12,6 +12,14 @@ function defaultCreateBrowserProvider(provider) {
   return new ethers.BrowserProvider(provider);
 }
 
+function normalizeChainIdHex(value) {
+  try {
+    return `0x${BigInt(value).toString(16)}`;
+  } catch {
+    return '';
+  }
+}
+
 export function useV3Wallet({
   targetChainIdHex,
   getAddChainParams,
@@ -22,9 +30,10 @@ export function useV3Wallet({
   const [account, setAccount] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
   const [walletBootDone, setWalletBootDone] = useState(!injectedProvider);
+  const connectionRequestedRef = useRef(false);
   const walletAvailable = Boolean(injectedProvider);
 
-  const installProvider = useCallback(async ({ hydrateAccount = false } = {}) => {
+  const installProvider = useCallback(async () => {
     if (!injectedProvider) {
       setBrowserProvider(null);
       setAccount('');
@@ -33,10 +42,6 @@ export function useV3Wallet({
 
     const provider = createBrowserProvider(injectedProvider);
     setBrowserProvider(provider);
-    if (hydrateAccount) {
-      const accounts = await provider.send('eth_accounts', []).catch(() => []);
-      setAccount(accounts?.[0] || '');
-    }
     return provider;
   }, [createBrowserProvider, injectedProvider]);
 
@@ -47,7 +52,7 @@ export function useV3Wallet({
       return undefined;
     }
 
-    installProvider({ hydrateAccount: true })
+    installProvider()
       .catch(() => {
         if (active) {
           setBrowserProvider(null);
@@ -59,10 +64,15 @@ export function useV3Wallet({
       });
 
     const handleAccountsChanged = (accounts) => {
-      if (active) setAccount(accounts?.[0] || '');
+      if (!active || !connectionRequestedRef.current) return;
+      const nextAccount = accounts?.[0] || '';
+      setAccount(nextAccount);
+      if (!nextAccount) connectionRequestedRef.current = false;
     };
     const handleChainChanged = () => {
-      installProvider({ hydrateAccount: true }).catch(() => {
+      connectionRequestedRef.current = false;
+      setAccount('');
+      installProvider().catch(() => {
         if (active) {
           setBrowserProvider(null);
           setAccount('');
@@ -80,10 +90,14 @@ export function useV3Wallet({
     };
   }, [injectedProvider, installProvider]);
 
-  const ensureTargetNetwork = useCallback(async (provider) => {
-    const network = await provider.getNetwork();
-    const currentChainIdHex = `0x${BigInt(network.chainId).toString(16)}`;
-    if (currentChainIdHex.toLowerCase() === targetChainIdHex.toLowerCase()) return;
+  const ensureTargetNetwork = useCallback(async () => {
+    const normalizedTargetChainId = normalizeChainIdHex(targetChainIdHex);
+    const currentChainIdHex = normalizeChainIdHex(await injectedProvider.request({
+      method: 'eth_chainId',
+    }));
+    if (currentChainIdHex === normalizedTargetChainId) {
+      return false;
+    }
 
     try {
       await injectedProvider.request({
@@ -97,6 +111,16 @@ export function useV3Wallet({
         params: [getAddChainParams()],
       });
     }
+
+    const switchedChainIdHex = normalizeChainIdHex(await injectedProvider.request({
+      method: 'eth_chainId',
+    }));
+    if (switchedChainIdHex !== normalizedTargetChainId) {
+      throw new Error(
+        `Wallet did not switch to the validated V3 chain ${BigInt(targetChainIdHex).toString()}.`,
+      );
+    }
+    return true;
   }, [getAddChainParams, injectedProvider, targetChainIdHex]);
 
   const connect = useCallback(async () => {
@@ -104,13 +128,24 @@ export function useV3Wallet({
 
     setIsConnecting(true);
     try {
+      await injectedProvider.request({ method: 'eth_requestAccounts' });
+      await ensureTargetNetwork();
       const provider = await installProvider();
-      await ensureTargetNetwork(provider);
-      await provider.send('eth_requestAccounts', []);
+      const network = await provider.getNetwork();
+      if (normalizeChainIdHex(network.chainId) !== normalizeChainIdHex(targetChainIdHex)) {
+        throw new Error(
+          `Wallet did not connect to the validated V3 chain ${BigInt(targetChainIdHex).toString()}.`,
+        );
+      }
       const signer = await provider.getSigner();
       const nextAccount = await signer.getAddress();
+      connectionRequestedRef.current = true;
       setAccount(nextAccount);
       return { account: nextAccount, provider, signer };
+    } catch (error) {
+      connectionRequestedRef.current = false;
+      setAccount('');
+      throw error;
     } finally {
       setIsConnecting(false);
     }

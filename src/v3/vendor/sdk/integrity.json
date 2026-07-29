@@ -3,8 +3,8 @@
   "source": {
     "repository": "e-tour",
     "repositoryVersion": "1.0.0",
-    "commit": "1ba319b83a5fdd279401a74966570389a079ae69",
-    "dirty": false,
+    "commit": "35e3bb766c048486079d408235d31139ec1d3795",
+    "dirty": true,
     "sdkPath": "v3/sdk/dist"
   },
   "files": [
@@ -36,17 +36,17 @@
     {
       "path": "dist/errors.d.ts.map",
       "bytes": 440,
-      "sha256": "afb13107c8ff5036a62b2cdf7e346127adaa622bac9676f9647e889fbb5bb0bf"
+      "sha256": "07bba52a2746996260cf19b4abe746c0271c3f49559146e7bea0985f35bba2c7"
     },
     {
       "path": "dist/errors.js",
-      "bytes": 9805,
-      "sha256": "591d114233442a07ece2ee1cf38574d2d77aa0e160d915d28b0a9397ef8054e5"
+      "bytes": 10041,
+      "sha256": "430c82ea648cb59420e96ecd4f1852b3fbc2b107eac18c21d96832abb84cb566"
     },
     {
       "path": "dist/errors.js.map",
-      "bytes": 6520,
-      "sha256": "d6c414232ae7dc4eba0b5c954377b999650728959dc0b319a789b494e02c0fde"
+      "bytes": 6615,
+      "sha256": "b34aeb0e580d24624273ccec31d74ecc39a66b817b6d8cac43a070dfd62b28cd"
     },
     {
       "path": "dist/games.d.ts",
@@ -249,5 +249,5 @@
       "sha256": "897546c32cabeabfec3773d5d7223e19509a7d868508158f83f3f55b53c62e55"
     }
   ],
-  "treeSha256": "6983db3a4237b8963955f435899454aabef03e1293a4fddcf882887303063b65"
+  "treeSha256": "23e1a60ca481b030c7bcc36df6f5b7a8f2ee96ae5a82f9937a1608dcbed6b405"
 }

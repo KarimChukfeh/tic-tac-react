@@ -1,6 +1,8 @@
 import { getAddress, isAddress, keccak256 } from 'ethers';
 import HardhatFactoryData from '../ABIs/hardhat-factory.json';
 import ETourFactoryABIs from '../ABIs/ETour-Factory-ABIs.json';
+import PlayerProfileABIData from '../ABIs/PlayerProfile-ABI.json';
+import PlayerRegistryABIData from '../ABIs/PlayerRegistry-ABI.json';
 import TicTacToeFactoryABIData from '../ABIs/TicTacToeFactory-ABI.json';
 import ConnectFourFactoryABIData from '../ABIs/ConnectFourFactory-ABI.json';
 import ChessFactoryABIData from '../ABIs/ChessFactory-ABI.json';
@@ -13,7 +15,7 @@ import {
   validateV3GameDeployment,
 } from './deploymentGuard';
 
-export const V3_DEPLOYMENT_SCHEMA_VERSION = 2;
+export const V3_DEPLOYMENT_SCHEMA_VERSION = 3;
 export const V3_DEPLOYMENT_MANIFEST_KIND = 'complete-v3-deployment';
 
 export const V3_GAME_DEFINITIONS = Object.freeze({
@@ -119,6 +121,16 @@ function normalizeBytecodeHash(value, label) {
   return value.toLowerCase();
 }
 
+function assertCanonicalSharedAbi(payload, canonicalAbi, network, label) {
+  if (payload?.network !== network) {
+    fail(`${label} network does not match the V3 manifest`);
+  }
+  const abi = normalizeAbi(payload?.contract?.abi, label);
+  if (JSON.stringify(abi) !== JSON.stringify(normalizeAbi(canonicalAbi, `Canonical ${label}`))) {
+    fail(`${label} does not match the canonical V3 ABI bundle`);
+  }
+}
+
 function manifestContract(manifest, contractName) {
   const contract = manifest?.contracts?.[contractName];
   if (!contract || typeof contract !== 'object') {
@@ -128,7 +140,7 @@ function manifestContract(manifest, contractName) {
     address: normalizeAddress(contract.address, `Manifest ${contractName} address`),
     abi: normalizeAbi(contract.abi, `Manifest ${contractName}`),
     bytecodeHash: normalizeBytecodeHash(
-      contract.deployedBytecodeHash,
+      contract.runtimeBytecodeHash,
       `Manifest ${contractName}`,
     ),
   };
@@ -449,6 +461,18 @@ export function normalizeV3DeploymentArtifacts({
   }
 
   const chainId = normalizePositiveInteger(manifest.chainId, 'Manifest chainId');
+  assertCanonicalSharedAbi(
+    PlayerProfileABIData,
+    canonicalBundle?.playerProfile?.PlayerProfileImpl?.abi,
+    manifest.network,
+    'PlayerProfile ABI',
+  );
+  assertCanonicalSharedAbi(
+    PlayerRegistryABIData,
+    canonicalBundle?.playerProfile?.PlayerRegistry?.abi,
+    manifest.network,
+    'PlayerRegistry ABI',
+  );
   const shared = normalizeSharedDeployment(manifest);
   const games = Object.fromEntries(
     Object.entries(V3_GAME_DEFINITIONS).map(([gameId, definition]) => [

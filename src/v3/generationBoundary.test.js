@@ -81,6 +81,8 @@ describe('V3 generation boundary', () => {
       expect(source).not.toContain('multicallContracts');
       expect(source).not.toContain('buildV2MatchKey');
       expect(source).not.toContain('CURRENT_NETWORK.rpcUrl');
+      expect(source).not.toContain("from '../../config/networks'");
+      expect(source).toContain("from '../config/walletConfig'");
     }
   });
 

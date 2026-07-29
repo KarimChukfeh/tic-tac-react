@@ -5,7 +5,7 @@ const GENERIC_RPC_MESSAGE_PATTERNS = [
   /^missing revert data/i,
   /^call exception\.?$/i,
   /^execution reverted\.?$/i,
-  /^unknown error\.?$/i,
+  /^unknown[_\s-]*error\.?$/i,
   /^server error\.?$/i,
 ];
 
@@ -78,6 +78,16 @@ export function collectErrorDetails(error) {
     if (seen.has(value)) return;
     seen.add(value);
 
+    pushMessage(value.shortMessage);
+    pushMessage(value.reason);
+    pushMessage(value.message);
+    if (
+      typeof value.code === 'string'
+      && ['ECONNREFUSED', 'NETWORK_ERROR', 'SERVER_ERROR'].includes(value.code)
+    ) {
+      pushMessage(value.code);
+    }
+
     if (Array.isArray(value)) {
       value.forEach((item) => walk(item, keyHint));
       return;
@@ -86,6 +96,7 @@ export function collectErrorDetails(error) {
     Object.entries(value).forEach(([key, child]) => {
       const lowerKey = key.toLowerCase();
       if (lowerKey === 'stack' || lowerKey === 'name') return;
+      if (lowerKey === 'code' && typeof child === 'string') return;
       if (typeof child === 'string' && lowerKey === 'data') {
         pushData(child.trim());
       }
@@ -102,6 +113,20 @@ export function pickBestErrorMessage(messages, fallback = 'Transaction failed.')
   const normalizedMessages = messages
     .map(normalizeMessage)
     .filter(Boolean);
+
+  const connectionFailure = normalizedMessages.find((message) => (
+    /ECONNREFUSED|failed to fetch|could not detect network|network request failed/i.test(message)
+  ));
+  if (connectionFailure) {
+    return 'The local V3 RPC is unavailable. Start the V3 backend on http://127.0.0.1:8545 and try again.';
+  }
+
+  const feeCapFailure = normalizedMessages.find((message) => (
+    /maxFeePerGas.*too low.*baseFeePerGas/i.test(message)
+  ));
+  if (feeCapFailure) {
+    return 'The wallet gas fee cap is below the local chain base fee. Restart the fresh V3 backend so its browser-wallet base fee resets, then reconnect and try again.';
+  }
 
   const explicitMessage = normalizedMessages.find((message) => !isGenericRpcMessage(message));
   if (explicitMessage) return explicitMessage;

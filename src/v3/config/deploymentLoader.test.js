@@ -40,7 +40,7 @@ describe('normalized V3 deployment loader', () => {
     const deployment = normalizeV3DeploymentArtifacts(artifacts());
 
     expect(deployment).toMatchObject({
-      schemaVersion: 2,
+      schemaVersion: 3,
       manifestKind: 'complete-v3-deployment',
       generation: 'v3',
       network: 'localhost',
@@ -78,7 +78,7 @@ describe('normalized V3 deployment loader', () => {
       move.inputs.pop();
     }],
     ['bytecode hash', (value) => {
-      value.manifest.contracts.EntryPoint.deployedBytecodeHash = '0x1234';
+      value.manifest.contracts.EntryPoint.runtimeBytecodeHash = '0x1234';
     }],
   ])('rejects an invalid %s', (_label, mutate) => {
     const value = artifacts();

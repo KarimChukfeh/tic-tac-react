@@ -30,8 +30,13 @@ import {
   Gamepad2,
 } from 'lucide-react';
 import { ethers } from 'ethers';
-import { CURRENT_NETWORK, TARGET_CHAIN_ID_HEX, getAddressUrl, getWalletAddChainParams } from '../../config/networks';
 import { shortenAddress, getCellPositionName } from '../../utils/formatters';
+import {
+  V3_NETWORK_NAME,
+  V3_TARGET_CHAIN_ID_HEX,
+  getV3AddressUrl,
+  getV3WalletAddChainParams,
+} from '../config/walletConfig';
 import { createV3TournamentUrl, parseV3InstanceParam } from '../routing/tournamentUrl';
 import { shouldResetOnInitialDocumentLoad } from '../../utils/navigation';
 import { isDraw, getCompletionReasonText, getCompletionReasonDescription } from '../../utils/completionReasons';
@@ -68,7 +73,17 @@ import TimeoutSettingSlider, { clampCreateTimeoutValue, isCreateTimeoutField, no
 import { useInitialDocumentScrollTop } from '../../hooks/useInitialDocumentScrollTop';
 import { useWalletBrowserPrompt } from '../../hooks/useWalletBrowserPrompt';
 import { useV3Wallet } from '../hooks/useV3Wallet';
-import { createV3RpcProvider } from '../sdk/adapter';
+import { useV3Session } from '../hooks/useV3Session';
+import V3SessionStatus from '../components/V3SessionStatus';
+import {
+  createV3RpcProvider,
+  mapV3SdkError,
+} from '../sdk/adapter';
+import { canSubmitSessionMove } from '../session/sessionState';
+import {
+  createTicTacToeMove,
+  V3MoveController,
+} from '../session/moveController';
 import { isMobileDevice, isWalletBrowser } from '../../utils/mobileDetection';
 import { didMatchStateAdvance, waitForTxOrStateSync } from '../../utils/txSync';
 import {
@@ -746,8 +761,8 @@ export default function TicTacToePage({ routeBase = '/v3/tictactoe' }) {
     isConnecting,
     walletAvailable,
   } = useV3Wallet({
-    targetChainIdHex: TARGET_CHAIN_ID_HEX,
-    getAddChainParams: getWalletAddChainParams,
+    targetChainIdHex: V3_TARGET_CHAIN_ID_HEX,
+    getAddChainParams: getV3WalletAddChainParams,
   });
   const [rpcReady, setRpcReady] = useState(false);
   const [rpcProvider, setRpcProvider] = useState(null);
@@ -840,7 +855,7 @@ export default function TicTacToePage({ routeBase = '/v3/tictactoe' }) {
 
   // --- Instance selection (URL param ?instance=0x...) ---
   const selectedAddress = searchParams.get('instance');
-  const explorerUrl = getAddressUrl(factoryAddress);
+  const explorerUrl = getV3AddressUrl(factoryAddress);
 
   // --- Invite link: ?c=0x... (V2 contract address) ---
   const [hasProcessedInviteParam, setHasProcessedInviteParam] = useState(false);
@@ -853,6 +868,11 @@ export default function TicTacToePage({ routeBase = '/v3/tictactoe' }) {
 
   // Active instance contract (the one being viewed)
   const [activeInstanceContract, setActiveInstanceContract] = useState(null);
+  const v3Session = useV3Session({
+    account,
+    instanceAddress: viewingTournament?.address || selectedAddress,
+    factoryAddress,
+  });
 
   // --- Match state (mirrors V1) ---
   const [currentMatch, setCurrentMatch] = useState(null);
@@ -875,6 +895,7 @@ export default function TicTacToePage({ routeBase = '/v3/tictactoe' }) {
   const [demoSymbol, setDemoSymbol] = useState(null);
   const previousBoardRef = useRef(null);
   const moveTxInProgressRef = useRef(false);
+  const moveControllerRef = useRef(new V3MoveController());
   const [moveTxTimeout, setMoveTxTimeout] = useState(null);
   const matchEndModalShownRef = useRef(false);
   const [ghostMove, setGhostMove] = useState(null);
@@ -992,7 +1013,7 @@ export default function TicTacToePage({ routeBase = '/v3/tictactoe' }) {
       setFactoryAddress(candidateAddress);
       return contract;
     }
-    throw new Error(`No validated Tic-Tac-Toe V3 factory found at ${TICTACTOE_FACTORY_ADDRESS_CANDIDATES.join(' or ')} on ${CURRENT_NETWORK.name}.`);
+    throw new Error(`No validated Tic-Tac-Toe V3 factory found at ${TICTACTOE_FACTORY_ADDRESS_CANDIDATES.join(' or ')} on ${V3_NETWORK_NAME}.`);
   };
 
   useEffect(() => {
@@ -1161,7 +1182,9 @@ export default function TicTacToePage({ routeBase = '/v3/tictactoe' }) {
       return;
     }
     setCreateLoading(true);
-    setActionState({ type: 'info', message: 'Submitting createInstance transaction...' });
+    let preparedSession = null;
+    let transactionSubmitted = false;
+    setActionState({ type: 'info', message: 'Preparing an encrypted prompt-free session...' });
     try {
       const normalizedTimeouts = normalizeCreateTimeouts(createForm);
       setCreateForm(prev => ({ ...prev, ...normalizedTimeouts }));
@@ -1169,6 +1192,17 @@ export default function TicTacToePage({ routeBase = '/v3/tictactoe' }) {
       const creator = await signer.getAddress();
       const readFactory = await resolveFactoryContract();
       const writableFactory = await getWritableFactoryContract(browserProvider, readFactory, signer);
+      let sessionExecutor = ethers.ZeroAddress;
+      try {
+        preparedSession = await v3Session.prepareCreation(readFactory.target);
+        sessionExecutor = preparedSession.executor;
+      } catch (sessionError) {
+        const useDirectOnly = window.confirm(
+          'Prompt-free session setup is unavailable. Create this tournament in wallet-confirmation-only mode?',
+        );
+        if (!useDirectOnly) throw sessionError;
+        v3Session.selectDirectPrimary();
+      }
       setActionState({ type: 'info', message: 'Reading contract constraints...' });
       const [countBeforeRaw, minFeeRaw, feeIncrementRaw, maxFeeRaw] = await Promise.all([
         readFactory.getInstanceCount(),
@@ -1181,15 +1215,22 @@ export default function TicTacToePage({ routeBase = '/v3/tictactoe' }) {
       if (entryFeeWei < minFeeRaw) throw new Error(`Entry fee too low. Minimum is ${ethers.formatEther(minFeeRaw)} ETH.`);
       if (maxFeeRaw > 0n && entryFeeWei > maxFeeRaw) throw new Error(`Entry fee too high. Maximum is ${ethers.formatEther(maxFeeRaw)} ETH.`);
       if (feeIncrementRaw > 0n && entryFeeWei % feeIncrementRaw !== 0n) throw new Error(`Entry fee must be a multiple of ${ethers.formatEther(feeIncrementRaw)} ETH.`);
-      setActionState({ type: 'info', message: 'Sending createInstance transaction...' });
+      setActionState({
+        type: 'info',
+        message: preparedSession
+          ? 'Confirm once in your wallet to create, enroll, and enable prompt-free moves...'
+          : 'Confirm tournament creation in your wallet...',
+      });
       const tx = await writableFactory.createInstance(
         Number(createForm.playerCount),
         entryFeeWei,
         BigInt(normalizedTimeouts.enrollmentWindow),
         BigInt(normalizedTimeouts.matchTimePerPlayer),
         BigInt(normalizedTimeouts.timeIncrementPerMove),
+        sessionExecutor,
         { value: entryFeeWei }
       );
+      transactionSubmitted = true;
       setActionState({ type: 'info', message: 'Transaction submitted. Waiting for block confirmation...' });
       const receipt = await tx.wait();
       setActionState({ type: 'info', message: 'Transaction confirmed. Locating the new instance and syncing tournament data...' });
@@ -1203,12 +1244,19 @@ export default function TicTacToePage({ routeBase = '/v3/tictactoe' }) {
         receipt,
       });
       if (!address) throw new Error('Transaction mined, but the frontend could not locate the created instance.');
+      if (preparedSession) {
+        const finalized = await v3Session.finalizeCreation(preparedSession, address);
+        preparedSession = null;
+        if (finalized.inspection.status !== 'active') {
+          throw new Error(`Creator session was registered but is ${finalized.inspection.status}.`);
+        }
+      }
       const createdInstance = getInstanceContract(address, getReadRunner());
       const creatorEnrolled = await createdInstance.isEnrolled(creator).catch(() => false);
       if (!creatorEnrolled) {
         throw new Error(
           `Instance created at ${address}, but creator enrollment was not confirmed. ` +
-          'Your local v2 deployment is likely stale or mismatched; redeploy the v2 modules and factory together.'
+          'Your local V3 deployment is stale or mismatched; redeploy the V3 modules and factory together.'
         );
       }
       setActionState({ type: 'success', message: `Instance created and enrollment verified on-chain at ${address}.` });
@@ -1216,7 +1264,10 @@ export default function TicTacToePage({ routeBase = '/v3/tictactoe' }) {
       // Navigate directly to bracket view after creation
       await enterInstanceBracket(address);
     } catch (error) {
-      console.error('[V2 createInstance] raw error:', error);
+      if (preparedSession && !transactionSubmitted) {
+        await v3Session.discardCreation(preparedSession).catch(() => {});
+      }
+      console.error('[V3 createInstance] raw error:', error);
       showActionError('create this lobby', error, 'Could not create instance.');
     } finally {
       setCreateLoading(false);
@@ -1332,12 +1383,35 @@ export default function TicTacToePage({ routeBase = '/v3/tictactoe' }) {
   const handleEnroll = useCallback(async () => {
     if (!viewingTournament || !activeInstanceContract) return;
     if (!account) { setActionState({ type: 'error', message: 'Please connect your wallet first.' }); return; }
+    let preparedSession = null;
+    let transactionSubmitted = false;
     try {
       setTournamentsLoading(true);
       const writableInstance = await withInstanceSigner(activeInstanceContract);
       const previousTournament = viewingTournament;
-      setActionState({ type: 'info', message: 'Confirm your enrollment in MetaMask...' });
-      const tx = await writableInstance.enrollInTournament({ value: viewingTournament.entryFeeWei });
+      let sessionExecutor = ethers.ZeroAddress;
+      setActionState({ type: 'info', message: 'Preparing an encrypted prompt-free session...' });
+      try {
+        preparedSession = await v3Session.prepareEnrollment(previousTournament.address);
+        sessionExecutor = preparedSession.executor;
+      } catch (sessionError) {
+        const useDirectOnly = window.confirm(
+          'Prompt-free session setup is unavailable. Join in wallet-confirmation-only mode?',
+        );
+        if (!useDirectOnly) throw sessionError;
+        v3Session.selectDirectPrimary();
+      }
+      setActionState({
+        type: 'info',
+        message: preparedSession
+          ? 'Confirm once in your wallet to join and enable prompt-free moves...'
+          : 'Confirm your enrollment in your wallet...',
+      });
+      const tx = await writableInstance.enrollInTournament(
+        sessionExecutor,
+        { value: viewingTournament.entryFeeWei },
+      );
+      transactionSubmitted = true;
       setActionState({ type: 'info', message: 'Enrollment submitted. Waiting for block confirmation...' });
       const syncResult = await waitForTxOrStateSync({
         tx,
@@ -1355,6 +1429,13 @@ export default function TicTacToePage({ routeBase = '/v3/tictactoe' }) {
           setActionState({ type: 'info', message: 'Enrollment confirmed. Syncing tournament lobby...' });
         },
       });
+      if (preparedSession) {
+        const inspection = await v3Session.confirmEnrollment(preparedSession);
+        if (inspection.status !== 'active') {
+          throw new Error(`Enrollment confirmed, but the session is ${inspection.status}.`);
+        }
+        preparedSession = null;
+      }
       const updated = syncResult.updated || await refreshTournamentBracket(previousTournament.address);
       if (updated) setViewingTournament(updated);
       setActionState({
@@ -1364,12 +1445,25 @@ export default function TicTacToePage({ routeBase = '/v3/tictactoe' }) {
           : 'Enrollment confirmed on-chain. The tournament lobby is still syncing and should update shortly.',
       });
     } catch (error) {
-      console.error('[V2] Enroll error:', error);
+      if (
+        preparedSession
+        && (!transactionSubmitted || Number(error?.receipt?.status) === 0)
+      ) {
+        await v3Session.discardEnrollment(preparedSession).catch(() => {});
+      }
+      console.error('[V3] Enroll error:', error);
       showActionError('join this lobby', error, 'Enrollment failed.');
     } finally {
       setTournamentsLoading(false);
     }
-  }, [viewingTournament, activeInstanceContract, account, refreshTournamentBracket, showActionError]);
+  }, [
+    viewingTournament,
+    activeInstanceContract,
+    account,
+    refreshTournamentBracket,
+    showActionError,
+    v3Session,
+  ]);
 
   const handleEnterTournamentFromActivity = useCallback((_tierId, instanceRef) => {
     const instanceAddress = (typeof instanceRef === 'string' && instanceRef.startsWith('0x'))
@@ -1803,32 +1897,89 @@ export default function TicTacToePage({ routeBase = '/v3/tictactoe' }) {
     if (!currentMatch.isYourTurn) { alert("It's not your turn!"); return; }
     if (currentMatch.board[cellIndex] !== 0) { alert('Cell already taken!'); return; }
     if (currentMatch.matchStatus === 2) { alert('Match is already complete!'); return; }
+    if (moveTxInProgressRef.current || moveControllerRef.current.pending) return;
+    let attemptedSessionMove = false;
     setMoveTxTimeout(null);
     try {
-      setActionState({ type: 'info', message: 'Confirm your move in MetaMask...' });
-      setMatchLoadingMessage('Confirm your move in MetaMask...');
+      attemptedSessionMove = canSubmitSessionMove(v3Session.state);
+      if (!attemptedSessionMove && !v3Session.state.directPrimaryMode) {
+        const approved = window.confirm(
+          'Prompt-free moves are not active for this tournament. Submit this move with your primary wallet?',
+        );
+        if (!approved) return;
+        v3Session.selectDirectPrimary();
+      }
+      setActionState({
+        type: 'info',
+        message: attemptedSessionMove
+          ? 'Submitting sponsored session move...'
+          : 'Confirm your move in your wallet...',
+      });
+      setMatchLoadingMessage(
+        attemptedSessionMove
+          ? 'Submitting prompt-free move...'
+          : 'Confirm your move in your wallet...',
+      );
       setMatchLoading(true);
       moveTxInProgressRef.current = true;
       const { roundNumber, matchNumber } = currentMatch;
-      const writableInstance = await withInstanceSigner(activeInstanceContractRef.current);
-      const tx = await writableInstance.makeMove(roundNumber, matchNumber, cellIndex);
-      setActionState({ type: 'info', message: 'Move submitted. Waiting for block confirmation...' });
-      setMatchLoadingMessage('Move submitted. Waiting for block confirmation...');
-      const syncResult = await waitForTxOrStateSync({
-        tx,
-        timeoutMs: 90_000,
-        postReceiptSyncMs: 12_000,
-        sync: async () => {
-          const latestMatch = currentMatchRef.current || currentMatch;
-          if (!latestMatch || !activeInstanceContractRef.current) return null;
-          return refreshMatchData(activeInstanceContractRef.current, account, latestMatch);
-        },
-        isSynced: (updatedMatch) => didMatchStateAdvance(currentMatchRef.current || currentMatch, updatedMatch),
-        onReceipt: () => {
-          setActionState({ type: 'info', message: 'Move confirmed on-chain. Syncing the board and match state...' });
-          setMatchLoadingMessage('Move confirmed on-chain. Syncing the board...');
-        },
-      });
+      const move = createTicTacToeMove({ roundNumber, matchNumber, cellIndex });
+      const reconcile = async (submission) => {
+        const tx = attemptedSessionMove
+          ? { wait: async () => submission.receipt }
+          : submission;
+        return waitForTxOrStateSync({
+          tx,
+          timeoutMs: 90_000,
+          postReceiptSyncMs: 12_000,
+          sync: async () => {
+            const latestMatch = currentMatchRef.current || currentMatch;
+            if (!latestMatch || !activeInstanceContractRef.current) return null;
+            return refreshMatchData(activeInstanceContractRef.current, account, latestMatch);
+          },
+          isSynced: (updatedMatch) => didMatchStateAdvance(
+            currentMatchRef.current || currentMatch,
+            updatedMatch,
+          ),
+          onReceipt: () => {
+            setActionState({
+              type: 'info',
+              message: attemptedSessionMove
+                ? 'Sponsored move included. Syncing the board and match state...'
+                : 'Move confirmed on-chain. Syncing the board and match state...',
+            });
+            setMatchLoadingMessage('Move confirmed on-chain. Syncing the board...');
+          },
+        });
+      };
+
+      const controlledMove = attemptedSessionMove
+        ? await moveControllerRef.current.submitSession({
+            sessionService: await v3Session.getService(),
+            identity: v3Session.identity,
+            move,
+            reconcile,
+          })
+        : await moveControllerRef.current.submitDirect({
+            submit: async () => {
+              const writableInstance = await withInstanceSigner(
+                activeInstanceContractRef.current,
+              );
+              const tx = await writableInstance.makeMove(
+                roundNumber,
+                matchNumber,
+                cellIndex,
+              );
+              setActionState({
+                type: 'info',
+                message: 'Move submitted. Waiting for block confirmation...',
+              });
+              setMatchLoadingMessage('Move submitted. Waiting for block confirmation...');
+              return tx;
+            },
+            reconcile,
+          });
+      const syncResult = controlledMove.reconciled;
 
       const latestMatch = currentMatchRef.current || currentMatch;
       const updated = syncResult.updated || ((latestMatch && activeInstanceContractRef.current)
@@ -1877,6 +2028,14 @@ export default function TicTacToePage({ routeBase = '/v3/tictactoe' }) {
         }
       }
     } catch (error) {
+      if (attemptedSessionMove) {
+        const descriptor = await mapV3SdkError(error);
+        setActionState({
+          type: 'error',
+          message: `${descriptor.message} Your move was not resubmitted. Select “Use wallet for moves” to retry explicitly.`,
+        });
+        return;
+      }
       const errorString = error.message || error.toString();
       if (errorString.includes('TX_TIMEOUT')) {
         setActionState({ type: 'error', message: 'Move confirmation is taking longer than expected. If it confirms, the board will update automatically.' });
@@ -2528,6 +2687,16 @@ export default function TicTacToePage({ routeBase = '/v3/tictactoe' }) {
         message={actionState.type === 'error' ? actionState.message : ''}
         onDismiss={dismissActionError}
       />
+      {account && (viewingTournament || currentMatch) && (
+        <div className="fixed right-3 top-20 z-30 w-[min(22rem,calc(100vw-1.5rem))]">
+          <V3SessionStatus
+            compact
+            state={v3Session.state}
+            onUsePrimary={v3Session.selectDirectPrimary}
+            onUseSession={v3Session.selectSession}
+          />
+        </div>
+      )}
 
       {/* Wallet Browser Prompt */}
       {showPrompt && (

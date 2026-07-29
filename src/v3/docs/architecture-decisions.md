@@ -82,8 +82,7 @@ Join flows already know the instance and use the normal identity directly.
 
 ## ADR-004: Runtime configuration
 
-Status: accepted interface and frontend parsing implemented; browser bundler
-services remain a backend blocker.
+Status: accepted and implemented.
 
 The normalized V3 runtime will use:
 
@@ -93,14 +92,10 @@ VITE_V3_BUNDLER_URL_PRIMARY
 VITE_V3_BUNDLER_URL_FAILOVER
 ```
 
-The local RPC defaults to `http://127.0.0.1:8545` only when the generated
-manifest declares network `localhost` and chain ID `412346`. Production
-configuration has no implicit RPC or bundler fallback.
-
-The current backend exposes no browser-reachable URLs for its two local
-bundlers. Phase 2 may implement configuration parsing and diagnostics, but
-session submission cannot pass browser acceptance until the backend provides
-two ERC-7769 HTTP endpoints.
+The local RPC defaults to `http://127.0.0.1:8545`, and the two local bundlers
+default to ports `4337` and `4338`, only when the generated manifest declares
+network `localhost` and chain ID `412346`. Production configuration has no
+implicit RPC or bundler fallback.
 
 The parser rejects relative, non-HTTP(S), credential-bearing, fragmented, or
 duplicate bundler endpoints. Public diagnostics expose origins, paths, and
@@ -137,23 +132,22 @@ Status: accepted and implemented on 2026-07-29.
   hashes. They do not contain wallet signatures, session secrets, or vault
   material.
 
-## ADR-007: Preserve the SDK artifact when browser compatibility fails
+## ADR-007: Preserve the SDK artifact and generate a browser entry
 
-Status: accepted on 2026-07-29; upstream backend fix required.
+Status: accepted and implemented on 2026-07-29.
 
 The synchronized backend `session-client.js` imports `user-operation.js`,
 which imports Node's `module.createRequire` and resolves two account
-abstraction artifacts from backend `node_modules`. That entry cannot execute
-in a browser as generated.
+abstraction artifacts from backend `node_modules`. That emitted entry cannot
+execute in a browser directly.
 
-- The frontend does not rewrite, patch, or fork the synchronized SDK.
+- The synchronized SDK remains byte-for-byte immutable and integrity checked.
+- A deterministic generator produces only the two browser entry files,
+  replacing Node artifact lookup with ABIs from the validated deployment.
 - Browser-safe generated modules for bundlers, encrypted storage,
   coordination, and error mapping are lazy-loaded through `sdk/adapter.js`.
-- `createV3SessionClient` fails explicitly with
-  `V3_SDK_BROWSER_ENTRY_UNAVAILABLE` until the backend emits a browser entry
-  without Node built-ins or runtime `node_modules` resolution.
+- Build and CI checks fail when either the synchronized SDK or derived browser
+  entries are stale.
 - Direct primary-wallet gameplay remains available while session transport is
   unavailable.
-- The upstream fix should import reviewed SimpleAccount ABIs through a
-  browser-compatible build input and remain covered by the same SDK tests and
-  integrity manifest.
+- The derived entry contains no account, wallet, or session secret material.

@@ -17,8 +17,13 @@ import {
   Gamepad2,
 } from 'lucide-react';
 import { ethers } from 'ethers';
-import { CURRENT_NETWORK, TARGET_CHAIN_ID_HEX, getAddressUrl, getWalletAddChainParams } from '../../config/networks';
 import { shortenAddress } from '../../utils/formatters';
+import {
+  V3_NETWORK_NAME,
+  V3_TARGET_CHAIN_ID_HEX,
+  getV3AddressUrl,
+  getV3WalletAddChainParams,
+} from '../config/walletConfig';
 import { createV3TournamentUrl, parseV3InstanceParam } from '../routing/tournamentUrl';
 import { shouldResetOnInitialDocumentLoad } from '../../utils/navigation';
 import { isDraw } from '../../utils/completionReasons';
@@ -52,6 +57,7 @@ import TimeoutSettingSlider, { clampCreateTimeoutValue, isCreateTimeoutField, no
 import { useInitialDocumentScrollTop } from '../../hooks/useInitialDocumentScrollTop';
 import { useWalletBrowserPrompt } from '../../hooks/useWalletBrowserPrompt';
 import { useV3Wallet } from '../hooks/useV3Wallet';
+import { useV3Session } from '../hooks/useV3Session';
 import { createV3RpcProvider } from '../sdk/adapter';
 import { isMobileDevice, isWalletBrowser } from '../../utils/mobileDetection';
 import { didMatchStateAdvance, waitForTxOrStateSync } from '../../utils/txSync';
@@ -886,8 +892,8 @@ export default function ConnectFourPage({ routeBase = '/v3/connect4' }) {
     isConnecting,
     walletAvailable,
   } = useV3Wallet({
-    targetChainIdHex: TARGET_CHAIN_ID_HEX,
-    getAddChainParams: getWalletAddChainParams,
+    targetChainIdHex: V3_TARGET_CHAIN_ID_HEX,
+    getAddChainParams: getV3WalletAddChainParams,
   });
   const [rpcReady, setRpcReady] = useState(false);
   const [rpcProvider, setRpcProvider] = useState(null);
@@ -977,7 +983,7 @@ export default function ConnectFourPage({ routeBase = '/v3/connect4' }) {
   }, []);
 
   const selectedAddress = searchParams.get('instance');
-  const explorerUrl = getAddressUrl(factoryAddress);
+  const explorerUrl = getV3AddressUrl(factoryAddress);
 
   const [hasProcessedInviteParam, setHasProcessedInviteParam] = useState(false);
   const [allowInitialUrlHydration, setAllowInitialUrlHydration] = useState(() => !shouldResetOnInitialDocumentLoad(routeBase, { allowInviteParam: true }));
@@ -985,6 +991,11 @@ export default function ConnectFourPage({ routeBase = '/v3/connect4' }) {
   const [bracketSyncDots, setBracketSyncDots] = useState(1);
   const [tournamentsLoading, setTournamentsLoading] = useState(false);
   const [activeInstanceContract, setActiveInstanceContract] = useState(null);
+  const v3Session = useV3Session({
+    account,
+    instanceAddress: viewingTournament?.address || selectedAddress,
+    factoryAddress,
+  });
 
   const [currentMatch, setCurrentMatch] = useState(null);
   const [matchLoading, setMatchLoading] = useState(false);
@@ -1104,7 +1115,7 @@ export default function ConnectFourPage({ routeBase = '/v3/connect4' }) {
       setFactoryAddress(candidateAddress);
       return contract;
     }
-    throw new Error(`No validated Connect Four V3 factory found at ${CONNECTFOUR_FACTORY_ADDRESS_CANDIDATES.join(' or ')} on ${CURRENT_NETWORK.name}.`);
+    throw new Error(`No validated Connect Four V3 factory found at ${CONNECTFOUR_FACTORY_ADDRESS_CANDIDATES.join(' or ')} on ${V3_NETWORK_NAME}.`);
   };
 
   useEffect(() => {
@@ -1355,7 +1366,9 @@ export default function ConnectFourPage({ routeBase = '/v3/connect4' }) {
       return;
     }
     setCreateLoading(true);
-    setActionState({ type: 'info', message: 'Submitting createInstance transaction...' });
+    let preparedSession = null;
+    let transactionSubmitted = false;
+    setActionState({ type: 'info', message: 'Preparing an encrypted prompt-free session...' });
     try {
       const normalizedTimeouts = normalizeCreateTimeouts(createForm);
       setCreateForm(prev => ({ ...prev, ...normalizedTimeouts }));
@@ -1363,6 +1376,16 @@ export default function ConnectFourPage({ routeBase = '/v3/connect4' }) {
       const creator = await signer.getAddress();
       const readFactory = await resolveFactoryContract();
       const writableFactory = await getWritableFactoryContract(browserProvider, readFactory, signer);
+      let sessionExecutor = ethers.ZeroAddress;
+      try {
+        preparedSession = await v3Session.prepareCreation(readFactory.target);
+        sessionExecutor = preparedSession.executor;
+      } catch (sessionError) {
+        if (!window.confirm('Prompt-free session setup is unavailable. Create in wallet-confirmation-only mode?')) {
+          throw sessionError;
+        }
+        v3Session.selectDirectPrimary();
+      }
       setActionState({ type: 'info', message: 'Reading contract constraints...' });
       const [countBeforeRaw, minFeeRaw, feeIncrementRaw, maxFeeRaw] = await Promise.all([
         readFactory.getInstanceCount(),
@@ -1376,15 +1399,19 @@ export default function ConnectFourPage({ routeBase = '/v3/connect4' }) {
       if (maxFeeRaw > 0n && entryFeeWei > maxFeeRaw) throw new Error(`Entry fee too high. Maximum is ${ethers.formatEther(maxFeeRaw)} ETH.`);
       if (feeIncrementRaw > 0n && entryFeeWei % feeIncrementRaw !== 0n) throw new Error(`Entry fee must be a multiple of ${ethers.formatEther(feeIncrementRaw)} ETH.`);
 
-      setActionState({ type: 'info', message: 'Sending createInstance transaction...' });
+      setActionState({ type: 'info', message: preparedSession
+        ? 'Confirm once to create, enroll, and enable prompt-free moves...'
+        : 'Confirm tournament creation in your wallet...' });
       const tx = await writableFactory.createInstance(
         Number(createForm.playerCount),
         entryFeeWei,
         BigInt(normalizedTimeouts.enrollmentWindow),
         BigInt(normalizedTimeouts.matchTimePerPlayer),
         BigInt(normalizedTimeouts.timeIncrementPerMove),
+        sessionExecutor,
         { value: entryFeeWei }
       );
+      transactionSubmitted = true;
       setActionState({ type: 'info', message: 'Transaction submitted. Waiting for block confirmation...' });
       const receipt = await tx.wait();
       setActionState({ type: 'info', message: 'Transaction confirmed. Locating the new instance and syncing tournament data...' });
@@ -1398,19 +1425,29 @@ export default function ConnectFourPage({ routeBase = '/v3/connect4' }) {
         receipt,
       });
       if (!address) throw new Error('Transaction mined, but the frontend could not locate the created instance.');
+      if (preparedSession) {
+        const finalized = await v3Session.finalizeCreation(preparedSession, address);
+        preparedSession = null;
+        if (finalized.inspection.status !== 'active') {
+          throw new Error(`Creator session was registered but is ${finalized.inspection.status}.`);
+        }
+      }
       const createdInstance = getInstanceContract(address, getReadRunner());
       const creatorEnrolled = await createdInstance.isEnrolled(creator).catch(() => false);
       if (!creatorEnrolled) {
         throw new Error(
           `Instance created at ${address}, but creator enrollment was not confirmed. ` +
-          'Your local v2 deployment is likely stale or mismatched; redeploy the v2 modules and factory together.'
+          'Your local V3 deployment is stale or mismatched; redeploy the V3 modules and factory together.'
         );
       }
       setActionState({ type: 'success', message: `Instance created and enrollment verified on-chain at ${address}.` });
       await refreshDashboard();
       await enterInstanceBracket(address);
     } catch (error) {
-      console.error('[ConnectFourV2 createInstance] raw error:', error);
+      if (preparedSession && !transactionSubmitted) {
+        await v3Session.discardCreation(preparedSession).catch(() => {});
+      }
+      console.error('[ConnectFourV3 createInstance] raw error:', error);
       showActionError('create this lobby', error, 'Could not create instance.');
     } finally {
       setCreateLoading(false);
@@ -1433,12 +1470,30 @@ export default function ConnectFourPage({ routeBase = '/v3/connect4' }) {
       setActionState({ type: 'error', message: 'Please connect your wallet first.' });
       return;
     }
+    let preparedSession = null;
+    let transactionSubmitted = false;
     try {
       setTournamentsLoading(true);
       const writableInstance = await withInstanceSigner(activeInstanceContract);
       const previousTournament = viewingTournament;
-      setActionState({ type: 'info', message: 'Confirm your enrollment in MetaMask...' });
-      const tx = await writableInstance.enrollInTournament({ value: viewingTournament.entryFeeWei });
+      let sessionExecutor = ethers.ZeroAddress;
+      try {
+        preparedSession = await v3Session.prepareEnrollment(previousTournament.address);
+        sessionExecutor = preparedSession.executor;
+      } catch (sessionError) {
+        if (!window.confirm('Prompt-free session setup is unavailable. Join in wallet-confirmation-only mode?')) {
+          throw sessionError;
+        }
+        v3Session.selectDirectPrimary();
+      }
+      setActionState({ type: 'info', message: preparedSession
+        ? 'Confirm once to join and enable prompt-free moves...'
+        : 'Confirm enrollment in your wallet...' });
+      const tx = await writableInstance.enrollInTournament(
+        sessionExecutor,
+        { value: viewingTournament.entryFeeWei },
+      );
+      transactionSubmitted = true;
       setActionState({ type: 'info', message: 'Enrollment submitted. Waiting for block confirmation...' });
       const syncResult = await waitForTxOrStateSync({
         tx,
@@ -1456,6 +1511,13 @@ export default function ConnectFourPage({ routeBase = '/v3/connect4' }) {
           setActionState({ type: 'info', message: 'Enrollment confirmed. Syncing tournament lobby...' });
         },
       });
+      if (preparedSession) {
+        const inspection = await v3Session.confirmEnrollment(preparedSession);
+        if (inspection.status !== 'active') {
+          throw new Error(`Enrollment confirmed, but the session is ${inspection.status}.`);
+        }
+        preparedSession = null;
+      }
       const updated = syncResult.updated || await refreshTournamentBracket(previousTournament.address);
       if (updated) setViewingTournament(updated);
       setActionState({
@@ -1465,12 +1527,15 @@ export default function ConnectFourPage({ routeBase = '/v3/connect4' }) {
           : 'Enrollment confirmed on-chain. The tournament lobby is still syncing and should update shortly.',
       });
     } catch (error) {
-      console.error('[ConnectFourV2] Enroll error:', error);
+      if (preparedSession && (!transactionSubmitted || Number(error?.receipt?.status) === 0)) {
+        await v3Session.discardEnrollment(preparedSession).catch(() => {});
+      }
+      console.error('[ConnectFourV3] Enroll error:', error);
       showActionError('join this lobby', error, 'Enrollment failed.');
     } finally {
       setTournamentsLoading(false);
     }
-  }, [viewingTournament, activeInstanceContract, account, refreshTournamentBracket, showActionError]);
+  }, [viewingTournament, activeInstanceContract, account, refreshTournamentBracket, showActionError, v3Session]);
 
   const handleEnterTournamentFromActivity = useCallback((_tierId, instanceRef) => {
     const instanceAddress = (typeof instanceRef === 'string' && instanceRef.startsWith('0x'))

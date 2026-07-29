@@ -54,11 +54,18 @@ class FakeCoordinator {
   }
 }
 
+class FakeSessionClient {
+  constructor(options) {
+    Object.assign(this, options);
+  }
+}
+
 const sdkLoader = async () => ({
   JsonRpcBundler: FakeBundler,
   FailoverBundler: FakeFailover,
   SessionKeyVault: FakeVault,
   SessionCoordinator: FakeCoordinator,
+  V3SessionClient: FakeSessionClient,
   mapV3Error: vi.fn((error) => ({
     code: error.code,
     message: 'mapped',
@@ -74,6 +81,7 @@ describe('V3 SDK adapter', () => {
     expect(sdk.SessionKeyVault).toBeTypeOf('function');
     expect(sdk.SessionCoordinator).toBeTypeOf('function');
     expect(sdk.mapV3Error).toBeTypeOf('function');
+    expect(sdk.V3SessionClient).toBeTypeOf('function');
   });
 
   it('creates a chain-pinned read provider', () => {
@@ -103,14 +111,23 @@ describe('V3 SDK adapter', () => {
     ]);
     expect(services.vault.crypto).toBe(crypto);
     expect(services.coordinator.crypto).toBe(crypto);
+    expect(services.sessionClient.provider).toEqual({ kind: 'provider' });
+    expect(services.sessionClient.bundler).toBe(services.bundler);
     expect(services.addresses.paymaster).toBe(
       deployment.shared.sessionPaymaster.address,
     );
   });
 
-  it('refuses to pretend the Node-only session client is browser ready', () => {
-    expect(V3_SDK_BROWSER_COMPATIBILITY.sessionClient).toBe(false);
-    expect(() => createV3SessionClient()).toThrow(V3SdkAdapterError);
+  it('creates the browser-compatible session client', async () => {
+    expect(V3_SDK_BROWSER_COMPATIBILITY.sessionClient).toBe(true);
+    const sessionClient = await createV3SessionClient({
+      runtimeConfig,
+      deployment,
+      provider: { kind: 'provider' },
+      crypto: {},
+      sdkLoader,
+    });
+    expect(sessionClient).toBeInstanceOf(FakeSessionClient);
   });
 
   it('maps SDK and adapter errors into stable public descriptors', async () => {

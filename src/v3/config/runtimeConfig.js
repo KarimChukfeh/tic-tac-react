@@ -2,6 +2,10 @@ import { V3_DEPLOYMENTS } from './deploymentLoader';
 
 const LOCAL_CHAIN_ID = 412346;
 const LOCAL_RPC_URL = 'http://127.0.0.1:8545';
+const LOCAL_BUNDLER_PRIMARY_URL = 'http://127.0.0.1:4337';
+const LOCAL_BUNDLER_FAILOVER_URL = 'http://127.0.0.1:4338';
+const LOCAL_BUNDLER_PRIMARY_PATH = '/__v3/bundler-primary';
+const LOCAL_BUNDLER_FAILOVER_PATH = '/__v3/bundler-failover';
 
 export class V3RuntimeConfigurationError extends Error {
   constructor(message, code = 'V3_RUNTIME_CONFIG_INVALID') {
@@ -43,6 +47,18 @@ function publicEndpoint(value) {
   });
 }
 
+function localBrowserEndpoint(origin, path) {
+  if (!origin) return null;
+  let parsed;
+  try {
+    parsed = new URL(origin);
+  } catch {
+    return null;
+  }
+  if (!['localhost', '127.0.0.1'].includes(parsed.hostname)) return null;
+  return new URL(path, parsed.origin).toString();
+}
+
 function deepFreeze(value) {
   if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
   Object.freeze(value);
@@ -53,6 +69,7 @@ function deepFreeze(value) {
 export function loadV3RuntimeConfig(
   env = import.meta.env,
   deployment = V3_DEPLOYMENTS,
+  browserOrigin = null,
 ) {
   const isLocalDeployment = (
     deployment.network === 'localhost'
@@ -63,11 +80,25 @@ export function loadV3RuntimeConfig(
     'VITE_V3_RPC_URL',
   );
   const bundlerPrimaryUrl = endpoint(
-    env?.VITE_V3_BUNDLER_URL_PRIMARY,
+    env?.VITE_V3_BUNDLER_URL_PRIMARY || (
+      isLocalDeployment
+        ? (
+          localBrowserEndpoint(browserOrigin, LOCAL_BUNDLER_PRIMARY_PATH)
+          || LOCAL_BUNDLER_PRIMARY_URL
+        )
+        : null
+    ),
     'VITE_V3_BUNDLER_URL_PRIMARY',
   );
   const bundlerFailoverUrl = endpoint(
-    env?.VITE_V3_BUNDLER_URL_FAILOVER,
+    env?.VITE_V3_BUNDLER_URL_FAILOVER || (
+      isLocalDeployment
+        ? (
+          localBrowserEndpoint(browserOrigin, LOCAL_BUNDLER_FAILOVER_PATH)
+          || LOCAL_BUNDLER_FAILOVER_URL
+        )
+        : null
+    ),
     'VITE_V3_BUNDLER_URL_FAILOVER',
   );
 
@@ -134,4 +165,8 @@ export function loadV3RuntimeConfig(
   });
 }
 
-export const V3_RUNTIME_CONFIG = loadV3RuntimeConfig();
+export const V3_RUNTIME_CONFIG = loadV3RuntimeConfig(
+  import.meta.env,
+  V3_DEPLOYMENTS,
+  globalThis.location?.origin,
+);

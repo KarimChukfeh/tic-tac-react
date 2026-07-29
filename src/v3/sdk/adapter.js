@@ -10,8 +10,8 @@ export const V3_SDK_BROWSER_COMPATIBILITY = Object.freeze({
   encryptedVault: true,
   coordinator: true,
   errorMapping: true,
-  sessionClient: false,
-  blocker: 'SDK session-client imports Node module.createRequire through user-operation.js',
+  sessionClient: true,
+  blocker: null,
 });
 
 export class V3SdkAdapterError extends Error {
@@ -28,17 +28,20 @@ export async function loadBrowserSafeV3Sdk() {
     storage,
     coordinator,
     errors,
+    sessionClient,
   ] = await Promise.all([
     import('../vendor/sdk/dist/bundler-client.js'),
     import('../vendor/sdk/dist/session-storage.js'),
     import('../vendor/sdk/dist/session-coordinator.js'),
     import('../vendor/sdk/dist/errors.js'),
+    import('./generated/session-client.js'),
   ]);
   return Object.freeze({
     ...bundler,
     ...storage,
     ...coordinator,
     ...errors,
+    ...sessionClient,
   });
 }
 
@@ -101,6 +104,19 @@ export async function createV3SdkServices({
   });
   const vault = new sdk.SessionKeyVault({ crypto });
   const coordinator = new sdk.SessionCoordinator({ crypto });
+  const sessionClient = new sdk.V3SessionClient({
+    provider: rpcProvider,
+    bundler,
+    vault,
+    coordinator,
+    crypto,
+    addresses: {
+      entryPoint: deployment.shared.entryPoint.address,
+      sessionRegistry: deployment.shared.sessionRegistry.address,
+      sessionAccountFactory: deployment.shared.sessionAccountFactory.address,
+      paymaster: deployment.shared.sessionPaymaster.address,
+    },
+  });
 
   return Object.freeze({
     provider: rpcProvider,
@@ -109,6 +125,7 @@ export async function createV3SdkServices({
     bundler,
     vault,
     coordinator,
+    sessionClient,
     addresses: Object.freeze({
       entryPoint: deployment.shared.entryPoint.address,
       sessionRegistry: deployment.shared.sessionRegistry.address,
@@ -119,11 +136,9 @@ export async function createV3SdkServices({
   });
 }
 
-export function createV3SessionClient() {
-  throw new V3SdkAdapterError(
-    'The synchronized backend session client is not browser-loadable yet.',
-    'V3_SDK_BROWSER_ENTRY_UNAVAILABLE',
-  );
+export async function createV3SessionClient(options = {}) {
+  const services = await createV3SdkServices(options);
+  return services.sessionClient;
 }
 
 export async function mapV3SdkError(
