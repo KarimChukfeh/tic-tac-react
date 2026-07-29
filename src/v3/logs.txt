@@ -154,3 +154,123 @@ Next recommended action:
 - Begin Phase 2 with the normalized V3 deployment loader, including schema,
   generation, chain, address, ABI, and runtime bytecode validation. Then make
   the existing read/write boundaries consume only that normalized object.
+
+2026-07-29 — Phase 2 normalized deployment and runtime validation
+
+Completed:
+- Added `config/deploymentLoader.js` as the immutable application-facing
+  configuration layer over the generated V3 manifest, canonical ABI bundle,
+  and three per-game/local payload pairs.
+- Normalized all game factories, implementations, shared identity contracts,
+  EntryPoint, SimpleAccount contracts, session account factory, session
+  paymaster, session TTL, ABIs, bytecode hashes, and public source metadata.
+- Added cross-artifact validation for schema version, manifest kind,
+  generation, network, chain, addresses, implementations, canonical bundle
+  entries, required factory/instance/session/account-abstraction ABI surfaces,
+  and bytes32 deployed-code hashes.
+- Added runtime verification of provider chain, deployed code presence, and
+  exact `keccak256` bytecode hashes.
+- Migrated `gameShared.js` and all three game modules to consume only
+  normalized game deployments. Removed the unused ad hoc
+  `lib/abiContracts.js` selector layer.
+- Updated signer-backed factory and instance writers to verify the normalized
+  runtime before constructing writable contracts. Existing exact-factory and
+  `factory.isInstance(instance)` checks remain enforced.
+- Added a source regression test requiring normalized configuration as the
+  sole game-contract input.
+- Increased the timeout only for the existing heavy V3 manual-navigation test
+  after it repeatedly completed just beyond the default five-second limit
+  under the full V3 worker load.
+
+Validation:
+- Focused configuration and boundary tests: 5 files and 29 tests passed.
+- `npx vitest run src/v3`: 18 files and 70 tests passed.
+- `npm run build`: passed; existing browser-data and large-chunk warnings
+  remain.
+- `npm run test:run`: 42 files passed and 3 files failed; 185 tests passed and
+  2 tests failed. The two established failures remain
+  `src/App.test.jsx` importing missing `./TicTacBlock` and the disconnected
+  completed-match View expectation in `MatchCard.test.jsx`. The additional
+  failure is the unchanged V2 copy of the same heavy manual-navigation test
+  exceeding its five-second timeout under repository-wide worker load.
+- `git diff --check`: will be repeated after this documentation update.
+- Live local runtime verification was attempted, but no service was listening
+  at `127.0.0.1:8545`; real-chain hash verification remains pending the next
+  local stack run.
+
+Decisions and risks:
+- Runtime hash verification intentionally gates writes, not ordinary
+  read-only/spectator rendering.
+- The loader freezes normalized configuration recursively so application code
+  cannot mutate trusted addresses or ABIs after startup.
+- Importing the complete AA ABI surface increases the already-large main
+  bundle. Phase 2 SDK integration should introduce deliberate code splitting
+  rather than weakening configuration validation.
+- The browser bundler HTTP endpoint gap remains unchanged and still blocks
+  end-to-end SDK acceptance.
+
+Next recommended action:
+- Implement the deterministic backend-owned SDK sync/check workflow and stable
+  frontend adapter, then parse the RPC and two bundler environment variables
+  into public-only startup diagnostics.
+
+2026-07-29 — Phase 2 SDK integrity, runtime configuration, and browser adapter
+
+Completed:
+- Added `scripts/sync-v3-sdk.js` and package commands for deterministic SDK
+  build/sync and standalone integrity verification.
+- Synchronized all 48 files from backend commit
+  `1ba319b83a5fdd279401a74966570389a079ae69` into
+  `src/v3/vendor/sdk/dist` without modifying their contents.
+- Added an integrity manifest with per-file byte counts, SHA-256 hashes, source
+  commit/version/dirty state, and deterministic tree hash
+  `6983db3a4237b8963955f435899454aabef03e1293a4fddcf882887303063b65`.
+- Added a generated-file notice and made `npm run build` fail before Vite when
+  SDK integrity does not match.
+- Added `config/runtimeConfig.js` for the three approved V3 environment
+  variables. It applies the localhost RPC default only to the declared local
+  deployment, rejects unsafe endpoint shapes, requires distinct bundlers, and
+  produces redacted public diagnostics and capability flags.
+- Migrated all three game pages from `CURRENT_NETWORK.rpcUrl` to the normalized
+  V3 RPC provider factory.
+- Added `sdk/adapter.js` with lazy loading for the generated bundler, encrypted
+  vault, coordinator, and error modules; provider and failover service
+  factories; stable public error descriptors; and explicit capability state.
+- Confirmed the synchronized `session-client` is not browser-compatible:
+  `user-operation.js` imports Node `module.createRequire` and resolves account
+  abstraction JSON from backend `node_modules`.
+- Preserved the exact SDK artifact and made session-client construction fail
+  explicitly instead of applying an unaudited frontend rewrite.
+- Stabilized the V3 manual scroll-tracking test by waiting for the intentional
+  navigation scroll before clearing its call history.
+
+Validation:
+- `npm run v3:sdk:check`: verified 48 files and the deterministic tree hash.
+- Focused SDK/configuration/page tests: 6 files and 36 tests passed.
+- Actual lazy imports of all browser-safe generated SDK modules passed.
+- `npx vitest run src/v3`: 21 files and 84 tests passed after the provider
+  migration and V3 test stabilization.
+- `npm run build`: passed with the SDK integrity preflight; existing
+  browser-data and large-chunk warnings remain.
+- `npm run test:run`: 46 files passed and the two established baseline files
+  failed; 200 tests passed and 1 test failed. No V3 tests failed.
+- `git diff --check`: passed after implementation and documentation updates.
+
+Decisions and risks:
+- The sync command is deterministic and invokes the backend TypeScript build,
+  but backend-owned workflow integration cannot be completed from this
+  frontend repository alone.
+- Source-map files are preserved byte-for-byte. Their references point outside
+  copied `dist`, so test transforms warn about missing original source files;
+  this does not affect runtime code or integrity.
+- Session submission is not represented as ready unless RPC plus two distinct
+  bundler URLs are configured. Configuration alone does not remove the
+  existing upstream HTTP-service blocker.
+- Provider, bundler, vault, and coordinator construction are ready. The
+  session-client factory remains deliberately blocked, so Phase 2 and session
+  onboarding cannot pass their exit gates yet.
+
+Next recommended action:
+- Fix the backend SDK browser entry and add the two browser-reachable ERC-7769
+  bundler services in the backend repository. Then resync, enable the
+  session-client factory, and run the Phase 2 browser exit gate.

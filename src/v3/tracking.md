@@ -39,15 +39,22 @@ use declared V3 boundaries shared by all three games.
 
 ## Phase 2 — Deployment configuration and SDK integration
 
-- [ ] Implement and test the normalized V3 deployment loader.
-- [ ] Validate schema, generation, chain, addresses, ABI surfaces, and bytecode.
-- [ ] Add deterministic backend-owned SDK sync and frontend integrity checks.
-- [ ] Add the stable frontend adapter around the generated SDK.
-- [ ] Parse `VITE_V3_RPC_URL` and both bundler URL variables.
+Status: in progress. Deployment normalization, SDK integrity, runtime
+configuration, and browser-safe service factories are complete. The backend
+session-client browser build and bundler HTTP services remain blockers.
+
+- [x] Implement and test the normalized V3 deployment loader.
+- [x] Validate schema, generation, chain, addresses, ABI surfaces, and bytecode.
+- [x] Add deterministic SDK sync and frontend integrity checks.
+- [ ] Invoke SDK sync from the backend-owned frontend artifact workflow.
+- [x] Add a stable frontend adapter for browser-safe generated SDK modules.
+- [ ] Add a browser-compatible generated SDK session-client entry upstream.
+- [x] Parse `VITE_V3_RPC_URL` and both bundler URL variables.
 - [ ] Add browser-reachable local primary and failover bundler services
   upstream.
-- [ ] Build provider, bundler, vault, coordinator, and session-client factories.
-- [ ] Add public-only startup diagnostics and mapped SDK errors.
+- [x] Build provider, bundler, vault, and coordinator factories.
+- [ ] Build the session-client factory after the browser entry is available.
+- [x] Add public-only configuration diagnostics and mapped SDK errors.
 
 ## Phase 3 — Wallet, identity, and session state
 

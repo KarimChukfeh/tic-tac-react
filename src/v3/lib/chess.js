@@ -1,6 +1,4 @@
 import { ethers } from 'ethers';
-import ChessFactoryABIData from '../ABIs/ChessFactory-ABI.json';
-import LocalhostFactoryData from '../ABIs/localhost-chess-factory.json';
 import {
   ZERO_ADDRESS,
   createReadableErrorGetter,
@@ -17,9 +15,7 @@ import {
 export { ZERO_ADDRESS, formatEth, normalizeInstanceSnapshot };
 
 const sharedContracts = createSharedGameContracts({
-  gameAbiData: ChessFactoryABIData,
-  localhostFactoryData: LocalhostFactoryData,
-  factoryName: 'ChessFactory',
+  gameKey: 'chess',
 });
 
 export const PLAYER_PROFILE_ABI = sharedContracts.PLAYER_PROFILE_ABI;

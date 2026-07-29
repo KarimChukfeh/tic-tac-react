@@ -1,6 +1,4 @@
 import { ethers } from 'ethers';
-import ConnectFourFactoryABIData from '../ABIs/ConnectFourFactory-ABI.json';
-import LocalhostFactoryData from '../ABIs/localhost-connectfour-factory.json';
 import {
   ZERO_ADDRESS,
   createReadableErrorGetter,
@@ -17,9 +15,7 @@ import {
 export { ZERO_ADDRESS, formatEth, normalizeInstanceSnapshot };
 
 const sharedContracts = createSharedGameContracts({
-  gameAbiData: ConnectFourFactoryABIData,
-  localhostFactoryData: LocalhostFactoryData,
-  factoryName: 'ConnectFourFactory',
+  gameKey: 'connect4',
 });
 
 export const PLAYER_PROFILE_ABI = sharedContracts.PLAYER_PROFILE_ABI;

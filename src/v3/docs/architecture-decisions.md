@@ -15,7 +15,8 @@ Status: accepted on 2026-07-29.
 
 ## ADR-002: SDK delivery
 
-Status: accepted direction; sync tooling remains to be implemented.
+Status: accepted; frontend synchronization and integrity checks implemented,
+backend workflow invocation pending.
 
 The client will consume an immutable build of the backend browser SDK through
 a deterministic backend-owned sync step. The sync must:
@@ -35,6 +36,19 @@ would not work from a clean standalone checkout, and over an unversioned
 manual source copy, which could silently diverge from the audited SDK.
 A separately published, exactly pinned package may replace this mechanism
 later without changing the frontend adapter API.
+
+The frontend consumer now provides:
+
+- `npm run v3:sdk:sync`, which builds the sibling backend SDK by default,
+  replaces the generated vendor directory, and records backend commit,
+  repository version, file sizes, SHA-256 hashes, and a deterministic tree
+  hash;
+- `npm run v3:sdk:check`, which works from a standalone frontend checkout and
+  rejects missing, stale, added, removed, or modified vendor files; and
+- a production build gate that runs the integrity check before Vite.
+
+The remaining ownership task is invoking this sync from the backend's V3
+frontend-artifact generator so ABI and SDK delivery happen together.
 
 ## ADR-003: Pre-instance creation staging
 
@@ -68,7 +82,8 @@ Join flows already know the instance and use the normal identity directly.
 
 ## ADR-004: Runtime configuration
 
-Status: accepted interface; browser bundler services are a backend blocker.
+Status: accepted interface and frontend parsing implemented; browser bundler
+services remain a backend blocker.
 
 The normalized V3 runtime will use:
 
@@ -87,6 +102,10 @@ bundlers. Phase 2 may implement configuration parsing and diagnostics, but
 session submission cannot pass browser acceptance until the backend provides
 two ERC-7769 HTTP endpoints.
 
+The parser rejects relative, non-HTTP(S), credential-bearing, fragmented, or
+duplicate bundler endpoints. Public diagnostics expose origins, paths, and
+capability flags while omitting query values.
+
 ## ADR-005: Transport policy
 
 Status: accepted on 2026-07-29.
@@ -98,3 +117,43 @@ Status: accepted on 2026-07-29.
 - Financial, lifecycle, escalation, recovery, and administrative operations
   always use the primary-wallet signer.
 
+## ADR-006: Deployment normalization and runtime write gating
+
+Status: accepted and implemented on 2026-07-29.
+
+- `hardhat-factory.json` is the authoritative V3 schema, address, account
+  abstraction, and deployed-bytecode manifest.
+- Per-game and canonical ABI payloads remain required inputs, but the loader
+  cross-checks them against the manifest before exposing configuration.
+- Application code consumes immutable normalized game deployments rather than
+  generated JSON shapes or independently collected address candidates.
+- Each normalized game context includes generation, chain, factory,
+  implementation, profile registry, session registry, EntryPoint, account
+  factory, paymaster, ABIs, and deployed-bytecode hashes.
+- Signer-backed writes require the target chain, exact normalized factory, and
+  live bytecode hashes to match. Instance writes additionally require
+  `factory.isInstance(instance)`.
+- Runtime diagnostics contain only public contract addresses and bytecode
+  hashes. They do not contain wallet signatures, session secrets, or vault
+  material.
+
+## ADR-007: Preserve the SDK artifact when browser compatibility fails
+
+Status: accepted on 2026-07-29; upstream backend fix required.
+
+The synchronized backend `session-client.js` imports `user-operation.js`,
+which imports Node's `module.createRequire` and resolves two account
+abstraction artifacts from backend `node_modules`. That entry cannot execute
+in a browser as generated.
+
+- The frontend does not rewrite, patch, or fork the synchronized SDK.
+- Browser-safe generated modules for bundlers, encrypted storage,
+  coordination, and error mapping are lazy-loaded through `sdk/adapter.js`.
+- `createV3SessionClient` fails explicitly with
+  `V3_SDK_BROWSER_ENTRY_UNAVAILABLE` until the backend emits a browser entry
+  without Node built-ins or runtime `node_modules` resolution.
+- Direct primary-wallet gameplay remains available while session transport is
+  unavailable.
+- The upstream fix should import reviewed SimpleAccount ABIs through a
+  browser-compatible build input and remain covered by the same SDK tests and
+  integrity manifest.

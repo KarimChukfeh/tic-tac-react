@@ -1,4 +1,5 @@
 import { getAddress, isAddress } from 'ethers';
+import { verifyV3DeploymentRuntime } from '../config/deploymentLoader';
 
 export class V3WriteBoundaryError extends Error {
   constructor(message) {
@@ -24,18 +25,29 @@ async function assertWriteChain(browserProvider, expectedChainId) {
   }
 }
 
+async function assertDeploymentRuntime(browserProvider, deployment) {
+  try {
+    await verifyV3DeploymentRuntime(deployment, browserProvider);
+  } catch (error) {
+    throw new V3WriteBoundaryError(
+      `V3 deployment runtime validation failed: ${error.message}`,
+    );
+  }
+}
+
 export async function getValidatedV3FactoryWriter({
   browserProvider,
   readFactory,
-  expectedFactory,
+  deployment,
   createContract,
   signer,
 }) {
-  await assertWriteChain(browserProvider, expectedFactory.chainId);
+  await assertWriteChain(browserProvider, deployment.chainId);
   const address = contractAddress(readFactory, 'V3 factory');
-  if (address !== getAddress(expectedFactory.address)) {
+  if (address !== getAddress(deployment.factory)) {
     throw new V3WriteBoundaryError('Refusing a write through an unvalidated V3 factory');
   }
+  await assertDeploymentRuntime(browserProvider, deployment);
 
   const activeSigner = signer ?? await browserProvider.getSigner();
   return createContract(activeSigner, address);
@@ -45,14 +57,15 @@ export async function getValidatedV3InstanceWriter({
   browserProvider,
   readFactory,
   instanceContract,
-  expectedFactory,
+  deployment,
   createContract,
 }) {
-  await assertWriteChain(browserProvider, expectedFactory.chainId);
+  await assertWriteChain(browserProvider, deployment.chainId);
   const factoryAddress = contractAddress(readFactory, 'V3 factory');
-  if (factoryAddress !== getAddress(expectedFactory.address)) {
+  if (factoryAddress !== getAddress(deployment.factory)) {
     throw new V3WriteBoundaryError('Refusing an instance write through an unvalidated V3 factory');
   }
+  await assertDeploymentRuntime(browserProvider, deployment);
 
   const instanceAddress = contractAddress(instanceContract, 'V3 instance');
   let isRegistered = false;
@@ -68,4 +81,3 @@ export async function getValidatedV3InstanceWriter({
   const signer = await browserProvider.getSigner();
   return createContract(instanceAddress, signer);
 }
-

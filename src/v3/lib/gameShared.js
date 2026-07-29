@@ -1,16 +1,5 @@
 import { ethers } from 'ethers';
-import HardhatFactoryData from '../ABIs/hardhat-factory.json';
-import ETourFactoryABIs from '../ABIs/ETour-Factory-ABIs.json';
-import PlayerProfileABIData from '../ABIs/PlayerProfile-ABI.json';
-import PlayerRegistryABIData from '../ABIs/PlayerRegistry-ABI.json';
-import { validateV3GameDeployment } from '../config/deploymentGuard';
-import {
-  getFactoryAbi,
-  getFactoryAddressCandidates,
-  getInstanceAbi,
-  getPlayerProfileAbi,
-  getPlayerRegistryAbi,
-} from './abiContracts';
+import { getV3GameDeployment } from '../config/deploymentLoader';
 import { collectErrorDetails, pickBestErrorMessage } from './errorDetails';
 import {
   getValidatedV3FactoryWriter,
@@ -212,34 +201,16 @@ export function createReadableErrorGetter(customErrorSelectors = {}) {
   };
 }
 
-export function createSharedGameContracts({ gameAbiData, localhostFactoryData, factoryName }) {
-  const deployment = validateV3GameDeployment({
-    manifest: HardhatFactoryData,
-    gamePayload: gameAbiData,
-    localPayload: localhostFactoryData,
-    factoryName,
-  });
-  const PLAYER_PROFILE_ABI = getPlayerProfileAbi(gameAbiData, PlayerProfileABIData);
-  const PLAYER_REGISTRY_ABI = getPlayerRegistryAbi(gameAbiData, PlayerRegistryABIData);
+export function createSharedGameContracts({ gameKey }) {
+  const deployment = getV3GameDeployment(gameKey);
+  const PLAYER_PROFILE_ABI = deployment.contracts.playerProfile.abi;
+  const PLAYER_REGISTRY_ABI = deployment.contracts.profileRegistry.abi;
   const PLAYER_REGISTRY_ADDRESS = deployment.profileRegistry;
   const FACTORY_ADDRESS = deployment.factory;
-  const FACTORY_ABI = getFactoryAbi(gameAbiData);
-  const INSTANCE_ABI = getInstanceAbi(gameAbiData);
+  const FACTORY_ABI = deployment.contracts.factory.abi;
+  const INSTANCE_ABI = deployment.contracts.implementation.abi;
   const IMPLEMENTATION_ADDRESS = deployment.implementation;
-  const artifactFactoryCandidates = getFactoryAddressCandidates({
-    gameAbiData,
-    localhostFactoryData,
-    hardhatFactoryData: HardhatFactoryData,
-    etourFactoryAbis: ETourFactoryABIs,
-    factoryName,
-  });
-  const FACTORY_ADDRESS_CANDIDATES = artifactFactoryCandidates.filter(
-    (address) => ethers.getAddress(address) === FACTORY_ADDRESS,
-  );
-  const expectedFactory = Object.freeze({
-    address: FACTORY_ADDRESS,
-    chainId: deployment.chainId,
-  });
+  const FACTORY_ADDRESS_CANDIDATES = Object.freeze([FACTORY_ADDRESS]);
 
   function getFactoryContract(runner, address = FACTORY_ADDRESS) {
     return new ethers.Contract(address, FACTORY_ABI, runner);
@@ -261,7 +232,7 @@ export function createSharedGameContracts({ gameAbiData, localhostFactoryData, f
     return await getValidatedV3FactoryWriter({
       browserProvider,
       readFactory,
-      expectedFactory,
+      deployment,
       createContract: getFactoryContract,
       signer,
     });
@@ -272,7 +243,7 @@ export function createSharedGameContracts({ gameAbiData, localhostFactoryData, f
       browserProvider,
       readFactory,
       instanceContract,
-      expectedFactory,
+      deployment,
       createContract: getInstanceContract,
     });
   }

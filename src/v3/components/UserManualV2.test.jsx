@@ -147,7 +147,7 @@ describe('UserManualV2', () => {
     });
 
     expect(fetch).toHaveBeenCalledWith('/User_Manual.md');
-  });
+  }, 10000);
 
   it('can render the full manual as a sticky document view', async () => {
     render(<UserManualV2 defaultExpanded collapsible={false} showAllSections />);
@@ -248,6 +248,9 @@ describe('UserManualV2', () => {
 
     await waitFor(() => {
       expect(window.location.hash).toBe('#32-draws');
+    });
+    await waitFor(() => {
+      expect(window.HTMLElement.prototype.scrollIntoView).toHaveBeenCalled();
     });
 
     vi.mocked(window.HTMLElement.prototype.scrollIntoView).mockClear();

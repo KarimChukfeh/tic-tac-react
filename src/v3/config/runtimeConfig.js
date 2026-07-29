@@ -1,0 +1,137 @@
+import { V3_DEPLOYMENTS } from './deploymentLoader';
+
+const LOCAL_CHAIN_ID = 412346;
+const LOCAL_RPC_URL = 'http://127.0.0.1:8545';
+
+export class V3RuntimeConfigurationError extends Error {
+  constructor(message, code = 'V3_RUNTIME_CONFIG_INVALID') {
+    super(message);
+    this.name = 'V3RuntimeConfigurationError';
+    this.code = code;
+  }
+}
+
+function endpoint(value, label) {
+  const source = String(value ?? '').trim();
+  if (!source) return null;
+
+  let parsed;
+  try {
+    parsed = new URL(source);
+  } catch {
+    throw new V3RuntimeConfigurationError(`${label} must be an absolute HTTP(S) URL`);
+  }
+  if (!['http:', 'https:'].includes(parsed.protocol)) {
+    throw new V3RuntimeConfigurationError(`${label} must use HTTP or HTTPS`);
+  }
+  if (parsed.username || parsed.password || parsed.hash) {
+    throw new V3RuntimeConfigurationError(
+      `${label} must not contain credentials or a URL fragment`,
+    );
+  }
+  return parsed.toString();
+}
+
+function publicEndpoint(value) {
+  if (!value) return null;
+  const parsed = new URL(value);
+  return Object.freeze({
+    origin: parsed.origin,
+    path: parsed.pathname,
+    hasQuery: Boolean(parsed.search),
+    secure: parsed.protocol === 'https:',
+  });
+}
+
+function deepFreeze(value) {
+  if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
+  Object.freeze(value);
+  for (const child of Object.values(value)) deepFreeze(child);
+  return value;
+}
+
+export function loadV3RuntimeConfig(
+  env = import.meta.env,
+  deployment = V3_DEPLOYMENTS,
+) {
+  const isLocalDeployment = (
+    deployment.network === 'localhost'
+    && deployment.chainId === LOCAL_CHAIN_ID
+  );
+  const rpcUrl = endpoint(
+    env?.VITE_V3_RPC_URL || (isLocalDeployment ? LOCAL_RPC_URL : null),
+    'VITE_V3_RPC_URL',
+  );
+  const bundlerPrimaryUrl = endpoint(
+    env?.VITE_V3_BUNDLER_URL_PRIMARY,
+    'VITE_V3_BUNDLER_URL_PRIMARY',
+  );
+  const bundlerFailoverUrl = endpoint(
+    env?.VITE_V3_BUNDLER_URL_FAILOVER,
+    'VITE_V3_BUNDLER_URL_FAILOVER',
+  );
+
+  if (
+    bundlerPrimaryUrl
+    && bundlerFailoverUrl
+    && bundlerPrimaryUrl === bundlerFailoverUrl
+  ) {
+    throw new V3RuntimeConfigurationError(
+      'Primary and failover bundler URLs must be different',
+    );
+  }
+
+  const issues = [];
+  if (!rpcUrl) {
+    issues.push({
+      code: 'V3_RPC_URL_MISSING',
+      severity: 'error',
+      message: 'V3 RPC configuration is missing.',
+    });
+  }
+  if (!bundlerPrimaryUrl) {
+    issues.push({
+      code: 'V3_PRIMARY_BUNDLER_MISSING',
+      severity: 'warning',
+      message: 'Sponsored moves are unavailable because the primary bundler URL is missing.',
+    });
+  }
+  if (!bundlerFailoverUrl) {
+    issues.push({
+      code: 'V3_FAILOVER_BUNDLER_MISSING',
+      severity: 'warning',
+      message: 'Bundler failover is unavailable because the failover URL is missing.',
+    });
+  }
+
+  const sessionSubmissionReady = Boolean(
+    rpcUrl && bundlerPrimaryUrl && bundlerFailoverUrl,
+  );
+  return deepFreeze({
+    generation: deployment.generation,
+    network: deployment.network,
+    chainId: deployment.chainId,
+    rpcUrl,
+    bundlerPrimaryUrl,
+    bundlerFailoverUrl,
+    capabilities: {
+      readRpcConfigured: Boolean(rpcUrl),
+      primaryBundlerConfigured: Boolean(bundlerPrimaryUrl),
+      failoverBundlerConfigured: Boolean(bundlerFailoverUrl),
+      sessionSubmissionReady,
+      directPrimaryFallbackAvailable: true,
+    },
+    diagnostics: {
+      generation: deployment.generation,
+      network: deployment.network,
+      chainId: deployment.chainId,
+      rpc: publicEndpoint(rpcUrl),
+      bundlerPrimary: publicEndpoint(bundlerPrimaryUrl),
+      bundlerFailover: publicEndpoint(bundlerFailoverUrl),
+      sessionSubmissionReady,
+      issues,
+    },
+  });
+}
+
+export const V3_RUNTIME_CONFIG = loadV3RuntimeConfig();

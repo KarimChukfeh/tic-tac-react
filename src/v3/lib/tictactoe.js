@@ -1,6 +1,4 @@
 import { ethers } from 'ethers';
-import TicTacToeFactoryABIData from '../ABIs/TicTacToeFactory-ABI.json';
-import LocalhostFactoryData from '../ABIs/localhost-tictac-factory.json';
 import {
   ZERO_ADDRESS,
   createReadableErrorGetter,
@@ -17,9 +15,7 @@ import {
 export { ZERO_ADDRESS, formatEth, normalizeInstanceSnapshot };
 
 const sharedContracts = createSharedGameContracts({
-  gameAbiData: TicTacToeFactoryABIData,
-  localhostFactoryData: LocalhostFactoryData,
-  factoryName: 'TicTacToeFactory',
+  gameKey: 'tictactoe',
 });
 
 export const PLAYER_PROFILE_ABI = sharedContracts.PLAYER_PROFILE_ABI;

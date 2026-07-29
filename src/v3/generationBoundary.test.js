@@ -77,8 +77,22 @@ describe('V3 generation boundary', () => {
       expect(source).toContain('readV3FactoryDashboard');
       expect(source).toContain('readV3TournamentState');
       expect(source).toContain('readV3ActiveMatchState');
+      expect(source).toContain('createV3RpcProvider');
       expect(source).not.toContain('multicallContracts');
       expect(source).not.toContain('buildV2MatchKey');
+      expect(source).not.toContain('CURRENT_NETWORK.rpcUrl');
     }
+  });
+
+  it('makes normalized deployment configuration the only game-contract input', () => {
+    const sharedContractsSource = fs.readFileSync(
+      path.join(V3_ROOT, 'lib', 'gameShared.js'),
+      'utf8',
+    );
+
+    expect(sharedContractsSource).toContain('getV3GameDeployment');
+    expect(sharedContractsSource).not.toContain("from '../ABIs/");
+    expect(sharedContractsSource).not.toContain('validateV3GameDeployment');
+    expect(fs.existsSync(path.join(V3_ROOT, 'lib', 'abiContracts.js'))).toBe(false);
   });
 });

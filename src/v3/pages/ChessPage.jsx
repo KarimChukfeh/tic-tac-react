@@ -62,6 +62,7 @@ import TimeoutSettingSlider, { clampCreateTimeoutValue, isCreateTimeoutField, no
 import { useInitialDocumentScrollTop } from '../../hooks/useInitialDocumentScrollTop';
 import { useWalletBrowserPrompt } from '../../hooks/useWalletBrowserPrompt';
 import { useV3Wallet } from '../hooks/useV3Wallet';
+import { createV3RpcProvider } from '../sdk/adapter';
 import { isMobileDevice, isWalletBrowser } from '../../utils/mobileDetection';
 import { useChessV2PlayerActivity } from '../hooks/useChessV2PlayerActivity';
 import { useChessPlayerProfile } from '../hooks/useChessPlayerProfile';
@@ -1314,11 +1315,7 @@ export default function ChessPage({ routeBase = '/v3/chess' }) {
   };
 
   useEffect(() => {
-    const provider = new ethers.JsonRpcProvider(
-      CURRENT_NETWORK.rpcUrl,
-      CURRENT_NETWORK.chainId,
-      { staticNetwork: true }
-    );
+    const provider = createV3RpcProvider();
     rpcProviderRef.current = provider;
     setRpcProvider(provider);
     setResolvedFactoryContract(getFactoryContract(provider, factoryAddress));
