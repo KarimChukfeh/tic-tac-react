@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   canSubmitSessionMove,
   initialV3SessionState,
+  isSessionNearExpiry,
   v3SessionReducer,
 } from './sessionState';
 
@@ -44,6 +45,62 @@ describe('V3 session lifecycle reducer', () => {
     expect(unavailable).toMatchObject({
       status: 'unavailable',
       error: { code: 'INDEXED_DB_DENIED' },
+    });
+  });
+
+  it('counts down active sessions and expires them without enabling a stale key', () => {
+    const active = v3SessionReducer({
+      ...initialV3SessionState,
+      identity: {},
+    }, {
+      type: 'INSPECTION_RECEIVED',
+      inspection: {
+        status: 'active',
+        executor: 'executor',
+        validUntil: 1_600n,
+        secondsRemaining: 600n,
+      },
+    });
+
+    expect(isSessionNearExpiry(active)).toBe(true);
+    expect(canSubmitSessionMove(active)).toBe(true);
+
+    const expired = v3SessionReducer(active, {
+      type: 'CLOCK_TICK',
+      now: 1_600n,
+    });
+    expect(expired.status).toBe('expired');
+    expect(expired.secondsRemaining).toBe(0n);
+    expect(canSubmitSessionMove(expired)).toBe(false);
+  });
+
+  it('tracks refresh/revoke progress without losing explicit wallet mode', () => {
+    const direct = {
+      ...initialV3SessionState,
+      identity: {},
+      status: 'active',
+      directPrimaryMode: true,
+    };
+    const refreshing = v3SessionReducer(direct, { type: 'REFRESH_STARTED' });
+    expect(refreshing.pendingAction).toBe('refresh');
+
+    const refreshed = v3SessionReducer(refreshing, {
+      type: 'INSPECTION_RECEIVED',
+      inspection: { status: 'active', secondsRemaining: 3_600n },
+      completeAction: true,
+    });
+    expect(refreshed.pendingAction).toBeNull();
+    expect(refreshed.directPrimaryMode).toBe(true);
+
+    const revoking = v3SessionReducer(refreshed, { type: 'REVOKE_STARTED' });
+    expect(revoking.pendingAction).toBe('revoke');
+    expect(v3SessionReducer(revoking, {
+      type: 'ACTION_FAILURE',
+      error: { message: 'rejected' },
+    })).toMatchObject({
+      status: 'active',
+      pendingAction: null,
+      error: { message: 'rejected' },
     });
   });
 });

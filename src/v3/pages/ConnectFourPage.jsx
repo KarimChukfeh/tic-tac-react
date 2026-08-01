@@ -33,6 +33,7 @@ import UserManualV2 from '../components/UserManualV2';
 import QuickGuideModal from '../components/QuickGuideModal';
 import WhatIsThisModal from '../components/WhatIsThisModal';
 import CenteredErrorFlash from '../components/CenteredErrorFlash';
+import V3ActionAnnouncer from '../components/V3ActionAnnouncer';
 import MatchEndModal from '../../components/shared/MatchEndModal';
 import ActiveMatchAlertModal from '../../components/shared/ActiveMatchAlertModal';
 import GameMatchLayout from '../../components/shared/GameMatchLayout';
@@ -51,7 +52,7 @@ import ArenaGameHero from '../components/ArenaGameHero';
 import ArenaEffectsSwitch from '../components/ArenaEffectsSwitch';
 import EtourFooter from '../../components/shared/EtourFooter';
 import PlayerProfileModal from '../../components/shared/PlayerProfileModal';
-import WalletBrowserPrompt from '../../components/WalletBrowserPrompt';
+import WalletBrowserPrompt from '../components/WalletBrowserPrompt';
 import EntryFeeSlider, { DEFAULT_SELECTED_ENTRY_FEE } from '../components/EntryFeeSlider';
 import TimeoutSettingSlider, { clampCreateTimeoutValue, isCreateTimeoutField, normalizeCreateTimeouts } from '../components/TimeoutSettingSlider';
 import { useInitialDocumentScrollTop } from '../../hooks/useInitialDocumentScrollTop';
@@ -59,6 +60,7 @@ import { useWalletBrowserPrompt } from '../../hooks/useWalletBrowserPrompt';
 import { useV3Wallet } from '../hooks/useV3Wallet';
 import { useV3Session } from '../hooks/useV3Session';
 import V3SessionStatus from '../components/V3SessionStatus';
+import { getInitialArenaEffectsPreference, getV3ScrollBehavior } from '../accessibility/motionPreferences';
 import { createV3RpcProvider, mapV3SdkError } from '../sdk/adapter';
 import { canSubmitSessionMove } from '../session/sessionState';
 import {
@@ -724,7 +726,7 @@ const TournamentBracket = ({
   useEffect(() => {
     if (prevStatusRef.current === 0 && status === 1 && isEnrolled && bracketViewRef.current) {
       const timer = setTimeout(() => {
-        bracketViewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' });
+        bracketViewRef.current?.scrollIntoView({ behavior: getV3ScrollBehavior(), block: 'start', inline: 'nearest' });
       }, 300);
       return () => clearTimeout(timer);
     }
@@ -854,14 +856,9 @@ export default function ConnectFourPage({ routeBase = '/v3/connect4' }) {
   useInitialDocumentScrollTop(routeBase);
 
   const activeTheme = arenaTheme;
-  const [arenaEffectsEnabled, setArenaEffectsEnabled] = useState(() => {
-    if (typeof window === 'undefined') return true;
-    try {
-      return window.localStorage.getItem(CONNECTFOUR_ARENA_EFFECTS_STORAGE_KEY) !== 'off';
-    } catch {
-      return true;
-    }
-  });
+  const [arenaEffectsEnabled, setArenaEffectsEnabled] = useState(() => (
+    getInitialArenaEffectsPreference(CONNECTFOUR_ARENA_EFFECTS_STORAGE_KEY)
+  ));
 
   const toggleArenaEffects = useCallback(() => {
     setArenaEffectsEnabled((wasEnabled) => {
@@ -974,7 +971,7 @@ export default function ConnectFourPage({ routeBase = '/v3/connect4' }) {
     }));
     window.requestAnimationFrame(() => {
       const manualSection = document.getElementById('user-manual');
-      manualSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      manualSection?.scrollIntoView({ behavior: getV3ScrollBehavior(), block: 'start' });
     });
   }, []);
 
@@ -1002,6 +999,7 @@ export default function ConnectFourPage({ routeBase = '/v3/connect4' }) {
     account,
     instanceAddress: viewingTournament?.address || selectedAddress,
     factoryAddress,
+    browserProvider,
   });
 
   const [currentMatch, setCurrentMatch] = useState(null);
@@ -1320,7 +1318,7 @@ export default function ConnectFourPage({ routeBase = '/v3/connect4' }) {
     }
 
     const frameId = window.requestAnimationFrame(() => {
-      tournamentBracketRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      tournamentBracketRef.current?.scrollIntoView({ behavior: getV3ScrollBehavior(), block: 'start' });
       collapseActivityPanelRef.current?.();
       pendingScrollAddressRef.current = null;
     });
@@ -1750,7 +1748,7 @@ export default function ConnectFourPage({ routeBase = '/v3/connect4' }) {
     activeInstanceContractRef.current = null;
     navigate(routeBase, { replace: true, state: null });
     window.requestAnimationFrame(() => {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: getV3ScrollBehavior() });
     });
   };
 
@@ -1955,7 +1953,7 @@ export default function ConnectFourPage({ routeBase = '/v3/connect4' }) {
           state: { view: 'match', instanceAddress, roundNumber, matchNumber, from: location.state?.view || 'bracket' },
         });
         setTimeout(() => {
-          matchViewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          matchViewRef.current?.scrollIntoView({ behavior: getV3ScrollBehavior(), block: 'start' });
           collapseActivityPanelRef.current?.();
         }, 100);
       }
@@ -2117,7 +2115,7 @@ export default function ConnectFourPage({ routeBase = '/v3/connect4' }) {
     navigate(routeBase, { replace: false, state: { view: 'demo-match' } });
 
     window.setTimeout(() => {
-      boardViewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      boardViewRef.current?.scrollIntoView({ behavior: getV3ScrollBehavior(), block: 'start' });
     }, 100);
 
     if (!humanStarts) {
@@ -2490,7 +2488,7 @@ export default function ConnectFourPage({ routeBase = '/v3/connect4' }) {
       skipNavEffectRef.current = true;
       navigate(routeBase, { replace: true, state: null });
       window.requestAnimationFrame(() => {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        window.scrollTo({ top: 0, behavior: getV3ScrollBehavior() });
       });
       return;
     }
@@ -2501,7 +2499,7 @@ export default function ConnectFourPage({ routeBase = '/v3/connect4' }) {
       state: { view: 'bracket', instanceAddress: address, from: 'match' },
     });
     window.requestAnimationFrame(() => {
-      tournamentBracketRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      tournamentBracketRef.current?.scrollIntoView({ behavior: getV3ScrollBehavior(), block: 'start' });
     });
     setTournamentsLoading(true);
     const bracketData = await refreshTournamentBracket(address);
@@ -2851,13 +2849,16 @@ export default function ConnectFourPage({ routeBase = '/v3/connect4' }) {
         message={actionState.type === 'error' ? actionState.message : ''}
         onDismiss={dismissActionError}
       />
+      <V3ActionAnnouncer state={actionState.type === 'error' ? null : actionState} />
       {account && (viewingTournament || currentMatch) && (
-        <div className="fixed right-3 top-20 z-30 w-[min(22rem,calc(100vw-1.5rem))]">
+        <div className="v3-session-dock">
           <V3SessionStatus
             compact
             state={v3Session.state}
             onUsePrimary={v3Session.selectDirectPrimary}
             onUseSession={v3Session.selectSession}
+            onRefresh={v3Session.refreshSession}
+            onRevoke={v3Session.revokeSession}
           />
         </div>
       )}

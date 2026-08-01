@@ -1475,6 +1475,28 @@
   .t2-manual { padding-top: 1.5rem !important; }
 }
 
+.v3-session-dock {
+  position: fixed;
+  z-index: 30;
+  top: calc(5rem + env(safe-area-inset-top, 0px));
+  right: 0.75rem;
+  width: min(22rem, calc(100vw - 1.5rem));
+}
+
+@media (max-width: 640px) {
+  .v3-session-dock {
+    right: 0.75rem;
+    left: 0.75rem;
+    width: auto;
+  }
+
+  .v3-session-dock [data-v3-session-status] {
+    max-height: min(48dvh, 24rem);
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .t2-page *,
   .t2-page *::before,

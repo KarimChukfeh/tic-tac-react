@@ -1,11 +1,21 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BookOpen, X } from 'lucide-react';
+import { useAccessibleDialog } from '../hooks/useAccessibleDialog';
 
 const WHAT_IS_THIS_TRANSITION_MS = 220;
 
 const WhatIsThisModal = ({ isOpen, onClose, onOpenQuickGuide, gameTitle }) => {
   const [shouldRender, setShouldRender] = useState(isOpen);
   const [isVisible, setIsVisible] = useState(false);
+  const dialogRef = useRef(null);
+  const closeRef = useRef(null);
+
+  useAccessibleDialog({
+    isOpen,
+    dialogRef,
+    initialFocusRef: closeRef,
+    onClose,
+  });
 
   useEffect(() => {
     let timeoutId = null;
@@ -37,20 +47,13 @@ const WhatIsThisModal = ({ isOpen, onClose, onOpenQuickGuide, gameTitle }) => {
     if (!shouldRender) return undefined;
 
     const previousOverflow = document.body.style.overflow;
-    const handleEscape = (event) => {
-      if (event.key === 'Escape') {
-        onClose();
-      }
-    };
 
     document.body.style.overflow = 'hidden';
-    window.addEventListener('keydown', handleEscape);
 
     return () => {
       document.body.style.overflow = previousOverflow;
-      window.removeEventListener('keydown', handleEscape);
     };
-  }, [shouldRender, onClose]);
+  }, [shouldRender]);
 
   if (!shouldRender) return null;
 
@@ -74,6 +77,11 @@ const WhatIsThisModal = ({ isOpen, onClose, onOpenQuickGuide, gameTitle }) => {
       />
 
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="v3-what-is-this-title"
+        tabIndex={-1}
         className={`relative z-10 my-auto flex w-full max-w-3xl flex-col overflow-hidden rounded-[2rem] border border-cyan-400/20 bg-[linear-gradient(160deg,rgba(2,6,23,0.97)_0%,rgba(23,37,84,0.94)_45%,rgba(88,28,135,0.92)_100%)] shadow-[0_30px_120px_rgba(8,145,178,0.28)] transition-[opacity,transform] duration-[220ms] ease-out ${
           isVisible ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-5 scale-[0.985] opacity-0'
         }`}
@@ -81,7 +89,7 @@ const WhatIsThisModal = ({ isOpen, onClose, onOpenQuickGuide, gameTitle }) => {
         <div className="border-b border-white/10 px-5 py-4 md:px-8 md:py-6">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/25 bg-cyan-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-cyan-200">
+              <div id="v3-what-is-this-title" className="inline-flex items-center gap-2 rounded-full border border-cyan-400/25 bg-cyan-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-cyan-200">
                 <BookOpen size={14} />
                 What&apos;s This?
               </div>
@@ -107,8 +115,10 @@ const WhatIsThisModal = ({ isOpen, onClose, onOpenQuickGuide, gameTitle }) => {
             </div>
 
             <button
+              ref={closeRef}
               type="button"
               onClick={onClose}
+              aria-label="Close what is this dialog"
               className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/75 transition-colors hover:bg-white/10 hover:text-white"
             >
               <X size={20} />

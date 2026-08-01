@@ -22,9 +22,17 @@ function publicError(error) {
   };
 }
 
-export function useV3Session({ account, instanceAddress, factoryAddress } = {}) {
+export function useV3Session({
+  account,
+  instanceAddress,
+  factoryAddress,
+  browserProvider,
+  lifecyclePollMs = 15_000,
+} = {}) {
   const [state, dispatch] = useReducer(v3SessionReducer, initialV3SessionState);
   const servicePromiseRef = useRef(null);
+  const inspectionSequenceRef = useRef(0);
+  const actionInProgressRef = useRef(false);
 
   const getService = useCallback(async () => {
     if (!servicePromiseRef.current) {
@@ -42,25 +50,34 @@ export function useV3Session({ account, instanceAddress, factoryAddress } = {}) 
     }
   }, [account, instanceAddress]);
 
-  const inspect = useCallback(async (selectedIdentity = activeIdentity) => {
+  const inspect = useCallback(async (
+    selectedIdentity = activeIdentity,
+    { showRestoring = true } = {},
+  ) => {
     if (!selectedIdentity) return null;
-    dispatch({ type: 'RESTORE_STARTED' });
+    if (actionInProgressRef.current) return null;
+    const sequence = ++inspectionSequenceRef.current;
+    if (showRestoring) dispatch({ type: 'RESTORE_STARTED' });
     try {
       const service = await getService();
       const inspection = await service.restore(selectedIdentity, {
         factory: factoryAddress,
       });
-      dispatch({ type: 'INSPECTION_RECEIVED', inspection });
+      if (sequence === inspectionSequenceRef.current) {
+        dispatch({ type: 'INSPECTION_RECEIVED', inspection });
+      }
       return inspection;
     } catch (error) {
-      dispatch({ type: 'SESSION_UNAVAILABLE', error: publicError(error) });
+      if (sequence === inspectionSequenceRef.current) {
+        dispatch({ type: 'SESSION_UNAVAILABLE', error: publicError(error) });
+      }
       return null;
     }
   }, [activeIdentity, factoryAddress, getService]);
 
   useEffect(() => {
     dispatch({ type: 'IDENTITY_CHANGED', identity: activeIdentity });
-    if (activeIdentity) void inspect(activeIdentity);
+    if (activeIdentity) void inspect(activeIdentity, { showRestoring: false });
   }, [activeIdentity, inspect]);
 
   useEffect(() => {
@@ -69,13 +86,35 @@ export function useV3Session({ account, instanceAddress, factoryAddress } = {}) 
     if (!activeIdentity) return undefined;
     void getService().then((service) => {
       if (cancelled) return;
-      unsubscribe = service.subscribe(() => void inspect(activeIdentity));
+      unsubscribe = service.subscribe(() => void inspect(
+        activeIdentity,
+        { showRestoring: false },
+      ));
     }).catch(() => {});
     return () => {
       cancelled = true;
       unsubscribe?.();
     };
   }, [activeIdentity, getService, inspect]);
+
+  useEffect(() => {
+    if (!activeIdentity || lifecyclePollMs <= 0) return undefined;
+    const interval = globalThis.setInterval(() => {
+      void inspect(activeIdentity, { showRestoring: false });
+    }, lifecyclePollMs);
+    return () => globalThis.clearInterval(interval);
+  }, [activeIdentity, inspect, lifecyclePollMs]);
+
+  useEffect(() => {
+    if (!activeIdentity) return undefined;
+    const tick = () => dispatch({
+      type: 'CLOCK_TICK',
+      now: BigInt(Math.floor(Date.now() / 1_000)),
+    });
+    tick();
+    const interval = globalThis.setInterval(tick, 1_000);
+    return () => globalThis.clearInterval(interval);
+  }, [activeIdentity]);
 
   useEffect(() => () => {
     const servicePromise = servicePromiseRef.current;
@@ -135,6 +174,70 @@ export function useV3Session({ account, instanceAddress, factoryAddress } = {}) 
     await service.discardEnrollment(prepared);
   }, [getService]);
 
+  const getPrimarySigner = useCallback(async () => {
+    if (!browserProvider || !account) {
+      throw new Error('Connect the enrolled primary wallet first.');
+    }
+    const signer = await browserProvider.getSigner();
+    const signerAddress = await signer.getAddress();
+    if (signerAddress.toLowerCase() !== account.toLowerCase()) {
+      throw new Error('The connected wallet is not the active primary player.');
+    }
+    return signer;
+  }, [account, browserProvider]);
+
+  const refreshSession = useCallback(async () => {
+    if (!activeIdentity || actionInProgressRef.current) return null;
+    actionInProgressRef.current = true;
+    inspectionSequenceRef.current += 1;
+    dispatch({ type: 'REFRESH_STARTED' });
+    try {
+      const [service, signer] = await Promise.all([
+        getService(),
+        getPrimarySigner(),
+      ]);
+      const refreshed = await service.refreshSession(activeIdentity, signer);
+      dispatch({
+        type: 'INSPECTION_RECEIVED',
+        inspection: refreshed.inspection,
+        completeAction: true,
+      });
+      dispatch({ type: 'SESSION_SELECTED' });
+      return refreshed;
+    } catch (error) {
+      dispatch({ type: 'ACTION_FAILURE', error: publicError(error) });
+      return null;
+    } finally {
+      actionInProgressRef.current = false;
+    }
+  }, [activeIdentity, getPrimarySigner, getService]);
+
+  const revokeSession = useCallback(async () => {
+    if (!activeIdentity || actionInProgressRef.current) return null;
+    actionInProgressRef.current = true;
+    inspectionSequenceRef.current += 1;
+    dispatch({ type: 'REVOKE_STARTED' });
+    try {
+      const [service, signer] = await Promise.all([
+        getService(),
+        getPrimarySigner(),
+      ]);
+      const inspection = await service.revokeSession(activeIdentity, signer);
+      dispatch({
+        type: 'INSPECTION_RECEIVED',
+        inspection,
+        completeAction: true,
+      });
+      dispatch({ type: 'DIRECT_PRIMARY_SELECTED' });
+      return inspection;
+    } catch (error) {
+      dispatch({ type: 'ACTION_FAILURE', error: publicError(error) });
+      return null;
+    } finally {
+      actionInProgressRef.current = false;
+    }
+  }, [activeIdentity, getPrimarySigner, getService]);
+
   return {
     state,
     identity: activeIdentity,
@@ -146,6 +249,8 @@ export function useV3Session({ account, instanceAddress, factoryAddress } = {}) 
     prepareEnrollment,
     confirmEnrollment,
     discardEnrollment,
+    refreshSession,
+    revokeSession,
     selectDirectPrimary: () => dispatch({ type: 'DIRECT_PRIMARY_SELECTED' }),
     selectSession: () => dispatch({ type: 'SESSION_SELECTED' }),
     runtimeReady: V3_RUNTIME_CONFIG.capabilities.sessionSubmissionReady,

@@ -100,22 +100,31 @@ sponsored settlement and primary/executor attribution for each game.
 
 ## Phase 7 — Refresh, recovery, revoke, and expiry
 
-- [ ] Show on-chain session time remaining and near-expiry state.
-- [ ] Implement staged refresh and post-confirmation promotion.
-- [ ] Recover interrupted promotion on startup.
-- [ ] Support lost-browser and new-device replacement.
-- [ ] Implement confirmed revocation and local cleanup.
-- [ ] Detect cross-tab/device rotation and stop old executor use.
-- [ ] Preserve direct-primary gameplay throughout session failure.
+Status: complete. The shared session layer now exposes authoritative expiry,
+primary-wallet refresh/revoke actions, lost-key recovery, interrupted promotion
+recovery, and cross-device rotation detection to all three games.
+
+- [x] Show on-chain session time remaining and near-expiry state.
+- [x] Implement staged refresh and post-confirmation promotion.
+- [x] Recover interrupted promotion on startup.
+- [x] Support lost-browser and new-device replacement.
+- [x] Implement confirmed revocation and local cleanup.
+- [x] Detect cross-tab/device rotation and stop old executor use.
+- [x] Preserve direct-primary gameplay throughout session failure.
 
 ## Phase 8 — Reliability, accessibility, and polish
 
-- [ ] Normalize pending, success, error, and fallback feedback.
-- [ ] Add accessible live regions, focus handling, and keyboard controls.
-- [ ] Respect reduced motion and verify narrow/mobile wallet layouts.
-- [ ] Keep routine session status visually quiet during gameplay.
-- [ ] Add scrubbed advanced diagnostics.
-- [ ] Review product copy for custody, expiry, sponsorship, and recovery.
+Status: complete. Shared V3 feedback now has accessible announcements and
+focus-safe dialogs, routine session state collapses out of the game view, and
+reduced-motion/mobile behavior plus allowlisted diagnostics are covered across
+all three arenas.
+
+- [x] Normalize pending, success, error, and fallback feedback.
+- [x] Add accessible live regions, focus handling, and keyboard controls.
+- [x] Respect reduced motion and verify narrow/mobile wallet layouts.
+- [x] Keep routine session status visually quiet during gameplay.
+- [x] Add scrubbed advanced diagnostics.
+- [x] Review product copy for custody, expiry, sponsorship, and recovery.
 
 ## Phase 9 — Comprehensive validation and security
 

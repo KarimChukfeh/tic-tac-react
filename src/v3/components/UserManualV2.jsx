@@ -11,6 +11,7 @@ import {
   Menu,
   X,
 } from 'lucide-react';
+import { getV3ScrollBehavior } from '../accessibility/motionPreferences';
 
 const HEADING_ALIASES = {
   '32-draws': ['draws'],
@@ -1006,7 +1007,7 @@ const UserManualV2 = ({
         return;
       }
 
-      heading.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      heading.scrollIntoView({ behavior: getV3ScrollBehavior(), block: 'start' });
 
       document.querySelectorAll('[data-manual-heading="true"].highlight-target').forEach((element) => {
         element.classList.remove('highlight-target');
@@ -1040,7 +1041,7 @@ const UserManualV2 = ({
       window.history.replaceState(null, '', `#${group.id}`);
       window.requestAnimationFrame(() => {
         const sectionHeading = document.getElementById(group.id);
-        sectionHeading?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        sectionHeading?.scrollIntoView({ behavior: getV3ScrollBehavior(), block: 'start' });
       });
       return;
     }

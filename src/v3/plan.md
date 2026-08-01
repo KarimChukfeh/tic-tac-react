@@ -570,6 +570,10 @@ Exit gate:
 
 ### Phase 8 — Reliability, accessibility, and product polish
 
+Status: complete. Transaction/session announcements, focus-safe V3 dialogs,
+reduced-motion behavior, narrow-screen layout, quiet routine session controls,
+and public-only diagnostics now share one implementation across all games.
+
 Goals:
 
 - Normalize loading, pending, success, error, and fallback feedback.
@@ -861,7 +865,9 @@ Track these explicitly until resolved:
 - How the backend SDK is versioned and consumed by Vite without duplicated security-sensitive code.
 - Which two bundler endpoints are used in each environment and how failover health is determined.
 - Whether direct-wallet-only enrollment remains a visible product option.
-- When to warn for a one-hour TTL and whether proactive refresh is offered between moves.
+- The one-hour TTL shows a proactive refresh warning during its final ten
+  minutes; refresh remains available earlier and does not change tournament or
+  fund ownership.
 - How to represent pending UserOperation state across reloads without enabling nonce reuse.
 - Which browser versions and wallet browsers are supported for IndexedDB, Web Crypto, BroadcastChannel, and Web Locks.
 - How combined V2/V3 profiles and histories are labeled without confusing users.

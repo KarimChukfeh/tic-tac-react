@@ -103,4 +103,83 @@ describe('V3 browser session service', () => {
     expect(key.destroy).toHaveBeenCalledOnce();
     expect(inspection.status).toBe('active');
   });
+
+  it('does not mark an on-chain executor usable when this browser lost its key', async () => {
+    const client = {
+      recoverPendingRefresh: vi.fn().mockResolvedValue(null),
+      inspect: vi.fn().mockResolvedValue({
+        status: 'active',
+        executor,
+        secondsRemaining: 3_600n,
+      }),
+    };
+    const service = new V3BrowserSessionService({
+      sessionClient: client,
+      vault: { load: vi.fn().mockResolvedValue(null) },
+      coordinator: {},
+    });
+
+    await expect(service.restore({
+      chainId: 412346n,
+      instance,
+      primary,
+    })).resolves.toMatchObject({
+      status: 'missing-local',
+      onChainStatus: 'active',
+      localAvailable: false,
+    });
+  });
+
+  it('refreshes and revokes only through the primary signer SDK path', async () => {
+    const signer = { kind: 'primary-signer' };
+    const refreshedMetadata = { account: executor };
+    const client = {
+      refreshSession: vi.fn().mockResolvedValue(refreshedMetadata),
+      revokeSession: vi.fn().mockResolvedValue(undefined),
+      inspect: vi.fn()
+        .mockResolvedValueOnce({ status: 'active', executor })
+        .mockResolvedValueOnce({ status: 'revoked', executor }),
+    };
+    const service = new V3BrowserSessionService({
+      sessionClient: client,
+      vault: {},
+      coordinator: {},
+    });
+    const sessionIdentity = { chainId: 412346n, instance, primary };
+
+    const refreshed = await service.refreshSession(sessionIdentity, signer);
+    expect(client.refreshSession).toHaveBeenCalledWith(sessionIdentity, signer);
+    expect(refreshed).toMatchObject({
+      metadata: refreshedMetadata,
+      inspection: { status: 'active', localAvailable: true },
+    });
+
+    const revoked = await service.revokeSession(sessionIdentity, signer);
+    expect(client.revokeSession).toHaveBeenCalledWith(sessionIdentity, signer);
+    expect(revoked).toMatchObject({ status: 'revoked', localAvailable: false });
+  });
+
+  it('reports recovery after an interrupted refresh promotion', async () => {
+    const key = { destroy: vi.fn() };
+    const client = {
+      recoverPendingRefresh: vi.fn().mockResolvedValue({ account: executor }),
+      inspect: vi.fn().mockResolvedValue({ status: 'active', executor }),
+    };
+    const service = new V3BrowserSessionService({
+      sessionClient: client,
+      vault: { load: vi.fn().mockResolvedValue({ key, metadata: { account: executor } }) },
+      coordinator: {},
+    });
+
+    await expect(service.restore({
+      chainId: 412346n,
+      instance,
+      primary,
+    })).resolves.toMatchObject({
+      status: 'active',
+      localAvailable: true,
+      recoveredRefresh: true,
+    });
+    expect(key.destroy).toHaveBeenCalledOnce();
+  });
 });

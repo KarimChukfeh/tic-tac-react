@@ -114,8 +114,16 @@ describe('V3 generation boundary', () => {
       expect(source).toContain('sessionService: await v3Session.getService()');
       expect(source).toContain('identity: v3Session.identity');
       expect(source).toContain('<V3SessionStatus');
+      expect(source).toContain('<V3ActionAnnouncer');
+      expect(source).toContain("from '../components/WalletBrowserPrompt'");
+      expect(source).toContain('className="v3-session-dock"');
+      expect(source).toContain('getV3ScrollBehavior()');
+      expect(source).toContain('browserProvider,');
+      expect(source).toContain('onRefresh={v3Session.refreshSession}');
+      expect(source).toContain('onRevoke={v3Session.revokeSession}');
       expect(source).toContain('formatSessionMoveFailure(descriptor)');
       expect(source).not.toContain('identity: v3Session.state.executor');
+      expect(source).not.toContain("behavior: 'smooth'");
     }
   });
 });

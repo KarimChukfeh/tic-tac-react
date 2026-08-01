@@ -507,3 +507,100 @@ Decisions and risks:
 Next recommended action:
 - Begin Phase 7 with on-chain session time remaining and near-expiry state,
   followed by staged refresh/promotion and interrupted-refresh recovery.
+
+2026-08-01 — Phase 7 session lifecycle and recovery
+
+Completed:
+- Added a live countdown from the inspected on-chain `validUntil` value, a
+  ten-minute near-expiry warning, and immediate local expiry enforcement.
+- Exposed the SDK's encrypted staged refresh, confirmed promotion, startup
+  recovery, and confirmed revocation flows through the shared browser session
+  service and React hook.
+- Required refresh and revoke writes to use a signer whose address exactly
+  matches the active primary player; session executors never receive lifecycle
+  authority.
+- Distinguished an active on-chain executor from a locally usable session.
+  Browsers with missing/evicted key material now enter `missing-local` and must
+  authorize a replacement rather than attempting a doomed session move.
+- Added fifteen-second registry polling alongside cross-tab notifications.
+  Rotation on another tab/device disables the old executor in UI, while every
+  attempted move still re-inspects the registry before signing.
+- Added shared refresh and revoke controls, wallet-mode recovery, pending
+  feedback, and explicit copy that revocation does not affect tournaments or
+  funds across all three arenas.
+
+Validation:
+- Added reducer coverage for countdown, near-expiry, local expiry, lifecycle
+  actions, and explicit wallet-mode preservation.
+- Added service coverage for missing local keys, staged refresh promotion,
+  interrupted-refresh startup recovery, primary-signer refresh, and confirmed
+  revocation cleanup.
+- Added hook coverage for refresh/revoke signer routing, mismatched-wallet
+  rejection, and cross-device rotation polling.
+- Added component coverage for expiry time, refresh/revoke actions, and
+  lost-browser recovery copy.
+- All 116 frontend V3 tests passed and the production build passed with SDK
+  integrity preflights.
+- No local backend, bundler, or frontend service was started for this batch.
+
+Decisions and risks:
+- Near-expiry begins at ten minutes remaining. Prompt-free moves remain usable
+  during the warning, and proactive refresh is optional.
+- Registry polling is a UX synchronization mechanism, not the security gate;
+  the SDK's per-move on-chain inspection remains authoritative if another
+  device rotates or revokes between polls.
+
+Next recommended action:
+- Begin Phase 8 by normalizing transaction announcements and focus behavior,
+  then validate reduced-motion and narrow/mobile layouts for the expanded
+  session controls.
+
+2026-08-01 — Phase 8 reliability, accessibility, and product polish
+
+Completed:
+- Added a shared live announcer for pending and successful V3 actions; errors
+  use one assertive alert dialog instead of competing announcements.
+- Added reusable dialog focus management with initial focus, Tab containment,
+  Escape handling, and focus restoration. Applied it to transaction errors,
+  wallet-browser choice, informational guides, and demo settings.
+- Kept important errors open until explicit dismissal and changed the generic
+  heading from “Transaction Failed” to the more accurate “Action Needs
+  Attention.”
+- Added a V3-owned wallet-browser prompt with dialog semantics and clearer copy
+  that supports both wallet browsers and installed extensions.
+- Made normal active-session status collapse to a one-line gameplay badge.
+  Expiry, recovery, transport, and pending states still expand automatically,
+  and explicit wallet/session controls remain keyboard reachable.
+- Added allowlisted advanced diagnostics containing only public lifecycle
+  state, addresses, timing, and error codes. Arbitrary error text, private
+  keys, signatures, and transaction payloads cannot enter the diagnostic view.
+- Applied system reduced-motion preferences to programmatic scrolling and the
+  initial 3D-effects choice while preserving an explicit stored preference.
+- Added a responsive session dock with bounded overflow on narrow screens and
+  reviewed custody, sponsorship, fallback, expiry, and recovery wording across
+  the shared session surface.
+
+Validation:
+- Added component coverage for action announcements, alert-dialog focus
+  restoration, wallet-prompt keyboard behavior, compact session controls, and
+  diagnostic redaction, plus unit coverage for motion preferences.
+- All 124 frontend V3 tests passed and the production build passed with SDK
+  integrity preflights.
+- At a 390×844 browser viewport, `/v3/tictactoe` had no horizontal overflow,
+  kept Play Demo and Connect Wallet visible, defaulted effects off under the
+  active reduced-motion preference, and restored focus after Escape closed the
+  informational dialog.
+- The temporary frontend used on port 3001 was stopped and the port was
+  verified clear. The pre-existing service on port 3000 was not modified; no
+  backend or bundler service was started.
+
+Decisions and risks:
+- Routine active state stays collapsed, while any state requiring attention
+  expands automatically. This keeps the game board visible without hiding
+  recovery or expiry actions.
+- Diagnostics use a fixed public-field allowlist rather than redacting an
+  arbitrary object after serialization.
+
+Next recommended action:
+- Begin Phase 9 with real IndexedDB/Web Crypto browser integration coverage,
+  then add local E2E failure-state and secret-leak/security gates.

@@ -79,40 +79,59 @@ export class V3BrowserSessionService {
   }
 
   async restore(sessionIdentity, { factory } = {}) {
-    await this.client.recoverPendingRefresh(sessionIdentity);
+    const recoveredRefresh = await this.client.recoverPendingRefresh(sessionIdentity);
     let inspection = await this.client.inspect(sessionIdentity);
-    if (!factory) return inspection;
 
     const existing = await this.vault.load(sessionIdentity);
     if (existing) {
       existing.key.destroy();
-      return inspection;
+      return {
+        ...inspection,
+        localAvailable: true,
+        recoveredRefresh: Boolean(recoveredRefresh),
+      };
     }
 
-    const stagingIdentity = identity({
-      chainId: sessionIdentity.chainId,
-      instance: factory,
-      primary: sessionIdentity.primary,
-    });
-    const staged = await this.vault.load(stagingIdentity);
-    if (!staged) return inspection;
-    try {
-      if (
-        inspection.status === 'active'
-        && inspection.executor === staged.metadata.account
-      ) {
-        await this.vault.save(sessionIdentity, staged.key, {
-          account: staged.metadata.account,
-          salt: staged.metadata.salt,
-          replace: true,
-        });
-        await this.vault.remove(stagingIdentity);
-        inspection = await this.client.inspect(sessionIdentity);
+    if (factory) {
+      const stagingIdentity = identity({
+        chainId: sessionIdentity.chainId,
+        instance: factory,
+        primary: sessionIdentity.primary,
+      });
+      const staged = await this.vault.load(stagingIdentity);
+      if (staged) {
+        try {
+          if (
+            inspection.status === 'active'
+            && inspection.executor === staged.metadata.account
+          ) {
+            await this.vault.save(sessionIdentity, staged.key, {
+              account: staged.metadata.account,
+              salt: staged.metadata.salt,
+              replace: true,
+            });
+            await this.vault.remove(stagingIdentity);
+            inspection = await this.client.inspect(sessionIdentity);
+            return {
+              ...inspection,
+              localAvailable: true,
+              recoveredCreation: true,
+              recoveredRefresh: Boolean(recoveredRefresh),
+            };
+          }
+        } finally {
+          staged.key.destroy();
+        }
       }
-    } finally {
-      staged.key.destroy();
     }
-    return inspection;
+
+    return {
+      ...inspection,
+      onChainStatus: inspection.status,
+      status: inspection.status === 'active' ? 'missing-local' : inspection.status,
+      localAvailable: false,
+      recoveredRefresh: Boolean(recoveredRefresh),
+    };
   }
 
   inspect(sessionIdentity) {
@@ -121,6 +140,25 @@ export class V3BrowserSessionService {
 
   submitMove(sessionIdentity, move, options) {
     return this.client.submitMove(sessionIdentity, move, options);
+  }
+
+  async refreshSession(sessionIdentity, primarySigner) {
+    const metadata = await this.client.refreshSession(sessionIdentity, primarySigner);
+    return {
+      metadata,
+      inspection: {
+        ...await this.client.inspect(sessionIdentity),
+        localAvailable: true,
+      },
+    };
+  }
+
+  async revokeSession(sessionIdentity, primarySigner) {
+    await this.client.revokeSession(sessionIdentity, primarySigner);
+    return {
+      ...await this.client.inspect(sessionIdentity),
+      localAvailable: false,
+    };
   }
 
   subscribe(listener) {

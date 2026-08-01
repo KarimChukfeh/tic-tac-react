@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Bot, Gamepad2, X } from 'lucide-react';
+import { useAccessibleDialog } from '../hooks/useAccessibleDialog';
 
 const TRANSITION_MS = 220;
 
@@ -15,6 +16,15 @@ export default function DemoLevelModal({
 }) {
   const [shouldRender, setShouldRender] = useState(isOpen);
   const [isVisible, setIsVisible] = useState(false);
+  const dialogRef = useRef(null);
+  const sliderRef = useRef(null);
+
+  useAccessibleDialog({
+    isOpen,
+    dialogRef,
+    initialFocusRef: sliderRef,
+    onClose,
+  });
   const safeLevel = Math.min(maxLevel, Math.max(minLevel, Number(level) || minLevel));
   const progress = ((safeLevel - minLevel) / Math.max(1, maxLevel - minLevel)) * 100;
   const sliderBackground = {
@@ -43,18 +53,13 @@ export default function DemoLevelModal({
     if (!shouldRender) return undefined;
 
     const previousOverflow = document.body.style.overflow;
-    const handleEscape = (event) => {
-      if (event.key === 'Escape') onClose();
-    };
 
     document.body.style.overflow = 'hidden';
-    window.addEventListener('keydown', handleEscape);
 
     return () => {
       document.body.style.overflow = previousOverflow;
-      window.removeEventListener('keydown', handleEscape);
     };
-  }, [onClose, shouldRender]);
+  }, [shouldRender]);
 
   if (!shouldRender) return null;
 
@@ -70,9 +75,11 @@ export default function DemoLevelModal({
       />
 
       <section
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="demo-level-title"
+        tabIndex={-1}
         className={`relative z-10 my-auto w-full max-w-xl overflow-hidden rounded-2xl border border-cyan-400/20 bg-[linear-gradient(160deg,rgba(2,6,23,0.97)_0%,rgba(23,37,84,0.94)_45%,rgba(88,28,135,0.92)_100%)] shadow-[0_30px_120px_rgba(8,145,178,0.28)] transition-[opacity,transform] duration-[220ms] ease-out ${
           isVisible ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-5 scale-[0.985] opacity-0'
         }`}
@@ -109,6 +116,7 @@ export default function DemoLevelModal({
 
             <div className="mt-5 rounded-xl border border-slate-800 bg-slate-950/80 px-4 py-4">
               <input
+                ref={sliderRef}
                 type="range"
                 min={String(minLevel)}
                 max={String(maxLevel)}

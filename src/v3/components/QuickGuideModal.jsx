@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BookOpen, MailPlus, Trophy, Wallet, Swords, Settings2, X } from 'lucide-react';
+import { getV3ScrollBehavior } from '../accessibility/motionPreferences';
+import { useAccessibleDialog } from '../hooks/useAccessibleDialog';
 
 const QUICK_GUIDE_TRANSITION_MS = 220;
 
@@ -39,6 +41,15 @@ const QUICK_GUIDE_STEPS = [
 const QuickGuideModal = ({ isOpen, onClose }) => {
   const [shouldRender, setShouldRender] = useState(isOpen);
   const [isVisible, setIsVisible] = useState(false);
+  const dialogRef = useRef(null);
+  const closeRef = useRef(null);
+
+  useAccessibleDialog({
+    isOpen,
+    dialogRef,
+    initialFocusRef: closeRef,
+    onClose,
+  });
 
   useEffect(() => {
     let timeoutId = null;
@@ -70,20 +81,13 @@ const QuickGuideModal = ({ isOpen, onClose }) => {
     if (!shouldRender) return undefined;
 
     const previousOverflow = document.body.style.overflow;
-    const handleEscape = (event) => {
-      if (event.key === 'Escape') {
-        onClose();
-      }
-    };
 
     document.body.style.overflow = 'hidden';
-    window.addEventListener('keydown', handleEscape);
 
     return () => {
       document.body.style.overflow = previousOverflow;
-      window.removeEventListener('keydown', handleEscape);
     };
-  }, [shouldRender, onClose]);
+  }, [shouldRender]);
 
   if (!shouldRender) return null;
 
@@ -92,7 +96,7 @@ const QuickGuideModal = ({ isOpen, onClose }) => {
     onClose();
     window.dispatchEvent(new CustomEvent('open-user-manual'));
     window.setTimeout(() => {
-      document.getElementById('user-manual')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      document.getElementById('user-manual')?.scrollIntoView({ behavior: getV3ScrollBehavior(), block: 'start' });
     }, QUICK_GUIDE_TRANSITION_MS);
   };
 
@@ -108,6 +112,11 @@ const QuickGuideModal = ({ isOpen, onClose }) => {
       />
 
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="v3-quick-guide-title"
+        tabIndex={-1}
         className={`relative z-10 my-auto flex max-h-[calc(100dvh-2rem)] w-full max-w-5xl flex-col overflow-hidden rounded-[2rem] border border-cyan-400/20 bg-[linear-gradient(160deg,rgba(2,6,23,0.97)_0%,rgba(23,37,84,0.94)_45%,rgba(88,28,135,0.92)_100%)] shadow-[0_30px_120px_rgba(8,145,178,0.28)] transition-[opacity,transform] duration-[220ms] ease-out md:max-h-[88vh] ${
           isVisible ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-5 scale-[0.985] opacity-0'
         }`}
@@ -119,7 +128,7 @@ const QuickGuideModal = ({ isOpen, onClose }) => {
                 <BookOpen size={14} />
                 Quick Guide
               </div>
-              <h2 className="mt-4 text-3xl font-bold text-white md:text-4xl">
+              <h2 id="v3-quick-guide-title" className="mt-4 text-3xl font-bold text-white md:text-4xl">
                 Five Steps
               </h2>
               <p className="mt-3 max-w-3xl text-xs leading-6 text-blue-100/80 md:text-base">
@@ -128,8 +137,10 @@ const QuickGuideModal = ({ isOpen, onClose }) => {
             </div>
 
             <button
+              ref={closeRef}
               type="button"
               onClick={onClose}
+              aria-label="Close quick guide"
               className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/75 transition-colors hover:bg-white/10 hover:text-white"
             >
               <X size={20} />
