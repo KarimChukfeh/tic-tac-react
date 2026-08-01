@@ -16,12 +16,23 @@ const contentSecurityPolicy = [
   "form-action 'self'",
 ].join('; ')
 
-const securityHeaders = {
+const productionSecurityHeaders = {
   'Content-Security-Policy': contentSecurityPolicy,
   'Referrer-Policy': 'no-referrer',
   'X-Content-Type-Options': 'nosniff',
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=()',
   'Cross-Origin-Opener-Policy': 'same-origin',
+}
+
+// Vite injects the React Fast Refresh preamble as an inline module in
+// development. Keep this exception local to the dev server; preview and
+// deployed builds retain the strict production policy above.
+const developmentSecurityHeaders = {
+  ...productionSecurityHeaders,
+  'Content-Security-Policy': contentSecurityPolicy.replace(
+    "script-src 'self'",
+    "script-src 'self' 'unsafe-inline'",
+  ),
 }
 
 export default defineConfig({
@@ -30,7 +41,7 @@ export default defineConfig({
     port: 3000,
     open: true,
     allowedHosts: ['.ngrok-free.app', '.ngrok.io'],
-    headers: securityHeaders,
+    headers: developmentSecurityHeaders,
     proxy: {
       '/__v3/bundler-primary': {
         target: 'http://127.0.0.1:4337',
@@ -45,6 +56,6 @@ export default defineConfig({
     },
   },
   preview: {
-    headers: securityHeaders,
+    headers: productionSecurityHeaders,
   },
 })

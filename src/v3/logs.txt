@@ -668,3 +668,55 @@ Additional repository cleanup:
 - Stopped the backend chain, both bundlers, and the production preview started
   for acceptance. Ports 3000, 3100, 4337, 4338, and 8545 were verified clear;
   no pre-existing user process was terminated.
+
+2026-08-01 — Reload-time prompt-free session reconciliation fix
+
+Diagnosis:
+- An active match could become interactive after wallet reconnection while the
+  encrypted browser session was still restoring. The move handler treated the
+  transient `restoring` state as if prompt-free authorization were absent and
+  immediately offered a primary-wallet move.
+- Session identity was derived from the bracket or URL selection but not from
+  the active match itself. During reload/navigation reconciliation this could
+  briefly leave the session hook without the tournament instance, explaining
+  why another navigation or reload appeared to fix the issue.
+- The same generic prompt was used for temporary restoration, genuine local-key
+  loss, and transport failure, obscuring whether a replacement-key transaction
+  was actually required.
+
+Fix:
+- Bound all three game session hooks to the active match instance first.
+- Added an authoritative move-time restore. A move now waits for encrypted-key
+  and on-chain reconciliation and remains prompt-free when that succeeds; it
+  does not show a wallet fallback prompt during the reload race.
+- Added an explicit recovery path for missing, expired, rotated, revoked, or
+  inactive sessions. The user is told that authorizing a replacement key is a
+  one-time primary-wallet transaction, leaves tournament funds unchanged, and
+  occurs before the intended move is submitted.
+- Clarified that direct-wallet fallback confirms only the current move and does
+  not regenerate the prompt-free key.
+- Strengthened move eligibility so an inspection explicitly reporting no local
+  key can never be treated as session-ready.
+
+Validation:
+- Added move-readiness coverage for reload restoration, accepted/declined key
+  recovery, and one-move direct fallback, plus hook and session-status tests.
+- The V3 release gate passed all 147 tests, the production build passed, and
+  the security scan passed across 59 production source files.
+- The production preview rendered `/v3/tictactoe` with the expected arena and
+  wallet CTA. The temporary preview and browser tab were then stopped/closed,
+  and port 3100 was verified clear.
+
+2026-08-01 — Development CSP / React refresh crash
+
+Diagnosis and fix:
+- The production `script-src 'self'` policy had also been applied to Vite's
+  development server. Vite injects an inline React Fast Refresh preamble, so
+  the browser blocked it and `@vitejs/plugin-react` then crashed while loading
+  components with “can't detect preamble.”
+- Split the server headers by environment. Development permits
+  `script-src 'self' 'unsafe-inline'` solely for Vite's injected preamble;
+  production preview and deployed `_headers` retain strict
+  `script-src 'self'` with no unsafe script directive.
+- The MetaMask/SES “Removing unpermitted intrinsics” message is extension-side
+  hardening output and was not the application crash.

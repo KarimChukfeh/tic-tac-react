@@ -18,4 +18,13 @@ describe('V3 production security policy', () => {
     const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
     expect(packageJson.scripts['v3:release:check']).toContain('v3:security:check');
   });
+
+  it('permits only the Vite refresh preamble in development', () => {
+    const viteConfig = fs.readFileSync(path.join(root, 'vite.config.js'), 'utf8');
+    expect(viteConfig).toContain("script-src 'self' 'unsafe-inline'");
+    expect(viteConfig).toContain('headers: developmentSecurityHeaders');
+    expect(viteConfig).toContain('headers: productionSecurityHeaders');
+    expect(viteConfig.indexOf('headers: developmentSecurityHeaders'))
+      .toBeLessThan(viteConfig.indexOf('headers: productionSecurityHeaders'));
+  });
 });

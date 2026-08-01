@@ -85,7 +85,8 @@ describe('V3SessionStatus', () => {
 
     expect(screen.getByText('This browser no longer has the prompt-free key')).toBeInTheDocument();
     expect(screen.getByText(/authorize a replacement key for this browser/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Refresh session' })).toBeInTheDocument();
+    expect(screen.getByText(/one-time recovery transaction/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Authorize replacement key' })).toBeInTheDocument();
   });
 
   it('keeps routine compact status quiet until controls are requested', () => {

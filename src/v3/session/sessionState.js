@@ -148,6 +148,7 @@ export function v3SessionReducer(state, action) {
 export function canSubmitSessionMove(state) {
   return state.status === V3_SESSION_STATUS.ACTIVE
     && !state.directPrimaryMode
+    && state.inspection?.localAvailable !== false
     && Boolean(state.identity);
 }
 

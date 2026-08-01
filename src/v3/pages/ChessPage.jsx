@@ -72,7 +72,7 @@ import { useV3Session } from '../hooks/useV3Session';
 import V3SessionStatus from '../components/V3SessionStatus';
 import { getInitialArenaEffectsPreference, getV3ScrollBehavior } from '../accessibility/motionPreferences';
 import { createV3RpcProvider, mapV3SdkError } from '../sdk/adapter';
-import { canSubmitSessionMove } from '../session/sessionState';
+import { resolveV3MoveReadiness } from '../session/moveReadiness';
 import {
   createChessMove,
   formatSessionMoveFailure,
@@ -1228,17 +1228,16 @@ export default function ChessPage({ routeBase = '/v3/chess' }) {
   const [bracketSyncDots, setBracketSyncDots] = useState(1);
   const [tournamentsLoading, setTournamentsLoading] = useState(false);
   const [activeInstanceContract, setActiveInstanceContract] = useState(null);
-  const v3Session = useV3Session({
-    account,
-    instanceAddress: viewingTournament?.address || selectedAddress,
-    factoryAddress,
-    browserProvider,
-  });
-
   const [currentMatch, setCurrentMatch] = useState(null);
   const [matchLoading, setMatchLoading] = useState(false);
   const [matchLoadingMessage, setMatchLoadingMessage] = useState(DEFAULT_MATCH_LOADING_MESSAGE);
   const [moveHistory, setMoveHistory] = useState([]);
+  const v3Session = useV3Session({
+    account,
+    instanceAddress: currentMatch?.instanceAddress || viewingTournament?.address || selectedAddress,
+    factoryAddress,
+    browserProvider,
+  });
   const [replayMoveIndex, setReplayMoveIndex] = useState(-2); // -2 final, -1 start, 0+ move index
   const [syncDots, setSyncDots] = useState(1);
   const [isSpectator, setIsSpectator] = useState(false);
@@ -2371,6 +2370,7 @@ export default function ChessPage({ routeBase = '/v3/chess' }) {
     }
     if (moveTxInProgressRef.current || moveControllerRef.current.pending) return;
     let attemptedSessionMove = false;
+    let sessionIdentity = v3Session.identity;
     setMoveTxTimeout(null);
     if (currentMatch.packedBoard != null && currentMatch.packedState != null) {
       const isWhite = currentMatch.firstPlayer?.toLowerCase() === account.toLowerCase();
@@ -2378,12 +2378,28 @@ export default function ChessPage({ routeBase = '/v3/chess' }) {
       if (reason) { alert(`Invalid Move: ${reason}`); return; }
     }
     try {
-      attemptedSessionMove = canSubmitSessionMove(v3Session.state);
+      if (!v3Session.state.directPrimaryMode && v3Session.state.status !== 'active') {
+        setActionState({ type: 'info', message: 'Restoring your encrypted prompt-free session…' });
+      }
+      const readiness = await resolveV3MoveReadiness({
+        state: v3Session.state,
+        identity: v3Session.identity,
+        restoreForMove: v3Session.restoreForMove,
+        refreshSession: v3Session.refreshSession,
+        confirm: window.confirm,
+      });
+      if (readiness.mode === 'cancelled') {
+        setActionState({
+          type: 'info',
+          message: readiness.reason === 'recovery-failed'
+            ? 'Session recovery was not completed. Your move was not submitted.'
+            : '',
+        });
+        return;
+      }
+      attemptedSessionMove = readiness.mode === 'session';
+      sessionIdentity = readiness.identity || sessionIdentity;
       if (!attemptedSessionMove && !v3Session.state.directPrimaryMode) {
-        const approved = window.confirm(
-          'Prompt-free moves are not active for this tournament. Submit this move with your primary wallet?',
-        );
-        if (!approved) return;
         v3Session.selectDirectPrimary();
       }
       setActionState({
@@ -2439,7 +2455,7 @@ export default function ChessPage({ routeBase = '/v3/chess' }) {
       const controlledMove = attemptedSessionMove
         ? await moveControllerRef.current.submitSession({
             sessionService: await v3Session.getService(),
-            identity: v3Session.identity,
+            identity: sessionIdentity,
             move,
             reconcile,
           })

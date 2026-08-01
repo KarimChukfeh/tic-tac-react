@@ -119,9 +119,10 @@ describe('V3 generation boundary', () => {
 
       expect(source).toContain('new V3MoveController()');
       expect(source).toContain(moveFactory);
-      expect(source).toContain('canSubmitSessionMove(v3Session.state)');
+      expect(source).toContain('resolveV3MoveReadiness({');
+      expect(source).toContain('restoreForMove: v3Session.restoreForMove');
       expect(source).toContain('sessionService: await v3Session.getService()');
-      expect(source).toContain('identity: v3Session.identity');
+      expect(source).toContain('identity: sessionIdentity');
       expect(source).toContain('<V3SessionStatus');
       expect(source).toContain('<V3ActionAnnouncer');
       expect(source).toContain("from '../components/WalletBrowserPrompt'");

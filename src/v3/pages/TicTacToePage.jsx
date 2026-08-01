@@ -81,7 +81,7 @@ import {
   createV3RpcProvider,
   mapV3SdkError,
 } from '../sdk/adapter';
-import { canSubmitSessionMove } from '../session/sessionState';
+import { resolveV3MoveReadiness } from '../session/moveReadiness';
 import {
   createTicTacToeMove,
   formatSessionMoveFailure,
@@ -866,18 +866,17 @@ export default function TicTacToePage({ routeBase = '/v3/tictactoe' }) {
 
   // Active instance contract (the one being viewed)
   const [activeInstanceContract, setActiveInstanceContract] = useState(null);
-  const v3Session = useV3Session({
-    account,
-    instanceAddress: viewingTournament?.address || selectedAddress,
-    factoryAddress,
-    browserProvider,
-  });
-
   // --- Match state (mirrors V1) ---
   const [currentMatch, setCurrentMatch] = useState(null);
   const [matchLoading, setMatchLoading] = useState(false);
   const [matchLoadingMessage, setMatchLoadingMessage] = useState(DEFAULT_MATCH_LOADING_MESSAGE);
   const [moveHistory, setMoveHistory] = useState([]);
+  const v3Session = useV3Session({
+    account,
+    instanceAddress: currentMatch?.instanceAddress || viewingTournament?.address || selectedAddress,
+    factoryAddress,
+    browserProvider,
+  });
   const [replayMoveIndex, setReplayMoveIndex] = useState(-2); // -2 final, -1 start, 0+ move index
 
   // Debug logging for moveHistory changes
@@ -1898,14 +1897,31 @@ export default function TicTacToePage({ routeBase = '/v3/tictactoe' }) {
     if (currentMatch.matchStatus === 2) { alert('Match is already complete!'); return; }
     if (moveTxInProgressRef.current || moveControllerRef.current.pending) return;
     let attemptedSessionMove = false;
+    let sessionIdentity = v3Session.identity;
     setMoveTxTimeout(null);
     try {
-      attemptedSessionMove = canSubmitSessionMove(v3Session.state);
+      if (!v3Session.state.directPrimaryMode && v3Session.state.status !== 'active') {
+        setActionState({ type: 'info', message: 'Restoring your encrypted prompt-free session…' });
+      }
+      const readiness = await resolveV3MoveReadiness({
+        state: v3Session.state,
+        identity: v3Session.identity,
+        restoreForMove: v3Session.restoreForMove,
+        refreshSession: v3Session.refreshSession,
+        confirm: window.confirm,
+      });
+      if (readiness.mode === 'cancelled') {
+        setActionState({
+          type: 'info',
+          message: readiness.reason === 'recovery-failed'
+            ? 'Session recovery was not completed. Your move was not submitted.'
+            : '',
+        });
+        return;
+      }
+      attemptedSessionMove = readiness.mode === 'session';
+      sessionIdentity = readiness.identity || sessionIdentity;
       if (!attemptedSessionMove && !v3Session.state.directPrimaryMode) {
-        const approved = window.confirm(
-          'Prompt-free moves are not active for this tournament. Submit this move with your primary wallet?',
-        );
-        if (!approved) return;
         v3Session.selectDirectPrimary();
       }
       setActionState({
@@ -1955,7 +1971,7 @@ export default function TicTacToePage({ routeBase = '/v3/tictactoe' }) {
       const controlledMove = attemptedSessionMove
         ? await moveControllerRef.current.submitSession({
             sessionService: await v3Session.getService(),
-            identity: v3Session.identity,
+            identity: sessionIdentity,
             move,
             reconcile,
           })

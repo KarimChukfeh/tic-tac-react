@@ -98,6 +98,31 @@ describe('useV3Session lifecycle actions', () => {
     unmount();
   });
 
+  it('performs an authoritative move-time restore after reload state is still restoring', async () => {
+    const service = sessionService();
+    serviceCreate.mockResolvedValue(service);
+    const { result, unmount } = renderHook(() => useV3Session({
+      account,
+      instanceAddress: instance,
+      factoryAddress: factory,
+      lifecyclePollMs: 0,
+    }));
+
+    await waitFor(() => expect(result.current.state.status).toBe('active'));
+    let restored;
+    await act(async () => {
+      restored = await result.current.restoreForMove();
+    });
+
+    expect(restored).toMatchObject({
+      ready: true,
+      identity: expect.objectContaining({ instance, primary: account }),
+      inspection: { status: 'active', localAvailable: true },
+    });
+    expect(service.restore.mock.calls.length).toBeGreaterThan(1);
+    unmount();
+  });
+
   it('polls the registry and disables an executor rotated on another device', async () => {
     const service = sessionService({
       restore: vi.fn()

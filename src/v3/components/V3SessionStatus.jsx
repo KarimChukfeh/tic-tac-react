@@ -30,6 +30,15 @@ const REFRESHABLE_STATUSES = new Set([
   'missing-local',
 ]);
 
+const REPLACEMENT_KEY_STATUSES = new Set([
+  'missing',
+  'missing-local',
+  'expired',
+  'rotated',
+  'revoked',
+  'inactive',
+]);
+
 function diagnosticValue(value) {
   return value == null ? null : String(value);
 }
@@ -121,10 +130,15 @@ export default function V3SessionStatus({
   };
 
   const diagnostics = buildV3SessionDiagnostics(state);
+  const needsReplacementKey = REPLACEMENT_KEY_STATUSES.has(state.status);
   const statusCopy = state.directPrimaryMode
     ? 'Each move requires approval from your connected primary wallet.'
     : state.status === 'active'
       ? 'Moves use this browser’s encrypted executor key and sponsored submission when available. Your primary wallet remains in control.'
+      : state.status === 'restoring'
+        ? 'Checking this browser’s encrypted key and its on-chain authorization. No wallet confirmation is needed unless recovery is required.'
+        : needsReplacementKey
+          ? 'Prompt-free moves need a replacement browser key. This requires one small primary-wallet transaction; the tournament and funds are unchanged.'
       : 'Wallet-confirmed moves remain available; fallback only occurs when you select it.';
 
   return (
@@ -168,7 +182,7 @@ export default function V3SessionStatus({
           <p className="text-xs leading-5 text-white/55">{statusCopy}</p>
           {state.status === 'missing-local' && (
             <p className="mt-2 text-xs leading-5 text-amber-100/80">
-              Connect the enrolled primary wallet to authorize a replacement key for this browser.
+              Connect the enrolled primary wallet, then authorize a replacement key for this browser. This is a one-time recovery transaction—not approval for the pending move.
             </p>
           )}
           {state.error?.message && (
@@ -194,7 +208,11 @@ export default function V3SessionStatus({
             )}
             {canRefresh && (
               <button type="button" disabled={pending} onClick={() => void onRefresh()} className="rounded-lg bg-cyan-400/15 px-3 py-2 text-xs font-semibold text-cyan-100 disabled:opacity-50">
-                {state.pendingAction === 'refresh' ? 'Refreshing…' : 'Refresh session'}
+                {state.pendingAction === 'refresh'
+                  ? 'Authorizing replacement…'
+                  : needsReplacementKey
+                    ? 'Authorize replacement key'
+                    : 'Refresh session'}
               </button>
             )}
             {canRevoke && (

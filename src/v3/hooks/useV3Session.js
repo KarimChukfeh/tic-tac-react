@@ -238,6 +238,19 @@ export function useV3Session({
     }
   }, [activeIdentity, getPrimarySigner, getService]);
 
+  const restoreForMove = useCallback(async () => {
+    const selectedIdentity = activeIdentity;
+    if (!selectedIdentity) {
+      return { ready: false, identity: null, inspection: null };
+    }
+    const inspection = await inspect(selectedIdentity, { showRestoring: false });
+    return {
+      ready: inspection?.status === 'active' && inspection?.localAvailable === true,
+      identity: selectedIdentity,
+      inspection,
+    };
+  }, [activeIdentity, inspect]);
+
   return {
     state,
     identity: activeIdentity,
@@ -251,6 +264,7 @@ export function useV3Session({
     discardEnrollment,
     refreshSession,
     revokeSession,
+    restoreForMove,
     selectDirectPrimary: () => dispatch({ type: 'DIRECT_PRIMARY_SELECTED' }),
     selectSession: () => dispatch({ type: 'SESSION_SELECTED' }),
     runtimeReady: V3_RUNTIME_CONFIG.capabilities.sessionSubmissionReady,
