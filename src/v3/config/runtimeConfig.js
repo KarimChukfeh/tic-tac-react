@@ -66,11 +66,21 @@ function deepFreeze(value) {
   return value;
 }
 
+function enabledFlag(value, fallback = true) {
+  if (value === undefined || value === null || value === '') return fallback;
+  if (value === true || value === 'true') return true;
+  if (value === false || value === 'false') return false;
+  throw new V3RuntimeConfigurationError(
+    'VITE_V3_SPONSORSHIP_ENABLED must be true or false',
+  );
+}
+
 export function loadV3RuntimeConfig(
   env = import.meta.env,
   deployment = V3_DEPLOYMENTS,
   browserOrigin = null,
 ) {
+  const sponsorshipEnabled = enabledFlag(env?.VITE_V3_SPONSORSHIP_ENABLED);
   const isLocalDeployment = (
     deployment.network === 'localhost'
     && deployment.chainId === LOCAL_CHAIN_ID
@@ -113,6 +123,13 @@ export function loadV3RuntimeConfig(
   }
 
   const issues = [];
+  if (!sponsorshipEnabled) {
+    issues.push({
+      code: 'V3_SPONSORSHIP_DISABLED',
+      severity: 'info',
+      message: 'Sponsored moves are disabled. Wallet-confirmed gameplay remains available.',
+    });
+  }
   if (!rpcUrl) {
     issues.push({
       code: 'V3_RPC_URL_MISSING',
@@ -136,7 +153,7 @@ export function loadV3RuntimeConfig(
   }
 
   const sessionSubmissionReady = Boolean(
-    rpcUrl && bundlerPrimaryUrl && bundlerFailoverUrl,
+    sponsorshipEnabled && rpcUrl && bundlerPrimaryUrl && bundlerFailoverUrl,
   );
   return deepFreeze({
     generation: deployment.generation,
@@ -146,6 +163,7 @@ export function loadV3RuntimeConfig(
     bundlerPrimaryUrl,
     bundlerFailoverUrl,
     capabilities: {
+      sponsorshipEnabled,
       readRpcConfigured: Boolean(rpcUrl),
       primaryBundlerConfigured: Boolean(bundlerPrimaryUrl),
       failoverBundlerConfigured: Boolean(bundlerFailoverUrl),
@@ -156,6 +174,7 @@ export function loadV3RuntimeConfig(
       generation: deployment.generation,
       network: deployment.network,
       chainId: deployment.chainId,
+      sponsorshipEnabled,
       rpc: publicEndpoint(rpcUrl),
       bundlerPrimary: publicEndpoint(bundlerPrimaryUrl),
       bundlerFailover: publicEndpoint(bundlerFailoverUrl),

@@ -2918,6 +2918,7 @@ export default function ConnectFourPage({ routeBase = '/v3/connect4' }) {
         >
           <GamesCard
             currentGame="connect4"
+            routeGeneration="v3"
             onHeightChange={setGamesCardHeight}
             isExpanded={expandedPanel === 'games'}
             onToggleExpand={() => setExpandedPanel(expandedPanel === 'games' ? null : 'games')}
@@ -3011,6 +3012,7 @@ export default function ConnectFourPage({ routeBase = '/v3/connect4' }) {
         <div className="hidden md:block">
           <GamesCard
             currentGame="connect4"
+            routeGeneration="v3"
             onHeightChange={setGamesCardHeight}
             isExpanded={expandedPanel === 'games'}
             onToggleExpand={() => setExpandedPanel(expandedPanel === 'games' ? null : 'games')}

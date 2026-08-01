@@ -13,6 +13,7 @@ import {
   JsonRpcProvider,
   NonceManager,
 } from 'ethers';
+import { createRequestSerializer } from '../src/v3/integration/serializeRequests.js';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const frontendRoot = path.resolve(scriptDirectory, '..');
@@ -62,6 +63,8 @@ function errorDiagnostics(error) {
 }
 
 export function createBundlerHttpServer({ name, bundler }) {
+  const serializeRequest = createRequestSerializer();
+
   return createServer(async (request, response) => {
     response.setHeader('Access-Control-Allow-Origin', '*');
     response.setHeader('Access-Control-Allow-Headers', 'content-type');
@@ -89,10 +92,10 @@ export function createBundlerHttpServer({ name, bundler }) {
       const chunks = [];
       for await (const chunk of request) chunks.push(chunk);
       payload = JSON.parse(Buffer.concat(chunks).toString('utf8'));
-      const result = await bundler.request({
-        method: payload.method,
-        params: payload.params || [],
-      });
+      const result = await serializeRequest(() => bundler.request({
+          method: payload.method,
+          params: payload.params || [],
+        }));
       response.end(json({
         jsonrpc: '2.0',
         id: payload.id ?? null,

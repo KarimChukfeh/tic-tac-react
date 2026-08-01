@@ -604,3 +604,67 @@ Decisions and risks:
 Next recommended action:
 - Begin Phase 9 with real IndexedDB/Web Crypto browser integration coverage,
   then add local E2E failure-state and secret-leak/security gates.
+
+2026-08-01 — Phases 9–12 validation, acceptance, and release readiness
+
+Completed:
+- Added release routing that defaults local new creation to V3, keeps
+  production fail-closed to V2 until explicit approval, supports canary
+  cohorts, and provides an immediate rollback selector.
+- Kept existing-instance routes generation-specific and added history
+  aggregation that never merges V2 and V3 contract identities.
+- Added a sponsorship kill switch that disables session transport while
+  preserving explicit primary-wallet moves.
+- Added allowlisted public operational events for session/direct submission,
+  inclusion, refusal, and failure without raw errors, signatures, keys, or
+  transaction payloads.
+- Added a real-browser primitive probe covering IndexedDB, non-extractable Web
+  Crypto wrapping keys, encrypted records, reload, interrupted refresh,
+  rotation, BroadcastChannel, and browser locks.
+- Added CSP and security headers, network allowlists, unsafe-DOM/source-map/
+  secret scans, release and recovery runbooks, and a scrubbed evidence archive.
+- Fixed local bundler request serialization so concurrent games cannot race the
+  relayer nonce, and fixed acceptance paymaster administration to use one
+  managed nonce stream.
+- Rebuilt a fresh backend chain and copied freshly generated V3 deployment
+  artifacts into the client.
+
+Acceptance:
+- Backend: 339 tests plus contract, security, storage, ABI, selector, size,
+  routing, monitoring, and release-freeze gates passed.
+- Frontend: the V3 release gate passed 142 tests, the full regression suite
+  passed all 259 tests, the production build passed, and the security gate
+  passed across 58 production source files.
+- Tic-tac-toe, Connect Four, and Chess each completed sponsored local
+  tournaments with two counterfactual deployments and primary-owned profile/
+  history attribution.
+- Single-bundler failover, total-bundler outage without automatic move retry,
+  paymaster refusal, and explicit direct-wallet recovery passed.
+- Session refresh, rotation invalidation, revocation, replacement-device
+  authorization, exact TTL expiry, direct recovery after expiry, and refresh
+  after expiry passed.
+- Production preview rendered `/v3/tictactoe` correctly and returned the
+  expected CSP and browser security headers.
+
+Release posture:
+- Phase 9, 10, 11, and 12 client implementation is complete and locally
+  accepted. Production V3 creation remains intentionally gated on external
+  backend audit/canary approval; V2 remains the production new-creation default
+  and all V2 instance/history routes remain supported.
+- The installed production dependency tree is valid. A live npm advisory
+  lookup was not performed because this environment did not authorize sending
+  the dependency manifest to the public registry.
+- Final public-only evidence is archived in
+  `src/v3/evidence/acceptance-2026-08-01.json`.
+
+Additional repository cleanup:
+- Removed an obsolete 529-line test for the long-deleted `TicTacBlock`
+  component; current application scenarios remain covered by 27 passing tests.
+- Updated landing-route assertions for the local V3 default and aligned the
+  completed-match test with its intentional read-only, no-wallet behavior.
+- Raised the test runner and async utility time budgets for the documentation
+  suites, whose markdown navigation coverage legitimately exceeds the former
+  five-second default under a full parallel run.
+- Stopped the backend chain, both bundlers, and the production preview started
+  for acceptance. Ports 3000, 3100, 4337, 4338, and 8545 were verified clear;
+  no pre-existing user process was terminated.

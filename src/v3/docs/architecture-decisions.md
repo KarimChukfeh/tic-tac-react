@@ -151,3 +151,18 @@ execute in a browser directly.
 - Direct primary-wallet gameplay remains available while session transport is
   unavailable.
 - The derived entry contains no account, wallet, or session secret material.
+
+## ADR-008: Reversible generation cutover and privacy-safe operations
+
+Status: accepted and implemented on 2026-08-01.
+
+- Existing tournament routes always retain their explicit V2 or V3 generation.
+- Only landing-page new creation is selected by release approval, creation,
+  deterministic canary, and generation flags.
+- Non-local environments fail closed to V2 until explicitly approved; one flag
+  can route new creation back to V2 without mutating existing tournaments.
+- Sponsorship has an independent kill switch. Disabling it leaves direct
+  primary-wallet gameplay available.
+- Operational events are constructed from a fixed public-field allowlist.
+  Arbitrary errors, signatures, keys, vault material, and provider objects are
+  discarded before a collector can observe them.

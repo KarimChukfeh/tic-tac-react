@@ -592,6 +592,13 @@ Exit gate:
 
 ### Phase 9 — Comprehensive validation and security hardening
 
+Implementation status (2026-08-01): complete. Automated frontend and backend
+release gates, real-browser storage/crypto coverage, local contract/bundler
+acceptance, transport failure tests, and public-data security checks are in
+place. The installed production dependency tree is valid; a live registry
+advisory lookup remains an external release-process check because this
+environment did not authorize sending dependency metadata to the registry.
+
 Goals:
 
 - Add unit tests for configuration, adapters, reducers, error mapping, and route isolation.
@@ -612,6 +619,12 @@ Exit gate:
 - Critical journeys and adversarial states are automated, no session secrets leak, and no unresolved critical/high-confidence security issue remains.
 
 ### Phase 10 — Fully local acceptance
+
+Implementation status (2026-08-01): complete. A fresh chain, regenerated
+artifacts, both local bundlers, all three games, failover, total outage,
+paymaster refusal, direct recovery, session rotation/revocation/expiry, and
+browser persistence primitives have been exercised locally without a public
+service.
 
 Use the local backend workflow from the sibling `e-tour` repository:
 
@@ -652,6 +665,11 @@ Exit gate:
 
 ### Phase 11 — Dual-generation release readiness
 
+Implementation status (2026-08-01): complete. Existing instances retain their
+generation-specific routes, history aggregation keeps generation identity,
+new-creation routing is reversible and canary-aware, and sponsorship can be
+disabled without removing direct-wallet gameplay.
+
 Goals:
 
 - Keep existing V2 instances readable and actionable through V2 code.
@@ -668,6 +686,13 @@ Exit gate:
 - The client can enable V3 for new creation without abandoning V2 activity and can route new creation back without mutating existing tournaments.
 
 ### Phase 12 — Cutover and post-release cleanup
+
+Implementation status (2026-08-01): complete and locally cutover-ready.
+Production remains deliberately fail-closed to V2 until the external backend
+audit/canary approval is supplied; local development defaults to V3. The
+cutover flag, rollback path, scrubbed monitoring, recovery documentation, and
+acceptance archive are complete. V2 routes and the compatibility code they
+still require are retained intentionally.
 
 Goals:
 

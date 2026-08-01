@@ -16,6 +16,7 @@ describe('V3 runtime configuration', () => {
 
     expect(config.rpcUrl).toBe('http://127.0.0.1:8545/');
     expect(config.capabilities).toEqual({
+      sponsorshipEnabled: true,
       readRpcConfigured: true,
       primaryBundlerConfigured: true,
       failoverBundlerConfigured: true,
@@ -25,6 +26,17 @@ describe('V3 runtime configuration', () => {
     expect(config.bundlerPrimaryUrl).toBe('http://127.0.0.1:4337/');
     expect(config.bundlerFailoverUrl).toBe('http://127.0.0.1:4338/');
     expect(config.diagnostics.issues).toEqual([]);
+  });
+
+  it('supports a sponsorship kill switch without disabling wallet moves', () => {
+    const config = loadV3RuntimeConfig({
+      VITE_V3_SPONSORSHIP_ENABLED: 'false',
+    }, localDeployment);
+
+    expect(config.capabilities.sponsorshipEnabled).toBe(false);
+    expect(config.capabilities.sessionSubmissionReady).toBe(false);
+    expect(config.capabilities.directPrimaryFallbackAvailable).toBe(true);
+    expect(config.diagnostics.issues[0].code).toBe('V3_SPONSORSHIP_DISABLED');
   });
 
   it('uses same-origin Vite bundler proxies in a local browser', () => {
@@ -76,6 +88,7 @@ describe('V3 runtime configuration', () => {
       VITE_V3_BUNDLER_URL_PRIMARY: 'http://localhost:3000',
       VITE_V3_BUNDLER_URL_FAILOVER: 'http://localhost:3000',
     }],
+    ['malformed sponsorship flag', { VITE_V3_SPONSORSHIP_ENABLED: 'sometimes' }],
   ])('rejects %s', (_label, env) => {
     expect(() => loadV3RuntimeConfig(env, localDeployment))
       .toThrow(V3RuntimeConfigurationError);

@@ -13,10 +13,14 @@
     "v3:sdk:sync": "node scripts/sync-v3-sdk.js && node scripts/generate-v3-sdk-browser.js",
     "v3:sdk:browser": "node scripts/generate-v3-sdk-browser.js",
     "v3:sdk:check": "node scripts/sync-v3-sdk.js --check && node scripts/generate-v3-sdk-browser.js --check",
+    "v3:security:check": "node scripts/check-v3-security.js",
+    "v3:release:check": "npm run v3:sdk:check && vitest run src/v3 src/history/generationHistory.test.js && npm run build && npm run v3:security:check",
     "v3:bundlers": "node scripts/v3-local-bundlers.js",
     "v3:tictactoe:accept": "node scripts/v3-tictactoe-acceptance.js tictactoe",
     "v3:connect4:accept": "node scripts/v3-tictactoe-acceptance.js connectfour",
-    "v3:chess:accept": "node scripts/v3-tictactoe-acceptance.js chess"
+    "v3:chess:accept": "node scripts/v3-tictactoe-acceptance.js chess",
+    "v3:transport:accept": "node scripts/v3-transport-resilience.js",
+    "v3:lifecycle:accept": "node scripts/v3-session-lifecycle-acceptance.js"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.4",

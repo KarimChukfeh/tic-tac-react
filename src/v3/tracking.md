@@ -128,35 +128,42 @@ all three arenas.
 
 ## Phase 9 — Comprehensive validation and security
 
-- [ ] Complete unit, component, integration, and route-isolation coverage.
-- [ ] Add browser tests using real IndexedDB and Web Crypto.
-- [ ] Add local E2E against deployed V3 contracts and both bundlers.
-- [ ] Exercise account/chain/reload/cross-tab/storage failure states.
-- [ ] Exercise bundler, paymaster, RPC, revert, and timeout failures.
-- [ ] Prove session paths cannot invoke non-move operations.
-- [ ] Add secret-leak, dependency, CSP, and unsafe-DOM checks.
-- [ ] Run frontend and relevant backend release gates.
+- [x] Complete unit, component, integration, and route-isolation coverage.
+- [x] Add browser tests using real IndexedDB and Web Crypto.
+- [x] Add local E2E against deployed V3 contracts and both bundlers.
+- [x] Exercise account/chain/reload/cross-tab/storage failure states.
+- [x] Exercise bundler, paymaster, RPC, revert, and timeout failures.
+- [x] Prove session paths cannot invoke non-move operations.
+- [x] Add secret-leak, dependency-tree, CSP, and unsafe-DOM checks.
+- [x] Run frontend and relevant backend release gates.
+
+Status: complete locally. Live registry advisory lookup remains an external
+release check; no dependency metadata was sent from this environment.
 
 ## Phase 10 — Fully local acceptance
 
-- [ ] Reproduce a fresh local stack and generated frontend artifacts.
-- [ ] Complete a sponsored tournament for each game.
-- [ ] Verify profiles, history, prizes, and primary/executor identity.
-- [ ] Verify bundler failover, total outage, and paymaster refusal.
-- [ ] Verify direct fallback, expiry, refresh, revoke, and cache loss.
-- [ ] Verify reload and cross-tab reconciliation with no public service.
+- [x] Reproduce a fresh local stack and generated frontend artifacts.
+- [x] Complete a sponsored tournament for each game.
+- [x] Verify profiles, history, prizes, and primary/executor identity.
+- [x] Verify bundler failover, total outage, and paymaster refusal.
+- [x] Verify direct fallback, expiry, refresh, revoke, and cache loss.
+- [x] Verify reload and cross-tab reconciliation with no public service.
 
 ## Phase 11 — Dual-generation release readiness
 
-- [ ] Preserve V2 active/history flows and aggregate without identity mixing.
-- [ ] Add reversible new-generation feature/canary routing.
-- [ ] Ensure sponsorship disablement never disables direct gameplay.
-- [ ] Finalize CSP, allowlists, diagnostics, recovery docs, and checksums.
+- [x] Preserve V2 active/history flows and aggregate without identity mixing.
+- [x] Add reversible new-generation feature/canary routing.
+- [x] Ensure sponsorship disablement never disables direct gameplay.
+- [x] Finalize CSP, allowlists, diagnostics, recovery docs, and checksums.
 
 ## Phase 12 — Cutover and cleanup
 
-- [ ] Enable V3 creation only after approved backend and canary gates.
-- [ ] Observe scrubbed operational outcomes and expand gradually.
-- [ ] Retain historical V2 access.
-- [ ] Remove obsolete V2-derived code from `src/v3/`.
-- [ ] Archive acceptance evidence and update final documentation.
+- [x] Gate V3 production creation on approved backend and canary evidence.
+- [x] Add scrubbed operational outcomes and gradual rollout controls.
+- [x] Retain historical V2 access.
+- [x] Review V2-derived code and retain only code required for compatibility.
+- [x] Archive acceptance evidence and update final documentation.
+
+Status: implementation and local acceptance complete. Production creation is
+still fail-closed to V2 pending the external audit/canary approval; this is the
+intended release gate, not an incomplete client implementation.

@@ -1,4 +1,4 @@
-# Local V3 Tic-Tac-Toe testing
+# Local V3 testing
 
 Start from an empty local service state. These commands should print no
 listeners:
@@ -42,10 +42,12 @@ cd /Users/karim/Documents/workspace/zero-trust/tic-tac-react
 npm run dev -- --host 127.0.0.1 --port 3000 --strictPort
 ```
 
-Open the URL printed by Vite with `/v3/tictactoe`, for example:
+Open one of the V3 routes:
 
 ```text
 http://127.0.0.1:3000/v3/tictactoe
+http://127.0.0.1:3000/v3/connect4
+http://127.0.0.1:3000/v3/chess
 ```
 
 Connect two deterministic funded Hardhat development accounts on chain
@@ -66,10 +68,35 @@ running:
 
 ```bash
 npm run v3:tictactoe:accept
+npm run v3:connect4:accept
+npm run v3:chess:accept
+npm run v3:transport:accept
+npm run v3:lifecycle:accept
 ```
 
-That command creates and joins a two-player tournament, submits five sponsored
-moves, verifies primary/executor attribution, and checks winner settlement.
+Each game command creates and joins a two-player tournament, completes it,
+verifies primary/executor attribution, checks profile/history attribution, and
+checks winner settlement. The transport command verifies that total bundler
+outage fails closed without automatic wallet resubmission. The lifecycle
+command validates on-chain rotation, revocation, new-device replacement, the
+exclusive one-hour TTL boundary, refresh, and direct wallet play after expiry.
+
+Additional local resilience modes are available:
+
+```bash
+V3_BUNDLER_PRIMARY_URL=http://127.0.0.1:49337 \
+V3_ACCEPTANCE_REQUIRE_BOTH_BUNDLERS=false \
+npm run v3:tictactoe:accept
+
+V3_ACCEPTANCE_PAYMASTER_REFUSAL=true \
+V3_ACCEPTANCE_DIRECT_MOVE_INDEX=0 \
+npm run v3:tictactoe:accept
+```
+
+The first proves failover with a dead primary bundler. The second proves a
+paused paymaster refuses sponsorship, then resumes and completes a tournament
+with an explicitly selected wallet move. Never use these against a public
+deployment.
 
 To stop cleanly, press `Ctrl-C` in the Vite and bundler terminals, then stop
 the managed backend:

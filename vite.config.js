@@ -1,12 +1,36 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+const contentSecurityPolicy = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "object-src 'none'",
+  "base-uri 'none'",
+  "frame-ancestors 'none'",
+  "connect-src 'self' http://127.0.0.1:8545 http://127.0.0.1:4337 http://127.0.0.1:4338 ws://localhost:3000 ws://127.0.0.1:3000",
+  "img-src 'self' data:",
+  "style-src 'self' 'unsafe-inline'",
+  "font-src 'self'",
+  "manifest-src 'self'",
+  "worker-src 'self'",
+  "form-action 'self'",
+].join('; ')
+
+const securityHeaders = {
+  'Content-Security-Policy': contentSecurityPolicy,
+  'Referrer-Policy': 'no-referrer',
+  'X-Content-Type-Options': 'nosniff',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=()',
+  'Cross-Origin-Opener-Policy': 'same-origin',
+}
+
 export default defineConfig({
   plugins: [react()],
   server: {
     port: 3000,
     open: true,
     allowedHosts: ['.ngrok-free.app', '.ngrok.io'],
+    headers: securityHeaders,
     proxy: {
       '/__v3/bundler-primary': {
         target: 'http://127.0.0.1:4337',
@@ -19,5 +43,8 @@ export default defineConfig({
         rewrite: () => '/',
       },
     },
-  }
+  },
+  preview: {
+    headers: securityHeaders,
+  },
 })

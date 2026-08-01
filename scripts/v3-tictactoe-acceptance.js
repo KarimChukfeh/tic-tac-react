@@ -4,6 +4,7 @@ import {
   Contract,
   HDNodeWallet,
   JsonRpcProvider,
+  NonceManager,
   ZeroAddress,
   parseEther,
   solidityPackedKeccak256,
@@ -26,6 +27,11 @@ const BUNDLER_PRIMARY_URL = (
 const BUNDLER_FAILOVER_URL = (
   process.env.V3_BUNDLER_FAILOVER_URL || 'http://127.0.0.1:4338'
 );
+const REQUIRE_BOTH_BUNDLERS = process.env.V3_ACCEPTANCE_REQUIRE_BOTH_BUNDLERS !== 'false';
+const DIRECT_MOVE_INDEX = process.env.V3_ACCEPTANCE_DIRECT_MOVE_INDEX === undefined
+  ? -1
+  : Number(process.env.V3_ACCEPTANCE_DIRECT_MOVE_INDEX);
+const VERIFY_PAYMASTER_REFUSAL = process.env.V3_ACCEPTANCE_PAYMASTER_REFUSAL === 'true';
 const sdk = await import(pathToFileURL(backendSdk).href);
 const provider = new JsonRpcProvider(RPC_URL, 412346, {
   staticNetwork: true,
@@ -83,6 +89,7 @@ const accountFactoryRecord = deployment.contracts.ETourSessionAccountFactory;
 const entryPointRecord = deployment.contracts.EntryPoint;
 const registryRecord = deployment.contracts.SessionKeyRegistry;
 const paymasterAddress = deployment.contracts.ETourSessionPaymaster.address;
+const paymasterRecord = deployment.contracts.ETourSessionPaymaster;
 const factory = new Contract(factoryRecord.address, factoryRecord.abi, creator);
 const accountFactory = new Contract(
   accountFactoryRecord.address,
@@ -100,6 +107,13 @@ const bundler = new sdk.FailoverBundler({
   receiptPollMs: 100,
 });
 const keys = [];
+let paymasterPaused = false;
+const paymasterAdmin = new NonceManager(wallet(0));
+const paymaster = new Contract(
+  paymasterRecord.address,
+  paymasterRecord.abi,
+  paymasterAdmin,
+);
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -150,14 +164,21 @@ async function submitMove(instance, selected, move) {
   );
   const receipt = await bundler.waitForReceipt(hash, { timeoutMs: 15_000 });
   assert(receipt.success, `UserOperation reverted: ${receipt.revertReason || 'unknown'}`);
-  return receipt;
+  return { receipt, counterfactualDeployment: code === '0x' };
 }
 
 try {
   const network = await provider.getNetwork();
   assert(Number(network.chainId) === 412346, 'V3 local chain is unavailable');
   const health = await bundler.healthCheck();
-  assert(health.every((item) => item.healthy), 'Both local bundlers must be healthy');
+  assert(
+    REQUIRE_BOTH_BUNDLERS
+      ? health.every((item) => item.healthy)
+      : health.some((item) => item.healthy),
+    REQUIRE_BOTH_BUNDLERS
+      ? 'Both local bundlers must be healthy'
+      : 'At least one local bundler must be healthy',
+  );
 
   const creatorSession = await descriptor(creator);
   const joinerSession = await descriptor(joiner);
@@ -207,13 +228,45 @@ try {
     [creator.address.toLowerCase(), creatorSession],
     [joiner.address.toLowerCase(), joinerSession],
   ]);
+  if (VERIFY_PAYMASTER_REFUSAL) {
+    await (await paymaster.setPaused(true)).wait();
+    paymasterPaused = true;
+    const initialMatch = await instance.matches(
+      solidityPackedKeccak256(['uint8', 'uint8'], [0, 0]),
+    );
+    const initialSession = descriptors.get(initialMatch.currentTurn.toLowerCase());
+    let refused = false;
+    try {
+      await submitMove(instance, initialSession, gameConfig.moves[0]);
+    } catch {
+      refused = true;
+    }
+    assert(refused, 'Paused paymaster accepted a sponsored move');
+    await (await paymaster.setPaused(false)).wait();
+    paymasterPaused = false;
+  }
+
   const matchId = solidityPackedKeccak256(['uint8', 'uint8'], [0, 0]);
-  for (const move of gameConfig.moves) {
+  let directMoves = 0;
+  let counterfactualDeployments = 0;
+  for (const [moveIndex, move] of gameConfig.moves.entries()) {
     const match = await instance.matches(matchId);
     const selected = descriptors.get(match.currentTurn.toLowerCase());
     assert(selected, `No session descriptor for current player ${match.currentTurn}`);
-    const receipt = await submitMove(instance, selected, move);
-    const moveEvent = receipt.receipt.logs
+    let receipt;
+    let expectedExecutor;
+    if (moveIndex === DIRECT_MOVE_INDEX) {
+      const transaction = await instance.connect(selected.primary).makeMove(...move);
+      receipt = await transaction.wait();
+      expectedExecutor = selected.primary.address;
+      directMoves += 1;
+    } else {
+      const sponsored = await submitMove(instance, selected, move);
+      receipt = sponsored.receipt.receipt;
+      expectedExecutor = selected.account;
+      if (sponsored.counterfactualDeployment) counterfactualDeployments += 1;
+    }
+    const moveEvent = receipt.logs
       .map((log) => {
         try { return instance.interface.parseLog(log); } catch { return null; }
       })
@@ -224,7 +277,7 @@ try {
       'Move lost primary-player attribution',
     );
     assert(
-      moveEvent.args.executor.toLowerCase() === selected.account.toLowerCase(),
+      moveEvent.args.executor.toLowerCase() === expectedExecutor.toLowerCase(),
       'Move lost executor attribution',
     );
   }
@@ -232,15 +285,31 @@ try {
   const tournament = await instance.tournament();
   assert(tournament.winner !== ZeroAddress, 'Tournament did not settle');
   assert(await instance.playerPrizes(tournament.winner) > 0n, 'Winner prize was not credited');
+  const winnerProfileAddress = await factory.getPlayerProfile(tournament.winner);
+  assert(winnerProfileAddress !== ZeroAddress, 'Winner profile was not created');
+  const winnerProfile = new Contract(
+    winnerProfileAddress,
+    deployment.contracts.PlayerProfile.abi,
+    provider,
+  );
+  assert(await winnerProfile.getEnrollmentCount() > 0n, 'Profile enrollment history is empty');
+  assert(await winnerProfile.getMatchRecordCount() > 0n, 'Profile match history is empty');
   process.stdout.write(`${JSON.stringify({
     status: 'passed',
     game,
     route: gameConfig.route,
     instance: await instance.getAddress(),
     winner: tournament.winner,
-    sponsoredMoves: gameConfig.moves.length,
-    bundlers: health.map((item) => item.name),
+    sponsoredMoves: gameConfig.moves.length - directMoves,
+    directMoves,
+    counterfactualDeployments,
+    paymasterRefusalVerified: VERIFY_PAYMASTER_REFUSAL,
+    profileHistoryVerified: true,
+    bundlers: health.map((item) => ({ name: item.name, healthy: item.healthy })),
   }, null, 2)}\n`);
 } finally {
+  if (paymasterPaused) {
+    await (await paymaster.setPaused(false)).wait();
+  }
   for (const key of keys) key.destroy();
 }

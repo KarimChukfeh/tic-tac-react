@@ -2760,6 +2760,7 @@ export default function TicTacToePage({ routeBase = '/v3/tictactoe' }) {
         >
           <GamesCard
             currentGame="tictactoe"
+            routeGeneration="v3"
             onHeightChange={setGamesCardHeight}
             isExpanded={expandedPanel === 'games'}
             onToggleExpand={() => setExpandedPanel(expandedPanel === 'games' ? null : 'games')}
@@ -2854,6 +2855,7 @@ export default function TicTacToePage({ routeBase = '/v3/tictactoe' }) {
         <div className="hidden md:block">
           <GamesCard
             currentGame="tictactoe"
+            routeGeneration="v3"
             onHeightChange={setGamesCardHeight}
             isExpanded={expandedPanel === 'games'}
             onToggleExpand={() => setExpandedPanel(expandedPanel === 'games' ? null : 'games')}

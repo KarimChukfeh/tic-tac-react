@@ -6,6 +6,7 @@ const SRC_ROOT = path.resolve(import.meta.dirname, '..');
 const V2_ROOT = path.join(SRC_ROOT, 'v2');
 const V3_ROOT = path.join(SRC_ROOT, 'v3');
 const MAIN_PATH = path.join(SRC_ROOT, 'main.jsx');
+const LANDING_PATH = path.join(SRC_ROOT, 'LandingReimagined.jsx');
 const SOURCE_EXTENSION_PATTERN = /\.(?:js|jsx)$/u;
 const IMPORT_SPECIFIER_PATTERN = /(?:from\s*|import\s*\()\s*['"]([^'"]+)['"]/gu;
 
@@ -50,6 +51,14 @@ describe('V3 generation boundary', () => {
     expect(mainSource).toContain('<Route path="/v3/tictactoe" element={<TicTacToeArenaV3 />} />');
     expect(mainSource).toContain('<Route path="/v3/connect4" element={<ConnectFourArenaV3 />} />');
     expect(mainSource).toContain('<Route path="/v3/chess" element={<ChessArenaV3 />} />');
+  });
+
+  it('routes only new creation through the reversible release selector', () => {
+    const landingSource = fs.readFileSync(LANDING_PATH, 'utf8');
+    expect(landingSource).toContain("from './v3/release/releaseConfig'");
+    expect(landingSource).toContain("getNewTournamentPath('tictactoe')");
+    expect(landingSource).toContain("getNewTournamentPath('connect4')");
+    expect(landingSource).toContain("getNewTournamentPath('chess')");
   });
 
   it('keeps V3 page seams free of legacy route helpers and page names', () => {
@@ -122,6 +131,7 @@ describe('V3 generation boundary', () => {
       expect(source).toContain('onRefresh={v3Session.refreshSession}');
       expect(source).toContain('onRevoke={v3Session.revokeSession}');
       expect(source).toContain('formatSessionMoveFailure(descriptor)');
+      expect(source).toContain('routeGeneration="v3"');
       expect(source).not.toContain('identity: v3Session.state.executor');
       expect(source).not.toContain("behavior: 'smooth'");
     }

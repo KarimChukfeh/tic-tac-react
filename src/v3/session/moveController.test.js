@@ -10,7 +10,8 @@ import {
 
 describe('V3 move controller', () => {
   it('submits a Tic-Tac-Toe session move and reconciles after inclusion', async () => {
-    const controller = new V3MoveController();
+    const observer = vi.fn();
+    const controller = new V3MoveController({ observer });
     const states = [];
     const sessionService = {
       submitMove: vi.fn().mockResolvedValue({ userOperationHash: '0xabc' }),
@@ -28,6 +29,10 @@ describe('V3 move controller', () => {
     expect(sessionService.submitMove).toHaveBeenCalledWith({}, move);
     expect(states).toEqual(['submitting', 'included', 'success']);
     expect(result.reconciled.board[0]).toBe(1);
+    expect(observer).toHaveBeenLastCalledWith(expect.objectContaining({
+      event: 'move_included',
+      mode: 'session',
+    }));
   });
 
   it('prevents duplicate intents while a nonce is pending', async () => {
@@ -46,7 +51,8 @@ describe('V3 move controller', () => {
   });
 
   it('never switches to direct primary automatically after session failure', async () => {
-    const controller = new V3MoveController();
+    const observer = vi.fn();
+    const controller = new V3MoveController({ observer });
     const direct = vi.fn();
     await expect(controller.submitSession({
       sessionService: { submitMove: vi.fn().mockRejectedValue(new Error('bundlers down')) },
@@ -55,6 +61,10 @@ describe('V3 move controller', () => {
       reconcile: vi.fn(),
     })).rejects.toThrow('bundlers down');
     expect(direct).not.toHaveBeenCalled();
+    expect(observer).toHaveBeenLastCalledWith(expect.objectContaining({
+      event: 'move_failed',
+      fallback: 'explicit-only',
+    }));
   });
 
   it('uses one explicit no-resubmission error across games', () => {

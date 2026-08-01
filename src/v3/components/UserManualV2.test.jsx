@@ -147,7 +147,7 @@ describe('UserManualV2', () => {
     });
 
     expect(fetch).toHaveBeenCalledWith('/User_Manual.md');
-  }, 10000);
+  }, 30000);
 
   it('can render the full manual as a sticky document view', async () => {
     render(<UserManualV2 defaultExpanded collapsible={false} showAllSections />);

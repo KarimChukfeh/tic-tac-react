@@ -14,6 +14,7 @@ const runtimeConfig = {
   bundlerPrimaryUrl: 'http://127.0.0.1:3001/',
   bundlerFailoverUrl: 'http://127.0.0.1:3002/',
   chainId: 412346,
+  capabilities: { sponsorshipEnabled: true },
 };
 const deployment = {
   shared: {
@@ -157,6 +158,17 @@ describe('V3 SDK adapter', () => {
       sdkLoader,
     });
     expect(sessionClient).toBeInstanceOf(FakeSessionClient);
+  });
+
+  it('fails closed for sponsored services while the kill switch is active', async () => {
+    await expect(createV3SdkServices({
+      runtimeConfig: {
+        ...runtimeConfig,
+        capabilities: { sponsorshipEnabled: false },
+      },
+      deployment,
+      sdkLoader,
+    })).rejects.toMatchObject({ code: 'V3_SPONSORSHIP_DISABLED' });
   });
 
   it('maps SDK and adapter errors into stable public descriptors', async () => {

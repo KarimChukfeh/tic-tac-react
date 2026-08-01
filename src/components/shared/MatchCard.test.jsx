@@ -68,7 +68,9 @@ describe('MatchCard', () => {
     expect(onEnterMatch).toHaveBeenCalledWith(0, 0, 2, 1);
   });
 
-  it('does not show View for completed tournaments when no wallet is connected', () => {
+  it('allows read-only viewing of completed tournaments without a connected wallet', () => {
+    const onEnterMatch = vi.fn();
+
     render(
       <MatchCard
         match={completedMatch}
@@ -78,14 +80,16 @@ describe('MatchCard', () => {
         instanceId={0}
         account={null}
         loading={false}
-        onEnterMatch={vi.fn()}
+        onEnterMatch={onEnterMatch}
         showEscalation={false}
         isTournamentCompleted
         gameName="tictactoe"
       />
     );
 
-    expect(screen.queryByRole('button', { name: /^view$/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /^view$/i }));
+
+    expect(onEnterMatch).toHaveBeenCalledWith(0, 0, 2, 1);
   });
 
   it('shows Spectate for an active match when a connected outsider views the card', () => {

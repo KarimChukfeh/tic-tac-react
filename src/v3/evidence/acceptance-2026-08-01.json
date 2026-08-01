@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-08-01",
+  "scope": "local-release-acceptance",
+  "chainId": "412346",
+  "artifacts": {
+    "sdkTreeSha256": "23e1a60ca481b030c7bcc36df6f5b7a8f2ee96ae5a82f9937a1608dcbed6b405",
+    "backendFreezeSha256": "6814d5d66aca02704d86034dde329df62154677b2f1591383aa89d3d5bf22cc3"
+  },
+  "backendGates": {
+    "testsPassed": 339,
+    "contracts": "passed",
+    "security": "passed",
+    "contractSizes": "passed",
+    "releaseFreeze": "passed",
+    "routing": "passed",
+    "monitoring": "passed",
+    "localReadiness": "passed"
+  },
+  "frontendGates": {
+    "v3ReleaseTestsPassed": 142,
+    "fullRegressionTestsPassed": 259,
+    "productionBuild": "passed",
+    "securitySourceFilesScanned": 58,
+    "securityScan": "passed"
+  },
+  "gameAcceptance": {
+    "tictactoe": {
+      "status": "passed",
+      "sponsoredMoves": 5,
+      "counterfactualDeployments": 2,
+      "profileAndHistory": true
+    },
+    "connectfour": {
+      "status": "passed",
+      "sponsoredMoves": 7,
+      "counterfactualDeployments": 2,
+      "profileAndHistory": true
+    },
+    "chess": {
+      "status": "passed",
+      "sponsoredMoves": 4,
+      "counterfactualDeployments": 2,
+      "profileAndHistory": true
+    }
+  },
+  "resilience": {
+    "singleBundlerFailover": "passed",
+    "totalBundlerOutage": "passed-without-automatic-fallback",
+    "paymasterRefusal": "passed-with-explicit-direct-wallet-recovery"
+  },
+  "sessionLifecycle": {
+    "rotationInvalidatedOldExecutor": true,
+    "revocationConfirmed": true,
+    "newDeviceReplacement": true,
+    "exclusiveTtlBoundary": true,
+    "directPrimaryAfterExpiry": true,
+    "refreshAfterExpiry": true
+  },
+  "browserPrimitives": {
+    "webCrypto": true,
+    "indexedDb": true,
+    "encryptedRecord": true,
+    "plaintextPrivateKeyAbsent": true,
+    "wrappingKeyNonExtractable": true,
+    "reloadRestored": true,
+    "stagedRefreshRestored": true,
+    "rotationCommitted": true,
+    "broadcastChannel": true,
+    "browserLocks": true
+  },
+  "productionRelease": {
+    "newCreationDefault": "v2",
+    "v3RequiresApprovedFeatureAndCanaryGates": true,
+    "rollbackSupported": true,
+    "externalAuditApproval": "not-asserted"
+  },
+  "dependencyReview": {
+    "installedProductionTree": "valid",
+    "liveRegistryAdvisoryLookup": "not-run-policy-blocked"
+  },
+  "cleanup": {
+    "servicesStartedForAcceptanceStopped": true,
+    "portsVerifiedClear": [
+      3000,
+      3100,
+      4337,
+      4338,
+      8545
+    ]
+  }
+}

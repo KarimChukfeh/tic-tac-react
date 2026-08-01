@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { getGenerationGamePath } from '../../routing/gameRoutes';
 
 const GamesCard = ({
   currentGame, // 'home', 'tictactoe', 'connect4', 'chess'
@@ -14,6 +15,7 @@ const GamesCard = ({
   isExpanded: externalIsExpanded, // External control for mobile single-panel coordination
   onToggleExpand, // External toggle handler
   hideOnMobile = false, // Hide this panel on mobile when another panel is expanded
+  routeGeneration = 'v2',
 }) => {
   const [internalIsExpanded, setInternalIsExpanded] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
@@ -76,9 +78,9 @@ const GamesCard = ({
   // Game options
   const games = [
     { name: 'Homepage', path: '/', id: 'home', emoji: '🏠' },
-    { name: 'TicTacToe', path: '/tictactoe', id: 'tictactoe', emoji: '✖️' },
-    { name: 'Connect Four', path: '/connect4', id: 'connect4', emoji: '🔴' },
-    { name: 'Chess', path: '/chess', id: 'chess', emoji: '♟️' },
+    { name: 'TicTacToe', path: getGenerationGamePath('tictactoe', routeGeneration), id: 'tictactoe', emoji: '✖️' },
+    { name: 'Connect Four', path: getGenerationGamePath('connect4', routeGeneration), id: 'connect4', emoji: '🔴' },
+    { name: 'Chess', path: getGenerationGamePath('chess', routeGeneration), id: 'chess', emoji: '♟️' },
   ];
 
   return (

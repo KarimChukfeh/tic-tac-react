@@ -46,6 +46,12 @@ export async function loadBrowserSafeV3Sdk() {
 }
 
 function assertSessionRuntime(runtimeConfig) {
+  if (runtimeConfig.capabilities?.sponsorshipEnabled === false) {
+    throw new V3RuntimeConfigurationError(
+      'Sponsored session moves are disabled; use the primary wallet',
+      'V3_SPONSORSHIP_DISABLED',
+    );
+  }
   if (!runtimeConfig.rpcUrl) {
     throw new V3RuntimeConfigurationError(
       'V3 RPC configuration is required to create SDK services',

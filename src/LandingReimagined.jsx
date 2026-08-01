@@ -14,6 +14,7 @@ import {
   X,
 } from 'lucide-react';
 import EtourFooter from './components/shared/EtourFooter';
+import { getNewTournamentPath } from './v3/release/releaseConfig';
 import './LandingReimagined.css';
 import './SoftCorners.css';
 
@@ -22,7 +23,7 @@ const GAMES = [
     id: '01',
     title: 'Tic-Tac-Toe',
     shortTitle: 'Tic Tac Toe',
-    href: '/tictactoe',
+    href: getNewTournamentPath('tictactoe'),
     accent: 'cyan',
     kicker: 'Small board. Big gains.',
     features: [
@@ -35,7 +36,7 @@ const GAMES = [
     id: '02',
     title: 'Connect Four',
     shortTitle: 'Connect Four',
-    href: '/connect4',
+    href: getNewTournamentPath('connect4'),
     accent: 'coral',
     kicker: 'Stack the odds in your favor.',
     features: [
@@ -48,7 +49,7 @@ const GAMES = [
     id: '03',
     title: 'Chess',
     shortTitle: 'Chess',
-    href: '/chess',
+    href: getNewTournamentPath('chess'),
     accent: 'gold',
     kicker: 'The classic. Now with consequences.',
     features: [
