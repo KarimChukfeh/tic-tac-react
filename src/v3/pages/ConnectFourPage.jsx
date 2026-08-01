@@ -59,6 +59,7 @@ import { useInitialDocumentScrollTop } from '../../hooks/useInitialDocumentScrol
 import { useWalletBrowserPrompt } from '../../hooks/useWalletBrowserPrompt';
 import { useV3Wallet } from '../hooks/useV3Wallet';
 import { useV3Session } from '../hooks/useV3Session';
+import { useV3MoveGasEstimate } from '../hooks/useV3MoveGasEstimate';
 import V3SessionStatus from '../components/V3SessionStatus';
 import { getInitialArenaEffectsPreference, getV3ScrollBehavior } from '../accessibility/motionPreferences';
 import { createV3RpcProvider, mapV3SdkError } from '../sdk/adapter';
@@ -1008,6 +1009,17 @@ export default function ConnectFourPage({ routeBase = '/v3/connect4' }) {
   const [replayMoveIndex, setReplayMoveIndex] = useState(-2); // -2 final, -1 start, 0+ move index
   const [syncDots, setSyncDots] = useState(1);
   const [isSpectator, setIsSpectator] = useState(false);
+  const nextMoveGasEstimate = useV3MoveGasEstimate({
+    provider: rpcProvider,
+    game: 'connectfour',
+    enabled: Boolean(
+      currentMatch
+      && !currentMatch.isDemo
+      && currentMatch.matchStatus === 1
+      && currentMatch.isYourTurn
+      && !isSpectator
+    ),
+  });
   const [matchEndResult, setMatchEndResult] = useState(null);
   const [matchEndWinnerLabel, setMatchEndWinnerLabel] = useState('');
   const [matchEndWinner, setMatchEndWinner] = useState(null);
@@ -2374,6 +2386,7 @@ export default function ConnectFourPage({ routeBase = '/v3/connect4' }) {
       setActionState({ type: 'error', message: msg });
       alert(msg);
     } finally {
+      if (!attemptedSessionMove) v3Session.selectSession();
       moveTxInProgressRef.current = false;
       setMatchLoading(false);
       setMatchLoadingMessage(DEFAULT_MATCH_LOADING_MESSAGE);
@@ -2869,12 +2882,11 @@ export default function ConnectFourPage({ routeBase = '/v3/connect4' }) {
       {account && (viewingTournament || currentMatch) && (
         <div className="v3-session-dock">
           <V3SessionStatus
-            compact
             state={v3Session.state}
-            onUsePrimary={v3Session.selectDirectPrimary}
-            onUseSession={v3Session.selectSession}
-            onRefresh={v3Session.refreshSession}
-            onRevoke={v3Session.revokeSession}
+            hasActiveMatch={Boolean(currentMatch && !currentMatch.isDemo && currentMatch.matchStatus === 1)}
+            isPlayerTurn={Boolean(currentMatch?.isYourTurn && !isSpectator)}
+            runtimeReady={v3Session.runtimeReady}
+            estimatedGasCost={nextMoveGasEstimate.formatted}
           />
         </div>
       )}

@@ -129,8 +129,9 @@ describe('V3 generation boundary', () => {
       expect(source).toContain('className="v3-session-dock"');
       expect(source).toContain('getV3ScrollBehavior()');
       expect(source).toContain('browserProvider,');
-      expect(source).toContain('onRefresh={v3Session.refreshSession}');
-      expect(source).toContain('onRevoke={v3Session.revokeSession}');
+      expect(source).toContain('estimatedGasCost={nextMoveGasEstimate.formatted}');
+      expect(source).not.toContain('onRefresh={v3Session.refreshSession}');
+      expect(source).not.toContain('onRevoke={v3Session.revokeSession}');
       expect(source).toContain('formatSessionMoveFailure(descriptor)');
       expect(source).toContain('routeGeneration="v3"');
       expect(source).not.toContain('identity: v3Session.state.executor');

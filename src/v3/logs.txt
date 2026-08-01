@@ -720,3 +720,47 @@ Diagnosis and fix:
   `script-src 'self'` with no unsafe script directive.
 - The MetaMask/SES “Removing unpermitted intrinsics” message is extension-side
   hardening output and was not the application crash.
+
+2026-08-01 — Player-facing next-move gas card
+
+Completed:
+- Reframed the floating prompt-free card around the player's next move instead
+  of session implementation details.
+- On the player's turn with a usable sponsored session, the card now always
+  shows the estimated network fee for the next move and explains that the move
+  is expected to be sponsored, so the player's wallet should not be charged.
+- The estimate uses current chain fee data and a conservative per-game move gas
+  allowance. It refreshes while it is the player's turn, displays at most five
+  decimal places, and renders any value below `0.00001 ETH` as `0 ETH`.
+- Off-turn, the card shows a simple “Waiting for your opponent” state and waits
+  to present a gas estimate until the player's turn.
+- During reload restoration, the card shows a non-actionable checking state so
+  it does not incorrectly imply that a wallet confirmation is already needed.
+- When prompt-free moves are unavailable, the card says the gas cannot yet be
+  estimated and explains that the wallet will show the estimate before the
+  player approves the next move.
+- Removed executor addresses, chain/session identifiers, JSON diagnostics, raw
+  transport errors, and developer-oriented terminology from the visible card.
+
+Follow-up simplification:
+- Removed every CTA from the floating card. It is now status-only and cannot
+  switch move modes, renew, revoke, or otherwise manage the session.
+- Recovery is initiated by making the intended move. When repair is genuinely
+  needed, that move explains and requests the one wallet confirmation, restores
+  prompt-free submission, and then continues.
+- Direct-wallet fallback is scoped to one attempted move so the absence of card
+  controls can never leave the player stuck in wallet-confirmation mode.
+
+Validation:
+- Added component coverage for sponsored cost, opponent waiting, restoration,
+  unavailable prompt-free moves, idle matches, and disabled sponsorship.
+- Added fee-estimate coverage for the five-decimal threshold, per-game gas
+  allowances, live fee loading, and polling refreshes.
+- The full V3 release gate passed all 151 tests, the production build, SDK
+  integrity checks, and the security scan across 60 production source files.
+
+Copy simplification:
+- Removed the supporting fee/sponsorship sentence from the ready state, the
+  gas-estimate explanation from the waiting state, and the prompt-free/local-key
+  recovery paragraphs from the unavailable state. Empty supporting rows are no
+  longer rendered, keeping the floating card compact.
