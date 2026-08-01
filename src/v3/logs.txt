@@ -764,3 +764,26 @@ Copy simplification:
   gas-estimate explanation from the waiting state, and the prompt-free/local-key
   recovery paragraphs from the unavailable state. Empty supporting rows are no
   longer rendered, keeping the floating card compact.
+
+Daily USD equivalent:
+- The card is now completely hidden while it is the opponent's turn.
+- Removed “Your move is ready.” When Etherscan pricing is available, a smaller
+  line now shows the estimated USD equivalent using today's ETH/USD rate; the
+  line is omitted on any pricing failure.
+- Added a same-origin Vite development/preview endpoint that keeps
+  `ETHERSCAN_API_KEY` server-side, calls Etherscan V2 `stats/ethprice`, and
+  returns only the numeric ETH/USD rate.
+- The server shares one 24-hour cached rate across all clients, deduplicates
+  simultaneous cache misses, and marks successful responses cacheable for one
+  day. Client price refreshes use the same daily interval.
+- Validation passed all 155 V3/history tests, the production build, SDK
+  integrity checks, and the security scan across 60 production source files.
+
+Vite startup regression:
+- Fixed the ETH-price plugin registration hook so it no longer returns the
+  Connect middleware application as a Vite post-start callback. That accidental
+  return caused startup to invoke middleware without a request and crash while
+  reading `request.url`.
+- Added a regression test for both development and preview hook registration.
+- The focused proxy suite passed and a real `npm run dev` reached Vite ready on
+  port 3000. The verification server was then stopped.

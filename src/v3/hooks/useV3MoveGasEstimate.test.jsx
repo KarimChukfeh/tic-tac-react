@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   estimateV3MoveGasCost,
   formatV3GasCost,
+  formatV3GasUsdCost,
   useV3MoveGasEstimate,
 } from './useV3MoveGasEstimate';
 
@@ -18,6 +19,12 @@ describe('V3 next-move gas estimate', () => {
     expect(estimateV3MoveGasCost({ gasPrice: 25_000_000n }, 'tictactoe'))
       .toBe(10_000_000_000_000n);
     expect(estimateV3MoveGasCost({}, 'tictactoe')).toBeNull();
+  });
+
+  it('formats the ETH estimate using the shared daily USD rate', () => {
+    expect(formatV3GasUsdCost(10_000_000_000_000n, 4_000))
+      .toBe("~$0.04 as of today's ETH rates");
+    expect(formatV3GasUsdCost(10_000_000_000_000n, null)).toBeNull();
   });
 
   it('loads and refreshes a formatted estimate from the provider', async () => {

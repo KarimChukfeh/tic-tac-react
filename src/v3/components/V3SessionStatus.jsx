@@ -15,6 +15,7 @@ export function getV3MoveCostView({
   isPlayerTurn,
   runtimeReady = true,
   estimatedGasCost = '0 ETH',
+  estimatedGasCostUsd = null,
 }) {
   const promptFreeReady = runtimeReady && canSubmitSessionMove(state);
 
@@ -42,7 +43,7 @@ export function getV3MoveCostView({
     return {
       tone: 'ready',
       eyebrow: 'ESTIMATED GAS COST',
-      title: 'Your move is ready',
+      title: estimatedGasCostUsd || '',
       value: estimatedGasCost || 'Calculating…',
       detail: '',
     };
@@ -107,7 +108,10 @@ export default function V3SessionStatus({
   isPlayerTurn = false,
   runtimeReady = true,
   estimatedGasCost = '0 ETH',
+  estimatedGasCostUsd = null,
 }) {
+  if (hasActiveMatch && !isPlayerTurn) return null;
+
   const nearExpiry = isSessionNearExpiry(state);
   const pending = Boolean(state.pendingAction);
   const moveCost = getV3MoveCostView({
@@ -116,6 +120,7 @@ export default function V3SessionStatus({
     isPlayerTurn,
     runtimeReady,
     estimatedGasCost,
+    estimatedGasCostUsd,
   });
   const notice = sessionNotice(state, nearExpiry);
 
@@ -131,9 +136,11 @@ export default function V3SessionStatus({
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-200/60">
             {moveCost.eyebrow}
           </p>
-          <p className="mt-1 text-sm font-semibold text-white" role="status" aria-live="polite">
-            {moveCost.title}
-          </p>
+          {moveCost.title && (
+            <p className="mt-1 text-xs text-white/55" role="status" aria-live="polite">
+              {moveCost.title}
+            </p>
+          )}
         </div>
         <p className={`shrink-0 text-right font-bold ${moveCost.tone === 'attention' ? 'text-amber-200' : moveCost.tone === 'ready' ? 'text-emerald-300' : 'text-cyan-100'}`}>
           {moveCost.value}

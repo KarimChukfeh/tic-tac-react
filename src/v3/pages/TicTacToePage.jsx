@@ -2724,6 +2724,7 @@ export default function TicTacToePage({ routeBase = '/v3/tictactoe' }) {
             isPlayerTurn={Boolean(currentMatch?.isYourTurn && !isSpectator)}
             runtimeReady={v3Session.runtimeReady}
             estimatedGasCost={nextMoveGasEstimate.formatted}
+            estimatedGasCostUsd={nextMoveGasEstimate.formattedUsd}
           />
         </div>
       )}

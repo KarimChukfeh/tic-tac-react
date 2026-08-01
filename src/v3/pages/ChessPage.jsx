@@ -2990,6 +2990,7 @@ export default function ChessPage({ routeBase = '/v3/chess' }) {
             isPlayerTurn={Boolean(currentMatch?.isYourTurn && !isSpectator)}
             runtimeReady={v3Session.runtimeReady}
             estimatedGasCost={nextMoveGasEstimate.formatted}
+            estimatedGasCostUsd={nextMoveGasEstimate.formattedUsd}
           />
         </div>
       )}

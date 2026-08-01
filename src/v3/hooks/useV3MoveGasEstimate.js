@@ -30,13 +30,25 @@ export function estimateV3MoveGasCost(feeData, game) {
   return BigInt(gasPrice) * gasUnits;
 }
 
+export function formatV3GasUsdCost(wei, ethUsd) {
+  const usdRate = Number(ethUsd);
+  if (wei == null || !Number.isFinite(usdRate) || usdRate <= 0) return null;
+
+  const usd = (Number(BigInt(wei)) / 1e18) * usdRate;
+  if (!Number.isFinite(usd) || usd < 0) return null;
+  const digits = usd > 0 && usd < 0.01 ? 4 : 2;
+  return `~$${usd.toFixed(digits)} as of today's ETH rates`;
+}
+
 export function useV3MoveGasEstimate({
   provider,
   game,
   enabled = true,
   pollMs = 15_000,
+  pricePollMs = 24 * 60 * 60 * 1000,
 } = {}) {
   const [estimate, setEstimate] = useState({ status: 'idle', wei: null, formatted: null });
+  const [ethUsd, setEthUsd] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -65,5 +77,37 @@ export function useV3MoveGasEstimate({
     };
   }, [enabled, game, pollMs, provider]);
 
-  return estimate;
+  useEffect(() => {
+    let cancelled = false;
+    if (!enabled) {
+      setEthUsd(null);
+      return undefined;
+    }
+
+    const updatePrice = async () => {
+      try {
+        const response = await fetch('/__v3/eth-price', {
+          headers: { Accept: 'application/json' },
+        });
+        if (!response.ok) throw new Error('ETH price unavailable');
+        const value = Number((await response.json())?.ethUsd);
+        if (!Number.isFinite(value) || value <= 0) throw new Error('ETH price unavailable');
+        if (!cancelled) setEthUsd(value);
+      } catch {
+        if (!cancelled) setEthUsd(null);
+      }
+    };
+
+    void updatePrice();
+    const interval = globalThis.setInterval(updatePrice, pricePollMs);
+    return () => {
+      cancelled = true;
+      globalThis.clearInterval(interval);
+    };
+  }, [enabled, pricePollMs]);
+
+  return {
+    ...estimate,
+    formattedUsd: formatV3GasUsdCost(estimate.wei, ethUsd),
+  };
 }

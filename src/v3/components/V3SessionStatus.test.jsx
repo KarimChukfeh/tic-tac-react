@@ -19,18 +19,20 @@ describe('V3SessionStatus', () => {
         hasActiveMatch
         isPlayerTurn
         estimatedGasCost="0.00001 ETH"
+        estimatedGasCostUsd="~$0.04 as of today's ETH rates"
       />,
     );
 
-    expect(screen.getByText('Your move is ready')).toBeInTheDocument();
+    expect(screen.queryByText('Your move is ready')).not.toBeInTheDocument();
+    expect(screen.getByText("~$0.04 as of today's ETH rates")).toBeInTheDocument();
     expect(screen.getByText('0.00001 ETH')).toBeInTheDocument();
     expect(screen.queryByText(/estimated network fee|expected to be sponsored/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/executor|chain id|json/i)).not.toBeInTheDocument();
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
-  it('shows only a waiting status when it is the opponent turn', () => {
-    render(
+  it('hides the card when it is the opponent turn', () => {
+    const { container } = render(
       <V3SessionStatus
         state={{ ...activeState, status: 'expired' }}
         hasActiveMatch
@@ -38,10 +40,22 @@ describe('V3SessionStatus', () => {
       />,
     );
 
-    expect(screen.getByText('Waiting for your opponent')).toBeInTheDocument();
-    expect(screen.getByText('Their turn')).toBeInTheDocument();
-    expect(screen.queryByText(/next-move gas estimate will appear/i)).not.toBeInTheDocument();
-    expect(screen.queryByText('Estimate unavailable')).not.toBeInTheDocument();
+    expect(container).toBeEmptyDOMElement();
+    expect(screen.queryByText('Waiting for your opponent')).not.toBeInTheDocument();
+  });
+
+  it('omits the dollar-rate copy when pricing is unavailable', () => {
+    render(
+      <V3SessionStatus
+        state={activeState}
+        hasActiveMatch
+        isPlayerTurn
+        estimatedGasCost="0.00001 ETH"
+      />,
+    );
+
+    expect(screen.getByText('0.00001 ETH')).toBeInTheDocument();
+    expect(screen.queryByText(/today's ETH rates/i)).not.toBeInTheDocument();
   });
 
   it('explains that a wallet confirmation is required when prompt-free moves are unavailable', () => {

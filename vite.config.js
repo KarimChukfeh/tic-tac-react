@@ -1,5 +1,6 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
+import { createV3EthPricePlugin } from './scripts/v3-eth-price-proxy.js'
 
 const contentSecurityPolicy = [
   "default-src 'self'",
@@ -35,27 +36,34 @@ const developmentSecurityHeaders = {
   ),
 }
 
-export default defineConfig({
-  plugins: [react()],
-  server: {
-    port: 3000,
-    open: true,
-    allowedHosts: ['.ngrok-free.app', '.ngrok.io'],
-    headers: developmentSecurityHeaders,
-    proxy: {
-      '/__v3/bundler-primary': {
-        target: 'http://127.0.0.1:4337',
-        changeOrigin: true,
-        rewrite: () => '/',
-      },
-      '/__v3/bundler-failover': {
-        target: 'http://127.0.0.1:4338',
-        changeOrigin: true,
-        rewrite: () => '/',
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+
+  return {
+    plugins: [
+      react(),
+      createV3EthPricePlugin({ apiKey: env.ETHERSCAN_API_KEY }),
+    ],
+    server: {
+      port: 3000,
+      open: true,
+      allowedHosts: ['.ngrok-free.app', '.ngrok.io'],
+      headers: developmentSecurityHeaders,
+      proxy: {
+        '/__v3/bundler-primary': {
+          target: 'http://127.0.0.1:4337',
+          changeOrigin: true,
+          rewrite: () => '/',
+        },
+        '/__v3/bundler-failover': {
+          target: 'http://127.0.0.1:4338',
+          changeOrigin: true,
+          rewrite: () => '/',
+        },
       },
     },
-  },
-  preview: {
-    headers: productionSecurityHeaders,
-  },
+    preview: {
+      headers: productionSecurityHeaders,
+    },
+  }
 })

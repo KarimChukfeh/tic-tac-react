@@ -2887,6 +2887,7 @@ export default function ConnectFourPage({ routeBase = '/v3/connect4' }) {
             isPlayerTurn={Boolean(currentMatch?.isYourTurn && !isSpectator)}
             runtimeReady={v3Session.runtimeReady}
             estimatedGasCost={nextMoveGasEstimate.formatted}
+            estimatedGasCostUsd={nextMoveGasEstimate.formattedUsd}
           />
         </div>
       )}

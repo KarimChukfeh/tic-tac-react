@@ -130,6 +130,7 @@ describe('V3 generation boundary', () => {
       expect(source).toContain('getV3ScrollBehavior()');
       expect(source).toContain('browserProvider,');
       expect(source).toContain('estimatedGasCost={nextMoveGasEstimate.formatted}');
+      expect(source).toContain('estimatedGasCostUsd={nextMoveGasEstimate.formattedUsd}');
       expect(source).not.toContain('onRefresh={v3Session.refreshSession}');
       expect(source).not.toContain('onRevoke={v3Session.revokeSession}');
       expect(source).toContain('formatSessionMoveFailure(descriptor)');
