@@ -82,6 +82,7 @@ import {
 import { canSubmitSessionMove } from '../session/sessionState';
 import {
   createTicTacToeMove,
+  formatSessionMoveFailure,
   V3MoveController,
 } from '../session/moveController';
 import { isMobileDevice, isWalletBrowser } from '../../utils/mobileDetection';
@@ -2032,7 +2033,7 @@ export default function TicTacToePage({ routeBase = '/v3/tictactoe' }) {
         const descriptor = await mapV3SdkError(error);
         setActionState({
           type: 'error',
-          message: `${descriptor.message} Your move was not resubmitted. Select “Use wallet for moves” to retry explicitly.`,
+          message: formatSessionMoveFailure(descriptor),
         });
         return;
       }

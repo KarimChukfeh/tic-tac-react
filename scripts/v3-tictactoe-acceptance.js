@@ -31,6 +31,43 @@ const provider = new JsonRpcProvider(RPC_URL, 412346, {
   staticNetwork: true,
 });
 const mnemonic = 'test test test test test test test test test test test junk';
+const game = process.argv[2] || 'tictactoe';
+const gameConfig = {
+  tictactoe: {
+    route: '/v3/tictactoe',
+    factory: 'TicTacChainFactory',
+    instance: 'TicTacInstance',
+    moves: [[0, 0, 0], [0, 0, 3], [0, 0, 1], [0, 0, 4], [0, 0, 2]],
+  },
+  connectfour: {
+    route: '/v3/connect4',
+    factory: 'ConnectFourFactory',
+    instance: 'ConnectFourInstance',
+    moves: [
+      [0, 0, 0],
+      [0, 0, 1],
+      [0, 0, 0],
+      [0, 0, 1],
+      [0, 0, 0],
+      [0, 0, 1],
+      [0, 0, 0],
+    ],
+  },
+  chess: {
+    route: '/v3/chess',
+    factory: 'ChessOnChainFactory',
+    instance: 'ChessInstance',
+    moves: [
+      [0, 0, 13, 21, 0],
+      [0, 0, 52, 36, 0],
+      [0, 0, 14, 30, 0],
+      [0, 0, 59, 31, 0],
+    ],
+  },
+}[game];
+if (!gameConfig) {
+  throw new Error(`Unsupported V3 acceptance game: ${game}`);
+}
 const wallet = (index) => HDNodeWallet.fromPhrase(
   mnemonic,
   undefined,
@@ -40,8 +77,8 @@ const wallet = (index) => HDNodeWallet.fromPhrase(
 // acceptance-test tournaments and match alerts.
 const creator = wallet(20);
 const joiner = wallet(21);
-const factoryRecord = deployment.contracts.TicTacChainFactory;
-const instanceRecord = deployment.contracts.TicTacInstance;
+const factoryRecord = deployment.contracts[gameConfig.factory];
+const instanceRecord = deployment.contracts[gameConfig.instance];
 const accountFactoryRecord = deployment.contracts.ETourSessionAccountFactory;
 const entryPointRecord = deployment.contracts.EntryPoint;
 const registryRecord = deployment.contracts.SessionKeyRegistry;
@@ -171,11 +208,11 @@ try {
     [joiner.address.toLowerCase(), joinerSession],
   ]);
   const matchId = solidityPackedKeccak256(['uint8', 'uint8'], [0, 0]);
-  for (const cellIndex of [0, 3, 1, 4, 2]) {
+  for (const move of gameConfig.moves) {
     const match = await instance.matches(matchId);
     const selected = descriptors.get(match.currentTurn.toLowerCase());
     assert(selected, `No session descriptor for current player ${match.currentTurn}`);
-    const receipt = await submitMove(instance, selected, [0, 0, cellIndex]);
+    const receipt = await submitMove(instance, selected, move);
     const moveEvent = receipt.receipt.logs
       .map((log) => {
         try { return instance.interface.parseLog(log); } catch { return null; }
@@ -197,10 +234,11 @@ try {
   assert(await instance.playerPrizes(tournament.winner) > 0n, 'Winner prize was not credited');
   process.stdout.write(`${JSON.stringify({
     status: 'passed',
-    route: '/v3/tictactoe',
+    game,
+    route: gameConfig.route,
     instance: await instance.getAddress(),
     winner: tournament.winner,
-    sponsoredMoves: 5,
+    sponsoredMoves: gameConfig.moves.length,
     bundlers: health.map((item) => item.name),
   }, null, 2)}\n`);
 } finally {

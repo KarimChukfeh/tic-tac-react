@@ -14,7 +14,9 @@
     "v3:sdk:browser": "node scripts/generate-v3-sdk-browser.js",
     "v3:sdk:check": "node scripts/sync-v3-sdk.js --check && node scripts/generate-v3-sdk-browser.js --check",
     "v3:bundlers": "node scripts/v3-local-bundlers.js",
-    "v3:tictactoe:accept": "node scripts/v3-tictactoe-acceptance.js"
+    "v3:tictactoe:accept": "node scripts/v3-tictactoe-acceptance.js tictactoe",
+    "v3:connect4:accept": "node scripts/v3-tictactoe-acceptance.js connectfour",
+    "v3:chess:accept": "node scripts/v3-tictactoe-acceptance.js chess"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.4",

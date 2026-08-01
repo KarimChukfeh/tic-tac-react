@@ -1,6 +1,6 @@
 # V3 frontend implementation tracking
 
-Last updated: 2026-07-29
+Last updated: 2026-08-01
 
 ## Phase 0 — Baseline, decisions, and tracking
 
@@ -88,11 +88,15 @@ browser entries and two local HTTP bundlers provide the browser runtime.
 
 ## Phase 6 — Connect Four and Chess parity
 
-- [ ] Add and test the Connect Four move adapter.
-- [ ] Add and test the Chess move adapter, including promotion.
-- [ ] Reuse the shared move controller without AA duplication.
-- [ ] Verify primary-player event/profile/history attribution.
-- [ ] Normalize cross-game lifecycle and error presentation.
+Status: complete. All three games now use the shared session move controller,
+explicit wallet fallback, and common lifecycle/error UI. Local acceptance proves
+sponsored settlement and primary/executor attribution for each game.
+
+- [x] Add and test the Connect Four move adapter.
+- [x] Add and test the Chess move adapter, including promotion.
+- [x] Reuse the shared move controller without AA duplication.
+- [x] Verify primary-player event/profile/history attribution.
+- [x] Normalize cross-game lifecycle and error presentation.
 
 ## Phase 7 — Refresh, recovery, revoke, and expiry
 

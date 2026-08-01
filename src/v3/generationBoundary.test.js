@@ -97,4 +97,25 @@ describe('V3 generation boundary', () => {
     expect(sharedContractsSource).not.toContain('validateV3GameDeployment');
     expect(fs.existsSync(path.join(V3_ROOT, 'lib', 'abiContracts.js'))).toBe(false);
   });
+
+  it('keeps every game on the shared session controller and primary identity', () => {
+    const games = [
+      ['TicTacToePage.jsx', 'createTicTacToeMove'],
+      ['ConnectFourPage.jsx', 'createConnectFourMove'],
+      ['ChessPage.jsx', 'createChessMove'],
+    ];
+
+    for (const [fileName, moveFactory] of games) {
+      const source = fs.readFileSync(path.join(V3_ROOT, 'pages', fileName), 'utf8');
+
+      expect(source).toContain('new V3MoveController()');
+      expect(source).toContain(moveFactory);
+      expect(source).toContain('canSubmitSessionMove(v3Session.state)');
+      expect(source).toContain('sessionService: await v3Session.getService()');
+      expect(source).toContain('identity: v3Session.identity');
+      expect(source).toContain('<V3SessionStatus');
+      expect(source).toContain('formatSessionMoveFailure(descriptor)');
+      expect(source).not.toContain('identity: v3Session.state.executor');
+    }
+  });
 });

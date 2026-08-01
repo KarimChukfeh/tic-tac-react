@@ -464,3 +464,46 @@ Completed:
 Validation:
 - Both same-origin browser bundlers now pass the in-page SDK health check.
 - The focused V3 SDK adapter suite passed with 6 tests.
+- All 102 frontend V3 tests and the production build passed.
+
+2026-08-01 — Phase 6 Connect Four and Chess session parity
+
+Completed:
+- Added validated shared-controller move adapters for Connect Four columns and
+  Chess source/destination squares plus promotion pieces.
+- Routed Connect Four and Chess moves through the same ERC-4337 session move
+  controller used by Tic-Tac-Toe, including duplicate-intent prevention,
+  receipt/state reconciliation, and explicit primary-wallet fallback.
+- Added the shared session status surface to both arenas and centralized the
+  session-failure copy that guarantees failed session moves are never silently
+  resubmitted with the wallet.
+- Added source-boundary coverage requiring every V3 game page to use the shared
+  controller and the `{ chainId, instance, primary }` session identity rather
+  than treating the executor as the player.
+- Generalized the local sponsored acceptance harness and exposed separate
+  `v3:connect4:accept` and `v3:chess:accept` commands.
+
+Validation:
+- Focused move-controller, generation-boundary, and board interaction tests
+  passed with 17 tests.
+- All 106 frontend V3 tests passed and the production build passed.
+- Fresh local Connect Four acceptance completed a seven-move sponsored match;
+  Chess acceptance completed a four-move sponsored checkmate; and the
+  Tic-Tac-Toe regression acceptance completed five sponsored moves.
+- Every acceptance move asserted the enrolled primary in `MoveMade.player`,
+  the session account in `MoveMade.executor`, and a credited winner prize.
+- The temporary backend and isolated bundlers on ports 4437/4438 were stopped;
+  ports 8545, 4437, and 4438 were verified clear. Pre-existing user bundlers on
+  ports 4337/4338 were not stopped or modified.
+
+Decisions and risks:
+- Chess promotion validation permits only no promotion (`0`) or knight through
+  queen (`2`–`5`), matching the deployed rules module.
+- The pre-existing bundlers on ports 4337/4338 retained nonce state from an
+  older chain and were unsuitable after the temporary fresh reset. Acceptance
+  therefore used isolated relayers; the normal local stack should restart its
+  bundlers whenever the Hardhat chain is reset.
+
+Next recommended action:
+- Begin Phase 7 with on-chain session time remaining and near-expiry state,
+  followed by staged refresh/promotion and interrupted-refresh recovery.

@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  createChessMove,
+  createConnectFourMove,
   createTicTacToeMove,
   DuplicateMoveIntentError,
+  formatSessionMoveFailure,
   V3MoveController,
 } from './moveController';
 
@@ -52,5 +55,61 @@ describe('V3 move controller', () => {
       reconcile: vi.fn(),
     })).rejects.toThrow('bundlers down');
     expect(direct).not.toHaveBeenCalled();
+  });
+
+  it('uses one explicit no-resubmission error across games', () => {
+    expect(formatSessionMoveFailure({ message: 'Bundlers unavailable.' })).toBe(
+      'Bundlers unavailable. Your move was not resubmitted. Select “Use wallet for moves” to retry explicitly.',
+    );
+  });
+
+  it('normalizes Connect Four columns for the shared session client', () => {
+    expect(createConnectFourMove({
+      roundNumber: '3',
+      matchNumber: 4,
+      column: 6,
+    })).toEqual({
+      game: 'connectfour',
+      roundNumber: 3,
+      matchNumber: 4,
+      column: 6,
+    });
+
+    expect(() => createConnectFourMove({
+      roundNumber: 0,
+      matchNumber: 0,
+      column: 7,
+    })).toThrow('column must be an integer between 0 and 6');
+  });
+
+  it('normalizes Chess squares and promotion pieces', () => {
+    expect(createChessMove({
+      roundNumber: 5,
+      matchNumber: 6,
+      fromSquare: 12,
+      toSquare: 28,
+      promotionPiece: 5,
+    })).toEqual({
+      game: 'chess',
+      roundNumber: 5,
+      matchNumber: 6,
+      fromSquare: 12,
+      toSquare: 28,
+      promotionPiece: 5,
+    });
+
+    expect(() => createChessMove({
+      roundNumber: 0,
+      matchNumber: 0,
+      fromSquare: 64,
+      toSquare: 0,
+    })).toThrow('fromSquare must be an integer between 0 and 63');
+    expect(() => createChessMove({
+      roundNumber: 0,
+      matchNumber: 0,
+      fromSquare: 8,
+      toSquare: 0,
+      promotionPiece: 1,
+    })).toThrow('promotionPiece must be 0 or a piece between 2 and 5');
   });
 });

@@ -58,7 +58,14 @@ import { useInitialDocumentScrollTop } from '../../hooks/useInitialDocumentScrol
 import { useWalletBrowserPrompt } from '../../hooks/useWalletBrowserPrompt';
 import { useV3Wallet } from '../hooks/useV3Wallet';
 import { useV3Session } from '../hooks/useV3Session';
-import { createV3RpcProvider } from '../sdk/adapter';
+import V3SessionStatus from '../components/V3SessionStatus';
+import { createV3RpcProvider, mapV3SdkError } from '../sdk/adapter';
+import { canSubmitSessionMove } from '../session/sessionState';
+import {
+  createConnectFourMove,
+  formatSessionMoveFailure,
+  V3MoveController,
+} from '../session/moveController';
 import { isMobileDevice, isWalletBrowser } from '../../utils/mobileDetection';
 import { didMatchStateAdvance, waitForTxOrStateSync } from '../../utils/txSync';
 import {
@@ -1075,6 +1082,7 @@ export default function ConnectFourPage({ routeBase = '/v3/connect4' }) {
   const activeInstanceContractRef = useRef(null);
   const previousBoardRef = useRef(null);
   const moveTxInProgressRef = useRef(false);
+  const moveControllerRef = useRef(new V3MoveController());
   const matchEndModalShownRef = useRef(false);
   const skipNavEffectRef = useRef(false);
   const isInitialNavRef = useRef(true);
@@ -2192,32 +2200,89 @@ export default function ConnectFourPage({ routeBase = '/v3/connect4' }) {
       alert('Match is already complete!');
       return;
     }
+    if (moveTxInProgressRef.current || moveControllerRef.current.pending) return;
+    let attemptedSessionMove = false;
     setMoveTxTimeout(null);
     try {
-      setActionState({ type: 'info', message: 'Confirm your move in MetaMask...' });
-      setMatchLoadingMessage('Confirm your move in MetaMask...');
+      attemptedSessionMove = canSubmitSessionMove(v3Session.state);
+      if (!attemptedSessionMove && !v3Session.state.directPrimaryMode) {
+        const approved = window.confirm(
+          'Prompt-free moves are not active for this tournament. Submit this move with your primary wallet?',
+        );
+        if (!approved) return;
+        v3Session.selectDirectPrimary();
+      }
+      setActionState({
+        type: 'info',
+        message: attemptedSessionMove
+          ? 'Submitting sponsored session move...'
+          : 'Confirm your move in your wallet...',
+      });
+      setMatchLoadingMessage(
+        attemptedSessionMove
+          ? 'Submitting prompt-free move...'
+          : 'Confirm your move in your wallet...',
+      );
       setMatchLoading(true);
       moveTxInProgressRef.current = true;
       const { roundNumber, matchNumber } = currentMatch;
-      const writableInstance = await withInstanceSigner(activeInstanceContractRef.current);
-      const tx = await writableInstance.makeMove(roundNumber, matchNumber, columnIndex);
-      setActionState({ type: 'info', message: 'Move submitted. Waiting for block confirmation...' });
-      setMatchLoadingMessage('Move submitted. Waiting for block confirmation...');
-      const syncResult = await waitForTxOrStateSync({
-        tx,
-        timeoutMs: 90_000,
-        postReceiptSyncMs: 12_000,
-        sync: async () => {
-          const latestMatch = currentMatchRef.current || currentMatch;
-          if (!latestMatch || !activeInstanceContractRef.current) return null;
-          return refreshMatchData(activeInstanceContractRef.current, account, latestMatch);
-        },
-        isSynced: (updatedMatch) => didMatchStateAdvance(currentMatchRef.current || currentMatch, updatedMatch),
-        onReceipt: () => {
-          setActionState({ type: 'info', message: 'Move confirmed on-chain. Syncing the board and match state...' });
-          setMatchLoadingMessage('Move confirmed on-chain. Syncing the board...');
-        },
-      });
+      const move = createConnectFourMove({ roundNumber, matchNumber, column: columnIndex });
+      const reconcile = async (submission) => {
+        const tx = attemptedSessionMove
+          ? { wait: async () => submission.receipt }
+          : submission;
+        return waitForTxOrStateSync({
+          tx,
+          timeoutMs: 90_000,
+          postReceiptSyncMs: 12_000,
+          sync: async () => {
+            const latestMatch = currentMatchRef.current || currentMatch;
+            if (!latestMatch || !activeInstanceContractRef.current) return null;
+            return refreshMatchData(activeInstanceContractRef.current, account, latestMatch);
+          },
+          isSynced: (updatedMatch) => didMatchStateAdvance(
+            currentMatchRef.current || currentMatch,
+            updatedMatch,
+          ),
+          onReceipt: () => {
+            setActionState({
+              type: 'info',
+              message: attemptedSessionMove
+                ? 'Sponsored move included. Syncing the board and match state...'
+                : 'Move confirmed on-chain. Syncing the board and match state...',
+            });
+            setMatchLoadingMessage('Move confirmed on-chain. Syncing the board...');
+          },
+        });
+      };
+
+      const controlledMove = attemptedSessionMove
+        ? await moveControllerRef.current.submitSession({
+            sessionService: await v3Session.getService(),
+            identity: v3Session.identity,
+            move,
+            reconcile,
+          })
+        : await moveControllerRef.current.submitDirect({
+            submit: async () => {
+              const writableInstance = await withInstanceSigner(
+                activeInstanceContractRef.current,
+              );
+              const tx = await writableInstance.makeMove(
+                roundNumber,
+                matchNumber,
+                columnIndex,
+              );
+              setActionState({
+                type: 'info',
+                message: 'Move submitted. Waiting for block confirmation...',
+              });
+              setMatchLoadingMessage('Move submitted. Waiting for block confirmation...');
+              return tx;
+            },
+            reconcile,
+          });
+      const syncResult = controlledMove.reconciled;
 
       const latestMatch = currentMatchRef.current || currentMatch;
       const updated = syncResult.updated || ((latestMatch && activeInstanceContractRef.current)
@@ -2265,6 +2330,14 @@ export default function ConnectFourPage({ routeBase = '/v3/connect4' }) {
         }
       }
     } catch (error) {
+      if (attemptedSessionMove) {
+        const descriptor = await mapV3SdkError(error);
+        setActionState({
+          type: 'error',
+          message: formatSessionMoveFailure(descriptor),
+        });
+        return;
+      }
       const errorString = error.message || error.toString();
       if (errorString.includes('TX_TIMEOUT')) {
         setActionState({ type: 'error', message: 'Move confirmation is taking longer than expected. If it confirms, the board will update automatically.' });
@@ -2778,6 +2851,16 @@ export default function ConnectFourPage({ routeBase = '/v3/connect4' }) {
         message={actionState.type === 'error' ? actionState.message : ''}
         onDismiss={dismissActionError}
       />
+      {account && (viewingTournament || currentMatch) && (
+        <div className="fixed right-3 top-20 z-30 w-[min(22rem,calc(100vw-1.5rem))]">
+          <V3SessionStatus
+            compact
+            state={v3Session.state}
+            onUsePrimary={v3Session.selectDirectPrimary}
+            onUseSession={v3Session.selectSession}
+          />
+        </div>
+      )}
 
       {showPrompt && (
         <WalletBrowserPrompt onWalletChoice={handleWalletChoice} onContinueChoice={handleContinueChoice} />

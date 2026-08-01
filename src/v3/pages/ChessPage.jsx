@@ -68,7 +68,14 @@ import { useInitialDocumentScrollTop } from '../../hooks/useInitialDocumentScrol
 import { useWalletBrowserPrompt } from '../../hooks/useWalletBrowserPrompt';
 import { useV3Wallet } from '../hooks/useV3Wallet';
 import { useV3Session } from '../hooks/useV3Session';
-import { createV3RpcProvider } from '../sdk/adapter';
+import V3SessionStatus from '../components/V3SessionStatus';
+import { createV3RpcProvider, mapV3SdkError } from '../sdk/adapter';
+import { canSubmitSessionMove } from '../session/sessionState';
+import {
+  createChessMove,
+  formatSessionMoveFailure,
+  V3MoveController,
+} from '../session/moveController';
 import { isMobileDevice, isWalletBrowser } from '../../utils/mobileDetection';
 import { useChessV2PlayerActivity } from '../hooks/useChessV2PlayerActivity';
 import { useChessPlayerProfile } from '../hooks/useChessPlayerProfile';
@@ -1306,6 +1313,7 @@ export default function ChessPage({ routeBase = '/v3/chess' }) {
   const activeInstanceContractRef = useRef(null);
   const previousBoardRef = useRef(null);
   const moveTxInProgressRef = useRef(false);
+  const moveControllerRef = useRef(new V3MoveController());
   const matchEndModalShownRef = useRef(false);
   const skipNavEffectRef = useRef(false);
   const isInitialNavRef = useRef(true);
@@ -2355,6 +2363,16 @@ export default function ChessPage({ routeBase = '/v3/chess' }) {
     }
 
     if (!currentMatch || !activeInstanceContractRef.current || !account) return;
+    if (!currentMatch.isYourTurn) {
+      alert("It's not your turn!");
+      return;
+    }
+    if (currentMatch.matchStatus === 2) {
+      alert('Match is already complete!');
+      return;
+    }
+    if (moveTxInProgressRef.current || moveControllerRef.current.pending) return;
+    let attemptedSessionMove = false;
     setMoveTxTimeout(null);
     if (currentMatch.packedBoard != null && currentMatch.packedState != null) {
       const isWhite = currentMatch.firstPlayer?.toLowerCase() === account.toLowerCase();
@@ -2362,29 +2380,93 @@ export default function ChessPage({ routeBase = '/v3/chess' }) {
       if (reason) { alert(`Invalid Move: ${reason}`); return; }
     }
     try {
-      setActionState({ type: 'info', message: 'Confirm your move in MetaMask...' });
-      setMatchLoadingMessage('Confirm your move in MetaMask...');
+      attemptedSessionMove = canSubmitSessionMove(v3Session.state);
+      if (!attemptedSessionMove && !v3Session.state.directPrimaryMode) {
+        const approved = window.confirm(
+          'Prompt-free moves are not active for this tournament. Submit this move with your primary wallet?',
+        );
+        if (!approved) return;
+        v3Session.selectDirectPrimary();
+      }
+      setActionState({
+        type: 'info',
+        message: attemptedSessionMove
+          ? 'Submitting sponsored session move...'
+          : 'Confirm your move in your wallet...',
+      });
+      setMatchLoadingMessage(
+        attemptedSessionMove
+          ? 'Submitting prompt-free move...'
+          : 'Confirm your move in your wallet...',
+      );
       setMatchLoading(true);
       moveTxInProgressRef.current = true;
-      const writableInstance = await withInstanceSigner(activeInstanceContractRef.current);
-      const tx = await writableInstance.makeMove(currentMatch.roundNumber, currentMatch.matchNumber, fromSquare, toSquare, promotion);
-      setActionState({ type: 'info', message: 'Move submitted. Waiting for block confirmation...' });
-      setMatchLoadingMessage('Move submitted. Waiting for block confirmation...');
-      const syncResult = await waitForTxOrStateSync({
-        tx,
-        timeoutMs: 90_000,
-        postReceiptSyncMs: 12_000,
-        sync: async () => {
-          const latestMatch = currentMatchRef.current || currentMatch;
-          if (!latestMatch || !activeInstanceContractRef.current) return null;
-          return refreshMatchData(activeInstanceContractRef.current, account, latestMatch);
-        },
-        isSynced: (updatedMatch) => didMatchStateAdvance(currentMatchRef.current || currentMatch, updatedMatch),
-        onReceipt: () => {
-          setActionState({ type: 'info', message: 'Move confirmed on-chain. Syncing the board and match state...' });
-          setMatchLoadingMessage('Move confirmed on-chain. Syncing the board...');
-        },
+      const { roundNumber, matchNumber } = currentMatch;
+      const move = createChessMove({
+        roundNumber,
+        matchNumber,
+        fromSquare,
+        toSquare,
+        promotionPiece: promotion,
       });
+      const reconcile = async (submission) => {
+        const tx = attemptedSessionMove
+          ? { wait: async () => submission.receipt }
+          : submission;
+        return waitForTxOrStateSync({
+          tx,
+          timeoutMs: 90_000,
+          postReceiptSyncMs: 12_000,
+          sync: async () => {
+            const latestMatch = currentMatchRef.current || currentMatch;
+            if (!latestMatch || !activeInstanceContractRef.current) return null;
+            return refreshMatchData(activeInstanceContractRef.current, account, latestMatch);
+          },
+          isSynced: (updatedMatch) => didMatchStateAdvance(
+            currentMatchRef.current || currentMatch,
+            updatedMatch,
+          ),
+          onReceipt: () => {
+            setActionState({
+              type: 'info',
+              message: attemptedSessionMove
+                ? 'Sponsored move included. Syncing the board and match state...'
+                : 'Move confirmed on-chain. Syncing the board and match state...',
+            });
+            setMatchLoadingMessage('Move confirmed on-chain. Syncing the board...');
+          },
+        });
+      };
+
+      const controlledMove = attemptedSessionMove
+        ? await moveControllerRef.current.submitSession({
+            sessionService: await v3Session.getService(),
+            identity: v3Session.identity,
+            move,
+            reconcile,
+          })
+        : await moveControllerRef.current.submitDirect({
+            submit: async () => {
+              const writableInstance = await withInstanceSigner(
+                activeInstanceContractRef.current,
+              );
+              const tx = await writableInstance.makeMove(
+                roundNumber,
+                matchNumber,
+                fromSquare,
+                toSquare,
+                promotion,
+              );
+              setActionState({
+                type: 'info',
+                message: 'Move submitted. Waiting for block confirmation...',
+              });
+              setMatchLoadingMessage('Move submitted. Waiting for block confirmation...');
+              return tx;
+            },
+            reconcile,
+          });
+      const syncResult = controlledMove.reconciled;
 
       const latestMatch = currentMatchRef.current || currentMatch;
       const updated = syncResult.updated || ((latestMatch && activeInstanceContractRef.current)
@@ -2431,6 +2513,14 @@ export default function ChessPage({ routeBase = '/v3/chess' }) {
         }
       }
     } catch (error) {
+      if (attemptedSessionMove) {
+        const descriptor = await mapV3SdkError(error);
+        setActionState({
+          type: 'error',
+          message: formatSessionMoveFailure(descriptor),
+        });
+        return;
+      }
       const errorString = error.message || error.toString();
       if (errorString.includes('TX_TIMEOUT')) {
         setActionState({ type: 'error', message: 'Move confirmation is taking longer than expected. If it confirms, the board will update automatically.' });
@@ -2864,6 +2954,16 @@ export default function ChessPage({ routeBase = '/v3/chess' }) {
         message={actionState.type === 'error' ? actionState.message : ''}
         onDismiss={dismissActionError}
       />
+      {account && (viewingTournament || currentMatch) && (
+        <div className="fixed right-3 top-20 z-30 w-[min(22rem,calc(100vw-1.5rem))]">
+          <V3SessionStatus
+            compact
+            state={v3Session.state}
+            onUsePrimary={v3Session.selectDirectPrimary}
+            onUseSession={v3Session.selectSession}
+          />
+        </div>
+      )}
       {showPrompt && <WalletBrowserPrompt onWalletChoice={handleWalletChoice} onContinueChoice={handleContinueChoice} />}
       {matchEndResult && <MatchEndModal result={matchEndResult.result} completionReason={matchEndResult.completionReason} winnerLabel={matchEndWinnerLabel} winnerAddress={matchEndWinner} loserAddress={matchEndLoser} currentAccount={currentMatch?.isDemo ? DEMO_HUMAN_ADDRESS : account} hasNextMatch={currentMatch?.isDemo ? false : !!nextActiveMatch} onClose={handleMatchEndModalClose} onEnterNextMatch={currentMatch?.isDemo ? null : handleEnterNextMatch} onReturnToBracket={handleReturnToBracket} gameType="chess" roundNumber={currentMatch?.roundNumber} totalRounds={viewingTournament?.totalRounds} prizePool={viewingTournament?.prizePoolWei} reasonLabelMode="v2" />}
       {showMatchAlert && alertMatch && !isAlertMatchAlreadyOpen && <ActiveMatchAlertModal match={alertMatch} autoDismiss={isAlertMatchAlreadyOpen} onEnterMatch={() => { handleMatchAlertClose(); handlePlayMatch(alertMatch.tierId, alertMatch.instanceId, alertMatch.roundIdx, alertMatch.matchIdx); }} onDismiss={handleMatchAlertClose} />}
