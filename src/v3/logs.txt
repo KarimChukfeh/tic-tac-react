@@ -448,3 +448,19 @@ Validation:
   `http://localhost:3000/__v3/bundler-primary`.
 - All 101 frontend V3 tests passed and the production build passed.
 - The temporary browser verification tab was closed; no service was started.
+
+2026-07-31 — Browser fetch receiver binding
+
+Completed:
+- Reproduced the prompt-free move failure in a real browser and captured the
+  underlying transport exception: detached `window.fetch` calls failed with
+  `Illegal invocation` before either bundler received the UserOperation.
+- Bound the default bundler fetch implementation to the browser global at the
+  V3 SDK adapter boundary. Explicit injected fetch implementations are still
+  preserved unchanged.
+- Added a regression test whose fetch implementation rejects an incorrect
+  receiver, matching the browser failure mode.
+
+Validation:
+- Both same-origin browser bundlers now pass the in-page SDK health check.
+- The focused V3 SDK adapter suite passed with 6 tests.

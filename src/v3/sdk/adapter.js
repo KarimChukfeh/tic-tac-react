@@ -88,15 +88,16 @@ export async function createV3SdkServices({
   assertSessionRuntime(runtimeConfig);
   const sdk = await sdkLoader();
   const rpcProvider = provider ?? createV3RpcProvider(runtimeConfig);
+  const bundlerFetch = fetchImpl ?? globalThis.fetch?.bind(globalThis);
   const primary = new sdk.JsonRpcBundler({
     name: 'primary',
     url: runtimeConfig.bundlerPrimaryUrl,
-    fetchImpl,
+    fetchImpl: bundlerFetch,
   });
   const failover = new sdk.JsonRpcBundler({
     name: 'failover',
     url: runtimeConfig.bundlerFailoverUrl,
-    fetchImpl,
+    fetchImpl: bundlerFetch,
   });
   const bundler = new sdk.FailoverBundler({
     providers: [primary, failover],

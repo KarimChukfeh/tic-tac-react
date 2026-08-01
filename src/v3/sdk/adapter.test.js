@@ -118,6 +118,35 @@ describe('V3 SDK adapter', () => {
     );
   });
 
+  it('binds the default fetch implementation to the browser global', async () => {
+    const originalFetch = globalThis.fetch;
+    const browserFetch = vi.fn(function fetchWithBrowserReceiver() {
+      if (this !== globalThis) throw new TypeError('Illegal invocation');
+      return Promise.resolve({ ok: true });
+    });
+    globalThis.fetch = browserFetch;
+
+    try {
+      const services = await createV3SdkServices({
+        runtimeConfig,
+        deployment,
+        provider: { kind: 'provider' },
+        crypto: {},
+        sdkLoader,
+      });
+
+      await expect(services.primaryBundler.fetchImpl()).resolves.toEqual({
+        ok: true,
+      });
+      await expect(services.failoverBundler.fetchImpl()).resolves.toEqual({
+        ok: true,
+      });
+      expect(browserFetch).toHaveBeenCalledTimes(2);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   it('creates the browser-compatible session client', async () => {
     expect(V3_SDK_BROWSER_COMPATIBILITY.sessionClient).toBe(true);
     const sessionClient = await createV3SessionClient({
