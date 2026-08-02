@@ -19,7 +19,13 @@ const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const frontendRoot = path.resolve(scriptDirectory, '..');
 const backendRoot = path.resolve(frontendRoot, '..', 'e-tour');
 const localBundlerModule = path.join(backendRoot, 'v3', 'sdk', 'dist', 'local-bundler.js');
-const deploymentPath = path.join(frontendRoot, 'src', 'v3', 'ABIs', 'hardhat-factory.json');
+const deploymentPath = path.join(
+  frontendRoot,
+  'src',
+  'v3',
+  'ABIs',
+  'localhost-hardhat-factory.json',
+);
 const RPC_URL = process.env.V3_RPC_URL || 'http://127.0.0.1:8545';
 const PRIMARY_PORT = Number(process.env.V3_BUNDLER_PRIMARY_PORT || 4337);
 const FAILOVER_PORT = Number(process.env.V3_BUNDLER_FAILOVER_PORT || 4338);

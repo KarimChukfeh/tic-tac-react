@@ -15,6 +15,7 @@ V3 tournament URLs remain generation-explicit and are never rewritten.
 
 | Variable | Safe production default | Purpose |
 | --- | --- | --- |
+| `ENVIRONMENT` | `PRODUCTION` | Selects the complete generated `arbitrum-*` V3 artifact bundle. |
 | `VITE_NEW_TOURNAMENT_GENERATION` | `v2` | Requested generation for new creation. |
 | `VITE_V3_RELEASE_APPROVED` | `false` | Records that audit/deployment gates approved this release. |
 | `VITE_V3_CREATION_ENABLED` | `true` | V3 creation kill switch. |
@@ -24,6 +25,11 @@ V3 tournament URLs remain generation-explicit and are never rewritten.
 
 Non-local builds fail closed to V2 without explicit approval. Localhost uses
 V3 at 100% so local development remains useful.
+
+After the Arbitrum deployment and post-deployment validation pass, run
+`npm --prefix v3 run frontend:abis:arbitrum` from the backend repository root.
+This copies a complete `arbitrum-*` bundle without overwriting the committed
+`localhost-*` bundle. Never rename or edit generated contract files by hand.
 
 ## Canary progression
 

@@ -787,3 +787,25 @@ Vite startup regression:
 - Added a regression test for both development and preview hook registration.
 - The focused proxy suite passed and a real `npm run dev` reached Vite ready on
   port 3000. The verification server was then stopped.
+
+2026-08-01 — Dual-network V3 deployment artifacts
+
+Completed:
+- Split every generated V3 contract payload into a complete environment-
+  prefixed bundle. Local development reads only `localhost-*`; the exact
+  build value `ENVIRONMENT=PRODUCTION` reads only `arbitrum-*`.
+- The loader fails closed when any selected artifact is absent and continues
+  to validate chain, address, ABI, manifest, and runtime bytecode coherence.
+- Updated local bundler and acceptance tools to use the localhost manifest.
+- Added Arbitrum One wallet metadata and production runtime examples without
+  changing any V2 route, source, or ABI.
+- Extended the backend generator so local and Arbitrum client bundles coexist,
+  plus added explicit Arbitrum deploy, manifest, smoke, verification, and ABI
+  sync command aliases.
+
+Validation:
+- The backend generated and copied all 10 localhost artifacts successfully.
+- Deployment-loader, artifact, and generation-boundary tests passed (24/24).
+- The frontend production build passed with SDK integrity checks.
+- The complete V3 release gate passed all 161 V3/history tests, the production
+  build, SDK integrity checks, and the security scan across 60 source files.

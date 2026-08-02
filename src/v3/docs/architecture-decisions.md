@@ -116,8 +116,12 @@ Status: accepted on 2026-07-29.
 
 Status: accepted and implemented on 2026-07-29.
 
-- `hardhat-factory.json` is the authoritative V3 schema, address, account
-  abstraction, and deployed-bytecode manifest.
+- The environment-prefixed `localhost-hardhat-factory.json` or
+  `arbitrum-hardhat-factory.json` is the authoritative V3 schema, address,
+  account abstraction, and deployed-bytecode manifest.
+- The exact build variable `ENVIRONMENT=PRODUCTION` selects the complete
+  `arbitrum-*` artifact set. Every other value, including an unset variable,
+  selects the complete `localhost-*` set. Mixed-network artifacts are rejected.
 - Per-game and canonical ABI payloads remain required inputs, but the loader
   cross-checks them against the manifest before exposing configuration.
 - Application code consumes immutable normalized game deployments rather than

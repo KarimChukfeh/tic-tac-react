@@ -26,4 +26,30 @@ describe('V3 wallet configuration', () => {
   it('does not produce an Arbiscan link for a localhost deployment', () => {
     expect(getV3AddressUrl('0x9A676e781A523b5d0C0e43731313A708CB607508')).toBeNull();
   });
+
+  it('uses Arbitrum One wallet and explorer metadata for production artifacts', () => {
+    const config = {
+      network: 'arbitrum',
+      chainId: 42161,
+      rpcUrl: 'https://arb1.example/rpc',
+    };
+
+    expect(getV3WalletAddChainParams(config)).toEqual({
+      chainId: '0xa4b1',
+      chainName: 'Arbitrum One',
+      nativeCurrency: {
+        name: 'Ether',
+        symbol: 'ETH',
+        decimals: 18,
+      },
+      rpcUrls: ['https://arb1.example/rpc'],
+      blockExplorerUrls: ['https://arbiscan.io'],
+    });
+    expect(getV3AddressUrl(
+      '0x9A676e781A523b5d0C0e43731313A708CB607508',
+      config,
+    )).toBe(
+      'https://arbiscan.io/address/0x9A676e781A523b5d0C0e43731313A708CB607508',
+    );
+  });
 });

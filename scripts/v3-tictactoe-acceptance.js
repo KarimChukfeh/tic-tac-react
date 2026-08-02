@@ -17,7 +17,7 @@ const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const frontendRoot = path.resolve(scriptDirectory, '..');
 const backendSdk = path.resolve(frontendRoot, '..', 'e-tour', 'v3', 'sdk', 'dist', 'index.js');
 const deployment = JSON.parse(readFileSync(
-  path.join(frontendRoot, 'src', 'v3', 'ABIs', 'hardhat-factory.json'),
+  path.join(frontendRoot, 'src', 'v3', 'ABIs', 'localhost-hardhat-factory.json'),
   'utf8',
 ));
 const RPC_URL = process.env.V3_RPC_URL || 'http://127.0.0.1:8545';

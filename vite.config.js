@@ -40,6 +40,9 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
 
   return {
+    // ENVIRONMENT is intentionally public and controls only which committed V3
+    // deployment bundle is selected. Contract/RPC secrets must never use it.
+    envPrefix: ['VITE_', 'ENVIRONMENT'],
     plugins: [
       react(),
       createV3EthPricePlugin({ apiKey: env.ETHERSCAN_API_KEY }),

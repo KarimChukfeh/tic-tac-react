@@ -1,18 +1,32 @@
 import { describe, expect, it, vi } from 'vitest';
 import { keccak256 } from 'ethers';
-import HardhatFactoryData from '../ABIs/hardhat-factory.json';
-import ETourFactoryABIs from '../ABIs/ETour-Factory-ABIs.json';
-import TicTacToeFactoryABIData from '../ABIs/TicTacToeFactory-ABI.json';
-import ConnectFourFactoryABIData from '../ABIs/ConnectFourFactory-ABI.json';
-import ChessFactoryABIData from '../ABIs/ChessFactory-ABI.json';
+import HardhatFactoryData from '../ABIs/localhost-hardhat-factory.json';
+import ETourFactoryABIs from '../ABIs/localhost-ETour-Factory-ABIs.json';
+import TicTacToeFactoryABIData from '../ABIs/localhost-TicTacToeFactory-ABI.json';
+import ConnectFourFactoryABIData from '../ABIs/localhost-ConnectFourFactory-ABI.json';
+import ChessFactoryABIData from '../ABIs/localhost-ChessFactory-ABI.json';
 import LocalhostTicTacToeFactoryData from '../ABIs/localhost-tictac-factory.json';
 import LocalhostConnectFourFactoryData from '../ABIs/localhost-connectfour-factory.json';
 import LocalhostChessFactoryData from '../ABIs/localhost-chess-factory.json';
 import { V3DeploymentValidationError } from './deploymentGuard';
 import {
   normalizeV3DeploymentArtifacts,
+  resolveV3ArtifactBundle,
   verifyV3DeploymentRuntime,
 } from './deploymentLoader';
+
+const ARTIFACT_NAMES = [
+  'hardhat-factory.json',
+  'ETour-Factory-ABIs.json',
+  'PlayerProfile-ABI.json',
+  'PlayerRegistry-ABI.json',
+  'TicTacToeFactory-ABI.json',
+  'ConnectFourFactory-ABI.json',
+  'ChessFactory-ABI.json',
+  'tictac-factory.json',
+  'connectfour-factory.json',
+  'chess-factory.json',
+];
 
 function artifacts() {
   return structuredClone({
@@ -36,6 +50,32 @@ function artifacts() {
 }
 
 describe('normalized V3 deployment loader', () => {
+  it.each([
+    ['PRODUCTION', 'arbitrum'],
+    ['production', 'localhost'],
+    [undefined, 'localhost'],
+  ])('selects the complete %s artifact set', (environment, expectedNetwork) => {
+    const modules = Object.fromEntries(ARTIFACT_NAMES.flatMap((fileName) => [
+      [`../ABIs/localhost-${fileName}`, { network: 'localhost', fileName }],
+      [`../ABIs/arbitrum-${fileName}`, { network: 'arbitrum', fileName }],
+    ]));
+
+    const selected = resolveV3ArtifactBundle({ environment, modules });
+
+    expect(selected.network).toBe(expectedNetwork);
+    expect(Object.values(selected.payloads)).toHaveLength(ARTIFACT_NAMES.length);
+    expect(Object.values(selected.payloads).every(
+      (payload) => payload.network === expectedNetwork,
+    )).toBe(true);
+  });
+
+  it('fails closed when a selected network artifact is missing', () => {
+    expect(() => resolveV3ArtifactBundle({
+      environment: 'PRODUCTION',
+      modules: {},
+    })).toThrow('Missing arbitrum V3 deployment artifact');
+  });
+
   it('normalizes the complete generated deployment into immutable game contexts', () => {
     const deployment = normalizeV3DeploymentArtifacts(artifacts());
 

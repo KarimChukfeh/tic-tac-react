@@ -1,19 +1,62 @@
 import { getAddress, isAddress, keccak256 } from 'ethers';
-import HardhatFactoryData from '../ABIs/hardhat-factory.json';
-import ETourFactoryABIs from '../ABIs/ETour-Factory-ABIs.json';
-import PlayerProfileABIData from '../ABIs/PlayerProfile-ABI.json';
-import PlayerRegistryABIData from '../ABIs/PlayerRegistry-ABI.json';
-import TicTacToeFactoryABIData from '../ABIs/TicTacToeFactory-ABI.json';
-import ConnectFourFactoryABIData from '../ABIs/ConnectFourFactory-ABI.json';
-import ChessFactoryABIData from '../ABIs/ChessFactory-ABI.json';
-import LocalhostTicTacToeFactoryData from '../ABIs/localhost-tictac-factory.json';
-import LocalhostConnectFourFactoryData from '../ABIs/localhost-connectfour-factory.json';
-import LocalhostChessFactoryData from '../ABIs/localhost-chess-factory.json';
 import {
   V3_GENERATION,
   V3DeploymentValidationError,
   validateV3GameDeployment,
 } from './deploymentGuard';
+
+const ABI_MODULES = import.meta.glob('../ABIs/*.json', {
+  eager: true,
+  import: 'default',
+});
+
+export const V3_ARTIFACT_NETWORK = (
+  import.meta.env.ENVIRONMENT === 'PRODUCTION' ? 'arbitrum' : 'localhost'
+);
+
+const V3_ARTIFACT_FILES = Object.freeze([
+  'hardhat-factory.json',
+  'ETour-Factory-ABIs.json',
+  'PlayerProfile-ABI.json',
+  'PlayerRegistry-ABI.json',
+  'TicTacToeFactory-ABI.json',
+  'ConnectFourFactory-ABI.json',
+  'ChessFactory-ABI.json',
+  'tictac-factory.json',
+  'connectfour-factory.json',
+  'chess-factory.json',
+]);
+
+export function resolveV3ArtifactBundle({
+  environment = import.meta.env.ENVIRONMENT,
+  modules = ABI_MODULES,
+} = {}) {
+  const network = environment === 'PRODUCTION' ? 'arbitrum' : 'localhost';
+  const payloads = Object.fromEntries(V3_ARTIFACT_FILES.map((fileName) => {
+    const artifactPath = `../ABIs/${network}-${fileName}`;
+    const payload = modules[artifactPath];
+    if (!payload) {
+      throw new V3DeploymentValidationError(
+        `Missing ${network} V3 deployment artifact ${network}-${fileName}`,
+      );
+    }
+    return [fileName, payload];
+  }));
+
+  return Object.freeze({ network, payloads: Object.freeze(payloads) });
+}
+
+const SELECTED_ARTIFACTS = resolveV3ArtifactBundle();
+const HardhatFactoryData = SELECTED_ARTIFACTS.payloads['hardhat-factory.json'];
+const ETourFactoryABIs = SELECTED_ARTIFACTS.payloads['ETour-Factory-ABIs.json'];
+const PlayerProfileABIData = SELECTED_ARTIFACTS.payloads['PlayerProfile-ABI.json'];
+const PlayerRegistryABIData = SELECTED_ARTIFACTS.payloads['PlayerRegistry-ABI.json'];
+const TicTacToeFactoryABIData = SELECTED_ARTIFACTS.payloads['TicTacToeFactory-ABI.json'];
+const ConnectFourFactoryABIData = SELECTED_ARTIFACTS.payloads['ConnectFourFactory-ABI.json'];
+const ChessFactoryABIData = SELECTED_ARTIFACTS.payloads['ChessFactory-ABI.json'];
+const TicTacToeFactoryDeployment = SELECTED_ARTIFACTS.payloads['tictac-factory.json'];
+const ConnectFourFactoryDeployment = SELECTED_ARTIFACTS.payloads['connectfour-factory.json'];
+const ChessFactoryDeployment = SELECTED_ARTIFACTS.payloads['chess-factory.json'];
 
 export const V3_DEPLOYMENT_SCHEMA_VERSION = 3;
 export const V3_DEPLOYMENT_MANIFEST_KIND = 'complete-v3-deployment';
@@ -51,15 +94,15 @@ export const V3_GAME_DEFINITIONS = Object.freeze({
 const DEFAULT_GAME_ARTIFACTS = Object.freeze({
   tictactoe: Object.freeze({
     gamePayload: TicTacToeFactoryABIData,
-    localPayload: LocalhostTicTacToeFactoryData,
+    localPayload: TicTacToeFactoryDeployment,
   }),
   connect4: Object.freeze({
     gamePayload: ConnectFourFactoryABIData,
-    localPayload: LocalhostConnectFourFactoryData,
+    localPayload: ConnectFourFactoryDeployment,
   }),
   chess: Object.freeze({
     gamePayload: ChessFactoryABIData,
-    localPayload: LocalhostChessFactoryData,
+    localPayload: ChessFactoryDeployment,
   }),
 });
 

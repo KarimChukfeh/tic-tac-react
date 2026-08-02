@@ -19,7 +19,8 @@ Captured on 2026-07-29 from client commit `d936ec0`.
 
 ## Generated contract payloads
 
-`src/v3/ABIs/hardhat-factory.json` is a complete V3 deployment manifest:
+`src/v3/ABIs/localhost-hardhat-factory.json` is the complete local V3
+deployment manifest:
 
 - schema version: `2`;
 - generation: `v3`;
@@ -125,4 +126,3 @@ Results on 2026-07-29:
   - `src/Docs.test.jsx` expects an expanded Overview navigation group; and
   - `src/components/shared/MatchCard.test.jsx` expects no View button without
     a connected account.
-

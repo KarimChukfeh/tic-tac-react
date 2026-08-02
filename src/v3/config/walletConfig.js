@@ -11,6 +11,15 @@ const NETWORK_METADATA = Object.freeze({
     }),
     explorerUrl: null,
   }),
+  arbitrum: Object.freeze({
+    chainName: 'Arbitrum One',
+    nativeCurrency: Object.freeze({
+      name: 'Ether',
+      symbol: 'ETH',
+      decimals: 18,
+    }),
+    explorerUrl: 'https://arbiscan.io',
+  }),
 });
 
 function metadataFor(config = V3_RUNTIME_CONFIG) {

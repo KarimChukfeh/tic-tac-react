@@ -6,7 +6,7 @@ import { pathToFileURL } from 'node:url';
 
 const root = process.cwd();
 const deployment = JSON.parse(readFileSync(
-  path.join(root, 'src/v3/ABIs/hardhat-factory.json'),
+  path.join(root, 'src/v3/ABIs/localhost-hardhat-factory.json'),
   'utf8',
 ));
 const sdk = await import(pathToFileURL(
