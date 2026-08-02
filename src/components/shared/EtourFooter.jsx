@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
+import { ChevronDown, ChevronUp, ExternalLink, Github } from 'lucide-react';
 import V2ContractsTable from './V2ContractsTable';
 import './EtourFooter.css';
 
@@ -14,6 +14,12 @@ export default function EtourFooter({ scope = 'landing' }) {
             Powered by <strong>ETour Protocol</strong>
           </p>
           <div className="etour-footer__links">
+            <a href="https://github.com/KarimChukfeh/e-tour/" target="_blank" rel="noopener noreferrer">
+              <Github size={15} aria-hidden="true" /> Solidity Code
+            </a>
+            <a href="https://github.com/KarimChukfeh/etour-react-client" target="_blank" rel="noopener noreferrer">
+              <Github size={15} aria-hidden="true" /> Client Code
+            </a>
             <button
               type="button"
               onClick={() => setContractsExpanded((expanded) => !expanded)}
